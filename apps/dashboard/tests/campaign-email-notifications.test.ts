@@ -3,10 +3,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
-const createPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx"
-);
 
 describe("sendCampaignEmail function", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -33,19 +29,23 @@ describe("sendCampaignEmail function", () => {
   });
 });
 
-describe("campaign_created email on creation page", () => {
-  const content = fs.readFileSync(createPagePath, "utf-8");
+describe("campaign_created email on campaign relaunch", () => {
+  const campaignPagePath = path.resolve(
+    __dirname,
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/page.tsx",
+  );
+  const content = fs.readFileSync(campaignPagePath, "utf-8");
 
   it("should import sendCampaignEmail", () => {
     expect(content).toContain("sendCampaignEmail");
   });
 
-  it("should fire campaign_created email after successful creation", () => {
+  it("should fire campaign_created email after successful relaunch", () => {
     expect(content).toContain('sendCampaignEmail("campaign_created"');
   });
 
   it("should be best-effort (catch errors silently)", () => {
-    expect(content).toMatch(/sendCampaignEmail\(.*\)\.catch\(\(\) => \{\}\)/s);
+    expect(content).toMatch(/sendCampaignEmail\([\s\S]*\)\.catch\(\(\) => \{\}\)/);
   });
 });
 
@@ -62,6 +62,6 @@ describe("campaign_stopped email via useStopCampaign hook", () => {
   });
 
   it("should be best-effort (catch errors silently)", () => {
-    expect(content).toMatch(/sendCampaignEmail\(.*\)\.catch\(\(\) => \{\}\)/s);
+    expect(content).toMatch(/sendCampaignEmail\([\s\S]*\)\.catch\(\(\) => \{\}\)/);
   });
 });

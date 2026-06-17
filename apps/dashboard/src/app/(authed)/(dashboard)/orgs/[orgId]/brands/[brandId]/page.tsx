@@ -10,6 +10,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 /**
@@ -107,19 +108,20 @@ export default function BrandOverviewPage() {
   // Only once revenue resolves do we know the brand has no pipeline yet → full CTA.
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
-        <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+        <BrandStatusControl brandId={brandId} />
+        <RevenueEmptyState />
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+      <BrandStatusControl brandId={brandId} />
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         revenuePending={!revenueRevealed}
         costPending={!costRevealed}
-        newCampaignHref={`${basePath}/campaigns/new`}
         costBreakdown={costData?.costs ?? []}
         brandId={brandId}
         featureSlug={featureSlug}

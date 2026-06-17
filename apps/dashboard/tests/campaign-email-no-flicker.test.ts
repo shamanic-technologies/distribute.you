@@ -33,7 +33,7 @@ describe("Campaign entity data should not flicker (no duplicate queries)", () =>
   });
 
   it("sidebar-wrapper must get emails from useCampaign() context", () => {
-    expect(sidebarContent).toMatch(/emails.*useCampaign|useCampaign.*emails/s);
+    expect(sidebarContent).toMatch(/emails[\s\S]*useCampaign|useCampaign[\s\S]*emails/);
   });
 
   it("sidebar-wrapper must NOT call listCampaignArticles directly", () => {

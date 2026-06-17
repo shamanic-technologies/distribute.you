@@ -93,9 +93,4 @@ describe("static-shell-first: pages pass `pending`, not a whole-body skeleton sw
     expect(campaigns).not.toContain("CostBreakdownSkeleton");
   });
 
-  it("sales campaign budget cards do not wait for the economics badge query", () => {
-    const createCampaign = read(`${APP}/campaigns/new/page.tsx`);
-    const budgetReadyLine = createCampaign.match(/const budgetReady = [^;]+;/)?.[0];
-    expect(budgetReadyLine).toBe("const budgetReady = projReady && !workflowsLoading;");
-  });
 });

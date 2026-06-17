@@ -18,10 +18,6 @@ const chatComponents = [
     file: "../src/components/workflows/workflow-chat.tsx",
   },
   {
-    name: "campaign-prefill-chat",
-    file: "../src/components/campaigns/campaign-prefill-chat.tsx",
-  },
-  {
     name: "press-kit-chat",
     file: "../src/components/press-kits/press-kit-chat.tsx",
   },

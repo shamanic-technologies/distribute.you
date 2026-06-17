@@ -242,7 +242,7 @@ export function SignupsOverviewPage() {
     return (
       <div className="p-4 md:p-8 max-w-7xl mx-auto">
         {header}
-        <RevenueEmptyState setupHref={`${basePath}/campaigns/new`} />
+        <RevenueEmptyState />
         {modals}
       </div>
     );
@@ -299,7 +299,6 @@ export function SignupsOverviewPage() {
           data={revenueRevealed ? chartData : undefined}
           revenuePending={!revenueRevealed}
           costPending={!costRevealed}
-          newCampaignHref={`${basePath}/campaigns/new`}
           costBreakdown={costData?.costs ?? []}
           brandId={brandId}
           featureSlug={featureSlug}

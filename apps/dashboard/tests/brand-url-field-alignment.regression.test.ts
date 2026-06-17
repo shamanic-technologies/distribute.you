@@ -11,12 +11,6 @@ import * as path from "path";
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const apiContent = fs.readFileSync(apiPath, "utf-8");
 
-const newCampaignPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/new/page.tsx",
-);
-const newCampaignPage = fs.readFileSync(newCampaignPagePath, "utf-8");
-
 const legacyNewPagePath = path.resolve(
   __dirname,
   "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx",
@@ -36,17 +30,9 @@ describe("Brand URL field alignment (regression: Go button disabled)", () => {
     });
   });
 
-  describe("new campaign page (the page where the bug was reported)", () => {
-    it("reads brand?.url for resolvedBrandUrl (not brand?.brandUrl)", () => {
-      expect(newCampaignPage).toContain("brand?.url ?? \"\"");
-      expect(newCampaignPage).not.toContain("brand?.brandUrl");
-    });
-
-    it("reads b.url when mapping additionalBrands to URLs", () => {
-      expect(newCampaignPage).toContain("additionalBrands.map((b) => b.url)");
-      expect(newCampaignPage).not.toContain("additionalBrands.map((b) => b.brandUrl)");
-    });
-  });
+  // The new-campaign-page case (where this bug was reported) was removed with the
+  // campaigns/new create form; the api.ts normalization + the legacy features/new
+  // page below still guard the `url` vs `brandUrl` wire-field alignment.
 
   // The "brand detail page renders brand.url for href" case was removed: the
   // brand root page is now the (sole) feature's Revenue overview and no longer

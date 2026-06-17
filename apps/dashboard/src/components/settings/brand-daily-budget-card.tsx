@@ -93,7 +93,9 @@ export function BrandDailyBudgetCard({ brandId }: { brandId: string }) {
               className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
           </div>
-          <p className="mt-1.5 text-xs text-gray-400">Set 0 to pause spend.</p>
+          <p className="mt-1.5 text-xs text-gray-400">
+            Use the brand overview control to pause or restart spend.
+          </p>
         </div>
 
         {error && (

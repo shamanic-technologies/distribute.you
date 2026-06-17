@@ -27,7 +27,8 @@ describe("Feature landing defaults to Overview (item 1)", () => {
 
   it("campaigns list moved to /campaigns route", () => {
     expect(campaignsPage).toContain("listCampaignsByBrand");
-    expect(campaignsPage).toContain("New Campaign");
+    // Manual campaign creation was removed — no "New Campaign" entry point.
+    expect(campaignsPage).not.toContain("New Campaign");
   });
 
   it("sidebar Campaigns nav points at the /campaigns route", () => {
@@ -37,11 +38,12 @@ describe("Feature landing defaults to Overview (item 1)", () => {
   });
 });
 
-describe("Revenue empty state reframed to campaign-first (item 2)", () => {
+describe("Revenue empty state (item 2)", () => {
   const emptyState = read("components/revenue/revenue-empty-state.tsx");
-  it("messages 'no metrics yet, launch a campaign' with explicit button", () => {
+  it("messages 'no metrics yet' with no manual campaign-creation CTA", () => {
     expect(emptyState).toContain("No metrics yet");
-    expect(emptyState).toContain("Create a campaign");
+    // Manual campaign creation was removed — no CTA link out of the empty state.
+    expect(emptyState).not.toContain("Create a campaign");
     expect(emptyState).not.toContain("Set up sales economics");
   });
 });

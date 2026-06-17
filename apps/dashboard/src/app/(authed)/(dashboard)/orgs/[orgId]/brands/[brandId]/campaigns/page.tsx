@@ -235,12 +235,6 @@ function GenericFeaturePage({
                 Total: {formatTotalCost(totalCostCents)}
               </span>
             ) : null)}
-          <Link
-            href={`/orgs/${orgId}/brands/${brandId}/campaigns/new`}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
-          >
-            New Campaign
-          </Link>
         </div>
       </div>
 
@@ -319,15 +313,10 @@ function GenericFeaturePage({
         ) : campaigns.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No campaigns yet</h3>
-            <p className="text-gray-600 text-sm max-w-md mx-auto mb-4">
-              Create your first campaign to start outreach.
+            <p className="text-gray-600 text-sm max-w-md mx-auto">
+              Outreach runs automatically once this brand is set up — campaigns
+              appear here as they launch.
             </p>
-            <Link
-              href={`/orgs/${orgId}/brands/${brandId}/campaigns/new`}
-              className="inline-flex px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
-            >
-              New Campaign
-            </Link>
           </div>
         ) : (
           campaigns.map((campaign) => {
