@@ -51,7 +51,7 @@ export function OutreachStatCards({
 }) {
   const isBeta = useIsBetaUser();
   const goal = optimizationGoal ?? "sales_meetings";
-  const outreach = stats.leadsSent ?? stats.recipientsSent ?? 0;
+  const outreach = stats.leadsContacted ?? stats.recipientsContacted ?? 0;
   const opens = stats.recipientsOpened ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
   const beta = <MaturityBadge level="beta" />;
