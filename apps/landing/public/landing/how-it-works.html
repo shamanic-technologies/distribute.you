@@ -347,33 +347,57 @@
     <div class="hiw-link-cards r">
       <a href="/use-cases" class="hiw-link-card">
         <div class="hiw-link-illu">
-          <svg viewBox="0 0 340 148" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs><linearGradient id="uc-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="oklch(88% 0.10 264)"/><stop offset="100%" stop-color="oklch(95% 0.04 264)"/></linearGradient></defs>
-            <rect width="340" height="148" fill="url(#uc-bg)"/>
+          <svg viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <filter id="uc-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="oklch(40% 0.12 264)" flood-opacity="0.13"/>
+              </filter>
+            </defs>
             <!-- SaaS card -->
-            <rect x="22" y="26" width="88" height="96" rx="12" fill="rgba(255,255,255,0.92)"/>
-            <rect x="32" y="36" width="68" height="38" rx="8" fill="oklch(93% 0.06 264)"/>
-            <rect x="40" y="44" width="32" height="5" rx="2.5" fill="oklch(62% 0.18 264)"/>
-            <rect x="40" y="53" width="52" height="4" rx="2" fill="oklch(90% 0.05 264)"/>
-            <rect x="40" y="61" width="40" height="4" rx="2" fill="oklch(90% 0.05 264)"/>
-            <text x="66" y="96" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10" font-weight="700" fill="oklch(30% 0.12 264)">SaaS</text>
-            <text x="66" y="109" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="8.5" fill="oklch(52% 0.10 264)">Founders</text>
-            <!-- Agency card -->
-            <rect x="126" y="14" width="88" height="96" rx="12" fill="rgba(255,255,255,0.96)"/>
-            <rect x="136" y="24" width="68" height="38" rx="8" fill="oklch(93% 0.06 264)"/>
-            <circle cx="158" cy="43" r="9" fill="oklch(84% 0.09 264)"/>
-            <circle cx="175" cy="43" r="9" fill="oklch(78% 0.12 264)"/>
-            <circle cx="192" cy="43" r="7" fill="oklch(72% 0.14 264)"/>
-            <text x="170" y="84" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10" font-weight="700" fill="oklch(30% 0.12 264)">Agency</text>
-            <text x="170" y="97" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="8.5" fill="oklch(52% 0.10 264)">B2B Teams</text>
-            <!-- E-comm card -->
-            <rect x="230" y="26" width="88" height="96" rx="12" fill="rgba(255,255,255,0.92)"/>
-            <rect x="240" y="36" width="68" height="38" rx="8" fill="oklch(93% 0.06 264)"/>
-            <path d="M256 49 L259 49 L265 66 M265 56 L278 56 L275 66 L259 66" stroke="oklch(55% 0.18 264)" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="263" cy="69" r="2.5" fill="oklch(55% 0.18 264)"/>
-            <circle cx="273" cy="69" r="2.5" fill="oklch(55% 0.18 264)"/>
-            <text x="274" y="96" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10" font-weight="700" fill="oklch(30% 0.12 264)">E-Commerce</text>
-            <text x="274" y="109" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="8.5" fill="oklch(52% 0.10 264)">Freelancers</text>
+            <rect x="18" y="70" width="90" height="200" rx="16" fill="rgba(255,255,255,0.97)" filter="url(#uc-shadow)"/>
+            <!-- Icon area -->
+            <rect x="29" y="84" width="68" height="68" rx="12" fill="oklch(93% 0.07 264)"/>
+            <!-- HugeIcon: code-02 (SaaS) -->
+            <g transform="translate(46,101)" stroke="oklch(50% 0.22 264)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 4L8 17M5 8L1 12L5 16M19 8L23 12L19 16"/>
+            </g>
+            <!-- Label -->
+            <text x="63" y="174" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="700" fill="oklch(25% 0.12 264)">SaaS</text>
+            <text x="63" y="192" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10.5" fill="oklch(48% 0.10 264)">Founders</text>
+            <!-- Decorative dots -->
+            <circle cx="63" cy="244" r="3" fill="oklch(72% 0.15 264)" opacity="0.5"/>
+            <circle cx="73" cy="244" r="3" fill="oklch(72% 0.15 264)" opacity="0.3"/>
+            <circle cx="83" cy="244" r="3" fill="oklch(72% 0.15 264)" opacity="0.15"/>
+
+            <!-- Agency card (center, slightly raised) -->
+            <rect x="125" y="50" width="90" height="220" rx="16" fill="rgba(255,255,255,1)" filter="url(#uc-shadow)"/>
+            <rect x="136" y="65" width="68" height="68" rx="12" fill="oklch(93% 0.07 264)"/>
+            <!-- HugeIcon: users (Agency) -->
+            <g transform="translate(153,82)" stroke="oklch(50% 0.22 264)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="7" r="4"/>
+              <path d="M3 21v-1a8 8 0 0116 0v1"/>
+              <path d="M1 10a4 4 0 005.5 3.7M23 10a4 4 0 01-5.5 3.7" opacity="0.5"/>
+            </g>
+            <text x="170" y="157" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="700" fill="oklch(25% 0.12 264)">Agency</text>
+            <text x="170" y="175" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10.5" fill="oklch(48% 0.10 264)">B2B Teams</text>
+            <circle cx="170" cy="245" r="3" fill="oklch(62% 0.20 264)" opacity="0.6"/>
+            <circle cx="160" cy="245" r="3" fill="oklch(62% 0.20 264)" opacity="0.35"/>
+            <circle cx="180" cy="245" r="3" fill="oklch(62% 0.20 264)" opacity="0.35"/>
+
+            <!-- E-Commerce card -->
+            <rect x="232" y="70" width="90" height="200" rx="16" fill="rgba(255,255,255,0.97)" filter="url(#uc-shadow)"/>
+            <rect x="243" y="84" width="68" height="68" rx="12" fill="oklch(93% 0.07 264)"/>
+            <!-- HugeIcon: shopping-cart (E-Commerce) -->
+            <g transform="translate(260,101)" stroke="oklch(50% 0.22 264)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 1h3l2 9h10l2-7H6"/>
+              <circle cx="9" cy="16" r="1.5"/>
+              <circle cx="16" cy="16" r="1.5"/>
+            </g>
+            <text x="277" y="174" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="700" fill="oklch(25% 0.12 264)">E-Commerce</text>
+            <text x="277" y="192" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10.5" fill="oklch(48% 0.10 264)">Freelancers</text>
+            <circle cx="277" cy="244" r="3" fill="oklch(72% 0.15 264)" opacity="0.5"/>
+            <circle cx="267" cy="244" r="3" fill="oklch(72% 0.15 264)" opacity="0.3"/>
+            <circle cx="257" cy="244" r="3" fill="oklch(72% 0.15 264)" opacity="0.15"/>
           </svg>
         </div>
         <div class="hiw-link-body">
@@ -384,23 +408,36 @@
       </a>
       <a href="/cold-email-cost-guide" class="hiw-link-card">
         <div class="hiw-link-illu">
-          <svg viewBox="0 0 340 148" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs><linearGradient id="cg-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="oklch(88% 0.10 264)"/><stop offset="100%" stop-color="oklch(95% 0.04 264)"/></linearGradient></defs>
-            <rect width="340" height="148" fill="url(#cg-bg)"/>
-            <rect x="28" y="20" width="284" height="108" rx="14" fill="rgba(255,255,255,0.93)"/>
-            <text x="48" y="52" font-family="system-ui,-apple-system,sans-serif" font-size="9.5" font-weight="600" fill="oklch(55% 0.06 264)">Agency retainer</text>
-            <rect x="160" y="41" width="120" height="14" rx="7" fill="oklch(90% 0.04 264)"/>
-            <text x="295" y="52" font-family="system-ui,-apple-system,sans-serif" font-size="9" font-weight="700" fill="oklch(48% 0.06 264)">$4,000/mo</text>
-            <line x1="48" y1="68" x2="312" y2="68" stroke="oklch(93% 0.03 264)" stroke-width="1"/>
-            <text x="48" y="88" font-family="system-ui,-apple-system,sans-serif" font-size="9.5" font-weight="700" fill="oklch(45% 0.20 264)">distribute</text>
-            <rect x="160" y="77" width="38" height="14" rx="7" fill="oklch(52% 0.22 264)"/>
-            <text x="212" y="88" font-family="system-ui,-apple-system,sans-serif" font-size="9.5" font-weight="700" fill="oklch(45% 0.20 264)">$4–7 / click</text>
-            <rect x="248" y="76" width="52" height="16" rx="8" fill="oklch(92% 0.08 264)"/>
-            <text x="274" y="87" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="7.5" font-weight="700" fill="oklch(42% 0.20 264)">outcome-based</text>
-            <line x1="48" y1="104" x2="312" y2="104" stroke="oklch(93% 0.03 264)" stroke-width="1"/>
-            <text x="48" y="118" font-family="system-ui,-apple-system,sans-serif" font-size="9.5" font-weight="600" fill="oklch(55% 0.06 264)">In-house SDR</text>
-            <rect x="160" y="107" width="80" height="14" rx="7" fill="oklch(90% 0.04 264)"/>
-            <text x="295" y="118" font-family="system-ui,-apple-system,sans-serif" font-size="9" font-weight="700" fill="oklch(48% 0.06 264)">$7,000/mo</text>
+          <svg viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <filter id="cg-shadow" x="-10%" y="-20%" width="120%" height="160%">
+                <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="oklch(40% 0.12 264)" flood-opacity="0.11"/>
+              </filter>
+            </defs>
+            <!-- White card container -->
+            <rect x="28" y="44" width="284" height="252" rx="18" fill="rgba(255,255,255,0.97)" filter="url(#cg-shadow)"/>
+
+            <!-- Row label: distribute -->
+            <text x="48" y="90" font-family="system-ui,-apple-system,sans-serif" font-size="11" font-weight="700" fill="oklch(45% 0.20 264)">distribute</text>
+            <!-- distribute bar: small, accent filled, text inside -->
+            <rect x="48" y="98" width="90" height="30" rx="8" fill="oklch(52% 0.22 264)"/>
+            <text x="93" y="117" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="9.5" font-weight="700" fill="white">$4–7 / click</text>
+
+            <line x1="48" y1="144" x2="292" y2="144" stroke="oklch(93% 0.03 264)" stroke-width="1"/>
+
+            <!-- Row label: Agency retainer -->
+            <text x="48" y="168" font-family="system-ui,-apple-system,sans-serif" font-size="11" font-weight="600" fill="oklch(48% 0.06 264)">Agency retainer</text>
+            <!-- Agency bar: wide, grey, text inside -->
+            <rect x="48" y="176" width="210" height="30" rx="8" fill="oklch(88% 0.04 264)"/>
+            <text x="153" y="195" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="9.5" font-weight="700" fill="oklch(40% 0.06 264)">$4,000 / mo</text>
+
+            <line x1="48" y1="222" x2="292" y2="222" stroke="oklch(93% 0.03 264)" stroke-width="1"/>
+
+            <!-- Row label: In-house SDR -->
+            <text x="48" y="246" font-family="system-ui,-apple-system,sans-serif" font-size="11" font-weight="600" fill="oklch(48% 0.06 264)">In-house SDR</text>
+            <!-- SDR bar: widest, grey, text inside -->
+            <rect x="48" y="254" width="240" height="30" rx="8" fill="oklch(88% 0.04 264)"/>
+            <text x="168" y="273" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="9.5" font-weight="700" fill="oklch(40% 0.06 264)">$7,000 / mo</text>
           </svg>
         </div>
         <div class="hiw-link-body">
@@ -411,23 +448,31 @@
       </a>
       <a href="/performance" class="hiw-link-card">
         <div class="hiw-link-illu">
-          <svg viewBox="0 0 340 148" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs><linearGradient id="perf-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="oklch(88% 0.10 264)"/><stop offset="100%" stop-color="oklch(95% 0.04 264)"/></linearGradient></defs>
-            <rect width="340" height="148" fill="url(#perf-bg)"/>
-            <rect x="18" y="24" width="94" height="100" rx="14" fill="rgba(255,255,255,0.92)"/>
-            <text x="65" y="68" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="800" fill="oklch(45% 0.20 264)">$0.93</text>
-            <text x="65" y="83" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="8.5" fill="oklch(55% 0.06 264)">per reply</text>
-            <rect x="123" y="14" width="94" height="110" rx="14" fill="rgba(255,255,255,0.97)"/>
-            <text x="170" y="66" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="38" font-weight="800" fill="oklch(45% 0.20 264)">3</text>
-            <text x="170" y="81" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="8.5" fill="oklch(55% 0.06 264)">calls, week one</text>
-            <rect x="228" y="24" width="94" height="100" rx="14" fill="rgba(255,255,255,0.92)"/>
-            <text x="275" y="68" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="28" font-weight="800" fill="oklch(45% 0.20 264)">18h</text>
-            <text x="275" y="83" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="8.5" fill="oklch(55% 0.06 264)">first response</text>
+          <svg viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <filter id="perf-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="3" stdDeviation="7" flood-color="oklch(40% 0.12 264)" flood-opacity="0.12"/>
+              </filter>
+            </defs>
+            <!-- Card 1: $0.9 per reply (side, slightly lower) -->
+            <rect x="14" y="80" width="94" height="120" rx="16" fill="rgba(255,255,255,0.95)" filter="url(#perf-shadow)"/>
+            <text x="61" y="142" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="32" font-weight="800" fill="oklch(45% 0.20 264)">$0.9</text>
+            <text x="61" y="162" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10" fill="oklch(50% 0.08 264)">per reply</text>
+
+            <!-- Card 2: 3 calls (center, taller) -->
+            <rect x="123" y="55" width="94" height="150" rx="16" fill="rgba(255,255,255,1)" filter="url(#perf-shadow)"/>
+            <text x="170" y="140" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="800" fill="oklch(45% 0.20 264)">3</text>
+            <text x="170" y="163" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10" fill="oklch(50% 0.08 264)">calls, week one</text>
+
+            <!-- Card 3: 18h first response (side, slightly lower) -->
+            <rect x="232" y="80" width="94" height="120" rx="16" fill="rgba(255,255,255,0.95)" filter="url(#perf-shadow)"/>
+            <text x="279" y="142" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="32" font-weight="800" fill="oklch(45% 0.20 264)">18h</text>
+            <text x="279" y="162" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="10" fill="oklch(50% 0.08 264)">first response</text>
           </svg>
         </div>
         <div class="hiw-link-body">
           <h3 class="t-h3">Real results from real campaigns</h3>
-          <p>3 calls booked in week one. $0.93 per reply. 18 hours to first response. Numbers from actual founders.</p>
+          <p>3 calls booked in week one. $0.9 per reply. 18 hours to first response. Numbers from actual founders.</p>
           <span class="hiw-link-arrow">See results &rarr;</span>
         </div>
       </a>
