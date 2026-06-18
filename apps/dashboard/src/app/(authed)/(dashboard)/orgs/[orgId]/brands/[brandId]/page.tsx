@@ -21,7 +21,10 @@ import {
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import { selectWorkflowForOptimizationGoal } from "@/lib/workflow-projection-choice";
+import {
+  selectWorkflowForOptimizationGoal,
+  workflowOutcomeUnitCost,
+} from "@/lib/workflow-projection-choice";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -133,24 +136,42 @@ export default function BrandOverviewPage() {
     },
   );
 
-  const activeOutcomeProjection = useMemo(() => {
+  const activeOutcomeWorkflow = useMemo(() => {
     if (!outcomeProjection) return null;
     return selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal, {
       visitToSignupPct: economicsData?.salesEconomics?.visitToSignupPct,
+      replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct,
+      visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct,
       projectionBudgetUsd: monthlyBudgetUsd,
-    })?.projection ?? null;
-  }, [economicsData?.salesEconomics?.visitToSignupPct, monthlyBudgetUsd, optimizationGoal, outcomeProjection]);
+    });
+  }, [
+    economicsData?.salesEconomics?.replyToMeetingPct,
+    economicsData?.salesEconomics?.visitToMeetingPct,
+    economicsData?.salesEconomics?.visitToSignupPct,
+    monthlyBudgetUsd,
+    optimizationGoal,
+    outcomeProjection,
+  ]);
 
   const expectedMonthlyOutcome = useMemo(() => {
-    if (optimizationGoal === "signups") {
-      const visits = activeOutcomeProjection?.visits;
-      const visitToSignupPct = economicsData?.salesEconomics?.visitToSignupPct;
-      return visits != null && visitToSignupPct != null
-        ? visits * (visitToSignupPct / 100)
-        : null;
+    if (monthlyBudgetUsd == null || monthlyBudgetUsd <= 0 || activeOutcomeWorkflow == null) {
+      return null;
     }
-    return activeOutcomeProjection?.meetings ?? null;
-  }, [activeOutcomeProjection, economicsData?.salesEconomics?.visitToSignupPct, optimizationGoal]);
+    const unitCost = workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal, {
+      visitToSignupPct: economicsData?.salesEconomics?.visitToSignupPct,
+      replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct,
+      visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct,
+      projectionBudgetUsd: monthlyBudgetUsd,
+    });
+    return unitCost != null && unitCost > 0 ? monthlyBudgetUsd / unitCost : null;
+  }, [
+    activeOutcomeWorkflow,
+    economicsData?.salesEconomics?.replyToMeetingPct,
+    economicsData?.salesEconomics?.visitToMeetingPct,
+    economicsData?.salesEconomics?.visitToSignupPct,
+    monthlyBudgetUsd,
+    optimizationGoal,
+  ]);
 
   // Real persona-level cost evidence from features-service. This replaces the
   // old provider-cost-source list; no dashboard-side mock/hash persona split.

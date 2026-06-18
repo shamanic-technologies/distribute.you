@@ -61,6 +61,15 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).not.toContain("Timezone:");
   });
 
+  it("colors tooltip values by the rendered graph segment and shows today actuals only", () => {
+    expect(chart).toContain("const color = day.isToday ? metric.actual : metric.expected;");
+    expect(chart).toContain("const displayedValue = day.isToday ? value.actual : value.expected;");
+    expect(chart).toContain("style={{ backgroundColor: color }}");
+    expect(chart).toContain("{formatValue(displayedValue, metric.key)}");
+    expect(chart).toContain("!day.isToday && metric.key === \"signups\"");
+    expect(chart).not.toContain("`${formatValue(value.actual, metric.key)} / `");
+  });
+
   it("labels today's stacked bars with actual values and future bars with expected values", () => {
     expect(chart).toContain("if (day.isToday)");
     expect(chart).toContain("if (renderedValue <= 0) return null;");
@@ -75,8 +84,11 @@ describe("Brand overview pipeline activity chart", () => {
     expect(page).toContain('"overview-outcome"');
     expect(page).toContain('objective: optimizationGoal === "signups" ? "self-serve" : "meeting-booked"');
     expect(page).toContain("selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal");
-    expect(page).toContain("visits * (visitToSignupPct / 100)");
-    expect(page).toContain("activeOutcomeProjection?.meetings");
+    expect(page).toContain("workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal");
+    expect(page).toContain("replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct");
+    expect(page).toContain("visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct");
+    expect(page).toContain("monthlyBudgetUsd / unitCost");
+    expect(page).not.toContain("activeOutcomeProjection?.meetings");
     expect(section).toContain("return Math.round(n).toLocaleString");
     expect(page).toContain('"expected signups / month"');
     expect(page).toContain('"expected sales meetings / month"');
