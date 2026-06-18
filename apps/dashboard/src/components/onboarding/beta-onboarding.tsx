@@ -8,10 +8,6 @@ import {
   useSession,
 } from "@clerk/nextjs";
 import {
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-import {
   ArrowRightIcon,
   CheckIcon,
   ChevronLeftIcon,
@@ -25,7 +21,6 @@ import {
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { SparklesIcon } from "@heroicons/react/20/solid";
 import posthog from "posthog-js";
 import {
   upsertBrand,
@@ -37,8 +32,6 @@ import {
   saveBrandSalesEconomics,
   suggestPersonas,
   createPersona,
-  listPersonas,
-  setPersonaStatus,
   getWorkflowProjection,
   getFeature,
   prefillFeatureInputs,
@@ -53,17 +46,14 @@ import {
   type WorkflowProjectionResponse,
   type PersonaDraft,
   type FeatureInput,
-  regeneratePersonaAvatar,
 } from "@/lib/api";
 import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
-import { useAuthQuery } from "@/lib/use-auth-query";
 import { type Filters, type Persona } from "@/lib/mock-personas";
 import { PersonaCard, capWords } from "@/components/personas/persona-card";
-import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { BrandLogo } from "@/components/brand-logo";
 
 /**
@@ -71,7 +61,7 @@ import { BrandLogo } from "@/components/brand-logo";
  * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
  * runs WHILE the brand is created AND its profile / services / personas / economics /
  * pricing projection are fetched for real → services to promote → sales goal →
- * conversion rates → review the AI-proposed persona (server-backed, Edit-with-AI)
+ * conversion rates → review the AI-proposed persona as an onboarding-only draft
  * → agency-channel consent → outcome-count budget → launches a real campaign.
  * Everything is wired to live endpoints.
  */
@@ -231,7 +221,13 @@ type PendingWalletLaunch = {
   featureInputs?: Record<string, string>;
   profile?: Record<string, string | string[]>;
   services?: string[];
+  personas?: PersonaLaunchDraft[];
   createdAt: string;
+};
+
+type PersonaLaunchDraft = {
+  name: string;
+  filters: Filters;
 };
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -245,6 +241,23 @@ function isStringRecord(value: unknown): value is Record<string, string> {
 
 function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function isPersonaLaunchDraftList(value: unknown): value is PersonaLaunchDraft[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        !!item &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        typeof (item as { name?: unknown }).name === "string" &&
+        !!(item as { filters?: unknown }).filters &&
+        typeof (item as { filters?: unknown }).filters === "object" &&
+        !Array.isArray((item as { filters?: unknown }).filters) &&
+        Object.values((item as { filters: Record<string, unknown> }).filters).every(isStringList),
+    )
+  );
 }
 
 function isProfileRecord(value: unknown): value is Record<string, string | string[]> {
@@ -286,6 +299,7 @@ function readPendingWalletLaunch(): PendingWalletLaunch {
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
     (parsed.services !== undefined && !isStringList(parsed.services)) ||
+    (parsed.personas !== undefined && !isPersonaLaunchDraftList(parsed.personas)) ||
     typeof parsed.createdAt !== "string"
   ) {
     throw new Error("Wallet checkout returned with an invalid pending launch state. Campaign was not launched.");
@@ -333,7 +347,6 @@ function normalizeServices(value: unknown): string[] {
 export function BetaOnboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const { organization } = useOrganization();
   const { createOrganization, setActive } = useOrganizationList();
   const { session } = useSession();
@@ -362,6 +375,7 @@ export function BetaOnboarding() {
   const [walletTopupAmountUsd, setWalletTopupAmountUsd] = useState("25");
   const [walletTopupThresholdUsd, setWalletTopupThresholdUsd] = useState("5");
   const [personaSeeding, setPersonaSeeding] = useState(false);
+  const [personaDrafts, setPersonaDrafts] = useState<Persona[]>([]);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
@@ -386,12 +400,16 @@ export function BetaOnboarding() {
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>([]);
 
+  const personaDraftsRef = useRef<Persona[]>([]);
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
+  useEffect(() => {
+    personaDraftsRef.current = personaDrafts;
+  }, [personaDrafts]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
@@ -428,8 +446,19 @@ export function BetaOnboarding() {
       const sug = await suggestPersonas(id, 1);
       const first: PersonaDraft | undefined = sug.personas[0];
       if (first?.name?.trim()) {
-        await createPersona(id, { name: capWords(first.name.trim()), filters: first.filters });
-        await queryClient.invalidateQueries({ queryKey: ["personas", id] });
+        setPersonaDrafts((prev) =>
+          prev.length > 0
+            ? prev
+            : [
+                {
+                  id: nextPersonaId(),
+                  name: capWords(first.name.trim()),
+                  filters: first.filters,
+                  status: "active",
+                  unsaved: true,
+                },
+              ],
+        );
       }
     } catch (e) {
       console.error("[dashboard] suggest/create persona (onboarding seed) failed:", e);
@@ -657,6 +686,18 @@ export function BetaOnboarding() {
     return featureInputs;
   }
 
+  async function persistPersonaDraftsForLaunch(id: string, drafts: PersonaLaunchDraft[]) {
+    const seenNames = new Set<string>();
+    for (const draft of drafts) {
+      const name = capWords(draft.name.trim());
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seenNames.has(key)) continue;
+      seenNames.add(key);
+      await createPersona(id, { name, filters: draft.filters as Record<string, string[]> });
+    }
+  }
+
   async function completeLaunchAfterWallet(pending: PendingWalletLaunch) {
     if (pending.profile && pending.services) {
       await saveBrandProfileVersion(pending.brandId, {
@@ -666,6 +707,7 @@ export function BetaOnboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
+    await persistPersonaDraftsForLaunch(pending.brandId, pending.personas ?? []);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
     setLaunchStep(2);
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
@@ -761,6 +803,10 @@ export function BetaOnboarding() {
         featureInputs: storedPending?.featureInputs,
         profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
         services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
+        personas:
+          brandIdRef.current === id && normalizedCurrentUrl
+            ? personaDraftsRef.current.map((p) => ({ name: p.name, filters: p.filters }))
+            : storedPending?.personas,
         createdAt: new Date().toISOString(),
       };
       window.sessionStorage.setItem(WALLET_PENDING_KEY, JSON.stringify(pending));
@@ -1080,9 +1126,10 @@ export function BetaOnboarding() {
   if (step === "personas") {
     return (
       <OnboardingPersonas
-        brandId={brandId}
         brandDomain={domain}
         hostname={hostname}
+        personas={personaDrafts}
+        setPersonas={setPersonaDrafts}
         personaSuggestionFailed={setupIssues.persona}
         personaSeeding={personaSeeding}
         onBack={() => setStep("rates")}
@@ -1321,80 +1368,31 @@ export function BetaOnboarding() {
   );
 }
 
-// ── Audiences step — server-backed (mirrors the Audiences page) ─────────────
-// The brand exists by now (created during loading) and the AI-suggested persona
-// was already persisted, so this reads/writes live personas: PersonaCard with the
-// save lifecycle + an Edit-with-AI chat.
+// ── Audiences step — onboarding-only drafts ────────────────────────────────
+// No run/campaign exists yet, so this step edits client-side draft personas only.
+// They are persisted once at launch, immediately before the campaign is created.
 let obDraftSeq = 0;
 const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
 function OnboardingPersonas({
-  brandId,
   brandDomain,
   hostname,
+  personas,
+  setPersonas,
   personaSuggestionFailed,
   personaSeeding,
   onBack,
   onContinue,
 }: {
-  brandId: string | null;
   brandDomain: string | null;
   hostname: string;
+  personas: Persona[];
+  setPersonas: (updater: (prev: Persona[]) => Persona[]) => void;
   personaSuggestionFailed: boolean;
   personaSeeding: boolean;
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [drafts, setDrafts] = useState<Persona[]>([]);
-  const [aiOpen, setAiOpen] = useState(false);
-  const requestedAvatarIds = useRef<Set<string>>(new Set());
-
-  const { data, isPending } = useAuthQuery(
-    ["personas", brandId ?? ""],
-    () => listPersonas(brandId as string),
-    { enabled: !!brandId },
-  );
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["personas", brandId ?? ""] });
-  const createMut = useMutation({
-    mutationFn: (i: { name: string; filters: Filters }) =>
-      createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
-    onSuccess: invalidate,
-  });
-  const {
-    mutate: archivePersona,
-    isPending: archivingPersona,
-    variables: archivingPersonaId,
-  } = useMutation({
-    mutationFn: (id: string) => setPersonaStatus(brandId as string, id, "archived"),
-    onSuccess: invalidate,
-  });
-  const {
-    mutate: regenerateAvatar,
-    isPending: avatarRegenerating,
-    variables: regeneratingAvatarId,
-  } = useMutation({
-    mutationFn: (personaId: string) =>
-      regeneratePersonaAvatar(brandId as string, personaId, undefined, { suppressPaymentRequired: true }),
-    onSuccess: invalidate,
-    onError: (err) => {
-      console.info("[dashboard] onboarding persona avatar generation skipped:", err);
-    },
-  });
-
-  const serverPersonas: Persona[] = (data?.personas ?? [])
-    .filter((p) => p.status !== "archived")
-    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status, avatarUrl: p.avatarUrl ?? null }));
-  const personas: Persona[] = [...drafts, ...serverPersonas];
-  const missingAvatarId = serverPersonas.find((p) => !p.avatarUrl && !requestedAvatarIds.current.has(p.id))?.id;
-
-  useEffect(() => {
-    if (!missingAvatarId || avatarRegenerating) return;
-    requestedAvatarIds.current.add(missingAvatarId);
-    regenerateAvatar(missingAvatarId);
-  }, [missingAvatarId, avatarRegenerating, regenerateAvatar]);
-
   const isNameTaken = (name: string, exceptId?: string) => {
     const needle = name.trim().toLowerCase();
     return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
@@ -1407,11 +1405,16 @@ function OnboardingPersonas({
       if (!isNameTaken(candidate)) return candidate;
     }
   };
-  const addPersona = () => setDrafts((prev) => [{ id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true }, ...prev]);
-  const removeDraft = (id: string) => setDrafts((prev) => prev.filter((p) => p.id !== id));
-  const commitNew = (id: string, name: string, filters: Filters) =>
-    createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removeDraft(id) });
-  const saveAsNew = (name: string, filters: Filters) => createMut.mutate({ name: capWords(name), filters });
+  const addPersona = () =>
+    setPersonas((prev) => [
+      { id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true },
+      ...prev,
+    ]);
+  const removeDraft = (id: string) => setPersonas((prev) => prev.filter((p) => p.id !== id));
+  const updateDraft = (id: string, name: string, filters: Filters) =>
+    setPersonas((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, name: capWords(name), filters, unsaved: true } : p)),
+    );
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
   return (
     <div className={card}>
@@ -1420,21 +1423,13 @@ function OnboardingPersonas({
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
-          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters, add another, or ask AI.</p>
+          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters or add another before launch.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => brandId && setAiOpen(true)}
-          disabled={!brandId}
-          className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50 sm:w-auto"
-        >
-          <SparklesIcon className="h-4 w-4" /> Edit with AI
-        </button>
       </div>
       {personaSuggestionFailed && <SetupWarning className="mt-4" />}
 
       <div className="mt-6 space-y-3">
-        {(isPending || personaSeeding) && personas.length === 0 ? (
+        {personaSeeding && personas.length === 0 ? (
           <div className="flex h-56 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
             <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
             Drafting your first audience...
@@ -1446,15 +1441,10 @@ function OnboardingPersonas({
             <PersonaCard
               key={persona.id}
               persona={persona}
-              onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
-              onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
-              onCancelNew={() => removeDraft(persona.id)}
-              onRemove={() => (persona.unsaved ? removeDraft(persona.id) : archivePersona(persona.id))}
-              removing={!persona.unsaved && archivingPersona && archivingPersonaId === persona.id}
+              onChange={(name, filters) => updateDraft(persona.id, name, filters)}
+              onRemove={() => removeDraft(persona.id)}
               showLifecycleActions={false}
-              onRegenerateAvatar={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
-              regeneratingAvatar={avatarRegenerating && regeneratingAvatarId === persona.id}
-              checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
+              checkNameTaken={(n) => isNameTaken(n, persona.id)}
             />
           ))
         )}
@@ -1464,31 +1454,6 @@ function OnboardingPersonas({
         <PlusIcon className="h-4 w-4" /> Add an audience
       </button>
       <NextButton onClick={onContinue} label="Continue" />
-
-      {brandId && (
-        <EditWithAIChat
-          open={aiOpen}
-          onClose={() => setAiOpen(false)}
-          title="Edit audiences with AI"
-          intro="Hi — I can create, duplicate and refine your audiences. What would you like to change?"
-          suggestions={["Add an audience for mid-market RevOps leaders", "Narrow the main audience to Series A+ SaaS", "Add fintech founders in the US"]}
-          configKey="persona-editor"
-          brandId={brandId}
-          sessionVersion="live-context-v1"
-          context={{
-            personaCount: personas.length,
-            activePersonaCount: personas.filter((p) => p.status !== "archived").length,
-            personas: personas.map((p) => ({
-              id: p.id,
-              name: p.name,
-              status: p.status,
-              filters: p.filters,
-              persisted: !p.unsaved,
-            })),
-          }}
-          invalidateKeys={[["personas", brandId]]}
-        />
-      )}
     </div>
   );
 }
