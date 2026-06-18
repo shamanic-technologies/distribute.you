@@ -63,6 +63,14 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("extractBrandFields([id], SALES_PROFILE_FIELDS)");
   });
 
+  it("starts persona drafting independently from full profile hydration", () => {
+    expect(src).toContain("const personaSeed = seedOnboardingPersonaFromBrandInfo(id);");
+    expect(src.indexOf("const personaSeed = seedOnboardingPersonaFromBrandInfo(id);")).toBeLessThan(
+      src.indexOf("extractBrandFields([id], SALES_PROFILE_FIELDS)"),
+    );
+    expect(src).not.toContain("async function hydrateOnboardingInBackground(id: string): Promise<void> {\n    setPersonaSeeding(true);");
+  });
+
   it("offers the two sales goals and prices in the chosen unit", () => {
     expect(src).toContain("What is your primary sales goal?");
     for (const unit of ["signups", "meetings"]) {
@@ -95,6 +103,7 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("listPersonas");
     expect(src).toContain("showLifecycleActions={false}");
     expect(src).toContain('configKey="persona-editor"');
+    expect(src).toContain("suppressPaymentRequired: true");
     expect(src).not.toContain("pause, resume and archive your audiences");
   });
 
