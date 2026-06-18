@@ -104,7 +104,7 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
   // Scope to the BrandSettingsLevelSidebar function body only.
   const brandSettings = sidebar.slice(
     sidebar.indexOf("function BrandSettingsLevelSidebar"),
-    sidebar.indexOf("function AppFeatureLevelSidebar"),
+    sidebar.indexOf("export function ContextSidebar"),
   );
 
   it("Brand Info moved out of BrandLevelSidebar into BrandSettingsLevelSidebar (alpha-gated)", () => {
@@ -114,6 +114,14 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(brand).not.toMatch(/FEATURE_GATES\["brand-info"\]/);
     // …now gated under Brand Settings.
     expect(brandSettings).toMatch(/FEATURE_GATES\["brand-info"\]/);
+  });
+
+  it("Brand Profile moved out of BrandLevelSidebar into BrandSettingsLevelSidebar", () => {
+    expect(brand.length).toBeGreaterThan(0);
+    expect(brandSettings.length).toBeGreaterThan(0);
+    expect(brand).not.toMatch(/id:\s*"brand-profile"/);
+    expect(brandSettings).toMatch(/id:\s*"brand-profile"/);
+    expect(brandSettings).toMatch(/`\$\{brandBase\}\/brand-profile`/);
   });
 
   it("BrandLevelSidebar renders a GA Database section header (for all users)", () => {
