@@ -1248,6 +1248,32 @@ export async function listAudiences(
   return { audiences: parsed.data.audiences, total: parsed.data.total };
 }
 
+const SuggestBrandIcpResponseSchema = z.object({ icp: z.string() });
+
+/**
+ * POST /brands/:brandId/icp/suggest — brand-service writes ONE short plain-language
+ * ICP line for the brand (seeded from its profile + sales economics). Used to
+ * pre-fill the onboarding audience-step prompt. `existingIcps` lets the caller ask
+ * for an ICP distinct from / complementary to ones already chosen.
+ */
+export async function suggestBrandIcp(
+  brandId: string,
+  existingIcps?: string[],
+  token?: string,
+): Promise<{ icp: string }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
+    token,
+    method: "POST",
+    body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
+  });
+  const parsed = SuggestBrandIcpResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] suggestBrandIcp: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestBrandIcp: invalid response shape");
+  }
+  return parsed.data;
+}
+
 export interface BrandProfileVersionWire {
   id: string;
   brandId: string;
