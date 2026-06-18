@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ClockIcon } from "@heroicons/react/20/solid";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
@@ -34,6 +35,25 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 const DEFAULT_VISIT_TO_MEETING_PCT = 20;
+
+function FirstClickReassuranceBanner() {
+  return (
+    <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
+      <div className="flex gap-3">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+          <ClockIcon className="h-4 w-4" aria-hidden="true" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-medium text-slate-900">Your campaign is running.</p>
+          <p className="mt-0.5 leading-6">
+            We are sending and learning from the first leads. It can take a day or two before
+            the first website clicks appear here.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Brand overview = the (sole) feature's Revenue & Conversions overview, rendered
@@ -113,6 +133,8 @@ export default function BrandOverviewPage() {
   );
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
+  const totalWebsiteClicks = featureStats.recipientsClicked ?? 0;
+  const hasActiveCampaigns = (featureStatsData?.systemStats.activeCampaigns ?? 0) > 0;
 
   // Brand goal config → goal-specific stat card copy.
   const { data: economicsData } = useAuthQuery(
@@ -138,7 +160,15 @@ export default function BrandOverviewPage() {
       : null;
 
   const { data: outcomeProjection } = useAuthQuery(
-    ["workflowProjection", brandId, featureSlug, "overview-outcome", optimizationGoal, monthlyBudgetUsd],
+    [
+      "workflowProjection",
+      brandId,
+      featureSlug,
+      "overview-outcome",
+      optimizationGoal,
+      monthlyBudgetUsd,
+      economicsData?.salesEconomics?.updatedAt ?? "no-economics",
+    ],
     () =>
       getWorkflowProjection({
         featureSlug,
@@ -148,6 +178,7 @@ export default function BrandOverviewPage() {
       }),
     {
       enabled: enabled && economicsData !== undefined && monthlyBudgetUsd != null,
+      placeholderData: undefined,
       structuralSharing: (prev, next) =>
         keepLastGoodWorkflowProjection(
           prev as WorkflowProjectionResponse | undefined,
@@ -231,6 +262,8 @@ export default function BrandOverviewPage() {
     economicsData !== undefined,
     monthlyBudgetUsd == null || outcomeProjection !== undefined,
   ]);
+  const showFirstClickReassurance =
+    statsRevealed && hasActiveCampaigns && totalWebsiteClicks < 1;
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -264,6 +297,7 @@ export default function BrandOverviewPage() {
     return (
       <DashboardPage width="wide" className="space-y-4">
         <BrandStatusControl brandId={brandId} />
+        {showFirstClickReassurance && <FirstClickReassuranceBanner />}
         <RevenueEmptyState />
       </DashboardPage>
     );
@@ -271,6 +305,7 @@ export default function BrandOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
+      {showFirstClickReassurance && <FirstClickReassuranceBanner />}
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? pipelineActivity : undefined}

@@ -47,6 +47,7 @@ import {
 } from "@/lib/api";
 import {
   selectWorkflowForOptimizationGoal,
+  workflowProjectionMatchesOutcomeRates,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
@@ -68,6 +69,12 @@ const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
 const PROJECTION_REF_BUDGET = 100; // counts come back at this budget; unit costs are budget-invariant
 const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
+const PRICING_REFRESH_RETRIES = 3;
+const PRICING_REFRESH_RETRY_DELAY_MS = 500;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 type Step =
   | "welcome"
@@ -588,6 +595,51 @@ export function BetaOnboarding() {
     }
   }
 
+  async function fetchFreshWorkflowProjectionForRates(
+    id: string,
+    nextRates: Record<RateKey, number>,
+    nextOutcome: Outcome,
+  ): Promise<WorkflowProjectionResponse> {
+    let lastProjection: WorkflowProjectionResponse | null = null;
+    for (let attempt = 1; attempt <= PRICING_REFRESH_RETRIES; attempt += 1) {
+      const proj = await getWorkflowProjection({
+        featureSlug: SALES_FEATURE_SLUG,
+        brandId: id,
+        objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(nextOutcome)),
+        budgetUsd: PROJECTION_REF_BUDGET,
+      });
+      lastProjection = proj;
+      const goal = optimizationGoalForOutcome(nextOutcome);
+      const usable = proj.workflows.some(
+        (w) =>
+          workflowOutcomeUnitCost(w, goal, {
+            visitToSignupPct: nextRates.v2s,
+            replyToMeetingPct: nextRates.r2m,
+            visitToMeetingPct: nextRates.v2m,
+          }) != null,
+      );
+      const fresh = workflowProjectionMatchesOutcomeRates(proj, goal, {
+        visitToSignupPct: nextRates.v2s,
+        replyToMeetingPct: nextRates.r2m,
+        visitToMeetingPct: nextRates.v2m,
+      });
+      if (usable && fresh) return proj;
+      console.error("[dashboard] onboarding: stale workflow projection after rates save", {
+        attempt,
+        goal,
+        usable,
+        fresh,
+        recommendedWorkflowDynastySlug: proj.recommendedWorkflowDynastySlug,
+      });
+      if (attempt < PRICING_REFRESH_RETRIES) await delay(PRICING_REFRESH_RETRY_DELAY_MS);
+    }
+    throw new Error(
+      lastProjection
+        ? "Pricing is still refreshing from your new rates. Please try again."
+        : "Pricing could not be refreshed from your new rates. Please try again.",
+    );
+  }
+
   // ── Step transitions that persist ────────────────────────────────
   async function saveRatesAndContinue() {
     const id = brandIdRef.current;
@@ -621,28 +673,7 @@ export function BetaOnboarding() {
         signupToPaidClientPct: nextRates.s2c,
         optimizationGoal: optimizationGoalForOutcome(outcome),
       });
-      // Recompute the projection from the rates we just saved (loading-time
-      // projection ran on the brand's DEFAULT economics). Best-effort +
-      // keep-last-good: only adopt a usable (non-degenerate) refetch.
-      try {
-        const proj = await getWorkflowProjection({
-          featureSlug: SALES_FEATURE_SLUG,
-          brandId: id,
-          objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome)),
-          budgetUsd: PROJECTION_REF_BUDGET,
-        });
-        const usable = proj.workflows.some(
-          (w) =>
-            workflowOutcomeUnitCost(w, optimizationGoalForOutcome(outcome), {
-              visitToSignupPct: nextRates.v2s,
-              replyToMeetingPct: nextRates.r2m,
-              visitToMeetingPct: nextRates.v2m,
-            }) != null,
-        );
-        if (usable) projectionRef.current = proj;
-      } catch (e) {
-        console.error("[dashboard] onboarding: projection refresh after rates failed:", e);
-      }
+      projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
       setStep("personas");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your rates.");

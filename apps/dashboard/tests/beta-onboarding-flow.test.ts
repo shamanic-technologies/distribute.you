@@ -86,9 +86,14 @@ describe("Beta onboarding guided flow", () => {
   it("uses the selected goal for workflow projection and persisted economics", () => {
     expect(src).toContain("salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome))");
     expect(src).toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
-    expect(src).toContain("workflowOutcomeUnitCost(w, optimizationGoalForOutcome(outcome)");
+    expect(src).toContain("fetchFreshWorkflowProjectionForRates(id, nextRates, outcome)");
+    expect(src).toContain("workflowProjectionMatchesOutcomeRates(proj, goal");
+    expect(src).toContain("PRICING_REFRESH_RETRIES");
+    expect(src).toContain("Pricing is still refreshing from your new rates");
+    expect(src).toContain("workflowOutcomeUnitCost(w, goal");
     expect(src).toContain("replyToMeetingPct: nextRates.r2m");
     expect(src).toContain("visitToMeetingPct: nextRates.v2m");
+    expect(src).not.toContain("projection refresh after rates failed");
     expect(src).not.toContain('objective: "self-serve"');
   });
 

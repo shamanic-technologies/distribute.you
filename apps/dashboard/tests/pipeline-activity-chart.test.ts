@@ -99,6 +99,8 @@ describe("Brand overview pipeline activity chart", () => {
     expect(page).toContain("getBrandDailyBudget");
     expect(page).toContain("getWorkflowProjection");
     expect(page).toContain('"overview-outcome"');
+    expect(page).toContain('economicsData?.salesEconomics?.updatedAt ?? "no-economics"');
+    expect(page).toContain("placeholderData: undefined");
     expect(page).toContain('objective: optimizationGoal === "signups" ? "self-serve" : "meeting-booked"');
     expect(page).toContain("selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal");
     expect(page).toContain("workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal");
