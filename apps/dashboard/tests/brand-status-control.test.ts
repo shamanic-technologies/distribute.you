@@ -81,4 +81,10 @@ describe("brand overview status control", () => {
     expect(control).toContain('"brand-status-budget", goalForBudget');
     expect(control).not.toContain('objective: "self-serve"');
   });
+
+  it("prices the budget modal from the best workflow for the active goal", () => {
+    expect(control).toContain("selectWorkflowForOptimizationGoal(projection, goalForBudget");
+    expect(control).toContain("workflowOutcomeUnitCost(activeWorkflow, goalForBudget");
+    expect(control).not.toContain("function activeProjection");
+  });
 });

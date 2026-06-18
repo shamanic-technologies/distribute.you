@@ -51,11 +51,14 @@ import {
   type BrandOptimizationGoal,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
-  type WorkflowFunnelProjection,
   type PersonaDraft,
   type FeatureInput,
   regeneratePersonaAvatar,
 } from "@/lib/api";
+import {
+  selectWorkflowForOptimizationGoal,
+  workflowOutcomeUnitCost,
+} from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { type Filters, type Persona } from "@/lib/mock-personas";
@@ -103,16 +106,6 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string }[] = 
 
 function optimizationGoalForOutcome(outcome: Outcome): BrandOptimizationGoal {
   return outcome === "signups" ? "signups" : "sales_meetings";
-}
-
-function projectionHasOutcomeCount(
-  projection: WorkflowFunnelProjection | null,
-  outcome: Outcome,
-): boolean {
-  if (!projection) return false;
-  return outcome === "signups"
-    ? projection.visits != null
-    : projection.meetings != null;
 }
 
 // Each goal needs exactly ONE conversion rate. Signups → website-visit→signup;
@@ -627,7 +620,10 @@ export function BetaOnboarding() {
           budgetUsd: PROJECTION_REF_BUDGET,
         });
         const usable = proj.workflows.some(
-          (w) => projectionHasOutcomeCount(w.projection, outcome),
+          (w) =>
+            workflowOutcomeUnitCost(w, optimizationGoalForOutcome(outcome), {
+              visitToSignupPct: nextRates.v2s,
+            }) != null,
         );
         if (usable) projectionRef.current = proj;
       } catch (e) {
@@ -712,7 +708,7 @@ export function BetaOnboarding() {
     const proj = projectionRef.current;
     const budget = derivedBudget();
     if (!id || !orgId || !proj || budget == null) return;
-    const workflowSlug = proj.recommendedWorkflowDynastySlug;
+    const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? null;
     if (!workflowSlug) {
       setError("No outreach workflow is available for this brand yet.");
       return;
@@ -745,7 +741,7 @@ export function BetaOnboarding() {
       const initialLoadCents = dollarsToCentsInput(initialLoadUsd, "Initial load", MIN_INITIAL_LOAD_USD);
       const topupAmountCents = dollarsToCentsInput(walletTopupAmountUsd, "Auto-topup reload amount", MIN_TOPUP_USD);
       const topupThresholdCents = dollarsToCentsInput(walletTopupThresholdUsd, "Auto-topup trigger threshold", MIN_THRESHOLD_USD);
-      const workflowSlug = projectionRef.current?.recommendedWorkflowDynastySlug ?? storedPending?.workflowSlug ?? null;
+      const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
       if (!workflowSlug) {
         throw new Error("Campaign workflow setup is still missing. Please try again.");
       }
@@ -843,26 +839,27 @@ export function BetaOnboarding() {
   }, [searchParams]);
 
   // ── Per-outcome economics for the budget cards ──────────────────
-  // The recommended workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
-  function activeProjection() {
+  // The outcome-optimized workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
+  function activeWorkflow() {
     const resp = projectionRef.current;
     if (!resp) return null;
-    const rec = resp.recommendedWorkflowDynastySlug
-      ? resp.workflows.find((w) => w.workflowDynastySlug === resp.recommendedWorkflowDynastySlug)
-      : resp.workflows[0];
-    return (rec ?? resp.workflows[0])?.projection ?? null;
+    return selectWorkflowForOptimizationGoal(resp, optimizationGoalForOutcome(outcome), {
+      visitToSignupPct: rates.v2s,
+    });
+  }
+
+  function activeProjection() {
+    return activeWorkflow()?.projection ?? null;
   }
 
   // $ per chosen outcome (budget-invariant): PROJECTION_REF_BUDGET ÷ per-day count.
   function outcomeUnitCost(): number | null {
-    const p = activeProjection();
-    if (!p) return null;
-    const B = PROJECTION_REF_BUDGET;
-    if (outcome === "signups") {
-      const signupsPerDay = p.visits && p.visits > 0 ? p.visits * (rates.v2s / 100) : 0;
-      return signupsPerDay > 0 ? B / signupsPerDay : null;
-    }
-    return p.meetings && p.meetings > 0 ? B / p.meetings : null;
+    const workflow = activeWorkflow();
+    return workflow
+      ? workflowOutcomeUnitCost(workflow, optimizationGoalForOutcome(outcome), {
+          visitToSignupPct: rates.v2s,
+        })
+      : null;
   }
 
   // Daily budget needed to hit `n` outcomes / month.

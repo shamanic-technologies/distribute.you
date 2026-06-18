@@ -27,6 +27,10 @@ import {
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import {
+  selectWorkflowForOptimizationGoal,
+  workflowOutcomeUnitCost,
+} from "@/lib/workflow-projection-choice";
 
 const PROJECTION_REF_BUDGET = 100;
 const COUNT_TIERS = [5, 25, 125] as const;
@@ -96,14 +100,6 @@ function salesEconomicsInputForGoal(
     businessModel: current?.businessModel ?? null,
     optimizationGoal,
   };
-}
-
-function activeProjection(resp: WorkflowProjectionResponse | undefined) {
-  if (!resp) return null;
-  const rec = resp.recommendedWorkflowDynastySlug
-    ? resp.workflows.find((w) => w.workflowDynastySlug === resp.recommendedWorkflowDynastySlug)
-    : resp.workflows[0];
-  return (rec ?? resp.workflows[0])?.projection ?? null;
 }
 
 /**
@@ -221,21 +217,16 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   }
 
   const selectedGoalOption = GOAL_OPTIONS.find((g) => g.value === selectedGoal);
-  const projectionValue = activeProjection(projection);
-  const outcomeUnit = goalForBudget === "signups" ? "signups" : "meetings";
   const visitToSignupPct =
     econ?.salesEconomics?.visitToSignupPct ??
     DEFAULT_SALES_ECONOMICS.visitToSignupPct;
-  const unitCost =
-    projectionValue == null
-      ? null
-      : goalForBudget === "signups"
-        ? projectionValue.visits && projectionValue.visits > 0
-          ? PROJECTION_REF_BUDGET / (projectionValue.visits * (visitToSignupPct / 100))
-          : null
-        : projectionValue.meetings && projectionValue.meetings > 0
-          ? PROJECTION_REF_BUDGET / projectionValue.meetings
-          : null;
+  const activeWorkflow = selectWorkflowForOptimizationGoal(projection, goalForBudget, {
+    visitToSignupPct,
+  });
+  const outcomeUnit = goalForBudget === "signups" ? "signups" : "meetings";
+  const unitCost = activeWorkflow
+    ? workflowOutcomeUnitCost(activeWorkflow, goalForBudget, { visitToSignupPct })
+    : null;
 
   function budgetForCount(n: number): number | null {
     if (unitCost == null || unitCost <= 0) return null;
