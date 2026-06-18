@@ -11,13 +11,17 @@ import {
   YAxis,
 } from "recharts";
 import type {
+  BrandOptimizationGoal,
   PipelineActivityDay,
   PipelineActivityMetricKey,
+  PipelineActivityMetric,
   PipelineActivityResponse,
 } from "@/lib/api";
 
+type ChartMetricKey = PipelineActivityMetricKey | "salesMeetings";
+
 const METRICS: Array<{
-  key: PipelineActivityMetricKey;
+  key: ChartMetricKey;
   label: string;
   actual: string;
   expected: string;
@@ -28,13 +32,20 @@ const METRICS: Array<{
   { key: "signups", label: "Signups", actual: "#059669", expected: "#bbf7d0" },
 ];
 
+const SALES_MEETINGS_METRIC = {
+  key: "salesMeetings",
+  label: "Sales meetings",
+  actual: "#dc2626",
+  expected: "#fecaca",
+} satisfies (typeof METRICS)[number];
+
 type ChartDatum = {
   date: string;
   label: string;
   isToday: boolean;
-  raw: PipelineActivityDay["metrics"];
-} & Record<`${PipelineActivityMetricKey}Actual`, number> &
-  Record<`${PipelineActivityMetricKey}ExpectedRemaining`, number>;
+  raw: Record<ChartMetricKey, PipelineActivityMetric>;
+} & Record<`${ChartMetricKey}Actual`, number> &
+  Record<`${ChartMetricKey}ExpectedRemaining`, number>;
 
 type BarLabelProps = {
   x?: number | string;
@@ -62,9 +73,13 @@ function formatDate(date: string): string {
   return dateObject(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function formatValue(n: number | null | undefined, metric: PipelineActivityMetricKey): string {
+function isOutcomeMetric(metric: ChartMetricKey): boolean {
+  return metric === "signups" || metric === "salesMeetings";
+}
+
+function formatValue(n: number | null | undefined, metric: ChartMetricKey): string {
   if (n == null || !Number.isFinite(n)) return "-";
-  if (metric !== "signups") return Math.round(n).toLocaleString("en-US");
+  if (!isOutcomeMetric(metric)) return Math.round(n).toLocaleString("en-US");
   if (n > 0 && n < 0.01) return "<0.01";
   return n.toLocaleString("en-US", {
     maximumFractionDigits: n >= 10 ? 0 : 2,
@@ -93,7 +108,7 @@ function numericCoord(n: number | string | undefined): number | null {
 
 function renderBarLabel(
   props: BarLabelProps,
-  metricKey: PipelineActivityMetricKey,
+  metricKey: ChartMetricKey,
   kind: "actual" | "expected",
 ) {
   const day = props.payload;
@@ -166,17 +181,54 @@ function renderBarLabel(
   );
 }
 
-function buildChartData(days: PipelineActivityDay[]): ChartDatum[] {
+function activeMetrics(optimizationGoal: BrandOptimizationGoal): typeof METRICS {
+  if (optimizationGoal === "signups") return METRICS;
+  return [...METRICS.slice(0, 3), SALES_MEETINGS_METRIC];
+}
+
+function projectedMetric(
+  source: PipelineActivityMetric,
+  conversionPct: number | null | undefined,
+): PipelineActivityMetric {
+  if (conversionPct == null || !Number.isFinite(conversionPct)) {
+    return { actual: null, expected: null, conversionPct: null };
+  }
+  const rate = conversionPct / 100;
+  return {
+    actual: source.actual == null ? null : source.actual * rate,
+    expected: source.expected == null ? null : source.expected * rate,
+    conversionPct,
+  };
+}
+
+function buildMetricValues(
+  day: PipelineActivityDay,
+  optimizationGoal: BrandOptimizationGoal,
+  visitToMeetingPct: number | null | undefined,
+): Record<ChartMetricKey, PipelineActivityMetric> {
+  return {
+    ...day.metrics,
+    salesMeetings: projectedMetric(day.metrics.clicks, visitToMeetingPct),
+  };
+}
+
+function buildChartData(
+  days: PipelineActivityDay[],
+  optimizationGoal: BrandOptimizationGoal,
+  visitToMeetingPct: number | null | undefined,
+): ChartDatum[] {
+  const metrics = activeMetrics(optimizationGoal);
   return days.map((day) => {
+    const values = buildMetricValues(day, optimizationGoal, visitToMeetingPct);
     const datum: Partial<ChartDatum> = {
       date: day.date,
       label: formatDayLabel(day),
       isToday: day.isToday,
-      raw: day.metrics,
+      raw: values,
     };
 
-    for (const metric of METRICS) {
-      const value = day.metrics[metric.key];
+    for (const metric of metrics) {
+      const value = values[metric.key];
       const actual = day.isToday ? finite(value.actual) : 0;
       const expected = finite(value.expected);
       datum[`${metric.key}Actual`] = actual;
@@ -190,12 +242,15 @@ function buildChartData(days: PipelineActivityDay[]): ChartDatum[] {
 function ChartTooltip({
   active,
   payload,
+  optimizationGoal,
 }: {
   active?: boolean;
   payload?: Array<{ payload: ChartDatum }>;
+  optimizationGoal: BrandOptimizationGoal;
 }) {
   if (!active || !payload?.length) return null;
   const day = payload[0].payload;
+  const metrics = activeMetrics(optimizationGoal);
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
@@ -203,7 +258,7 @@ function ChartTooltip({
         {day.isToday ? "Today" : formatDate(day.date)}
       </p>
       <div className="space-y-1.5">
-        {METRICS.map((metric) => {
+        {metrics.map((metric) => {
           const value = day.raw[metric.key];
           const color = day.isToday ? metric.actual : metric.expected;
           const displayedValue = day.isToday ? value.actual : value.expected;
@@ -216,7 +271,7 @@ function ChartTooltip({
               <span className="text-gray-500">{metric.label}</span>
               <span className="font-medium text-gray-800">
                 {formatValue(displayedValue, metric.key)}
-                {!day.isToday && metric.key === "signups" && value.conversionPct != null ? (
+                {!day.isToday && isOutcomeMetric(metric.key) && value.conversionPct != null ? (
                   <span className="ml-1 font-normal text-gray-400">
                     @ {value.conversionPct.toLocaleString("en-US", { maximumFractionDigits: 2 })}%
                   </span>
@@ -230,7 +285,15 @@ function ChartTooltip({
   );
 }
 
-export function PipelineActivityChart({ data }: { data: PipelineActivityResponse }) {
+export function PipelineActivityChart({
+  data,
+  optimizationGoal,
+  visitToMeetingPct,
+}: {
+  data: PipelineActivityResponse;
+  optimizationGoal: BrandOptimizationGoal;
+  visitToMeetingPct: number | null | undefined;
+}) {
   if (data.days.length === 0) {
     return (
       <div className="flex h-[260px] items-center justify-center text-sm text-gray-400">
@@ -239,12 +302,13 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
     );
   }
 
-  const chartData = buildChartData(data.days);
+  const metrics = activeMetrics(optimizationGoal);
+  const chartData = buildChartData(data.days, optimizationGoal, visitToMeetingPct);
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-gray-500">
-        {METRICS.map((metric) => (
+        {metrics.map((metric) => (
           <span key={metric.key} className="inline-flex items-center gap-1.5">
             <span className="inline-flex h-2.5 w-4 overflow-hidden rounded-sm border border-white/60">
               <span className="h-full flex-1" style={{ backgroundColor: metric.actual }} />
@@ -277,8 +341,11 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                 axisLine={false}
                 width={40}
               />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
-              {METRICS.map((metric) => (
+              <Tooltip
+                content={<ChartTooltip optimizationGoal={optimizationGoal} />}
+                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+              />
+              {metrics.map((metric) => (
                 <Bar
                   key={`${metric.key}-actual`}
                   dataKey={`${metric.key}Actual`}
@@ -292,7 +359,7 @@ export function PipelineActivityChart({ data }: { data: PipelineActivityResponse
                   <LabelList content={(props) => renderBarLabel(props, metric.key, "actual")} />
                 </Bar>
               ))}
-              {METRICS.map((metric) => (
+              {metrics.map((metric) => (
                 <Bar
                   key={`${metric.key}-expected`}
                   dataKey={`${metric.key}ExpectedRemaining`}

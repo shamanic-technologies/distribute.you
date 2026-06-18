@@ -5,7 +5,7 @@ import { PipelineActivityChart } from "@/components/revenue/pipeline-activity-ch
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
-import type { CostByName, PipelineActivityResponse } from "@/lib/api";
+import type { BrandOptimizationGoal, CostByName, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
 function formatOutcomeCount(n: number | null): string {
@@ -28,6 +28,8 @@ export function RevenueOverviewSection({
   headerAction,
   topRow,
   pipelineActivity,
+  optimizationGoal,
+  visitToMeetingPct,
   expectedOutcome,
   costBottomCard,
   revenuePending = false,
@@ -38,6 +40,8 @@ export function RevenueOverviewSection({
 }: {
   data?: RevenueOverview;
   pipelineActivity?: PipelineActivityResponse;
+  optimizationGoal: BrandOptimizationGoal;
+  visitToMeetingPct: number | null | undefined;
   costBreakdown: CostByName[];
   brandId: string;
   featureSlug: string;
@@ -110,7 +114,11 @@ export function RevenueOverviewSection({
           {activityLoading ? (
             <Skeleton className="h-[260px] w-full rounded" />
           ) : (
-            <PipelineActivityChart data={pipelineActivity} />
+            <PipelineActivityChart
+              data={pipelineActivity}
+              optimizationGoal={optimizationGoal}
+              visitToMeetingPct={visitToMeetingPct}
+            />
           )}
         </div>
 

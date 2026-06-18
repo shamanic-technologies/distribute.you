@@ -184,6 +184,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     onSuccess: (res) => {
       queryClient.setQueryData(["brandSalesEconomics", brandId], res);
       queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+      queryClient.invalidateQueries({ queryKey: ["featurePipelineActivity"] });
       queryClient.invalidateQueries({ queryKey: ["workflowProjection", brandId, featureSlug] });
       setGoalDialogOpen(false);
     },
