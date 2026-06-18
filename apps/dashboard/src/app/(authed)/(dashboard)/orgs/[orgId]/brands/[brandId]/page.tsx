@@ -12,6 +12,7 @@ import {
   fetchFeatureStats,
   getBrandSalesEconomics,
   getBrandDailyBudget,
+  getBrandPause,
   getFeaturePipelineActivity,
   fetchFeaturePersonaStats,
   listPersonas,
@@ -158,6 +159,16 @@ export default function BrandOverviewPage() {
     () => getBrandDailyBudget(brandId),
     { enabled, ...pollOptions },
   );
+
+  // Pause state — shares BrandStatusControl's query key so both observers hit one
+  // cache entry. A paused brand holds (doesn't run) its campaigns, so the
+  // "campaign is running" reassurance banner must not show while paused.
+  const { data: pauseData } = useAuthQuery(
+    ["brandPause", brandId],
+    () => getBrandPause(brandId),
+    { enabled, ...pollOptions },
+  );
+  const isBrandPaused = pauseData?.paused === true;
   const monthlyBudgetUsd =
     budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
       ? (budgetData.dailyBudgetCents / 100) * 30
@@ -267,7 +278,7 @@ export default function BrandOverviewPage() {
     monthlyBudgetUsd == null || outcomeProjection !== undefined,
   ]);
   const showFirstClickReassurance =
-    statsRevealed && hasContactedLeads && totalWebsiteClicks < 1;
+    statsRevealed && hasContactedLeads && totalWebsiteClicks < 1 && !isBrandPaused;
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
