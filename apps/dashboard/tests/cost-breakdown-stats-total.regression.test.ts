@@ -55,4 +55,11 @@ describe("getBrandCostBreakdown supports featureSlug filter", () => {
   it("should append featureSlug to the query string", () => {
     expect(apiContent).toContain('query.set("featureSlug"');
   });
+
+  it("should pass through optional startedAfter/startedBefore filters", () => {
+    expect(apiContent).toContain("startedAfter?: string");
+    expect(apiContent).toContain("startedBefore?: string");
+    expect(apiContent).toContain('query.set("startedAfter"');
+    expect(apiContent).toContain('query.set("startedBefore"');
+  });
 });

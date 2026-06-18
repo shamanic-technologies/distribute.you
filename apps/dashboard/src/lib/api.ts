@@ -437,9 +437,15 @@ export interface CostStatsGroup {
   runCount: number;
 }
 
-export async function getBrandCostBreakdown(brandId: string, opts?: { featureSlug?: string }, token?: string): Promise<{ costs: CostByName[] }> {
+export async function getBrandCostBreakdown(
+  brandId: string,
+  opts?: { featureSlug?: string; startedAfter?: string; startedBefore?: string },
+  token?: string,
+): Promise<{ costs: CostByName[] }> {
   const query = new URLSearchParams({ brandId, groupBy: "costName" });
   if (opts?.featureSlug) query.set("featureSlug", opts.featureSlug);
+  if (opts?.startedAfter) query.set("startedAfter", opts.startedAfter);
+  if (opts?.startedBefore) query.set("startedBefore", opts.startedBefore);
   const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
   const costs: CostByName[] = result.groups.map((g) => ({
     costName: g.dimensions.costName ?? "Unknown",
@@ -2441,7 +2447,9 @@ const WorkflowProjectionItemSchema = z.object({
   contactedUsd: z.number().nullable(),
   replyUsd: z.number().nullable(),
   clickUsd: z.number().nullable(),
+  costPerSignupUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowFunnelProjectionSchema.nullable(),
 });
@@ -2483,7 +2491,16 @@ export function keepLastGoodWorkflowProjection(
     ...top,
     workflows: keepLastGoodList(prev.workflows, next.workflows, {
       keyFn: (w) => w.workflowDynastySlug,
-      fields: ["contactedUsd", "replyUsd", "clickUsd", "costPerCloseUsd", "projection", "workflowDynastyName"],
+      fields: [
+        "contactedUsd",
+        "replyUsd",
+        "clickUsd",
+        "costPerSignupUsd",
+        "costPerCloseUsd",
+        "costPerMeetingBookedUsd",
+        "projection",
+        "workflowDynastyName",
+      ],
       label: "workflowProjection.workflows",
     }),
   };
