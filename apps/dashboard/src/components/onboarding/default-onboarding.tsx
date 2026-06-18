@@ -187,8 +187,8 @@ export function DefaultOnboarding() {
   // Step 1: Onboarding call booking
   if (step === "booking-intro") {
     return (
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/60">
-        <div className="border-b border-gray-100 px-5 py-5 sm:px-7 sm:py-7 md:px-10">
+      <div className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/60 sm:max-h-[calc(100dvh-3rem)]">
+        <div className="shrink-0 border-b border-gray-100 px-5 py-4 sm:px-7 sm:py-7 md:px-10">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-950 text-white">
               <CalendarDaysIcon className="h-6 w-6" />
@@ -204,7 +204,7 @@ export function DefaultOnboarding() {
           </div>
         </div>
 
-        <div className="px-5 py-6 sm:px-7 sm:py-8 md:px-10">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-7 sm:py-8 md:px-10">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
             <div className="mb-5 rounded-xl bg-gray-50 p-4 sm:mb-6 sm:p-5">
               <div className="flex items-start gap-3">
@@ -241,33 +241,6 @@ export function DefaultOnboarding() {
           <p className="mx-auto mt-7 max-w-sm text-center text-sm leading-6 text-gray-400">
             Brands who complete an onboarding call consistently outperform those who don&apos;t.
           </p>
-        </div>
-
-        <div className="border-t border-gray-100 px-5 py-5 sm:px-7 sm:py-7 md:px-10">
-          <a
-            href={ONBOARDING_CALL_URL}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              bookingClickedRef.current = true;
-              posthog.capture("onboarding_call_booking_clicked", {
-                booking_url: ONBOARDING_CALL_URL,
-              });
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gray-950 px-5 py-4 text-base font-semibold text-white transition hover:bg-gray-800 sm:px-6"
-          >
-            Pick a time
-            <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-          </a>
-          <button
-            onClick={() => {
-              posthog.capture("onboarding_call_skipped");
-              setStep("type-selection");
-            }}
-            className="mt-5 w-full text-center text-sm font-semibold text-gray-400 transition hover:text-gray-600"
-          >
-            Maybe later
-          </button>
 
           {otherOrgs.length > 0 && (
             <div className="mt-7 border-t border-gray-100 pt-6">
@@ -303,6 +276,33 @@ export function DefaultOnboarding() {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="shrink-0 border-t border-gray-100 px-5 py-4 sm:px-7 sm:py-7 md:px-10">
+          <a
+            href={ONBOARDING_CALL_URL}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              bookingClickedRef.current = true;
+              posthog.capture("onboarding_call_booking_clicked", {
+                booking_url: ONBOARDING_CALL_URL,
+              });
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gray-950 px-5 py-4 text-base font-semibold text-white transition hover:bg-gray-800 sm:px-6"
+          >
+            Pick a time
+            <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+          </a>
+          <button
+            onClick={() => {
+              posthog.capture("onboarding_call_skipped");
+              setStep("type-selection");
+            }}
+            className="mt-5 w-full text-center text-sm font-semibold text-gray-400 transition hover:text-gray-600"
+          >
+            Maybe later
+          </button>
         </div>
       </div>
     );
