@@ -221,12 +221,24 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   const visitToSignupPct =
     econ?.salesEconomics?.visitToSignupPct ??
     DEFAULT_SALES_ECONOMICS.visitToSignupPct;
+  const replyToMeetingPct =
+    econ?.salesEconomics?.replyToMeetingPct ??
+    DEFAULT_SALES_ECONOMICS.replyToMeetingPct;
+  const visitToMeetingPct =
+    econ?.salesEconomics?.visitToMeetingPct ??
+    DEFAULT_SALES_ECONOMICS.visitToMeetingPct;
   const activeWorkflow = selectWorkflowForOptimizationGoal(projection, goalForBudget, {
     visitToSignupPct,
+    replyToMeetingPct,
+    visitToMeetingPct,
   });
   const outcomeUnit = goalForBudget === "signups" ? "signups" : "meetings";
   const unitCost = activeWorkflow
-    ? workflowOutcomeUnitCost(activeWorkflow, goalForBudget, { visitToSignupPct })
+    ? workflowOutcomeUnitCost(activeWorkflow, goalForBudget, {
+        visitToSignupPct,
+        replyToMeetingPct,
+        visitToMeetingPct,
+      })
     : null;
 
   function budgetForCount(n: number): number | null {

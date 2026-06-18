@@ -8,13 +8,14 @@ import type { WorkflowProjectionItem, WorkflowProjectionResponse } from "../src/
 function workflow(
   slug: string,
   projection: Partial<NonNullable<WorkflowProjectionItem["projection"]>>,
+  costs: Partial<Pick<WorkflowProjectionItem, "replyUsd" | "clickUsd" | "contactedUsd">> = {},
 ): WorkflowProjectionItem {
   return {
     workflowDynastySlug: slug,
     workflowDynastyName: slug,
-    contactedUsd: null,
-    replyUsd: null,
-    clickUsd: null,
+    contactedUsd: costs.contactedUsd ?? null,
+    replyUsd: costs.replyUsd ?? null,
+    clickUsd: costs.clickUsd ?? null,
     costPerCloseUsd: null,
     projection: {
       contactedLeads: null,
@@ -48,24 +49,55 @@ describe("workflow projection choice", () => {
     const pelican = workflow("sales-cold-email-outreach-pelican", {
       meetings: 100 / 682,
       visits: 100 / 2.05,
-    });
+    }, { clickUsd: 2.05 });
     const permafrost = workflow("sales-cold-email-outreach-permafrost", {
       meetings: 100 / 230,
       visits: null,
-    });
+    }, { replyUsd: 69 });
 
     const selected = selectWorkflowForOptimizationGoal(
       response(pelican.workflowDynastySlug, [pelican, permafrost]),
       "sales_meetings",
+      { replyToMeetingPct: 30, visitToMeetingPct: 0.3 },
     );
 
     expect(selected?.workflowDynastySlug).toBe(permafrost.workflowDynastySlug);
-    expect(workflowOutcomeUnitCost(selected!, "sales_meetings")).toBeCloseTo(230, 6);
+    expect(
+      workflowOutcomeUnitCost(selected!, "sales_meetings", {
+        replyToMeetingPct: 30,
+        visitToMeetingPct: 0.3,
+      }),
+    ).toBeCloseTo(230, 6);
+  });
+
+  it("uses live meeting rates instead of stale projection meetings when unit costs are available", () => {
+    const stalePelican = workflow("sales-cold-email-outreach-pelican", {
+      meetings: 1,
+      visits: 100 / 2.05,
+    }, { clickUsd: 2.05 });
+    const permafrost = workflow("sales-cold-email-outreach-permafrost", {
+      meetings: 0.1,
+      visits: null,
+    }, { replyUsd: 70 });
+
+    const selected = selectWorkflowForOptimizationGoal(
+      response(stalePelican.workflowDynastySlug, [stalePelican, permafrost]),
+      "sales_meetings",
+      { replyToMeetingPct: 30, visitToMeetingPct: 0.3 },
+    );
+
+    expect(selected?.workflowDynastySlug).toBe(permafrost.workflowDynastySlug);
+    expect(
+      workflowOutcomeUnitCost(stalePelican, "sales_meetings", {
+        replyToMeetingPct: 30,
+        visitToMeetingPct: 0.3,
+      }),
+    ).toBeCloseTo(683.333, 3);
   });
 
   it("selects the cheapest signup workflow using visit-to-signup conversion", () => {
-    const highVisitCost = workflow("high-visit-cost", { visits: 10 });
-    const lowVisitCost = workflow("low-visit-cost", { visits: 50 });
+    const highVisitCost = workflow("high-visit-cost", { visits: 10 }, { clickUsd: 10 });
+    const lowVisitCost = workflow("low-visit-cost", { visits: 50 }, { clickUsd: 2 });
 
     const selected = selectWorkflowForOptimizationGoal(
       response(highVisitCost.workflowDynastySlug, [highVisitCost, lowVisitCost]),

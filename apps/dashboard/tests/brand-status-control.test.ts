@@ -86,6 +86,8 @@ describe("brand overview status control", () => {
   it("prices the budget modal from the best workflow for the active goal", () => {
     expect(control).toContain("selectWorkflowForOptimizationGoal(projection, goalForBudget");
     expect(control).toContain("workflowOutcomeUnitCost(activeWorkflow, goalForBudget");
+    expect(control).toContain("replyToMeetingPct");
+    expect(control).toContain("visitToMeetingPct");
     expect(control).not.toContain("function activeProjection");
   });
 });

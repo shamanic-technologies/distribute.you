@@ -6,33 +6,61 @@ import type {
 
 const PROJECTION_REF_BUDGET = 100;
 
+type WorkflowOutcomeUnitCostOptions = {
+  visitToSignupPct?: number | null;
+  replyToMeetingPct?: number | null;
+  visitToMeetingPct?: number | null;
+  projectionBudgetUsd?: number | null;
+};
+
 export function workflowOutcomeUnitCost(
   workflow: WorkflowProjectionItem,
   goal: BrandOptimizationGoal,
-  options: { visitToSignupPct?: number | null; projectionBudgetUsd?: number | null } = {},
+  options: WorkflowOutcomeUnitCostOptions = {},
 ): number | null {
-  const projection = workflow.projection;
-  if (!projection) return null;
   const projectionBudgetUsd = options.projectionBudgetUsd ?? PROJECTION_REF_BUDGET;
   if (projectionBudgetUsd <= 0) return null;
 
   if (goal === "signups") {
-    const visits = projection.visits;
     const visitToSignupPct = options.visitToSignupPct;
-    if (visits == null || visits <= 0 || visitToSignupPct == null || visitToSignupPct <= 0) {
+    if (visitToSignupPct == null || visitToSignupPct <= 0) {
       return null;
     }
-    return projectionBudgetUsd / (visits * (visitToSignupPct / 100));
+    const visitToSignup = visitToSignupPct / 100;
+    if (workflow.clickUsd != null && workflow.clickUsd > 0) {
+      return workflow.clickUsd / visitToSignup;
+    }
+
+    const visits = workflow.projection?.visits;
+    return visits != null && visits > 0
+      ? projectionBudgetUsd / (visits * visitToSignup)
+      : null;
   }
 
-  const meetings = projection.meetings;
+  const replyToMeeting = options.replyToMeetingPct;
+  const visitToMeeting = options.visitToMeetingPct;
+  if (
+    (replyToMeeting != null && replyToMeeting > 0) ||
+    (visitToMeeting != null && visitToMeeting > 0)
+  ) {
+    const meetingsPerDollar =
+      (workflow.replyUsd != null && workflow.replyUsd > 0 && replyToMeeting != null
+        ? (1 / workflow.replyUsd) * (replyToMeeting / 100)
+        : 0) +
+      (workflow.clickUsd != null && workflow.clickUsd > 0 && visitToMeeting != null
+        ? (1 / workflow.clickUsd) * (visitToMeeting / 100)
+        : 0);
+    return meetingsPerDollar > 0 ? 1 / meetingsPerDollar : null;
+  }
+
+  const meetings = workflow.projection?.meetings;
   return meetings != null && meetings > 0 ? projectionBudgetUsd / meetings : null;
 }
 
 export function selectWorkflowForOptimizationGoal(
   response: WorkflowProjectionResponse | null | undefined,
   goal: BrandOptimizationGoal,
-  options: { visitToSignupPct?: number | null; projectionBudgetUsd?: number | null } = {},
+  options: WorkflowOutcomeUnitCostOptions = {},
 ): WorkflowProjectionItem | null {
   if (!response || response.workflows.length === 0) return null;
 

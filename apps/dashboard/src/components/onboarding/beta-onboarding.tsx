@@ -623,6 +623,8 @@ export function BetaOnboarding() {
           (w) =>
             workflowOutcomeUnitCost(w, optimizationGoalForOutcome(outcome), {
               visitToSignupPct: nextRates.v2s,
+              replyToMeetingPct: nextRates.r2m,
+              visitToMeetingPct: nextRates.v2m,
             }) != null,
         );
         if (usable) projectionRef.current = proj;
@@ -845,6 +847,8 @@ export function BetaOnboarding() {
     if (!resp) return null;
     return selectWorkflowForOptimizationGoal(resp, optimizationGoalForOutcome(outcome), {
       visitToSignupPct: rates.v2s,
+      replyToMeetingPct: rates.r2m,
+      visitToMeetingPct: rates.v2m,
     });
   }
 
@@ -858,6 +862,8 @@ export function BetaOnboarding() {
     return workflow
       ? workflowOutcomeUnitCost(workflow, optimizationGoalForOutcome(outcome), {
           visitToSignupPct: rates.v2s,
+          replyToMeetingPct: rates.r2m,
+          visitToMeetingPct: rates.v2m,
         })
       : null;
   }
