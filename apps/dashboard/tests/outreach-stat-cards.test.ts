@@ -5,7 +5,7 @@ import * as path from "path";
 const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
-describe("OutreachStatCards goal-specific copy", () => {
+describe("OutreachStatCards copy", () => {
   const cards = read("../src/components/revenue/outreach-stat-cards.tsx");
   const page = read(
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
@@ -27,20 +27,14 @@ describe("OutreachStatCards goal-specific copy", () => {
     expect(cards).not.toContain('label="Impressions"');
   });
 
-  it("uses Clicks/CPC with the requested click tooltip for signup-style goals", () => {
+  it("uses Clicks/CPC with the requested click tooltip for every goal", () => {
     expect(cards).toContain('label: "Clicks"');
     expect(cards).toContain(
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     );
     expect(cards).toContain('costLabel: "CPC"');
-  });
-
-  it("uses Positive Replies/CPPR for sales-meetings goals", () => {
-    expect(cards).toContain('goal === "sales_meetings"');
-    expect(cards).toContain('label: "Positive Replies"');
-    expect(cards).toContain("stats.leadsRepliesPositive ?? 0");
-    expect(cards).toContain('costLabel: "CPPR"');
-    expect(cards).toContain("Cost per positive reply.");
+    expect(cards).not.toContain('label: "Positive Replies"');
+    expect(cards).not.toContain('costLabel: "CPPR"');
   });
 
   it("shows the goal outcome beta pair for signups and sales meetings", () => {
