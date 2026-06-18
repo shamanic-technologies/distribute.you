@@ -319,8 +319,8 @@ export function LeadConversionsTable({
   );
 }
 
-// ── Personas tab (Signups page) ───────────────────────────────────────────────
-// MOCKUP: assign each lead a customer persona by a stable hash of its id, so the
+// ── Audiences tab (Signups page) ──────────────────────────────────────────────
+// MOCKUP: assign each lead an audience by a stable hash of its id, so the
 // org × user rows group under "who they look like". Replace with real persona
 // attribution once the backend tags leads.
 const PERSONA_POOL = (() => {
@@ -341,8 +341,8 @@ function personaForLead(leadId: string): { name: string; dot: string } {
   return { name: PERSONA_POOL[i].name, dot: PERSONA_DOT[i % PERSONA_DOT.length] };
 }
 
-/** Persona-grouped lead conversions — Signups "Personas" tab. Each row is an
- *  org × user (same heads as the Leads tab) with a leading persona column. */
+/** Audience-grouped lead conversions — Signups "Audiences" tab. Each row is an
+ *  org × user (same heads as the Leads tab) with a leading audience column. */
 export function PersonaConversionsTable({
   leads,
   onSelect,
@@ -353,7 +353,7 @@ export function PersonaConversionsTable({
   const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(leads);
   return (
     <TableShell
-      headers={["Persona", "Lead", "Conversions", "Expected revenue", "Latest activity"]}
+      headers={["Audience", "Lead", "Conversions", "Expected revenue", "Latest activity"]}
       empty="No lead conversions yet."
       rows={leads.length}
       footer={

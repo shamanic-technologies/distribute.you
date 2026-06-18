@@ -1,5 +1,5 @@
 /**
- * Persona type helpers shared by the Customer Personas page and any embedded
+ * Persona type helpers shared by the Audiences page and any embedded
  * persona editor surfaces.
  */
 

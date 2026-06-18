@@ -135,7 +135,7 @@ export function PersonaAvatar({
   onRegenerate?: () => void;
   regenerating?: boolean;
 }) {
-  const tone = AVATAR_TONES[hashIndex(name || "Persona", AVATAR_TONES.length)];
+  const tone = AVATAR_TONES[hashIndex(name || "Audience", AVATAR_TONES.length)];
   return (
     <div className="group/avatar relative h-11 w-11 shrink-0">
       {avatarUrl ? (
@@ -157,7 +157,7 @@ export function PersonaAvatar({
             onRegenerate();
           }}
           disabled={regenerating}
-          aria-label={`Regenerate ${name || "persona"} avatar`}
+          aria-label={`Regenerate ${name || "audience"} avatar`}
           title="Regenerate avatar"
           className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:cursor-wait disabled:opacity-70 sm:opacity-0 sm:group-hover/avatar:opacity-100 sm:focus:opacity-100"
         >
@@ -175,7 +175,7 @@ export function PersonaAvatar({
 // ---------------------------------------------------------------------------
 // Persona card — edits NEVER mutate the saved persona. A brand-new persona is
 // an unsaved draft you Save or Cancel; editing an existing persona surfaces
-// "Unsaved changes" + "Save as new persona" (the edit becomes a duplicate at
+// "Unsaved changes" + "Save as new audience" (the edit becomes a duplicate at
 // save), with Cancel to revert. Both can always be undone before Save.
 //
 // EMBEDDED MODE (onboarding): pass `onChange` to drive a parent-controlled flow
@@ -304,7 +304,7 @@ export function PersonaCard({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === "Escape") setEditingName(false);
                   }}
-                  placeholder="Persona name"
+                  placeholder="Audience name"
                   className="w-full text-base font-semibold text-gray-900 border-b border-brand-300 pb-0.5 focus:outline-none focus:border-brand-500"
                 />
                 <p className="mt-1 text-[10px] text-gray-400">{wordCount}/4 words</p>
@@ -349,7 +349,7 @@ export function PersonaCard({
             <button
               type="button"
               onClick={onRemove}
-              aria-label="Remove persona"
+              aria-label="Remove audience"
               className="rounded-md p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition shrink-0"
             >
               <XIcon />
@@ -377,7 +377,7 @@ export function PersonaCard({
                 <button
                   type="button"
                   onClick={() => onSetStatus?.("archived")}
-                  aria-label="Archive persona"
+                  aria-label="Archive audience"
                   className="rounded-md p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition"
                 >
                   <ArchiveIcon />
@@ -493,7 +493,7 @@ export function PersonaCard({
               disabled={nameInvalid}
               className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
-              {isNew ? "Save persona" : "Save as new persona"}
+              {isNew ? "Save audience" : "Save as new audience"}
             </button>
           </div>
         </div>

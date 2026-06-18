@@ -104,7 +104,7 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("showLifecycleActions={false}");
     expect(src).toContain('configKey="persona-editor"');
     expect(src).toContain("suppressPaymentRequired: true");
-    expect(src).not.toContain("pause, resume and archive your personas");
+    expect(src).not.toContain("pause, resume and archive your audiences");
   });
 
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {

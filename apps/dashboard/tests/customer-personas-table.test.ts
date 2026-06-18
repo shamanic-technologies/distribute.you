@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Customer personas table", () => {
+describe("Audiences table", () => {
   const src = fs.readFileSync(
     path.join(__dirname, "../src/components/personas/customer-personas-page.tsx"),
     "utf-8",

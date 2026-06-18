@@ -36,7 +36,7 @@ describe("Persona AI avatars", () => {
   });
 
   it("shows a hover/focus regenerate control on persisted persona avatars", () => {
-    expect(personaCard).toContain("Regenerate ${name || \"persona\"} avatar");
+    expect(personaCard).toContain("Regenerate ${name || \"audience\"} avatar");
     expect(personaCard).toContain("group-hover/avatar:opacity-100");
     expect(personaCard).toContain("onRegenerate={!isNew ? onRegenerateAvatar : undefined}");
   });

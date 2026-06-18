@@ -18,7 +18,7 @@ import { ALL_FIELDS, SECTIONS, cloneFields, fieldsEqual, FieldEditor, type Field
  *
  * The brand's OWN info as collected at campaign creation — company overview,
  * value proposition, product, market, company facts, conversion levers. The
- * TARGET AUDIENCE is deliberately NOT here: it lives in Customer Personas
+ * TARGET AUDIENCE is deliberately NOT here: it lives in Audiences
  * (the "Customer Profile" surface). All editing is client-side state — there is
  * NO backend wiring, a refresh resets to the seeded v1.
  *
@@ -172,7 +172,7 @@ export function BrandProfilePage() {
           </div>
           <p className="mt-1 text-sm text-gray-500">
             Your brand’s own info — the audience lives in{" "}
-            <span className="font-medium text-gray-600">Customer Personas</span>.
+            <span className="font-medium text-gray-600">Audiences</span>.
           </p>
           <p className={`mt-2 text-xs ${dirty ? "text-amber-600" : "text-gray-400"}`}>
             {dirty ? "Unsaved changes" : savedAt ? `Last saved ${timeAgo(savedAt)}` : "Not saved yet"}
