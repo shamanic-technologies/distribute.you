@@ -243,9 +243,10 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
       const section = segments[4];
-      // Brand Settings group: settings / brand-info / workflows(list+new).
+      // Brand Settings group: settings / brand-profile / brand-info / workflows(list+new).
       if (
         section === "settings" ||
+        section === "brand-profile" ||
         section === "brand-info" ||
         section === "workflows"
       ) {
@@ -468,8 +469,8 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
     });
 
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
-  // today). GA. Overview is the brand root. Customer Personas / Brand Profile
-  // are still gated to the email allowlist.
+  // today). GA. Overview is the brand root. Customer Personas is still gated
+  // to the email allowlist; Brand Profile lives under Brand Settings.
   const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
     ...(revenueOk
@@ -490,12 +491,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Customer Personas",
             href: `${basePath}/personas`,
             icon: <PersonasIcon />,
-          } satisfies SidebarItem,
-          {
-            id: "brand-profile",
-            label: "Brand Profile",
-            href: `${basePath}/brand-profile`,
-            icon: <BrandProfileIcon />,
           } satisfies SidebarItem,
         ]
       : []),
@@ -562,15 +557,18 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   );
 }
 
-// Brand Settings Level Sidebar — Brand Settings + Brand Info, plus the
-// Workflows list folded in from the old Feature Settings level.
+// Brand Settings Level Sidebar — Brand Settings + Brand Profile + Brand Info,
+// plus the Workflows list folded in from the old Feature Settings level.
 function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   orgId: string;
   brandId: string;
   pathname: string;
 }) {
+  const featureSlug = useSoleFeatureSlug();
+  const isBeta = useIsBetaUser();
   const brandBase = `/orgs/${orgId}/brands/${brandId}`;
   const basePath = `${brandBase}/settings`;
+  const brandProfileOk = isRevenueFeature(featureSlug) && isBeta;
   // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog resolves.
   const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
   const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
@@ -578,6 +576,14 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   const items: SidebarItem[] = [
     { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
   ];
+  if (brandProfileOk) {
+    items.push({
+      id: "brand-profile",
+      label: "Brand Profile",
+      href: `${brandBase}/brand-profile`,
+      icon: <BrandProfileIcon />,
+    });
+  }
   if (brandInfoOk) {
     items.push({
       id: "brand-info",
