@@ -41,6 +41,7 @@ import {
   getFeature,
   prefillFeatureInputs,
   prefillToStringMap,
+  configureAutoTopup,
   createCheckoutSession,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
@@ -76,7 +77,7 @@ import { BrandLogo } from "@/components/brand-logo";
 const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
 const PROJECTION_REF_BUDGET = 100; // counts come back at this budget; unit costs are budget-invariant
 const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
-const MIN_CHECKOUT_LOAD_USD = 25;
+const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 
 type Step =
   | "welcome"
@@ -175,6 +176,7 @@ const LOADING_STEPS = [
 ];
 const LAUNCH_STEPS = [
   { id: "payment", label: "Confirming payment" },
+  { id: "topup", label: "Setting auto-topup" },
   { id: "campaign", label: "Launching campaign" },
   { id: "access", label: "Opening dashboard access" },
   { id: "dashboard", label: "Opening your dashboard" },
@@ -219,6 +221,8 @@ type PendingCheckoutLaunch = {
   budgetUsd: number;
   workflowSlug: string;
   checkoutAmountCents: number;
+  topupAmountCents: number;
+  topupThresholdCents: number;
   featureInputs?: Record<string, string>;
   profile?: Record<string, string | string[]>;
   services?: string[];
@@ -263,6 +267,8 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     typeof parsed.budgetUsd !== "number" ||
     typeof parsed.workflowSlug !== "string" ||
     typeof parsed.checkoutAmountCents !== "number" ||
+    typeof parsed.topupAmountCents !== "number" ||
+    typeof parsed.topupThresholdCents !== "number" ||
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
     (parsed.services !== undefined && !isStringList(parsed.services)) ||
@@ -643,8 +649,10 @@ export function BetaOnboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
-    await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
+    await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
+    await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
+    setLaunchStep(2);
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
     const { campaign } = await createCampaignWithoutBrandEnrichment({
       name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
@@ -654,12 +662,14 @@ export function BetaOnboarding() {
       featureInputs,
       maxBudgetDailyUsd: String(pending.budgetUsd),
     });
-    setLaunchStep(2);
+    setLaunchStep(3);
     posthog.capture("onboarding_completed", {
       flow: "beta",
       outcome: pending.outcome,
       budget: pending.budgetUsd,
       checkout_amount_cents: pending.checkoutAmountCents,
+      topup_amount_cents: pending.topupAmountCents,
+      topup_threshold_cents: pending.topupThresholdCents,
     });
     // Mark onboarding complete ONLY now — the flow is genuinely finished (a real
     // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
@@ -673,7 +683,7 @@ export function BetaOnboarding() {
     // JWT loops the next navigation back to /onboarding (DIS-111).
     await session?.getToken({ skipCache: true }).catch(() => {});
     window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
-    setLaunchStep(3);
+    setLaunchStep(4);
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
   }
 
@@ -693,7 +703,7 @@ export function BetaOnboarding() {
       if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
         throw new Error("Checkout state is missing. Go back to pricing and try again.");
       }
-      const checkoutAmountCents = Math.round(Math.max(MIN_CHECKOUT_LOAD_USD, budget) * 100);
+      const checkoutAmountCents = Math.round(budget * 100);
       const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
       if (!workflowSlug) {
         throw new Error("Campaign workflow setup is still missing. Please try again.");
@@ -709,6 +719,8 @@ export function BetaOnboarding() {
         budgetUsd: budget,
         workflowSlug,
         checkoutAmountCents,
+        topupAmountCents: checkoutAmountCents,
+        topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
         featureInputs: storedPending?.featureInputs,
         profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
         services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
@@ -1082,7 +1094,7 @@ export function BetaOnboarding() {
   // pricing — outcome-count budget
   const unitCost = outcomeUnitCost();
   const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
-  const checkoutAmount = selectedBudget == null ? null : Math.max(MIN_CHECKOUT_LOAD_USD, selectedBudget);
+  const checkoutAmount = selectedBudget;
   return (
     <div className={card}>
       <BackButton onClick={() => setStep("consent")} />
@@ -1095,7 +1107,7 @@ export function BetaOnboarding() {
         <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-sm leading-6 text-brand-800">
           This is the <strong>brand daily budget cap</strong>. Checkout loads credits first,
-          then your campaign launches.
+          then auto-topup reloads the same daily amount whenever the balance drops below $5.
         </p>
       </div>
 

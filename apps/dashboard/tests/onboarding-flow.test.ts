@@ -91,12 +91,17 @@ describe("Beta onboarding direct checkout launch", () => {
   it("states the brand-level daily budget and direct checkout launch", () => {
     expect(content).toContain("brand daily budget");
     expect(content).toContain("Checkout loads credits first");
-    expect(content).toContain("then your campaign launches");
+    expect(content).toContain("auto-topup reloads the same daily amount whenever the balance drops below $5");
   });
 
-  it("uses payment checkout directly and launches after return", () => {
+  it("uses first-day payment checkout, configures auto-topup, and launches after return", () => {
     expect(content).toContain("createCheckoutSession");
+    expect(content).toContain("const checkoutAmountCents = Math.round(budget * 100)");
     expect(content).toContain("topup_amount_cents: checkoutAmountCents");
+    expect(content).toContain("topupAmountCents: checkoutAmountCents");
+    expect(content).toContain("topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS");
+    expect(content).toContain("const AUTO_TOPUP_THRESHOLD_CENTS = 500");
+    expect(content).toContain("configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents)");
     expect(content).toContain("launch_checkout");
     expect(content).toContain("completeLaunchAfterCheckout");
     expect(content).toContain("saveBrandDailyBudget");
@@ -134,6 +139,7 @@ describe("Beta onboarding direct checkout launch", () => {
     expect(content).toContain('| "launching"');
     expect(content).toContain("LAUNCH_STEPS");
     expect(content).toContain("Confirming payment");
+    expect(content).toContain("Setting auto-topup");
     expect(content).toContain("Launching campaign");
     expect(content).toContain("Opening your dashboard");
     expect(content).toContain('setStep("launching")');
