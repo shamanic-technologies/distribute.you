@@ -2441,7 +2441,9 @@ const WorkflowProjectionItemSchema = z.object({
   contactedUsd: z.number().nullable(),
   replyUsd: z.number().nullable(),
   clickUsd: z.number().nullable(),
+  costPerSignupUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowFunnelProjectionSchema.nullable(),
 });
@@ -2483,7 +2485,16 @@ export function keepLastGoodWorkflowProjection(
     ...top,
     workflows: keepLastGoodList(prev.workflows, next.workflows, {
       keyFn: (w) => w.workflowDynastySlug,
-      fields: ["contactedUsd", "replyUsd", "clickUsd", "costPerCloseUsd", "projection", "workflowDynastyName"],
+      fields: [
+        "contactedUsd",
+        "replyUsd",
+        "clickUsd",
+        "costPerSignupUsd",
+        "costPerCloseUsd",
+        "costPerMeetingBookedUsd",
+        "projection",
+        "workflowDynastyName",
+      ],
       label: "workflowProjection.workflows",
     }),
   };
