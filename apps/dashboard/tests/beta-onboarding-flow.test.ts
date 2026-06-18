@@ -86,8 +86,15 @@ describe("Beta onboarding guided flow", () => {
   it("uses the selected goal for workflow projection and persisted economics", () => {
     expect(src).toContain("salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome))");
     expect(src).toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
-    expect(src).toContain("projectionHasOutcomeCount(w.projection, outcome)");
+    expect(src).toContain("workflowOutcomeUnitCost(w, optimizationGoalForOutcome(outcome)");
     expect(src).not.toContain('objective: "self-serve"');
+  });
+
+  it("chooses and launches the workflow with the best cost for the selected outcome", () => {
+    expect(src).toContain("selectWorkflowForOptimizationGoal");
+    expect(src).toContain("function activeWorkflow()");
+    expect(src).toContain("activeWorkflow()?.workflowDynastySlug");
+    expect(src).not.toContain("projectionRef.current?.recommendedWorkflowDynastySlug");
   });
 
   it("asks the conversion rates that feed the selected goal", () => {
@@ -109,7 +116,10 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Who do you want to sell to?");
     expect(src).toContain("EditWithAIChat");
     expect(src).toContain("listPersonas");
+    expect(src).toContain("setPersonaStatus");
     expect(src).toContain("showLifecycleActions={false}");
+    expect(src).toContain('setPersonaStatus(brandId as string, id, "archived")');
+    expect(src).toContain("persona.unsaved ? removeDraft(persona.id) : archivePersona(persona.id)");
     expect(src).toContain('configKey="persona-editor"');
     expect(src).toContain("suppressPaymentRequired: true");
     expect(src).not.toContain("pause, resume and archive your audiences");
