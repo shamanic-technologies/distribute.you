@@ -429,15 +429,14 @@ export function BetaOnboarding() {
   }
 
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
-    setPersonaSeeding(true);
+    // Persona drafting is independent from full profile hydration. Start it
+    // immediately so the persona spinner tracks persona work only.
+    const personaSeed = seedOnboardingPersonaFromBrandInfo(id);
+
     await extractBrandFields([id], SALES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields (background) failed:", e);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
     });
-    // Persona drafting is the next latency-sensitive AI task, so start it as
-    // soon as brand-profile extraction is done instead of bundling it behind
-    // projection/economics hydration.
-    const personaSeed = seedOnboardingPersonaFromBrandInfo(id);
 
     const [prof, econRes, proj, feat] = await Promise.all([
       getBrandProfile(id),
@@ -1342,8 +1341,12 @@ function OnboardingPersonas({
     isPending: avatarRegenerating,
     variables: regeneratingAvatarId,
   } = useMutation({
-    mutationFn: (personaId: string) => regeneratePersonaAvatar(brandId as string, personaId),
+    mutationFn: (personaId: string) =>
+      regeneratePersonaAvatar(brandId as string, personaId, undefined, { suppressPaymentRequired: true }),
     onSuccess: invalidate,
+    onError: (err) => {
+      console.info("[dashboard] onboarding persona avatar generation skipped:", err);
+    },
   });
 
   const serverPersonas: Persona[] = (data?.personas ?? [])
