@@ -1433,6 +1433,7 @@ export interface FeaturePersonaStatsRow {
     name: string;
     status: PersonaStatusWire;
     filters: Record<string, string[]>;
+    avatarUrl?: string | null;
   };
   evidence: {
     totalCostInUsdCents: number;
@@ -1466,6 +1467,7 @@ const FeaturePersonaStatsRowSchema = z.object({
     name: z.string(),
     status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
     filters: z.record(z.string(), z.array(z.string())),
+    avatarUrl: z.string().nullable().optional(),
   }),
   evidence: z.object({
     totalCostInUsdCents: z.number(),

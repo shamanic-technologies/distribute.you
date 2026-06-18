@@ -63,6 +63,8 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(api).toContain("`/features/${featureSlug}/persona-stats?");
     expect(personaCard).toContain("Top 3 audiences");
     expect(personaCard).toContain("fallbackRows");
+    expect(personaCard).toContain("TopPersonaAvatar");
+    expect(personaCard).toContain("persona.avatarUrl");
     expect(personaCard).toContain("row.metrics.cpcCents");
     expect(personaCard).toContain("row.metrics.cpprCents");
     expect(personaCard).toContain('if (cents == null) return "-";');

@@ -48,6 +48,30 @@ function InfoHint({ text }: { text: string }) {
   );
 }
 
+function personaInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "A";
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+}
+
+function TopPersonaAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className="h-6 w-6 shrink-0 rounded-full border border-gray-200 bg-white object-cover"
+      />
+    );
+  }
+
+  return (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-brand-100 bg-brand-50 text-[10px] font-semibold text-brand-700">
+      {personaInitials(name)}
+    </span>
+  );
+}
+
 export function TopPersonasCard({
   data,
   personas = [],
@@ -66,6 +90,7 @@ export function TopPersonasCard({
   const fallbackRows = personas
     .filter((persona) => !seenPersonaIds.has(persona.id))
     .slice(0, Math.max(0, 3 - statsRows.length));
+  const personasById = new Map(personas.map((persona) => [persona.id, persona]));
   const rows: Array<
     | { kind: "stats"; row: FeaturePersonaStatsRow }
     | { kind: "persona"; persona: PersonaWire }
@@ -95,10 +120,15 @@ export function TopPersonasCard({
           </div>
         ))
       ) : (
-        rows.map((item, index) => {
+        rows.map((item) => {
           const isStats = item.kind === "stats";
           const name = isStats ? item.row.persona.name : item.persona.name;
           const key = isStats ? item.row.customerProfileId : item.persona.id;
+          const avatarUrl = isStats
+            ? item.row.persona.avatarUrl
+              ?? personasById.get(item.row.persona.id)?.avatarUrl
+              ?? personasById.get(item.row.customerProfileId)?.avatarUrl
+            : item.persona.avatarUrl;
           const value = isStats
             ? activeMetric === "cpc"
               ? item.row.metrics.cpcCents
@@ -111,9 +141,7 @@ export function TopPersonasCard({
             : "-";
           return (
             <div key={key} className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-semibold text-brand-700">
-                {index + 1}
-              </span>
+              <TopPersonaAvatar name={name} avatarUrl={avatarUrl} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-gray-700">{name}</span>
                 <span className="block truncate text-[11px] text-gray-400">{count}</span>
