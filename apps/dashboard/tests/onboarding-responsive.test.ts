@@ -37,10 +37,12 @@ describe("Onboarding mobile responsiveness", () => {
     expect(betaFlow).toContain("min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12");
     expect(betaFlow).toContain("basis-full bg-transparent");
     expect(betaFlow).toContain("sm:min-w-[8rem] sm:basis-auto");
-    expect(betaFlow).toContain("flex flex-col items-stretch gap-4");
-    expect(betaFlow).toContain("sm:flex-row sm:items-center sm:justify-between");
+    // Goal step uses responsive 2-col grid on larger screens
+    expect(betaFlow).toContain("grid gap-3 sm:grid-cols-2");
+    // Budget step uses 4-col grid on large screens
     expect(betaFlow).toContain("grid gap-3 sm:grid-cols-2 lg:grid-cols-4");
-    expect(betaFlow).toContain("flex flex-col items-stretch gap-3 sm:flex-row");
+    // Welcome step uses responsive 3-col grid
+    expect(betaFlow).toContain("sm:grid-cols-3");
   });
 
   it("lets embedded persona editing stack on narrow screens", () => {

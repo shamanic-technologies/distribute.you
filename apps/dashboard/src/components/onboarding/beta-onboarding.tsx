@@ -16,6 +16,7 @@ import {
   PaperAirplaneIcon,
   PlusIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -52,7 +53,7 @@ import {
 } from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
 import { type Filters, type Persona } from "@/lib/mock-personas";
-import { PersonaCard, capWords } from "@/components/personas/persona-card";
+import { capWords } from "@/components/personas/persona-card";
 import { BrandLogo } from "@/components/brand-logo";
 
 /**
@@ -158,10 +159,10 @@ function rateToText(n: number): string {
 
 // The five agency-model benefits (landing how-it-works "Sent on your behalf").
 const AGENCY_BENEFITS = [
-  "Zero reputation risk — your domain never touches cold outreach.",
-  "Zero setup — no DNS, SPF/DKIM, warming or mailboxes on your side.",
-  "Zero inbox to babysit — we screen replies and forward the positive ones.",
-  "Full CRM visibility — you keep the whole view, nothing hidden.",
+  "Zero reputation risk. Your domain never touches cold outreach.",
+  "Zero setup. No DNS, SPF/DKIM, warming, or mailboxes on your side.",
+  "Zero inbox to babysit. We screen replies and forward the positive ones.",
+  "Full CRM visibility. You keep the whole view, nothing hidden.",
   "Test demand before revealing your brand on niche markets.",
 ];
 
@@ -199,8 +200,9 @@ const TAG_TONES = [
   "bg-violet-50 text-violet-700 border-violet-200",
 ];
 
-// Outcome-count budget tiers (per month). "Other" is a custom count.
-const COUNT_TIERS = [5, 25, 125];
+// Fixed $/day budget tiers. Outcomes (meetings/signups) are derived and shown
+// as a large dynamic counter above the cards.
+const BUDGET_TIERS_USD = [20, 50, 200];
 
 let personaSeq = 0;
 const nextPersonaId = () => `ob-persona-${++personaSeq}`;
@@ -357,12 +359,12 @@ export function BetaOnboarding() {
   const [services, setServices] = useState<string[]>([]);
   const [serviceDraft, setServiceDraft] = useState("");
   const [profile, setProfile] = useState<Record<string, string | string[]>>({});
-  // Outcome-count budget selection. selectedCount drives the derived $/day; budget
-  // is the $/day value sent to the campaign. Tiers are derived from a STABLE base
-  // (the projection unit cost), never from the selection — so clicking a card never
-  // reshuffles the cards (the old $/day-tier bug).
-  const [selectedCount, setSelectedCount] = useState<number | null>(null);
-  const [customCount, setCustomCount] = useState("");
+  // $/day budget selection. Fixed tiers ($20/$50/$200) are shown in the cards;
+  // outcomes (meetings/signups) are derived from the unit cost and shown as a large
+  // dynamic counter above the cards. Budget-invariant unit cost means the counter
+  // never reshuffles when clicking a card.
+  const [selectedBudgetUsd, setSelectedBudgetUsd] = useState<number | null>(null);
+  const [customBudgetStr, setCustomBudgetStr] = useState("");
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(null);
   const [personaSeeding, setPersonaSeeding] = useState(false);
   const [personaDrafts, setPersonaDrafts] = useState<Persona[]>([]);
@@ -897,19 +899,17 @@ export function BetaOnboarding() {
       : null;
   }
 
-  // Daily budget needed to hit `n` outcomes / month.
-  function budgetForCount(n: number): number | null {
+  // Outcomes / month reachable with a given $/day budget (inverse of the old budgetForCount).
+  function outcomesForBudget(dailyUsd: number): number | null {
     const uc = outcomeUnitCost();
     if (uc == null || uc <= 0) return null;
-    return Math.max(1, Math.round((n * uc) / 30));
+    return Math.max(0, Math.round((dailyUsd * 30) / uc));
   }
 
-  // The $/day for the current selection (or null if nothing usable yet).
+  // The $/day for the current selection (already a direct selection in this flow).
   function derivedBudget(): number | null {
-    if (selectedCount == null) return null;
-    const b = budgetForCount(selectedCount);
-    if (b != null) return b;
-    // Degenerate projection — fall back to the recommended budget so launch works.
+    if (selectedBudgetUsd != null) return selectedBudgetUsd;
+    // Degenerate projection fallback so launch works if somehow no tier is selected.
     const rec = projectionRef.current?.recommendedBudgetUsd;
     return rec && rec > 0 ? Math.round(rec) : null;
   }
@@ -939,9 +939,9 @@ export function BetaOnboarding() {
     return (
       <div className={card}>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">Beta</span>
-        <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-gray-950">Pay per outcome,<br />like Google Ads.</h1>
+        <h1 className="mt-5 font-display text-3xl font-bold leading-tight text-gray-950">Pay per outcome,<br />like Google Ads.</h1>
         <p className="mt-3 text-sm leading-6 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
-        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {[
             {
               title: "Drop your URL",
@@ -959,12 +959,12 @@ export function BetaOnboarding() {
               Icon: TrophyIcon,
             },
           ].map((f) => (
-            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600">
-                <f.Icon className="h-4 w-4" />
+            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand-100 bg-white text-brand-600">
+                <f.Icon className="h-5 w-5" />
               </div>
-              <div className="mt-3 text-sm font-semibold text-gray-950">{f.title}</div>
-              <div className="mt-1 text-xs leading-5 text-gray-500">{f.desc}</div>
+              <div className="mt-4 text-sm font-semibold text-gray-950">{f.title}</div>
+              <div className="mt-1.5 text-sm leading-6 text-gray-500">{f.desc}</div>
             </div>
           ))}
         </div>
@@ -977,7 +977,7 @@ export function BetaOnboarding() {
 
   if (step === "url") {
     return (
-      <div className={card}>
+      <div className={`${card} mx-auto max-w-md`}>
         <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
         <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -1080,17 +1080,15 @@ export function BetaOnboarding() {
         <BackButton onClick={() => setStep("objective")} />
         <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
-        <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
+        <p className="mt-2 mb-6 text-gray-500">We filled these in from your profile. An estimate works fine — you can change them later.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className="space-y-3">
+        <div className={`grid gap-4 ${rateKeys.length > 1 ? "sm:grid-cols-2" : ""}`}>
           {rateKeys.map((k) => (
-            <div key={k} className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
-                <div className="mt-0.5 text-xs leading-5 text-gray-500">{RATE_META[k].hint}</div>
-              </div>
-              <div className="flex w-full items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 sm:w-auto sm:shrink-0">
-                {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
+            <div key={k} className="flex flex-col items-center rounded-2xl border border-gray-200 bg-gray-50 px-6 py-8 text-center">
+              <div className="mb-1 text-sm font-semibold text-gray-800">{RATE_META[k].label}</div>
+              <div className="mb-5 text-xs leading-5 text-gray-400">{RATE_META[k].hint}</div>
+              <div className="flex items-end gap-1">
+                {RATE_META[k].suffix === "$" && <span className="mb-2 text-2xl font-bold text-gray-400">$</span>}
                 <input
                   type="text"
                   inputMode="decimal"
@@ -1100,9 +1098,9 @@ export function BetaOnboarding() {
                     launchFeatureInputsRef.current = null;
                     setRateText((t) => ({ ...t, [k]: e.target.value }));
                   }}
-                  className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
+                  className="w-32 bg-transparent text-center text-6xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
                 />
-                {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
+                {RATE_META[k].suffix === "%" && <span className="mb-2 text-2xl font-bold text-gray-400">%</span>}
               </div>
             </div>
           ))}
@@ -1117,6 +1115,7 @@ export function BetaOnboarding() {
       <OnboardingPersonas
         brandDomain={domain}
         hostname={hostname}
+        brandId={brandId}
         personas={personaDrafts}
         setPersonas={setPersonaDrafts}
         personaSuggestionFailed={setupIssues.persona}
@@ -1132,17 +1131,22 @@ export function BetaOnboarding() {
       <div className={card}>
         <BackButton onClick={() => setStep("personas")} />
         <BrandStepHeader domain={domain} hostname={hostname} />
-        <div className="mb-4 flex items-start gap-2">
-          <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <ShieldCheckIcon className="h-6 w-6" />
+          </div>
           <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
         </div>
-        <p className="mb-4 text-sm leading-6 text-gray-500">distribute is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong> — never from yours, like a PR firm pitching from its own contacts.</p>
-        <ul className="mb-6 space-y-1.5">
+        <p className="mb-5 text-base leading-7 text-gray-600">distribute is a marketing agency. All outreach goes out from inboxes and domains <strong className="text-gray-900">we own and warm</strong>. Never from yours. Think of it like a PR firm pitching from its own contacts.</p>
+        <ul className="mb-7 space-y-3">
           {AGENCY_BENEFITS.map((b) => (
-            <li key={b} className="flex items-start gap-2 text-xs leading-5 text-gray-600"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{b}</li>
+            <li key={b} className="flex items-start gap-3 text-sm leading-6 text-gray-700">
+              <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+              {b}
+            </li>
           ))}
         </ul>
-        <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
+        <p className="text-xs leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
         <NextButton onClick={() => setStep("pricing")} label="Continue" />
       </div>
     );
@@ -1175,81 +1179,115 @@ export function BetaOnboarding() {
     );
   }
 
-  // pricing — outcome-count budget
+  // pricing — $/day budget tiers with dynamic outcome counter above and match notification below
   const unitCost = outcomeUnitCost();
   const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
   const checkoutAmount = selectedBudget;
+
+  // Outcomes shown in the large dynamic counter above the cards.
+  const displayedOutcomes = selectedBudget != null ? outcomesForBudget(selectedBudget) : null;
+
+  // First-day match: distribute matches up to $25 of the first day's spend.
+  const MATCH_CAP_USD = 25;
+  const matchAmountUsd = selectedBudget != null ? Math.min(selectedBudget, MATCH_CAP_USD) : null;
+  const matchShortfall = selectedBudget != null && selectedBudget < MATCH_CAP_USD ? MATCH_CAP_USD - selectedBudget : 0;
+
   return (
     <div className={card}>
       <BackButton onClick={() => setStep("consent")} />
       <BrandStepHeader domain={domain} hostname={hostname} />
       <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
-      <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
+      <p className="mt-1 mb-6 text-sm text-gray-500">
+        Pick a daily budget. We show you how many <strong>{outcomeMeta.unit}</strong> to expect each month.
+      </p>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
-        <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
-        <p className="text-sm leading-6 text-brand-800">
-          This is the <strong>brand daily budget cap</strong>. Checkout loads credits first,
-          then auto-topup reloads the same daily amount whenever the balance drops below $5.
-        </p>
+      {/* Dynamic outcome counter */}
+      <div className="mb-6 rounded-2xl border border-gray-100 bg-gray-50 px-6 py-6 text-center">
+        <div className="text-7xl font-bold tabular-nums text-gray-950">
+          {displayedOutcomes != null ? fmtCount(displayedOutcomes) : "—"}
+        </div>
+        <div className="mt-1 text-base text-gray-500">{outcomeMeta.unit} per month</div>
+        {unitCost != null && selectedBudget != null && (
+          <div className="mt-1 text-xs text-gray-400">~{fmtUsd0(unitCost)} per {outcomeMeta.unit.replace(/s$/, "")}</div>
+        )}
       </div>
 
+      {/* $/day tier cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {COUNT_TIERS.map((n, i) => {
-          const b = budgetForCount(n);
-          const active = selectedCount === n;
+        {BUDGET_TIERS_USD.map((d, i) => {
+          const active = selectedBudgetUsd === d;
+          const outcomes = outcomesForBudget(d);
           return (
-            <button key={n} onClick={() => setSelectedCount(n)} className={`rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+            <button key={d} onClick={() => setSelectedBudgetUsd(d)} className={`rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
               {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
-              <div className="text-xl font-bold text-gray-950">{fmtCount(n)}</div>
-              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
-              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
+              <div className="text-xl font-bold text-gray-950">{fmtUsd0(d)}</div>
+              <div className="text-xs text-gray-500">per day</div>
+              <div className="mt-2 text-xs text-gray-400">{outcomes != null ? `~${fmtCount(outcomes)} ${outcomeMeta.unit} / mo` : "—"}</div>
             </button>
           );
         })}
-        {/* Other — custom count */}
+        {/* Custom budget card */}
         {(() => {
-          const customN = Number(customCount);
-          const isCustom = customCount !== "" && customN > 0;
-          const active = isCustom && selectedCount === customN;
-          const b = isCustom ? budgetForCount(customN) : null;
-          const selectCustomCount = () => {
-            if (isCustom) setSelectedCount(customN);
+          const customD = Number(customBudgetStr);
+          const isCustom = customBudgetStr !== "" && customD > 0;
+          const active = isCustom && selectedBudgetUsd === customD;
+          const outcomes = isCustom ? outcomesForBudget(customD) : null;
+          const selectCustomBudget = () => {
+            if (isCustom) setSelectedBudgetUsd(customD);
           };
           return (
             <div
-              onClick={selectCustomCount}
+              onClick={selectCustomBudget}
               className={`rounded-xl border-2 p-4 transition ${isCustom ? "cursor-pointer" : ""} ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}
             >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
-              <input
-                type="number"
-                min={1}
-                value={customCount}
-                onChange={(e) => {
-                  setCustomCount(e.target.value);
-                  const v = Number(e.target.value);
-                  setSelectedCount(v > 0 ? v : null);
-                }}
-                placeholder="Custom"
-                className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
-              />
-              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
-              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
+              <div className="flex items-center gap-0.5">
+                <span className="text-xl font-bold text-gray-400">$</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={customBudgetStr}
+                  onChange={(e) => {
+                    setCustomBudgetStr(e.target.value);
+                    const v = Number(e.target.value);
+                    setSelectedBudgetUsd(v > 0 ? v : null);
+                  }}
+                  placeholder="—"
+                  className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+                />
+              </div>
+              <div className="text-xs text-gray-500">per day</div>
+              <div className="mt-2 text-xs text-gray-400">{outcomes != null ? `~${fmtCount(outcomes)} ${outcomeMeta.unit} / mo` : "—"}</div>
             </div>
           );
         })()}
       </div>
 
-      {selectedBudget != null && (
-        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          Daily budget: <strong className="text-gray-900">{fmtUsd0(selectedBudget)} / day</strong>
-          {unitCost != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> ~{fmtUsd0(unitCost)} / {outcomeMeta.unit.replace(/s$/, "")}</span>}
+      {/* Match notification */}
+      {matchAmountUsd != null && (
+        <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+          <p className="text-sm font-medium text-brand-900">
+            You get <strong>${matchAmountUsd}</strong> matched on your first day.
+          </p>
+          {matchShortfall > 0 && (
+            <p className="mt-1 text-xs text-brand-700">
+              Add ${matchShortfall}/day to unlock the full $25 match.
+            </p>
+          )}
         </div>
       )}
 
-      <button onClick={beginCheckoutAndLaunch} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+      {/* Brand daily budget note */}
+      <div className="mt-3 flex items-start gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+        <CreditCardIcon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+        <p className="text-xs leading-5 text-gray-500">
+          This is the <strong className="text-gray-700">brand daily budget cap</strong>. Checkout loads credits first,
+          then auto-topup reloads the same daily amount whenever the balance drops below $5.
+        </p>
+      </div>
+
+      <button onClick={beginCheckoutAndLaunch} disabled={busy || selectedBudget == null} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
         {busy ? (
           <>
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -1274,6 +1312,7 @@ const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 function OnboardingPersonas({
   brandDomain,
   hostname,
+  brandId,
   personas,
   setPersonas,
   personaSuggestionFailed,
@@ -1283,6 +1322,7 @@ function OnboardingPersonas({
 }: {
   brandDomain: string | null;
   hostname: string;
+  brandId: string | null;
   personas: Persona[];
   setPersonas: (updater: (prev: Persona[]) => Persona[]) => void;
   personaSuggestionFailed: boolean;
@@ -1290,65 +1330,121 @@ function OnboardingPersonas({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const isNameTaken = (name: string, exceptId?: string) => {
-    const needle = name.trim().toLowerCase();
-    return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
-  };
-  const uniqueName = (base: string) => {
-    const trimmed = base.trim() || "Audience";
-    if (!isNameTaken(trimmed)) return trimmed;
-    for (let i = 2; ; i++) {
-      const candidate = `${trimmed} ${i}`;
-      if (!isNameTaken(candidate)) return candidate;
+  const [addingNew, setAddingNew] = useState(false);
+  const [aiRefreshingId, setAiRefreshingId] = useState<string | null>(null);
+
+  const removeDraft = (id: string) => setPersonas((prev) => prev.filter((p) => p.id !== id));
+  const updateText = (id: string, text: string) =>
+    setPersonas((prev) => prev.map((p) => (p.id === id ? { ...p, name: text, unsaved: true } : p)));
+
+  const addPersonaWithAI = async () => {
+    if (!brandId) {
+      setPersonas((prev) => [
+        ...prev,
+        { id: nextDraftId(), name: "", filters: {}, status: "active", unsaved: true },
+      ]);
+      return;
+    }
+    setAddingNew(true);
+    try {
+      const sug = await suggestPersonas(brandId, 1);
+      const first = sug.personas[0];
+      const text = first ? first.name : "";
+      setPersonas((prev) => [
+        ...prev,
+        { id: nextDraftId(), name: text, filters: {}, status: "active", unsaved: true },
+      ]);
+    } catch {
+      setPersonas((prev) => [
+        ...prev,
+        { id: nextDraftId(), name: "", filters: {}, status: "active", unsaved: true },
+      ]);
+    } finally {
+      setAddingNew(false);
     }
   };
-  const addPersona = () =>
-    setPersonas((prev) => [
-      { id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true },
-      ...prev,
-    ]);
-  const removeDraft = (id: string) => setPersonas((prev) => prev.filter((p) => p.id !== id));
-  const updateDraft = (id: string, name: string, filters: Filters) =>
-    setPersonas((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name: capWords(name), filters, unsaved: true } : p)),
-    );
+
+  const refreshWithAI = async (id: string) => {
+    if (!brandId) return;
+    setAiRefreshingId(id);
+    try {
+      const sug = await suggestPersonas(brandId, 1);
+      const first = sug.personas[0];
+      if (first) updateText(id, first.name);
+    } catch {
+      // keep existing text on failure
+    } finally {
+      setAiRefreshingId(null);
+    }
+  };
+
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
   return (
     <div className={card}>
       <BackButton onClick={onBack} />
       <BrandStepHeader domain={brandDomain} hostname={hostname} />
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
-          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters or add another before launch.</p>
-        </div>
-      </div>
+      <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
+      <p className="mt-2 mb-6 text-gray-500">
+        We wrote your first audience description. Edit it, regenerate with AI, or add more.
+      </p>
       {personaSuggestionFailed && <SetupWarning className="mt-4" />}
 
-      <div className="mt-6 space-y-3">
+      <div className="space-y-3">
         {personaSeeding && personas.length === 0 ? (
-          <div className="flex h-56 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
+          <div className="flex h-40 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
             <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-            Drafting your first audience...
+            Writing your first audience...
           </div>
         ) : personas.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No audiences yet.</div>
+          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
+            No audiences yet. Add one below.
+          </div>
         ) : (
           personas.map((persona) => (
-            <PersonaCard
-              key={persona.id}
-              persona={persona}
-              onChange={(name, filters) => updateDraft(persona.id, name, filters)}
-              onRemove={() => removeDraft(persona.id)}
-              showLifecycleActions={false}
-              checkNameTaken={(n) => isNameTaken(n, persona.id)}
-            />
+            <div key={persona.id} className="group relative rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <textarea
+                value={persona.name}
+                onChange={(e) => updateText(persona.id, e.target.value)}
+                rows={3}
+                placeholder="Describe your target audience..."
+                className="w-full resize-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-300 focus:outline-none"
+              />
+              <div className="mt-2 flex items-center justify-between">
+                <button
+                  onClick={() => refreshWithAI(persona.id)}
+                  disabled={aiRefreshingId === persona.id || !brandId}
+                  className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {aiRefreshingId === persona.id ? (
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                  ) : (
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                  )}
+                  Rewrite with AI
+                </button>
+                <button
+                  onClick={() => removeDraft(persona.id)}
+                  className="text-xs text-gray-400 hover:text-red-500"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
           ))
         )}
       </div>
 
-      <button onClick={addPersona} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
-        <PlusIcon className="h-4 w-4" /> Add an audience
+      <button
+        onClick={addPersonaWithAI}
+        disabled={addingNew}
+        className="mt-4 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+      >
+        {addingNew ? (
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+        ) : (
+          <PlusIcon className="h-4 w-4" />
+        )}
+        Add an audience
       </button>
       <NextButton onClick={onContinue} label="Continue" />
     </div>
