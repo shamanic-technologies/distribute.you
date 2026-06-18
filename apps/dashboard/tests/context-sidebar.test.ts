@@ -61,9 +61,10 @@ describe("Context sidebar", () => {
   it("should have brand-level items (single-feature nav flattened into the brand)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     // The feature segment + the campaign concept are gone from the BRAND sidebar:
-    // it's Overview + the entity Database + Brand Settings. The brand "Campaigns"
-    // entry (`${basePath}/campaigns`), "Create Campaign" and "Conversions" were
-    // all removed. (The app-level feature "Campaigns" island at
+    // it's Overview + the entity Database + Brand Settings. Brand Profile lives
+    // inside Brand Settings. The brand "Campaigns" entry
+    // (`${basePath}/campaigns`), "Create Campaign" and "Conversions" were all
+    // removed. (The app-level feature "Campaigns" island at
     // `/features/[featureId]` was also removed — #1768 follow-up.)
     expect(content).toContain('label: "Overview"');
     expect(content).toContain("Database");
@@ -114,6 +115,13 @@ describe("Context sidebar", () => {
     expect(content).toContain('"Workflows"');
     expect(content).toContain('`${brandBase}/workflows`');
     expect(content).toContain('FEATURE_GATES["workflows"]');
+  });
+
+  it("keeps Brand Profile inside the Brand Settings sidebar group", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    expect(content).toContain('section === "brand-profile"');
+    expect(content).toContain('label: "Brand Profile"');
+    expect(content).toContain('`${brandBase}/brand-profile`');
   });
 });
 

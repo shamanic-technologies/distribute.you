@@ -25,7 +25,7 @@ describe("Sidebars render Feature Service entities flat — no hardcoded outcome
 
     it("renders BrandLevelSidebar top items flat (no hardcoded outcome groups)", () => {
       // The old `outcomeItems` group machinery is gone — the brand sidebar now
-      // maps a flat `topItems` list (Overview + beta personas/brand-profile).
+      // maps a flat `topItems` list (Overview + beta personas).
       expect(contextSidebar).toMatch(/topItems\.map\(/);
       expect(contextSidebar).not.toMatch(/outcomeItems/);
     });

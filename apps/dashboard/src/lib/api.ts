@@ -18,6 +18,7 @@ interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   body?: Record<string, unknown>;
   headers?: Record<string, string>;
+  suppressPaymentRequired?: boolean;
 }
 
 /**
@@ -89,7 +90,7 @@ function activeOrgIdFromPath(): string | null {
 }
 
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
-  const { token, method = "GET", body, headers: extraHeaders } = options ?? {};
+  const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
 
   const send = (): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
@@ -126,7 +127,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
 
   if (!response.ok) {
     const errorBody = asErrorBody(await readJsonResponse(response, endpoint));
-    if (response.status === 402 && typeof window !== "undefined") {
+    if (response.status === 402 && !suppressPaymentRequired && typeof window !== "undefined") {
       const { dispatchPaymentRequired } = await import("@/lib/billing-guard");
       dispatchPaymentRequired({
         balance_cents: stringOrNumber(errorBody.balance_cents),
@@ -997,11 +998,13 @@ export async function regeneratePersonaAvatar(
   brandId: string,
   personaId: string,
   token?: string,
+  opts?: { suppressPaymentRequired?: boolean },
 ): Promise<{ persona: PersonaWire }> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/avatar/regenerate`, {
     token,
     method: "POST",
     body: {},
+    suppressPaymentRequired: opts?.suppressPaymentRequired,
   });
   const parsed = PersonaResponseSchema.safeParse(raw);
   if (!parsed.success) {
