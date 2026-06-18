@@ -89,10 +89,33 @@ function activeOrgIdFromPath(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * This tab's Clerk session token (per-tab active org), via the global `window.Clerk`
+ * client — NOT a React hook, so it works from the plain `apiCall` function. Each
+ * browser tab has its own `window.Clerk` with its own in-memory active org, so the
+ * minted token carries the org THIS tab is viewing, regardless of which tab last
+ * wrote the shared session cookie. Returns null on the server, before Clerk loads,
+ * or when signed out → caller omits the Authorization header and falls back to the
+ * cookie. Cached by Clerk (re-mints only near expiry), so per-request cost is low.
+ */
+async function getTabSessionToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const clerk = (
+    window as unknown as {
+      Clerk?: { session?: { getToken: () => Promise<string | null> } | null };
+    }
+  ).Clerk;
+  try {
+    return (await clerk?.session?.getToken()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
 
-  const send = (): Promise<Response> => {
+  const send = async (): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
     let url: string;
 
@@ -103,6 +126,20 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       url = `/api/v1${endpoint}`;
       const activeOrgId = activeOrgIdFromPath();
       if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
+
+      // Per-tab org-scoped auth (Clerk multi-tab guidance). The Clerk session
+      // COOKIE is a global singleton for the whole browser — it reflects whichever
+      // tab was focused LAST, so the proxy's cookie-based `auth()` would scope a
+      // background poll / navigation from a NON-focused tab to the WRONG org
+      // (cross-org bleed + 409 desync churn + the visible "org switches by itself"
+      // across tabs). `window.Clerk` is PER-TAB, so `session.getToken()` returns
+      // THIS tab's active-org token; Clerk's `auth()` honors an Authorization
+      // Bearer over the cookie, giving the proxy the correct per-tab org.
+      // (Clerk docs: "Organizations → multiple browser tabs" + "Making
+      // authenticated requests".) Optional-chained: before Clerk loads, or with no
+      // session, we fall back to the cookie (and checkProxyOrg still fails closed).
+      const tabToken = await getTabSessionToken();
+      if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
     }
 
     return fetch(url, {
