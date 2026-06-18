@@ -59,8 +59,12 @@ export function CustomerPersonasPage() {
     isPending: avatarRegenerating,
     variables: regeneratingAvatarId,
   } = useMutation({
-    mutationFn: (personaId: string) => regeneratePersonaAvatar(brandId, personaId),
+    mutationFn: (personaId: string) =>
+      regeneratePersonaAvatar(brandId, personaId, undefined, { suppressPaymentRequired: true }),
     onSuccess: invalidate,
+    onError: (err) => {
+      console.info("[dashboard] persona avatar generation skipped:", err);
+    },
   });
 
   const serverPersonas: Persona[] = (data?.personas ?? []).map((p) => ({
