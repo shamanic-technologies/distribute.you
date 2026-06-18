@@ -1245,12 +1245,12 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 export async function extractBrandFields(
   brandIds: string[],
   fields: ExtractFieldDef[],
-  opts?: { token?: string; resetCache?: boolean },
+  opts?: { token?: string; resetCache?: boolean; urlStrategy?: "url_map" | "landing" },
 ): Promise<ExtractFieldsResponse> {
-  const { token, resetCache } = opts ?? {};
+  const { token, resetCache, urlStrategy } = opts ?? {};
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields, resetCache } },
+    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy } },
   );
 }
 

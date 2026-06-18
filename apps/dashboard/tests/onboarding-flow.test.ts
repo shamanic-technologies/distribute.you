@@ -22,6 +22,13 @@ describe("Onboarding flow", () => {
     expect(content).toContain("calendar.app.google");
   });
 
+  it("keeps booking actions visible in the mobile viewport", () => {
+    const content = fs.readFileSync(pagePath, "utf-8");
+    expect(content).toContain("max-h-[calc(100dvh-2rem)]");
+    expect(content).toContain("min-h-0 flex-1 overflow-y-auto");
+    expect(content).toContain("shrink-0 border-t border-gray-100");
+  });
+
   it("should have agency and company type selection", () => {
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("Agency");

@@ -29,9 +29,8 @@ function Cell({ children }: { children: ReactNode }) {
  * Top-of-page outreach stat cards, shared across every brand- and campaign-scoped
  * surface (one source → no drift, CLAUDE.md "keep surfaces in lockstep").
  *
- * GA cards (everyone): Outreach / Opens + the leading metric for the brand's
- * optimization goal (Clicks/CPC for signups, Positive Replies/CPPR for sales
- * meetings).
+ * GA cards (everyone): Outreach / Opens / Clicks / CPC, regardless of the
+ * brand's optimization goal.
  * Beta cards (allowlist only — `useIsBetaUser`): the goal outcome pair
  * (Signups/CPS or Sales Meetings/CPSM), each badged `beta`.
  *
@@ -55,29 +54,17 @@ export function OutreachStatCards({
   const outreach = stats.leadsSent ?? stats.recipientsSent ?? 0;
   const opens = stats.recipientsOpened ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
-  const positiveReplies = stats.leadsRepliesPositive ?? 0;
   const beta = <MaturityBadge level="beta" />;
 
-  const primaryMetric =
-    goal === "sales_meetings"
-      ? {
-          label: "Positive Replies",
-          tooltip:
-            "Number of leads having shared interest to know more about your brand within our conversation with them.",
-          value: formatCount(positiveReplies),
-          costLabel: "CPPR",
-          costTooltip: "Cost per positive reply.",
-          costValue: costPer(totalCostCents, positiveReplies),
-        }
-      : {
-          label: "Clicks",
-          tooltip:
-            "Number of visits on your website via a click in the link shared in the conversation with the lead.",
-          value: formatCount(clicks),
-          costLabel: "CPC",
-          costTooltip: "Cost per click — total spent divided by link clicks.",
-          costValue: costPer(totalCostCents, clicks),
-        };
+  const clickMetric = {
+    label: "Clicks",
+    tooltip:
+      "Number of visits on your website via a click in the link shared in the conversation with the lead.",
+    value: formatCount(clicks),
+    costLabel: "CPC",
+    costTooltip: "Cost per click — total spent divided by link clicks.",
+    costValue: costPer(totalCostCents, clicks),
+  };
 
   const outcomeMetric =
     goal === "sales_meetings"
@@ -106,17 +93,17 @@ export function OutreachStatCards({
       </Cell>
       <Cell>
         <ScoreCard
-          label={primaryMetric.label}
-          tooltip={primaryMetric.tooltip}
-          value={primaryMetric.value}
+          label={clickMetric.label}
+          tooltip={clickMetric.tooltip}
+          value={clickMetric.value}
           pending={pending}
         />
       </Cell>
       <Cell>
         <ScoreCard
-          label={primaryMetric.costLabel}
-          tooltip={primaryMetric.costTooltip}
-          value={primaryMetric.costValue}
+          label={clickMetric.costLabel}
+          tooltip={clickMetric.costTooltip}
+          value={clickMetric.costValue}
           pending={pending}
         />
       </Cell>
