@@ -191,6 +191,7 @@ export function PersonaCard({
   checkNameTaken,
   onChange,
   onRemove,
+  removing = false,
   onRegenerateAvatar,
   regeneratingAvatar = false,
   showLifecycleActions = true,
@@ -203,8 +204,9 @@ export function PersonaCard({
   checkNameTaken?: (name: string) => boolean;
   /** Embedded/controlled mode — report edits live, hide the save bar. */
   onChange?: (name: string, filters: Filters) => void;
-  /** Embedded remove affordance (X in the header). */
+  /** Remove affordance (X in the header). */
   onRemove?: () => void;
+  removing?: boolean;
   /** Persisted personas can replace their generated avatar. */
   onRegenerateAvatar?: () => void;
   regeneratingAvatar?: boolean;
@@ -341,20 +343,22 @@ export function PersonaCard({
           </div>
         </div>
 
-        {/* Lifecycle actions — never hard-delete. New drafts have none (Save /
-            Cancel live in the save bar). Archived cards only offer Restore.
-            Embedded cards offer a single remove (X). */}
-        {embedded ? (
-          onRemove && (
-            <button
-              type="button"
-              onClick={onRemove}
-              aria-label="Remove audience"
-              className="rounded-md p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition shrink-0"
-            >
+        {/* Lifecycle actions — never hard-delete. New drafts use Save/Cancel in
+            the save bar unless a parent supplies the single remove affordance. */}
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={removing}
+            aria-label="Remove audience"
+            className="rounded-md p-1.5 text-gray-300 transition hover:bg-gray-100 hover:text-gray-600 disabled:cursor-wait disabled:opacity-50 shrink-0"
+          >
+            {removing ? (
+              <span className="block h-3 w-3 animate-spin rounded-full border-2 border-gray-200 border-t-gray-500" />
+            ) : (
               <XIcon />
-            </button>
-          )
+            )}
+          </button>
         ) : showLifecycleActions && !isNew ? (
           <div className="flex items-center gap-1 shrink-0">
             {isArchived ? (

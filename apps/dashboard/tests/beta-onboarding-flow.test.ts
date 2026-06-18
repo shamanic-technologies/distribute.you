@@ -109,7 +109,10 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Who do you want to sell to?");
     expect(src).toContain("EditWithAIChat");
     expect(src).toContain("listPersonas");
+    expect(src).toContain("setPersonaStatus");
     expect(src).toContain("showLifecycleActions={false}");
+    expect(src).toContain('setPersonaStatus(brandId as string, id, "archived")');
+    expect(src).toContain("persona.unsaved ? removeDraft(persona.id) : archivePersona(persona.id)");
     expect(src).toContain('configKey="persona-editor"');
     expect(src).toContain("suppressPaymentRequired: true");
     expect(src).not.toContain("pause, resume and archive your audiences");
