@@ -260,13 +260,18 @@ function ChartTooltip({
       <div className="space-y-1.5">
         {metrics.map((metric) => {
           const value = day.raw[metric.key];
+          const color = day.isToday ? metric.actual : metric.expected;
+          const displayedValue = day.isToday ? value.actual : value.expected;
           return (
-            <div key={metric.key} className="grid grid-cols-[76px_1fr] gap-3">
+            <div key={metric.key} className="grid grid-cols-[10px_76px_1fr] items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: color }}
+              />
               <span className="text-gray-500">{metric.label}</span>
               <span className="font-medium text-gray-800">
-                {day.isToday ? `${formatValue(value.actual, metric.key)} / ` : ""}
-                {formatValue(value.expected, metric.key)}
-                {isOutcomeMetric(metric.key) && value.conversionPct != null ? (
+                {formatValue(displayedValue, metric.key)}
+                {!day.isToday && isOutcomeMetric(metric.key) && value.conversionPct != null ? (
                   <span className="ml-1 font-normal text-gray-400">
                     @ {value.conversionPct.toLocaleString("en-US", { maximumFractionDigits: 2 })}%
                   </span>
