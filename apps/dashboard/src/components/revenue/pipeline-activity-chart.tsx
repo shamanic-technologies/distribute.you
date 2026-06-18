@@ -108,6 +108,26 @@ function renderBarLabel(
   const renderedValue = typeof props.value === "number" ? props.value : 0;
 
   if (kind === "expected") {
+    if (day.isToday) {
+      if (renderedValue <= 0) return null;
+      return (
+        <text
+          x={x + width / 2}
+          y={Math.max(10, y - 6)}
+          textAnchor="middle"
+          fontSize={10}
+          fontWeight={700}
+          fill="#475569"
+          stroke="#ffffff"
+          strokeWidth={3}
+          paintOrder="stroke"
+          pointerEvents="none"
+        >
+          {formatValue(actual, metricKey)}
+        </text>
+      );
+    }
+
     if (renderedValue <= 0 || expected <= 0) return null;
     return (
       <text
@@ -127,7 +147,7 @@ function renderBarLabel(
     );
   }
 
-  if (actual <= 0 || expectedRemaining > 0) return null;
+  if (!day.isToday || actual <= 0 || expectedRemaining > 0) return null;
   return (
     <text
       x={x + width / 2}
