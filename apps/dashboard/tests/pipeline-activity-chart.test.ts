@@ -61,6 +61,14 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).not.toContain("Timezone:");
   });
 
+  it("labels today's stacked bars with actual values and future bars with expected values", () => {
+    expect(chart).toContain("if (day.isToday)");
+    expect(chart).toContain("if (renderedValue <= 0) return null;");
+    expect(chart).toContain("{formatValue(actual, metricKey)}");
+    expect(chart).toContain("if (!day.isToday || actual <= 0 || expectedRemaining > 0) return null;");
+    expect(chart).toContain("{formatValue(expected, metricKey)}");
+  });
+
   it("shows the goal-specific expected monthly outcome instead of pipeline revenue", () => {
     expect(page).toContain("getBrandDailyBudget");
     expect(page).toContain("getWorkflowProjection");
