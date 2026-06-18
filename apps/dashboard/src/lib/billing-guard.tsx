@@ -21,17 +21,26 @@ interface PaymentRequiredInfo {
   proactive?: boolean;
   /** Callback invoked after the user dismisses the modal having set up auto-topup (proactive flow only) */
   onAutoTopupConfigured?: () => void;
-  /** Runway variant: balance covers the first period but not indefinitely. Number of periods
-   *  the current balance lasts at this budget, and the period unit (e.g. "day"). When set, the
-   *  modal informs (not blocks) and offers a "Launch anyway" action via onProceed. */
-  runwayPeriods?: number;
-  runwayUnit?: string;
-  /** Proceed without topping up (runway variant — "Launch anyway"). */
-  onProceed?: () => void;
+  /** Suggested auto-topup reload amount (cents) — proactive flow pre-fills the "Top-up amount"
+   *  field with this (= campaign daily price × 10) instead of the flat $25 default. */
+  suggestedTopupCents?: number;
+  /** Depletion variant (non-proactive): balance is exhausted and campaigns have
+   *  stopped. Tailors the modal copy from "needed for this action" to the
+   *  arrival-time "all campaigns stopped" message. */
+  depleted?: boolean;
 }
 
 function toCentsNumber(v: string | number): number {
   return typeof v === "string" ? parseFloat(v) : v;
+}
+
+function Spinner() {
+  return (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  );
 }
 
 interface BillingGuardContextValue {
@@ -122,6 +131,11 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     } else {
       setSelectedAmount(2500);
       setTopupAmount("25");
+    }
+    // Proactive (campaign-launch) flow: default the auto-topup reload to the campaign's
+    // daily price × 10 (passed as suggestedTopupCents), overriding the chip-derived amount.
+    if (paymentInfo.suggestedTopupCents !== undefined && paymentInfo.suggestedTopupCents > 0) {
+      setTopupAmount(Math.round(paymentInfo.suggestedTopupCents / 100).toString());
     }
     setCustomAmount("");
     setCustomAmountError(null);
@@ -226,23 +240,12 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   }
 
   const isProactive = info.proactive === true;
-  const isRunway = isProactive && info.runwayPeriods !== undefined;
-  const runwayN = info.runwayPeriods ?? 0;
-  const runwayLabel = `${runwayN} ${info.runwayUnit ?? "period"}${runwayN > 1 ? "s" : ""}`;
-  const balanceBelowRequired =
-    info.balance_cents !== undefined &&
-    info.required_cents !== undefined &&
-    toCentsNumber(info.balance_cents) < toCentsNumber(info.required_cents);
-  const proactiveTitle = isRunway
-    ? `Enough credits for ~${runwayLabel}`
-    : balanceBelowRequired
-      ? "Campaign May Exceed Credits"
-      : "Recurring Campaign Needs Auto-Topup";
-  const proactiveDescription = isRunway
-    ? `Your ${formatBillingCents(info.balance_cents ?? 0)} balance covers about ${runwayLabel} at this budget — then the campaign stops. Set up auto-topup to keep it running, or launch now.`
-    : balanceBelowRequired
-      ? "Your campaign budget may exceed your current credit balance. Set up auto-topup to ensure your campaign is never interrupted."
-      : "Your recurring campaign needs auto-topup so it never stops mid-cycle when credits run out.";
+  const isDepleted = info.depleted === true;
+  // Proactive == wallet runway protection. It's not a "you might run out" warning:
+  // auto-topup keeps the org wallet funded while brand daily budgets cap allocation.
+  const proactiveTitle = "Keep the wallet funded.";
+  const proactiveDescription =
+    "Your credits live in an org-level wallet. Auto-top-up adds credits when the balance runs low, while each brand daily budget stays the spend cap. You can pause the campaign at any time.";
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -251,90 +254,128 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
+              {isProactive ? (
+                <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+              )}
               <h2 className="text-lg font-semibold text-gray-900">
-                {isProactive ? proactiveTitle : "Insufficient Credits"}
+                {isProactive
+                  ? proactiveTitle
+                  : isDepleted
+                    ? "All campaigns stopped"
+                    : "Insufficient Credits"}
               </h2>
             </div>
 
             <p className="text-gray-600 text-sm mb-4">
               {isProactive
                 ? proactiveDescription
-                : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
+                : isDepleted
+                  ? "You\u2019re out of credit, so your campaigns have stopped. Add credits to get them running again \u2014 or turn on auto-topup so they never stop."
+                  : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
             </p>
 
-            {(info.balance_cents !== undefined || info.required_cents !== undefined) && (
-              <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1 text-sm">
-                {info.balance_cents !== undefined && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Current balance</span>
-                    <span className="font-medium text-gray-900">{formatBillingCents(info.balance_cents)}</span>
-                  </div>
-                )}
-                {info.required_cents !== undefined && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">{isProactive ? "Campaign budget" : "Required"}</span>
-                    <span className="font-medium text-gray-900">{formatBillingCents(info.required_cents)}</span>
-                  </div>
-                )}
-              </div>
+            {/* Proactive wallet protection: show the brand daily budget cap, never
+                frame it as a campaign checkout price. */}
+            {isProactive ? (
+              info.required_cents !== undefined && (
+                <div className="bg-brand-50 border border-brand-100 rounded-lg p-3 mb-4 flex justify-between items-center text-sm">
+                  <span className="text-brand-700">Brand daily budget cap</span>
+                  <span className="font-semibold text-brand-900">{formatBillingCents(info.required_cents)} <span className="font-normal text-brand-600">/ day</span></span>
+                </div>
+              )
+            ) : (
+              (info.balance_cents !== undefined || info.required_cents !== undefined) && (
+                <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-1 text-sm">
+                  {info.balance_cents !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Current balance</span>
+                      <span className="font-medium text-gray-900">{formatBillingCents(info.balance_cents)}</span>
+                    </div>
+                  )}
+                  {info.required_cents !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Required</span>
+                      <span className="font-medium text-gray-900">{formatBillingCents(info.required_cents)}</span>
+                    </div>
+                  )}
+                </div>
+              )
             )}
 
-            {/* Top-up amount selection */}
-            <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {TOPUP_AMOUNTS.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => handleSelectTopup(amount)}
-                  className={`flex-1 min-w-[70px] px-3 py-2 text-sm rounded-lg border transition ${
-                    selectedAmount === amount && !customAmount
-                      ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  {formatBillingCents(amount)}
-                </button>
-              ))}
-            </div>
-            <input
-              type="number"
-              placeholder="Custom amount ($)"
-              value={customAmount}
-              onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
-              onBlur={handleCustomAmountBlur}
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 mb-1 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
-              min="10"
-              step="1"
-            />
-            {customAmountError && (
-              <p className="text-xs text-red-600 mb-2">{customAmountError}</p>
+            {/* Top-up amount selection — hard-block (insufficient credits) only. */}
+            {!isProactive && (
+              <>
+                <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {TOPUP_AMOUNTS.map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => handleSelectTopup(amount)}
+                      className={`flex-1 min-w-[70px] px-3 py-2 text-sm rounded-lg border transition ${
+                        selectedAmount === amount && !customAmount
+                          ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
+                          : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      {formatBillingCents(amount)}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="number"
+                  placeholder="Custom amount ($)"
+                  value={customAmount}
+                  onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
+                  onBlur={handleCustomAmountBlur}
+                  className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 mb-1 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
+                  min="10"
+                  step="1"
+                />
+                {customAmountError && (
+                  <p className="text-xs text-red-600 mb-2">{customAmountError}</p>
+                )}
+              </>
             )}
 
             {/* Auto-topup option */}
-            <div className="border-t border-gray-100 pt-4 mt-3 mb-4">
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={enableAutoTopup}
-                  onChange={(e) => setEnableAutoTopup(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
-                  id="modal-auto-topup"
-                />
-                <label htmlFor="modal-auto-topup" className="flex-1 cursor-pointer">
-                  <p className="text-sm font-medium text-gray-800">Enable auto-topup</p>
+            <div className={`border-gray-100 mb-4 ${isProactive ? "" : "border-t pt-4 mt-3"}`}>
+              {isProactive ? (
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Auto-top-up</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Automatically add credits when your balance gets low, so your campaigns never stop.
+                    Automatically add org wallet credits when your balance gets low, so your campaigns keep running.
                   </p>
-                </label>
-              </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={enableAutoTopup}
+                    onChange={(e) => setEnableAutoTopup(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer"
+                    id="modal-auto-topup"
+                  />
+                  <label htmlFor="modal-auto-topup" className="flex-1 cursor-pointer">
+                    <p className="text-sm font-medium text-gray-800">Enable auto-topup</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Automatically add credits when your balance gets low, so your campaigns never stop.
+                    </p>
+                  </label>
+                </div>
+              )}
 
-              {enableAutoTopup && (
-                <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
+              {(isProactive || enableAutoTopup) && (
+                <div className={`grid grid-cols-2 gap-3 mt-3 ${isProactive ? "" : "ml-7"}`}>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
                     <input
@@ -373,6 +414,23 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               <p className="text-sm text-red-600 mb-3">{checkoutError}</p>
             )}
 
+            {isProactive && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  Org-level wallet
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  Pause anytime
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  Brand budget cap
+                </span>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={dismissPaymentRequired}
@@ -381,23 +439,26 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 Cancel
               </button>
 
-              {isRunway && (
-                <button
-                  onClick={() => { setVisible(false); info.onProceed?.(); }}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-                >
-                  Launch anyway
-                </button>
-              )}
-
-              {isProactive && enableAutoTopup && account?.has_payment_method ? (
-                <button
-                  onClick={handleSetupAutoTopupOnly}
-                  disabled={savingAutoTopup || hasValidationError || !topupAmount}
-                  className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
-                >
-                  {savingAutoTopup ? "Saving..." : isRunway ? "Enable auto-topup & launch" : "Enable Auto-Topup & Continue"}
-                </button>
+              {isProactive ? (
+                account?.has_payment_method ? (
+                  <button
+                    onClick={handleSetupAutoTopupOnly}
+                    disabled={savingAutoTopup || hasValidationError || !topupAmount}
+                    className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${savingAutoTopup ? "cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
+                  >
+                    {savingAutoTopup && <Spinner />}
+                    {savingAutoTopup ? "Turning on…" : "Turn on auto-top-up →"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCheckout}
+                    disabled={checkoutLoading || hasValidationError || !topupAmount}
+                    className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${checkoutLoading ? "cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
+                  >
+                    {checkoutLoading && <Spinner />}
+                    {checkoutLoading ? "Redirecting…" : `Load ${formatBillingCents(effectiveAmountCents || 0)} & turn on auto-top-up →`}
+                  </button>
+                )
               ) : (
                 <button
                   onClick={handleCheckout}

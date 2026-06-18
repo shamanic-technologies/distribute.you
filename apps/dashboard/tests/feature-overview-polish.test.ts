@@ -5,41 +5,34 @@ import * as path from "path";
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
+// Single-feature product: the feature segment was flattened into the brand
+// level. The brand ROOT page IS the (sole) feature's Overview; the campaigns
+// list lives at the brand-level /campaigns route.
 const FEATURE_DIR =
-  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]";
+  "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]";
 
 describe("Feature landing defaults to Overview (item 1)", () => {
   const indexPage = read(`${FEATURE_DIR}/page.tsx`);
-  const campaignsPage = read(`${FEATURE_DIR}/campaigns/page.tsx`);
-  const sidebar = read("components/context-sidebar.tsx");
 
-  it("bare feature page is a redirect decider, not the campaigns list", () => {
-    expect(indexPage).toContain("router.replace");
-    expect(indexPage).toContain("/overview");
-    expect(indexPage).toContain("/campaigns");
+  it("brand root page IS the Overview (renders the revenue section inline)", () => {
+    // No redirect-decider anymore — the brand root renders the overview directly.
+    expect(indexPage).toContain("RevenueOverviewSection");
     // Overview shown for revenue features (GA — no flag gate).
     expect(indexPage).toContain("isRevenueFeature");
-    // The campaigns list must NOT live in the bare page anymore.
+    // The overview does not fetch the campaign list (the campaign concept is gone).
     expect(indexPage).not.toContain("listCampaignsByBrand");
   });
 
-  it("campaigns list moved to /campaigns route", () => {
-    expect(campaignsPage).toContain("listCampaignsByBrand");
-    expect(campaignsPage).toContain("New Campaign");
-  });
-
-  it("sidebar Campaigns nav points at the /campaigns route", () => {
-    expect(sidebar).toContain(
-      '{ id: "campaigns", label: "Campaigns", href: `${basePath}/campaigns`, icon: <EnvelopeIcon /> },',
-    );
-  });
+  // The campaigns LIST route + its sidebar nav entry were removed with the
+  // campaign concept; the brand root IS the overview.
 });
 
-describe("Revenue empty state reframed to campaign-first (item 2)", () => {
+describe("Revenue empty state (item 2)", () => {
   const emptyState = read("components/revenue/revenue-empty-state.tsx");
-  it("messages 'no metrics yet, launch a campaign' with explicit button", () => {
+  it("messages 'no metrics yet' with no manual launch CTA", () => {
     expect(emptyState).toContain("No metrics yet");
-    expect(emptyState).toContain("Create a campaign");
+    expect(emptyState).not.toContain("Launch outreach");
+    expect(emptyState).not.toContain("Create a campaign");
     expect(emptyState).not.toContain("Set up sales economics");
   });
 });
@@ -47,20 +40,18 @@ describe("Revenue empty state reframed to campaign-first (item 2)", () => {
 describe("Tables paginate 20 rows/page (item 3)", () => {
   const pager = read("components/table-pagination.tsx");
   const conversions = read("components/revenue/conversions-table.tsx");
-  const publicLeads = read("components/report/public-leads-view.tsx");
 
   it("default page size is 20 and the pager is api-free", () => {
     expect(pager).toContain("TABLE_PAGE_SIZE = 20");
     expect(pager).not.toContain('from "@/lib/api"');
   });
 
-  it("all three conversion tables + public leads view paginate", () => {
+  it("all three conversion tables paginate", () => {
     expect(conversions).toContain("usePaginated(orgs)");
     expect(conversions).toContain("usePaginated(leads)");
     expect(conversions).toContain("usePaginated(events)");
     // The old append-only "Show more" must be gone.
     expect(conversions).not.toContain("EVENTS_PAGE_SIZE");
-    expect(publicLeads).toContain("usePaginated(filteredLeads)");
   });
 });
 
@@ -77,19 +68,12 @@ describe("Org logos render Clerk imageUrl (item 4)", () => {
 
 describe("Conversion events show lead photos (item 5)", () => {
   const conversions = read("components/revenue/conversions-table.tsx");
-  const conversionsPage = read(`${FEATURE_DIR}/conversions/page.tsx`);
-  const reportRevenue = read("components/report/revenue-view.tsx");
 
   it("event table takes a photoByLeadId map (no forced null avatar)", () => {
     expect(conversions).toContain("photoByLeadId");
     expect(conversions).not.toContain("photoUrl={null}");
     // Avatar falls back to initials when the image breaks.
     expect(conversions).toContain("onError={() => setBroken(true)}");
-  });
-
-  it("both event-table callers pass the photo map", () => {
-    expect(conversionsPage).toContain("photoByLeadId={photoByLeadId}");
-    expect(reportRevenue).toContain("photoByLeadId={photoByLeadId}");
   });
 });
 

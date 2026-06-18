@@ -53,9 +53,9 @@ export const metadata: Metadata = {
     follow: false,
   },
   icons: {
-    icon: "/favicon.jpg",
-    shortcut: "/favicon.jpg",
-    apple: "/favicon.jpg",
+    icon: "/logo-distribute.svg",
+    shortcut: "/logo-distribute.svg",
+    apple: "/logo-distribute.svg",
   },
 };
 
@@ -95,12 +95,12 @@ export default function RootLayout({
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YJHNGLEJPP');`,
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YJHNGLEJPP');gtag('config','AW-18233267088');`,
           }}
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
+            __html: `(function(){try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}})()`,
           }}
         />
         <script

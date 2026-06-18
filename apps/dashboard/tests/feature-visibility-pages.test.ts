@@ -3,11 +3,12 @@ import * as fs from "fs";
 import * as path from "path";
 
 // ── Route roots ──────────────────────────────────────────────────────────────
+// Single-feature product: the feature segment was flattened into the brand
+// level, so the former feature-level pages now live directly under the brand.
 const FEATURE_ROOT = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]",
 );
-const CAMPAIGN_ROOT = path.join(FEATURE_ROOT, "campaigns/[id]");
 const VIEWS_ROOT = path.resolve(__dirname, "../src/components/visibility");
 
 const read = (p: string) => fs.readFileSync(p, "utf-8");
@@ -90,7 +91,7 @@ describe("Feature-level AI-visibility pages (union across the brand's campaigns)
         it("builds a FEATURE-level basePath (no /campaigns/ segment)", () => {
           const content = read(filePath);
           expect(content).toContain(
-            "`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}`",
+            "`/orgs/${orgId}/brands/${brandId}`",
           );
           expect(content).not.toContain("/campaigns/${campaignId}");
         });
@@ -99,22 +100,9 @@ describe("Feature-level AI-visibility pages (union across the brand's campaigns)
   }
 });
 
-describe("Campaign-level AI-visibility pages render the SAME shared views", () => {
-  const cases = [
-    { file: "visibility-runs/page.tsx", view: "VisibilityRunsView" },
-    { file: "visibility-runs/[runId]/page.tsx", view: "VisibilityRunDetailView" },
-    { file: "prompts/page.tsx", view: "VisibilityPromptsView" },
-    { file: "competitors/page.tsx", view: "VisibilityCompetitorsView" },
-  ] as const;
-
-  for (const c of cases) {
-    it(`campaign ${c.file} renders ${c.view} with a campaign-scoped query`, () => {
-      const content = read(path.join(CAMPAIGN_ROOT, c.file));
-      expect(content).toContain(c.view);
-      expect(content).toContain("campaignId");
-    });
-  }
-});
+// The campaign-level AI-visibility pages were removed with the campaign concept;
+// the feature/brand-level pages above (which render the same shared views) are
+// the survivors.
 
 describe("Shared visibility view components own the display", () => {
   const cases = [

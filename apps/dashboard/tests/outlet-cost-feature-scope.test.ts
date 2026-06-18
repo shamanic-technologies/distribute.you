@@ -3,11 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
+// Single-feature flatten: the separate brand-level vs feature-level outlet pages
+// merged into ONE brand-level page that scopes costs to the sole featureSlug.
 const featureOutletPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
-);
-const brandOutletPagePath = path.resolve(
   __dirname,
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
 );
@@ -34,13 +32,9 @@ describe("feature-level outlet page scopes costs to feature", () => {
   it("should include featureSlug in the query key for cache separation", () => {
     expect(content).toContain('"outletStatsCosts", brandId, featureSlug, "outletId"');
   });
-});
 
-describe("brand-level outlet page does NOT scope costs to feature", () => {
-  const content = fs.readFileSync(brandOutletPagePath, "utf-8");
-
-  it("should call getOutletStatsCosts without featureSlug", () => {
-    expect(content).toContain('getOutletStatsCosts(brandId, "outletId")');
-    expect(content).not.toContain("getOutletStatsCosts(brandId, \"outletId\", featureSlug)");
+  it("resolves the sole featureSlug via useSoleFeatureSlug (no params.featureSlug)", () => {
+    expect(content).toContain("useSoleFeatureSlug()");
+    expect(content).not.toContain("params.featureSlug");
   });
 });

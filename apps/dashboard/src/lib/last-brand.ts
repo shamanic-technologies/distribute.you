@@ -18,6 +18,20 @@ export function lastBrandCookieName(orgId: string): string {
   return `last-brand-${orgId}`;
 }
 
+export const HIERARCHY_VIEW_PARAM = "view";
+export const HIERARCHY_VIEW_OVERVIEW = "overview";
+
+export function explicitHierarchyHref(pathname: string): string {
+  const sep = pathname.includes("?") ? "&" : "?";
+  return `${pathname}${sep}${HIERARCHY_VIEW_PARAM}=${HIERARCHY_VIEW_OVERVIEW}`;
+}
+
+export function hasExplicitHierarchyIntent(
+  searchParams: Pick<URLSearchParams, "get">,
+): boolean {
+  return searchParams.get(HIERARCHY_VIEW_PARAM) === HIERARCHY_VIEW_OVERVIEW;
+}
+
 const ORG_LANDING_RE = /^\/orgs\/([^/]+)\/?$/;
 const BRAND_PATH_RE = /^\/orgs\/([^/]+)\/brands\/([^/]+)(?:\/.*)?$/;
 
@@ -53,3 +67,9 @@ export function resolveLandingBrand(
   if (lastBrandId && brands.some((b) => b.id === lastBrandId)) return lastBrandId;
   return brands[0]?.id ?? null;
 }
+
+// A bare brand URL always lands on the brand Overview. The product ships one
+// primary feature at the brand level, so there's no "skip into the feature /
+// route to create-campaign" decision to make — the Overview is the home. (The old
+// `resolveFeatureLanding` campaign branch was removed when the campaign concept
+// was hidden from the UI.)

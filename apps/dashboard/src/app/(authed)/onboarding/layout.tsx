@@ -1,4 +1,5 @@
 import { QueryProvider } from "@/lib/query-provider";
+import { OnboardingCreditGate } from "@/components/onboarding/onboarding-credit-gate";
 
 export default function OnboardingLayout({
   children,
@@ -7,9 +8,9 @@ export default function OnboardingLayout({
 }) {
   return (
     <QueryProvider>
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-xl">
-          {children}
+      <div className="flex min-h-dvh items-start justify-center bg-gray-50 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+        <div className="w-full max-w-xl min-w-0">
+          <OnboardingCreditGate>{children}</OnboardingCreditGate>
         </div>
       </div>
     </QueryProvider>

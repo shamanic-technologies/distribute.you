@@ -9,14 +9,9 @@ const fetchPath = path.resolve(
 const content = fs.readFileSync(fetchPath, "utf-8");
 
 describe("Performance leaderboard groups by base dynasty name", () => {
-  it("defines exactly 3 base groups", () => {
+  it("defines exactly 1 base group (sales cold email only — other channels stay alpha)", () => {
     const groupMatches = content.match(/label:\s*"[^"]+"/g);
-    expect(groupMatches).toHaveLength(3);
-  });
-
-  it("includes Hiring Cold Email Outreach group", () => {
-    expect(content).toContain('"Hiring Cold Email Outreach"');
-    expect(content).toContain('"hiring-cold-email-outreach"');
+    expect(groupMatches).toHaveLength(1);
   });
 
   it("includes Sales Cold Email Outreach group", () => {
@@ -24,11 +19,9 @@ describe("Performance leaderboard groups by base dynasty name", () => {
     expect(content).toContain('"sales-cold-email-outreach"');
   });
 
-  it("includes PR Cold Email Outreach group merging sophia and berlin", () => {
-    expect(content).toContain('"PR Cold Email Outreach"');
-    expect(content).toContain('"pr-cold-email-outreach"');
-    expect(content).toContain('"pr-cold-email-outreach-sophia"');
-    expect(content).toContain('"pr-cold-email-outreach-berlin"');
+  it("does NOT surface non-GA channels (hiring / PR) on the public leaderboard", () => {
+    expect(content).not.toContain('"Hiring Cold Email Outreach"');
+    expect(content).not.toContain('"PR Cold Email Outreach"');
   });
 
   it("filters features through resolveBaseGroup before fetching", () => {

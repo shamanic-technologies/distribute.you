@@ -1,5 +1,7 @@
 "use client";
 
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -11,6 +13,8 @@ import {
   type ArticleDiscoveryItem,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { DashboardPage } from "@/components/dashboard-page";
 
 function getArticleTitle(item: ArticleDiscoveryItem): string {
   return item.article.ogTitle || item.article.twitterTitle || item.article.snippet?.slice(0, 80) || "Untitled";
@@ -33,21 +37,22 @@ function formatDate(dateStr: string | null): string {
   }
 }
 
-export default function BrandArticlesPage() {
+export default function FeatureArticlesPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = useSoleFeatureSlug();
   const [selected, setSelected] = useState<ArticleDiscoveryItem | null>(null);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useAuthQuery(
-    ["brandArticles", brandId],
-    () => listBrandArticles(brandId),
+  const { data, isPending } = useAuthQuery(
+    ["brandArticles", brandId, featureSlug],
+    () => listBrandArticles(brandId, featureSlug),
     { refetchInterval: POLL_INTERVAL },
   );
 
   const { data: outletsData } = useAuthQuery(
-    ["brandOutlets", brandId],
-    () => listBrandOutlets(brandId),
+    ["brandOutlets", brandId, featureSlug],
+    () => listBrandOutlets(brandId, featureSlug),
   );
 
   const { data: journalistsData } = useAuthQuery(
@@ -95,16 +100,16 @@ export default function BrandArticlesPage() {
     });
   }, [sorted, search, outletMap, journalistMap]);
 
-  if (isLoading && !data) {
+  if (isPending && !data) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="wide">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-32 bg-gray-200 rounded" />
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-16 bg-gray-100 rounded-xl" />
           ))}
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
@@ -112,6 +117,7 @@ export default function BrandArticlesPage() {
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Article List */}
       <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Articles

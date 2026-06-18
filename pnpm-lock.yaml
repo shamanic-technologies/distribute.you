@@ -20,21 +20,72 @@ importers:
 
   apps/admin:
     dependencies:
+      '@ai-sdk/react':
+        specifier: ^3.0.118
+        version: 3.0.118(react@19.2.4)(zod@4.3.6)
       '@clerk/nextjs':
         specifier: ^7.0.7
         version: 7.0.7(next@16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tanstack/react-table':
-        specifier: ^8.21.3
-        version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@heroicons/react':
+        specifier: ^2.1.0
+        version: 2.2.0(react@19.2.4)
+      '@tailwindcss/postcss':
+        specifier: ^4
+        version: 4.2.2
+      '@tailwindcss/typography':
+        specifier: ^0.5.19
+        version: 0.5.19(tailwindcss@4.2.2)
+      '@tanstack/query-sync-storage-persister':
+        specifier: ^5.100.14
+        version: 5.100.14
+      '@tanstack/react-query':
+        specifier: ^5.100.14
+        version: 5.100.14(react@19.2.4)
+      '@tanstack/react-query-persist-client':
+        specifier: ^5.100.14
+        version: 5.100.14(@tanstack/react-query@5.100.14(react@19.2.4))(react@19.2.4)
+      ai:
+        specifier: ^6.0.116
+        version: 6.0.116(zod@4.3.6)
+      canvas-confetti:
+        specifier: ^1.9.4
+        version: 1.9.4
+      isomorphic-dompurify:
+        specifier: ^3.12.0
+        version: 3.12.0
+      lottie-react:
+        specifier: ^2.4.1
+        version: 2.4.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      mermaid:
+        specifier: ^11.13.0
+        version: 11.13.0
       next:
         specifier: ^16.2.1
         version: 16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      posthog-js:
+        specifier: ^1.386.6
+        version: 1.386.6
       react:
         specifier: ^19.2.4
         version: 19.2.4
       react-dom:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
+      react-markdown:
+        specifier: ^10.1.0
+        version: 10.1.0(@types/react@19.2.14)(react@19.2.4)
+      react-useanimations:
+        specifier: ^2.10.0
+        version: 2.10.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      recharts:
+        specifier: ^3.8.1
+        version: 3.8.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.6)(react@19.2.4)(redux@5.0.1)
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@clerk/testing':
         specifier: ^1.5.1
@@ -42,9 +93,9 @@ importers:
       '@playwright/test':
         specifier: ^1.52.0
         version: 1.59.1
-      '@tailwindcss/postcss':
-        specifier: ^4
-        version: 4.2.2
+      '@types/canvas-confetti':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.30
@@ -61,8 +112,33 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
       vitest:
-        specifier: ^4.1.5
+        specifier: ^4.0.18
         version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(jsdom@29.1.1)(vite@7.3.1(@types/node@20.19.30)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.2))
+
+  apps/app:
+    dependencies:
+      next:
+        specifier: ^16.2.1
+        version: 16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.30
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
 
   apps/dashboard:
     dependencies:
@@ -109,8 +185,8 @@ importers:
         specifier: ^16.2.1
         version: 16.2.1(@opentelemetry/api@1.9.0)(@playwright/test@1.59.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       posthog-js:
-        specifier: ^1.372.6
-        version: 1.372.6
+        specifier: ^1.386.6
+        version: 1.386.6
       react:
         specifier: ^19.2.4
         version: 19.2.4
@@ -1263,8 +1339,14 @@ packages:
   '@posthog/core@1.28.0':
     resolution: {integrity: sha512-753giUMWuk602UtS101tDZuNcwiKkr+3UEhLgfOwHAk2W32n53knOxAjyWT0JwMq5/+0uSQ2y4uaZXQAxwvBSw==}
 
+  '@posthog/core@1.32.3':
+    resolution: {integrity: sha512-vwOEMfZvGv5XxNWV7p9I52NSmvFNMhyW2IHpIoUHW5jLkgUrknzJW1H/qxVGSIrNNVQkfsoaDFzDhJdg10pgrA==}
+
   '@posthog/types@1.372.6':
     resolution: {integrity: sha512-sqI36LBvuo8xcYsXIlVa0q3IXJJjqtatM2LrXlyOM7kgHrldBwS4ldzaTXrTdpe/TiIl1b4ZHxtSHMzPig+DnQ==}
+
+  '@posthog/types@1.386.3':
+    resolution: {integrity: sha512-LqJoiQi2eyWn7rCUgnn+D+F3Efp6+04o72bjSX6kWHx0nFaYNC/nJuAIRliDTY/X7GPIUAaHAcSjbMI/9wfX1Q==}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -1559,17 +1641,6 @@ packages:
     resolution: {integrity: sha512-oOr6aRdSFEwWhzxEkD/9ZcItM3+LjBSkeVmadWKwUssAHTsqd/7bOjWrX4AbvEkoEhgAxzN0Xk6H/aYzXiYBAw==}
     peerDependencies:
       react: ^18 || ^19
-
-  '@tanstack/react-table@8.21.3':
-    resolution: {integrity: sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@tanstack/table-core@8.21.3':
-    resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
-    engines: {node: '>=12'}
 
   '@types/canvas-confetti@1.9.0':
     resolution: {integrity: sha512-aBGj/dULrimR1XDZLtG9JwxX1b4HPRF6CX9Yfwh3NvstZEm1ZL7RBnel4keCPSqs1ANRu1u2Aoz9R+VmtjYuTg==}
@@ -3149,6 +3220,9 @@ packages:
 
   posthog-js@1.372.6:
     resolution: {integrity: sha512-+Fy9fwWni5WDKQXiUBIzFvdmnZSR6OBxGC/4wj09JvvK5JE4dhI9ZlKO1+b887PowjeAx0sx1Tf+S1eAjDvzqg==}
+
+  posthog-js@1.386.6:
+    resolution: {integrity: sha512-xRcbToRtU07Ojk+VaCCos6I/zD60sNKfWxdeZih0xbncgegIqLZJmBzi4HdkSkXrf14b6HhwMI/s2GxWha5ADQ==}
 
   preact@10.29.1:
     resolution: {integrity: sha512-gQCLc/vWroE8lIpleXtdJhTFDogTdZG9AjMUpVkDf2iTCNwYNWA+u16dL41TqUDJO4gm2IgrcMv3uTpjd4Pwmg==}
@@ -4776,7 +4850,13 @@ snapshots:
     dependencies:
       '@posthog/types': 1.372.6
 
+  '@posthog/core@1.32.3':
+    dependencies:
+      '@posthog/types': 1.386.3
+
   '@posthog/types@1.372.6': {}
+
+  '@posthog/types@1.386.3': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 
@@ -5000,14 +5080,6 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.100.14
       react: 19.2.4
-
-  '@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@tanstack/table-core': 8.21.3
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-
-  '@tanstack/table-core@8.21.3': {}
 
   '@types/canvas-confetti@1.9.0': {}
 
@@ -7000,6 +7072,17 @@ snapshots:
       '@posthog/types': 1.372.6
       core-js: 3.49.0
       dompurify: 3.3.3
+      fflate: 0.4.8
+      preact: 10.29.1
+      query-selector-shadow-dom: 1.0.1
+      web-vitals: 5.2.0
+
+  posthog-js@1.386.6:
+    dependencies:
+      '@posthog/core': 1.32.3
+      '@posthog/types': 1.386.3
+      core-js: 3.49.0
+      dompurify: 3.4.2
       fflate: 0.4.8
       preact: 10.29.1
       query-selector-shadow-dom: 1.0.1

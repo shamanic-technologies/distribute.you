@@ -5,6 +5,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
 import { PROD_URLS } from "@/lib/env-urls";
+import { DEFAULT_OG_IMAGE_PATH, TWITTER_HANDLE } from "@/lib/seo";
 import { listArticles, type BlogArticle } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -22,6 +23,15 @@ export const metadata: Metadata = {
     title: "Blog — Stories from the Solo Path",
     description:
       "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
+    images: [{ url: DEFAULT_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute Blog" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog — Stories from the Solo Path",
+    description:
+      "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
+    images: [DEFAULT_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
 };
 
@@ -166,18 +176,18 @@ export default async function BlogIndexPage() {
   const articles = await fetchArticles();
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="dy-page">
       <Navbar />
 
-      <Section variant="prose" outerClassName="pt-20 pb-12" className="text-center">
-        <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
+      <Section variant="prose" outerClassName="dy-section" className="text-center">
+        <div className="dy-eyebrow mb-6">
+          <span className="dy-dot" />
           distribute blog
         </div>
-        <h1 className="font-display text-4xl md:text-5xl font-bold mb-4 text-gray-900 tracking-tight">
+        <h1 className="dy-title mb-4 text-4xl md:text-5xl">
           Stories from the solo path
         </h1>
-        <p className="text-base md:text-lg text-gray-500 max-w-xl mx-auto">
+        <p className="dy-body mx-auto max-w-xl text-base md:text-lg">
           Playbooks, benchmarks, and field notes on running distribution for a
           portfolio of products — without a marketing team.
         </p>

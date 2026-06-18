@@ -6,6 +6,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { listBrandEmails, type Email } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { EmailSignature } from "@/components/email-signature";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { DashboardPage } from "@/components/dashboard-page";
 
 function getEmailBody(email: Email): { html: string | null; text: string | null } {
   if (email.bodyHtml || email.bodyText) {
@@ -87,13 +90,13 @@ function PersonInitials({ firstName, lastName }: { firstName: string; lastName: 
   );
 }
 
-export default function BrandEmailsPage() {
+export default function FeatureEmailsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -111,12 +114,24 @@ export default function BrandEmailsPage() {
     });
   }, [emails, search]);
 
-  const showSkeleton = isLoading && !data;
+  if (isPending && !data) {
+    return (
+      <DashboardPage width="wide">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-32 bg-gray-200 rounded" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+          ))}
+        </div>
+      </DashboardPage>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Email List */}
       <div className={`${selectedEmail ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-center justify-between mb-6">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Emails
@@ -131,13 +146,7 @@ export default function BrandEmailsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, or subject..." resultCount={filteredEmails.length} totalCount={emails.length} />
 
-        {showSkeleton ? (
-          <div className="space-y-2 animate-pulse">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-[76px] bg-gray-100 rounded-xl border border-gray-200" />
-            ))}
-          </div>
-        ) : filteredEmails.length === 0 ? (
+        {filteredEmails.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">{emails.length === 0 ? "No emails yet" : "No matching emails"}</h3>
             <p className="text-gray-600 text-sm">{emails.length === 0 ? "Emails will appear here once campaigns generate them." : "Try a different search term."}</p>
@@ -247,29 +256,29 @@ export default function BrandEmailsPage() {
               <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
                 <p className="font-semibold text-gray-800">{selectedEmail.subject}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  From: {selectedEmail.clientCompanyName || 'Your Company'}
+                  From: distribute.you
                 </p>
               </div>
               <div className="p-4">
                 {(() => {
                   const body = getEmailBody(selectedEmail);
-                  if (body.html) {
-                    return (
-                      <div
-                        className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: body.html }}
-                      />
-                    );
-                  }
-                  if (body.text) {
-                    return (
-                      <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
-                        {body.text}
-                      </pre>
-                    );
-                  }
+                  const hasBody = !!(body.html || body.text);
                   return (
-                    <p className="text-sm text-gray-400 italic">No email body available</p>
+                    <>
+                      {body.html ? (
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: body.html }}
+                        />
+                      ) : body.text ? (
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">
+                          {body.text}
+                        </pre>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No email body available</p>
+                      )}
+                      {hasBody && <EmailSignature className="text-sm text-gray-700" />}
+                    </>
                   );
                 })()}
               </div>

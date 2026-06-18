@@ -11,11 +11,13 @@
   },
   "scripts": {
     "dev": "turbo dev",
+    "dev:app": "pnpm --filter @distribute/app dev",
     "dev:dashboard": "pnpm --filter @distribute/dashboard dev",
     "dev:docs": "pnpm --filter @distribute/docs dev",
     "dev:landing": "pnpm --filter @distribute/landing dev",
 "dev:sales-cold-emails-landing": "pnpm --filter @distribute/sales-cold-emails-landing dev",
     "build": "turbo build",
+    "build:app": "pnpm --filter @distribute/app build",
     "build:dashboard": "pnpm --filter @distribute/dashboard build",
     "build:docs": "pnpm --filter @distribute/docs build",
     "build:landing": "pnpm --filter @distribute/landing build",

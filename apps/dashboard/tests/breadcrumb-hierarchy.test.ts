@@ -23,12 +23,14 @@ describe("Breadcrumb hierarchy", () => {
     expect(content).toContain("/onboarding");
   });
 
-  it("should parse org/brand/feature/campaign from path structure", () => {
+  it("should parse org/brand from path structure", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
     expect(content).toContain('"orgs"');
     expect(content).toContain('"brands"');
-    expect(content).toContain('"features"');
-    expect(content).toContain('"campaigns"');
+    // The campaign switcher was removed with the campaign concept; the app-level
+    // feature switcher (`"features"` path) was removed in the #1768 follow-up.
+    expect(content).not.toContain('"campaigns"');
+    expect(content).not.toContain('"features"');
   });
 
   it("should use /orgs/ path prefix for brand links", () => {
@@ -38,7 +40,7 @@ describe("Breadcrumb hierarchy", () => {
 
   it("should use features instead of workflows in paths", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
-    expect(content).toContain("/features/${featureSlug}");
+    expect(content).toContain("");
     expect(content).not.toContain('href={`/brands/');
   });
 });

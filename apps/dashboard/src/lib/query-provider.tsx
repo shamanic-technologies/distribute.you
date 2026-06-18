@@ -7,13 +7,14 @@ import {
 } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { useOrganization } from "@clerk/nextjs";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PERSIST_MAX_AGE_MS,
   cacheBuildId,
   persisterStorageKey,
   shouldPersistQuery,
 } from "@/lib/persist-cache";
+import { installIdleFocusManager } from "@/lib/idle-focus-manager";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -101,6 +102,12 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   const { organization } = useOrganization();
   const orgId = organization?.id ?? null;
 
+  // Pause all interval polling when the tab is hidden OR the user is idle.
+  // Installed once on the global focusManager (singleton) — survives org-switch
+  // remounts of the inner provider. Stops the continuous DOM churn that feeds
+  // PostHog's rrweb recorder and OOMs long-lived tabs. See idle-focus-manager.ts.
+  useEffect(() => installIdleFocusManager(), []);
+
   // Atomically reset the ENTIRE React Query cache — in-memory AND the active
   // persister — on org switch by remounting under a new `key` (TanStack canonical
   // multi-tenant pattern). New mount => new QueryClient (empty in-memory) + a
@@ -113,10 +120,23 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   // NOTE: this remounts the whole authed subtree on switch, so org-change navigation
   // lives in `OrgCacheInvalidator`, mounted ABOVE this provider (it must survive the
   // remount to fire its `router.push`).
-  const orgKey = orgId ?? "no-org";
+  // Monotonic org latch for the remount `key`. Clerk's `useOrganization()` blinks
+  // `organization: null` transiently during background JWT rotation (~1/min) and on
+  // tab focus/reconnect (CLAUDE.md "Readiness gates MUST be monotonic — never blank a
+  // mounted subtree on a transient auth-loading flip"). A raw `orgId ?? "no-org"` key
+  // flips realId→"no-org"→realId on every blink, remounting OrgScopedQueryClientProvider
+  // = a brand-new EMPTY QueryClient. Persisted queries rehydrate from disk silently, but
+  // non-persisted big lists (brandLeads, emails, …) cold-reload → their page re-shows a
+  // full skeleton on every blink. So advance the key ONLY when a resolved org id is
+  // present; a null blink keeps the last id. A real switch to a DIFFERENT org still
+  // changes the id → remount + fresh per-org persister, preserving DIS-143 isolation.
+  const lastOrgId = useRef<string | null>(null);
+  if (orgId) lastOrgId.current = orgId;
+  const stableOrgId = lastOrgId.current;
+  const orgKey = stableOrgId ?? "no-org";
 
   return (
-    <OrgScopedQueryClientProvider key={orgKey} orgId={orgId}>
+    <OrgScopedQueryClientProvider key={orgKey} orgId={stableOrgId}>
       {children}
     </OrgScopedQueryClientProvider>
   );

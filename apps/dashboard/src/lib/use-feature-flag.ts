@@ -1,27 +1,17 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import posthog from "posthog-js";
-
 /**
- * Whether a PostHog feature flag is enabled for the current viewer.
+ * Alpha/beta surfaces are DISABLED in the dashboard app.
  *
- * Default-hidden: returns `false` until PostHog has loaded flags, so a gated
- * surface NEVER flashes for a non-staff viewer during the async flag fetch.
- * Re-renders whenever PostHog (re)loads flags — including after
- * `posthog.identify(...)` in `PostHogAuthTracker`, which is what makes
- * email-targeted (staff-only) flags resolve once the user is known.
+ * As of the admin/dashboard split (2026-06-14), every maturity-gated
+ * (alpha/beta) feature lives ONLY in the admin app (admin.distribute.you).
+ * The public dashboard is GA-only: every alpha/beta surface gates through this
+ * hook, so returning `false` unconditionally hard-removes them for everyone
+ * (staff included) without touching each call site. GA features carry no flag
+ * and are unaffected.
+ *
+ * The admin copy of this file keeps the real PostHog-driven implementation, so
+ * staff still see alpha/beta there. To bring a feature to the public dashboard,
+ * graduate it to GA (drop its gate), not by re-enabling this hook.
  */
-export function useFeatureFlag(key: string): boolean {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const update = () => setEnabled(posthog.isFeatureEnabled(key) === true);
-    update();
-    // `onFeatureFlags` returns an unsubscribe fn in current posthog-js; if an
-    // older build returns void, returning it from the effect is a harmless no-op.
-    return posthog.onFeatureFlags(update);
-  }, [key]);
-
-  return enabled;
+export function useFeatureFlag(_flag: string): boolean {
+  return false;
 }

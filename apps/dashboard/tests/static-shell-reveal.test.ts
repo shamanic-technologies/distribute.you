@@ -12,21 +12,17 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
  * content". See CLAUDE.md → "Static-shell-first reveal".
  */
 describe("static-shell-first: cards accept `pending` and skeleton only values", () => {
+  // The campaign/* cards (funnel-metrics, reply-breakdown, cost-breakdown,
+  // campaign-cost-distribution, leads-stats-panel) were removed with the campaign
+  // concept; the surviving static-shell cards are listed below.
   const cards = [
     "components/revenue/revenue-cost-summary.tsx",
     "components/revenue/revenue-overview-section.tsx",
-    "components/campaign/funnel-metrics.tsx",
-    "components/campaign/reply-breakdown.tsx",
-    "components/campaign/cost-breakdown.tsx",
-    "components/campaign/campaign-cost-distribution.tsx",
-    "components/campaign/leads-stats-panel.tsx",
     "components/brand-metrics-header.tsx",
     "components/visibility/score-card.tsx",
     "components/visibility/visibility-runs-view.tsx",
     "components/visibility/visibility-competitors-view.tsx",
     "components/visibility/visibility-prompts-view.tsx",
-    "components/brand-usage.tsx",
-    "components/org-usage.tsx",
   ];
 
   it("every refactored card threads a pending/reveal flag and renders a Skeleton for values", () => {
@@ -46,33 +42,43 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
     expect(src).toContain('title="Est. monthly revenue"');
     expect(src).toContain('title="AI mentions"');
     // The skeleton now lives INSIDE the card (value region), not as a whole-card
-    // early return — the title/frame paint before the value resolves.
-    expect(src).toMatch(/!revealed \?/);
+    // early return — the title/frame paint before the value resolves. Each card
+    // reveals on its OWN source via a per-card latch (a slow metric never holds
+    // the others in skeleton), so there is no single shared `revealed` gate.
+    expect(src).toContain("trafficRevealed");
+    expect(src).toContain("drRevealed");
+    expect(src).toContain("aiVisRevealed");
+    expect(src).toMatch(/!trafficRevealed \?/);
   });
 
   it("RevenueCostSummary renders its labels outside the pending gate", () => {
     const src = read("components/revenue/revenue-cost-summary.tsx");
     // Labels are static text; values swap to Skeleton when pending.
     expect(src).toContain("Total spent");
-    expect(src).toContain("Cost of acquisition");
-    expect(src).toMatch(/pending \? \(\s*<Skeleton/);
+    expect(src).toContain("Top cost sources");
+    expect(src).toMatch(/totalSpentPending \? \(\s*<Skeleton/);
   });
 });
 
 describe("static-shell-first: pages pass `pending`, not a whole-body skeleton swap", () => {
-  const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]";
+  // Feature routes were flattened up to the brand level (single-feature product);
+  // the brand root page IS the overview now.
+  const APP = "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]";
 
-  it("feature overview renders the section always with pending (no CoordinatedReveal whole-body wrap)", () => {
-    const overview = read(`${APP}/overview/page.tsx`);
+  it("feature overview reveals each card on its OWN data (per-card barriers, no single AND gate)", () => {
+    const overview = read(`${APP}/page.tsx`);
     expect(overview).toContain("RevenueOverviewSection");
-    expect(overview).toContain("pending={!valuesRevealed}");
+    // Revenue data (features-service) and Total-spent (runs-service) resolve on
+    // different cold chains → separate latches, so the fast cost card never waits
+    // on the slower revenue call. No single `valuesRevealed` AND of both queries.
+    expect(overview).toContain("revenueRevealed");
+    expect(overview).toContain("costRevealed");
+    expect(overview).toContain("revenuePending={!revenueRevealed}");
+    expect(overview).toContain("costPending={!costRevealed}");
+    expect(overview).not.toContain("valuesRevealed");
   });
 
-  it("campaigns page renders charts with pending and drops the whole-body skeleton swap", () => {
-    const campaigns = read(`${APP}/campaigns/page.tsx`);
-    expect(campaigns).toContain("pending={!revealed}");
-    // The old separate whole-card skeleton components are no longer imported/used.
-    expect(campaigns).not.toContain("FunnelMetricsSkeleton");
-    expect(campaigns).not.toContain("CostBreakdownSkeleton");
-  });
+  // The campaigns LIST page was removed with the campaign concept; the brand
+  // overview block above is the surviving per-card-barrier guard.
+
 });

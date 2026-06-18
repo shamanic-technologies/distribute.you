@@ -9,8 +9,8 @@ import * as path from "path";
  * Since Clerk's `isLoaded` is false during initialization, the button appeared to be loading
  * before the user ever clicked it — making it look broken/unclickable.
  *
- * Fix: Only show the spinner when `loading` is true (user clicked the button).
- * The `!isLoaded` check in the click handler already prevents premature auth attempts.
+ * Fix: Only show the spinner when `loading` is true (user clicked the button),
+ * then let the redirect effect wait for Clerk to finish loading.
  */
 describe("Google auth button should not spinner on initial load", () => {
   const signInPath = path.join(
@@ -32,5 +32,23 @@ describe("Google auth button should not spinner on initial load", () => {
   it("sign-up button should only show spinner based on loading state, not isLoaded", () => {
     expect(signUpContent).not.toMatch(/!isLoaded.*\?\s*\(/);
     expect(signUpContent).toContain("{loading ? (");
+  });
+
+  it("sign-in click should show loading immediately before Clerk is ready", () => {
+    expect(signInContent).toMatch(
+      /const handleGoogleSignIn = \(\) => \{[\s\S]*?if \(loading \|\| isSignedIn\) return;[\s\S]*?setLoading\(true\);/
+    );
+    expect(signInContent).toContain(
+      "!loading ||\n      !isLoaded ||\n      isSignedIn ||\n      !signIn ||"
+    );
+  });
+
+  it("sign-up click should show loading immediately before Clerk is ready", () => {
+    expect(signUpContent).toMatch(
+      /const handleGoogleSignUp = \(\) => \{[\s\S]*?if \(loading \|\| isSignedIn\) return;[\s\S]*?setLoading\(true\);/
+    );
+    expect(signUpContent).toContain(
+      "!loading ||\n      !isLoaded ||\n      isSignedIn ||\n      !signUp ||"
+    );
   });
 });

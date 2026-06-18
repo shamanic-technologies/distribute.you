@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, extractBrandFields, listExtractedFields, SALES_PROFILE_FIELDS, listBrandRuns, type BrandRun, type RunCost } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 
 /** Check if a field value has meaningful content */
 function hasContent(value: unknown): boolean {
@@ -19,15 +20,15 @@ function hasContent(value: unknown): boolean {
 /** Render any field value as React nodes */
 function FieldValue({ value }: { value: unknown }) {
   if (value == null) return null;
-  if (typeof value === "string") return <p className="text-gray-700 whitespace-pre-line">{value}</p>;
-  if (typeof value === "number" || typeof value === "boolean") return <p className="text-gray-700">{String(value)}</p>;
+  if (typeof value === "string") return <p className="whitespace-pre-line break-words text-gray-700">{value}</p>;
+  if (typeof value === "number" || typeof value === "boolean") return <p className="break-words text-gray-700">{String(value)}</p>;
   if (Array.isArray(value)) {
     return (
       <ul className="space-y-1">
         {value.filter(hasContent).map((item, i) => (
           <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
             <span className="text-brand-500 mt-1">-</span>
-            {typeof item === "object" && item !== null ? <FieldValue value={item} /> : <span>{String(item)}</span>}
+            {typeof item === "object" && item !== null ? <FieldValue value={item} /> : <span className="break-words">{String(item)}</span>}
           </li>
         ))}
       </ul>
@@ -104,7 +105,12 @@ export default function BrandInfoPage() {
   const [selectedRun, setSelectedRun] = useState<BrandRun | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: brandData, isLoading: brandLoading } = useAuthQuery(
+  // isPending (not isLoading): the org-consistency gate suspends these queries
+  // until Clerk's active org resolves; isLoading reads false during that window
+  // though brand/fields are still unresolved, so the skeleton guard below would
+  // fall through to "Brand not found". isPending stays true until each query
+  // resolves, keeping the page on its skeleton through the org-settle window.
+  const { data: brandData, isPending: brandLoading } = useAuthQuery(
     ["brand", brandId],
     () => getBrand(brandId),
     pollOptions,
@@ -112,7 +118,7 @@ export default function BrandInfoPage() {
   const brand = brandData?.brand ?? null;
   const brandName = brand?.name ?? null;
 
-  const { data: fieldsData, error: fieldsError, isLoading: fieldsLoading } = useAuthQuery(
+  const { data: fieldsData, error: fieldsError, isPending: fieldsLoading } = useAuthQuery(
     ["brandExtractedFields", brandId],
     () => listExtractedFields(brandId),
     pollOptions,
@@ -160,30 +166,30 @@ export default function BrandInfoPage() {
 
   if (brandLoading || fieldsLoading) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-48"></div>
           <div className="h-64 bg-gray-200 rounded"></div>
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
   if (!brand) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <p className="text-gray-500">Brand not found</p>
-      </div>
+      </DashboardPage>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">Error: {error}</p>
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
@@ -199,12 +205,12 @@ export default function BrandInfoPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+    <DashboardPage width="standard">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Brand Info</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
           {latestExtractedAt && (
-            <div className="text-right">
+            <div className="sm:text-right">
               <span className="text-xs text-gray-400 block">
                 Updated: {new Date(latestExtractedAt).toLocaleDateString()}
               </span>
@@ -217,7 +223,7 @@ export default function BrandInfoPage() {
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               {generating ? (hasFields ? "Regenerating..." : "Generating...") : (hasFields ? "Regenerate" : "Generate")}
             </button>
@@ -226,19 +232,19 @@ export default function BrandInfoPage() {
       </div>
 
       {generateError && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-2 rounded-lg border border-red-200 bg-red-50 p-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-red-600">{generateError}</p>
-          <button onClick={() => setGenerateError(null)} className="text-red-400 hover:text-red-600 text-sm ml-4">
+          <button onClick={() => setGenerateError(null)} className="self-start text-sm text-red-400 hover:text-red-600 sm:ml-4">
             Dismiss
           </button>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-gray-200">
         <button
           onClick={() => setActiveTab("current")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+          className={`whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === "current"
               ? "border-brand-600 text-brand-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
@@ -248,7 +254,7 @@ export default function BrandInfoPage() {
         </button>
         <button
           onClick={() => setActiveTab("history")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
+          className={`whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === "history"
               ? "border-brand-600 text-brand-600"
               : "border-transparent text-gray-500 hover:text-gray-700"
@@ -330,7 +336,7 @@ export default function BrandInfoPage() {
                     onClick={() => setSelectedRun(run)}
                     className="w-full text-left bg-white rounded-lg border border-gray-200 p-4 hover:border-brand-300 hover:shadow-sm transition cursor-pointer"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-3 min-w-0">
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 ${
@@ -355,7 +361,7 @@ export default function BrandInfoPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:ml-3 sm:shrink-0">
                         {formatCost(run.totalCostInUsdCents) && (
                           <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
                             {formatCost(run.totalCostInUsdCents)}
@@ -444,15 +450,15 @@ export default function BrandInfoPage() {
                   <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cost Breakdown</h3>
                   <div className="space-y-1">
                     {selectedRun.costs.map((cost, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{cost.costName}</span>
+                      <div key={i} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="min-w-0 truncate text-gray-600">{cost.costName}</span>
                         <span className="text-gray-800 font-mono text-xs">
                           {formatCost(cost.totalCostInUsdCents) ?? "-"}
                         </span>
                       </div>
                     ))}
                     {formatCost(selectedRun.totalCostInUsdCents) && (
-                      <div className="flex items-center justify-between text-sm pt-1 border-t border-gray-100">
+                      <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-1 text-sm">
                         <span className="text-gray-700 font-medium">Total</span>
                         <span className="text-gray-900 font-medium font-mono text-xs">
                           {formatCost(selectedRun.totalCostInUsdCents)}
@@ -514,6 +520,6 @@ export default function BrandInfoPage() {
           </div>
         </>
       )}
-    </div>
+    </DashboardPage>
   );
 }

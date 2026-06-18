@@ -1,0 +1,200 @@
+import { describe, expect, it } from "vitest";
+import {
+  selectWorkflowForOptimizationGoal,
+  workflowProjectionMatchesOutcomeRates,
+  workflowOutcomeUnitCost,
+} from "../src/lib/workflow-projection-choice";
+import type { WorkflowProjectionItem, WorkflowProjectionResponse } from "../src/lib/api";
+
+function workflow(
+  slug: string,
+  projection: Partial<NonNullable<WorkflowProjectionItem["projection"]>>,
+  costs: Partial<
+    Pick<
+      WorkflowProjectionItem,
+      "replyUsd" | "clickUsd" | "contactedUsd" | "costPerSignupUsd" | "costPerMeetingBookedUsd"
+    >
+  > = {},
+): WorkflowProjectionItem {
+  return {
+    workflowDynastySlug: slug,
+    workflowDynastyName: slug,
+    contactedUsd: costs.contactedUsd ?? null,
+    replyUsd: costs.replyUsd ?? null,
+    clickUsd: costs.clickUsd ?? null,
+    costPerSignupUsd: costs.costPerSignupUsd,
+    costPerCloseUsd: null,
+    costPerMeetingBookedUsd: costs.costPerMeetingBookedUsd,
+    projection: {
+      contactedLeads: null,
+      replies: null,
+      visits: null,
+      meetings: null,
+      closes: 0,
+      revenue: 0,
+      cacPct: null,
+      cacAbs: null,
+      ...projection,
+    },
+  };
+}
+
+function response(
+  recommendedWorkflowDynastySlug: string,
+  workflows: WorkflowProjectionItem[],
+): WorkflowProjectionResponse {
+  return {
+    featureSlug: "sales-cold-email-outreach",
+    objective: "meeting-booked",
+    recommendedWorkflowDynastySlug,
+    recommendedBudgetUsd: 10,
+    workflows,
+  };
+}
+
+describe("workflow projection choice", () => {
+  it("selects the cheapest meeting workflow even when backend recommended a click workflow", () => {
+    const pelican = workflow("sales-cold-email-outreach-pelican", {
+      meetings: 100 / 682,
+      visits: 100 / 2.05,
+    }, { clickUsd: 2.05 });
+    const permafrost = workflow("sales-cold-email-outreach-permafrost", {
+      meetings: 100 / 230,
+      visits: null,
+    }, { replyUsd: 69 });
+
+    const selected = selectWorkflowForOptimizationGoal(
+      response(pelican.workflowDynastySlug, [pelican, permafrost]),
+      "sales_meetings",
+      { replyToMeetingPct: 30, visitToMeetingPct: 0.3 },
+    );
+
+    expect(selected?.workflowDynastySlug).toBe(permafrost.workflowDynastySlug);
+    expect(
+      workflowOutcomeUnitCost(selected!, "sales_meetings", {
+        replyToMeetingPct: 30,
+        visitToMeetingPct: 0.3,
+      }),
+    ).toBeCloseTo(230, 6);
+  });
+
+  it("uses live meeting rates instead of stale projection meetings when unit costs are available", () => {
+    const stalePelican = workflow("sales-cold-email-outreach-pelican", {
+      meetings: 1,
+      visits: 100 / 2.05,
+    }, { clickUsd: 2.05 });
+    const permafrost = workflow("sales-cold-email-outreach-permafrost", {
+      meetings: 0.1,
+      visits: null,
+    }, { replyUsd: 70 });
+
+    const selected = selectWorkflowForOptimizationGoal(
+      response(stalePelican.workflowDynastySlug, [stalePelican, permafrost]),
+      "sales_meetings",
+      { replyToMeetingPct: 30, visitToMeetingPct: 0.3 },
+    );
+
+    expect(selected?.workflowDynastySlug).toBe(permafrost.workflowDynastySlug);
+    expect(
+      workflowOutcomeUnitCost(stalePelican, "sales_meetings", {
+        replyToMeetingPct: 30,
+        visitToMeetingPct: 0.3,
+      }),
+    ).toBeCloseTo(683.333, 3);
+  });
+
+  it("prefers backend outcome unit costs over projection-derived meeting counts", () => {
+    const stalePelican = workflow(
+      "sales-cold-email-outreach-pelican",
+      { meetings: 1, visits: 100 / 2.05 },
+      { clickUsd: 2.05, costPerMeetingBookedUsd: 682.22 },
+    );
+    const permafrost = workflow(
+      "sales-cold-email-outreach-permafrost",
+      { meetings: 0.1, visits: null },
+      { replyUsd: 70, costPerMeetingBookedUsd: 230 },
+    );
+
+    const selected = selectWorkflowForOptimizationGoal(
+      response(stalePelican.workflowDynastySlug, [stalePelican, permafrost]),
+      "sales_meetings",
+      { replyToMeetingPct: 30, visitToMeetingPct: 0.3 },
+    );
+
+    expect(selected?.workflowDynastySlug).toBe(permafrost.workflowDynastySlug);
+    expect(
+      workflowOutcomeUnitCost(stalePelican, "sales_meetings", {
+        replyToMeetingPct: 30,
+        visitToMeetingPct: 0.3,
+      }),
+    ).toBeCloseTo(682.22, 6);
+  });
+
+  it("selects the cheapest signup workflow using visit-to-signup conversion", () => {
+    const highVisitCost = workflow("high-visit-cost", { visits: 10 }, { clickUsd: 10 });
+    const lowVisitCost = workflow("low-visit-cost", { visits: 50 }, { clickUsd: 2 });
+
+    const selected = selectWorkflowForOptimizationGoal(
+      response(highVisitCost.workflowDynastySlug, [highVisitCost, lowVisitCost]),
+      "signups",
+      { visitToSignupPct: 5 },
+    );
+
+    expect(selected?.workflowDynastySlug).toBe(lowVisitCost.workflowDynastySlug);
+    expect(workflowOutcomeUnitCost(selected!, "signups", { visitToSignupPct: 5 })).toBe(40);
+  });
+
+  it("falls back to the backend recommendation when no workflow has usable outcome cost", () => {
+    const recommended = workflow("recommended", { meetings: null, visits: null });
+    const other = workflow("other", { meetings: null, visits: null });
+
+    const selected = selectWorkflowForOptimizationGoal(
+      response(recommended.workflowDynastySlug, [other, recommended]),
+      "sales_meetings",
+    );
+
+    expect(selected?.workflowDynastySlug).toBe(recommended.workflowDynastySlug);
+  });
+
+  it("uses the projection budget when calculating absolute unit cost", () => {
+    const selected = workflow("scaled", { meetings: 10 });
+
+    expect(
+      workflowOutcomeUnitCost(selected, "sales_meetings", { projectionBudgetUsd: 500 }),
+    ).toBe(50);
+  });
+
+  it("detects a stale backend meeting cost that does not match the just-saved rates", () => {
+    const proj = response("sales-cold-email-outreach-pelican", [
+      workflow(
+        "sales-cold-email-outreach-pelican",
+        { visits: 100 / 2.05 },
+        { clickUsd: 2.05, costPerMeetingBookedUsd: 230 },
+      ),
+    ]);
+
+    expect(
+      workflowProjectionMatchesOutcomeRates(proj, "sales_meetings", {
+        replyToMeetingPct: 30,
+        visitToMeetingPct: 0.3,
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts backend meeting costs that match the just-saved rates", () => {
+    const proj = response("sales-cold-email-outreach-pelican", [
+      workflow(
+        "sales-cold-email-outreach-pelican",
+        { visits: 100 / 2.05 },
+        { clickUsd: 2.05, costPerMeetingBookedUsd: 2.05 / 0.003 },
+      ),
+    ]);
+
+    expect(
+      workflowProjectionMatchesOutcomeRates(proj, "sales_meetings", {
+        replyToMeetingPct: 30,
+        visitToMeetingPct: 0.3,
+      }),
+    ).toBe(true);
+  });
+});

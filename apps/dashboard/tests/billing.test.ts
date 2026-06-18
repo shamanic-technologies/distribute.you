@@ -8,8 +8,6 @@ const billingPagePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)
 const billingGuardPath = path.resolve(__dirname, "../src/lib/billing-guard.tsx");
 const layoutPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/layout.tsx");
 const sidebarPath = path.resolve(__dirname, "../src/components/context-sidebar.tsx");
-const campaignNewOrgPath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx");
-const campaignNewFeaturePath = path.resolve(__dirname, "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx");
 
 describe("Billing API wrappers", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -79,6 +77,14 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("topup_amount_cents: number");
   });
 
+  it("should export setupBillingWallet for first-load match wallet setup", () => {
+    expect(content).toContain("export async function setupBillingWallet");
+    expect(content).toContain("/billing/accounts/wallet_setup");
+    expect(content).toContain("initial_load_amount_cents: number");
+    expect(content).toContain("first_load_match_applied: boolean");
+    expect(content).toContain("first_load_match_cents: string");
+  });
+
   it("should export createPortalSession function", () => {
     expect(content).toContain("export async function createPortalSession");
     expect(content).toContain("/billing/portal-sessions");
@@ -90,13 +96,14 @@ describe("Billing API wrappers", () => {
   });
 
   // BillingAccount response shape — billing-service post-rename hotfix.
-  // balance_cents = spendable, credited_cents = lifetime credited, usage_cents unchanged.
+  // balance_cents = spendable, actual_balance_cents = user-facing actual-only credit balance.
   it("should expose BillingAccount fields in snake_case (post-rename wire shape)", () => {
     expect(content).toContain("id: string");
     expect(content).toContain("org_id: string");
     expect(content).toContain("credited_cents: string");
     expect(content).toContain("usage_cents: string");
     expect(content).toContain("balance_cents: string");
+    expect(content).toContain("actual_balance_cents?: string");
     expect(content).toContain("topup_amount_cents: number | null");
     expect(content).toContain("topup_threshold_cents: number | null");
     expect(content).toContain("has_payment_method: boolean");
@@ -117,11 +124,6 @@ describe("Billing API wrappers", () => {
     expect(content).not.toContain("reloadAmountCents");
     expect(content).not.toContain("reloadThresholdCents");
     expect(content).not.toContain("creditBalanceCents");
-  });
-
-  it("should export listOrgRuns function for the Runs ledger", () => {
-    expect(content).toContain("export async function listOrgRuns");
-    expect(content).toContain("/runs");
   });
 });
 
@@ -169,7 +171,7 @@ describe("Billing guard provider", () => {
 
   it("should render a modal with insufficient credits message or proactive warning", () => {
     expect(content).toContain("Insufficient Credits");
-    expect(content).toContain("Campaign May Exceed Credits");
+    expect(content).toContain("Keep the wallet funded.");
   });
 
   it("should offer quick top-up amount buttons in the modal", () => {
@@ -239,7 +241,9 @@ describe("Billing page", () => {
     expect(content).not.toContain("disableAutoReload");
   });
 
-  it("should display credit balance via balance_cents (spendable, post-rename)", () => {
+  it("should display credit balance via actual_balance_cents when present", () => {
+    expect(content).toContain("actual_balance_cents");
+    expect(content).toContain("creditBalanceCents");
     expect(content).toContain("balance_cents");
     expect(content).toContain("Credit Balance");
   });
@@ -344,11 +348,6 @@ describe("Billing page", () => {
     expect(content).toContain("createPortalSession");
   });
 
-  it("should render a Runs ledger section", () => {
-    expect(content).toContain("listOrgRuns");
-    expect(content).toContain(">Runs<");
-  });
-
   it("should have loading skeleton state", () => {
     expect(content).toContain("animate-pulse");
     expect(content).toContain("accountLoading");
@@ -391,25 +390,36 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("Minimum top-up is $10.");
   });
 
-  it("should support proactive mode with different title and description", () => {
+  it("should support proactive mode with an inspiring, sell-forward title and description", () => {
     expect(content).toContain("proactive");
-    expect(content).toContain("Campaign May Exceed Credits");
-    expect(content).toContain("campaign budget may exceed your current credit balance");
+    expect(content).toContain("Keep the wallet funded.");
+    expect(content).toContain("Your credits live in an org-level wallet.");
   });
 
-  it("should show recurring-specific copy when balance covers budget (recurring without auto-topup)", () => {
-    expect(content).toContain("Recurring Campaign Needs Auto-Topup");
-    expect(content).toContain("recurring campaign");
-  });
-
-  it("should pick proactive copy branch by comparing balance_cents to required_cents", () => {
-    expect(content).toMatch(/toCentsNumber\(\s*info\.balance_cents\s*\)\s*<\s*toCentsNumber\(\s*info\.required_cents\s*\)/);
+  it("should frame the proactive budget as a brand daily budget cap, not a campaign price", () => {
+    expect(content).toContain("Brand daily budget cap");
+    expect(content).toContain("/ day");
+    expect(content).not.toContain("/ cycle");
+    expect(content).not.toContain("Campaign May Exceed Credits");
+    expect(content).not.toContain("Recurring Campaign Needs Auto-Topup");
   });
 
   it("should allow configuring auto-topup without checkout in proactive mode", () => {
     expect(content).toContain("handleSetupAutoTopupOnly");
-    expect(content).toContain("Enable Auto-Topup & Continue");
+    expect(content).toContain("Turn on auto-top-up");
     expect(content).toContain("onAutoTopupConfigured");
+  });
+
+  it("should center the proactive modal on auto-topup config", () => {
+    // Add Credits presets are hard-block (non-proactive) only.
+    expect(content).toContain("!isProactive");
+    expect(content).toContain("Turn on auto-top-up");
+  });
+
+  it("should use paid top-up checkout when no payment method", () => {
+    expect(content).toContain("topup_amount_cents: effectiveAmountCents");
+    expect(content).not.toContain('mode: "setup"');
+    expect(content).toContain("!account?.has_payment_method");
   });
 
   it("should fetch billing account when modal opens to pre-fill auto-topup config", () => {
@@ -423,87 +433,8 @@ describe("Billing guard auto-topup in modal", () => {
   });
 });
 
-describe("Proactive credit check in campaign creation (org-scoped)", () => {
-  const content = fs.readFileSync(campaignNewOrgPath, "utf-8");
-
-  it("should import getBillingAccount", () => {
-    expect(content).toContain("getBillingAccount");
-  });
-
-  it("should import useBillingGuard", () => {
-    expect(content).toContain("useBillingGuard");
-    expect(content).toContain("showPaymentRequired");
-  });
-
-  it("should check if budget exceeds balance before creating campaign", () => {
-    // Balance is ceil'd to match the ceil'd displayed balance, then compared per period
-    // (a $1.996 balance shown as "$2.00" must not false-trigger for a $2 one-off).
-    expect(content).toContain("Math.ceil(parseFloat(account.balance_cents))");
-    expect(content).toContain("coversFirstPeriod");
-  });
-
-  it("should check for recurring campaigns without auto-topup", () => {
-    expect(content).toContain('budgetFrequency !== "one-off"');
-    expect(content).toContain("!account.has_auto_topup");
-  });
-
-  it("should call configureAutoTopup when card on file", () => {
-    expect(content).toContain("configureAutoTopup");
-  });
-
-  it("should NOT call legacy configureAutoReload", () => {
-    expect(content).not.toContain("configureAutoReload");
-  });
-
-  it("should show proactive modal with onAutoTopupConfigured callback", () => {
-    expect(content).toContain("proactive: true");
-    expect(content).toContain("onAutoTopupConfigured");
-  });
-
-  it("should save campaign intent to sessionStorage before showing modal", () => {
-    expect(content).toContain("saveCampaignIntent");
-    expect(content).toContain('sessionStorage.setItem("pendingCampaign"');
-  });
-
-  it("should auto-launch campaign on return from Stripe checkout", () => {
-    expect(content).toContain('searchParams.get("pending_campaign")');
-    expect(content).toContain('sessionStorage.getItem("pendingCampaign")');
-    expect(content).toContain("pendingCampaignHandled");
-  });
-});
-
-describe("Proactive credit check in campaign creation (feature-scoped)", () => {
-  const content = fs.readFileSync(campaignNewFeaturePath, "utf-8");
-
-  it("should import getBillingAccount", () => {
-    expect(content).toContain("getBillingAccount");
-  });
-
-  it("should import useBillingGuard", () => {
-    expect(content).toContain("useBillingGuard");
-    expect(content).toContain("showPaymentRequired");
-  });
-
-  it("should check if budget exceeds balance before creating campaign", () => {
-    expect(content).toContain("budgetCents > parseFloat(account.balance_cents)");
-  });
-
-  it("should show proactive modal with onAutoTopupConfigured callback", () => {
-    expect(content).toContain("proactive: true");
-    expect(content).toContain("onAutoTopupConfigured");
-  });
-
-  it("should save campaign intent to sessionStorage before showing modal", () => {
-    expect(content).toContain("saveCampaignIntent");
-    expect(content).toContain('sessionStorage.setItem("pendingCampaign"');
-  });
-
-  it("should auto-launch campaign on return from Stripe checkout", () => {
-    expect(content).toContain('searchParams.get("pending_campaign")');
-    expect(content).toContain('sessionStorage.getItem("pendingCampaign")');
-    expect(content).toContain("pendingCampaignHandled");
-  });
-});
+// The org-scoped launch proactive-credit-check block was removed with the manual
+// launch/create flow.
 
 describe("Billing sidebar link", () => {
   const content = fs.readFileSync(sidebarPath, "utf-8");

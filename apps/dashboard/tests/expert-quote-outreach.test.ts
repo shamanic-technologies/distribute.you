@@ -4,7 +4,7 @@ import * as path from "path";
 
 const featurePagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
 );
 const byokBannerPath = path.resolve(
   __dirname,
@@ -17,11 +17,11 @@ const runButtonPath = path.resolve(
 const apiLibPath = path.resolve(__dirname, "../src/lib/api.ts");
 const quoteRequestsPath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/quote-requests/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-requests/page.tsx",
 );
 const quotePitchesPath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/quote-pitches/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-pitches/page.tsx",
 );
 
 const featurePageContent = fs.readFileSync(featurePagePath, "utf-8");
@@ -56,15 +56,19 @@ describe("FeatureRunButton — generic trigger", () => {
   });
 });
 
-describe("Quote requests + pitches — generic entity routes", () => {
-  it("quote-requests page calls listQuoteRequests", () => {
-    expect(quoteRequestsContent).toContain("listQuoteRequests(");
-    expect(quoteRequestsContent).toContain('data-testid="quote-requests-page"');
+describe("Quote requests + pitches — generic entity routes (brand-level)", () => {
+  // The campaign-level HITL quote-requests page was removed with the campaign
+  // concept; the brand-level pages are the survivors. The brand quote-requests
+  // page reads the ranked-opportunities catalog (listAllRankedOpportunities),
+  // not the raw listQuoteRequests feed.
+  it("quote-requests page renders the brand quote-requests surface", () => {
+    expect(quoteRequestsContent).toContain("listAllRankedOpportunities");
+    expect(quoteRequestsContent).toContain('data-testid="feature-quote-requests-page"');
   });
 
   it("quote-pitches page calls listAllQuotePitches", () => {
     expect(quotePitchesContent).toContain("listAllQuotePitches(");
-    expect(quotePitchesContent).toContain('data-testid="quote-pitches-page"');
+    expect(quotePitchesContent).toContain('data-testid="feature-quote-pitches-page"');
   });
 });
 
@@ -119,40 +123,6 @@ describe("listQuoteRequests — backend contract", () => {
   it("validates response with Zod safeParse and console.errors on mismatch", () => {
     expect(fnBlock).toContain("safeParse");
     expect(fnBlock).toContain("[dashboard]");
-  });
-});
-
-describe("Quote requests page — renders real backend shape", () => {
-  it("renders opportunityText, not request.title/question", () => {
-    expect(quoteRequestsContent).toContain("opportunityText");
-    expect(quoteRequestsContent).not.toContain("request.title");
-    expect(quoteRequestsContent).not.toContain("request.question");
-  });
-
-  it("renders mediaOutlet, not request.publication", () => {
-    expect(quoteRequestsContent).toContain("mediaOutlet");
-    expect(quoteRequestsContent).not.toContain("request.publication");
-  });
-
-  it("uses request.deadline, not request.deadlineAt", () => {
-    expect(quoteRequestsContent).toContain("request.deadline");
-    expect(quoteRequestsContent).not.toContain("deadlineAt");
-  });
-
-  it("drops priorityScore, status filter, STATUS_STYLES", () => {
-    expect(quoteRequestsContent).not.toContain("priorityScore");
-    expect(quoteRequestsContent).not.toContain("statusFilter");
-    expect(quoteRequestsContent).not.toContain("STATUS_STYLES");
-    expect(quoteRequestsContent).not.toContain("QuoteRequestStatus");
-  });
-
-  it("reads providerQuoteRequests from response, not data.requests", () => {
-    expect(quoteRequestsContent).toContain("providerQuoteRequests");
-    expect(quoteRequestsContent).not.toContain("data.requests");
-  });
-
-  it("forwards campaign_id snake_case to listQuoteRequests", () => {
-    expect(quoteRequestsContent).toContain("campaign_id");
   });
 });
 
@@ -292,76 +262,10 @@ describe("HITL helpers — journalists-quotes-service v0.8.1 contract (x-brand-i
   });
 });
 
-describe("Authed HITL quote-requests page — handleGenerate sends the all-required contract", () => {
-  const handleGenerateBlock =
-    quoteRequestsContent.split("const handleGenerate")[1]?.split("};")[0] ?? "";
-  it("passes expert attribution from featureInputs + the opportunity (content-gen PR #124)", () => {
-    // Expert name/title/photo/LinkedIn come from the operator's campaign
-    // featureInputs (DIS-136); the orchestrator (generateExpertQuotePitch)
-    // fetches brand identity + extracts description/HQ/bio and assembles the
-    // brands[] + expert + journalistRequest + expertAnswerContext body.
-    expect(handleGenerateBlock).toContain("expert: {");
-    expect(handleGenerateBlock).toContain("expertName: featureInputs.expertName");
-    expect(handleGenerateBlock).toContain("expertTitle: featureInputs.expertTitle");
-    expect(handleGenerateBlock).toContain("expertPhotoUrl: featureInputs.expertPhotoUrl");
-    expect(handleGenerateBlock).toContain("expertLinkedIn: featureInputs.expertLinkedIn");
-    expect(handleGenerateBlock).toContain("opportunity,");
-  });
-  it("no longer assembles the legacy contract or flat template variables", () => {
-    expect(handleGenerateBlock).not.toContain("buildBrandVariableFromInputs");
-    expect(handleGenerateBlock).not.toContain("buildQuoteRequestVariable");
-    expect(handleGenerateBlock).not.toContain("buildAdditionalContextVariable");
-    expect(handleGenerateBlock).not.toContain("additionalContext:");
-    expect(handleGenerateBlock).not.toContain("opportunityText:");
-    expect(handleGenerateBlock).not.toContain("spokesperson:");
-    expect(handleGenerateBlock).not.toContain("expertiseTopics:");
-  });
-  it("no longer passes campaignId into the generate mutation body", () => {
-    expect(handleGenerateBlock).not.toMatch(/campaignId\s*[:,]/);
-  });
-  it("threads revisionInstructions (Edit-with-AI modal) into the generate body", () => {
-    expect(handleGenerateBlock).toContain("revisionInstructions");
-  });
-});
-
-describe("Authed HITL quote-requests page — Edit with AI revision modal", () => {
-  it("renames the regenerate action to 'Edit with AI'", () => {
-    expect(quoteRequestsContent).toContain('"Edit with AI"');
-  });
-  it("renders the revision modal: textarea + regenerate submit", () => {
-    expect(quoteRequestsContent).toContain('data-testid="quote-revision-modal"');
-    expect(quoteRequestsContent).toContain('data-testid="quote-revision-textarea"');
-    expect(quoteRequestsContent).toContain('data-testid="quote-revision-submit"');
-  });
-  it("opens the modal when a draft exists, generates directly on first run", () => {
-    expect(quoteRequestsContent).toContain("setEditModalOpen(true)");
-    expect(quoteRequestsContent).toContain("handleGenerate(null)");
-  });
-});
-
-describe("Authed HITL quote-requests page — campaign inputs are the DIS-136 attribution keys", () => {
-  it("HITL_INPUT_KEYS = expertName/expertTitle/expertPhotoUrl/expertLinkedIn (not the dropped blob keys)", () => {
-    const keysBlock =
-      quoteRequestsContent.split("const HITL_INPUT_KEYS")[1]?.split("]")[0] ?? "";
-    expect(keysBlock).toContain("expertName");
-    expect(keysBlock).toContain("expertTitle");
-    expect(keysBlock).toContain("expertPhotoUrl");
-    expect(keysBlock).toContain("expertLinkedIn");
-    // DIS-136 dropped these; they must not gate the page anymore.
-    expect(keysBlock).not.toContain("spokesperson");
-    expect(keysBlock).not.toContain("expertiseTopics");
-    expect(keysBlock).not.toContain("responseStyle");
-    expect(keysBlock).not.toContain("valueProposition");
-  });
-});
-
-describe("Authed HITL quote-requests page — relevance ScoreBadge (0–100 judge score)", () => {
-  it("renders the score directly as a percent — never `score * 100` (was '9500')", () => {
-    // Relevance judge (DIS-79) emits a 0–100 score (e.g. 95). The badge must
-    // render `Math.round(score)` + '%' → "95%". `Math.round(score * 100)`
-    // produced "9500". Regression guard for the screenshot bug.
-    expect(quoteRequestsContent).not.toMatch(/score\s*\*\s*100/);
-    expect(quoteRequestsContent).toContain("Math.round(score)");
-    expect(quoteRequestsContent).toMatch(/\{pct\}%/);
-  });
-});
+// The "Authed HITL quote-requests page" describe blocks (handleGenerate
+// contract, Edit-with-AI revision modal, HITL_INPUT_KEYS, relevance ScoreBadge)
+// were removed: the HITL generate/reply surface lived ONLY on the campaign-level
+// quote-requests page, which was deleted with the campaign concept. The
+// brand-level quote-requests page is a read view over the ranked-opportunities
+// catalog. The api-layer contract (listQuoteRequests / generateQuoteDraft /
+// submitQuoteOpportunityReply / QuotePitch shape) is still covered above.

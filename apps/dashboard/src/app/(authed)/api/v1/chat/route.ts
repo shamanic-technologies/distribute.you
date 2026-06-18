@@ -250,10 +250,11 @@ export async function POST(req: NextRequest) {
 
           case "tool_result": {
             const toolCallId = (event.id || "") as string;
+            const rawResult = event.result ?? null;
             const output =
-              typeof event.result === "string"
-                ? event.result
-                : JSON.stringify(event.result ?? "");
+              typeof rawResult === "string"
+                ? rawResult
+                : JSON.stringify(rawResult ?? "");
 
             writer.write({
               type: "tool-output-available",

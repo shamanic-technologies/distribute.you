@@ -2,15 +2,15 @@ import type { WhyMattersSection as WhyMattersData } from "@/data/benchmarks-cont
 
 export function WhyMattersSection({ data }: { data: WhyMattersData }) {
   return (
-    <section className="py-12 md:py-16 px-4 bg-white">
-      <div className="max-w-3xl mx-auto">
-        <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-3">
+    <section className="dy-section-tight">
+      <div className="dy-shell max-w-3xl">
+        <p className="dy-mono mb-3 text-xs uppercase tracking-wider text-[var(--dy-muted)]">
           {data.eyebrow}
         </p>
-        <h2 className="font-display text-2xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
+        <h2 className="dy-h2 mb-5 text-2xl md:text-4xl">
           {data.title}
         </h2>
-        <p className="text-gray-600 text-base md:text-lg leading-relaxed">
+        <p className="dy-body text-base md:text-lg">
           {data.body}
         </p>
       </div>

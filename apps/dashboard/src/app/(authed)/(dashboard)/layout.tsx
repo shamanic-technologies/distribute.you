@@ -5,9 +5,11 @@ import { ContextSidebar } from "@/components/context-sidebar";
 import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
+import { AdsPurchaseTracker } from "@/components/ads-purchase-tracker";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
 import { OrgCacheInvalidator } from "@/components/org-cache-invalidator";
+import { CreditAlerts } from "@/components/billing/credit-alerts";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
@@ -59,10 +61,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       <OrgActivator />
       <AuthEventTracker />
+      <AdsPurchaseTracker />
       <UserActivityTracker />
       <UserResolver />
       <Header />
-      <div className="flex flex-1 overflow-hidden relative">
+      <CreditAlerts />
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Mobile sidebar overlay */}
         {isOpen && (
           <div
@@ -79,12 +83,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           <ContextSidebar />
         </div>
 
-        {/* Desktop sidebar — always shown, content adapts via ContextSidebar */}
+        {/* Desktop sidebar — content adapts via ContextSidebar */}
         <div className="hidden md:flex h-full">
           <ContextSidebar />
         </div>
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-w-0 flex-1 overflow-y-auto">
           {showContent ? children : <div className="h-full bg-gray-50" />}
         </main>
       </div>

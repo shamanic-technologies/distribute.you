@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { Suspense } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { PROD_URLS } from "@/lib/env-urls";
-import { DISTRIBUTION_FEATURES } from "@distribute/content";
-import type { FeatureColor } from "@distribute/content";
+import {
+  BRAND_LOGO_URL,
+  INVESTORS_OG_IMAGE_PATH,
+  TWITTER_HANDLE,
+} from "@/lib/seo";
 import {
   CompanyOverviewSection,
   PlatformMetricsSection,
@@ -13,29 +15,8 @@ import {
   MonthlyGrowthSection,
   WeeklyGrowthSection,
 } from "@/components/investors/data-sections";
-import {
-  CompanyOverviewSkeleton,
-  PlatformMetricsSkeleton,
-  RevenueCreditsSkeleton,
-  MonthlyGrowthSkeleton,
-  WeeklyGrowthSkeleton,
-} from "@/components/investors/skeletons";
 
 export const revalidate = 86400;
-
-const FEATURE_DOT: Record<FeatureColor, string> = {
-  emerald: "bg-emerald-400",
-  cyan: "bg-cyan-400",
-  blue: "bg-blue-400",
-  violet: "bg-violet-400",
-  pink: "bg-pink-400",
-  amber: "bg-amber-400",
-};
-
-const liveFeatureCount = DISTRIBUTION_FEATURES.filter((f) => f.status === "live").length;
-const comingSoonFeatureCount = DISTRIBUTION_FEATURES.filter(
-  (f) => f.status === "coming-soon"
-).length;
 
 const INVESTORS_URL = `${PROD_URLS.landing}/investors`;
 const PAGE_DESCRIPTION =
@@ -60,14 +41,14 @@ export const metadata: Metadata = {
     siteName: "distribute Investors",
     title: "distribute — Investor Information",
     description: PAGE_DESCRIPTION,
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "distribute Investor Information" }],
+    images: [{ url: INVESTORS_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute Investor Information" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "distribute — Investor Information",
     description: PAGE_DESCRIPTION,
-    images: ["/og-image.jpg"],
-    creator: "@distribute_you",
+    images: [INVESTORS_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
   alternates: { canonical: INVESTORS_URL },
   robots: { index: true, follow: true },
@@ -78,7 +59,9 @@ const investorsOrganizationJsonLd = {
   "@type": "Organization",
   name: "distribute",
   url: PROD_URLS.landing,
-  description: "The Stripe of Distribution — pay-as-you-go cloud platform for cold outbound channels.",
+  logo: BRAND_LOGO_URL,
+  image: BRAND_LOGO_URL,
+  description: "Pay-as-you-go cloud platform for AI cold email outreach. Every unit cost published live.",
   foundingDate: "2024",
   sameAs: [PROD_URLS.github, PROD_URLS.twitter],
   contactPoint: {
@@ -109,17 +92,17 @@ export default function InvestorsPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(investorsBreadcrumbJsonLd) }}
       />
       <Navbar />
-      <main className="min-h-screen bg-gray-950 text-white">
+      <main className="dy-page">
         {/* Header */}
         <section className="pt-24 pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="flex items-center justify-center gap-3 mb-6">
               <Image
-                src="/logo-head.jpg"
+                src="/landing/logo/logo-distribute.svg"
                 alt="distribute"
                 width={40}
                 height={40}
-                className="rounded-xl"
+                className="rounded-lg"
               />
               <h1 className="font-display text-4xl font-bold">distribute</h1>
             </div>
@@ -136,61 +119,47 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Company Overview
             </h2>
-            <Suspense fallback={<CompanyOverviewSkeleton />}>
-              <CompanyOverviewSection />
-            </Suspense>
+            <CompanyOverviewSection />
           </div>
         </section>
 
-        {/* Product — Channels Catalog */}
+        {/* Product — AI Cold Email */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-2 text-gray-200">
-              Product — {liveFeatureCount} Channels Live, {comingSoonFeatureCount} Coming
+              Product — AI Cold Email, Done For You
             </h2>
             <p className="text-sm text-gray-500 mb-6">
-              Each channel is a priced outbound surface. Builders enable one or many,
-              set a per-channel budget, and only pay for executions that run.
-              At least one new channel ships per month. The Stripe-of-Distribution
-              metaphor is literal: one payment method → 50+ payment methods over time.
+              One priced outbound surface: cold email. A builder drops a URL and sets a
+              daily budget. We find the prospects, write a personalized email for each,
+              send, qualify every reply, and forward only the buyers worth their time.
+              Every unit cost — prospect, email, reply qualification — is metered and
+              published live. They only pay for executions that run.
             </p>
 
-            <div className="grid md:grid-cols-2 gap-3">
-              {DISTRIBUTION_FEATURES.map((feature) => {
-                const isLive = feature.status === "live";
-                return (
-                  <div
-                    key={feature.id}
-                    className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4 hover:border-gray-600 transition"
-                  >
-                    <div className="flex items-start justify-between mb-2 gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className={`w-2 h-2 rounded-full flex-shrink-0 ${FEATURE_DOT[feature.color]}`}
-                        />
-                        <h3 className="font-semibold text-white text-sm">
-                          {feature.title}
-                        </h3>
-                      </div>
-                      {isLive ? (
-                        <span className="text-[10px] font-medium text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 flex-shrink-0">
-                          Live
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-medium text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 flex-shrink-0">
-                          Coming Soon
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                      {feature.description}
-                    </p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                      Ranked by {feature.metric}
-                    </p>
-                  </div>
-                );
-              })}
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[
+                {
+                  label: "Find prospects",
+                  body: "We pull the contacts that match the ideal customer.",
+                },
+                {
+                  label: "Write & send",
+                  body: "A personalized cold email per prospect, sent and tracked.",
+                },
+                {
+                  label: "Qualify replies",
+                  body: "AI reads every reply; only real buyers reach the inbox.",
+                },
+              ].map((step) => (
+                <div
+                  key={step.label}
+                  className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4"
+                >
+                  <h3 className="font-semibold text-white text-sm mb-2">{step.label}</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed">{step.body}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -279,7 +248,7 @@ export default function InvestorsPage() {
                     <li>Agency-style sender on his behalf</li>
                     <li>AI-qualified replies forwarded to Gmail</li>
                     <li>Public unit prices + 2x margin baked in</li>
-                    <li>Pay-as-you-go credits, $25 free to start</li>
+                    <li>Pay-as-you-go credits, first $25 spent matched free</li>
                     <li>Multi-brand portfolio in one dashboard</li>
                     <li>Open source as a safety valve</li>
                   </ul>
@@ -290,7 +259,7 @@ export default function InvestorsPage() {
                 <h3 className="text-white font-semibold text-base mb-3">North-star metric</h3>
                 <p className="text-gray-300">
                   Real <span className="text-white font-medium">CAC</span> ($/qualified reply, $/paid conversion)
-                  per product × per channel × per workflow. Kills losers under 4 weeks.
+                  per product × per workflow. Kills losers under 4 weeks.
                   Scales winners 10x when CAC &lt; LTV/3.
                 </p>
               </div>
@@ -305,12 +274,12 @@ export default function InvestorsPage() {
               </div>
 
               <div>
-                <h3 className="text-white font-semibold text-base mb-3">Catalog expectation</h3>
+                <h3 className="text-white font-semibold text-base mb-3">Roadmap expectation</h3>
                 <p className="text-gray-300">
-                  A growing marketplace of channels. <span className="text-white font-medium">Stripe taken literally:</span>{" "}
-                  1 payment method → 50+ payment methods over time. distribute.you ships
-                  at least one new channel per month. See the full catalog in the{" "}
-                  <span className="text-white font-medium">Product</span> section above.
+                  Cold email, compounding. <span className="text-white font-medium">Public roadmap:</span>{" "}
+                  every reply-rate and cost-per-reply gain ships continuously and is
+                  visible live on the <span className="text-white font-medium">Performance</span>{" "}
+                  page. Prices published, no lock-in.
                 </p>
               </div>
             </div>
@@ -323,9 +292,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Platform Metrics
             </h2>
-            <Suspense fallback={<PlatformMetricsSkeleton />}>
-              <PlatformMetricsSection />
-            </Suspense>
+            <PlatformMetricsSection />
           </div>
         </section>
 
@@ -335,9 +302,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Revenue & Credits
             </h2>
-            <Suspense fallback={<RevenueCreditsSkeleton />}>
-              <RevenueCreditsSection />
-            </Suspense>
+            <RevenueCreditsSection />
           </div>
         </section>
 
@@ -347,9 +312,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Monthly Growth
             </h2>
-            <Suspense fallback={<MonthlyGrowthSkeleton />}>
-              <MonthlyGrowthSection />
-            </Suspense>
+            <MonthlyGrowthSection />
           </div>
         </section>
 
@@ -359,9 +322,7 @@ export default function InvestorsPage() {
             <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
               Weekly Growth
             </h2>
-            <Suspense fallback={<WeeklyGrowthSkeleton />}>
-              <WeeklyGrowthSection />
-            </Suspense>
+            <WeeklyGrowthSection />
           </div>
         </section>
 
@@ -436,7 +397,7 @@ export default function InvestorsPage() {
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Payments</p>
-                  <p className="text-white">Stripe (credit top-ups, no subscriptions)</p>
+                  <p className="text-white">Stripe (usage-based credit top-ups, auto-replenished)</p>
                 </div>
                 <div>
                   <p className="text-gray-400 mb-1">Auth</p>

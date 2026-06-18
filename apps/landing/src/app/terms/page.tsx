@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PROD_URLS } from "@/lib/env-urls";
+import { DEFAULT_OG_IMAGE_PATH, TWITTER_HANDLE } from "@/lib/seo";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     type: "article",
     images: [
       {
-        url: "/og-image.jpg",
+        url: DEFAULT_OG_IMAGE_PATH,
         width: 1200,
         height: 630,
         alt: "distribute — Terms of Service",
@@ -38,8 +39,8 @@ export const metadata: Metadata = {
     title: "Terms of Service — distribute",
     description:
       "How distribute works: pricing, credits, outreach infrastructure, public performance data, and your responsibilities.",
-    images: ["/og-image.jpg"],
-    creator: "@distribute_you",
+    images: [DEFAULT_OG_IMAGE_PATH],
+    creator: TWITTER_HANDLE,
   },
   robots: { index: true, follow: true },
 };
@@ -261,7 +262,7 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>Public leaderboards.</strong> {SERVICE} publishes campaign
           performance data on public-facing surfaces, including our marketing
-          pages, public leaderboards (e.g. /performance, /benchmarks), blog
+          pages, public leaderboards (e.g. /performance), blog
           posts, social media, investor decks, partner materials, and machine
           -readable feeds (sitemap, JSON-LD, API endpoints such as
           /v1/public/features/ranked). Published data may include, without
@@ -616,19 +617,19 @@ export default function TermsPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-white text-gray-800">
-        <Section variant="prose" outerClassName="py-16 md:py-20">
+      <main className="dy-page">
+        <Section variant="prose" outerClassName="dy-section">
           <header className="mb-12">
-            <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">
+            <p className="dy-mono mb-3 text-xs uppercase tracking-wider text-[var(--dy-muted)]">
               Legal
             </p>
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+            <h1 className="dy-title mb-3 text-4xl md:text-5xl">
               Terms of Service
             </h1>
-            <p className="text-sm text-gray-500">
+            <p className="dy-mono text-sm text-[var(--dy-muted)]">
               Last updated: {LAST_UPDATED}
             </p>
-            <p className="mt-6 text-base text-gray-600 leading-relaxed">
+            <p className="dy-body mt-6 text-base">
               These Terms govern your use of {SERVICE}. Please read them
               carefully — sections 4 (Pricing &amp; Auto-Reload), 5 (Outreach
               on Your Behalf), and 6 (Public Performance Data) describe how
@@ -638,9 +639,9 @@ export default function TermsPage() {
 
           <nav
             aria-label="Table of contents"
-            className="mb-12 border border-gray-200 rounded-xl p-5 bg-gray-50"
+            className="dy-card mb-12 p-5"
           >
-            <p className="text-xs uppercase tracking-wider text-gray-500 mb-3 font-semibold">
+            <p className="dy-mono mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--dy-muted)]">
               Contents
             </p>
             <ol className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
@@ -648,7 +649,7 @@ export default function TermsPage() {
                 <li key={s.id}>
                   <Link
                     href={`#${s.id}`}
-                    className="text-gray-700 hover:text-brand-500 transition"
+                    className="text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
                   >
                     {s.title}
                   </Link>
@@ -657,10 +658,10 @@ export default function TermsPage() {
             </ol>
           </nav>
 
-          <div className="space-y-10 text-base leading-relaxed text-gray-700">
+          <div className="dy-body space-y-10 text-base">
             {SECTIONS.map((s) => (
               <section key={s.id} id={s.id} className="scroll-mt-24">
-                <h2 className="font-display text-2xl font-bold text-gray-900 mb-4">
+                <h2 className="dy-h2 mb-4 text-2xl">
                   {s.title}
                 </h2>
                 <div className="space-y-4">{s.body}</div>

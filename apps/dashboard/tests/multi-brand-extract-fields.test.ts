@@ -30,7 +30,8 @@ describe("Multi-brand extract-fields response types", () => {
     const fn = apiContent.slice(fnStart, fnEnd);
     expect(fn).toContain("`/brands/extract-fields`");
     expect(fn).not.toContain("${brandId}");
-    expect(fn).toContain("body: { brandIds, fields, resetCache }");
+    expect(fn).toContain('urlStrategy?: "url_map" | "landing"');
+    expect(fn).toContain("body: { brandIds, fields, resetCache, urlStrategy }");
   });
 
   it("defines PrefillFullFieldResult with byBrand for format=full", () => {
@@ -42,15 +43,15 @@ describe("Multi-brand extract-fields response types", () => {
   });
 
   it("callers pass brandIds as array parameter", () => {
-    const brandsPage = fs.readFileSync(
-      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx"),
+    const onboardingPage = fs.readFileSync(
+      path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx"),
       "utf-8",
     );
     const brandInfoPage = fs.readFileSync(
       path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"),
       "utf-8",
     );
-    expect(brandsPage).toContain("extractBrandFields([newBrandId]");
+    expect(onboardingPage).toContain("extractBrandFields([newBrandId]");
     expect(brandInfoPage).toContain("extractBrandFields([brandId]");
   });
 });

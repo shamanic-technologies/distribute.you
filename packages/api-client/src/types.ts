@@ -600,9 +600,10 @@ export interface MediaKitViewStats {
 export interface BillingAccount {
   id: string;
   org_id: string;
-  balance_cents: string;
+  credited_cents: string;
   usage_cents: string;
-  available_cents: string;
+  balance_cents: string;
+  actual_balance_cents?: string;
   topup_amount_cents: number | null;
   topup_threshold_cents: number | null;
   has_payment_method: boolean;

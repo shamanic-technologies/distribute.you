@@ -11,10 +11,15 @@ import * as path from "path";
  * feature.outputs[] + stats registry for dynamic stat display, replacing
  * hardcoded field aggregation.
  */
-describe("Feature page stats use centralized feature stats endpoint", () => {
+// The campaigns LIST page was removed with the campaign concept; the brand
+// Overview (brands/[brandId]/page.tsx) is the surviving feature-stats surface.
+// It derives stats from the centralized fetchFeatureStats endpoint (the
+// formatStatValue / chart rendering now lives in the revenue/outreach
+// components, not inline on this page).
+describe("Brand overview stats use the centralized feature stats endpoint", () => {
   const pagePath = path.join(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 
@@ -34,15 +39,5 @@ describe("Feature page stats use centralized feature stats endpoint", () => {
 
   it("should use fetchFeatureStats as the single data source", () => {
     expect(content).toContain("fetchFeatureStats");
-  });
-
-  it("should use formatStatValue for dynamic stat display", () => {
-    expect(content).toContain("formatStatValue");
-  });
-
-  it("should use charts from featureDef for rendering", () => {
-    expect(content).toContain("funnelChart");
-    expect(content).toContain("breakdownChart");
-    expect(content).toContain("featureDef?.charts");
   });
 });

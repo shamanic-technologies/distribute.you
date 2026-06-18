@@ -6,6 +6,11 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Section } from "@/components/section";
 import { PROD_URLS } from "@/lib/env-urls";
+import {
+  BRAND_LOGO_URL,
+  DEFAULT_OG_IMAGE_PATH,
+  TWITTER_HANDLE,
+} from "@/lib/seo";
 import { getArticleBySlug } from "@/lib/blog/db";
 
 export const revalidate = 60;
@@ -17,6 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = await getArticleBySlug(slug);
   if (!article) return { title: "Article not found — distribute" };
   const articleUrl = `${PROD_URLS.landing}/blog/${article.slug}`;
+  const image = article.coverImageUrl
+    ? [{ url: article.coverImageUrl }]
+    : [{ url: DEFAULT_OG_IMAGE_PATH, width: 1200, height: 630, alt: article.title }];
   return {
     title: `${article.title} — distribute`,
     description: article.excerpt ?? undefined,
@@ -26,7 +34,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: articleUrl,
       title: article.title,
       description: article.excerpt ?? undefined,
-      images: article.coverImageUrl ? [{ url: article.coverImageUrl }] : undefined,
+      images: image,
+      siteName: "distribute",
+      publishedTime: article.publishedAt,
+      modifiedTime: article.updatedAt,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt ?? undefined,
+      images: article.coverImageUrl ? [article.coverImageUrl] : [DEFAULT_OG_IMAGE_PATH],
+      creator: TWITTER_HANDLE,
     },
   };
 }
@@ -45,47 +63,68 @@ export default async function BlogArticlePage({ params }: Props) {
   if (!article) notFound();
 
   const body = article.contentHtml ?? null;
+  const articleUrl = `${PROD_URLS.landing}/blog/${article.slug}`;
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: article.title,
+    description: article.excerpt,
+    url: articleUrl,
+    datePublished: article.publishedAt,
+    dateModified: article.updatedAt,
+    image: article.coverImageUrl ?? `${PROD_URLS.landing}${DEFAULT_OG_IMAGE_PATH}`,
+    publisher: {
+      "@type": "Organization",
+      name: "distribute",
+      url: PROD_URLS.landing,
+      logo: BRAND_LOGO_URL,
+    },
+  };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="dy-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <Navbar />
 
-      <Section variant="prose" outerClassName="pt-16 pb-8" as="div">
+      <Section variant="prose" outerClassName="dy-section-tight" as="div">
         <Link
           href="/blog"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-brand-600 transition mb-8"
+          className="mb-8 inline-flex items-center gap-1 text-sm text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
         >
           ← All articles
         </Link>
 
         <header className="mb-10">
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-4">
+          <div className="dy-mono mb-4 flex flex-wrap items-center gap-3 text-xs text-[var(--dy-muted)]">
             <time dateTime={article.publishedAt} className="font-medium">
               {formatDate(article.publishedAt)}
             </time>
             {article.tags.slice(0, 4).map((t) => (
               <span
                 key={t}
-                className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"
+                className="rounded-full bg-[var(--dy-surface-hi)] px-2 py-0.5 text-[var(--dy-sub)]"
               >
                 {t}
               </span>
             ))}
           </div>
 
-          <h1 className="font-display text-3xl md:text-5xl font-bold text-gray-900 tracking-tight leading-tight mb-5">
+          <h1 className="dy-title mb-5 text-3xl md:text-5xl">
             {article.title}
           </h1>
 
           {article.excerpt && (
-            <p className="text-lg md:text-xl text-gray-500 leading-relaxed">
+            <p className="dy-body text-lg md:text-xl">
               {article.excerpt}
             </p>
           )}
         </header>
 
         {article.coverImageUrl && (
-          <div className="relative w-full aspect-[16/9] mb-12 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+          <div className="relative mb-12 aspect-[16/9] w-full overflow-hidden rounded-2xl border border-[var(--dy-border-hi)] bg-[var(--dy-surface-hi)]">
             <Image
               src={article.coverImageUrl}
               alt={article.title}
@@ -103,36 +142,36 @@ export default async function BlogArticlePage({ params }: Props) {
         {body ? (
           <div
             className="
-              prose prose-lg prose-gray max-w-none
-              prose-headings:font-display prose-headings:text-gray-900 prose-headings:tracking-tight
+              prose prose-lg max-w-none
+              prose-headings:text-[var(--dy-text)] prose-headings:tracking-tight
               prose-h1:text-3xl prose-h2:text-2xl prose-h2:mt-12 prose-h3:text-xl
-              prose-p:text-gray-700 prose-p:leading-relaxed
-              prose-a:text-brand-600 prose-a:no-underline hover:prose-a:underline
-              prose-strong:text-gray-900
-              prose-blockquote:border-l-brand-400 prose-blockquote:bg-gray-50 prose-blockquote:py-1 prose-blockquote:not-italic
-              prose-code:text-brand-700 prose-code:bg-brand-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
-              prose-pre:bg-gray-900 prose-pre:text-gray-100
-              prose-img:rounded-xl prose-img:border prose-img:border-gray-200
-              prose-li:text-gray-700
+              prose-p:text-[var(--dy-sub)] prose-p:leading-relaxed
+              prose-a:text-[var(--dy-accent-hi)] prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-[var(--dy-text)]
+              prose-blockquote:border-l-[var(--dy-accent)] prose-blockquote:bg-[var(--dy-surface)] prose-blockquote:py-1 prose-blockquote:not-italic
+              prose-code:text-[var(--dy-accent-hi)] prose-code:bg-[var(--dy-accent-dim)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+              prose-pre:bg-[var(--dy-surface)] prose-pre:text-[var(--dy-text)]
+              prose-img:rounded-xl prose-img:border prose-img:border-[var(--dy-border-hi)]
+              prose-li:text-[var(--dy-sub)]
             "
             dangerouslySetInnerHTML={{ __html: body }}
           />
         ) : article.contentMarkdown ? (
-          <pre className="whitespace-pre-wrap text-gray-800 leading-relaxed font-sans">
+          <pre className="whitespace-pre-wrap font-sans leading-relaxed text-[var(--dy-sub)]">
             {article.contentMarkdown}
           </pre>
         ) : (
-          <p className="text-gray-400">No content available for this article.</p>
+          <p className="text-[var(--dy-muted)]">No content available for this article.</p>
         )}
 
-        <div className="mt-16 pt-8 border-t border-gray-100 flex items-center justify-between text-sm">
+        <div className="mt-16 flex items-center justify-between border-t border-[var(--dy-border)] pt-8 text-sm">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-gray-500 hover:text-brand-600 transition"
+            className="inline-flex items-center gap-1 text-[var(--dy-sub)] transition hover:text-[var(--dy-accent-hi)]"
           >
             ← All articles
           </Link>
-          <span className="text-gray-400">
+          <span className="dy-mono text-xs text-[var(--dy-muted)]">
             Updated {formatDate(article.updatedAt)}
           </span>
         </div>

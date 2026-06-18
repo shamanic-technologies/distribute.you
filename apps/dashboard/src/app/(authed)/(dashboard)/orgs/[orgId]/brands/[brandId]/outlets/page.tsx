@@ -1,12 +1,25 @@
 "use client";
 
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useMutation } from "@tanstack/react-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   listBrandOutlets,
+  requestOutletPurchasePrices,
   getOutletStatsCosts,
+  getDomainTrafficHistories,
+  computeDomainTraffic,
+  computeDomainTrafficHistories,
+  getDomainDrStatuses,
+  computeDomainDr,
+  computeDomainDrStatuses,
+  type DomainTrafficHistory,
+  type DomainDrStatus,
   type DeduplicatedOutlet,
+  type OutletListResponse,
   type OutletCampaign,
   type OutletStatusCounts,
 } from "@/lib/api";
@@ -18,6 +31,9 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { pollOptions } from "@/lib/query-options";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { buildOutletCsv } from "@/lib/outlet-csv";
+import { TablePager, usePaginated } from "@/components/table-pagination";
+import { markOutletPriceRequestsOngoing } from "@/lib/outlet-price-requests";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 type Tab = string | "all";
 
@@ -27,6 +43,30 @@ function formatCost(cents: string | number | null | undefined): string | null {
   if (isNaN(n) || n === 0) return null;
   const usd = n / 100;
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPurchasePrice(outlet: DeduplicatedOutlet): string | null {
+  const priceCents = outlet.pricing?.sellPriceCents;
+  if (priceCents == null) return null;
+  const currency = outlet.pricing?.currency;
+  if (!currency) {
+    console.error("[dashboard] outlet pricing missing currency", { outletId: outlet.id, pricing: outlet.pricing });
+    throw new Error("[dashboard] outlet pricing missing currency");
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(priceCents / 100);
+}
+
+function formatMonthlyVisits(visits: number): string {
+  return Math.round(visits).toLocaleString("en-US");
+}
+
+function normalizeDomain(domain: string): string {
+  return domain.trim().toLowerCase().replace(/^www\./, "");
 }
 
 function relevanceColor(score: number): string {
@@ -47,13 +87,14 @@ function timeAgo(dateStr: string): string {
 
 /* ─── Outlet Row ─────────────────────────────────────────────────────── */
 
-function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; isSelected: boolean; onClick: () => void }) {
+function OutletRow({ outlet, displayStatus, costCents, domainRating, isSelected, onClick }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; domainRating: number | null; isSelected: boolean; onClick: () => void }) {
   const cost = formatCost(costCents);
+  const purchasePrice = formatPurchasePrice(outlet);
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left flex items-center gap-3 p-4 rounded-xl border hover:border-brand-300 hover:shadow-sm transition bg-white cursor-pointer ${
+      className={`flex w-full flex-wrap items-center gap-3 rounded-xl border bg-white p-4 text-left transition hover:border-brand-300 hover:shadow-sm cursor-pointer ${
         isSelected ? "border-brand-500 ring-1 ring-brand-500" : "border-gray-200"
       }`}
     >
@@ -61,7 +102,7 @@ function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { 
         <BrandLogo domain={outlet.outletDomain} size={24} className="rounded" fallbackClassName="w-5 h-5 text-gray-400" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
+        <div className="mb-0.5 flex min-w-0 flex-wrap items-center gap-2">
           <span className="font-medium text-sm text-gray-800 truncate">{outlet.outletName}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 ${statusBadgeColor(displayStatus)}`}>
             {statusLabel(displayStatus)}
@@ -72,13 +113,23 @@ function OutletRow({ outlet, displayStatus, costCents, isSelected, onClick }: { 
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <p className="text-xs text-gray-400 truncate">{outlet.outletDomain}</p>
           <span className="text-xs text-gray-300">&middot;</span>
           <span className="text-xs text-gray-400 flex-shrink-0">{outlet.campaigns.length} campaign{outlet.campaigns.length !== 1 ? "s" : ""}</span>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="ml-11 flex w-full flex-wrap items-center gap-2 sm:ml-0 sm:w-auto sm:flex-shrink-0">
+        {domainRating != null && (
+          <span className="text-xs text-gray-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+            DR {domainRating}
+          </span>
+        )}
+        {purchasePrice && (
+          <span className="text-xs text-gray-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+            {purchasePrice}
+          </span>
+        )}
         {cost && (
           <span className="text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
             {cost}
@@ -101,8 +152,8 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
   const displayStatus = deriveDisplayStatusFromCounts(counts);
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-xs font-mono text-gray-500 bg-gray-50 px-2 py-0.5 rounded">{campaign.featureSlug}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${statusBadgeColor(displayStatus)}`}>
             {statusLabel(displayStatus)}
@@ -113,12 +164,12 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
             </span>
           )}
         </div>
-        <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(campaign.relevanceScore)}`}>
+        <span className={`self-start rounded-full border px-2 py-1 text-xs font-medium ${relevanceColor(campaign.relevanceScore)}`}>
           {campaign.relevanceScore}%
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+      <div className="mb-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
         <div>
           <span className="text-gray-500 text-xs">Campaign ID</span>
           <p className="text-xs font-mono text-gray-700 truncate">{campaign.campaignId}</p>
@@ -164,8 +215,45 @@ function CampaignDetailCard({ campaign, counts }: { campaign: OutletCampaign; co
 
 /* ─── Detail Panel ───────────────────────────────────────────────────── */
 
-function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outlet: DeduplicatedOutlet; displayStatus: string; costCents: string | null; onClose: () => void }) {
+function OutletDetailPanel({
+  outlet,
+  displayStatus,
+  costCents,
+  monthlyVisits,
+  domainRating,
+  isFetchingMonthlyVisits,
+  monthlyVisitsFetchError,
+  monthlyVisitsFetchEmpty,
+  onFetchMonthlyVisits,
+  isFetchingDomainRating,
+  domainRatingFetchError,
+  domainRatingFetchEmpty,
+  onFetchDomainRating,
+  isRequestingPurchasePrice,
+  purchasePriceRequestError,
+  onRequestPurchasePrice,
+  onClose,
+}: {
+  outlet: DeduplicatedOutlet;
+  displayStatus: string;
+  costCents: string | null;
+  monthlyVisits: number | null;
+  domainRating: number | null;
+  isFetchingMonthlyVisits: boolean;
+  monthlyVisitsFetchError: string | null;
+  monthlyVisitsFetchEmpty: boolean;
+  onFetchMonthlyVisits: () => void;
+  isFetchingDomainRating: boolean;
+  domainRatingFetchError: string | null;
+  domainRatingFetchEmpty: boolean;
+  onFetchDomainRating: () => void;
+  isRequestingPurchasePrice: boolean;
+  purchasePriceRequestError: string | null;
+  onRequestPurchasePrice: () => void;
+  onClose: () => void;
+}) {
   const cost = formatCost(costCents);
+  const purchasePrice = formatPurchasePrice(outlet);
   return (
     <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
@@ -191,8 +279,8 @@ function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outl
       <div className="p-4 md:p-6 space-y-4">
         {/* High-level outlet info */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-gray-800">{outlet.outletName}</h3>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="break-words font-medium text-gray-800">{outlet.outletName}</h3>
             <span className={`text-xs font-medium px-2 py-1 rounded-full border ${relevanceColor(outlet.relevanceScore)}`}>
               {outlet.relevanceScore}% relevance
             </span>
@@ -228,6 +316,90 @@ function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outl
                 <p className="font-medium text-gray-700">{cost}</p>
               </div>
             )}
+            {monthlyVisits != null && (
+              <div>
+                <span className="text-gray-500">Monthly Visits</span>
+                <p className="font-medium text-gray-700">{formatMonthlyVisits(monthlyVisits)}</p>
+              </div>
+            )}
+            {monthlyVisits == null && (
+              <div>
+                <span className="text-gray-500">Monthly Visits</span>
+                <div className="mt-1 flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    onClick={onFetchMonthlyVisits}
+                    disabled={isFetchingMonthlyVisits}
+                    className="text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 disabled:opacity-60 disabled:hover:bg-brand-50 px-2 py-1 rounded border border-brand-100"
+                  >
+                    {isFetchingMonthlyVisits ? "Fetching..." : "Get Monthly Visits"}
+                  </button>
+                  {monthlyVisitsFetchEmpty && (
+                    <p className="text-xs text-gray-400">No visits found</p>
+                  )}
+                  {monthlyVisitsFetchError && (
+                    <p className="text-xs text-red-600">{monthlyVisitsFetchError}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {domainRating != null && (
+              <div>
+                <span className="text-gray-500">DR</span>
+                <p className="font-medium text-gray-700">{domainRating}</p>
+              </div>
+            )}
+            {domainRating == null && (
+              <div>
+                <span className="text-gray-500">DR</span>
+                <div className="mt-1 flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    onClick={onFetchDomainRating}
+                    disabled={isFetchingDomainRating}
+                    className="text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 disabled:opacity-60 disabled:hover:bg-brand-50 px-2 py-1 rounded border border-brand-100"
+                  >
+                    {isFetchingDomainRating ? "Fetching..." : "Fetch DR"}
+                  </button>
+                  {domainRatingFetchEmpty && (
+                    <p className="text-xs text-gray-400">No DR found</p>
+                  )}
+                  {domainRatingFetchError && (
+                    <p className="text-xs text-red-600">{domainRatingFetchError}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {purchasePrice && (
+              <div>
+                <span className="text-gray-500">Purchase Price</span>
+                <p className="font-medium text-gray-700">{purchasePrice}</p>
+              </div>
+            )}
+            {!purchasePrice && outlet.priceRequestStatus === "ongoing" && (
+              <div>
+                <span className="text-gray-500">Purchase Price</span>
+                <p className="font-medium text-amber-700">Purchase price request in progress</p>
+              </div>
+            )}
+            {!purchasePrice && outlet.priceRequestStatus !== "ongoing" && (
+              <div>
+                <span className="text-gray-500">Purchase Price</span>
+                <div className="mt-1 flex flex-col items-start gap-1">
+                  <button
+                    type="button"
+                    onClick={onRequestPurchasePrice}
+                    disabled={isRequestingPurchasePrice}
+                    className="text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 disabled:opacity-60 disabled:hover:bg-brand-50 px-2 py-1 rounded border border-brand-100"
+                  >
+                    {isRequestingPurchasePrice ? "Requesting..." : "Ask Purchase Price"}
+                  </button>
+                  {purchasePriceRequestError && (
+                    <p className="text-xs text-red-600">{purchasePriceRequestError}</p>
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <span className="text-gray-500">Campaigns</span>
               <p className="font-medium text-gray-700">{outlet.campaigns.length}</p>
@@ -251,26 +423,133 @@ function OutletDetailPanel({ outlet, displayStatus, costCents, onClose }: { outl
 
 /* ─── Main Page ──────────────────────────────────────────────────────── */
 
-export default function BrandOutletsPage() {
+export default function FeatureOutletsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = useSoleFeatureSlug();
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<DeduplicatedOutlet | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
+  const [purchasePriceRequestScope, setPurchasePriceRequestScope] = useState<"page" | string | null>(null);
   const hasAutoSelectedTab = useRef(false);
+  const outletsQueryKey = ["brandOutlets", brandId, featureSlug] as const;
 
-  const { data, isLoading } = useAuthQuery(
-    ["brandOutlets", brandId],
-    () => listBrandOutlets(brandId),
+  const { data, isPending } = useAuthQuery(
+    outletsQueryKey,
+    () => listBrandOutlets(brandId, featureSlug),
     pollOptions,
   );
 
   const { data: costsByOutlet } = useAuthQuery(
-    ["outletStatsCosts", brandId, "outletId"],
-    () => getOutletStatsCosts(brandId, "outletId"),
+    ["outletStatsCosts", brandId, featureSlug, "outletId"],
+    () => getOutletStatsCosts(brandId, "outletId", featureSlug),
   );
 
   const outlets = data?.outlets ?? [];
+  const selectedOutlet = useMemo(
+    () => selected ? outlets.find((outlet) => outlet.id === selected.id) ?? selected : null,
+    [outlets, selected],
+  );
+
+  const outletDomains = useMemo(
+    () => [...new Set(outlets.map((o) => normalizeDomain(o.outletDomain)))].sort(),
+    [outlets],
+  );
+  const domainDrQueryKey = useMemo(
+    () => ["outletDomainDrStatuses", outletDomains.join(",")] as const,
+    [outletDomains],
+  );
+  const domainTrafficQueryKey = useMemo(
+    () => ["outletDomainTrafficHistories", outletDomains.join(",")] as const,
+    [outletDomains],
+  );
+
+  const { data: domainTrafficHistories, isPending: isDomainTrafficHistoriesPending } = useAuthQuery(
+    domainTrafficQueryKey,
+    () => getDomainTrafficHistories(outletDomains),
+    { enabled: outletDomains.length > 0 },
+  );
+
+  const { data: domainDrStatuses, isPending: isDomainDrStatusesPending } = useAuthQuery(
+    domainDrQueryKey,
+    () => getDomainDrStatuses(outletDomains),
+    { enabled: outletDomains.length > 0 },
+  );
+
+  const fetchMonthlyVisitsMutation = useMutation({
+    mutationFn: (domain: string) => computeDomainTraffic(domain),
+    onSuccess: (result) => {
+      if (result == null) return;
+      queryClient.setQueryData<DomainTrafficHistory[]>(domainTrafficQueryKey, (prev) => {
+        const resultDomain = normalizeDomain(result.domain);
+        const next = (prev ?? []).filter((history) => normalizeDomain(history.domain) !== resultDomain);
+        return [...next, result];
+      });
+    },
+  });
+
+  const fetchPageMonthlyVisitsMutation = useMutation({
+    mutationFn: (domains: string[]) => computeDomainTrafficHistories(domains),
+    onSuccess: (results) => {
+      queryClient.setQueryData<DomainTrafficHistory[]>(domainTrafficQueryKey, (prev) => {
+        const resultDomains = new Set(results.map((result) => normalizeDomain(result.domain)));
+        const next = (prev ?? []).filter((history) => !resultDomains.has(normalizeDomain(history.domain)));
+        return [...next, ...results];
+      });
+      void queryClient.invalidateQueries({ queryKey: domainTrafficQueryKey });
+    },
+  });
+
+  const fetchDomainRatingMutation = useMutation({
+    mutationFn: (domain: string) => computeDomainDr(domain),
+    onSuccess: (result) => {
+      if (result == null) return;
+      queryClient.setQueryData<DomainDrStatus[]>(domainDrQueryKey, (prev) => {
+        const resultDomain = normalizeDomain(result.domain);
+        const next = (prev ?? []).filter((status) => normalizeDomain(status.domain) !== resultDomain);
+        return [...next, result];
+      });
+    },
+  });
+
+  const fetchPageDomainRatingsMutation = useMutation({
+    mutationFn: (domains: string[]) => computeDomainDrStatuses(domains),
+    onSuccess: (results) => {
+      queryClient.setQueryData<DomainDrStatus[]>(domainDrQueryKey, (prev) => {
+        const resultDomains = new Set(results.map((result) => normalizeDomain(result.domain)));
+        const next = (prev ?? []).filter((status) => !resultDomains.has(normalizeDomain(status.domain)));
+        return [...next, ...results];
+      });
+      void queryClient.invalidateQueries({ queryKey: domainDrQueryKey });
+    },
+  });
+
+  const requestPurchasePricesMutation = useMutation({
+    mutationFn: (outletIds: string[]) => requestOutletPurchasePrices(outletIds),
+    onSuccess: (result) => {
+      queryClient.setQueryData<OutletListResponse>(outletsQueryKey, (prev) =>
+        markOutletPriceRequestsOngoing(prev, result.results),
+      );
+      void queryClient.invalidateQueries({ queryKey: outletsQueryKey });
+    },
+  });
+
+  const drMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const status of domainDrStatuses ?? []) {
+      if (status.latestValidDr != null) map.set(normalizeDomain(status.domain), status.latestValidDr);
+    }
+    return map;
+  }, [domainDrStatuses]);
+
+  const trafficMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const history of domainTrafficHistories ?? []) {
+      if (history.trafficMonthlyAvg != null) map.set(normalizeDomain(history.domain), history.trafficMonthlyAvg);
+    }
+    return map;
+  }, [domainTrafficHistories]);
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -300,7 +579,7 @@ export default function BrandOutletsPage() {
     () => outlets.map((o) => ({ id: o.id, status: deriveDisplayStatusFromCounts(o.status?.brand) })),
     [outlets],
   );
-  const latchedStatuses = useMonotonicStatuses(outletStatusEntries, STATUS_PRIORITY, "brand-outlets");
+  const latchedStatuses = useMonotonicStatuses(outletStatusEntries, STATUS_PRIORITY, "outlets");
 
   // Full-list CSV (all outlets, ignores the active tab + search filter). Status &
   // cost mirror the card badge/chip via the page's own latched-status + cost maps.
@@ -309,11 +588,13 @@ export default function BrandOutletsPage() {
       outlets,
       (o) => latchedStatuses.get(o.id) ?? deriveDisplayStatusFromCounts(o.status?.brand),
       (o) => costMap.get(o.id) ?? null,
+      (o) => drMap.get(normalizeDomain(o.outletDomain)),
+      (o) => formatPurchasePrice(o),
     ),
-    [outlets, latchedStatuses, costMap],
+    [outlets, latchedStatuses, costMap, drMap],
   );
 
-  // Group outlets by display status
+  // Group outlets by display status derived from structured counts
   const groupedByStatus = useMemo(() => {
     const groups = new Map<string, DeduplicatedOutlet[]>();
     for (const status of STATUS_PRIORITY) {
@@ -360,21 +641,52 @@ export default function BrandOutletsPage() {
       o.outletName.toLowerCase().includes(q) || o.outletDomain.toLowerCase().includes(q)
     );
   }, [displayedOutlets, search]);
+  const paginatedOutlets = usePaginated(filteredOutlets);
+  useEffect(() => {
+    paginatedOutlets.setPage(0);
+  }, [activeTab, search, paginatedOutlets.setPage]);
+  const currentPageDomainsMissingDr = useMemo(
+    () => {
+      if (isDomainDrStatusesPending) return [];
+      return [
+        ...new Set(
+          paginatedOutlets.pageItems
+            .map((outlet) => normalizeDomain(outlet.outletDomain))
+            .filter((domain) => !drMap.has(domain)),
+        ),
+      ];
+    },
+    [isDomainDrStatusesPending, paginatedOutlets.pageItems, drMap],
+  );
+  const currentPageDomainsMissingTraffic = useMemo(
+    () => {
+      if (isDomainTrafficHistoriesPending) return [];
+      return [
+        ...new Set(
+          paginatedOutlets.pageItems
+            .map((outlet) => normalizeDomain(outlet.outletDomain))
+            .filter((domain) => !trafficMap.has(domain)),
+        ),
+      ];
+    },
+    [isDomainTrafficHistoriesPending, paginatedOutlets.pageItems, trafficMap],
+  );
 
   return (
-    <div className="flex flex-col md:flex-row h-full relative">
-      <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+    <div className="relative flex h-full min-h-0 flex-col md:flex-row">
+      <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} min-w-0 overflow-y-auto p-4 transition-all md:p-8`}>
+        <OutreachStatCardsAuto />
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="w-10 h-10 bg-brand-50 rounded-lg flex items-center justify-center text-brand-600">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
-              {isLoading && !data ? (
+              {isPending && !data ? (
                 <Skeleton className="h-4 w-48 mt-1" />
               ) : (
                 <p className="text-sm text-gray-500">
@@ -385,11 +697,11 @@ export default function BrandOutletsPage() {
               )}
             </div>
           </div>
-          <CsvDownloadButton filename={`outlets-${brandId}.csv`} csv={csv} isEmpty={outlets.length === 0} />
+          <CsvDownloadButton filename={`outlets-${featureSlug}.csv`} csv={csv} isEmpty={outlets.length === 0} />
         </div>
 
         {/* Status tabs */}
-        {!(isLoading && !data) && outlets.length > 0 && (
+        {!(isPending && !data) && outlets.length > 0 && (
           <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
             {tabs.map((tab) => (
               <button
@@ -409,7 +721,7 @@ export default function BrandOutletsPage() {
         )}
 
         {/* Outlet list */}
-        {isLoading && !data ? (
+        {isPending && !data ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map(i => (
               <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
@@ -427,29 +739,107 @@ export default function BrandOutletsPage() {
           </div>
         ) : (
           <>
-          <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} />
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="min-w-0 flex-1">
+              <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by outlet name or domain..." resultCount={filteredOutlets.length} totalCount={displayedOutlets.length} className="" />
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => fetchPageMonthlyVisitsMutation.mutate(currentPageDomainsMissingTraffic)}
+                disabled={isDomainTrafficHistoriesPending || fetchPageMonthlyVisitsMutation.isPending || currentPageDomainsMissingTraffic.length === 0}
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50 w-full sm:w-auto"
+              >
+                {fetchPageMonthlyVisitsMutation.isPending ? "Fetching..." : `Get Monthly Visits (${currentPageDomainsMissingTraffic.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => fetchPageDomainRatingsMutation.mutate(currentPageDomainsMissingDr)}
+                disabled={isDomainDrStatusesPending || fetchPageDomainRatingsMutation.isPending || currentPageDomainsMissingDr.length === 0}
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50 w-full sm:w-auto"
+              >
+                {fetchPageDomainRatingsMutation.isPending ? "Fetching..." : `Get Domain Ratings (${currentPageDomainsMissingDr.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPurchasePriceRequestScope("page");
+                  requestPurchasePricesMutation.mutate(paginatedOutlets.pageItems.map((outlet) => outlet.id));
+                }}
+                disabled={requestPurchasePricesMutation.isPending || paginatedOutlets.pageItems.length === 0}
+                className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50 w-full sm:w-auto"
+              >
+                {requestPurchasePricesMutation.isPending ? "Requesting..." : `Ask Purchase Price (${paginatedOutlets.pageItems.length})`}
+              </button>
+            </div>
+          </div>
           <div className="space-y-2">
-            {filteredOutlets.map((outlet) => (
+            {paginatedOutlets.pageItems.map((outlet) => (
               <OutletRow
                 key={outlet.id}
                 outlet={outlet}
                 displayStatus={latchedStatuses.get(outlet.id) ?? deriveDisplayStatusFromCounts(outlet.status?.brand)}
                 costCents={costMap.get(outlet.id) ?? null}
+                domainRating={drMap.get(normalizeDomain(outlet.outletDomain)) ?? null}
                 isSelected={selected?.id === outlet.id}
                 onClick={() => setSelected(outlet)}
               />
             ))}
           </div>
+          <TablePager
+            page={paginatedOutlets.page}
+            pageCount={paginatedOutlets.pageCount}
+            from={paginatedOutlets.from}
+            to={paginatedOutlets.to}
+            total={paginatedOutlets.total}
+            onPage={paginatedOutlets.setPage}
+          />
           </>
         )}
       </div>
 
       {/* Detail Panel */}
-      {selected && (
+      {selectedOutlet && (
         <OutletDetailPanel
-          outlet={selected}
-          displayStatus={latchedStatuses.get(selected.id) ?? deriveDisplayStatusFromCounts(selected.status?.brand)}
-          costCents={costMap.get(selected.id) ?? null}
+          outlet={selectedOutlet}
+          displayStatus={latchedStatuses.get(selectedOutlet.id) ?? deriveDisplayStatusFromCounts(selectedOutlet.status?.brand)}
+          costCents={costMap.get(selectedOutlet.id) ?? null}
+          monthlyVisits={trafficMap.get(normalizeDomain(selectedOutlet.outletDomain)) ?? null}
+          isFetchingMonthlyVisits={fetchMonthlyVisitsMutation.isPending && fetchMonthlyVisitsMutation.variables === normalizeDomain(selectedOutlet.outletDomain)}
+          monthlyVisitsFetchError={
+            fetchMonthlyVisitsMutation.isError && fetchMonthlyVisitsMutation.variables === normalizeDomain(selectedOutlet.outletDomain)
+              ? fetchMonthlyVisitsMutation.error.message
+              : null
+          }
+          monthlyVisitsFetchEmpty={
+            fetchMonthlyVisitsMutation.isSuccess &&
+            fetchMonthlyVisitsMutation.variables === normalizeDomain(selectedOutlet.outletDomain) &&
+            fetchMonthlyVisitsMutation.data?.trafficMonthlyAvg == null
+          }
+          onFetchMonthlyVisits={() => fetchMonthlyVisitsMutation.mutate(normalizeDomain(selectedOutlet.outletDomain))}
+          domainRating={drMap.get(normalizeDomain(selectedOutlet.outletDomain)) ?? null}
+          isFetchingDomainRating={fetchDomainRatingMutation.isPending && fetchDomainRatingMutation.variables === normalizeDomain(selectedOutlet.outletDomain)}
+          domainRatingFetchError={
+            fetchDomainRatingMutation.isError && fetchDomainRatingMutation.variables === normalizeDomain(selectedOutlet.outletDomain)
+              ? fetchDomainRatingMutation.error.message
+              : null
+          }
+          domainRatingFetchEmpty={
+            fetchDomainRatingMutation.isSuccess &&
+            fetchDomainRatingMutation.variables === normalizeDomain(selectedOutlet.outletDomain) &&
+            fetchDomainRatingMutation.data == null
+          }
+          onFetchDomainRating={() => fetchDomainRatingMutation.mutate(normalizeDomain(selectedOutlet.outletDomain))}
+          isRequestingPurchasePrice={requestPurchasePricesMutation.isPending && purchasePriceRequestScope === selectedOutlet.id}
+          purchasePriceRequestError={
+            requestPurchasePricesMutation.isError && purchasePriceRequestScope === selectedOutlet.id
+              ? requestPurchasePricesMutation.error.message
+              : null
+          }
+          onRequestPurchasePrice={() => {
+            setPurchasePriceRequestScope(selectedOutlet.id);
+            requestPurchasePricesMutation.mutate([selectedOutlet.id]);
+          }}
           onClose={() => setSelected(null)}
         />
       )}

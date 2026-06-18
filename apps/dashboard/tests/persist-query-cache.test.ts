@@ -41,6 +41,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
   it("persists only allowlisted small / slow-changing roots", () => {
     for (const root of [
       "features", "feature", "brand", "brands", "campaign", "campaigns",
+      "brandSalesEconomics",
       "featureStats", "campaignStats", "billingAccount", "platformPrices",
       "workflow", "workflows",
     ]) {

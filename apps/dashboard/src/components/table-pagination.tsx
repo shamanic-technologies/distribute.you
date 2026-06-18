@@ -51,12 +51,12 @@ export function TablePager({
 }) {
   if (pageCount <= 1) return null;
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-gray-100">
+    <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-xs text-gray-400">
         Showing {from.toLocaleString("en-US")}–{to.toLocaleString("en-US")} of{" "}
         {total.toLocaleString("en-US")}
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => onPage(Math.max(0, page - 1))}

@@ -20,10 +20,10 @@ interface BaseGroup {
   slugs: string[];
 }
 
+// Public landing sells one product: sales cold email outreach. Other channels
+// stay alpha (dashboard-only), so the public leaderboard surfaces sales only.
 const BASE_GROUPS: BaseGroup[] = [
-  { label: "Hiring Cold Email Outreach", slugs: ["hiring-cold-email-outreach"] },
   { label: "Sales Cold Email Outreach", slugs: ["sales-cold-email-outreach"] },
-  { label: "PR Cold Email Outreach", slugs: ["pr-cold-email-outreach", "pr-cold-email-outreach-sophia", "pr-cold-email-outreach-berlin"] },
 ];
 
 function resolveBaseGroup(featureSlug: string): BaseGroup | null {
@@ -93,6 +93,9 @@ export interface BrandLeaderboardEntry {
   brandUrl: string | null;
   brandDomain: string | null;
   brandName: string | null;
+  timeline?: BrandTimelinePoint[];
+  expectedRevenueUsd: number | null;
+  roiMultiple: number | null;
   emailsSent: number;
   emailsOpened: number;
   emailsClicked: number;
@@ -106,12 +109,24 @@ export interface BrandLeaderboardEntry {
   costPerReplyCents: number | null;
 }
 
+export interface BrandTimelinePoint {
+  date: string;
+  cumulativePipelineUsd: number | null;
+  emailsSent: number | null;
+  emailsOpened: number | null;
+  emailsClicked: number | null;
+  emailsReplied: number | null;
+}
+
 export interface WorkflowLeaderboardEntry {
+  workflowSlug: string | null;
   workflowName: string;
   workflowDynastyName: string;
   workflowDynastySignatureName: string | null;
   category: string | null;
   featureSlug: string | null;
+  expectedRevenueUsd: number | null;
+  roiMultiple: number | null;
   runCount: number;
   emailsSent: number;
   emailsOpened: number;
@@ -189,11 +204,14 @@ async function fetchWorkflowRanked(
     const cost = num(r.stats, "totalCostInUsdCents");
 
     return {
+      workflowSlug: r.workflow.workflowSlug ?? null,
       workflowName: r.workflow.workflowName,
       workflowDynastyName: r.workflow.workflowDynastyName ?? r.workflow.workflowName,
       workflowDynastySignatureName: r.workflow.workflowDynastySignatureName ?? null,
       category: null,
       featureSlug: r.workflow.featureSlug ?? null,
+      expectedRevenueUsd: null,
+      roiMultiple: null,
       runCount: num(r.stats, "completedRuns"),
       emailsSent: sent,
       emailsOpened: opened,
@@ -239,6 +257,8 @@ async function fetchBrandRanked(
       brandName: r.brand.name ?? null,
       brandDomain: r.brand.domain ?? null,
       brandUrl: null,
+      expectedRevenueUsd: null,
+      roiMultiple: null,
       emailsSent: sent,
       emailsOpened: opened,
       emailsClicked: clicked,
@@ -257,7 +277,17 @@ async function fetchBrandRanked(
 // ─── Aggregate brands across features (deduplicate by brandId) ───���──────────
 
 function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeaderboardEntry[] {
-  const byId = new Map<string, { sent: number; opened: number; clicked: number; replied: number; cost: number; name: string | null; domain: string | null }>();
+  const byId = new Map<string, {
+    sent: number;
+    opened: number;
+    clicked: number;
+    replied: number;
+    cost: number;
+    expectedRevenueUsd: number | null;
+    roiMultiple: number | null;
+    name: string | null;
+    domain: string | null;
+  }>();
 
   for (const brands of brandsByFeature) {
     for (const b of brands) {
@@ -269,8 +299,14 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
         existing.clicked += b.emailsClicked;
         existing.replied += b.emailsReplied;
         existing.cost += b.totalCostUsdCents;
+        if (b.expectedRevenueUsd != null) {
+          existing.expectedRevenueUsd = (existing.expectedRevenueUsd ?? 0) + b.expectedRevenueUsd;
+        }
         if (!existing.name && b.brandName) existing.name = b.brandName;
         if (!existing.domain && b.brandDomain) existing.domain = b.brandDomain;
+        existing.roiMultiple = existing.expectedRevenueUsd != null && existing.cost > 0
+          ? existing.expectedRevenueUsd / (existing.cost / 100)
+          : null;
       } else {
         byId.set(b.brandId, {
           sent: b.emailsSent,
@@ -278,6 +314,8 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
           clicked: b.emailsClicked,
           replied: b.emailsReplied,
           cost: b.totalCostUsdCents,
+          expectedRevenueUsd: b.expectedRevenueUsd,
+          roiMultiple: b.roiMultiple,
           name: b.brandName,
           domain: b.brandDomain,
         });
@@ -290,6 +328,8 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
     brandName: b.name,
     brandDomain: b.domain,
     brandUrl: null,
+    expectedRevenueUsd: b.expectedRevenueUsd,
+    roiMultiple: b.roiMultiple,
     emailsSent: b.sent,
     emailsOpened: b.opened,
     emailsClicked: b.clicked,

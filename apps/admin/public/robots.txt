@@ -1,0 +1,3 @@
+# distribute Dashboard - https://dashboard.distribute.you
+User-agent: *
+Disallow: /

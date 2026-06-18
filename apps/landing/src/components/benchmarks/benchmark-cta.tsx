@@ -12,31 +12,25 @@ export function BenchmarkCTA({ copy, signUpUrl, variant = "primary" }: Benchmark
   const dark = variant === "closing";
   return (
     <section
-      className={`py-14 md:py-16 px-4 ${dark ? "bg-gray-900" : "bg-gray-50 border-y border-gray-100"}`}
+      className={`dy-section-tight border-y border-[var(--dy-border)] ${
+        dark ? "bg-[oklch(6.5%_0.012_264)]" : "bg-[var(--dy-bg-alt)]"
+      }`}
     >
-      <div className="max-w-3xl mx-auto text-center">
-        <h2
-          className={`font-display text-2xl md:text-3xl font-bold mb-3 ${
-            dark ? "text-white" : "text-gray-900"
-          }`}
-        >
+      <div className="dy-shell max-w-3xl text-center">
+        <h2 className="dy-h2 mb-3 text-2xl md:text-3xl">
           {copy.headline}
         </h2>
-        <p className={`mb-7 text-base md:text-lg ${dark ? "text-gray-400" : "text-gray-600"}`}>
+        <p className="dy-body mb-7 text-base md:text-lg">
           {copy.sub}
         </p>
         <LinkButton
           href={signUpUrl}
-          className={
-            dark
-              ? "inline-block bg-white text-gray-900 px-7 py-3 rounded-lg font-medium hover:bg-gray-100 transition text-sm"
-              : "inline-block bg-brand-500 text-white px-7 py-3 rounded-lg font-medium hover:bg-brand-600 transition text-sm"
-          }
+          className={dark ? "dy-button-ghost" : "dy-button-primary"}
         >
           {copy.cta}
         </LinkButton>
-        <p className={`text-xs mt-4 ${dark ? "text-gray-500" : "text-gray-400"}`}>
-          $25 welcome credits. No subscription. No credit card to try.
+        <p className="dy-mono mt-4 text-xs text-[var(--dy-muted)]">
+          $25 free credits. Cancel anytime.
         </p>
       </div>
     </section>

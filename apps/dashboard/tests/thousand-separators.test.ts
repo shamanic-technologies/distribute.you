@@ -43,15 +43,7 @@ describe("formatCentsAsUsdOrNull", () => {
 });
 
 describe("sidebar components use formatCount for badges", () => {
-  it("mcp-sidebar imports and uses formatCount", () => {
-    const content = fs.readFileSync(
-      path.join(__dirname, "../src/components/mcp-sidebar.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain('import { formatCount } from "@/lib/format-number"');
-    expect(content).toContain("formatBadge(badge)");
-  });
-
+  // mcp-sidebar.tsx was removed with the campaign concept.
   it("context-sidebar imports and uses formatCount", () => {
     const content = fs.readFileSync(
       path.join(__dirname, "../src/components/context-sidebar.tsx"),
@@ -72,13 +64,6 @@ describe("sidebar components use formatCount for badges", () => {
     expect(content).toContain('toLocaleString("en-US")');
   });
 
-  it("press-kit page uses formatCount for view stats", () => {
-    const content = fs.readFileSync(
-      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain('import { formatCount } from "@/lib/format-number"');
-    expect(content).toContain("formatCount(stats.totalViews)");
-    expect(content).toContain("formatCount(stats.uniqueVisitors)");
-  });
+  // The campaign press-kit detail page (which used formatCount for view stats)
+  // was removed with the campaign concept.
 });

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-// Regression: Go button on /orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new
+// Regression: Go button on /orgs/[orgId]/brands/[brandId]/campaigns/new
 // was disabled because brand-service /internal/brands/:id returns `url` (deployed minimal
 // shape) but dashboard `BrandDetail` declared `brandUrl`. resolvedBrandUrl resolved to "",
 // disabling the button. Brand-service is also inconsistent: /orgs/brands still emits
@@ -10,24 +10,6 @@ import * as path from "path";
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const apiContent = fs.readFileSync(apiPath, "utf-8");
-
-const newCampaignPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
-);
-const newCampaignPage = fs.readFileSync(newCampaignPagePath, "utf-8");
-
-const brandDetailPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-);
-const brandDetailPage = fs.readFileSync(brandDetailPagePath, "utf-8");
-
-const legacyNewPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/features/[featureId]/new/page.tsx",
-);
-const legacyNewPage = fs.readFileSync(legacyNewPagePath, "utf-8");
 
 describe("Brand URL field alignment (regression: Go button disabled)", () => {
   describe("api.ts", () => {
@@ -42,33 +24,13 @@ describe("Brand URL field alignment (regression: Go button disabled)", () => {
     });
   });
 
-  describe("new campaign page (the page where the bug was reported)", () => {
-    it("reads brand?.url for resolvedBrandUrl (not brand?.brandUrl)", () => {
-      expect(newCampaignPage).toContain("brand?.url ?? \"\"");
-      expect(newCampaignPage).not.toContain("brand?.brandUrl");
-    });
+  // The new-campaign/launch page case (where this bug was reported) was removed
+  // with the manual launch/create flow; api.ts normalization remains the guard
+  // for `url` vs `brandUrl` wire-field alignment.
 
-    it("reads b.url when mapping additionalBrands to URLs", () => {
-      expect(newCampaignPage).toContain("additionalBrands.map((b) => b.url)");
-      expect(newCampaignPage).not.toContain("additionalBrands.map((b) => b.brandUrl)");
-    });
-  });
-
-  describe("brand detail page", () => {
-    it("renders brand.url for href, not brand.brandUrl", () => {
-      expect(brandDetailPage).toContain("href={brand.url}");
-      expect(brandDetailPage).not.toContain("href={brand.brandUrl}");
-    });
-  });
-
-  describe("legacy features/[featureId]/new page", () => {
-    it("reads b.url for the selected brand lookup", () => {
-      expect(legacyNewPage).toContain("?.url ?? \"\"");
-      expect(legacyNewPage).not.toMatch(/\.find\([^)]+\)\?\.brandUrl/);
-    });
-
-    it("reads b.url in the brand option label fallback chain", () => {
-      expect(legacyNewPage).toContain("b.name || b.domain || b.url");
-    });
-  });
+  // The "brand detail page renders brand.url for href" case was removed: the
+  // brand root page is now the (sole) feature's Revenue overview and no longer
+  // displays a brand-URL link (the feature segment was flattened into the brand).
+  // The legacy app-level `features/[featureId]/new` create page was removed in
+  // the #1768 follow-up.
 });

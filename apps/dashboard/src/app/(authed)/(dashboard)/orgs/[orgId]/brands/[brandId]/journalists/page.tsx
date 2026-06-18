@@ -1,5 +1,7 @@
 "use client";
 
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -9,6 +11,8 @@ import {
   type EnrichedJournalist,
   type JournalistCampaignEntry,
   type JournalistStatusBooleans,
+  type ManualQualification,
+  type ManualQualificationStatus,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import {
@@ -19,6 +23,12 @@ import {
   deriveDisplayStatusFromBooleans,
 } from "@/lib/outlet-status";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
+import { useManualQualifications } from "@/lib/use-manual-qualification";
+import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
+import { EditManualQualificationModal } from "@/components/manual-qualification/edit-manual-qualification-modal";
+import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
+import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { DashboardPage } from "@/components/dashboard-page";
 
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
@@ -55,18 +65,28 @@ function journalistDisplayStatus(j: EnrichedJournalist): string {
 
 /* ─── Main Page ──────────────────────────────────────────────────────── */
 
-export default function BrandJournalistsPage() {
+export default function FeatureJournalistsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
+  const featureSlug = useSoleFeatureSlug();
   const [activeTab, setActiveTab] = useState<Tab>("contacted");
   const [selected, setSelected] = useState<EnrichedJournalist | null>(null);
   const [search, setSearch] = useState("");
+  const [editStatusContext, setEditStatusContext] = useState<
+    { campaignId: string; email: string } | null
+  >(null);
   const hasAutoSelectedTab = useRef(false);
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
-    ["enrichedJournalists", brandId],
-    () => listJournalistsEnriched(brandId),
+    ["enrichedJournalists", brandId, featureSlug],
+    () => listJournalistsEnriched(brandId, { featureSlug }),
     { refetchInterval: POLL_INTERVAL },
+  );
+
+  const { data: qualificationsData } = useManualQualifications(brandId);
+  const qualificationByKey = useMemo(
+    () => buildLatestQualificationMap(qualificationsData?.qualifications ?? []),
+    [qualificationsData],
   );
 
   const journalists = journalistsData?.journalists ?? [];
@@ -89,7 +109,7 @@ export default function BrandJournalistsPage() {
   const latchedStatuses = useMonotonicStatuses(
     Array.from(journalistStatuses, ([id, status]) => ({ id, status })),
     STATUS_PRIORITY,
-    "brand-journalists",
+    "journalists",
   );
 
   // Group by best display status
@@ -143,10 +163,25 @@ export default function BrandJournalistsPage() {
     { key: "all", label: "All", count: journalistsData?.total ?? journalists.length },
   ];
 
+  if (isFirstLoad) {
+    return (
+      <DashboardPage width="wide">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-gray-200 rounded" />
+          <div className="h-10 w-64 bg-gray-100 rounded" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-gray-100 rounded-xl" />
+          ))}
+        </div>
+      </DashboardPage>
+    );
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       {/* Journalist List */}
       <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+        <OutreachStatCardsAuto />
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Journalists
@@ -174,13 +209,7 @@ export default function BrandJournalistsPage() {
 
         <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by journalist or outlet name..." resultCount={filteredList.length} totalCount={activeList.length} />
 
-        {isFirstLoad ? (
-          <div className="space-y-2 animate-pulse">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-[76px] bg-gray-100 rounded-xl border border-gray-200" />
-            ))}
-          </div>
-        ) : filteredList.length === 0 ? (
+        {filteredList.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
             <h3 className="font-display font-bold text-lg text-gray-800 mb-2">
               {activeList.length === 0 ? "No journalists" : "No matching journalists"}
@@ -256,7 +285,23 @@ export default function BrandJournalistsPage() {
         <DetailPanel
           journalist={selected}
           bestStatus={latchedStatuses.get(selected.journalistId) ?? journalistDisplayStatus(selected)}
+          qualificationByKey={qualificationByKey}
+          onEditStatus={(ctx) => setEditStatusContext(ctx)}
           onClose={() => setSelected(null)}
+        />
+      )}
+
+      {editStatusContext && (
+        <EditManualQualificationModal
+          campaignId={editStatusContext.campaignId}
+          email={editStatusContext.email}
+          brandId={brandId}
+          currentStatus={
+            qualificationByKey.get(
+              qualificationKey(editStatusContext.campaignId, editStatusContext.email),
+            )?.status ?? null
+          }
+          onClose={() => setEditStatusContext(null)}
         />
       )}
     </div>
@@ -266,10 +311,14 @@ export default function BrandJournalistsPage() {
 function DetailPanel({
   journalist: j,
   bestStatus,
+  qualificationByKey,
+  onEditStatus,
   onClose,
 }: {
   journalist: EnrichedJournalist;
   bestStatus: string;
+  qualificationByKey: Map<string, ManualQualification>;
+  onEditStatus: (ctx: { campaignId: string; email: string }) => void;
   onClose: () => void;
 }) {
   const cost = j.cost?.totalCostInUsdCents ?? 0;
@@ -381,9 +430,22 @@ function DetailPanel({
         {/* Per-Campaign Details */}
         <div className="space-y-3">
           <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign Entries</h4>
-          {j.campaigns.map((c) => (
-            <CampaignEntryCard key={c.id} campaign={c} statusBooleans={j.byCampaign?.[c.campaignId] ?? j.campaign} />
-          ))}
+          {j.campaigns.map((c) => {
+            const effectiveEmail = c.email ?? j.email;
+            const manualStatus: ManualQualificationStatus | null = effectiveEmail
+              ? qualificationByKey.get(qualificationKey(c.campaignId, effectiveEmail))?.status ?? null
+              : null;
+            return (
+              <CampaignEntryCard
+                key={c.id}
+                campaign={c}
+                statusBooleans={j.byCampaign?.[c.campaignId] ?? j.campaign}
+                effectiveEmail={effectiveEmail}
+                manualStatus={manualStatus}
+                onEditStatus={onEditStatus}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -405,9 +467,22 @@ function DetailPanel({
   );
 }
 
-function CampaignEntryCard({ campaign: c, statusBooleans }: { campaign: JournalistCampaignEntry; statusBooleans?: JournalistStatusBooleans | null }) {
+function CampaignEntryCard({
+  campaign: c,
+  statusBooleans,
+  effectiveEmail,
+  manualStatus,
+  onEditStatus,
+}: {
+  campaign: JournalistCampaignEntry;
+  statusBooleans?: JournalistStatusBooleans | null;
+  effectiveEmail: string | null;
+  manualStatus: ManualQualificationStatus | null;
+  onEditStatus: (ctx: { campaignId: string; email: string }) => void;
+}) {
   const score = parseFloat(c.relevanceScore);
   const entryStatus = deriveDisplayStatusFromBooleans(statusBooleans);
+  const canEdit = effectiveEmail !== null;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
@@ -428,6 +503,31 @@ function CampaignEntryCard({ campaign: c, statusBooleans }: { campaign: Journali
         <span className="text-[10px] text-gray-400 ml-auto">
           {new Date(c.createdAt).toLocaleDateString()} ({timeAgo(c.createdAt)})
         </span>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Manual qualif</span>
+        {manualStatus ? (
+          <ManualQualificationBadge status={manualStatus} />
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+        <button
+          type="button"
+          data-testid="open-edit-status-modal"
+          disabled={!canEdit}
+          title={canEdit ? undefined : "No email — cannot qualify"}
+          onClick={() => {
+            if (effectiveEmail) onEditStatus({ campaignId: c.campaignId, email: effectiveEmail });
+          }}
+          className={`text-xs px-2.5 py-1 rounded-md border transition ${
+            canEdit
+              ? "border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
+              : "border-gray-100 text-gray-300 cursor-not-allowed"
+          }`}
+        >
+          Edit status
+        </button>
       </div>
 
       {c.whyRelevant && (

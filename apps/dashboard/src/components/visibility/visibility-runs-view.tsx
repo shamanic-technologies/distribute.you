@@ -28,6 +28,7 @@ import {
   parseDecimal,
 } from "@/components/visibility/score-card";
 import { METRIC_INFO, MetricLabel } from "@/components/visibility/metric-info";
+import { DashboardPage } from "@/components/dashboard-page";
 
 interface ChartPoint {
   ts: number;
@@ -75,20 +76,20 @@ export function VisibilityRunsView({
   scope: ListVisibilityRunsParams;
   basePath: string;
 }) {
-  const { data, isLoading } = useAuthQuery(
+  const { data, isPending } = useAuthQuery(
     ["visibilityRuns", scope],
     () => listVisibilityRuns({ ...scope, limit: 50 }),
     pollOptionsSlower,
   );
 
-  const pending = isLoading && !data;
+  const pending = isPending && !data;
   const runs = data?.runs ?? [];
   const chartData = useMemo(() => buildChartData(runs), [runs]);
   const latest = runs[0];
 
   if (!pending && runs.length === 0) {
     return (
-      <div className="p-4 md:p-8" data-testid="visibility-runs-page">
+      <DashboardPage width="wide" data-testid="visibility-runs-page">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-gray-800">
             Visibility runs
@@ -98,14 +99,14 @@ export function VisibilityRunsView({
           </p>
         </div>
         <EmptyState />
-      </div>
+      </DashboardPage>
     );
   }
 
   const rowFrames = runs.length > 0 ? runs : Array.from({ length: 5 }).map(() => null);
 
   return (
-    <div className="p-4 md:p-8" data-testid="visibility-runs-page">
+    <DashboardPage width="wide" data-testid="visibility-runs-page">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">
           Visibility runs
@@ -235,10 +236,10 @@ export function VisibilityRunsView({
       </section>
 
       <section
-        className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+        className="bg-white rounded-xl border border-gray-200 overflow-x-auto"
         data-testid="visibility-runs-table"
       >
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
             <tr>
               <th className="px-4 py-2 text-left">Completed</th>
@@ -271,7 +272,7 @@ export function VisibilityRunsView({
           </tbody>
         </table>
       </section>
-    </div>
+    </DashboardPage>
   );
 }
 

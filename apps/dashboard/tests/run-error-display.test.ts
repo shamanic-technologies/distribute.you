@@ -55,7 +55,7 @@ describe("Brand info page — failed run error display", () => {
 describe("Emails page — generation run error display", () => {
   const pagePath = path.resolve(
     __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/emails/page.tsx"
+    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx"
   );
   const content = fs.readFileSync(pagePath, "utf-8");
 

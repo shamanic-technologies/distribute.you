@@ -55,7 +55,7 @@ describe("consumers adopt the coordinated reveal", () => {
   const featurePage = fs.readFileSync(
     path.join(
       __dirname,
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     ),
     "utf-8",
   );
@@ -108,14 +108,15 @@ describe("CoordinatedReveal — reusable component wrapper", () => {
 describe("route-transition loading.tsx boundaries (instant nav skeletons)", () => {
   const authed =
     "../src/app/(authed)/(dashboard)/orgs/[orgId]";
+  // The campaign segment (campaigns/[id]) was removed with the campaign concept,
+  // so its loading.tsx boundary is gone too — the dashboard now has org + brand
+  // levels only.
   const boundaries = [
     `${authed}/loading.tsx`,
     `${authed}/brands/[brandId]/loading.tsx`,
-    `${authed}/brands/[brandId]/features/[featureSlug]/loading.tsx`,
-    `${authed}/brands/[brandId]/features/[featureSlug]/campaigns/[id]/loading.tsx`,
   ];
 
-  it("ships a loading.tsx at every dashboard segment level (org/brand/feature/campaign)", () => {
+  it("ships a loading.tsx at every dashboard segment level (org/brand)", () => {
     for (const rel of boundaries) {
       const p = path.join(__dirname, rel);
       expect(fs.existsSync(p), `${rel} must exist`).toBe(true);
@@ -128,7 +129,13 @@ describe("route-transition loading.tsx boundaries (instant nav skeletons)", () =
       path.join(__dirname, "../src/components/dashboard-page-skeleton.tsx"),
       "utf-8",
     );
-    expect(skel).toContain("p-4 md:p-8 max-w-7xl mx-auto");
+    const page = fs.readFileSync(
+      path.join(__dirname, "../src/components/dashboard-page.tsx"),
+      "utf-8",
+    );
+    expect(skel).toContain('<DashboardPage width="wide">');
+    expect(page).toContain("p-4 md:p-8");
+    expect(page).toContain('wide: "max-w-7xl"');
   });
 });
 
@@ -136,17 +143,19 @@ describe("feature pages adopt the coordinated body reveal", () => {
   const read = (rel: string) =>
     fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
-  it("feature overview reveals revenue + cost cards together", () => {
+  it("feature overview reveals revenue + cost cards on their OWN data (per-card barrier)", () => {
     const src = read(
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/overview/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     );
-    expect(src).toContain("CoordinatedReveal");
-    // both cold queries gate the one paint — no intra-card pop-in
-    expect(src).toMatch(/data !== undefined,\s*costData !== undefined/);
+    expect(src).toContain("useCoordinatedReveal");
+    // Revenue (features-service) and Total-spent (runs-service) resolve on different
+    // cold chains → SEPARATE latches, so the fast cost card never waits on the slower
+    // revenue call (#1551: one barrier per card, never a single AND of both queries).
+    expect(src).toMatch(/useCoordinatedReveal\(\[data !== undefined\]\)/);
+    expect(src).toMatch(/useCoordinatedReveal\(\[costData !== undefined\]\)/);
+    expect(src).not.toMatch(/data !== undefined,\s*costData !== undefined/);
   });
 
-  it("legacy feature page reveals stats grid + campaigns list together", () => {
-    const src = read("../src/app/(authed)/(dashboard)/features/[featureId]/page.tsx");
-    expect(src).toContain("CoordinatedReveal");
-  });
+  // The legacy app-level feature page (`features/[featureId]/page.tsx`, the
+  // cross-brand "Campaigns" island) was removed in the #1768 follow-up.
 });

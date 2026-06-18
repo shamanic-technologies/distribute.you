@@ -3,10 +3,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
-const createPagePath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
-);
 
 describe("sendCampaignEmail function", () => {
   const content = fs.readFileSync(apiPath, "utf-8");
@@ -33,22 +29,6 @@ describe("sendCampaignEmail function", () => {
   });
 });
 
-describe("campaign_created email on creation page", () => {
-  const content = fs.readFileSync(createPagePath, "utf-8");
-
-  it("should import sendCampaignEmail", () => {
-    expect(content).toContain("sendCampaignEmail");
-  });
-
-  it("should fire campaign_created email after successful creation", () => {
-    expect(content).toContain('sendCampaignEmail("campaign_created"');
-  });
-
-  it("should be best-effort (catch errors silently)", () => {
-    expect(content).toMatch(/sendCampaignEmail\(.*\)\.catch\(\(\) => \{\}\)/s);
-  });
-});
-
 describe("campaign_stopped email via useStopCampaign hook", () => {
   const hookPath = path.resolve(__dirname, "../src/lib/use-stop-campaign.ts");
   const content = fs.readFileSync(hookPath, "utf-8");
@@ -62,6 +42,6 @@ describe("campaign_stopped email via useStopCampaign hook", () => {
   });
 
   it("should be best-effort (catch errors silently)", () => {
-    expect(content).toMatch(/sendCampaignEmail\(.*\)\.catch\(\(\) => \{\}\)/s);
+    expect(content).toMatch(/sendCampaignEmail\([\s\S]*\)\.catch\(\(\) => \{\}\)/);
   });
 });

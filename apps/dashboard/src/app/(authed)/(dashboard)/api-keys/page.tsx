@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { listApiKeys, createApiKey, deleteApiKey, type ApiKey, type NewApiKey } from "@/lib/api";
 import { SkeletonApiKey } from "@/components/skeleton";
+import { DashboardPage } from "@/components/dashboard-page";
 
 export default function ApiKeysPage() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useAuthQuery(["apiKeys"], () => listApiKeys());
+  const { data, isPending } = useAuthQuery(["apiKeys"], () => listApiKeys());
   const keys: ApiKey[] = data?.keys ?? [];
 
   const [newKey, setNewKey] = useState<NewApiKey | null>(null);
@@ -47,7 +48,7 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <DashboardPage width="wide">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">API Keys</h1>
         <p className="text-gray-600">Manage API keys for distribute and REST API access.</p>
@@ -83,7 +84,7 @@ export default function ApiKeysPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {isPending ? (
         <SkeletonApiKey />
       ) : (
         <div className="space-y-6 max-w-2xl">
@@ -181,6 +182,6 @@ const client = new DistributeClient({
           </div>
         </div>
       )}
-    </div>
+    </DashboardPage>
   );
 }

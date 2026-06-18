@@ -16,13 +16,12 @@ describe("BrandLogo component", () => {
   });
 
   it("should be used in all brand listing pages instead of a hardcoded icon", () => {
+    // The brand root page is now the (sole) feature's Revenue overview — it no
+    // longer renders a brand logo/header. The brand-LISTING surfaces are the
+    // brands list + the org page.
     const brandFiles = [
       path.join(__dirname, "../src/components/brands-list.tsx"),
       path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/page.tsx"),
-      path.join(
-        __dirname,
-        "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
-      ),
     ];
 
     for (const file of brandFiles) {

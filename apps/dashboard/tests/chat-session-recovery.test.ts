@@ -83,7 +83,6 @@ describe("chat components wire session_not_found recovery", () => {
   const components = [
     "src/components/workflows/workflow-chat.tsx",
     "src/components/press-kits/press-kit-chat.tsx",
-    "src/components/campaigns/campaign-prefill-chat.tsx",
   ];
 
   for (const rel of components) {

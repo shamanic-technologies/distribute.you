@@ -51,3 +51,26 @@ for (const { name, file, contextProp } of chatComponents) {
     });
   });
 }
+
+describe("edit-with-ai-chat — context must use ref to avoid stale closure", () => {
+  const filePath = path.join(__dirname, "../src/components/ai-edit/edit-with-ai-chat.tsx");
+  const content = fs.readFileSync(filePath, "utf-8");
+
+  it("should store request context in a ref", () => {
+    expect(content).toContain("const contextRef = useRef(requestContext)");
+    expect(content).toContain("contextRef.current = requestContext");
+  });
+
+  it("should use contextRef.current inside prepareSendMessagesRequest", () => {
+    expect(content).toContain("context: contextRef.current");
+  });
+
+  it("should NOT close over brandId directly in transport deps", () => {
+    const transportBlock = content.match(
+      /const transport = useMemo\([\s\S]*?\[([^\]]*)\]/
+    );
+    expect(transportBlock).toBeTruthy();
+    const deps = transportBlock![1];
+    expect(deps).not.toContain("brandId");
+  });
+});

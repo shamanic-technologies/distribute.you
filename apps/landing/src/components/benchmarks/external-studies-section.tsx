@@ -7,25 +7,25 @@ function ExternalStudyCard({ study }: { study: ExternalStudy }) {
       href={study.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col bg-white rounded-2xl border border-gray-200 p-5 hover:border-gray-300 hover:shadow-md transition"
+      className="dy-card group flex flex-col p-5 transition hover:border-[var(--dy-accent-brd)]"
     >
       <div className="flex items-center gap-3 mb-4">
         <ProviderAvatar provider={study.provider} providerDomain={study.providerDomain} size={32} />
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-gray-900 truncate">{study.provider}</div>
-          <div className="text-xs text-gray-400">{study.year}</div>
+          <div className="truncate text-sm font-semibold text-[var(--dy-text)]">{study.provider}</div>
+          <div className="dy-mono text-xs text-[var(--dy-muted)]">{study.year}</div>
         </div>
       </div>
-      <p className="font-display text-2xl md:text-3xl font-bold text-gray-900 mb-2 tabular-nums leading-tight">
+      <p className="mb-2 text-2xl font-bold leading-tight text-[var(--dy-text)] tabular-nums md:text-3xl">
         {study.headlineStat}
       </p>
-      <p className="text-sm text-gray-600 leading-snug mb-3 flex-1">{study.title}</p>
+      <p className="dy-body mb-3 flex-1 text-sm leading-snug">{study.title}</p>
       {study.quote && (
-        <blockquote className="text-xs text-gray-500 italic leading-relaxed border-l-2 border-gray-200 pl-3 mb-4">
+        <blockquote className="mb-4 border-l-2 border-[var(--dy-border-hi)] pl-3 text-xs italic leading-relaxed text-[var(--dy-sub)]">
           &ldquo;{study.quote}&rdquo;
         </blockquote>
       )}
-      <span className="text-xs text-gray-500 group-hover:text-gray-700 mt-auto pt-3 border-t border-gray-100 inline-flex items-center gap-1">
+      <span className="dy-mono mt-auto inline-flex items-center gap-1 border-t border-[var(--dy-border)] pt-3 text-xs text-[var(--dy-muted)] group-hover:text-[var(--dy-text)]">
         Read source
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -38,16 +38,16 @@ function ExternalStudyCard({ study }: { study: ExternalStudy }) {
 export function ExternalStudiesSection({ studies, featureName }: { studies: ExternalStudy[]; featureName: string }) {
   if (studies.length === 0) return null;
   return (
-    <section className="py-12 md:py-16 bg-white border-y border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="dy-section-tight border-y border-[var(--dy-border)] bg-[var(--dy-bg-alt)]">
+      <div className="dy-shell-wide">
         <div className="mb-8">
-          <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-2">
+          <p className="dy-mono mb-2 text-xs uppercase tracking-wider text-[var(--dy-muted)]">
             What the industry says
           </p>
-          <h2 className="font-display text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="dy-h2 mb-2 text-2xl md:text-3xl">
             External benchmarks for {featureName}
           </h2>
-          <p className="text-gray-500 text-base max-w-2xl">
+          <p className="dy-body max-w-2xl text-base">
             Independent studies from established providers. Every number linked to source — compare against the distribute leaderboard below.
           </p>
         </div>

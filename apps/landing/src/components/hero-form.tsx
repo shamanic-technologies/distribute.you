@@ -18,7 +18,7 @@ export function HeroForm({ signUpUrl }: { signUpUrl: string }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg mx-auto">
+    <form onSubmit={handleSubmit} className="w-full max-w-[17.5rem] sm:max-w-lg mx-auto">
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -47,7 +47,7 @@ export function HeroForm({ signUpUrl }: { signUpUrl: string }) {
         <button
           type="submit"
           disabled={loading}
-          className="px-8 py-3.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition shadow-sm text-base whitespace-nowrap inline-flex items-center justify-center gap-2 disabled:opacity-70"
+          className="w-full sm:w-auto px-8 py-3.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition shadow-sm text-base whitespace-nowrap inline-flex items-center justify-center gap-2 disabled:opacity-70"
         >
           {loading && (
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -55,7 +55,7 @@ export function HeroForm({ signUpUrl }: { signUpUrl: string }) {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
           )}
-          Get Started Free
+          Start free — $25 free credits
         </button>
       </div>
     </form>

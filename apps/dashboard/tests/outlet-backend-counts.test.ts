@@ -10,7 +10,7 @@ const brandOutletPagePath = path.resolve(
 );
 const featureOutletPagePath = path.resolve(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx",
+  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx",
 );
 
 describe("outlet pages use client-side grouping for tab counts (not cumulative byOutreachStatus)", () => {

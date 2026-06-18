@@ -15,9 +15,9 @@ const routePath = path.join(
   __dirname,
   "../src/app/(authed)/api/onboarding/complete/route.ts"
 );
-const brandsPagePath = path.join(
+const onboardingPagePath = path.join(
   __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/page.tsx"
+  "../src/components/onboarding/default-onboarding.tsx"
 );
 
 describe("onboarding-complete server route", () => {
@@ -46,8 +46,8 @@ describe("onboarding-complete server route", () => {
   });
 });
 
-describe("brands page marks onboarding complete on brand creation", () => {
-  const content = fs.readFileSync(brandsPagePath, "utf-8");
+describe("onboarding page marks onboarding complete on brand creation", () => {
+  const content = fs.readFileSync(onboardingPagePath, "utf-8");
 
   it("POSTs to /api/onboarding/complete after upsertBrand", () => {
     expect(content).toContain('"/api/onboarding/complete"');

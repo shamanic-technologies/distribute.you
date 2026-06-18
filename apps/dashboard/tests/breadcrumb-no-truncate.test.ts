@@ -14,7 +14,7 @@ describe("BreadcrumbNav truncation", () => {
     // Find the brand Link element (contains /brands/${brandId})
     // Regex captures the className of the Link whose href includes /brands/
     const brandLinkRegex =
-      /Link\s+href=\{`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}`\}\s+className="([^"]*)"/;
+      /Link\s+href=\{(?:explicitHierarchyHref\()?`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}`\)?\}\s+className="([^"]*)"/;
     const match = content.match(brandLinkRegex);
     expect(match, "brand Link element should exist in breadcrumb").toBeTruthy();
     const className = match![1];
@@ -36,17 +36,6 @@ describe("BreadcrumbNav truncation", () => {
     expect(className).not.toMatch(/max-w-/);
   });
 
-  it("should not truncate the campaign name link in the breadcrumb", () => {
-    // Find the campaign Link element (contains /campaigns/${campaignId})
-    const campaignLinkRegex =
-      /Link\s+href=\{`\/orgs\/\$\{orgId\}\/brands\/\$\{brandId\}\/features\/\$\{featureSlug\}\/campaigns\/\$\{campaignId\}`\}\s+className="([^"]*)"/;
-    const match = content.match(campaignLinkRegex);
-    expect(
-      match,
-      "campaign Link element should exist in breadcrumb"
-    ).toBeTruthy();
-    const className = match![1];
-    expect(className).not.toContain("truncate");
-    expect(className).not.toMatch(/max-w-/);
-  });
+  // The campaign breadcrumb link was removed with the campaign concept — the
+  // breadcrumb is Org → Brand (→ Feature at the app-feature level) only.
 });

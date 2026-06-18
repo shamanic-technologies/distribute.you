@@ -64,6 +64,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brand",
   "brands",
   "brandExtractedFields",
+  "brandSalesEconomics",
   "campaign",
   "campaigns",
   // Workflow definitions / summaries — metadata, NOT run logs or test outputs

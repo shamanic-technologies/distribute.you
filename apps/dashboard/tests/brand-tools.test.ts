@@ -37,30 +37,22 @@ describe("brand-tools removal", () => {
     });
   });
 
-  describe("campaign-level entity pages exist", () => {
-    it("campaign outlets page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/outlets/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
+  describe("campaign-level entity pages have been removed", () => {
+    // The campaign concept is hidden from the UI — everything collapses to the
+    // brand level. The whole campaigns/[id] subtree is gone.
+    it("campaign outlets page does not exist", () => {
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/outlets/page.tsx");
+      expect(fs.existsSync(p)).toBe(false);
     });
 
-    it("campaign journalists page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
+    it("campaign journalists page does not exist", () => {
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/journalists/page.tsx");
+      expect(fs.existsSync(p)).toBe(false);
     });
 
-    it("campaign press-kits list page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
-    it("campaign press-kit detail page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/press-kits/[kitId]/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
-    it("campaign articles page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/articles/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
+    it("campaign articles page does not exist", () => {
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]/articles/page.tsx");
+      expect(fs.existsSync(p)).toBe(false);
     });
   });
 
@@ -116,39 +108,39 @@ describe("brand-tools removal", () => {
 
   describe("feature-level entity pages exist", () => {
     it("feature outlets page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
 
     it("feature journalists page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
 
     it("feature leads page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/leads/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
 
     it("feature emails page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/emails/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
 
     it("feature articles page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/articles/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/articles/page.tsx");
       expect(fs.existsSync(p)).toBe(true);
     });
 
     it("feature outlets page uses listBrandOutlets (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/outlets/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listBrandOutlets");
       expect(src).not.toContain("listCampaignOutlets");
     });
 
     it("feature journalists page uses listJournalistsEnriched with brand scope", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listJournalistsEnriched");
       expect(src).toContain("groupedByStatus");
@@ -156,23 +148,7 @@ describe("brand-tools removal", () => {
     });
 
     it("feature journalists page only shows skeleton on first load (not on refetch)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/journalists/page.tsx");
-      const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("isFirstLoad");
-      expect(src).toContain("if (isFirstLoad)");
-      expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
-    });
-
-    it("campaign journalists page uses listJournalistsEnriched with campaign scope", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx");
-      const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("listJournalistsEnriched");
-      expect(src).toContain("groupedByStatus");
-      expect(src).not.toContain("getJournalistStatsCosts");
-    });
-
-    it("campaign journalists page only shows skeleton on first load (not on refetch)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/journalists/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("isFirstLoad");
       expect(src).toContain("if (isFirstLoad)");
@@ -180,19 +156,19 @@ describe("brand-tools removal", () => {
     });
 
     it("feature leads page uses listBrandLeads (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/leads/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listBrandLeads");
     });
 
     it("feature emails page uses listBrandEmails (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/emails/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listBrandEmails");
     });
 
     it("feature articles page uses listBrandArticles (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/articles/page.tsx");
+      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/articles/page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listBrandArticles");
     });
@@ -219,21 +195,4 @@ describe("brand-tools removal", () => {
     });
   });
 
-  describe("campaign-sidebar uses entity registry", () => {
-    const sidebarPath = path.join(SRC, "src/components/campaign-sidebar.tsx");
-    const sidebarSrc = fs.readFileSync(sidebarPath, "utf-8");
-
-    it("does NOT have hardcoded ENTITY_CONFIG", () => {
-      expect(sidebarSrc).not.toContain("ENTITY_CONFIG");
-    });
-
-    it("imports useEntityRegistry", () => {
-      expect(sidebarSrc).toContain("useEntityRegistry");
-      expect(sidebarSrc).toContain("entity-registry-context");
-    });
-
-    it("uses registry from context to build entity items", () => {
-      expect(sidebarSrc).toContain("registry[e.name]");
-    });
-  });
 });

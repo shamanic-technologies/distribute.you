@@ -6,8 +6,10 @@ import {
   type QuoteOpportunityContext,
 } from "./quote-pitch-variables";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
+import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
+import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -16,6 +18,7 @@ interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   body?: Record<string, unknown>;
   headers?: Record<string, string>;
+  suppressPaymentRequired?: boolean;
 }
 
 /**
@@ -34,6 +37,46 @@ export class ApiError extends Error {
   }
 }
 
+function asErrorBody(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : { error: "Request failed", body: value };
+}
+
+function stringOrNumber(value: unknown): string | number | undefined {
+  return typeof value === "string" || typeof value === "number" ? value : undefined;
+}
+
+function stringOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+async function readJsonResponse(response: Response, endpoint: string): Promise<unknown> {
+  const contentType = response.headers?.get?.("Content-Type") ?? "application/json";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    const text = await response.text().catch(() => "");
+    throw new ApiError("API returned a non-JSON response", response.status, {
+      error: "Non-JSON API response",
+      endpoint,
+      status: response.status,
+      contentType: contentType || null,
+      preview: text.trim().slice(0, 200),
+    });
+  }
+
+  try {
+    return await response.json();
+  } catch (err) {
+    throw new ApiError("API returned invalid JSON", response.status, {
+      error: "Invalid JSON API response",
+      endpoint,
+      status: response.status,
+      contentType,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 /**
  * The org the UI is currently rendering, parsed from the `/orgs/<id>/...` URL.
  * Client-side only. Sent to the proxy as `x-active-org-id` so the proxy can fail
@@ -47,7 +90,7 @@ function activeOrgIdFromPath(): string | null {
 }
 
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
-  const { token, method = "GET", body, headers: extraHeaders } = options ?? {};
+  const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
 
   const send = (): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
@@ -83,23 +126,23 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({ error: "Request failed" }));
-    if (response.status === 402 && typeof window !== "undefined") {
+    const errorBody = asErrorBody(await readJsonResponse(response, endpoint));
+    if (response.status === 402 && !suppressPaymentRequired && typeof window !== "undefined") {
       const { dispatchPaymentRequired } = await import("@/lib/billing-guard");
       dispatchPaymentRequired({
-        balance_cents: errorBody.balance_cents,
-        required_cents: errorBody.required_cents,
-        error: errorBody.error,
+        balance_cents: stringOrNumber(errorBody.balance_cents),
+        required_cents: stringOrNumber(errorBody.required_cents),
+        error: stringOrUndefined(errorBody.error),
       });
     }
     throw new ApiError(
-      errorBody.error || errorBody.message || "Request failed",
+      stringOrUndefined(errorBody.error) ?? stringOrUndefined(errorBody.message) ?? "Request failed",
       response.status,
       errorBody
     );
   }
 
-  return response.json();
+  return await readJsonResponse(response, endpoint) as T;
 }
 
 // Types
@@ -394,9 +437,15 @@ export interface CostStatsGroup {
   runCount: number;
 }
 
-export async function getBrandCostBreakdown(brandId: string, opts?: { featureSlug?: string }, token?: string): Promise<{ costs: CostByName[] }> {
+export async function getBrandCostBreakdown(
+  brandId: string,
+  opts?: { featureSlug?: string; startedAfter?: string; startedBefore?: string },
+  token?: string,
+): Promise<{ costs: CostByName[] }> {
   const query = new URLSearchParams({ brandId, groupBy: "costName" });
   if (opts?.featureSlug) query.set("featureSlug", opts.featureSlug);
+  if (opts?.startedAfter) query.set("startedAfter", opts.startedAfter);
+  if (opts?.startedBefore) query.set("startedBefore", opts.startedBefore);
   const result = await apiCall<{ groups: CostStatsGroup[] }>(`/runs/stats/costs?${query}`, { token });
   const costs: CostByName[] = result.groups.map((g) => ({
     costName: g.dimensions.costName ?? "Unknown",
@@ -533,12 +582,12 @@ export async function listBrands(token?: string): Promise<{ brands: Brand[] }> {
   return { brands: brands.map(normalizeBrandFromOrgs) };
 }
 
-/** GET /brands/:brandId — returns brand detail or null if not found (404/500 from missing brand) */
+/** GET /brands/:brandId — returns brand detail or null if not found (404) */
 export async function getBrand(brandId: string, token?: string): Promise<{ brand: BrandDetail } | null> {
   try {
     return await apiCall<{ brand: BrandDetail }>(`/brands/${brandId}`, { token });
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return null;
+    if (err instanceof ApiError && err.status === 404) return null;
     throw err;
   }
 }
@@ -547,36 +596,80 @@ export async function getBrand(brandId: string, token?: string): Promise<{ brand
 // Persisted per brand in brand-service via api-service /v1/brands/:id/sales-economics.
 // READ returns the saved set or null (unset → the page uses its hard-coded defaults).
 // WRITE is an idempotent full-set upsert that returns the saved row (never null).
-// Conversion rates are integer percents (0–100); lifetimeRevenueUsd is whole US dollars.
+// Conversion rates are numeric percents (0–100, decimals allowed);
+// lifetimeRevenueUsd is whole US dollars.
 // businessModel (b2c | b2b | null) is part of the saved set: it picks which funnel
 // the revenue-overview pipeline applies. Both GET and PUT responses always include it.
 export type BrandBusinessModel = "b2c" | "b2b";
+
+// The single metric the brand wants to optimise for. Server default
+// "sales_meetings" when never set; GET/PUT responses always include a non-null value.
+export type BrandOptimizationGoal = "signups" | "sales_meetings";
+type BrandOptimizationGoalWire =
+  | BrandOptimizationGoal
+  | "booked_meetings"
+  | "sales";
+
+function normalizeBrandOptimizationGoal(
+  goal: BrandOptimizationGoalWire,
+): BrandOptimizationGoal {
+  return goal === "signups" ? "signups" : "sales_meetings";
+}
+
+function serializeBrandOptimizationGoal(
+  goal: BrandOptimizationGoal,
+): "signups" | "booked_meetings" {
+  return goal === "signups" ? "signups" : "booked_meetings";
+}
 
 export interface BrandSalesEconomics {
   lifetimeRevenueUsd: number;
   replyToMeetingPct: number;
   visitToMeetingPct: number;
   meetingToClosePct: number;
+  // Self-serve close decomposed into two steps. visitToClosePct is now DERIVED
+  // server-side (= visitToSignupPct × signupToPaidClientPct) and stays on the
+  // response for the projection engine — never sent on the PUT (see Input).
+  visitToSignupPct: number;
+  signupToPaidClientPct: number;
   visitToClosePct: number;
   businessModel: BrandBusinessModel | null;
+  optimizationGoal: BrandOptimizationGoal;
   updatedAt: string;
 }
 
 // businessModel is a partial-update field on PUT: omit = leave unchanged, null = clear
 // (brand-service contract). The campaign form omits it (edits only the 5 metrics); the
 // Brand Settings editor sends it explicitly. Hence optional in the input, not required.
+// businessModel / optimizationGoal are partial-update fields on PUT:
+// omit = leave unchanged. Hence optional in the input.
+// visitToClosePct is derived server-side, never sent — omit it from the input.
 export type BrandSalesEconomicsInput = Omit<
   BrandSalesEconomics,
-  "updatedAt" | "businessModel"
-> & { businessModel?: BrandBusinessModel | null };
+  | "updatedAt"
+  | "businessModel"
+  | "optimizationGoal"
+  | "visitToClosePct"
+> & {
+  businessModel?: BrandBusinessModel | null;
+  optimizationGoal?: BrandOptimizationGoal;
+};
 
 const BrandSalesEconomicsSchema = z.object({
   lifetimeRevenueUsd: z.number(),
   replyToMeetingPct: z.number(),
   visitToMeetingPct: z.number(),
   meetingToClosePct: z.number(),
+  visitToSignupPct: z.number(),
+  signupToPaidClientPct: z.number(),
   visitToClosePct: z.number(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
+  optimizationGoal: z.union([
+    z.literal("signups"),
+    z.literal("sales_meetings"),
+    z.literal("booked_meetings"),
+    z.literal("sales"),
+  ]).transform(normalizeBrandOptimizationGoal),
   updatedAt: z.string(),
 });
 
@@ -622,11 +715,17 @@ export async function saveBrandSalesEconomics(
       replyToMeetingPct: input.replyToMeetingPct,
       visitToMeetingPct: input.visitToMeetingPct,
       meetingToClosePct: input.meetingToClosePct,
-      visitToClosePct: input.visitToClosePct,
+      // Self-serve close as two steps; brand-service derives visitToClosePct.
+      visitToSignupPct: input.visitToSignupPct,
+      signupToPaidClientPct: input.signupToPaidClientPct,
       // Partial-update: send businessModel only when the caller set it (settings
       // editor). Omitting it leaves the stored value unchanged; null clears it.
       ...(input.businessModel !== undefined
         ? { businessModel: input.businessModel }
+        : {}),
+      // Same partial-update semantics for the sales goal: omit = leave unchanged.
+      ...(input.optimizationGoal !== undefined
+        ? { optimizationGoal: serializeBrandOptimizationGoal(input.optimizationGoal) }
         : {}),
     },
   });
@@ -637,6 +736,398 @@ export async function saveBrandSalesEconomics(
       raw,
     });
     throw new Error("[dashboard] saveBrandSalesEconomics: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── Daily budget (per-brand spend pacing) ──
+// A per-day spend ceiling campaign-service uses to pace a brand's work. Separate
+// from org credit balance / top-up (that's affordability; this is allocation).
+// Wire value is cents as a decimal string (Postgres numeric serializes as string,
+// per CLAUDE.md numeric-string rule) → coerce. null = never set (a 200, not a 404).
+export interface BrandDailyBudget {
+  brandId: string;
+  dailyBudgetCents: number | null;
+  updatedAt: string | null;
+}
+
+// READ: dailyBudgetCents null when unset; updatedAt null until first save.
+const GetBrandDailyBudgetResponseSchema = z.object({
+  brandId: z.string(),
+  dailyBudgetCents: z.coerce.number().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+// WRITE: the row was just persisted, so the value + updatedAt are always present;
+// the write response adds orgId. Per-verb schema (narrower/different than read).
+const SaveBrandDailyBudgetResponseSchema = z.object({
+  brandId: z.string(),
+  orgId: z.string(),
+  dailyBudgetCents: z.coerce.number(),
+  updatedAt: z.string(),
+});
+
+/** GET /brands/:brandId/daily-budget — saved cents or null when never set. */
+export async function getBrandDailyBudget(
+  brandId: string,
+  token?: string,
+): Promise<BrandDailyBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/daily-budget`, { token });
+  const parsed = GetBrandDailyBudgetResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandDailyBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandDailyBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/daily-budget — set the per-day cents ceiling (0 = pause). */
+export async function saveBrandDailyBudget(
+  brandId: string,
+  dailyBudgetCents: number,
+  token?: string,
+): Promise<{ brandId: string; orgId: string; dailyBudgetCents: number; updatedAt: string }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/daily-budget`, {
+    token,
+    method: "PATCH",
+    body: { dailyBudgetCents },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  const parsed = SaveBrandDailyBudgetResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandDailyBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] saveBrandDailyBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── Brand pause (per-brand Pause / Restart) ──
+// A single brand-level boolean honored by campaign-service's scheduler: when
+// paused, none of the brand's ongoing campaigns are run (HELD, not stopped) so a
+// Restart resumes them with zero re-launch. No outreach = no usage = no auto-topup
+// charge, so this also "pauses the spend". paused defaults false when never set.
+export interface BrandPause {
+  brandId: string;
+  orgId: string;
+  paused: boolean;
+  updatedAt: string | null;
+}
+
+const BrandPauseSchema = z.object({
+  brandId: z.string(),
+  orgId: z.string(),
+  paused: z.boolean(),
+  updatedAt: z.string().nullable(),
+});
+
+/** GET /brands/:brandId/pause — current pause state (paused=false when never set). */
+export async function getBrandPause(
+  brandId: string,
+  token?: string,
+): Promise<BrandPause> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/pause`, { token });
+  const parsed = BrandPauseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandPause: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandPause: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/pause — pause (true) or restart (false) the brand. */
+export async function setBrandPause(
+  brandId: string,
+  paused: boolean,
+  token?: string,
+): Promise<BrandPause> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/pause`, {
+    token,
+    method: "PATCH",
+    body: { paused },
+  });
+  const parsed = BrandPauseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setBrandPause: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] setBrandPause: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// The welcome signup gift is NOT front-end editable. Its grant amount is
+// code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
+// PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.
+
+// ── Effective sales economics (new-campaign prefill) ──
+// brand-service decides the default server-side: the brand's saved set when present
+// (source "user"), else the cross-brand average (source "cross-brand-average"), else
+// economics null (source null → empty table; caller keeps its hard-coded defaults).
+// Replaces the old client-side null→average fallback (two calls) with ONE call.
+export interface EffectiveSalesEconomics {
+  lifetimeRevenueUsd: number;
+  replyToMeetingPct: number;
+  visitToMeetingPct: number;
+  meetingToClosePct: number;
+  visitToSignupPct: number;
+  signupToPaidClientPct: number;
+  visitToClosePct: number;
+}
+
+export type SalesEconomicsSource = "user" | "cross-brand-average";
+
+// z.coerce.number per CLAUDE.md #1357: the cross-brand average is Postgres
+// ROUND(AVG(...)) `numeric`, serialized as a STRING ("40") on the wire — z.number()
+// would reject it. coerce parses string OR number, forward-compatible if cast later.
+const EffectiveSalesEconomicsSchema = z.object({
+  lifetimeRevenueUsd: z.coerce.number(),
+  replyToMeetingPct: z.coerce.number(),
+  visitToMeetingPct: z.coerce.number(),
+  meetingToClosePct: z.coerce.number(),
+  visitToSignupPct: z.coerce.number(),
+  signupToPaidClientPct: z.coerce.number(),
+  visitToClosePct: z.coerce.number(),
+});
+
+const GetSalesEconomicsEffectiveResponseSchema = z.object({
+  economics: EffectiveSalesEconomicsSchema.nullable(),
+  source: z.enum(["user", "cross-brand-average"]).nullable(),
+});
+
+/** GET /brands/:brandId/sales-economics-effective — the brand's saved set (source "user"),
+ * else the cross-brand average (source "cross-brand-average"), else { economics: null, source: null }. */
+export async function getSalesEconomicsEffective(
+  brandId: string,
+  token?: string,
+): Promise<{ economics: EffectiveSalesEconomics | null; source: SalesEconomicsSource | null }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-economics-effective`, { token });
+  const parsed = GetSalesEconomicsEffectiveResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getSalesEconomicsEffective: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getSalesEconomicsEffective: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── Personas + Brand Profile (beta) ───────────────────────────────
+// Persisted per brand in brand-service via api-service /v1/brands/:id/personas
+// and /v1/brands/:id/brand-profile (same gateway convention as sales-economics).
+// Personas are immutable except status (edit = create a new one) and names are
+// unique per brand. Brand-profile saves are immutable forked versions.
+export type PersonaStatusWire = "active" | "paused" | "archived";
+
+export interface PersonaWire {
+  id: string;
+  brandId: string;
+  name: string;
+  filters: Record<string, string[]>;
+  status: PersonaStatusWire;
+  avatarUrl?: string | null;
+  createdAt: string;
+}
+
+const PersonaSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+  filters: z.record(z.string(), z.array(z.string())),
+  status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+  avatarUrl: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+
+const ListPersonasResponseSchema = z.object({ personas: z.array(PersonaSchema) });
+const PersonaResponseSchema = z.object({ persona: PersonaSchema });
+
+/** GET /brands/:brandId/personas — all personas for the brand (optionally status-filtered). */
+export async function listPersonas(
+  brandId: string,
+  status?: PersonaStatusWire,
+  token?: string,
+): Promise<{ personas: PersonaWire[] }> {
+  const query = status ? `?status=${status}` : "";
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas${query}`, { token });
+  const parsed = ListPersonasResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listPersonas: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas — create. 409 when the name is already used for the brand. */
+export async function createPersona(
+  brandId: string,
+  input: { name: string; filters: Record<string, string[]> },
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas`, { token, method: "POST", body: input });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] createPersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas/:personaId/avatar/regenerate — replace the generated persona avatar. */
+export async function regeneratePersonaAvatar(
+  brandId: string,
+  personaId: string,
+  token?: string,
+  opts?: { suppressPaymentRequired?: boolean },
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/avatar/regenerate`, {
+    token,
+    method: "POST",
+    body: {},
+    suppressPaymentRequired: opts?.suppressPaymentRequired,
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] regeneratePersonaAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] regeneratePersonaAvatar: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/personas/:personaId/duplicate — new persona (name auto-uniquified). */
+export async function duplicatePersona(
+  brandId: string,
+  personaId: string,
+  name?: string,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/duplicate`, {
+    token,
+    method: "POST",
+    body: name ? { name } : {},
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] duplicatePersona: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] duplicatePersona: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/personas/:personaId/status — pause / resume / archive / restore. */
+export async function setPersonaStatus(
+  brandId: string,
+  personaId: string,
+  status: PersonaStatusWire,
+  token?: string,
+): Promise<{ persona: PersonaWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/status`, {
+    token,
+    method: "PATCH",
+    body: { status },
+  });
+  const parsed = PersonaResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] setPersonaStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] setPersonaStatus: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** A persona DRAFT proposed by the backend — no id/status/createdAt (not persisted). */
+export interface PersonaDraft {
+  name: string;
+  filters: Record<string, string[]>;
+}
+
+const SuggestPersonasResponseSchema = z.object({
+  personas: z.array(z.object({
+    name: z.string(),
+    filters: z.record(z.string(), z.array(z.string())),
+  })),
+});
+
+/**
+ * POST /brands/:brandId/personas/suggest — generate persona DRAFTS from the brand
+ * profile (does NOT persist). Used by the beta onboarding to propose personas the
+ * user edits, then saves the kept ones via `createPersona`.
+ */
+export async function suggestPersonas(
+  brandId: string,
+  count?: number,
+  token?: string,
+): Promise<{ personas: PersonaDraft[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/suggest`, {
+    token,
+    method: "POST",
+    body: count ? { count } : {},
+  });
+  const parsed = SuggestPersonasResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] suggestPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestPersonas: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export interface BrandProfileVersionWire {
+  id: string;
+  brandId: string;
+  version: number;
+  fields: Record<string, string | string[]>;
+  createdAt: string;
+}
+
+const BrandProfileVersionSchema = z.object({
+  id: z.string(),
+  brandId: z.string(),
+  version: z.number(),
+  fields: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+  createdAt: z.string(),
+});
+
+const GetBrandProfileResponseSchema = z.object({
+  current: BrandProfileVersionSchema.nullable(),
+  versions: z.array(z.object({ id: z.string(), version: z.number(), createdAt: z.string() })),
+});
+
+const SaveBrandProfileResponseSchema = z.object({ version: BrandProfileVersionSchema });
+
+/** GET /brands/:brandId/brand-profile — latest (or derived v1) + version list. */
+export async function getBrandProfile(
+  brandId: string,
+  token?: string,
+): Promise<{ current: BrandProfileVersionWire | null; versions: { id: string; version: number; createdAt: string }[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token });
+  const parsed = GetBrandProfileResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandProfile: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getBrandProfile: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** POST /brands/:brandId/brand-profile — save a new immutable version. */
+export async function saveBrandProfileVersion(
+  brandId: string,
+  fields: Record<string, string | string[]>,
+  token?: string,
+): Promise<{ version: BrandProfileVersionWire }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token, method: "POST", body: { fields } });
+  const parsed = SaveBrandProfileResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandProfileVersion: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] saveBrandProfileVersion: invalid response shape");
   }
   return parsed.data;
 }
@@ -689,6 +1180,7 @@ export interface CachedField {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
+  { key: "services", description: "Specific services, products or offerings the brand sells and wants to promote — list each as a short phrase (e.g. 'SEO audits', 'Fractional CFO', 'Logo design')" },
   { key: "companyOverview", description: "Company overview" },
   { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
@@ -746,12 +1238,12 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 export async function extractBrandFields(
   brandIds: string[],
   fields: ExtractFieldDef[],
-  opts?: { token?: string; resetCache?: boolean },
+  opts?: { token?: string; resetCache?: boolean; urlStrategy?: "url_map" | "landing" },
 ): Promise<ExtractFieldsResponse> {
-  const { token, resetCache } = opts ?? {};
+  const { token, resetCache, urlStrategy } = opts ?? {};
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields, resetCache } },
+    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy } },
   );
 }
 
@@ -907,6 +1399,106 @@ export interface GlobalStatsResponse {
   groups?: StatsGroup[];
 }
 
+export type PipelineActivityMetricKey = "outreach" | "opens" | "clicks" | "signups";
+
+export interface PipelineActivityMetric {
+  actual: number | null;
+  expected: number | null;
+  conversionPct?: number | null;
+}
+
+export interface PipelineActivityDay {
+  date: string;
+  isToday: boolean;
+  metrics: Record<PipelineActivityMetricKey, PipelineActivityMetric>;
+}
+
+export interface PipelineActivitySummary {
+  dailyBudgetUsd: number | null;
+  openRatePct: number | null;
+  clickToSignupPct: number | null;
+}
+
+export interface PipelineActivityResponse {
+  featureSlug: string;
+  brandId: string;
+  timezone: string;
+  generatedAt: string;
+  days: PipelineActivityDay[];
+  summary: PipelineActivitySummary;
+}
+
+export type FeaturePersonaStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeaturePersonaStatsSortMetric = "cpc" | "cppr";
+
+export interface FeaturePersonaStatsRow {
+  customerProfileId: string;
+  brandProfileId: string | null;
+  persona: {
+    id: string;
+    name: string;
+    status: PersonaStatusWire;
+    filters: Record<string, string[]>;
+    avatarUrl?: string | null;
+  };
+  evidence: {
+    totalCostInUsdCents: number;
+    completedRuns: number;
+    firstRunAt: string | null;
+    lastRunAt: string | null;
+    contacted: number;
+    websiteClicks: number;
+    positiveReplies: number;
+  };
+  metrics: {
+    cpcCents: number | null;
+    cpprCents: number | null;
+  };
+}
+
+export interface FeaturePersonaStatsResponse {
+  featureSlug: string;
+  brandId: string;
+  goal: FeaturePersonaStatsGoal;
+  brandProfileId: string | null;
+  sortMetric: FeaturePersonaStatsSortMetric;
+  personas: FeaturePersonaStatsRow[];
+}
+
+const FeaturePersonaStatsRowSchema = z.object({
+  customerProfileId: z.string(),
+  brandProfileId: z.string().nullable(),
+  persona: z.object({
+    id: z.string(),
+    name: z.string(),
+    status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
+    filters: z.record(z.string(), z.array(z.string())),
+    avatarUrl: z.string().nullable().optional(),
+  }),
+  evidence: z.object({
+    totalCostInUsdCents: z.number(),
+    completedRuns: z.number(),
+    firstRunAt: z.string().nullable(),
+    lastRunAt: z.string().nullable(),
+    contacted: z.number(),
+    websiteClicks: z.number(),
+    positiveReplies: z.number(),
+  }),
+  metrics: z.object({
+    cpcCents: z.number().nullable(),
+    cpprCents: z.number().nullable(),
+  }),
+});
+
+const FeaturePersonaStatsResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  brandProfileId: z.string().nullable(),
+  sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
+  personas: z.array(FeaturePersonaStatsRowSchema),
+});
+
 /** GET /features — list all features */
 export async function listFeatures(
   params?: { implemented?: boolean },
@@ -960,6 +1552,27 @@ export async function fetchFeatureStats(
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
+/** GET /features/:featureSlug/persona-stats — real persona-level cost/outcome evidence. */
+export async function fetchFeaturePersonaStats(
+  featureSlug: string,
+  params: { brandId: string; goal: FeaturePersonaStatsGoal; brandProfileId?: string; limit?: number },
+  token?: string,
+): Promise<FeaturePersonaStatsResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
+  if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
+  if (params.limit !== undefined) query.set("limit", String(params.limit));
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/persona-stats?${query.toString()}`, { token });
+  const parsed = FeaturePersonaStatsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] fetchFeaturePersonaStats: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] fetchFeaturePersonaStats: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /** GET /features/stats — global stats cross-features */
 export async function fetchGlobalStats(
   params?: { groupBy?: string; brandId?: string },
@@ -987,6 +1600,60 @@ export async function getFeatureRevenue(
   if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
+}
+
+const PipelineActivityMetricSchema = z.object({
+  actual: z.number().nullable(),
+  expected: z.number().nullable(),
+  conversionPct: z.number().nullable().optional(),
+});
+
+const PipelineActivityResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  timezone: z.string(),
+  generatedAt: z.string(),
+  days: z.array(
+    z.object({
+      date: z.string(),
+      isToday: z.boolean(),
+      metrics: z.object({
+        outreach: PipelineActivityMetricSchema,
+        opens: PipelineActivityMetricSchema,
+        clicks: PipelineActivityMetricSchema,
+        signups: PipelineActivityMetricSchema,
+      }),
+    }),
+  ),
+  summary: z.object({
+    dailyBudgetUsd: z.number().nullable(),
+    openRatePct: z.number().nullable(),
+    clickToSignupPct: z.number().nullable(),
+  }),
+});
+
+/** GET /features/:slug/pipeline-activity — 7-day actual + expected funnel activity. */
+export async function getFeaturePipelineActivity(
+  featureSlug: string,
+  params: { brandId: string; days?: number; timezone?: string },
+  token?: string,
+): Promise<PipelineActivityResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId });
+  if (params.days != null) query.set("days", String(params.days));
+  if (params.timezone) query.set("timezone", params.timezone);
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/pipeline-activity?${query.toString()}`,
+    { token },
+  );
+  const parsed = PipelineActivityResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeaturePipelineActivity: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getFeaturePipelineActivity: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /** POST /brands — upsert brand by URL, returns brandId */
@@ -1094,22 +1761,6 @@ export interface BrandRun {
   descendantRuns: unknown[];
 }
 
-export interface CampaignRun {
-  id: string;
-  serviceName: string;
-  taskName: string;
-  status: string;
-  startedAt: string;
-  completedAt: string | null;
-  parentRunId: string | null;
-  ownCostInUsdCents: string;
-}
-
-/** GET /runs?campaignId={id} — returns runs for a campaign via runs-service proxy */
-export async function listCampaignRuns(campaignId: string, token?: string): Promise<{ runs: CampaignRun[] }> {
-  return apiCall<{ runs: CampaignRun[] }>(`/runs?campaignId=${encodeURIComponent(campaignId)}`, { token });
-}
-
 // ─── Run events (logs) ───────────────────────────────────────────────────────
 
 export type EventLevel = "info" | "warn" | "error";
@@ -1131,6 +1782,21 @@ export interface RunEvent {
   createdAt: string;
 }
 
+// Per-field schema verified against runs-service GET /v1/events (api-registry).
+// `.passthrough()` keeps every field; the feed only reads id/service/event/level/
+// createdAt. safeParse turns wire-rot into a caught fetch-error per CLAUDE.md.
+const RunEventSchema = z
+  .object({
+    id: z.string(),
+    service: z.string(),
+    event: z.string(),
+    level: z.enum(["info", "warn", "error"]),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+const ListEventsResponseSchema = z.object({ events: z.array(RunEventSchema) });
+
 /** GET /events?campaignId={id} — returns run events for a campaign via runs-service proxy */
 export async function listCampaignEvents(
   campaignId: string,
@@ -1141,15 +1807,24 @@ export async function listCampaignEvents(
   if (options?.level) params.set("level", options.level);
   if (options?.limit != null) params.set("limit", String(options.limit));
   if (options?.offset != null) params.set("offset", String(options.offset));
-  return apiCall<{ events: RunEvent[] }>(`/events?${params.toString()}`, { token: options?.token });
+  const raw = await apiCall<unknown>(`/events?${params.toString()}`, { token: options?.token });
+  const parsed = ListEventsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listCampaignEvents: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] listCampaignEvents: invalid response shape");
+  }
+  return parsed.data as unknown as { events: RunEvent[] };
 }
 
-/** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404/500) */
+/** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
     return await apiCall<{ runs: BrandRun[] }>(`/brands/${brandId}/runs`, { token });
   } catch (err) {
-    if (err instanceof ApiError && (err.status === 404 || err.status === 500)) return { runs: [] };
+    if (err instanceof ApiError && err.status === 404) return { runs: [] };
     throw err;
   }
 }
@@ -1241,8 +1916,10 @@ export interface FullLead {
   facebookUrl: string | null;
   enrichedAt: string | null;
   organization: LeadOrganizationView | null;
-  contacts: LeadContactMethodView[];
-  employmentHistory: LeadEmploymentEntryView[];
+  // Optional: omitted by the slim `view=basic` projection (brand leads list).
+  // Present in the full payload (campaign leads, feature leads). #1620
+  contacts?: LeadContactMethodView[];
+  employmentHistory?: LeadEmploymentEntryView[];
 }
 
 /** A leads_campaigns row plus the canonical FullLead — mirrors lead-service LeadDetail. */
@@ -1336,7 +2013,13 @@ export async function listCampaignLeads(campaignId: string, token?: string): Pro
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}`, { token });
+  // `view=basic` returns the slim lead projection (thin person + thin org, no
+  // employmentHistory / extra org columns). The brand leads page renders the
+  // table, status tabs, search, and detail panel from thin fields only, so the
+  // full payload (~150 MB for a 50k-lead brand, pulled every poll) is wasteful.
+  // Requires api-service to forward the `view` param. listCampaignLeads +
+  // feature leads stay full-fat. See shamanic-technologies/distribute.you#1620.
+  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}&view=basic`, { token });
   return parseLeadsResponse(raw, "listBrandLeads");
 }
 
@@ -1727,19 +2410,26 @@ export async function fetchGlobalRankedWorkflows(params: {
 }
 
 // ── Sales-funnel workflow projection ────────────────────────────────────────
-// features-service is the SINGLE source for the sales-funnel SUM math: per-workflow
-// cost-per-close (meeting-booked sums the positive-reply route + the website-visit route,
-// funded by one budget; self-serve is clicks-only) + the funnel projection at a budget +
-// the recommended workflow/budget. Conversion rates + LTR come from the brand's SAVED
-// sales-economics (no client overrides). The dashboard only renders. Because the funnel
-// is LINEAR in budget, the page requests the projection at $1 and scales by budget for the
-// preset tiles (pure ×; the route-combining SUM stays server-side). Wire shape verified
-// against the deployed contract via api-registry. safeParse per CLAUDE.md (#1213/#1282).
+// features-service owns the per-workflow GLOBAL unit costs (contacted/reply/click $ — cross-org,
+// feature-scoped, econ-INDEPENDENT) + the recommended workflow. It ALSO returns a server-computed
+// cost-per-close + funnel projection from the brand's SAVED economics, but the campaigns/new page
+// no longer renders those directly: it recomputes cost-per-close + the funnel CLIENT-side from the
+// unit costs × the LIVE §2 econ inputs (lib/sales-funnel-projection.ts mirrors the server formula)
+// so the budget cards update instantly without a per-edit round-trip through the cold Neon chain.
+// On first paint the live econ == the saved econ, so the client numbers equal the server's exactly.
+// Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
 export type SalesObjective = "meeting-booked" | "self-serve";
+
+export function salesObjectiveForOptimizationGoal(
+  goal: BrandOptimizationGoal,
+): SalesObjective {
+  return goal === "signups" ? "self-serve" : "meeting-booked";
+}
 
 /** Per-workflow funnel projection at the requested budget. All fields null where the route
  *  doesn't apply (replies/meetings for self-serve, visits with no click cost) or no data. */
 const WorkflowFunnelProjectionSchema = z.object({
+  contactedLeads: z.number().nullable(),
   replies: z.number().nullable(),
   visits: z.number().nullable(),
   meetings: z.number().nullable(),
@@ -1754,9 +2444,12 @@ const WorkflowFunnelProjectionSchema = z.object({
 const WorkflowProjectionItemSchema = z.object({
   workflowDynastySlug: z.string(),
   workflowDynastyName: z.string().nullable(),
+  contactedUsd: z.number().nullable(),
   replyUsd: z.number().nullable(),
   clickUsd: z.number().nullable(),
+  costPerSignupUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowFunnelProjectionSchema.nullable(),
 });
@@ -1772,6 +2465,46 @@ const WorkflowProjectionResponseSchema = z.object({
 export type WorkflowFunnelProjection = z.infer<typeof WorkflowFunnelProjectionSchema>;
 export type WorkflowProjectionItem = z.infer<typeof WorkflowProjectionItemSchema>;
 export type WorkflowProjectionResponse = z.infer<typeof WorkflowProjectionResponseSchema>;
+
+/**
+ * `structuralSharing` merge for the workflow-projection query. Every field above is `.nullable()`
+ * because a COLD Neon chain (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
+ * can answer a poll/refocus refetch with a VALID 200 whose unit costs / cost-per-close are null,
+ * or with fewer workflows, while it half-warms. That degenerate-but-valid payload would otherwise
+ * collapse the budget cards + Launch button (which derive off `costPerCloseUsd`). Keep the last-good
+ * per-workflow values + recommended pick across such a refetch; a real persistent downgrade still
+ * fails loud (console.error in keep-last-good). Opt-in here ONLY — a null is "transient/not-ready",
+ * not "removed". See lib/keep-last-good.ts + CLAUDE.md "keep-last-good (cache-write boundary)".
+ */
+export function keepLastGoodWorkflowProjection(
+  prev: WorkflowProjectionResponse | undefined,
+  next: WorkflowProjectionResponse,
+): WorkflowProjectionResponse {
+  if (!prev) return next;
+  const top = keepLastGoodFields(
+    prev,
+    next,
+    ["recommendedWorkflowDynastySlug", "recommendedBudgetUsd"],
+    "workflowProjection",
+  );
+  return {
+    ...top,
+    workflows: keepLastGoodList(prev.workflows, next.workflows, {
+      keyFn: (w) => w.workflowDynastySlug,
+      fields: [
+        "contactedUsd",
+        "replyUsd",
+        "clickUsd",
+        "costPerSignupUsd",
+        "costPerCloseUsd",
+        "costPerMeetingBookedUsd",
+        "projection",
+        "workflowDynastyName",
+      ],
+      label: "workflowProjection.workflows",
+    }),
+  };
+}
 
 /**
  * GET /features/:slug/workflow-projection — per-workflow cost-per-close + funnel projection
@@ -1864,10 +2597,32 @@ export async function createCampaign(
   return { campaign: enriched };
 }
 
+export async function createCampaignWithoutBrandEnrichment(
+  params: {
+    name: string;
+    workflowSlug: string;
+    brandUrls: string[];
+    maxBudgetDailyUsd?: string;
+    maxBudgetWeeklyUsd?: string;
+    maxBudgetMonthlyUsd?: string;
+    maxBudgetTotalUsd?: string;
+  } & Record<string, unknown>,
+  token?: string
+): Promise<{ campaign: RawCampaign }> {
+  return apiCall<{ campaign: RawCampaign }>("/campaigns", {
+    token,
+    method: "POST",
+    body: params as unknown as Record<string, unknown>,
+  });
+}
+
 // Billing — wire shape per billing-service post-rename hotfix.
 // `*_cents` string fields are full-precision decimal strings (e.g. "100.4200000000").
 // Use parseFloat for math; never Number().
-// `balance_cents` = spendable funds (credited minus usage); use it for depletion and budget checks.
+// `balance_cents` = spendable funds (credited minus usage incl. provisioned holds);
+// use it for depletion and budget checks.
+// `actual_balance_cents` = credited minus actualized usage only; use it for the
+// user-facing Credit Balance display when billing-service exposes it.
 // `credited_cents` = lifetime credited (paid topups + local promos); display-only for "total credited".
 // `topup_amount_cents` and `topup_threshold_cents` are integers in cents (or null).
 // Live spec: https://billing.distribute.you/openapi.json
@@ -1877,6 +2632,7 @@ export interface BillingAccount {
   credited_cents: string;
   usage_cents: string;
   balance_cents: string;
+  actual_balance_cents?: string;
   topup_amount_cents: number | null;
   topup_threshold_cents: number | null;
   has_payment_method: boolean;
@@ -1895,38 +2651,20 @@ export interface CheckoutSession {
   session_id: string;
 }
 
+export type WalletSetupResult = BillingAccount & {
+  initial_load_amount_cents: number;
+  initial_load_payment_intent_id: string;
+  first_load_match_applied: boolean;
+  first_load_match_cents: string;
+  first_load_match_local_promo_id: string | null;
+};
+
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });
 }
 
 export async function getBillingBalance(token?: string): Promise<BillingBalance> {
   return apiCall<BillingBalance>("/billing/accounts/balance", { token });
-}
-
-// Org-wide runs ledger (runs-service /v1/runs via api-service proxy).
-// Used by the billing page Runs tab. List endpoint returns one item per run with
-// own-cost totals only — per-cost-name breakdown is on GET /v1/runs/{id}.
-// Per runs-service: id is required, default sort is startedAt DESC.
-export interface OrgRun {
-  id: string;
-  status: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  ownCostInUsdCents: string | null;
-  serviceName: string | null;
-  taskName: string | null;
-}
-
-export async function listOrgRuns(
-  limit: number,
-  offset: number,
-  token?: string,
-): Promise<{ runs: OrgRun[]; offset: number; limit?: number }> {
-  const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  return apiCall<{ runs: OrgRun[]; offset: number; limit?: number }>(
-    `/runs?${qs.toString()}`,
-    { token },
-  );
 }
 
 export async function configureAutoTopup(
@@ -1944,13 +2682,30 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 export async function createCheckoutSession(
-  params: { topup_amount_cents: number; success_url: string; cancel_url: string },
+  params:
+    | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
+    | { mode: "setup"; success_url: string; cancel_url: string },
   token?: string
 ): Promise<CheckoutSession> {
   return apiCall<CheckoutSession>("/billing/checkout-sessions", {
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
+  });
+}
+
+export async function setupBillingWallet(
+  params: {
+    initial_load_amount_cents: number;
+    topup_amount_cents: number;
+    topup_threshold_cents: number;
+  },
+  token?: string
+): Promise<WalletSetupResult> {
+  return apiCall<WalletSetupResult>("/billing/accounts/wallet_setup", {
+    token,
+    method: "POST",
+    body: params,
   });
 }
 
@@ -2186,8 +2941,27 @@ export interface DeduplicatedOutlet {
   outletDomain: string;
   createdAt: string;
   status: OutletStatus;
+  pricing?: {
+    sellPriceCents: number | null;
+    currency: string | null;
+  } | null;
+  priceRequestStatus: "ongoing" | "received" | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
+}
+
+export interface OutletPriceRequestResult {
+  outletId: string;
+  status: "ongoing" | "error";
+  editorialEmail?: string;
+  messageId?: string;
+  error?: string;
+}
+
+export interface OutletListResponse {
+  outlets: DeduplicatedOutlet[];
+  total: number;
+  byOutreachStatus?: Record<string, number>;
 }
 
 /** Flat outlet returned by GET /v1/campaigns/{id}/outlets */
@@ -2219,14 +2993,18 @@ export async function listBrandOutlets(
   featureSlug?: string,
   token?: string,
   campaignId?: string,
-): Promise<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }> {
+): Promise<OutletListResponse> {
   const params = new URLSearchParams({ brandId });
   if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
-  return apiCall<{ outlets: DeduplicatedOutlet[]; total: number; byOutreachStatus?: Record<string, number> }>(
+  const data = await apiCall<OutletListResponse>(
     `/outlets?${params}`,
     { token },
   );
+  return {
+    ...data,
+    outlets: withAverageCampaignRelevanceScores(data.outlets),
+  };
 }
 
 export async function listCampaignOutlets(
@@ -2236,6 +3014,16 @@ export async function listCampaignOutlets(
   return apiCall<{ outlets: CampaignOutlet[] }>(
     `/campaigns/${campaignId}/outlets`,
     { token },
+  );
+}
+
+export async function requestOutletPurchasePrices(
+  outletIds: string[],
+  token?: string,
+): Promise<{ results: OutletPriceRequestResult[] }> {
+  return apiCall<{ results: OutletPriceRequestResult[] }>(
+    "/outlets/price-requests",
+    { token, method: "POST", body: { outletIds } },
   );
 }
 
@@ -3290,19 +4078,28 @@ export async function getDomainTrafficHistory(
   domain: string,
   token?: string,
 ): Promise<DomainTrafficHistory | null> {
+  const data = await getDomainTrafficHistories([domain], token);
+  return data[0] ?? null;
+}
+
+export async function getDomainTrafficHistories(
+  domains: string[],
+  token?: string,
+): Promise<DomainTrafficHistory[]> {
+  const params = new URLSearchParams({ domains: domains.join(",") });
   const raw = await apiCall<unknown>(
-    `/orgs/domains/traffic-history?domains=${encodeURIComponent(domain)}`,
+    `/orgs/domains/traffic-history?${params}`,
     { token },
   );
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getDomainTrafficHistory: response shape mismatch", {
+    console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getDomainTrafficHistory: invalid response shape");
+    throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 /**
@@ -3314,19 +4111,32 @@ export async function getDomainDrStatus(
   domain: string,
   token?: string,
 ): Promise<DomainDrStatus | null> {
+  const data = await getDomainDrStatuses([domain], token);
+  return data[0] ?? null;
+}
+
+/**
+ * GET /v1/orgs/domains/dr-status — Ahrefs Domain Rating status for many
+ * domains. Cache read only: this does not trigger a paid Ahrefs scrape.
+ */
+export async function getDomainDrStatuses(
+  domains: string[],
+  token?: string,
+): Promise<DomainDrStatus[]> {
+  const params = new URLSearchParams({ domains: domains.join(",") });
   const raw = await apiCall<unknown>(
-    `/orgs/domains/dr-status?domains=${encodeURIComponent(domain)}`,
+    `/orgs/domains/dr-status?${params}`,
     { token },
   );
   const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getDomainDrStatus: response shape mismatch", {
+    console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getDomainDrStatus: invalid response shape");
+    throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
 }
 
 // ─── On-demand Ahrefs fetch (get-or-fetch-if-never-seen) ────────────────────
@@ -3346,20 +4156,48 @@ export async function computeDomainTraffic(
   domain: string,
   token?: string,
 ): Promise<DomainTrafficHistory | null> {
+  const data = await computeDomainTrafficHistories([domain], token);
+  return data[0] ?? null;
+}
+
+export async function computeDomainTrafficHistories(
+  domains: string[],
+  token?: string,
+): Promise<DomainTrafficHistory[]> {
   const raw = await apiCall<unknown>("/orgs/domains/traffic-compute", {
     token,
     method: "POST",
-    body: { domains: [domain] },
+    body: { domains },
   });
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] computeDomainTraffic: response shape mismatch", {
+    console.error("[dashboard] computeDomainTrafficHistories: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] computeDomainTraffic: invalid response shape");
+    throw new Error("[dashboard] computeDomainTrafficHistories: invalid response shape");
   }
-  return parsed.data[0] ?? null;
+  return parsed.data;
+}
+
+export async function computeDomainDrStatuses(
+  domains: string[],
+  token?: string,
+): Promise<DomainDrStatus[]> {
+  const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
+    token,
+    method: "POST",
+    body: { domains },
+  });
+  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] computeDomainDrStatuses: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] computeDomainDrStatuses: invalid response shape");
+  }
+  return parsed.data;
 }
 
 /**
@@ -3371,20 +4209,8 @@ export async function computeDomainDr(
   domain: string,
   token?: string,
 ): Promise<DomainDrStatus | null> {
-  const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
-    token,
-    method: "POST",
-    body: { domains: [domain] },
-  });
-  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] computeDomainDr: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] computeDomainDr: invalid response shape");
-  }
-  return parsed.data[0] ?? null;
+  const data = await computeDomainDrStatuses([domain], token);
+  return data[0] ?? null;
 }
 
 // Ahrefs Brand-Radar AI-visibility. Two surfaces, one lean shape (the wire also
@@ -3628,4 +4454,3 @@ export async function triggerFeatureRun(
     body: { inputs: { brandId: params.brandId, campaignId: params.campaignId } },
   });
 }
-

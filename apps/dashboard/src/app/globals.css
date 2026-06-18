@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -7,19 +7,33 @@
 
 /* ── Theme ────────────────────────────────────────────────────────── */
 @theme {
-  --color-brand-50: #fdf2f8;
-  --color-brand-100: #fce7f3;
-  --color-brand-200: #fbcfe8;
-  --color-brand-300: #f9a8d4;
-  --color-brand-400: #f472b6;
-  --color-brand-500: #ec4899;
-  --color-brand-600: #db2777;
-  --color-brand-700: #be185d;
-  --color-brand-800: #9d174d;
-  --color-brand-900: #831843;
+  /* Brand = the LANDING accent (indigo-blue, OKLCH hue 264). The served
+   * landing's --accent is oklch(50% 0.250 264) in light / oklch(64% 0.220 264)
+   * in dark — NOT pink. brand-600 anchors the landing light accent so every
+   * `brand-*` Tailwind utility recolors to the landing in one place. */
+  --color-brand-50: oklch(97% 0.018 264);
+  --color-brand-100: oklch(93% 0.04 264);
+  --color-brand-200: oklch(87% 0.08 264);
+  --color-brand-300: oklch(78% 0.13 264);
+  --color-brand-400: oklch(66% 0.19 264);
+  --color-brand-500: oklch(58% 0.235 264);
+  --color-brand-600: oklch(50% 0.250 264);
+  --color-brand-700: oklch(45% 0.235 264);
+  --color-brand-800: oklch(40% 0.19 264);
+  --color-brand-900: oklch(34% 0.15 264);
 
-  --font-display: "Fredoka", system-ui, -apple-system, sans-serif;
+  /* Display = Inter (the landing has no separate display face; headings are
+   * Inter 800 with tight tracking). Fredoka removed to match the landing. */
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  /* Landing-aligned mono — labels, eyebrows, stat ticks (matches apps/landing). */
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Radius scale ported from the landing design system (apps/landing globals). */
+  --dy-radius-sm: 0.375rem;
+  --dy-radius-md: 0.625rem;
+  --dy-radius-lg: 0.875rem;
+  --dy-radius-xl: 1rem;
 
   /* ── Type scale — compressed one more step (round 2) ───────────────
    * #1297 kept body at the 14/12 floor and pulled only headings down.
@@ -52,13 +66,31 @@
 
 /* ── Base ─────────────────────────────────────────────────────────── */
 :root {
-  --foreground: #1a1a2e;
-  --background: #ffffff;
+  /* Light = the landing's default theme (served HTML forces data-theme=light).
+   * Page bg / text ported from the landing [data-theme="light"] tokens — a
+   * faint cool off-white page, near-black blue text. */
+  --foreground: oklch(12% 0.012 264);
+  --background: oklch(99% 0.002 264);
+
+  /* ── Landing OKLCH palette (apps/landing/src/app/globals.css) ────────
+   * The dashboard's dark theme is retuned to the LANDING look so the two
+   * surfaces are one brand: near-black blue page, glassy raised surfaces,
+   * hairline white borders, bright text, radial accent glow. These vars
+   * are consumed only by the `html.dark` remap below. */
+  --dy-bg: oklch(7.5% 0.01 264);
+  --dy-bg-alt: oklch(10% 0.012 264);
+  --dy-surface: oklch(13% 0.013 264);
+  --dy-surface-hi: oklch(16% 0.015 264);
+  --dy-border: oklch(100% 0 0 / 0.08);
+  --dy-border-hi: oklch(100% 0 0 / 0.14);
+  --dy-text: oklch(96% 0.005 264);
+  --dy-sub: oklch(72% 0.016 264);
+  --dy-muted: oklch(55% 0.016 264);
 }
 
 html.dark {
-  --foreground: #e2e8f0;
-  --background: #0f172a;
+  --foreground: var(--dy-text);
+  --background: var(--dy-bg);
   color-scheme: dark;
 }
 
@@ -72,53 +104,151 @@ body {
   font-size: var(--text-sm);
 }
 
+/* Landing radial-glow backdrop — the .dy-page::before signature, attached to
+ * the dark dashboard body. Fixed, behind everything, non-interactive. */
+html.dark body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -5%, oklch(64% 0.22 264 / 0.14), transparent 65%),
+    radial-gradient(ellipse 45% 40% at 85% 35%, oklch(64% 0.2 295 / 0.1), transparent 55%),
+    radial-gradient(ellipse 45% 45% at 10% 70%, oklch(64% 0.18 220 / 0.08), transparent 55%);
+}
+
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
+  font-weight: 800;
+  /* Landing heading treatment: Inter 800 with tight tracking, matching the
+   * landing's .t-h2/.t-h3 (-0.03em). Font-size/line-height untouched (no shift). */
+  letter-spacing: -0.03em;
 }
 
 @utility text-balance {
   text-wrap: balance;
 }
 
+/* ── Landing design-system alignment (brand-consistency pass) ──────────
+ * Shared accent vocabulary ported from apps/landing/src/app/globals.css so
+ * the dashboard reads as the same product family. Light-mode adapted.
+ * Type + mono already match via the @theme tokens above; these are the
+ * opt-in accent primitives (gradient text, mono eyebrow pill). */
+
+/* Indigo brand gradient for hero numbers / key titles (matches landing accent). */
+.gradient-text {
+  background: linear-gradient(135deg, oklch(58% 0.235 264) 0%, oklch(50% 0.250 264) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Full-spectrum subtle gradient (landing's gradient-text-subtle). */
+.gradient-text-subtle {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 20%, #3b82f6 40%, #8b5cf6 60%, #ec4899 80%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Soft multi-stop wash for page/section backgrounds (landing's gradient-bg). */
+.gradient-bg {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ecfeff 20%, #eff6ff 40%, #f5f3ff 60%, #fdf2f8 80%, #fffbeb 100%);
+}
+html.dark .gradient-bg {
+  /* Transparent so the body radial glow shows through (landing dy-page behavior). */
+  background: transparent;
+}
+
+/* Mono uppercase eyebrow pill — the landing's section-label signature
+ * (.dy-eyebrow), light-mode adapted. Use above section/page titles. */
+.dy-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-brand-200, #fbcfe8);
+  border-radius: 999px;
+  background: var(--color-brand-50, #fdf2f8);
+  color: var(--color-brand-700, #be185d);
+  padding: 0.25rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+html.dark .dy-eyebrow {
+  border-color: oklch(64% 0.22 264 / 0.3);
+  background: oklch(64% 0.22 264 / 0.15);
+  color: oklch(80% 0.12 264);
+}
+
+/* Brand status dot for the eyebrow pill. */
+.dy-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--color-brand-500, #ec4899);
+  flex: none;
+}
+
+/* Canonical-card depth — the landing's cards carry a soft layered shadow
+ * (--dy-shadow-card); the dashboard's `bg-white rounded-xl border` cards were
+ * flat. Apply the light-mode equivalent to the card pattern so every surface
+ * gains the same polish family-wide, in ONE place (203 inline usages, no sweep).
+ * In @layer base so any explicit shadow-* utility (modals: shadow-xl, etc.)
+ * still wins — this only fills in cards that declared no shadow. */
+@layer base {
+  .bg-white.rounded-xl.border {
+    box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04), 0 8px 24px -6px rgba(17, 24, 39, 0.06);
+  }
+  html.dark .bg-white.rounded-xl.border {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px -6px rgba(0, 0, 0, 0.3);
+  }
+}
+
 /* ── Dark mode global overrides ────────────────────────────────────── */
 
-/* Backgrounds */
-html.dark .bg-white { background-color: #1e293b; }
-html.dark .bg-gray-50 { background-color: #0f172a; }
+/* Backgrounds — remapped to the landing OKLCH surfaces (glassy raised cards
+ * over the near-black page + glow). */
+html.dark .bg-white { background-color: var(--dy-surface); }
+html.dark .bg-gray-50 { background-color: var(--dy-bg-alt); }
 
 /* Gradient stops */
-html.dark .from-white { --tw-gradient-from: #1e293b; }
-html.dark .to-gray-50 { --tw-gradient-to: #0f172a; }
-html.dark .bg-gray-100 { background-color: #1e293b; }
-html.dark .bg-gray-200 { background-color: #334155; }
+html.dark .from-white { --tw-gradient-from: var(--dy-surface); }
+html.dark .to-gray-50 { --tw-gradient-to: var(--dy-bg-alt); }
+html.dark .bg-gray-100 { background-color: var(--dy-surface-hi); }
+html.dark .bg-gray-200 { background-color: var(--dy-surface-hi); }
+/* Skeleton / elevated dark: variants used directly in markup. */
+html.dark .bg-gray-800 { background-color: var(--dy-surface); }
+html.dark .bg-gray-700 { background-color: var(--dy-surface-hi); }
 
-/* Text — every step bumped one notch brighter so secondary text on
- * slate-800/slate-900 backgrounds stays readable (was 4.0:1 on #64748b,
- * now ~6.5:1 on #94a3b8 / ~9:1 on #cbd5e1). */
-html.dark .text-gray-900 { color: #f1f5f9; }
-html.dark .text-gray-800 { color: #e2e8f0; }
-html.dark .text-gray-700 { color: #cbd5e1; }
-html.dark .text-gray-600 { color: #cbd5e1; }
-html.dark .text-gray-500 { color: #cbd5e1; }
-html.dark .text-gray-400 { color: #94a3b8; }
-html.dark .text-gray-300 { color: #94a3b8; }
+/* Text — mapped to the landing's three text tiers (text/sub/muted). */
+html.dark .text-gray-900 { color: var(--dy-text); }
+html.dark .text-gray-800 { color: var(--dy-text); }
+html.dark .text-gray-700 { color: var(--dy-sub); }
+html.dark .text-gray-600 { color: var(--dy-sub); }
+html.dark .text-gray-500 { color: var(--dy-sub); }
+html.dark .text-gray-400 { color: var(--dy-muted); }
+html.dark .text-gray-300 { color: var(--dy-muted); }
 
-/* Borders */
-html.dark .border-gray-200 { border-color: #334155; }
-html.dark .border-gray-100 { border-color: #1e293b; }
-html.dark .border-gray-300 { border-color: #475569; }
+/* Borders — hairline white-alpha, exactly like the landing surfaces. */
+html.dark .border-gray-200 { border-color: var(--dy-border-hi); }
+html.dark .border-gray-100 { border-color: var(--dy-border); }
+html.dark .border-gray-300 { border-color: var(--dy-border-hi); }
 
 /* Hover states */
-html.dark .hover\:bg-gray-50:hover { background-color: #334155; }
-html.dark .hover\:bg-gray-100:hover { background-color: #334155; }
-html.dark .hover\:bg-red-50:hover { background-color: #450a0a; }
-html.dark .hover\:text-gray-800:hover { color: #e2e8f0; }
-html.dark .hover\:text-gray-600:hover { color: #cbd5e1; }
+html.dark .hover\:bg-gray-50:hover { background-color: var(--dy-surface-hi); }
+html.dark .hover\:bg-gray-100:hover { background-color: var(--dy-surface-hi); }
+html.dark .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.15); }
+html.dark .hover\:text-gray-800:hover { color: var(--dy-text); }
+html.dark .hover\:text-gray-600:hover { color: var(--dy-sub); }
 
-/* Brand colors in dark — slightly brighter/adjusted */
-html.dark .bg-brand-50 { background-color: rgba(219, 39, 119, 0.15); }
-html.dark .bg-brand-100 { background-color: rgba(219, 39, 119, 0.2); }
-html.dark .border-brand-200 { border-color: rgba(219, 39, 119, 0.3); }
+/* Brand colors in dark — landing indigo accent (hue 264) */
+html.dark .bg-brand-50 { background-color: oklch(64% 0.22 264 / 0.15); }
+html.dark .bg-brand-100 { background-color: oklch(64% 0.22 264 / 0.2); }
+html.dark .border-brand-200 { border-color: oklch(64% 0.22 264 / 0.3); }
 
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
@@ -136,28 +266,27 @@ html.dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2p
 html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3); }
 
 /* Ring colors */
-html.dark .ring-gray-200 { --tw-ring-color: #334155; }
-html.dark .ring-gray-300 { --tw-ring-color: #475569; }
-html.dark .focus\:ring-brand-500:focus { --tw-ring-color: #db2777; }
-html.dark .focus\:border-brand-500:focus { border-color: #db2777; }
+html.dark .ring-gray-200 { --tw-ring-color: var(--dy-border-hi); }
+html.dark .ring-gray-300 { --tw-ring-color: var(--dy-border-hi); }
+html.dark .focus\:ring-brand-500:focus { --tw-ring-color: oklch(64% 0.22 264); }
+html.dark .focus\:border-brand-500:focus { border-color: oklch(64% 0.22 264); }
 
-/* Placeholder text — bumped to slate-400 (#94a3b8) so search/form
- * placeholders are visible against the slate-800 input background. */
-html.dark .placeholder-gray-400::placeholder { color: #94a3b8; }
-html.dark .placeholder-gray-500::placeholder { color: #94a3b8; }
+/* Placeholder text — readable against the dy-surface input background. */
+html.dark .placeholder-gray-400::placeholder { color: var(--dy-muted); }
+html.dark .placeholder-gray-500::placeholder { color: var(--dy-muted); }
 
 /* Divide colors */
-html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
-html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--dy-border-hi); }
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--dy-border); }
 
 /* Input/form elements */
 html.dark input, html.dark textarea, html.dark select {
-  background-color: #1e293b;
-  border-color: #334155;
-  color: #e2e8f0;
+  background-color: var(--dy-surface);
+  border-color: var(--dy-border-hi);
+  color: var(--dy-text);
 }
 html.dark input::placeholder, html.dark textarea::placeholder {
-  color: #94a3b8;
+  color: var(--dy-muted);
 }
 
 /* Amber accent (thinking blocks) in dark mode */
@@ -166,10 +295,10 @@ html.dark .text-amber-800 { color: #f59e0b; }
 html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.08); }
 html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.15); }
 
-/* Brand accent (tool call blocks) dark overrides */
-html.dark .text-brand-700 { color: #f9a8d4; }
-html.dark .text-brand-800 { color: #fbcfe8; }
-html.dark .border-brand-300 { border-color: rgba(219, 39, 119, 0.25); }
+/* Brand accent (tool call blocks) dark overrides — landing indigo (hue 264) */
+html.dark .text-brand-700 { color: oklch(80% 0.12 264); }
+html.dark .text-brand-800 { color: oklch(88% 0.07 264); }
+html.dark .border-brand-300 { border-color: oklch(64% 0.22 264 / 0.25); }
 
 /* White/70 backgrounds (PrettyJSON) — ensure dark-readable */
 html.dark .bg-white\/70 { background-color: rgba(255, 255, 255, 0.04); }
@@ -178,19 +307,19 @@ html.dark .bg-white\/70 { background-color: rgba(255, 255, 255, 0.04); }
 html.dark .bg-transparent { background-color: transparent; }
 
 /* Prose (Tailwind Typography) — email previews, rendered HTML */
-html.dark .prose { color: #e2e8f0; }
+html.dark .prose { color: var(--dy-sub); }
 html.dark .prose h1, html.dark .prose h2, html.dark .prose h3,
-html.dark .prose h4, html.dark .prose strong, html.dark .prose th { color: #f1f5f9; }
+html.dark .prose h4, html.dark .prose strong, html.dark .prose th { color: var(--dy-text); }
 html.dark .prose a { color: #93c5fd; }
-html.dark .prose blockquote { color: #94a3b8; border-left-color: #475569; }
-html.dark .prose code { color: #e2e8f0; }
-html.dark .prose pre { background-color: #0f172a; color: #e2e8f0; }
-html.dark .prose hr { border-color: #334155; }
-html.dark .prose td, html.dark .prose th { border-color: #334155; }
-html.dark .prose thead { border-bottom-color: #475569; }
+html.dark .prose blockquote { color: var(--dy-muted); border-left-color: var(--dy-border-hi); }
+html.dark .prose code { color: var(--dy-text); }
+html.dark .prose pre { background-color: var(--dy-bg); color: var(--dy-text); }
+html.dark .prose hr { border-color: var(--dy-border-hi); }
+html.dark .prose td, html.dark .prose th { border-color: var(--dy-border-hi); }
+html.dark .prose thead { border-bottom-color: var(--dy-border-hi); }
 
 /* Scrollbar */
 html.dark ::-webkit-scrollbar { width: 8px; }
-html.dark ::-webkit-scrollbar-track { background: #0f172a; }
-html.dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+html.dark ::-webkit-scrollbar-track { background: var(--dy-bg); }
+html.dark ::-webkit-scrollbar-thumb { background: var(--dy-border-hi); border-radius: 4px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: var(--dy-muted); }

@@ -5,18 +5,16 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
-  listOrgRuns,
   createCheckoutSession,
   createPortalSession,
   type BillingAccount,
-  type OrgRun,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
 import { pollOptions } from "@/lib/query-options";
+import { DashboardPage } from "@/components/dashboard-page";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
-const RUNS_PAGE_SIZE = 10;
 
 export default function BillingPage() {
   const params = useParams();
@@ -34,15 +32,6 @@ export default function BillingPage() {
   const { data: account, isLoading: accountLoading } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
-    pollOptions,
-  );
-
-  const [runsPage, setRunsPage] = useState(0);
-
-  // Runs ledger (server-paginated via runs-service proxy)
-  const { data: runsData, isLoading: runsLoading } = useAuthQuery<{ runs: OrgRun[]; offset: number; limit?: number }>(
-    ["orgRuns", runsPage],
-    () => listOrgRuns(RUNS_PAGE_SIZE, runsPage * RUNS_PAGE_SIZE),
     pollOptions,
   );
 
@@ -105,6 +94,7 @@ export default function BillingPage() {
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
   const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
+  const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
   const hasAutoTopup = account?.has_auto_topup ?? false;
 
   // Pre-fill auto-topup fields from existing config
@@ -237,7 +227,7 @@ export default function BillingPage() {
 
   if (accountLoading) {
     return (
-      <div className="p-4 md:p-8">
+      <DashboardPage width="standard">
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
           <p className="text-gray-600">Manage your credits and payment method.</p>
@@ -247,26 +237,13 @@ export default function BillingPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-48" />
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-64" />
         </div>
-      </div>
+      </DashboardPage>
     );
   }
 
-  const orgRuns: OrgRun[] = runsData?.runs ?? [];
-  const runsHasNext = orgRuns.length === RUNS_PAGE_SIZE;
-  const runsHasPrev = runsPage > 0;
-
-  function runRowLabel(run: OrgRun): string {
-    if (run.taskName && run.serviceName) return `${run.serviceName}.${run.taskName}`;
-    return run.taskName ?? run.serviceName ?? "Run";
-  }
-
-  function runRowTimestamp(run: OrgRun): string | null {
-    return run.completedAt ?? run.startedAt;
-  }
-
   return (
-    <div className="p-4 md:p-8">
-      <div className="mb-6 flex items-start justify-between max-w-2xl">
+    <DashboardPage width="standard">
+      <div className="mb-6 flex max-w-2xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
           <p className="text-gray-600">Manage your credits and payment method.</p>
@@ -275,7 +252,7 @@ export default function BillingPage() {
           onClick={() => showPaymentRequired({
             balance_cents: account?.balance_cents,
           })}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 sm:w-auto"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -308,11 +285,11 @@ export default function BillingPage() {
             </div>
           )}
 
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm text-gray-500">Credit Balance</p>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.balance_cents ?? "0")}
+                {formatBillingCents(creditBalanceCents)}
               </p>
               {hasAutoTopup && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
@@ -323,7 +300,7 @@ export default function BillingPage() {
                 </p>
               )}
             </div>
-            <div className="text-right">
+            <div className="sm:text-right">
               <div className="flex items-center gap-1.5">
                 <div className={`w-2 h-2 rounded-full ${account?.has_payment_method ? "bg-green-500" : "bg-gray-300"}`} />
                 <span className="text-sm text-gray-500">
@@ -346,7 +323,7 @@ export default function BillingPage() {
         {/* Auto-Topup Settings (when already configured) */}
         {hasAutoTopup ? (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
                 <h2 className="text-lg font-medium text-gray-900">Auto-Topup</h2>
@@ -363,7 +340,7 @@ export default function BillingPage() {
 
             {editingTopup ? (
               <>
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
                     <input
@@ -395,11 +372,11 @@ export default function BillingPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <button
                     onClick={handleSaveTopup}
                     disabled={savingTopup || hasValidationError || !topupAmount}
-                    className="bg-brand-600 text-white px-5 py-2 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
+                    className="w-full rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 sm:w-auto"
                   >
                     {savingTopup ? "Saving..." : "Save changes"}
                   </button>
@@ -409,21 +386,21 @@ export default function BillingPage() {
                       if (account?.topup_amount_cents !== null && account?.topup_amount_cents !== undefined) setTopupAmount((account.topup_amount_cents / 100).toString());
                       if (account?.topup_threshold_cents !== null && account?.topup_threshold_cents !== undefined) setTopupThreshold((account.topup_threshold_cents / 100).toString());
                     }}
-                    className="px-5 py-2 text-sm text-gray-600 hover:text-gray-800 transition"
+                    className="w-full px-5 py-2 text-sm text-gray-600 transition hover:text-gray-800 sm:w-auto"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleDisableTopup}
                     disabled={disablingTopup}
-                    className="ml-auto text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 transition"
+                    className="text-sm font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50 sm:ml-auto"
                   >
                     {disablingTopup ? "Disabling..." : "Disable auto-topup"}
                   </button>
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Top-up amount</p>
                   <p className="text-lg font-semibold text-gray-900 mt-0.5">{formatBillingCents(account!.topup_amount_cents ?? 0)}</p>
@@ -459,7 +436,7 @@ export default function BillingPage() {
                 value={customAmount}
                 onChange={(e) => { setCustomAmount(e.target.value); setCustomAmountError(null); }}
                 onBlur={handleCustomAmountBlur}
-                className={`w-28 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
+                className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 sm:w-28 ${customAmountError ? "border-red-300" : "border-gray-200"}`}
                 min="10"
                 step="1"
               />
@@ -486,7 +463,7 @@ export default function BillingPage() {
               </div>
 
               {enableAutoTopup && (
-                <div className="grid grid-cols-2 gap-3 mt-3 ml-7">
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:ml-7 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Top-up amount ($)</label>
                     <input
@@ -524,87 +501,13 @@ export default function BillingPage() {
             <button
               onClick={handleTopup}
               disabled={topupLoading || (enableAutoTopup && !topupAmount) || hasValidationError}
-              className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
+              className="w-full rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 sm:w-auto"
             >
               {topupLoading ? "Redirecting to Stripe..." : `Add ${formatBillingCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupSelected)}`}
             </button>
           </div>
         )}
-
-        {/* Runs Ledger — per-run cost history (sourced from runs-service) */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-gray-900">Runs</h2>
-          </div>
-
-          {runsLoading ? (
-            <div className="space-y-3 animate-pulse">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-              ))}
-            </div>
-          ) : orgRuns.length === 0 ? (
-            <p className="text-sm text-gray-500">No runs yet.</p>
-          ) : (
-            <>
-              <div className="divide-y divide-gray-100">
-                {orgRuns.map((run) => {
-                  const ts = runRowTimestamp(run);
-                  const cost = run.ownCostInUsdCents ? parseFloat(run.ownCostInUsdCents) : 0;
-                  return (
-                    <div key={run.id} className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm text-gray-800">{runRowLabel(run)}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {ts
-                            ? new Date(ts).toLocaleDateString(undefined, {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "—"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-red-600">
-                          -{formatBillingCents(Math.abs(cost))}
-                        </p>
-                        <p className="text-xs text-gray-400 capitalize">{run.status}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {(runsHasPrev || runsHasNext) && (
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-2">
-                  <p className="text-xs text-gray-400">
-                    Page {runsPage + 1}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setRunsPage((p) => Math.max(0, p - 1))}
-                      disabled={!runsHasPrev}
-                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setRunsPage((p) => p + 1)}
-                      disabled={!runsHasNext}
-                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
       </div>
-    </div>
+    </DashboardPage>
   );
 }

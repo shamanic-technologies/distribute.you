@@ -62,8 +62,8 @@ const getHeroStats = unstable_cache(
       const data: {
         best: { [metricKey: string]: { value: number; createdForBrandId: string | null } | null };
       } = await res.json();
-      const openRecord = data.best["opened"] ?? null;
-      const replyRecord = data.best["replied"] ?? null;
+      const openRecord = data.best["recipientsOpened"] ?? null;
+      const replyRecord = data.best["recipientsRepliesPositive"] ?? null;
       return {
         bestCostPerOpen: openRecord
           ? { brandDomain: null, costPerOpenCents: openRecord.value }
@@ -490,8 +490,8 @@ export default async function Home() {
             <a href={URLS.pricing} className="hover:text-brand-400 transition">
               Pricing
             </a>
-            <a href={`${URLS.landing}/benchmarks`} className="hover:text-brand-400 transition">
-              Benchmarks
+            <a href={`${URLS.landing}/performance`} className="hover:text-brand-400 transition">
+              Performance
             </a>
             <a href={URLS.docs} className="hover:text-brand-400 transition">
               Docs
