@@ -122,7 +122,15 @@ export default function BrandOverviewPage() {
       : null;
 
   const { data: outcomeProjection } = useAuthQuery(
-    ["workflowProjection", brandId, featureSlug, "overview-outcome", optimizationGoal, monthlyBudgetUsd],
+    [
+      "workflowProjection",
+      brandId,
+      featureSlug,
+      "overview-outcome",
+      optimizationGoal,
+      monthlyBudgetUsd,
+      economicsData?.salesEconomics?.updatedAt ?? "no-economics",
+    ],
     () =>
       getWorkflowProjection({
         featureSlug,
@@ -132,6 +140,7 @@ export default function BrandOverviewPage() {
       }),
     {
       enabled: enabled && economicsData !== undefined && monthlyBudgetUsd != null,
+      placeholderData: undefined,
       structuralSharing: (prev, next) =>
         keepLastGoodWorkflowProjection(
           prev as WorkflowProjectionResponse | undefined,
