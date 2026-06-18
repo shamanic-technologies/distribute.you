@@ -79,7 +79,10 @@ describe("brand overview status control", () => {
 
   it("loads budget options with the brand goal objective, not hardcoded self-serve", () => {
     expect(control).toContain("salesObjectiveForOptimizationGoal(goalForBudget)");
-    expect(control).toContain('"brand-status-budget", goalForBudget');
+    expect(control).toContain('"brand-status-budget"');
+    expect(control).toContain("goalForBudget");
+    expect(control).toContain('econ?.salesEconomics?.updatedAt ?? "no-economics"');
+    expect(control).toContain("placeholderData: undefined");
     expect(control).not.toContain('objective: "self-serve"');
   });
 

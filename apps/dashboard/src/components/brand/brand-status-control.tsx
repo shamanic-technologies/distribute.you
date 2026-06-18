@@ -147,7 +147,14 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
   const { data: projection, isPending: projectionPending, error: projectionError } =
     useAuthQuery(
-      ["workflowProjection", brandId, featureSlug, "brand-status-budget", goalForBudget],
+      [
+        "workflowProjection",
+        brandId,
+        featureSlug,
+        "brand-status-budget",
+        goalForBudget,
+        econ?.salesEconomics?.updatedAt ?? "no-economics",
+      ],
       () =>
         getWorkflowProjection({
           featureSlug,
@@ -157,6 +164,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
         }),
       {
         enabled: budgetDialogOpen && econ !== undefined,
+        placeholderData: undefined,
         structuralSharing: (prev, next) =>
           keepLastGoodWorkflowProjection(
             prev as WorkflowProjectionResponse | undefined,

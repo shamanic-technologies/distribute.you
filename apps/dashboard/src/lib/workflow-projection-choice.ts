@@ -13,10 +13,21 @@ type WorkflowOutcomeUnitCostOptions = {
   projectionBudgetUsd?: number | null;
 };
 
-export function workflowOutcomeUnitCost(
+function serverOutcomeUnitCost(
   workflow: WorkflowProjectionItem,
   goal: BrandOptimizationGoal,
-  options: WorkflowOutcomeUnitCostOptions = {},
+): number | null {
+  const cost =
+    goal === "signups"
+      ? workflow.costPerSignupUsd
+      : workflow.costPerMeetingBookedUsd;
+  return cost != null && cost > 0 ? cost : null;
+}
+
+function workflowOutcomeUnitCostFromRates(
+  workflow: WorkflowProjectionItem,
+  goal: BrandOptimizationGoal,
+  options: WorkflowOutcomeUnitCostOptions,
 ): number | null {
   const projectionBudgetUsd = options.projectionBudgetUsd ?? PROJECTION_REF_BUDGET;
   if (projectionBudgetUsd <= 0) return null;
@@ -55,6 +66,34 @@ export function workflowOutcomeUnitCost(
 
   const meetings = workflow.projection?.meetings;
   return meetings != null && meetings > 0 ? projectionBudgetUsd / meetings : null;
+}
+
+export function workflowOutcomeUnitCost(
+  workflow: WorkflowProjectionItem,
+  goal: BrandOptimizationGoal,
+  options: WorkflowOutcomeUnitCostOptions = {},
+): number | null {
+  return (
+    serverOutcomeUnitCost(workflow, goal) ??
+    workflowOutcomeUnitCostFromRates(workflow, goal, options)
+  );
+}
+
+export function workflowProjectionMatchesOutcomeRates(
+  response: WorkflowProjectionResponse,
+  goal: BrandOptimizationGoal,
+  options: WorkflowOutcomeUnitCostOptions,
+): boolean {
+  let checked = false;
+  for (const workflow of response.workflows) {
+    const serverCost = serverOutcomeUnitCost(workflow, goal);
+    const liveCost = workflowOutcomeUnitCostFromRates(workflow, goal, options);
+    if (serverCost == null || liveCost == null) continue;
+    checked = true;
+    const relativeDelta = Math.abs(serverCost - liveCost) / Math.max(liveCost, 1);
+    if (relativeDelta > 0.02) return false;
+  }
+  return checked;
 }
 
 export function selectWorkflowForOptimizationGoal(
