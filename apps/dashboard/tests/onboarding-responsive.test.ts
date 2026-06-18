@@ -28,7 +28,7 @@ describe("Onboarding mobile responsiveness", () => {
   });
 
   it("uses smaller mobile padding in the default onboarding cards", () => {
-    expect(defaultFlow).toContain("px-5 py-5 sm:px-7 sm:py-7");
+    expect(defaultFlow).toContain("px-5 py-4 sm:px-7 sm:py-7");
     expect(defaultFlow).toContain("p-5 sm:p-8 md:p-12");
     expect(defaultFlow).toContain("grid grid-cols-1 gap-4 sm:grid-cols-2");
   });
