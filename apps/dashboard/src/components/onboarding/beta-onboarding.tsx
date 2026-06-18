@@ -46,8 +46,11 @@ import {
   setupBillingWallet,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
+  salesObjectiveForOptimizationGoal,
+  type BrandOptimizationGoal,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
+  type WorkflowFunnelProjection,
   type PersonaDraft,
   type FeatureInput,
   regeneratePersonaAvatar,
@@ -96,6 +99,20 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string }[] = 
   { key: "signups", label: "Signups", unit: "signups", desc: "Maximize free signups / trial starts." },
   { key: "meetings", label: "Sales meetings", unit: "meetings", desc: "Maximize booked sales meetings." },
 ];
+
+function optimizationGoalForOutcome(outcome: Outcome): BrandOptimizationGoal {
+  return outcome === "signups" ? "signups" : "sales_meetings";
+}
+
+function projectionHasOutcomeCount(
+  projection: WorkflowFunnelProjection | null,
+  outcome: Outcome,
+): boolean {
+  if (!projection) return false;
+  return outcome === "signups"
+    ? projection.visits != null
+    : projection.meetings != null;
+}
 
 // Each goal needs exactly ONE conversion rate. Signups → website-visit→signup;
 // meetings → positive-reply→meeting.
@@ -441,7 +458,12 @@ export function BetaOnboarding() {
     const [prof, econRes, proj, feat] = await Promise.all([
       getBrandProfile(id),
       getSalesEconomicsEffective(id),
-      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
+      getWorkflowProjection({
+        featureSlug: SALES_FEATURE_SLUG,
+        brandId: id,
+        objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome)),
+        budgetUsd: PROJECTION_REF_BUDGET,
+      }),
       getFeature(SALES_FEATURE_SLUG),
     ]);
 
@@ -591,14 +613,20 @@ export function BetaOnboarding() {
         meetingToClosePct: nextRates.m2c,
         visitToSignupPct: nextRates.v2s,
         signupToPaidClientPct: nextRates.s2c,
+        optimizationGoal: optimizationGoalForOutcome(outcome),
       });
       // Recompute the projection from the rates we just saved (loading-time
       // projection ran on the brand's DEFAULT economics). Best-effort +
       // keep-last-good: only adopt a usable (non-degenerate) refetch.
       try {
-        const proj = await getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET });
+        const proj = await getWorkflowProjection({
+          featureSlug: SALES_FEATURE_SLUG,
+          brandId: id,
+          objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome)),
+          budgetUsd: PROJECTION_REF_BUDGET,
+        });
         const usable = proj.workflows.some(
-          (w) => w.costPerCloseUsd != null || (w.projection != null && (w.projection.visits != null || w.projection.closes != null)),
+          (w) => projectionHasOutcomeCount(w.projection, outcome),
         );
         if (usable) projectionRef.current = proj;
       } catch (e) {

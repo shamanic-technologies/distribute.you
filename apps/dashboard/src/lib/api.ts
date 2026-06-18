@@ -596,11 +596,6 @@ export async function getBrand(brandId: string, token?: string): Promise<{ brand
 // the revenue-overview pipeline applies. Both GET and PUT responses always include it.
 export type BrandBusinessModel = "b2c" | "b2b";
 
-// Which stages exist in the brand's sales funnel (multi-select). Stored on the
-// sales-economics record; both GET and PUT responses always include the array
-// (never null — a brand that never set it reads []).
-export type BrandFunnelStage = "website_purchase" | "sales_meeting";
-
 // The single metric the brand wants to optimise for. Server default
 // "sales_meetings" when never set; GET/PUT responses always include a non-null value.
 export type BrandOptimizationGoal = "signups" | "sales_meetings";
@@ -633,7 +628,6 @@ export interface BrandSalesEconomics {
   signupToPaidClientPct: number;
   visitToClosePct: number;
   businessModel: BrandBusinessModel | null;
-  funnelStages: BrandFunnelStage[];
   optimizationGoal: BrandOptimizationGoal;
   updatedAt: string;
 }
@@ -641,20 +635,17 @@ export interface BrandSalesEconomics {
 // businessModel is a partial-update field on PUT: omit = leave unchanged, null = clear
 // (brand-service contract). The campaign form omits it (edits only the 5 metrics); the
 // Brand Settings editor sends it explicitly. Hence optional in the input, not required.
-// businessModel / funnelStages / optimizationGoal are partial-update fields on PUT:
-// omit = leave unchanged. The campaign form omits all three (edits only the 5 metrics);
-// the Brand Settings editor sends them explicitly. Hence optional in the input.
+// businessModel / optimizationGoal are partial-update fields on PUT:
+// omit = leave unchanged. Hence optional in the input.
 // visitToClosePct is derived server-side, never sent — omit it from the input.
 export type BrandSalesEconomicsInput = Omit<
   BrandSalesEconomics,
   | "updatedAt"
   | "businessModel"
-  | "funnelStages"
   | "optimizationGoal"
   | "visitToClosePct"
 > & {
   businessModel?: BrandBusinessModel | null;
-  funnelStages?: BrandFunnelStage[];
   optimizationGoal?: BrandOptimizationGoal;
 };
 
@@ -667,9 +658,6 @@ const BrandSalesEconomicsSchema = z.object({
   signupToPaidClientPct: z.number(),
   visitToClosePct: z.number(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
-  funnelStages: z.array(
-    z.union([z.literal("website_purchase"), z.literal("sales_meeting")]),
-  ),
   optimizationGoal: z.union([
     z.literal("signups"),
     z.literal("sales_meetings"),
@@ -729,11 +717,7 @@ export async function saveBrandSalesEconomics(
       ...(input.businessModel !== undefined
         ? { businessModel: input.businessModel }
         : {}),
-      // Same partial-update semantics for the two sales-funnel config fields:
-      // omit = leave unchanged (the campaign form never touches them).
-      ...(input.funnelStages !== undefined
-        ? { funnelStages: input.funnelStages }
-        : {}),
+      // Same partial-update semantics for the sales goal: omit = leave unchanged.
       ...(input.optimizationGoal !== undefined
         ? { optimizationGoal: serializeBrandOptimizationGoal(input.optimizationGoal) }
         : {}),
@@ -2427,6 +2411,12 @@ export async function fetchGlobalRankedWorkflows(params: {
 // On first paint the live econ == the saved econ, so the client numbers equal the server's exactly.
 // Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
 export type SalesObjective = "meeting-booked" | "self-serve";
+
+export function salesObjectiveForOptimizationGoal(
+  goal: BrandOptimizationGoal,
+): SalesObjective {
+  return goal === "signups" ? "self-serve" : "meeting-booked";
+}
 
 /** Per-workflow funnel projection at the requested budget. All fields null where the route
  *  doesn't apply (replies/meetings for self-serve, visits with no click cost) or no data. */

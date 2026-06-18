@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 const SRC = path.resolve(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
+const deprecatedStageField = "funnel" + "Stages";
 
 describe("brand overview status control", () => {
   const page = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
@@ -61,8 +62,8 @@ describe("brand overview status control", () => {
     expect(control).toContain("salesEconomicsInputForGoal");
     expect(control).toContain("DEFAULT_SALES_ECONOMICS");
     expect(control).toContain("businessModel: current?.businessModel ?? null");
-    expect(control).toContain("funnelStages");
     expect(control).toContain("optimizationGoal");
+    expect(control).not.toContain(deprecatedStageField);
   });
 
   it("opens an onboarding-style budget modal from the status pill", () => {
@@ -73,5 +74,11 @@ describe("brand overview status control", () => {
     expect(control).toContain("getWorkflowProjection");
     expect(control).toContain("budgetForCount");
     expect(control).toContain("saveBudget(selectedBudget)");
+  });
+
+  it("loads budget options with the brand goal objective, not hardcoded self-serve", () => {
+    expect(control).toContain("salesObjectiveForOptimizationGoal(goalForBudget)");
+    expect(control).toContain('"brand-status-budget", goalForBudget');
+    expect(control).not.toContain('objective: "self-serve"');
   });
 });
