@@ -30,6 +30,8 @@ import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
+const DEFAULT_VISIT_TO_MEETING_PCT = 20;
+
 /**
  * Brand overview = the (sole) feature's Revenue & Conversions overview, rendered
  * inline at the brand root. The product ships ONE feature, so the feature level
@@ -101,6 +103,8 @@ export default function BrandOverviewPage() {
   );
   const optimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+  const visitToMeetingPct =
+    economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const personaStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
   const personaStatsMetric = personaStatsGoal === "signup" ? "cpc" : "cppr";
 
@@ -174,7 +178,10 @@ export default function BrandOverviewPage() {
   // total-spend (runs-service) are two different cold chains — gate each on its
   // own query so the fast cost card isn't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
-  const activityRevealed = useCoordinatedReveal([pipelineActivity !== undefined]);
+  const activityRevealed = useCoordinatedReveal([
+    pipelineActivity !== undefined,
+    economicsData !== undefined,
+  ]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
   const personaStatsRevealed = useCoordinatedReveal([
@@ -229,6 +236,8 @@ export default function BrandOverviewPage() {
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? pipelineActivity : undefined}
+        optimizationGoal={optimizationGoal}
+        visitToMeetingPct={visitToMeetingPct}
         revenuePending={!revenueRevealed}
         activityPending={!activityRevealed}
         expectedOutcome={

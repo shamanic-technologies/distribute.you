@@ -158,6 +158,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       queryClient.setQueryData(["brandSalesEconomics", brandId], res);
       // Economics drive the server-computed revenue overview — nudge it to refetch.
       queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+      queryClient.invalidateQueries({ queryKey: ["featurePipelineActivity"] });
       dirtyRef.current = false;
       setDirty(false);
       setSaved(true);

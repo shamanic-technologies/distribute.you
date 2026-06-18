@@ -34,8 +34,10 @@ describe("Brand overview pipeline activity chart", () => {
       expect(chart).toContain(`key: "${key}"`);
       expect(chart).toContain(`stackId={metric.key}`);
     }
-    expect(chart).toContain("Record<`${PipelineActivityMetricKey}Actual`, number>");
-    expect(chart).toContain("Record<`${PipelineActivityMetricKey}ExpectedRemaining`, number>");
+    expect(chart).toContain('key: "salesMeetings"');
+    expect(chart).toContain('label: "Sales meetings"');
+    expect(chart).toContain("Record<`${ChartMetricKey}Actual`, number>");
+    expect(chart).toContain("Record<`${ChartMetricKey}ExpectedRemaining`, number>");
     expect(chart).toContain("dataKey={`${metric.key}Actual`}");
     expect(chart).toContain("dataKey={`${metric.key}ExpectedRemaining`}");
     expect(chart).toContain("Math.max(expected - actual, 0)");
@@ -47,6 +49,21 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).toContain('stroke="#ffffff"');
     expect(chart).toContain('paintOrder="stroke"');
     expect(chart).toContain("isAnimationActive={false}");
+  });
+
+  it("switches the final outcome metric from signups to sales meetings from brand economics", () => {
+    expect(page).toContain("DEFAULT_VISIT_TO_MEETING_PCT");
+    expect(page).toContain("economicsData?.salesEconomics?.visitToMeetingPct");
+    expect(page).toContain("pipelineActivity !== undefined");
+    expect(page).toContain("economicsData !== undefined");
+    expect(section).toContain("optimizationGoal");
+    expect(section).toContain("visitToMeetingPct");
+    expect(chart).toContain("type ChartMetricKey = PipelineActivityMetricKey | \"salesMeetings\"");
+    expect(chart).toContain('if (optimizationGoal === "signups") return METRICS');
+    expect(chart).toContain("projectedMetric(day.metrics.clicks, visitToMeetingPct)");
+    expect(chart).toContain("source.actual * rate");
+    expect(chart).toContain("source.expected * rate");
+    expect(chart).toContain("isOutcomeMetric(metric.key)");
   });
 
   it("uses metric-color legend labels and reserves room for visible bar values", () => {
