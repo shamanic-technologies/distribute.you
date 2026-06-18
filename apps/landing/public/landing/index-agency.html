@@ -222,29 +222,6 @@
     /* ═══ hero-sub override ═══ */
     .hero-sub { max-width: 40rem; }
 
-    /* ═══ FAQ (pricing-style) ═══ */
-    .s-faq-inner { max-width: 760px; margin: 0 auto; padding: 0 2rem; }
-    .s-faq-head { margin-bottom: 2.5rem; }
-    .faq-list { display: flex; flex-direction: column; gap: 0.75rem; }
-    details.faq-item {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-      overflow: hidden; box-shadow: 0 1px 6px oklch(0% 0 0 / 0.05), 0 1px 2px oklch(0% 0 0 / 0.03);
-    }
-    details.faq-item[open] { box-shadow: 0 2px 12px oklch(0% 0 0 / 0.07), 0 1px 3px oklch(0% 0 0 / 0.04); }
-    details.faq-item summary {
-      list-style: none; padding: 1.125rem 1.375rem; cursor: pointer;
-      font-size: var(--fs-base); font-weight: 600; color: var(--text);
-      display: flex; justify-content: space-between; align-items: center; gap: 1rem; user-select: none;
-    }
-    details.faq-item summary::-webkit-details-marker { display: none; }
-    details.faq-item summary::after {
-      content: '+'; font-size: var(--fs-lg); font-weight: 400; color: var(--accent);
-      flex-shrink: 0; transition: transform 0.2s ease; font-family: 'JetBrains Mono', monospace; line-height: 1;
-    }
-    details.faq-item[open] summary::after { transform: rotate(45deg); }
-    details.faq-item[open] summary { border-bottom: 1px solid var(--border); }
-    .faq-body { padding: 1.125rem 1.375rem; font-size: var(--fs-base); color: var(--sub); line-height: 1.7; }
-
     /* ═══ Light-mode gradients ═══ */
     [data-theme="light"] .step-illu {
       background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
@@ -1438,36 +1415,35 @@ Marcus</span>
 <!-- ════════════════════════════════════════════
      FAQ
 ════════════════════════════════════════════ -->
-<section class="s-faq" style="padding:5rem 0">
-  <div class="s-faq-inner">
-    <div class="s-faq-head">
-      <p class="t-lbl">Questions</p>
+<section class="guide-section guide-section-alt">
+  <div class="wrap-faq">
+    <div class="guide-intro r">
       <h2 class="t-h2">Common questions</h2>
     </div>
-    <div class="faq-list">
-      <details class="faq-item">
-        <summary>Does distribute work for agencies that manage client campaigns?</summary>
-        <div class="faq-body">Yes. You can run multiple campaigns from one account, one per client. Each has its own URL, budget, audience, and dashboard. You control the spend and see results separately for each client.</div>
+    <div class="guide-faq r">
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">Does distribute work for agencies that manage client campaigns?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">Yes. You can run multiple campaigns from one account, one per client. Each has its own URL, budget, audience, and dashboard. You control the spend and see results separately for each client.</p>
       </details>
-      <details class="faq-item">
-        <summary>What kind of emails does distribute write?</summary>
-        <div class="faq-body">Personalized cold emails based on your site and the prospect's company. We research each contact before writing. Subject lines and copy are tested and optimized over time based on reply rates.</div>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">What kind of emails does distribute write?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">Personalized cold emails based on your site and the prospect's company. We research each contact before writing. Subject lines and copy are tested and optimized over time based on reply rates.</p>
       </details>
-      <details class="faq-item">
-        <summary>How does the $25 match work?</summary>
-        <div class="faq-body">Add a card, drop your URL, and start sending. For every $1 you spend, we credit $1 back — up to $25, so your first $25 is matched. After that, you pay as you go — ~$90/meeting avg.</div>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">How does the $25 match work?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">Add a card, drop your URL, and start sending. For every $1 you spend, we credit $1 back — up to $25, so your first $25 is matched. After that, you pay as you go — ~$90/meeting avg.</p>
       </details>
-      <details class="faq-item">
-        <summary>What happens when a prospect replies?</summary>
-        <div class="faq-body">AI reads the reply and classifies it. If the person is interested, we forward the full conversation to your Gmail inbox with a "buyer" label. You reply directly. Unsubscribes and out-of-office messages never reach you.</div>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">What happens when a prospect replies?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">AI reads the reply and classifies it. If the person is interested, we forward the full conversation to your Gmail inbox with a "buyer" label. You reply directly. Unsubscribes and out-of-office messages never reach you.</p>
       </details>
-      <details class="faq-item">
-        <summary>Can I stop at any time?</summary>
-        <div class="faq-body">Yes. Pause or stop any campaign immediately. Any unused budget stays in your account for future campaigns.</div>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">Can I stop at any time?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">Yes. Pause or stop any campaign immediately. Any unused budget stays in your account for future campaigns.</p>
       </details>
-      <details class="faq-item">
-        <summary>Do you handle deliverability and email warm-up?</summary>
-        <div class="faq-body">We handle everything. Domain setup, email warm-up, sending infrastructure, bounce management, and deliverability monitoring. You don't need to touch any of it.</div>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">Do you handle deliverability and email warm-up?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">We handle everything. Domain setup, email warm-up, sending infrastructure, bounce management, and deliverability monitoring. You don't need to touch any of it.</p>
       </details>
     </div>
   </div>
