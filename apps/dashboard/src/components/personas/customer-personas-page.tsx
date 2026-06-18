@@ -15,9 +15,9 @@ import { type Filters, type Persona } from "@/lib/mock-personas";
 import { PersonaAvatar, PersonaCard, capWords, PlusIcon } from "./persona-card";
 
 /**
- * Customer Personas (beta).
+ * Audiences (beta).
  *
- * Personas are listed as a stats table. Selecting a row opens the existing
+ * Audiences are listed as a stats table. Selecting a row opens the existing
  * Apollo-style targeting editor in a right panel, so lifecycle and edit behavior
  * stay in one component.
  */
@@ -89,7 +89,7 @@ export function CustomerPersonasPage() {
 
   // A brand-new persona starts as an UNSAVED draft card — Saved (POST) or
   // Cancelled away before it's ever persisted.
-  const addPersona = (name = "New Persona") => {
+  const addPersona = (name = "New Audience") => {
     const created = { id: nextId(), name: uniqueName(capWords(name)), filters: {}, status: "active" as const, unsaved: true };
     setDrafts((prev) => [created, ...prev]);
     setSelectedPersonaId(created.id);
@@ -101,7 +101,7 @@ export function CustomerPersonasPage() {
 
   const setStatus = (id: string, status: Persona["status"]) => statusMut.mutate({ id, status });
 
-  // Persona names are UNIQUE at all times (case-insensitive, across active +
+  // Audience names are UNIQUE at all times (case-insensitive, across active +
   // paused + archived + unsaved drafts). `exceptId` lets a draft compare against
   // everyone else.
   const isNameTaken = (name: string, exceptId?: string) => {
@@ -111,7 +111,7 @@ export function CustomerPersonasPage() {
 
   // Append " 2", " 3", … until the name is free — used when duplicating locally.
   const uniqueName = (base: string) => {
-    const trimmed = base.trim() || "Persona";
+    const trimmed = base.trim() || "Audience";
     if (!isNameTaken(trimmed)) return trimmed;
     for (let i = 2; ; i++) {
       const candidate = `${trimmed} ${i}`;
@@ -159,10 +159,10 @@ export function CustomerPersonasPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-gray-900">Customer Personas</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Audiences</h1>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Define who you sell to. Each persona is a set of Apollo-style targeting
+            Define who you sell to. Each audience is a set of Apollo-style targeting
             filters we&apos;ll use to find and prioritize leads.
           </p>
         </div>
@@ -181,7 +181,7 @@ export function CustomerPersonasPage() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
           >
             <PlusIcon />
-            New persona
+            New audience
           </button>
         </div>
       </div>
@@ -205,7 +205,7 @@ export function CustomerPersonasPage() {
         })}
       </div>
 
-      {/* Personas table */}
+      {/* Audiences table */}
       {(() => {
         const visible = personas.filter((p) =>
           tab === "archived" ? p.status === "archived" : p.status !== "archived",
@@ -214,7 +214,7 @@ export function CustomerPersonasPage() {
           return (
             <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
               <p className="text-sm text-gray-500">
-                {tab === "archived" ? "No archived personas." : "No personas yet."}
+                {tab === "archived" ? "No archived audiences." : "No audiences yet."}
               </p>
               {tab === "active" && (
                 <button
@@ -222,7 +222,7 @@ export function CustomerPersonasPage() {
                   onClick={() => addPersona()}
                   className="mt-3 text-xs font-medium text-brand-600 hover:text-brand-700"
                 >
-                  + Create your first persona
+                  + Create your first audience
                 </button>
               )}
             </div>
@@ -233,7 +233,7 @@ export function CustomerPersonasPage() {
             <table className="min-w-[760px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
-                  <th className="px-4 py-3 font-medium">Persona</th>
+                  <th className="px-4 py-3 font-medium">Audience</th>
                   <th className="px-4 py-3 text-right font-medium">Clicks</th>
                   <th className="px-4 py-3 text-right font-medium">Cost per click</th>
                   <th className="px-4 py-3 text-right font-medium">Signups</th>
@@ -248,7 +248,7 @@ export function CustomerPersonasPage() {
                       key={persona.id}
                       role="button"
                       tabIndex={0}
-                      aria-label={`Open ${persona.name || "Untitled"} persona details`}
+                      aria-label={`Open ${persona.name || "Untitled"} audience details`}
                       onClick={() => setSelectedPersonaId(persona.id)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -316,9 +316,9 @@ export function CustomerPersonasPage() {
       <EditWithAIChat
         open={aiOpen}
         onClose={() => setAiOpen(false)}
-        title="Edit personas with AI"
-        intro="Hi — I can review, create, duplicate, pause, resume and archive your personas. What would you like to change?"
-        suggestions={["Create a persona named Mid-market RevOps", "Duplicate Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
+        title="Edit audiences with AI"
+        intro="Hi — I can review, create, duplicate, pause, resume and archive your audiences. What would you like to change?"
+        suggestions={["Create an audience named Mid-market RevOps", "Duplicate Scaling SaaS Founders", "Archive Early Marketing Buyers"]}
         configKey="persona-editor"
         brandId={brandId}
         sessionVersion="live-context-v1"
@@ -377,7 +377,7 @@ function PersonaDetailPanel({
       <aside className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-gray-200 bg-gray-50 shadow-xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-200 bg-white px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Persona details</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Audience details</p>
             <h2 className="mt-1 truncate text-base font-semibold text-gray-900">{persona.name || "Untitled"}</h2>
           </div>
           <button

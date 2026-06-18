@@ -4,7 +4,7 @@ import { useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Field model — each brand-profile field is either free `text` (textarea) or a
-// `list` of short strings (chip editor, same affordance as Customer Personas).
+// `list` of short strings (chip editor, same affordance as Audiences).
 // Grouped into sections for a calmer layout. Mirrors SALES_PROFILE_FIELDS minus
 // the audience cluster (targetAudience / customerPainPoints → Personas).
 // Shared by the Brand Profile page AND the beta onboarding brand-profile step.
@@ -340,7 +340,7 @@ function ListEditor({
 }
 
 // ---------------------------------------------------------------------------
-// Icons (mirrors the Customer Personas mockup)
+// Icons (mirrors the Audiences mockup)
 // ---------------------------------------------------------------------------
 function PlusIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
   return (

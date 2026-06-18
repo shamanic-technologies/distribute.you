@@ -25,8 +25,8 @@ function metricLabel(metric: FeaturePersonaStatsSortMetric): string {
 
 function metricInfo(metric: FeaturePersonaStatsSortMetric): string {
   return metric === "cpc"
-    ? "Cost per click — persona-scoped spend divided by website clicks. Lower is better."
-    : "Cost per positive reply — persona-scoped spend divided by positive replies. Lower is better.";
+    ? "Cost per click — audience-scoped spend divided by website clicks. Lower is better."
+    : "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.";
 }
 
 function InfoHint({ text }: { text: string }) {
@@ -79,7 +79,7 @@ export function TopPersonasCard({
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top 3 personas</p>
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top 3 audiences</p>
         <p className="flex items-center gap-1 text-xs font-medium text-gray-500">
           {label}
           <InfoHint text={metricInfo(activeMetric)} />

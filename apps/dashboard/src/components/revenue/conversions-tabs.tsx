@@ -28,7 +28,7 @@ export type ConversionSelect = ((d: ConversionDetail) => void) | undefined;
  * only the table body skeletons while `pending` or data is absent.
  *
  * `extraFirstTab` (optional) prepends a caller-supplied tab, selected by default
- * — the Signups page uses it for a "Personas" tab (its `content` is a render-prop
+ * — the Signups page uses it for an "Audiences" tab (its `content` is a render-prop
  * receiving the same row-select handler). `enableDetail` makes every row open a
  * right-hand detail panel. Overview passes neither → unchanged.
  */
