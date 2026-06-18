@@ -80,12 +80,15 @@ No `release.sh hotfix` here (that targets Railway semver services). Vercel deplo
 - **Landing prod-alias promotion — mandatory after EVERY `apps/landing/` merge.** Do NOT wait for the user to report "aucun changement en prod". Run immediately after `gh pr merge` returns, without being asked:
 ```bash
 # 1. Token
-VTOK=$(python3 -c "import json; print(json.load(open('/Users/adam/Library/Application Support/com.vercel.cli/auth.json'))['token'])")
+VTOK=$(python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/Library/Application Support/com.vercel.cli/auth.json')))['token'])")
 
-# 2. Latest READY deploy for distribute-landing (prj_Bk1opzmyy6hBaYaDx3yz2849L2C2)
-DEPLOY=$(curl -s "https://api.vercel.com/v6/deployments?projectId=prj_Bk1opzmyy6hBaYaDx3yz2849L2C2&teamId=blooming-generation&limit=5" \
+# 2. Latest READY PRODUCTION deploy for distribute-landing (prj_Bk1opzmyy6hBaYaDx3yz2849L2C2)
+#    MUST filter target=="production" — a READY deploy with target:None is a PREVIEW; promoting it 422s
+#    "Resource cannot be processed". The merge-commit's production build is often still BUILDING right
+#    after merge — wait for IT (match meta.githubCommitSha), don't promote an older/preview READY deploy.
+DEPLOY=$(curl -s "https://api.vercel.com/v6/deployments?projectId=prj_Bk1opzmyy6hBaYaDx3yz2849L2C2&teamId=blooming-generation&limit=8" \
   -H "Authorization: Bearer $VTOK" | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); r=[x for x in d['deployments'] if x['state']=='READY']; print(r[0]['uid'] if r else 'NONE')")
+  python3 -c "import sys,json; d=json.load(sys.stdin); r=[x for x in d.get('deployments',[]) if x['state']=='READY' and x.get('target')=='production']; print(r[0]['uid'] if r else 'NONE')")
 
 # 3. Promote (409 conflict = already prod = still OK)
 curl -sX POST "https://api.vercel.com/v10/projects/prj_Bk1opzmyy6hBaYaDx3yz2849L2C2/promote/$DEPLOY?teamId=blooming-generation" \
