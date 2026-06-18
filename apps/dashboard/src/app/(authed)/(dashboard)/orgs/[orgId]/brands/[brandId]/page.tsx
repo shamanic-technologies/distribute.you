@@ -56,6 +56,16 @@ export default function BrandOverviewPage() {
       return "UTC";
     }
   }, []);
+  const todayCostWindow = useMemo(() => {
+    const startedAfter = new Date();
+    startedAfter.setHours(0, 0, 0, 0);
+    const startedBefore = new Date(startedAfter);
+    startedBefore.setDate(startedAfter.getDate() + 1);
+    return {
+      startedAfter: startedAfter.toISOString(),
+      startedBefore: startedBefore.toISOString(),
+    };
+  }, [timezone]);
 
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
@@ -85,6 +95,12 @@ export default function BrandOverviewPage() {
   const { data: costData } = useAuthQuery(
     ["brandCostBreakdown", { brandId, featureSlug }],
     () => getBrandCostBreakdown(brandId, { featureSlug }),
+    { enabled, ...pollOptions },
+  );
+
+  const { data: todayCostData } = useAuthQuery(
+    ["brandCostBreakdownToday", { brandId, featureSlug, ...todayCostWindow }],
+    () => getBrandCostBreakdown(brandId, { featureSlug, ...todayCostWindow }),
     { enabled, ...pollOptions },
   );
 
@@ -196,14 +212,15 @@ export default function BrandOverviewPage() {
   );
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
-  // total-spend (runs-service) are two different cold chains — gate each on its
-  // own query so the fast cost card isn't held by the slower revenue call.
+  // total/today spend (runs-service) are separate cold chains — gate each on its
+  // own query so the fast cost figures aren't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
   const activityRevealed = useCoordinatedReveal([
     pipelineActivity !== undefined,
     economicsData !== undefined,
   ]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
+  const todayCostRevealed = useCoordinatedReveal([todayCostData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
   const personaStatsRevealed = useCoordinatedReveal([
     personaStatsData !== undefined,
@@ -274,6 +291,9 @@ export default function BrandOverviewPage() {
         }
         costPending={!costRevealed}
         costBreakdown={costData?.costs ?? []}
+        todayCostPending={!todayCostRevealed}
+        todayCostBreakdown={todayCostData?.costs ?? []}
+        dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}

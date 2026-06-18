@@ -22,6 +22,8 @@ function formatOutcomeCount(n: number | null): string {
 export function RevenueOverviewSection({
   data,
   costBreakdown,
+  todayCostBreakdown,
+  dailyBudgetCents,
   brandId,
   featureSlug,
   basePath,
@@ -35,6 +37,7 @@ export function RevenueOverviewSection({
   revenuePending = false,
   activityPending = false,
   costPending = false,
+  todayCostPending = false,
   hideHeader = false,
   conversions,
 }: {
@@ -43,6 +46,8 @@ export function RevenueOverviewSection({
   optimizationGoal: BrandOptimizationGoal;
   visitToMeetingPct: number | null | undefined;
   costBreakdown: CostByName[];
+  todayCostBreakdown?: CostByName[];
+  dailyBudgetCents?: number | null;
   brandId: string;
   featureSlug: string;
   /** /orgs/:orgId/brands/:brandId/features/:slug — for the Top-campaigns links. */
@@ -64,6 +69,8 @@ export function RevenueOverviewSection({
   };
   /** runs-service cost-breakdown reveal — the Total-spent figure only. */
   costPending?: boolean;
+  /** runs-service same-day actual spend reveal — the Budget spent today figure. */
+  todayCostPending?: boolean;
   /** Hide the "Revenue & Conversions" header (the Signups page provides its own
    *  header + Run Campaign action). */
   hideHeader?: boolean;
@@ -128,8 +135,11 @@ export function RevenueOverviewSection({
             no per-campaign detail page to link to anymore). */}
         <RevenueCostSummary
           costBreakdown={costBreakdown}
+          todayCostBreakdown={todayCostBreakdown}
+          dailyBudgetCents={dailyBudgetCents}
           pending={revenueLoading}
           costPending={costPending}
+          todayCostPending={todayCostPending}
           bottomCard={costBottomCard}
         />
       </div>
