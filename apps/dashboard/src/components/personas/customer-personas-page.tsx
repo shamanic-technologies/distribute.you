@@ -273,7 +273,14 @@ export function CustomerPersonasPage() {
                             regenerating={avatarRegenerating && regeneratingAvatarId === persona.id}
                           />
                           <div className="min-w-0">
-                            <p className="font-medium text-gray-900">{persona.name || "Untitled"}</p>
+                            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                              <p className="min-w-0 truncate font-medium text-gray-900">{persona.name || "Untitled"}</p>
+                              {persona.status === "paused" && (
+                                <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-600">
+                                  Paused
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -308,6 +315,14 @@ export function CustomerPersonasPage() {
           if (!selectedPersona) return;
           setStatus(selectedPersona.id, status);
         }}
+        statusActionPending={Boolean(
+          selectedPersona && statusMut.isPending && statusMut.variables?.id === selectedPersona.id,
+        )}
+        statusActionTarget={
+          selectedPersona && statusMut.isPending && statusMut.variables?.id === selectedPersona.id
+            ? statusMut.variables.status
+            : undefined
+        }
         onRegenerateAvatar={
           selectedPersona && !selectedPersona.unsaved ? () => regenerateAvatar(selectedPersona.id) : undefined
         }
@@ -350,6 +365,8 @@ function PersonaDetailPanel({
   onCommitNew,
   onCancelNew,
   onSetStatus,
+  statusActionPending,
+  statusActionTarget,
   onRegenerateAvatar,
   regeneratingAvatar,
   checkNameTaken,
@@ -360,6 +377,8 @@ function PersonaDetailPanel({
   onCommitNew: (name: string, filters: Filters) => void;
   onCancelNew: () => void;
   onSetStatus: (status: Persona["status"]) => void;
+  statusActionPending?: boolean;
+  statusActionTarget?: Persona["status"];
   onRegenerateAvatar?: () => void;
   regeneratingAvatar?: boolean;
   checkNameTaken: (name: string) => boolean;
@@ -404,6 +423,8 @@ function PersonaDetailPanel({
             onCommitNew={onCommitNew}
             onCancelNew={onCancelNew}
             onSetStatus={onSetStatus}
+            statusActionPending={statusActionPending}
+            statusActionTarget={statusActionTarget}
             onRegenerateAvatar={onRegenerateAvatar}
             regeneratingAvatar={regeneratingAvatar}
             checkNameTaken={checkNameTaken}
