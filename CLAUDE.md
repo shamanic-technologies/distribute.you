@@ -79,13 +79,17 @@ No `release.sh hotfix` here (that targets Railway semver services). Vercel deplo
 - **Intermittent landing prod-build ERROR (passes on retry) = the `/benchmarks` page build-time `fetchFeatureBenchmark` exceeds the 60s prerender timeout.** Tell: the Vercel build log shows `✓ Compiled successfully` then fails LATER in static-page generation; a local `next build` shows `Failed to build /benchmarks/page … took more than 60 seconds. Retrying (attempt N of 3)`. The same commit often succeeds on a rebuild (the public stats API was transiently slow), so the SOURCE isn't broken — confirm by checking whether a sibling deploy of the same/identical source went READY. **Stopgap:** `vercel redeploy <failed-deploy-url> --scope blooming-generation` to retry, then `vercel promote` the resulting READY deploy. **Durable fix (TODO):** make the benchmarks page resilient to a slow build-time fetch — bound `fetchFeatureBenchmark` with a timeout + last-known-good fallback (mirror the investors `EMPTY_INVESTOR_METRICS` / static-html `FALLBACK_LIVE_PERFORMANCE_METRICS` pattern), so a slow API degrades to cached numbers instead of aborting the whole deploy (CLAUDE.md "Vercel build-time prerender must stay shippable"). (2026-06-12: #1520 + #1527 prod builds ERRORed on this; #1522 + redeploys of the same source went READY.)
 - **Landing prod-alias promotion — mandatory after EVERY `apps/landing/` merge.** Do NOT wait for the user to report "aucun changement en prod". Run immediately after `gh pr merge` returns, without being asked:
 ```bash
-# 1. Token
-VTOK=$(python3 -c "import json; print(json.load(open('/Users/adam/Library/Application Support/com.vercel.cli/auth.json'))['token'])")
+# 1. Token — use $HOME, NOT a hardcoded /Users/<name> (path is per-machine: adam vs kevinlourd)
+VTOK=$(python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/Library/Application Support/com.vercel.cli/auth.json')))['token'])")
 
-# 2. Latest READY deploy for distribute-landing (prj_Bk1opzmyy6hBaYaDx3yz2849L2C2)
-DEPLOY=$(curl -s "https://api.vercel.com/v6/deployments?projectId=prj_Bk1opzmyy6hBaYaDx3yz2849L2C2&teamId=blooming-generation&limit=5" \
+# 2. Latest READY *production* deploy (prj_Bk1opzmyy6hBaYaDx3yz2849L2C2)
+#    MUST filter target=='production' — the latest READY deploy is often the PR PREVIEW
+#    (target null, your feature branch); promoting a preview returns 422 unprocessable_entity.
+#    Right after a merge the production build may still be BUILDING — wait for it (retry until a
+#    main/production deploy is READY), then promote THAT uid.
+DEPLOY=$(curl -s "https://api.vercel.com/v6/deployments?projectId=prj_Bk1opzmyy6hBaYaDx3yz2849L2C2&teamId=blooming-generation&limit=10" \
   -H "Authorization: Bearer $VTOK" | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); r=[x for x in d['deployments'] if x['state']=='READY']; print(r[0]['uid'] if r else 'NONE')")
+  python3 -c "import sys,json; d=json.load(sys.stdin); r=[x for x in d['deployments'] if x['state']=='READY' and x.get('target')=='production']; print(r[0]['uid'] if r else 'NONE')")
 
 # 3. Promote (409 conflict = already prod = still OK)
 curl -sX POST "https://api.vercel.com/v10/projects/prj_Bk1opzmyy6hBaYaDx3yz2849L2C2/promote/$DEPLOY?teamId=blooming-generation" \
