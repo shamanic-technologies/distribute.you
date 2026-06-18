@@ -1540,20 +1540,79 @@ function OnboardingAudiences({
   );
 }
 
-// Flatten a neutral PeopleSearchFilters object into readable pills for display.
-function audienceFilterPills(filters: Record<string, unknown>): string[] {
-  const pills: string[] = [];
+// Category vocabulary borrowed from PersonaCard's FILTER_CATEGORIES so audience
+// cards read like the persona cards (colored, category-grouped pills).
+const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: string }[] = [
+  { keys: ["industries", "industry"], label: "Industry", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  { keys: ["roles", "seniority", "seniorities"], label: "Seniority", tone: "bg-purple-50 text-purple-700 border-purple-200" },
+  {
+    keys: ["titles", "personTitles", "jobTitles", "departments", "personDepartments"],
+    label: "Job titles",
+    tone: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  {
+    keys: ["employeeMin", "employeeMax", "employeeRange", "employeeRanges", "headcount"],
+    label: "Employee range",
+    tone: "bg-sky-50 text-sky-700 border-sky-200",
+  },
+  {
+    keys: ["revenueMin", "revenueMax", "revenueRange", "revenue"],
+    label: "Revenue",
+    tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  {
+    keys: ["location", "locations", "country", "countries", "region", "regions"],
+    label: "Location",
+    tone: "bg-rose-50 text-rose-700 border-rose-200",
+  },
+  { keys: ["technologies", "tech", "technology"], label: "Technology", tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  { keys: ["keywords", "keyword"], label: "Keywords", tone: "bg-gray-100 text-gray-600 border-gray-200" },
+];
+
+const NEUTRAL_TONE = "bg-gray-100 text-gray-600 border-gray-200";
+
+function humanizeFilterKey(key: string): string {
+  const s = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+type AudienceFilterGroup = { label: string; tone: string; values: string[] };
+
+// Group a loose PeopleSearchFilters object (apollo/apify use different keys) into
+// labeled, color-toned categories. Unknown keys still render (humanized + neutral),
+// so nothing is silently dropped.
+function audienceFilterGroups(filters: Record<string, unknown>): AudienceFilterGroup[] {
+  const order: string[] = [];
+  const byLabel = new Map<string, AudienceFilterGroup>();
+  const push = (label: string, tone: string, raw: unknown) => {
+    const value = String(raw ?? "").trim();
+    if (!value) return;
+    let g = byLabel.get(label);
+    if (!g) {
+      g = { label, tone, values: [] };
+      byLabel.set(label, g);
+      order.push(label);
+    }
+    if (!g.values.includes(value)) g.values.push(value);
+  };
   for (const [key, val] of Object.entries(filters ?? {})) {
+    const cat = AUDIENCE_CATEGORY_MAP.find((c) => c.keys.includes(key));
+    const label = cat ? cat.label : humanizeFilterKey(key);
+    const tone = cat ? cat.tone : NEUTRAL_TONE;
     if (Array.isArray(val)) {
-      for (const v of val) {
-        if (v != null && String(v).trim()) pills.push(String(v));
-      }
+      for (const v of val) push(label, tone, v);
     } else if (val != null && typeof val !== "object") {
-      const s = String(val).trim();
-      if (s) pills.push(`${key}: ${s}`);
+      // Scalar (e.g. employeeMin: 20) — prefix with its key so min/max stay distinct.
+      push(label, tone, `${humanizeFilterKey(key)}: ${val}`);
     }
   }
-  return pills.slice(0, 12);
+  return order.map((l) => {
+    const g = byLabel.get(l)!;
+    return { ...g, values: g.values.slice(0, 10) };
+  });
 }
 
 function AudienceCandidateCard({
@@ -1565,12 +1624,12 @@ function AudienceCandidateCard({
   selected: boolean;
   onToggle: () => void;
 }) {
-  const pills = audienceFilterPills(candidate.filters);
+  const groups = audienceFilterGroups(candidate.filters);
   const invalid = Boolean(candidate.validationError) || candidate.count === 0;
   return (
     <button
       onClick={onToggle}
-      className={`flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+      className={`flex w-full items-start gap-3 rounded-xl border-2 p-5 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
     >
       <span
         className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
@@ -1588,11 +1647,21 @@ function AudienceCandidateCard({
           )}
         </span>
         <span className="mt-1 block text-xs leading-5 text-gray-500">{candidate.rationale}</span>
-        {pills.length > 0 && (
-          <span className="mt-2 flex flex-wrap gap-1.5">
-            {pills.map((p, j) => (
-              <span key={j} className="rounded-md bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
-                {p}
+        {groups.length > 0 && (
+          <span className="mt-3 flex flex-col gap-2">
+            {groups.map((g) => (
+              <span key={g.label} className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  {g.label}
+                </span>
+                {g.values.map((v, j) => (
+                  <span
+                    key={j}
+                    className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${g.tone}`}
+                  >
+                    <span className="min-w-0 truncate">{v}</span>
+                  </span>
+                ))}
               </span>
             ))}
           </span>
