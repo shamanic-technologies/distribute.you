@@ -13,6 +13,7 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
 
   it("renders Total spent without Cost of acquisition or ROI cards", () => {
     expect(card).toContain("Total spent");
+    expect(card).toContain("Budget spent today");
     expect(card).not.toContain("Cost of acquisition");
     expect(card).not.toContain("Share of expected pipeline revenue");
     expect(card).not.toContain("ROI");
@@ -30,10 +31,14 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
   it("Overview wires the cost breakdown through the revenue section into the summary card", () => {
     expect(overview).toContain("getBrandCostBreakdown");
     expect(overview).toContain("costBreakdown={costData?.costs ?? []}");
+    expect(overview).toContain("todayCostBreakdown={todayCostData?.costs ?? []}");
+    expect(overview).toContain("dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}");
     const section = read("components/revenue/revenue-overview-section.tsx");
     // The cost summary lives in the right-of-chart column, replacing the old
     // org/lead/event counters.
     expect(section).toContain("RevenueCostSummary");
+    expect(section).toContain("todayCostBreakdown={todayCostBreakdown}");
+    expect(section).toContain("dailyBudgetCents={dailyBudgetCents}");
     expect(section).not.toContain("costEconomics={data?.costEconomics}");
     expect(section).not.toContain("Converting organizations");
     expect(section).not.toContain("Lead conversions");
@@ -41,7 +46,15 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
 
   it("Total spent and provider shares use actual costs only", () => {
     expect(card).toContain("parseFloat(c.actualCostInUsdCents)");
+    expect(card).toContain("actualCents(todayCostBreakdown)");
     expect(card).not.toContain("parseFloat(c.totalCostInUsdCents)");
+  });
+
+  it("Budget spent today fetches a local-day actual-cost window", () => {
+    expect(overview).toContain("brandCostBreakdownToday");
+    expect(overview).toContain("startedAfter.setHours(0, 0, 0, 0)");
+    expect(overview).toContain("startedBefore.setDate(startedAfter.getDate() + 1)");
+    expect(overview).toContain("getBrandCostBreakdown(brandId, { featureSlug, ...todayCostWindow })");
   });
 
   it("Total spent only keeps cents below ten dollars", () => {
