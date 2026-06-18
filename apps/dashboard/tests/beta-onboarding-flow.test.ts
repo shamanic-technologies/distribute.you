@@ -61,6 +61,11 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain('step === "personas"');
   });
 
+  it("pre-fills the audience prompt with a real brand ICP (brand-service /icp/suggest)", () => {
+    expect(src).toContain("suggestBrandIcp");
+    expect(src).toContain("Drafting your ideal customer profile");
+  });
+
   it("asks which services to promote and persists them on the brand profile", () => {
     expect(src).toContain("What services do you want to promote with us?");
     expect(src).toContain("services");

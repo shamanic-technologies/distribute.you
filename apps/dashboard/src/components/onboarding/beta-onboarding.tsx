@@ -32,6 +32,7 @@ import {
   createPersona,
   suggestAudiences,
   createAudience,
+  suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
   getFeature,
@@ -1376,15 +1377,42 @@ function OnboardingAudiences({
   onContinue: () => void;
 }) {
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
-  const defaultPrompt = services.length
+  const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
-  const [prompt, setPrompt] = useState(defaultPrompt);
+  const [prompt, setPrompt] = useState("");
+  const [icpLoading, setIcpLoading] = useState(true);
+  const icpFetchedRef = useRef(false);
   const [candidates, setCandidates] = useState<AudienceCandidate[] | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Pre-fill the prompt with a real brand ICP — brand-service writes one short,
+  // plain-language ICP line from the brand profile + sales economics. Falls back
+  // to a services-derived line if the fetch fails. Auto-fills once; never clobbers
+  // a prompt the user already edited.
+  useEffect(() => {
+    if (icpFetchedRef.current) return;
+    icpFetchedRef.current = true;
+    if (!brandId) {
+      setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+      setIcpLoading(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { icp } = await suggestBrandIcp(brandId);
+        setPrompt((cur) => (cur.trim() ? cur : icp.trim() || fallbackPrompt));
+      } catch (e) {
+        console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
+        setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+      } finally {
+        setIcpLoading(false);
+      }
+    })();
+  }, [brandId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function runSuggest() {
     const nl = prompt.trim();
@@ -1458,16 +1486,25 @@ function OnboardingAudiences({
         Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
       </p>
 
-      <textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        rows={3}
-        placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
-        className="mt-5 w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
-      />
+      <div className="relative mt-5">
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+          disabled={icpLoading}
+          placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+          className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+        />
+        {icpLoading && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-500">
+            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+            Drafting your ideal customer profile…
+          </div>
+        )}
+      </div>
       <button
         onClick={runSuggest}
-        disabled={loading || !prompt.trim()}
+        disabled={loading || icpLoading || !prompt.trim()}
         className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? (
