@@ -1802,6 +1802,29 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .hiw-feature .t-h3 { font-size: var(--fs-base); font-weight: 700; }
 .hiw-feature p { font-size: var(--fs-sm); color: var(--sub); line-height: 1.65; }
 
+/* ── Sent on behalf – bento ── */
+.hiw-bento {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+}
+.hiw-bcard {
+  background: var(--surface); border: 1px solid var(--accent-brd);
+  border-radius: var(--r-xl); padding: 2rem 2rem 2.25rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
+  box-shadow: var(--shadow-card);
+}
+.hiw-bcard--hero {
+  grid-column: span 2;
+  background: linear-gradient(135deg, var(--accent-dim), var(--surface) 55%);
+}
+.hiw-bcard--wide { grid-column: span 2; }
+.hiw-bcard--full {
+  grid-column: span 3;
+  flex-direction: row; align-items: flex-start; gap: 2rem;
+}
+.hiw-bcard-body { display: flex; flex-direction: column; gap: 0.5rem; }
+.hiw-bcard .t-h3 { font-size: var(--fs-base); font-weight: 700; }
+.hiw-bcard p { font-size: var(--fs-sm); color: var(--sub); line-height: 1.65; }
+
 /* ── Internal links ── */
 .s-hiw-links { background: var(--bg); border-top: 1px solid var(--border); }
 .s-hiw-links .sec-intro { margin-bottom: 2.5rem; }
@@ -1850,6 +1873,8 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   .hiw-feature:nth-child(n+4)  { border-bottom: 1px solid var(--border-hi); }
   .hiw-feature:nth-child(n+5)  { border-bottom: none; }
   .hiw-link-cards  { grid-template-columns: 1fr; }
+  .hiw-bento { grid-template-columns: 1fr 1fr; }
+  .hiw-bcard--full { grid-column: span 2; flex-direction: column; }
 }
 @media (max-width: 640px) {
   .hiw-hero   { padding: 7.5rem 0 4rem; }
@@ -1857,6 +1882,8 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   .hiw-features { grid-template-columns: 1fr; }
   .hiw-feature:nth-child(n)    { border-right: none; border-bottom: 1px solid var(--border-hi); }
   .hiw-feature:last-child      { border-bottom: none; }
+  .hiw-bento { grid-template-columns: 1fr; }
+  .hiw-bcard--hero, .hiw-bcard--wide, .hiw-bcard--full { grid-column: span 1; }
 }
 
 
