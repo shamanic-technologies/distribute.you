@@ -87,12 +87,16 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome))");
     expect(src).toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
     expect(src).toContain("workflowOutcomeUnitCost(w, optimizationGoalForOutcome(outcome)");
+    expect(src).toContain("replyToMeetingPct: nextRates.r2m");
+    expect(src).toContain("visitToMeetingPct: nextRates.v2m");
     expect(src).not.toContain('objective: "self-serve"');
   });
 
   it("chooses and launches the workflow with the best cost for the selected outcome", () => {
     expect(src).toContain("selectWorkflowForOptimizationGoal");
     expect(src).toContain("function activeWorkflow()");
+    expect(src).toContain("replyToMeetingPct: rates.r2m");
+    expect(src).toContain("visitToMeetingPct: rates.v2m");
     expect(src).toContain("activeWorkflow()?.workflowDynastySlug");
     expect(src).not.toContain("projectionRef.current?.recommendedWorkflowDynastySlug");
   });
