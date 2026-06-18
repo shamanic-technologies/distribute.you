@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands } from "@/lib/api";
 import { hasExplicitHierarchyIntent, resolveLandingBrand } from "@/lib/last-brand";
 import { BrandLogo } from "@/components/brand-logo";
+import { BrandCreateModal } from "@/components/create-flows";
 import { DashboardPage } from "@/components/dashboard-page";
 import { pollOptions } from "@/lib/query-options";
 
@@ -16,6 +17,7 @@ export default function OrgOverviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const explicitHierarchy = hasExplicitHierarchyIntent(searchParams);
+  const [addBrandOpen, setAddBrandOpen] = useState(false);
 
   const { data: brandsData } = useAuthQuery(
     ["brands"],
@@ -56,19 +58,30 @@ export default function OrgOverviewPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Brands</h2>
+          {brands.length > 0 && (
+            <button
+              onClick={() => setAddBrandOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add brand
+            </button>
+          )}
         </div>
         {brands.length === 0 ? (
           <div className="text-center py-4">
             <p className="text-sm text-gray-500 mb-3">No brands yet. Set up your first brand to get started.</p>
-            <Link
-              href={`/onboarding?new=1`}
+            <button
+              onClick={() => setAddBrandOpen(true)}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Set up your first brand
-            </Link>
+            </button>
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto">
@@ -85,6 +98,7 @@ export default function OrgOverviewPage() {
           </div>
         )}
       </div>
+      {addBrandOpen && <BrandCreateModal onClose={() => setAddBrandOpen(false)} />}
     </DashboardPage>
   );
 }
