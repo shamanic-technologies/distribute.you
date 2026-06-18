@@ -8,16 +8,10 @@ import {
   useSession,
 } from "@clerk/nextjs";
 import {
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-import {
   ArrowRightIcon,
   CheckIcon,
   ChevronLeftIcon,
   CreditCardIcon,
-  CursorArrowRaysIcon,
-  GiftIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   PlusIcon,
@@ -25,7 +19,6 @@ import {
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { SparklesIcon } from "@heroicons/react/20/solid";
 import posthog from "posthog-js";
 import {
   upsertBrand,
@@ -37,14 +30,12 @@ import {
   saveBrandSalesEconomics,
   suggestPersonas,
   createPersona,
-  listPersonas,
-  setPersonaStatus,
   getWorkflowProjection,
   getFeature,
   prefillFeatureInputs,
   prefillToStringMap,
+  configureAutoTopup,
   createCheckoutSession,
-  setupBillingWallet,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
   salesObjectiveForOptimizationGoal,
@@ -53,17 +44,14 @@ import {
   type WorkflowProjectionResponse,
   type PersonaDraft,
   type FeatureInput,
-  regeneratePersonaAvatar,
 } from "@/lib/api";
 import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
-import { useAuthQuery } from "@/lib/use-auth-query";
 import { type Filters, type Persona } from "@/lib/mock-personas";
 import { PersonaCard, capWords } from "@/components/personas/persona-card";
-import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { BrandLogo } from "@/components/brand-logo";
 
 /**
@@ -71,17 +59,15 @@ import { BrandLogo } from "@/components/brand-logo";
  * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
  * runs WHILE the brand is created AND its profile / services / personas / economics /
  * pricing projection are fetched for real → services to promote → sales goal →
- * conversion rates → review the AI-proposed persona (server-backed, Edit-with-AI)
+ * conversion rates → review the AI-proposed persona as an onboarding-only draft
  * → agency-channel consent → outcome-count budget → launches a real campaign.
  * Everything is wired to live endpoints.
  */
 
 const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
 const PROJECTION_REF_BUDGET = 100; // counts come back at this budget; unit costs are budget-invariant
-const WALLET_PENDING_KEY = "distribute:onboarding-wallet-launch";
-const MIN_INITIAL_LOAD_USD = 10;
-const MIN_TOPUP_USD = 10;
-const MIN_THRESHOLD_USD = 5;
+const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
+const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 
 type Step =
   | "welcome"
@@ -93,7 +79,6 @@ type Step =
   | "personas"
   | "consent"
   | "pricing"
-  | "wallet"
   | "launching";
 
 // The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
@@ -180,8 +165,8 @@ const LOADING_STEPS = [
   { id: "services", label: "Extracting your services" },
 ];
 const LAUNCH_STEPS = [
-  { id: "wallet", label: "Confirming wallet payment" },
-  { id: "topup", label: "Applying wallet match" },
+  { id: "payment", label: "Confirming payment" },
+  { id: "topup", label: "Setting auto-topup" },
   { id: "campaign", label: "Launching campaign" },
   { id: "access", label: "Opening dashboard access" },
   { id: "dashboard", label: "Opening your dashboard" },
@@ -216,7 +201,7 @@ const nextPersonaId = () => `ob-persona-${++personaSeq}`;
 const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
 
-type PendingWalletLaunch = {
+type PendingCheckoutLaunch = {
   version: 1;
   brandId: string;
   orgId: string;
@@ -225,13 +210,19 @@ type PendingWalletLaunch = {
   outcome: Outcome;
   budgetUsd: number;
   workflowSlug: string;
-  initialLoadCents: number;
+  checkoutAmountCents: number;
   topupAmountCents: number;
   topupThresholdCents: number;
   featureInputs?: Record<string, string>;
   profile?: Record<string, string | string[]>;
   services?: string[];
+  personas?: PersonaLaunchDraft[];
   createdAt: string;
+};
+
+type PersonaLaunchDraft = {
+  name: string;
+  filters: Filters;
 };
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -247,6 +238,23 @@ function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
+function isPersonaLaunchDraftList(value: unknown): value is PersonaLaunchDraft[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        !!item &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        typeof (item as { name?: unknown }).name === "string" &&
+        !!(item as { filters?: unknown }).filters &&
+        typeof (item as { filters?: unknown }).filters === "object" &&
+        !Array.isArray((item as { filters?: unknown }).filters) &&
+        Object.values((item as { filters: Record<string, unknown> }).filters).every(isStringList),
+    )
+  );
+}
+
 function isProfileRecord(value: unknown): value is Record<string, string | string[]> {
   return (
     !!value &&
@@ -256,21 +264,12 @@ function isProfileRecord(value: unknown): value is Record<string, string | strin
   );
 }
 
-function dollarsToCentsInput(value: string, label: string, minUsd: number): number {
-  const trimmed = value.trim();
-  if (!trimmed) throw new Error(`${label} is required.`);
-  const dollars = Number(trimmed);
-  if (!Number.isFinite(dollars)) throw new Error(`${label} must be a valid dollar amount.`);
-  if (dollars < minUsd) throw new Error(`${label} must be at least ${fmtUsd0(minUsd)}.`);
-  return Math.round(dollars * 100);
-}
-
-function readPendingWalletLaunch(): PendingWalletLaunch {
-  const raw = window.sessionStorage.getItem(WALLET_PENDING_KEY);
+function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
+  const raw = window.sessionStorage.getItem(CHECKOUT_PENDING_KEY);
   if (!raw) {
-    throw new Error("Wallet checkout returned, but the pending launch state is missing. Campaign was not launched.");
+    throw new Error("Checkout returned, but the pending launch state is missing. Campaign was not launched.");
   }
-  const parsed = JSON.parse(raw) as Partial<PendingWalletLaunch>;
+  const parsed = JSON.parse(raw) as Partial<PendingCheckoutLaunch>;
   if (
     parsed.version !== 1 ||
     typeof parsed.brandId !== "string" ||
@@ -280,22 +279,23 @@ function readPendingWalletLaunch(): PendingWalletLaunch {
     (parsed.outcome !== "signups" && parsed.outcome !== "meetings") ||
     typeof parsed.budgetUsd !== "number" ||
     typeof parsed.workflowSlug !== "string" ||
-    typeof parsed.initialLoadCents !== "number" ||
+    typeof parsed.checkoutAmountCents !== "number" ||
     typeof parsed.topupAmountCents !== "number" ||
     typeof parsed.topupThresholdCents !== "number" ||
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
     (parsed.services !== undefined && !isStringList(parsed.services)) ||
+    (parsed.personas !== undefined && !isPersonaLaunchDraftList(parsed.personas)) ||
     typeof parsed.createdAt !== "string"
   ) {
-    throw new Error("Wallet checkout returned with an invalid pending launch state. Campaign was not launched.");
+    throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");
   }
-  return parsed as PendingWalletLaunch;
+  return parsed as PendingCheckoutLaunch;
 }
 
-function readPendingWalletLaunchOrNull(): PendingWalletLaunch | null {
-  if (!window.sessionStorage.getItem(WALLET_PENDING_KEY)) return null;
-  return readPendingWalletLaunch();
+function readPendingCheckoutLaunchOrNull(): PendingCheckoutLaunch | null {
+  if (!window.sessionStorage.getItem(CHECKOUT_PENDING_KEY)) return null;
+  return readPendingCheckoutLaunch();
 }
 
 // Coerce a stored profile field (string | string[]) to a string[] of trimmed items.
@@ -333,7 +333,6 @@ function normalizeServices(value: unknown): string[] {
 export function BetaOnboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const { organization } = useOrganization();
   const { createOrganization, setActive } = useOrganizationList();
   const { session } = useSession();
@@ -357,11 +356,9 @@ export function BetaOnboarding() {
   // reshuffles the cards (the old $/day-tier bug).
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
   const [customCount, setCustomCount] = useState("");
-  const [walletBudgetUsd, setWalletBudgetUsd] = useState<number | null>(null);
-  const [initialLoadUsd, setInitialLoadUsd] = useState("25");
-  const [walletTopupAmountUsd, setWalletTopupAmountUsd] = useState("25");
-  const [walletTopupThresholdUsd, setWalletTopupThresholdUsd] = useState("5");
+  const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(null);
   const [personaSeeding, setPersonaSeeding] = useState(false);
+  const [personaDrafts, setPersonaDrafts] = useState<Persona[]>([]);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
@@ -374,7 +371,7 @@ export function BetaOnboarding() {
   const orgIdRef = useRef<string | null>(null);
   const fetchDoneRef = useRef(false);
   const loadingStartedAtRef = useRef<number | null>(null);
-  const walletResumeStartedRef = useRef(false);
+  const checkoutResumeStartedRef = useRef(false);
 
   const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
   const econRef = useRef<EffectiveSalesEconomics | null>(null);
@@ -386,12 +383,16 @@ export function BetaOnboarding() {
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>([]);
 
+  const personaDraftsRef = useRef<Persona[]>([]);
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
+  useEffect(() => {
+    personaDraftsRef.current = personaDrafts;
+  }, [personaDrafts]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
@@ -428,8 +429,19 @@ export function BetaOnboarding() {
       const sug = await suggestPersonas(id, 1);
       const first: PersonaDraft | undefined = sug.personas[0];
       if (first?.name?.trim()) {
-        await createPersona(id, { name: capWords(first.name.trim()), filters: first.filters });
-        await queryClient.invalidateQueries({ queryKey: ["personas", id] });
+        setPersonaDrafts((prev) =>
+          prev.length > 0
+            ? prev
+            : [
+                {
+                  id: nextPersonaId(),
+                  name: capWords(first.name.trim()),
+                  filters: first.filters,
+                  status: "active",
+                  unsaved: true,
+                },
+              ],
+        );
       }
     } catch (e) {
       console.error("[dashboard] suggest/create persona (onboarding seed) failed:", e);
@@ -659,7 +671,19 @@ export function BetaOnboarding() {
     return featureInputs;
   }
 
-  async function completeLaunchAfterWallet(pending: PendingWalletLaunch) {
+  async function persistPersonaDraftsForLaunch(id: string, drafts: PersonaLaunchDraft[]) {
+    const seenNames = new Set<string>();
+    for (const draft of drafts) {
+      const name = capWords(draft.name.trim());
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seenNames.has(key)) continue;
+      seenNames.add(key);
+      await createPersona(id, { name, filters: draft.filters as Record<string, string[]> });
+    }
+  }
+
+  async function completeLaunchAfterCheckout(pending: PendingCheckoutLaunch) {
     if (pending.profile && pending.services) {
       await saveBrandProfileVersion(pending.brandId, {
         ...pending.profile,
@@ -668,6 +692,9 @@ export function BetaOnboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
+    await persistPersonaDraftsForLaunch(pending.brandId, pending.personas ?? []);
+    await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
+    setLaunchStep(1);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
     setLaunchStep(2);
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
@@ -684,9 +711,9 @@ export function BetaOnboarding() {
       flow: "beta",
       outcome: pending.outcome,
       budget: pending.budgetUsd,
-      wallet_initial_load_cents: pending.initialLoadCents,
-      wallet_topup_amount_cents: pending.topupAmountCents,
-      wallet_topup_threshold_cents: pending.topupThresholdCents,
+      checkout_amount_cents: pending.checkoutAmountCents,
+      topup_amount_cents: pending.topupAmountCents,
+      topup_threshold_cents: pending.topupThresholdCents,
     });
     // Mark onboarding complete ONLY now — the flow is genuinely finished (a real
     // campaign launched). This is the edge-gate signal proxy.ts reads; setting it
@@ -699,56 +726,34 @@ export function BetaOnboarding() {
     // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
     // JWT loops the next navigation back to /onboarding (DIS-111).
     await session?.getToken({ skipCache: true }).catch(() => {});
-    window.sessionStorage.removeItem(WALLET_PENDING_KEY);
+    window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
     setLaunchStep(4);
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
   }
 
-  function continueToWallet() {
-    const id = brandIdRef.current;
-    const orgId = orgIdRef.current;
-    const proj = projectionRef.current;
-    const budget = derivedBudget();
-    if (!id || !orgId || !proj || budget == null) return;
-    const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? null;
-    if (!workflowSlug) {
-      setError("No outreach workflow is available for this brand yet.");
-      return;
-    }
-    const suggested = String(Math.max(25, budget));
-    setWalletBudgetUsd(budget);
-    setInitialLoadUsd(suggested);
-    setWalletTopupAmountUsd(suggested);
-    setWalletTopupThresholdUsd("5");
-    setError(null);
-    setStep("wallet");
-  }
-
-  async function beginWalletCheckout() {
+  async function beginCheckoutAndLaunch() {
     setBusy(true);
     setError(null);
     try {
-      const storedPending = readPendingWalletLaunchOrNull();
+      const storedPending = readPendingCheckoutLaunchOrNull();
       const id = brandIdRef.current ?? storedPending?.brandId ?? null;
       const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
-      const budget = walletBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();
+      const budget = checkoutBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();
       const trimmed = url.trim();
       const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
       const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
       const launchHostname = hostname || storedPending?.hostname || "";
       const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
       if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
-        throw new Error("Wallet setup state is missing. Go back to pricing and try again.");
+        throw new Error("Checkout state is missing. Go back to pricing and try again.");
       }
-      const initialLoadCents = dollarsToCentsInput(initialLoadUsd, "Initial load", MIN_INITIAL_LOAD_USD);
-      const topupAmountCents = dollarsToCentsInput(walletTopupAmountUsd, "Auto-topup reload amount", MIN_TOPUP_USD);
-      const topupThresholdCents = dollarsToCentsInput(walletTopupThresholdUsd, "Auto-topup trigger threshold", MIN_THRESHOLD_USD);
+      const checkoutAmountCents = Math.round(budget * 100);
       const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
       if (!workflowSlug) {
         throw new Error("Campaign workflow setup is still missing. Please try again.");
       }
 
-      const pending: PendingWalletLaunch = {
+      const pending: PendingCheckoutLaunch = {
         version: 1,
         brandId: id,
         orgId,
@@ -757,85 +762,78 @@ export function BetaOnboarding() {
         outcome: launchOutcome,
         budgetUsd: budget,
         workflowSlug,
-        initialLoadCents,
-        topupAmountCents,
-        topupThresholdCents,
+        checkoutAmountCents,
+        topupAmountCents: checkoutAmountCents,
+        topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
         featureInputs: storedPending?.featureInputs,
         profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
         services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
+        personas:
+          brandIdRef.current === id && normalizedCurrentUrl
+            ? personaDraftsRef.current.map((p) => ({ name: p.name, filters: p.filters }))
+            : storedPending?.personas,
         createdAt: new Date().toISOString(),
       };
-      window.sessionStorage.setItem(WALLET_PENDING_KEY, JSON.stringify(pending));
+      window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
 
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
-      successUrl.searchParams.set("wallet_setup", "success");
+      successUrl.searchParams.set("launch_checkout", "success");
       const cancelUrl = new URL(`${window.location.origin}${window.location.pathname}`);
-      cancelUrl.searchParams.set("wallet_setup", "cancelled");
+      cancelUrl.searchParams.set("launch_checkout", "cancelled");
 
       const session = await createCheckoutSession({
-        mode: "setup",
+        topup_amount_cents: checkoutAmountCents,
         success_url: successUrl.toString(),
         cancel_url: cancelUrl.toString(),
       });
       window.location.href = session.url;
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta" });
-      setError(err instanceof Error ? err.message : "Wallet setup failed. Campaign was not launched.");
+      setError(err instanceof Error ? err.message : "Checkout failed. Campaign was not launched.");
       setBusy(false);
     }
   }
 
-  async function resumeWalletCheckout() {
+  async function resumeCheckoutLaunch() {
     setBusy(true);
     setError(null);
     try {
-      const pending = readPendingWalletLaunch();
-      setWalletBudgetUsd(pending.budgetUsd);
-      setInitialLoadUsd(String(pending.initialLoadCents / 100));
-      setWalletTopupAmountUsd(String(pending.topupAmountCents / 100));
-      setWalletTopupThresholdUsd(String(pending.topupThresholdCents / 100));
+      const pending = readPendingCheckoutLaunch();
+      setCheckoutBudgetUsd(pending.budgetUsd);
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
       setLaunchStep(0);
       setStep("launching");
 
-      setLaunchStep(1);
-      await setupBillingWallet({
-        initial_load_amount_cents: pending.initialLoadCents,
-        topup_amount_cents: pending.topupAmountCents,
-        topup_threshold_cents: pending.topupThresholdCents,
-      });
-      await completeLaunchAfterWallet(pending);
+      await completeLaunchAfterCheckout(pending);
     } catch (err) {
-      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "wallet_return" });
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "checkout_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
-      setError(`Wallet checkout returned, but setup could not finish: ${detail} Backend support for first-load wallet setup is required; campaign was not launched.`);
-      setStep("wallet");
+      setError(`Checkout returned, but launch could not finish: ${detail}`);
+      setStep("pricing");
       setBusy(false);
     }
   }
 
   useEffect(() => {
-    const walletSetup = searchParams.get("wallet_setup");
-    if (walletResumeStartedRef.current) return;
-    if (walletSetup === "success") {
-      walletResumeStartedRef.current = true;
-      void resumeWalletCheckout();
+    const launchCheckout = searchParams.get("launch_checkout");
+    if (checkoutResumeStartedRef.current) return;
+    if (launchCheckout === "success") {
+      checkoutResumeStartedRef.current = true;
+      void resumeCheckoutLaunch();
       return;
     }
-    if (walletSetup === "cancelled") {
-      walletResumeStartedRef.current = true;
+    if (launchCheckout === "cancelled") {
+      checkoutResumeStartedRef.current = true;
       setBusy(false);
       try {
-        const pending = readPendingWalletLaunch();
-        setWalletBudgetUsd(pending.budgetUsd);
-        setInitialLoadUsd(String(pending.initialLoadCents / 100));
-        setWalletTopupAmountUsd(String(pending.topupAmountCents / 100));
-        setWalletTopupThresholdUsd(String(pending.topupThresholdCents / 100));
-        setStep("wallet");
-        setError("Wallet checkout was canceled. Your campaign was not launched; load the org wallet to continue.");
+        const pending = readPendingCheckoutLaunch();
+        setCheckoutBudgetUsd(pending.budgetUsd);
+        setOutcome(pending.outcome);
+        setStep("pricing");
+        setError("Checkout was canceled. Your campaign was not launched.");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Wallet checkout was canceled. Campaign was not launched.");
+        setError(err instanceof Error ? err.message : "Checkout was canceled. Campaign was not launched.");
       }
     }
   }, [searchParams]);
@@ -1086,9 +1084,10 @@ export function BetaOnboarding() {
   if (step === "personas") {
     return (
       <OnboardingPersonas
-        brandId={brandId}
         brandDomain={domain}
         hostname={hostname}
+        personas={personaDrafts}
+        setPersonas={setPersonaDrafts}
         personaSuggestionFailed={setupIssues.persona}
         personaSeeding={personaSeeding}
         onBack={() => setStep("rates")}
@@ -1145,111 +1144,10 @@ export function BetaOnboarding() {
     );
   }
 
-  if (step === "wallet") {
-    const activeBudget = walletBudgetUsd ?? derivedBudget();
-    return (
-      <div className={card}>
-        <BackButton onClick={() => setStep("pricing")} />
-        <div className="mb-4 flex items-start gap-2">
-          <CreditCardIcon className="h-5 w-5 text-brand-600" />
-          <h2 className="font-display text-2xl font-bold text-gray-900">Set up your org wallet.</h2>
-        </div>
-        <p className="text-sm leading-6 text-gray-500">
-          Credits live at the organization level and can fund work across brands. The{" "}
-          <strong className="font-semibold text-gray-800">
-            {activeBudget != null ? `${fmtUsd0(activeBudget)} / day` : "selected"} brand daily budget
-          </strong>{" "}
-          is only this brand&apos;s daily spend cap.
-        </p>
-
-        <div className="mt-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
-          <GiftIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
-          <p className="text-sm leading-6 text-brand-800">
-            <strong>Your first load is matched dollar-for-dollar up to $25 free.</strong> Load the
-            org wallet now, then auto-topup keeps the campaign from stopping when the balance runs low.
-          </p>
-        </div>
-
-        <div className="mt-5 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-900">Initial load amount</label>
-            <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-brand-300">
-              <span className="text-sm text-gray-400">$</span>
-              <input
-                type="number"
-                min={MIN_INITIAL_LOAD_USD}
-                step="1"
-                value={initialLoadUsd}
-                onChange={(e) => setInitialLoadUsd(e.target.value)}
-                className="w-full bg-transparent px-2 text-sm text-gray-900 focus:outline-none"
-              />
-            </div>
-            <p className="mt-1 text-xs leading-5 text-gray-400">
-              Stripe securely saves your card first, then the org wallet is loaded and matched after checkout.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-900">Auto-topup trigger threshold</label>
-              <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-brand-300">
-                <span className="text-sm text-gray-400">$</span>
-                <input
-                  type="number"
-                  min={MIN_THRESHOLD_USD}
-                  step="1"
-                  value={walletTopupThresholdUsd}
-                  onChange={(e) => setWalletTopupThresholdUsd(e.target.value)}
-                  className="w-full bg-transparent px-2 text-sm text-gray-900 focus:outline-none"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-900">Auto-topup reload amount</label>
-              <div className="mt-1 flex items-center rounded-xl border border-gray-200 px-3 py-2 focus-within:ring-2 focus-within:ring-brand-300">
-                <span className="text-sm text-gray-400">$</span>
-                <input
-                  type="number"
-                  min={MIN_TOPUP_USD}
-                  step="1"
-                  value={walletTopupAmountUsd}
-                  onChange={(e) => setWalletTopupAmountUsd(e.target.value)}
-                  className="w-full bg-transparent px-2 text-sm text-gray-900 focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <p className="mt-5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-500">
-          Auto-topup is required for the campaign to continue running. You can pause the campaign at any time.
-        </p>
-
-        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-
-        <button
-          onClick={beginWalletCheckout}
-          disabled={busy || activeBudget == null}
-          className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {busy ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              Finishing wallet setup…
-            </>
-          ) : (
-            <>
-              Load wallet & launch campaign <CursorArrowRaysIcon className="h-4 w-4" />
-            </>
-          )}
-        </button>
-      </div>
-    );
-  }
-
   // pricing — outcome-count budget
   const unitCost = outcomeUnitCost();
-  const selectedBudget = derivedBudget();
+  const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
+  const checkoutAmount = selectedBudget;
   return (
     <div className={card}>
       <BackButton onClick={() => setStep("consent")} />
@@ -1261,8 +1159,8 @@ export function BetaOnboarding() {
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
         <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-sm leading-6 text-brand-800">
-          This is the <strong>brand daily budget cap</strong>. Next you&apos;ll load the org wallet
-          and set auto-topup so the campaign can keep running.
+          This is the <strong>brand daily budget cap</strong>. Checkout loads credits first,
+          then auto-topup reloads the same daily amount whenever the balance drops below $5.
         </p>
       </div>
 
@@ -1320,87 +1218,47 @@ export function BetaOnboarding() {
         </div>
       )}
 
-      <button onClick={continueToWallet} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-        Continue to wallet setup <ArrowRightIcon className="h-4 w-4" />
+      <button onClick={beginCheckoutAndLaunch} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        {busy ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            Redirecting to checkout…
+          </>
+        ) : (
+          <>
+            {checkoutAmount != null ? `Checkout ${fmtUsd0(checkoutAmount)} & launch campaign` : "Checkout & launch campaign"} <ArrowRightIcon className="h-4 w-4" />
+          </>
+        )}
       </button>
     </div>
   );
 }
 
-// ── Audiences step — server-backed (mirrors the Audiences page) ─────────────
-// The brand exists by now (created during loading) and the AI-suggested persona
-// was already persisted, so this reads/writes live personas: PersonaCard with the
-// save lifecycle + an Edit-with-AI chat.
+// ── Audiences step — onboarding-only drafts ────────────────────────────────
+// No run/campaign exists yet, so this step edits client-side draft personas only.
+// They are persisted once at launch, immediately before the campaign is created.
 let obDraftSeq = 0;
 const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
 function OnboardingPersonas({
-  brandId,
   brandDomain,
   hostname,
+  personas,
+  setPersonas,
   personaSuggestionFailed,
   personaSeeding,
   onBack,
   onContinue,
 }: {
-  brandId: string | null;
   brandDomain: string | null;
   hostname: string;
+  personas: Persona[];
+  setPersonas: (updater: (prev: Persona[]) => Persona[]) => void;
   personaSuggestionFailed: boolean;
   personaSeeding: boolean;
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [drafts, setDrafts] = useState<Persona[]>([]);
-  const [aiOpen, setAiOpen] = useState(false);
-  const requestedAvatarIds = useRef<Set<string>>(new Set());
-
-  const { data, isPending } = useAuthQuery(
-    ["personas", brandId ?? ""],
-    () => listPersonas(brandId as string),
-    { enabled: !!brandId },
-  );
-
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["personas", brandId ?? ""] });
-  const createMut = useMutation({
-    mutationFn: (i: { name: string; filters: Filters }) =>
-      createPersona(brandId as string, { name: i.name, filters: i.filters as Record<string, string[]> }),
-    onSuccess: invalidate,
-  });
-  const {
-    mutate: archivePersona,
-    isPending: archivingPersona,
-    variables: archivingPersonaId,
-  } = useMutation({
-    mutationFn: (id: string) => setPersonaStatus(brandId as string, id, "archived"),
-    onSuccess: invalidate,
-  });
-  const {
-    mutate: regenerateAvatar,
-    isPending: avatarRegenerating,
-    variables: regeneratingAvatarId,
-  } = useMutation({
-    mutationFn: (personaId: string) =>
-      regeneratePersonaAvatar(brandId as string, personaId, undefined, { suppressPaymentRequired: true }),
-    onSuccess: invalidate,
-    onError: (err) => {
-      console.info("[dashboard] onboarding persona avatar generation skipped:", err);
-    },
-  });
-
-  const serverPersonas: Persona[] = (data?.personas ?? [])
-    .filter((p) => p.status !== "archived")
-    .map((p) => ({ id: p.id, name: p.name, filters: p.filters, status: p.status, avatarUrl: p.avatarUrl ?? null }));
-  const personas: Persona[] = [...drafts, ...serverPersonas];
-  const missingAvatarId = serverPersonas.find((p) => !p.avatarUrl && !requestedAvatarIds.current.has(p.id))?.id;
-
-  useEffect(() => {
-    if (!missingAvatarId || avatarRegenerating) return;
-    requestedAvatarIds.current.add(missingAvatarId);
-    regenerateAvatar(missingAvatarId);
-  }, [missingAvatarId, avatarRegenerating, regenerateAvatar]);
-
   const isNameTaken = (name: string, exceptId?: string) => {
     const needle = name.trim().toLowerCase();
     return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
@@ -1413,11 +1271,16 @@ function OnboardingPersonas({
       if (!isNameTaken(candidate)) return candidate;
     }
   };
-  const addPersona = () => setDrafts((prev) => [{ id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true }, ...prev]);
-  const removeDraft = (id: string) => setDrafts((prev) => prev.filter((p) => p.id !== id));
-  const commitNew = (id: string, name: string, filters: Filters) =>
-    createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removeDraft(id) });
-  const saveAsNew = (name: string, filters: Filters) => createMut.mutate({ name: capWords(name), filters });
+  const addPersona = () =>
+    setPersonas((prev) => [
+      { id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true },
+      ...prev,
+    ]);
+  const removeDraft = (id: string) => setPersonas((prev) => prev.filter((p) => p.id !== id));
+  const updateDraft = (id: string, name: string, filters: Filters) =>
+    setPersonas((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, name: capWords(name), filters, unsaved: true } : p)),
+    );
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
   return (
     <div className={card}>
@@ -1426,21 +1289,13 @@ function OnboardingPersonas({
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
-          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters, add another, or ask AI.</p>
+          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters or add another before launch.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => brandId && setAiOpen(true)}
-          disabled={!brandId}
-          className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:opacity-50 sm:w-auto"
-        >
-          <SparklesIcon className="h-4 w-4" /> Edit with AI
-        </button>
       </div>
       {personaSuggestionFailed && <SetupWarning className="mt-4" />}
 
       <div className="mt-6 space-y-3">
-        {(isPending || personaSeeding) && personas.length === 0 ? (
+        {personaSeeding && personas.length === 0 ? (
           <div className="flex h-56 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
             <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
             Drafting your first audience...
@@ -1452,15 +1307,10 @@ function OnboardingPersonas({
             <PersonaCard
               key={persona.id}
               persona={persona}
-              onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
-              onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
-              onCancelNew={() => removeDraft(persona.id)}
-              onRemove={() => (persona.unsaved ? removeDraft(persona.id) : archivePersona(persona.id))}
-              removing={!persona.unsaved && archivingPersona && archivingPersonaId === persona.id}
+              onChange={(name, filters) => updateDraft(persona.id, name, filters)}
+              onRemove={() => removeDraft(persona.id)}
               showLifecycleActions={false}
-              onRegenerateAvatar={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
-              regeneratingAvatar={avatarRegenerating && regeneratingAvatarId === persona.id}
-              checkNameTaken={(n) => isNameTaken(n, persona.unsaved ? persona.id : undefined)}
+              checkNameTaken={(n) => isNameTaken(n, persona.id)}
             />
           ))
         )}
@@ -1470,31 +1320,6 @@ function OnboardingPersonas({
         <PlusIcon className="h-4 w-4" /> Add an audience
       </button>
       <NextButton onClick={onContinue} label="Continue" />
-
-      {brandId && (
-        <EditWithAIChat
-          open={aiOpen}
-          onClose={() => setAiOpen(false)}
-          title="Edit audiences with AI"
-          intro="Hi — I can create, duplicate and refine your audiences. What would you like to change?"
-          suggestions={["Add an audience for mid-market RevOps leaders", "Narrow the main audience to Series A+ SaaS", "Add fintech founders in the US"]}
-          configKey="persona-editor"
-          brandId={brandId}
-          sessionVersion="live-context-v1"
-          context={{
-            personaCount: personas.length,
-            activePersonaCount: personas.filter((p) => p.status !== "archived").length,
-            personas: personas.map((p) => ({
-              id: p.id,
-              name: p.name,
-              status: p.status,
-              filters: p.filters,
-              persisted: !p.unsaved,
-            })),
-          }}
-          invalidateKeys={[["personas", brandId]]}
-        />
-      )}
     </div>
   );
 }

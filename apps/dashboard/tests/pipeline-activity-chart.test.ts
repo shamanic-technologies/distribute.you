@@ -34,8 +34,10 @@ describe("Brand overview pipeline activity chart", () => {
       expect(chart).toContain(`key: "${key}"`);
       expect(chart).toContain(`stackId={metric.key}`);
     }
-    expect(chart).toContain("Record<`${PipelineActivityMetricKey}Actual`, number>");
-    expect(chart).toContain("Record<`${PipelineActivityMetricKey}ExpectedRemaining`, number>");
+    expect(chart).toContain('key: "salesMeetings"');
+    expect(chart).toContain('label: "Sales meetings"');
+    expect(chart).toContain("Record<`${ChartMetricKey}Actual`, number>");
+    expect(chart).toContain("Record<`${ChartMetricKey}ExpectedRemaining`, number>");
     expect(chart).toContain("dataKey={`${metric.key}Actual`}");
     expect(chart).toContain("dataKey={`${metric.key}ExpectedRemaining`}");
     expect(chart).toContain("Math.max(expected - actual, 0)");
@@ -49,6 +51,21 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).toContain("isAnimationActive={false}");
   });
 
+  it("switches the final outcome metric from signups to sales meetings from brand economics", () => {
+    expect(page).toContain("DEFAULT_VISIT_TO_MEETING_PCT");
+    expect(page).toContain("economicsData?.salesEconomics?.visitToMeetingPct");
+    expect(page).toContain("pipelineActivity !== undefined");
+    expect(page).toContain("economicsData !== undefined");
+    expect(section).toContain("optimizationGoal");
+    expect(section).toContain("visitToMeetingPct");
+    expect(chart).toContain("type ChartMetricKey = PipelineActivityMetricKey | \"salesMeetings\"");
+    expect(chart).toContain('if (optimizationGoal === "signups") return METRICS');
+    expect(chart).toContain("projectedMetric(day.metrics.clicks, visitToMeetingPct)");
+    expect(chart).toContain("source.actual * rate");
+    expect(chart).toContain("source.expected * rate");
+    expect(chart).toContain("isOutcomeMetric(metric.key)");
+  });
+
   it("uses metric-color legend labels and reserves room for visible bar values", () => {
     expect(chart).toContain("{metric.label}");
     expect(chart).toContain('min-w-[1120px]');
@@ -59,6 +76,15 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).not.toContain(">Actual<");
     expect(chart).not.toContain(">Expected<");
     expect(chart).not.toContain("Timezone:");
+  });
+
+  it("colors tooltip values by the rendered graph segment and shows today actuals only", () => {
+    expect(chart).toContain("const color = day.isToday ? metric.actual : metric.expected;");
+    expect(chart).toContain("const displayedValue = day.isToday ? value.actual : value.expected;");
+    expect(chart).toContain("style={{ backgroundColor: color }}");
+    expect(chart).toContain("{formatValue(displayedValue, metric.key)}");
+    expect(chart).toContain("!day.isToday && isOutcomeMetric(metric.key)");
+    expect(chart).not.toContain("`${formatValue(value.actual, metric.key)} / `");
   });
 
   it("labels today's stacked bars with actual values and future bars with expected values", () => {

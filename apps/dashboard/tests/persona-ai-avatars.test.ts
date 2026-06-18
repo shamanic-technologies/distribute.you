@@ -25,7 +25,7 @@ describe("Persona AI avatars", () => {
   it("routes regeneration through the persona avatar endpoint", () => {
     expect(api).toContain("regeneratePersonaAvatar");
     expect(api).toContain("/avatar/regenerate");
-    expect(betaOnboarding).toContain("regeneratePersonaAvatar");
+    expect(betaOnboarding).not.toContain("regeneratePersonaAvatar");
     expect(personasPage).toContain("regeneratePersonaAvatar");
   });
 

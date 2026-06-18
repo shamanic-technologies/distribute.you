@@ -63,6 +63,7 @@ describe("brand overview status control", () => {
     expect(control).toContain("DEFAULT_SALES_ECONOMICS");
     expect(control).toContain("businessModel: current?.businessModel ?? null");
     expect(control).toContain("optimizationGoal");
+    expect(control).toContain('invalidateQueries({ queryKey: ["featurePipelineActivity"] })');
     expect(control).not.toContain(deprecatedStageField);
   });
 
