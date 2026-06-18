@@ -198,28 +198,6 @@
   .compare-table tbody td.td-dist { color: var(--text); font-weight: 600; }
   .td-win { color: var(--accent) !important; }
 
-  /* ── FAQ ── */
-  .px-faq { padding: 5rem 0; }
-  .px-faq-head { margin-bottom: 2.5rem; }
-  .faq-list { display: flex; flex-direction: column; gap: 0.75rem; }
-  details.faq-item {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-    overflow: hidden; box-shadow: 0 1px 6px oklch(0% 0 0 / 0.05), 0 1px 2px oklch(0% 0 0 / 0.03);
-  }
-  details.faq-item[open] { box-shadow: 0 2px 12px oklch(0% 0 0 / 0.07), 0 1px 3px oklch(0% 0 0 / 0.04); }
-  details.faq-item summary {
-    list-style: none; padding: 1.125rem 1.375rem; cursor: pointer;
-    font-size: var(--fs-base); font-weight: 600; color: var(--text);
-    display: flex; justify-content: space-between; align-items: center; gap: 1rem; user-select: none;
-  }
-  details.faq-item summary::-webkit-details-marker { display: none; }
-  details.faq-item summary::after {
-    content: '+'; font-size: var(--fs-lg); font-weight: 400; color: var(--accent);
-    flex-shrink: 0; transition: transform 0.2s ease; font-family: 'JetBrains Mono', monospace; line-height: 1;
-  }
-  details.faq-item[open] summary::after { transform: rotate(45deg); }
-  details.faq-item[open] summary { border-bottom: 1px solid var(--border); }
-  .faq-body { padding: 1.125rem 1.375rem; font-size: var(--fs-base); color: var(--sub); line-height: 1.7; }
 
   /* ── Responsive ── */
   @media (max-width: 700px) {
@@ -418,36 +396,35 @@
   </section>
 
   <!-- ══ FAQ ══ -->
-  <section class="px-faq">
+  <section class="guide-section guide-section-alt">
     <div class="wrap-faq">
-      <div class="px-faq-head">
-        <p class="px-label">Questions</p>
-        <h2 class="px-h2">Common questions</h2>
+      <div class="guide-intro r">
+        <h2 class="t-h2">Common questions</h2>
       </div>
-      <div class="faq-list">
-        <details class="faq-item">
-          <summary>How does billing work exactly?</summary>
-          <div class="faq-body">You buy credits upfront. Each credit covers one contact: we find them, write their email, and send it. Credits are consumed when an email reaches an inbox. Invalid addresses and hard bounces are filtered before sending and don't count against your balance.</div>
+      <div class="guide-faq r">
+        <details class="guide-faq-item">
+          <summary><span class="guide-faq-q">How does billing work exactly?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p class="guide-faq-a">You buy credits upfront. Each credit covers one contact: we find them, write their email, and send it. Credits are consumed when an email reaches an inbox. Invalid addresses and hard bounces are filtered before sending and don't count against your balance.</p>
         </details>
-        <details class="faq-item">
-          <summary>Is there a free trial?</summary>
-          <div class="faq-body">For every $1 you spend, we credit $1 back — up to $25. Your first $25 is matched dollar for dollar, so a small campaign effectively costs half.</div>
+        <details class="guide-faq-item">
+          <summary><span class="guide-faq-q">Is there a free trial?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p class="guide-faq-a">For every $1 you spend, we credit $1 back — up to $25. Your first $25 is matched dollar for dollar, so a small campaign effectively costs half.</p>
         </details>
-        <details class="faq-item">
-          <summary>Do credits expire?</summary>
-          <div class="faq-body">Unused credits stay valid for 12 months. Recurring daily campaigns use auto-topup to stay funded, so sending never pauses — you set the daily cap and can pause anytime from your dashboard.</div>
+        <details class="guide-faq-item">
+          <summary><span class="guide-faq-q">Do credits expire?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p class="guide-faq-a">Unused credits stay valid for 12 months. Recurring daily campaigns use auto-topup to stay funded, so sending never pauses — you set the daily cap and can pause anytime from your dashboard.</p>
         </details>
-        <details class="faq-item">
-          <summary>Can I top up mid-campaign?</summary>
-          <div class="faq-body">Yes. Buy more credits from your dashboard at any time. They're added instantly and active campaigns continue without interruption.</div>
+        <details class="guide-faq-item">
+          <summary><span class="guide-faq-q">Can I top up mid-campaign?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p class="guide-faq-a">Yes. Buy more credits from your dashboard at any time. They're added instantly and active campaigns continue without interruption.</p>
         </details>
-        <details class="faq-item">
-          <summary>Do you need access to my domain or inbox?</summary>
-          <div class="faq-body">No. Distribute uses its own pre-warmed sending infrastructure. You don't need to touch your domain or connect any mailbox to get started.</div>
+        <details class="guide-faq-item">
+          <summary><span class="guide-faq-q">Do you need access to my domain or inbox?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p class="guide-faq-a">No. Distribute uses its own pre-warmed sending infrastructure. You don't need to touch your domain or connect any mailbox to get started.</p>
         </details>
-        <details class="faq-item">
-          <summary>Are the emails GDPR and CAN-SPAM compliant?</summary>
-          <div class="faq-body">Every email includes a working opt-out. Unsubscribes are processed automatically and the contact is permanently suppressed across all future campaigns. You remain the sender of record and are responsible for targeting prospects with a legitimate business purpose.</div>
+        <details class="guide-faq-item">
+          <summary><span class="guide-faq-q">Are the emails GDPR and CAN-SPAM compliant?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p class="guide-faq-a">Every email includes a working opt-out. Unsubscribes are processed automatically and the contact is permanently suppressed across all future campaigns. You remain the sender of record and are responsible for targeting prospects with a legitimate business purpose.</p>
         </details>
       </div>
     </div>
