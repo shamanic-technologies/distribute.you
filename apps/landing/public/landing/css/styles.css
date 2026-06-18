@@ -1812,8 +1812,9 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .hiw-link-card {
   background: var(--surface);
   border: 1px solid var(--border-hi);
-  border-radius: var(--r-xl); padding: 1.75rem;
-  text-decoration: none; display: flex; flex-direction: column; gap: 0.625rem;
+  border-radius: var(--r-xl);
+  text-decoration: none; display: flex; flex-direction: column; gap: 0;
+  overflow: hidden;
   transition: border-color var(--dur), box-shadow var(--dur), transform 0.2s var(--ease);
   box-shadow: var(--shadow-card);
 }
@@ -1822,15 +1823,13 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   box-shadow: 0 4px 24px var(--accent-dim);
   transform: translateY(-2px);
 }
-.hiw-link-icon {
-  width: 2.25rem; height: 2.25rem; border-radius: var(--r-md);
-  background: var(--bg-alt); border: 1px solid var(--border-hi);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--sub); margin-bottom: 0.25rem;
-  transition: background var(--dur), border-color var(--dur), color var(--dur);
+.hiw-link-illu {
+  width: 100%; height: 148px; overflow: hidden; position: relative; flex-shrink: 0;
 }
-.hiw-link-card:hover .hiw-link-icon {
-  background: var(--accent-dim); border-color: var(--accent-brd); color: var(--accent);
+.hiw-link-illu svg { width: 100%; height: 100%; display: block; }
+.hiw-link-body {
+  padding: 1.375rem 1.75rem 1.75rem;
+  display: flex; flex-direction: column; gap: 0.625rem; flex: 1;
 }
 .hiw-link-card .t-h3 { font-size: var(--fs-base); font-weight: 700; color: var(--text); }
 .hiw-link-card p { font-size: var(--fs-sm); color: var(--sub); line-height: 1.65; flex: 1; }
