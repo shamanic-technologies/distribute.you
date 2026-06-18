@@ -5,10 +5,13 @@ import * as path from "path";
 describe("Breadcrumb hierarchy", () => {
   const breadcrumbPath = path.join(__dirname, "../src/components/breadcrumb-nav.tsx");
 
-  it("should show org as root breadcrumb with Clerk organization name", () => {
+  it("should show org as root breadcrumb with the PER-TAB URL org name", () => {
+    // Display the URL org (per-tab, stable), cached off useOrganization when it
+    // matches — NOT the raw shared active org, which flips cross-tab (#1948).
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
     expect(content).toContain("useOrganization");
-    expect(content).toContain("organization?.name");
+    expect(content).toContain("displayOrgName");
+    expect(content).toContain("orgDisplayCacheRef");
   });
 
   it("should NOT use useOrg context (org is always root via Clerk)", () => {
