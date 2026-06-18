@@ -2,7 +2,12 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useOrganization, useOrganizationList, useUser } from "@clerk/nextjs";
+import {
+  useOrganization,
+  useOrganizationList,
+  useSession,
+  useUser,
+} from "@clerk/nextjs";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
@@ -93,6 +98,7 @@ export function BreadcrumbNav() {
   const { userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   });
+  const { session } = useSession();
   // Staff get a "god-mode" org switcher (ALL platform orgs); regular customers
   // see only their own memberships (unchanged). isStaff gates the UI only — the
   // real security boundary is the `isAdminEmail` 403 on the /api/admin/* routes.
@@ -225,6 +231,17 @@ export function BreadcrumbNav() {
     if (setActive) {
       await setActive({ organization: clerkOrgId });
     }
+    // Re-mint the session token so the new active org (and, for staff god-mode, the
+    // freshly-added membership) are in the cookie BEFORE the navigation hits the
+    // middleware. `setActive` resolves on the client before its Set-Cookie has
+    // propagated, so without this the next request reaches `proxy.ts`
+    // `organizationSyncOptions` carrying the STALE token (active = previous org /
+    // not-a-member of the target) → Clerk bounces the URL back → OrgActivator
+    // re-syncs the client to the previous org → the switch reverts on its own.
+    // Forcing a fresh mint closes that race at the source (CLAUDE.md "Stale token —
+    // a claim is frozen at JWT mint, force getToken({ skipCache: true }) before
+    // navigating"; same fix proven in beta-onboarding's onboarding-complete hop).
+    await session?.getToken({ skipCache: true }).catch(() => {});
     router.push(`/orgs/${clerkOrgId}`);
   };
 

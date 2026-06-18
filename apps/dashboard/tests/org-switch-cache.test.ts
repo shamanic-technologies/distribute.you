@@ -150,6 +150,19 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("await setActive({ organization: clerkOrgId })");
   });
 
+  it("handleOrgSwitch re-mints the session token AFTER setActive, BEFORE navigating", () => {
+    // Without a fresh mint, setActive's Set-Cookie hasn't propagated when router.push
+    // fires → the middleware's organizationSyncOptions reads the STALE token (active =
+    // previous org / not-a-member of the target) and bounces the URL back → the
+    // god-mode switch reverts on its own. The fresh mint closes that race.
+    const content = read(breadcrumbPath);
+    expect(content).toContain('await session?.getToken({ skipCache: true })');
+    const match = content.match(
+      /handleOrgSwitch[\s\S]*?setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
+    );
+    expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
+  });
+
   it("handleOrgSwitch clears breadcrumb caches before setActive", () => {
     const content = read(breadcrumbPath);
     const match = content.match(
