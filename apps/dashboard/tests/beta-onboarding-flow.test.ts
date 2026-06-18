@@ -147,12 +147,14 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("Always on");
   });
 
-  it("budget is picked as outcome-count tiers before wallet setup", () => {
+  it("budget is picked as outcome-count tiers before direct checkout", () => {
     expect(src).toContain("COUNT_TIERS");
     expect(src).toContain("budgetForCount");
-    expect(src).toContain("Continue to wallet setup");
-    expect(src).toContain("Set up your org wallet.");
-    expect(src).toContain("Your first load is matched dollar-for-dollar up to $25 free.");
+    expect(src).toContain("Checkout $");
+    expect(src).toContain("const checkoutAmountCents = Math.round(budget * 100)");
+    expect(src).toContain("topupAmountCents: checkoutAmountCents");
+    expect(src).toContain("topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS");
+    expect(src).not.toContain("Set up your org wallet.");
   });
 
   it("lets a filled Other budget card be reselected after choosing another tier", () => {
