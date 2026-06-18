@@ -20,9 +20,9 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("shows sequential setup milestones instead of double-active loading steps", () => {
-    expect(src).toContain("Preparing your workspace");
-    expect(src).toContain("Adding your brand");
-    expect(src).toContain("Extracting your services");
+    expect(src).toContain("Setting up your account");
+    expect(src).toContain("Looking up your company");
+    expect(src).toContain("Finding what you offer");
     expect(src).toContain("setLoadStep(1)");
     expect(src).toContain("setLoadStep(2)");
     expect(src).toContain("const isActive = !isDone && i === loadStep");

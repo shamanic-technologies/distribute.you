@@ -131,8 +131,8 @@ describe("Beta onboarding direct checkout launch", () => {
     expect(content).toContain("createBrandAndFetchServices");
     expect(content).toContain("const hydration = hydrateOnboardingInBackground(newBrandId)");
     expect(content).toContain("hydrationPromiseRef.current = hydration");
-    expect(content).toContain("Adding your brand");
-    expect(content).toContain("Extracting your services");
+    expect(content).toContain("Looking up your company");
+    expect(content).toContain("Finding what you offer");
   });
 
   it("shows a real launch progress screen after Stripe success", () => {

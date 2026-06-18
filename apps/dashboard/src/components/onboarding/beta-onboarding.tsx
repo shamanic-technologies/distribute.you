@@ -171,9 +171,9 @@ const AGENCY_BENEFITS = [
 
 const SERVICES_PROFILE_FIELDS = SALES_PROFILE_FIELDS.filter((f) => f.key === "services");
 const LOADING_STEPS = [
-  { id: "workspace", label: "Preparing your workspace" },
-  { id: "brand", label: "Adding your brand" },
-  { id: "services", label: "Extracting your services" },
+  { id: "workspace", label: "Setting up your account" },
+  { id: "brand", label: "Looking up your company" },
+  { id: "services", label: "Finding what you offer" },
 ];
 const LAUNCH_STEPS = [
   { id: "payment", label: "Confirming payment" },
