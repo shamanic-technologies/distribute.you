@@ -134,7 +134,11 @@ export default function BrandOverviewPage() {
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const totalWebsiteClicks = featureStats.recipientsClicked ?? 0;
-  const hasActiveCampaigns = (featureStatsData?.systemStats.activeCampaigns ?? 0) > 0;
+  // Outreach is live once ≥1 lead has been contacted (real email-gateway stat).
+  // NOT systemStats.activeCampaigns — that field is wired to a non-existent
+  // campaign status ("active"/"running") while campaign-service only emits
+  // "ongoing"/"stopped", so it's always 0 and the banner never showed.
+  const hasContactedLeads = (featureStats.recipientsContacted ?? 0) > 0;
 
   // Brand goal config → goal-specific stat card copy.
   const { data: economicsData } = useAuthQuery(
@@ -263,7 +267,7 @@ export default function BrandOverviewPage() {
     monthlyBudgetUsd == null || outcomeProjection !== undefined,
   ]);
   const showFirstClickReassurance =
-    statsRevealed && hasActiveCampaigns && totalWebsiteClicks < 1;
+    statsRevealed && hasContactedLeads && totalWebsiteClicks < 1;
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
