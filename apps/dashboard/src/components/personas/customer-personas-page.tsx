@@ -323,12 +323,6 @@ export function CustomerPersonasPage() {
             ? statusMut.variables.status
             : undefined
         }
-        onRegenerateAvatar={
-          selectedPersona && !selectedPersona.unsaved ? () => regenerateAvatar(selectedPersona.id) : undefined
-        }
-        regeneratingAvatar={Boolean(
-          selectedPersona && avatarRegenerating && regeneratingAvatarId === selectedPersona.id,
-        )}
         checkNameTaken={(name) => isNameTaken(name, selectedPersona?.unsaved ? selectedPersona.id : undefined)}
       />
 
@@ -367,8 +361,6 @@ function PersonaDetailPanel({
   onSetStatus,
   statusActionPending,
   statusActionTarget,
-  onRegenerateAvatar,
-  regeneratingAvatar,
   checkNameTaken,
 }: {
   persona: Persona | null;
@@ -379,8 +371,6 @@ function PersonaDetailPanel({
   onSetStatus: (status: Persona["status"]) => void;
   statusActionPending?: boolean;
   statusActionTarget?: Persona["status"];
-  onRegenerateAvatar?: () => void;
-  regeneratingAvatar?: boolean;
   checkNameTaken: (name: string) => boolean;
 }) {
   useEffect(() => {
@@ -425,8 +415,6 @@ function PersonaDetailPanel({
             onSetStatus={onSetStatus}
             statusActionPending={statusActionPending}
             statusActionTarget={statusActionTarget}
-            onRegenerateAvatar={onRegenerateAvatar}
-            regeneratingAvatar={regeneratingAvatar}
             checkNameTaken={checkNameTaken}
           />
         </div>
