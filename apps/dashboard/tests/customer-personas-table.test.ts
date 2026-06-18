@@ -31,4 +31,11 @@ describe("Audiences table", () => {
     expect(src).toContain('role="dialog"');
     expect(src).toContain("<PersonaCard");
   });
+
+  it("keeps avatar regeneration on table rows, not in the right-hand panel", () => {
+    expect(src).toContain("onRegenerate={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}");
+    const panelSrc = src.slice(src.indexOf("function PersonaDetailPanel"));
+    expect(panelSrc).not.toContain("onRegenerateAvatar");
+    expect(panelSrc).not.toContain("regeneratingAvatar");
+  });
 });
