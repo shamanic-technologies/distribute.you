@@ -49,6 +49,18 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("createCampaign");
   });
 
+  it("replaces the persona step with a natural-language audience step (human-service /suggest)", () => {
+    // The audience step calls human-service `/suggest` (via the gateway), shows
+    // candidate audiences, and persists the user's picks via createAudience.
+    expect(src).toContain("suggestAudiences");
+    expect(src).toContain("createAudience");
+    expect(src).toContain('step === "audiences"');
+    expect(src).toContain("Who do you want to reach?");
+    expect(src).toContain("Suggest audiences");
+    // The visible persona step is gone (audiences replaced it).
+    expect(src).not.toContain('step === "personas"');
+  });
+
   it("asks which services to promote and persists them on the brand profile", () => {
     expect(src).toContain("What services do you want to promote with us?");
     expect(src).toContain("services");

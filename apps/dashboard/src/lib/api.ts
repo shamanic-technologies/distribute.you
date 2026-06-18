@@ -1117,6 +1117,137 @@ export async function suggestPersonas(
   return parsed.data;
 }
 
+// ── Audiences (human-service via gateway /orgs/audiences/*) ──────────
+// A saved people-filter-set, brand-scoped, generated from a natural-language
+// prompt by human-service `/suggest` (apollo + apify candidates, dry-run
+// counted). This is the unified "audience" concept that replaces the legacy
+// brand-service persona. human-service OWNS these rows; the dashboard reaches
+// them through the api-service gateway, never brand-service.
+
+export interface AudienceCandidate {
+  provider: "apollo" | "apify";
+  label: string;
+  rationale: string;
+  filters: Record<string, unknown>;
+  count: number;
+  validationError: string | null;
+  truncated: boolean;
+}
+
+const AudienceCandidateSchema = z.object({
+  provider: z.union([z.literal("apollo"), z.literal("apify")]),
+  label: z.string(),
+  rationale: z.string(),
+  filters: z.record(z.string(), z.unknown()),
+  count: z.number(),
+  validationError: z.string().nullable(),
+  truncated: z.boolean(),
+});
+
+const SuggestAudiencesResponseSchema = z.object({
+  candidates: z.array(AudienceCandidateSchema),
+});
+
+/**
+ * POST /orgs/audiences/suggest — natural-language prompt → candidate audiences
+ * (apollo + apify, LLM-generated, live dry-run counted). Does NOT persist; the
+ * user picks one or more, which are then saved via `createAudience`.
+ */
+export async function suggestAudiences(
+  brandId: string,
+  nlPrompt: string,
+  token?: string,
+): Promise<{ candidates: AudienceCandidate[] }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/suggest`, {
+    token,
+    method: "POST",
+    body: { brandId, nlPrompt },
+  });
+  const parsed = SuggestAudiencesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] suggestAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestAudiences: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export interface AudienceWire {
+  id: string;
+  orgId: string;
+  brandId: string;
+  name: string;
+  nlPrompt: string | null;
+  provider: string | null;
+  filters: Record<string, unknown> | null;
+  apolloCount: number | null;
+  apifyCount: number | null;
+  countedAt: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const AudienceSchema = z.object({
+  id: z.string(),
+  orgId: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+  nlPrompt: z.string().nullable(),
+  provider: z.string().nullable(),
+  filters: z.record(z.string(), z.unknown()).nullable(),
+  apolloCount: z.number().nullable(),
+  apifyCount: z.number().nullable(),
+  countedAt: z.string().nullable(),
+  createdByUserId: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const AudienceResponseSchema = z.object({ audience: AudienceSchema });
+
+/** POST /orgs/audiences — persist a chosen candidate audience on the brand. */
+export async function createAudience(
+  input: {
+    brandId: string;
+    name: string;
+    provider?: string | null;
+    nlPrompt?: string | null;
+    filters?: Record<string, unknown> | null;
+    apolloCount?: number | null;
+    apifyCount?: number | null;
+  },
+  token?: string,
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences`, { token, method: "POST", body: input });
+  const parsed = AudienceResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] createAudience: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] createAudience: invalid response shape");
+  }
+  return parsed.data;
+}
+
+const ListAudiencesResponseSchema = z.object({
+  audiences: z.array(AudienceSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+});
+
+/** GET /orgs/audiences?brandId= — saved audiences for a brand. */
+export async function listAudiences(
+  brandId: string,
+  token?: string,
+): Promise<{ audiences: AudienceWire[]; total: number }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = ListAudiencesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listAudiences: invalid response shape");
+  }
+  return { audiences: parsed.data.audiences, total: parsed.data.total };
+}
+
 export interface BrandProfileVersionWire {
   id: string;
   brandId: string;

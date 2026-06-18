@@ -30,6 +30,9 @@ import {
   saveBrandSalesEconomics,
   suggestPersonas,
   createPersona,
+  suggestAudiences,
+  createAudience,
+  type AudienceCandidate,
   getWorkflowProjection,
   getFeature,
   prefillFeatureInputs,
@@ -83,7 +86,7 @@ type Step =
   | "services"
   | "objective"
   | "rates"
-  | "personas"
+  | "audiences"
   | "consent"
   | "pricing"
   | "launching";
@@ -674,7 +677,7 @@ export function BetaOnboarding() {
         optimizationGoal: optimizationGoalForOutcome(outcome),
       });
       projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
-      setStep("personas");
+      setStep("audiences");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your rates.");
     } finally {
@@ -1112,15 +1115,13 @@ export function BetaOnboarding() {
     );
   }
 
-  if (step === "personas") {
+  if (step === "audiences") {
     return (
-      <OnboardingPersonas
+      <OnboardingAudiences
+        brandId={brandId}
         brandDomain={domain}
         hostname={hostname}
-        personas={personaDrafts}
-        setPersonas={setPersonaDrafts}
-        personaSuggestionFailed={setupIssues.persona}
-        personaSeeding={personaSeeding}
+        services={services}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
       />
@@ -1130,7 +1131,7 @@ export function BetaOnboarding() {
   if (step === "consent") {
     return (
       <div className={card}>
-        <BackButton onClick={() => setStep("personas")} />
+        <BackButton onClick={() => setStep("audiences")} />
         <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-4 flex items-start gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
@@ -1352,6 +1353,220 @@ function OnboardingPersonas({
       </button>
       <NextButton onClick={onContinue} label="Continue" />
     </div>
+  );
+}
+
+// Natural-language → audiences. The user describes the people they want to
+// reach; human-service `/suggest` returns candidate audiences (apollo + apify,
+// live-counted); the user picks one or more, which are saved on the brand via
+// `createAudience`. This is the audience concept that replaces the persona step.
+function OnboardingAudiences({
+  brandId,
+  brandDomain,
+  hostname,
+  services,
+  onBack,
+  onContinue,
+}: {
+  brandId: string | null;
+  brandDomain: string | null;
+  hostname: string;
+  services: string[];
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const defaultPrompt = services.length
+    ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
+    : "";
+  const [prompt, setPrompt] = useState(defaultPrompt);
+  const [candidates, setCandidates] = useState<AudienceCandidate[] | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function runSuggest() {
+    const nl = prompt.trim();
+    if (!brandId || !nl) {
+      setErr("Describe who you want to reach first.");
+      return;
+    }
+    setErr(null);
+    setLoading(true);
+    setCandidates(null);
+    setSelected(new Set());
+    try {
+      const res = await suggestAudiences(brandId, nl);
+      setCandidates(res.candidates);
+      if (res.candidates.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+    } catch (e) {
+      console.error("[dashboard] suggestAudiences failed:", e);
+      setErr("We couldn't generate audiences right now. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggle(i: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
+  async function saveAndContinue() {
+    if (!brandId || !candidates) {
+      onContinue();
+      return;
+    }
+    const picks = [...selected].map((i) => candidates[i]).filter((c): c is AudienceCandidate => Boolean(c));
+    if (picks.length === 0) {
+      setErr("Select at least one audience.");
+      return;
+    }
+    setErr(null);
+    setSaving(true);
+    try {
+      for (const c of picks) {
+        await createAudience({
+          brandId,
+          name: c.label,
+          provider: c.provider,
+          nlPrompt: prompt.trim(),
+          filters: c.filters,
+          apolloCount: c.provider === "apollo" ? c.count : null,
+          apifyCount: c.provider === "apify" ? c.count : null,
+        });
+      }
+      onContinue();
+    } catch (e) {
+      console.error("[dashboard] createAudience failed:", e);
+      setErr("We couldn't save your audiences. Try again.");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={card}>
+      <BackButton onClick={onBack} />
+      <BrandStepHeader domain={brandDomain} hostname={hostname} />
+      <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+      <p className="mt-2 text-gray-500">
+        Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
+      </p>
+
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        rows={3}
+        placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+        className="mt-5 w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
+      />
+      <button
+        onClick={runSuggest}
+        disabled={loading || !prompt.trim()}
+        className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {loading ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Generating…
+          </>
+        ) : (
+          <>
+            <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Regenerate" : "Suggest audiences"}
+          </>
+        )}
+      </button>
+
+      {err && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
+      )}
+
+      {candidates && candidates.length > 0 && (
+        <>
+          <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            {selected.size} of {candidates.length} selected
+          </div>
+          <div className="space-y-3">
+            {candidates.map((c, i) => (
+              <AudienceCandidateCard key={i} candidate={c} selected={selected.has(i)} onToggle={() => toggle(i)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <NextButton onClick={saveAndContinue} disabled={!candidates || selected.size === 0} busy={saving} label="Continue" />
+    </div>
+  );
+}
+
+// Flatten a neutral PeopleSearchFilters object into readable pills for display.
+function audienceFilterPills(filters: Record<string, unknown>): string[] {
+  const pills: string[] = [];
+  for (const [key, val] of Object.entries(filters ?? {})) {
+    if (Array.isArray(val)) {
+      for (const v of val) {
+        if (v != null && String(v).trim()) pills.push(String(v));
+      }
+    } else if (val != null && typeof val !== "object") {
+      const s = String(val).trim();
+      if (s) pills.push(`${key}: ${s}`);
+    }
+  }
+  return pills.slice(0, 12);
+}
+
+function AudienceCandidateCard({
+  candidate,
+  selected,
+  onToggle,
+}: {
+  candidate: AudienceCandidate;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const pills = audienceFilterPills(candidate.filters);
+  const invalid = Boolean(candidate.validationError) || candidate.count === 0;
+  return (
+    <button
+      onClick={onToggle}
+      className={`flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+    >
+      <span
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
+      >
+        {selected && <CheckIcon className="h-3 w-3" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900">{candidate.label}</span>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            {candidate.provider}
+          </span>
+          {!invalid && (
+            <span className="text-[11px] font-medium text-gray-400">~{candidate.count.toLocaleString()} matches</span>
+          )}
+        </span>
+        <span className="mt-1 block text-xs leading-5 text-gray-500">{candidate.rationale}</span>
+        {pills.length > 0 && (
+          <span className="mt-2 flex flex-wrap gap-1.5">
+            {pills.map((p, j) => (
+              <span key={j} className="rounded-md bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
+                {p}
+              </span>
+            ))}
+          </span>
+        )}
+        {invalid && (
+          <span className="mt-2 block text-[11px] text-amber-600">
+            {candidate.validationError ? "Couldn't validate these filters." : "No live matches for these filters."}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 
