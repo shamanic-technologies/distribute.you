@@ -188,6 +188,8 @@ export function PersonaCard({
   onCommitNew,
   onCancelNew,
   onSetStatus,
+  statusActionPending = false,
+  statusActionTarget,
   checkNameTaken,
   onChange,
   onRemove,
@@ -201,6 +203,8 @@ export function PersonaCard({
   onCommitNew?: (name: string, filters: Filters) => void;
   onCancelNew?: () => void;
   onSetStatus?: (status: Persona["status"]) => void;
+  statusActionPending?: boolean;
+  statusActionTarget?: Persona["status"];
   checkNameTaken?: (name: string) => boolean;
   /** Embedded/controlled mode — report edits live, hide the save bar. */
   onChange?: (name: string, filters: Filters) => void;
@@ -217,6 +221,9 @@ export function PersonaCard({
   const isNew = persona.unsaved === true;
   const isArchived = persona.status === "archived";
   const editable = !isArchived;
+  const pausing = statusActionPending && statusActionTarget === "paused";
+  const resuming = statusActionPending && statusActionTarget === "active";
+  const archiving = statusActionPending && statusActionTarget === "archived";
 
   const [editingName, setEditingName] = useState(false);
   const [adding, setAdding] = useState<CategoryKey | null>(null);
@@ -365,26 +372,31 @@ export function PersonaCard({
               <button
                 type="button"
                 onClick={() => onSetStatus?.("active")}
-                className="rounded-md px-2 py-1 text-[11px] font-medium text-brand-600 hover:bg-brand-50 transition"
+                disabled={statusActionPending}
+                className="inline-flex min-w-[4.5rem] items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Restore
+                {resuming && <StatusActionSpinner />}
+                {resuming ? "Restoring" : "Restore"}
               </button>
             ) : (
               <>
                 <button
                   type="button"
                   onClick={() => onSetStatus?.(persona.status === "paused" ? "active" : "paused")}
-                  className="rounded-md px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                  disabled={statusActionPending}
+                  className="inline-flex min-w-[4.25rem] items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {persona.status === "paused" ? "Resume" : "Pause"}
+                  {(pausing || resuming) && <StatusActionSpinner />}
+                  {pausing ? "Pausing" : resuming ? "Resuming" : persona.status === "paused" ? "Resume" : "Pause"}
                 </button>
                 <button
                   type="button"
                   onClick={() => onSetStatus?.("archived")}
                   aria-label="Archive audience"
-                  className="rounded-md p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600 transition"
+                  disabled={statusActionPending}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-300 transition hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <ArchiveIcon />
+                  {archiving ? <StatusActionSpinner /> : <ArchiveIcon />}
                 </button>
               </>
             )}
@@ -530,6 +542,15 @@ function PencilIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
     </svg>
+  );
+}
+
+function StatusActionSpinner() {
+  return (
+    <span
+      className="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+      aria-hidden="true"
+    />
   );
 }
 
