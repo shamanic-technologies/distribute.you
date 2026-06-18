@@ -46,8 +46,11 @@ import {
   setupBillingWallet,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
+  salesObjectiveForOptimizationGoal,
+  type BrandOptimizationGoal,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
+  type WorkflowFunnelProjection,
   type PersonaDraft,
   type FeatureInput,
   regeneratePersonaAvatar,
@@ -96,6 +99,20 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string }[] = 
   { key: "signups", label: "Signups", unit: "signups", desc: "Maximize free signups / trial starts." },
   { key: "meetings", label: "Sales meetings", unit: "meetings", desc: "Maximize booked sales meetings." },
 ];
+
+function optimizationGoalForOutcome(outcome: Outcome): BrandOptimizationGoal {
+  return outcome === "signups" ? "signups" : "sales_meetings";
+}
+
+function projectionHasOutcomeCount(
+  projection: WorkflowFunnelProjection | null,
+  outcome: Outcome,
+): boolean {
+  if (!projection) return false;
+  return outcome === "signups"
+    ? projection.visits != null
+    : projection.meetings != null;
+}
 
 // Each goal needs exactly ONE conversion rate. Signups → website-visit→signup;
 // meetings → positive-reply→meeting.
@@ -441,7 +458,12 @@ export function BetaOnboarding() {
     const [prof, econRes, proj, feat] = await Promise.all([
       getBrandProfile(id),
       getSalesEconomicsEffective(id),
-      getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET }),
+      getWorkflowProjection({
+        featureSlug: SALES_FEATURE_SLUG,
+        brandId: id,
+        objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome)),
+        budgetUsd: PROJECTION_REF_BUDGET,
+      }),
       getFeature(SALES_FEATURE_SLUG),
     ]);
 
@@ -591,14 +613,20 @@ export function BetaOnboarding() {
         meetingToClosePct: nextRates.m2c,
         visitToSignupPct: nextRates.v2s,
         signupToPaidClientPct: nextRates.s2c,
+        optimizationGoal: optimizationGoalForOutcome(outcome),
       });
       // Recompute the projection from the rates we just saved (loading-time
       // projection ran on the brand's DEFAULT economics). Best-effort +
       // keep-last-good: only adopt a usable (non-degenerate) refetch.
       try {
-        const proj = await getWorkflowProjection({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective: "self-serve", budgetUsd: PROJECTION_REF_BUDGET });
+        const proj = await getWorkflowProjection({
+          featureSlug: SALES_FEATURE_SLUG,
+          brandId: id,
+          objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome)),
+          budgetUsd: PROJECTION_REF_BUDGET,
+        });
         const usable = proj.workflows.some(
-          (w) => w.costPerCloseUsd != null || (w.projection != null && (w.projection.visits != null || w.projection.closes != null)),
+          (w) => projectionHasOutcomeCount(w.projection, outcome),
         );
         if (usable) projectionRef.current = proj;
       } catch (e) {
@@ -1295,7 +1323,7 @@ export function BetaOnboarding() {
   );
 }
 
-// ── Personas step — server-backed (mirrors the Customer Personas page) ──────
+// ── Audiences step — server-backed (mirrors the Audiences page) ─────────────
 // The brand exists by now (created during loading) and the AI-suggested persona
 // was already persisted, so this reads/writes live personas: PersonaCard with the
 // save lifecycle + an Edit-with-AI chat.
@@ -1366,14 +1394,14 @@ function OnboardingPersonas({
     return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
   };
   const uniqueName = (base: string) => {
-    const trimmed = base.trim() || "Persona";
+    const trimmed = base.trim() || "Audience";
     if (!isNameTaken(trimmed)) return trimmed;
     for (let i = 2; ; i++) {
       const candidate = `${trimmed} ${i}`;
       if (!isNameTaken(candidate)) return candidate;
     }
   };
-  const addPersona = () => setDrafts((prev) => [{ id: nextDraftId(), name: uniqueName("New Persona"), filters: {}, status: "active", unsaved: true }, ...prev]);
+  const addPersona = () => setDrafts((prev) => [{ id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true }, ...prev]);
   const removeDraft = (id: string) => setDrafts((prev) => prev.filter((p) => p.id !== id));
   const commitNew = (id: string, name: string, filters: Filters) =>
     createMut.mutate({ name: capWords(name), filters }, { onSuccess: () => removeDraft(id) });
@@ -1386,7 +1414,7 @@ function OnboardingPersonas({
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
-          <p className="mt-2 text-gray-500">We drafted your main persona. Edit the targeting filters, add another, or ask AI.</p>
+          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters, add another, or ask AI.</p>
         </div>
         <button
           type="button"
@@ -1403,10 +1431,10 @@ function OnboardingPersonas({
         {(isPending || personaSeeding) && personas.length === 0 ? (
           <div className="flex h-56 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
             <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-            Drafting your first persona...
+            Drafting your first audience...
           </div>
         ) : personas.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No personas yet.</div>
+          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No audiences yet.</div>
         ) : (
           personas.map((persona) => (
             <PersonaCard
@@ -1425,7 +1453,7 @@ function OnboardingPersonas({
       </div>
 
       <button onClick={addPersona} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
-        <PlusIcon className="h-4 w-4" /> Add a persona
+        <PlusIcon className="h-4 w-4" /> Add an audience
       </button>
       <NextButton onClick={onContinue} label="Continue" />
 
@@ -1433,9 +1461,9 @@ function OnboardingPersonas({
         <EditWithAIChat
           open={aiOpen}
           onClose={() => setAiOpen(false)}
-          title="Edit personas with AI"
-          intro="Hi — I can create, duplicate and refine your personas. What would you like to change?"
-          suggestions={["Add a persona for mid-market RevOps leaders", "Narrow the main persona to Series A+ SaaS", "Add fintech founders in the US"]}
+          title="Edit audiences with AI"
+          intro="Hi — I can create, duplicate and refine your audiences. What would you like to change?"
+          suggestions={["Add an audience for mid-market RevOps leaders", "Narrow the main audience to Series A+ SaaS", "Add fintech founders in the US"]}
           configKey="persona-editor"
           brandId={brandId}
           sessionVersion="live-context-v1"

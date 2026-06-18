@@ -4,6 +4,7 @@ import * as path from "path";
 
 const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
+const deprecatedStageField = "funnel" + "Stages";
 
 describe("OutreachStatCards copy", () => {
   const cards = read("../src/components/revenue/outreach-stat-cards.tsx");
@@ -16,7 +17,7 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("type { BrandOptimizationGoal }");
     expect(cards).toContain("optimizationGoal?: BrandOptimizationGoal");
     expect(cards).toContain('optimizationGoal ?? "sales_meetings"');
-    expect(cards).not.toContain("funnelStages");
+    expect(cards).not.toContain(deprecatedStageField);
   });
 
   it("renames the always-visible acquisition cards to Outreach and Opens", () => {

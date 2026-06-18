@@ -107,11 +107,6 @@ const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]>
   sales_meetings: ["replyToMeetingPct", "visitToMeetingPct"],
 };
 
-const FUNNEL_STAGES_BY_GOAL = {
-  signups: ["website_purchase"],
-  sales_meetings: ["sales_meeting"],
-} as const;
-
 const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
   lifetimeRevenueUsd: "Customer Lifetime Revenue",
   replyToMeetingPct: "Positive reply → meeting",
@@ -219,7 +214,6 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
         form.signupToPaidClientPct,
         DEFAULTS.signupToPaidClientPct,
       ),
-      funnelStages: [...FUNNEL_STAGES_BY_GOAL[form.optimizationGoal]],
       optimizationGoal: form.optimizationGoal,
     });
   }

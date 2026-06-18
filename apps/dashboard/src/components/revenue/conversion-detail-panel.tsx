@@ -76,7 +76,7 @@ export function ConversionDetailPanel({
         </div>
 
         {detail.persona && (
-          <Row label="Persona">
+          <Row label="Audience">
             <span className="inline-flex items-center gap-2 font-medium">
               <span className={`w-2 h-2 rounded-full ${detail.personaDot ?? "bg-gray-400"}`} />
               {detail.persona}

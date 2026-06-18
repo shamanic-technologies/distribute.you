@@ -3,6 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
+const deprecatedStageField = "funnel" + "Stages";
+const deprecatedStageType = "Brand" + "Funnel" + "Stage";
+const deprecatedStageConstant = "FUNNEL" + "_STAGES" + "_BY_GOAL";
 
 describe("api.ts — brand sales-economics businessModel wiring", () => {
   const content = read("../src/lib/api.ts");
@@ -30,11 +33,11 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain("{ businessModel: input.businessModel }");
   });
 
-  it("exposes a BrandFunnelStage type with the 2 funnel elements (website_signup dropped)", () => {
-    expect(content).toContain(
-      'export type BrandFunnelStage = "website_purchase" | "sales_meeting"',
-    );
-    expect(content).not.toContain('"website_signup"');
+  it("does not expose the deprecated sales-funnel stage field", () => {
+    expect(content).not.toContain(deprecatedStageType);
+    expect(content).not.toContain(deprecatedStageField);
+    expect(content).not.toContain('"website_purchase"');
+    expect(content).not.toContain('"sales_meeting"');
   });
 
   it("decomposes self-serve close into visitToSignupPct + signupToPaidClientPct (visitToClosePct stays derived on read)", () => {
@@ -52,21 +55,20 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     );
   });
 
-  it("BrandSalesEconomics carries funnelStages + optimizationGoal (read shape includes them)", () => {
-    expect(content).toContain("funnelStages: BrandFunnelStage[]");
+  it("BrandSalesEconomics carries optimizationGoal without the deprecated stage field", () => {
     expect(content).toContain("optimizationGoal: BrandOptimizationGoal");
+    expect(content).not.toContain(`${deprecatedStageField}:`);
   });
 
-  it("keeps funnelStages + optimizationGoal optional on the input (campaign form omits them)", () => {
-    expect(content).toContain("funnelStages?: BrandFunnelStage[]");
+  it("keeps optimizationGoal optional on the input", () => {
     expect(content).toContain("optimizationGoal?: BrandOptimizationGoal");
+    expect(content).not.toContain(`${deprecatedStageField}?:`);
   });
 
-  it("the Zod schema parses funnelStages (2-value array enum) + optimizationGoal (enum)", () => {
-    expect(content).toContain("funnelStages: z.array(");
-    expect(content).toContain('z.literal("website_purchase")');
+  it("the Zod schema parses optimizationGoal without the deprecated stage field", () => {
     expect(content).toContain('z.literal("sales_meetings")');
     expect(content).toContain("normalizeBrandOptimizationGoal");
+    expect(content).not.toContain(`${deprecatedStageField}: z.array(`);
   });
 
   it("normalizes legacy producer optimization goals at the API boundary", () => {
@@ -83,11 +85,10 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).not.toContain("visitToClosePct: input.visitToClosePct");
   });
 
-  it("PUT body sends funnelStages + optimizationGoal only when defined (partial-update)", () => {
-    expect(content).toContain("input.funnelStages !== undefined");
-    expect(content).toContain("{ funnelStages: input.funnelStages }");
+  it("PUT body sends optimizationGoal only when defined (partial-update)", () => {
     expect(content).toContain("input.optimizationGoal !== undefined");
     expect(content).toContain("serializeBrandOptimizationGoal(input.optimizationGoal)");
+    expect(content).not.toContain(`input.${deprecatedStageField}`);
   });
 });
 
@@ -159,11 +160,12 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain('goals: ["signups"]');
   });
 
-  it("validates the selected goal fields before saving and derives funnelStages from the goal", () => {
+  it("validates the selected goal fields before saving and persists the optimization goal", () => {
     expect(content).toContain("REQUIRED_FIELDS_BY_GOAL");
     expect(content).toContain("setValidationError");
-    expect(content).toContain("FUNNEL_STAGES_BY_GOAL");
-    expect(content).toContain("funnelStages: [...FUNNEL_STAGES_BY_GOAL[form.optimizationGoal]]");
+    expect(content).toContain("optimizationGoal: form.optimizationGoal");
+    expect(content).not.toContain(deprecatedStageConstant);
+    expect(content).not.toContain(`${deprecatedStageField}:`);
   });
 });
 

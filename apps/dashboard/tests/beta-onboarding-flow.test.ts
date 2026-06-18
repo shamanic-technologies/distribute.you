@@ -77,9 +77,17 @@ describe("Beta onboarding guided flow", () => {
       expect(src).toContain(unit);
     }
     expect(src).toContain("outcomeUnitCost");
+    expect(src).toContain("optimizationGoalForOutcome");
     // Collapsed away from the old six-outcome list.
     expect(src).not.toContain("sales-revenue");
     expect(src).not.toContain("conversations");
+  });
+
+  it("uses the selected goal for workflow projection and persisted economics", () => {
+    expect(src).toContain("salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome))");
+    expect(src).toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
+    expect(src).toContain("projectionHasOutcomeCount(w.projection, outcome)");
+    expect(src).not.toContain('objective: "self-serve"');
   });
 
   it("asks the conversion rates that feed the selected goal", () => {
@@ -104,7 +112,7 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("showLifecycleActions={false}");
     expect(src).toContain('configKey="persona-editor"');
     expect(src).toContain("suppressPaymentRequired: true");
-    expect(src).not.toContain("pause, resume and archive your personas");
+    expect(src).not.toContain("pause, resume and archive your audiences");
   });
 
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {

@@ -18,8 +18,8 @@ import {
   saveBrandSalesEconomics,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
+  salesObjectiveForOptimizationGoal,
   type BrandOptimizationGoal,
-  type BrandFunnelStage,
   type BrandSalesEconomics,
   type BrandSalesEconomicsInput,
   type WorkflowProjectionResponse,
@@ -50,19 +50,16 @@ const GOAL_OPTIONS: {
   value: BrandOptimizationGoal;
   label: string;
   description: string;
-  requiredStage: BrandFunnelStage;
 }[] = [
   {
     value: "signups",
     label: "# Signups",
     description: "Optimize outreach toward website signups and trial starts.",
-    requiredStage: "website_purchase",
   },
   {
     value: "sales_meetings",
     label: "# Sales Meetings",
     description: "Optimize outreach toward booked sales conversations.",
-    requiredStage: "sales_meeting",
   },
 ];
 
@@ -83,12 +80,6 @@ function salesEconomicsInputForGoal(
   current: BrandSalesEconomics | null | undefined,
   optimizationGoal: BrandOptimizationGoal,
 ): BrandSalesEconomicsInput {
-  const requiredStage = GOAL_OPTIONS.find((g) => g.value === optimizationGoal)!.requiredStage;
-  const existingStages = current?.funnelStages ?? [];
-  const funnelStages = existingStages.includes(requiredStage)
-    ? existingStages
-    : [...existingStages, requiredStage];
-
   return {
     lifetimeRevenueUsd:
       current?.lifetimeRevenueUsd ?? DEFAULT_SALES_ECONOMICS.lifetimeRevenueUsd,
@@ -103,7 +94,6 @@ function salesEconomicsInputForGoal(
     signupToPaidClientPct:
       current?.signupToPaidClientPct ?? DEFAULT_SALES_ECONOMICS.signupToPaidClientPct,
     businessModel: current?.businessModel ?? null,
-    funnelStages,
     optimizationGoal,
   };
 }
@@ -150,26 +140,6 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
   );
-  const { data: projection, isPending: projectionPending, error: projectionError } =
-    useAuthQuery(
-      ["workflowProjection", brandId, featureSlug, "brand-status-budget"],
-      () =>
-        getWorkflowProjection({
-          featureSlug,
-          brandId,
-          objective: "self-serve",
-          budgetUsd: PROJECTION_REF_BUDGET,
-        }),
-      {
-        enabled: budgetDialogOpen,
-        structuralSharing: (prev, next) =>
-          keepLastGoodWorkflowProjection(
-            prev as WorkflowProjectionResponse | undefined,
-            next as WorkflowProjectionResponse,
-          ),
-      },
-    );
-
   const paused = pauseData?.paused;
   const pauseReady = typeof paused === "boolean";
   const goal =
@@ -177,6 +147,27 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
       ? null
       : econ.salesEconomics?.optimizationGoal ?? "sales_meetings";
   const budget = budgetLabel(budgetData?.dailyBudgetCents ?? null);
+  const goalForBudget = goal ?? "sales_meetings";
+
+  const { data: projection, isPending: projectionPending, error: projectionError } =
+    useAuthQuery(
+      ["workflowProjection", brandId, featureSlug, "brand-status-budget", goalForBudget],
+      () =>
+        getWorkflowProjection({
+          featureSlug,
+          brandId,
+          objective: salesObjectiveForOptimizationGoal(goalForBudget),
+          budgetUsd: PROJECTION_REF_BUDGET,
+        }),
+      {
+        enabled: budgetDialogOpen && econ !== undefined,
+        structuralSharing: (prev, next) =>
+          keepLastGoodWorkflowProjection(
+            prev as WorkflowProjectionResponse | undefined,
+            next as WorkflowProjectionResponse,
+          ),
+      },
+    );
 
   const { mutate: setPaused, isPending: savingPause } = useMutation({
     mutationFn: (next: boolean) => setBrandPause(brandId, next),
@@ -231,7 +222,6 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
   const selectedGoalOption = GOAL_OPTIONS.find((g) => g.value === selectedGoal);
   const projectionValue = activeProjection(projection);
-  const goalForBudget = goal ?? "sales_meetings";
   const outcomeUnit = goalForBudget === "signups" ? "signups" : "meetings";
   const visitToSignupPct =
     econ?.salesEconomics?.visitToSignupPct ??
