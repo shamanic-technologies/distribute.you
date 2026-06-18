@@ -57,20 +57,22 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).not.toContain("useQueryClient");
   });
 
-  it("OrgCacheInvalidator still navigates + clears breadcrumb on org change", () => {
+  it("OrgCacheInvalidator clears breadcrumb caches on org change", () => {
     const content = read(invalidatorPath);
     expect(content).toContain("useOrganization");
     expect(content).toContain("prevOrgId");
-    expect(content).toContain("router.push");
-    expect(content).toContain("/orgs/");
     expect(content).toContain("clearBreadcrumbCaches");
   });
 
-  it("OrgCacheInvalidator does not overwrite an org URL that already matches the active org", () => {
+  it("OrgCacheInvalidator NEVER navigates on a (possibly cross-tab) active-org change", () => {
+    // The URL is the per-tab source of truth; the Clerk active-org signal is the
+    // shared/global one and flips when ANOTHER tab switches. Navigating this tab on
+    // that signal yanked tab A onto tab B's org (the cross-tab "switches by itself"
+    // bug). In-tab switches navigate via handleOrgSwitch; URL→active via OrgActivator.
     const content = read(invalidatorPath);
-    expect(content).toContain("usePathname");
-    expect(content).toContain("const urlOrgId = orgIdFromPath(pathname);");
-    expect(content).toContain("if (urlOrgId !== currentOrgId)");
+    expect(content).not.toContain("router.push");
+    expect(content).not.toContain("useRouter");
+    expect(content).not.toContain("usePathname");
   });
 
   it("OrgCacheInvalidator does NOT act on initial mount", () => {
@@ -123,6 +125,19 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("activeOrgIdFromPath");
     expect(content).toContain("ORG_DESYNC_STATUS");
     expect(content).toContain("ORG_DESYNC_ERROR");
+  });
+
+  it("api.ts attaches this tab's Clerk token as an Authorization Bearer (per-tab org scoping)", () => {
+    // Multi-tab: the session COOKIE is a global singleton (last-focused tab wins), so
+    // the proxy must scope off a PER-TAB token, not the cookie. window.Clerk is per-tab;
+    // its getToken() rides in the Authorization header, which Clerk's auth() honors over
+    // the cookie → the proxy sees the org THIS tab is viewing.
+    const content = read(apiPath);
+    expect(content).toContain("getTabSessionToken");
+    expect(content).toContain("window");
+    expect(content).toContain(".Clerk");
+    expect(content).toContain("session?.getToken()");
+    expect(content).toContain("`Bearer ${tabToken}`");
   });
 
   // --- Read gate -----------------------------------------------------------
