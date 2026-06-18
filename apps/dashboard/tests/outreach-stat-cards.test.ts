@@ -22,7 +22,9 @@ describe("OutreachStatCards copy", () => {
 
   it("renames the always-visible acquisition cards to Outreach and Opens", () => {
     expect(cards).toContain('label="Outreach"');
-    expect(cards).toContain("stats.leadsSent ?? stats.recipientsSent ?? 0");
+    expect(cards).toContain(
+      "stats.leadsContacted ?? stats.recipientsContacted ?? 0",
+    );
     expect(cards).toContain('label="Opens"');
     expect(cards).toContain("stats.recipientsOpened ?? 0");
     expect(cards).not.toContain('label="Impressions"');
