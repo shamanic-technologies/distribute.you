@@ -38,6 +38,7 @@ import {
   suggestPersonas,
   createPersona,
   listPersonas,
+  setPersonaStatus,
   getWorkflowProjection,
   getFeature,
   prefillFeatureInputs,
@@ -1365,6 +1366,14 @@ function OnboardingPersonas({
     onSuccess: invalidate,
   });
   const {
+    mutate: archivePersona,
+    isPending: archivingPersona,
+    variables: archivingPersonaId,
+  } = useMutation({
+    mutationFn: (id: string) => setPersonaStatus(brandId as string, id, "archived"),
+    onSuccess: invalidate,
+  });
+  const {
     mutate: regenerateAvatar,
     isPending: avatarRegenerating,
     variables: regeneratingAvatarId,
@@ -1443,6 +1452,8 @@ function OnboardingPersonas({
               onSaveAsNew={(name, filters) => saveAsNew(name, filters)}
               onCommitNew={(name, filters) => commitNew(persona.id, name, filters)}
               onCancelNew={() => removeDraft(persona.id)}
+              onRemove={() => (persona.unsaved ? removeDraft(persona.id) : archivePersona(persona.id))}
+              removing={!persona.unsaved && archivingPersona && archivingPersonaId === persona.id}
               showLifecycleActions={false}
               onRegenerateAvatar={!persona.unsaved ? () => regenerateAvatar(persona.id) : undefined}
               regeneratingAvatar={avatarRegenerating && regeneratingAvatarId === persona.id}
