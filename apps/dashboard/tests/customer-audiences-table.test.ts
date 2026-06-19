@@ -40,11 +40,15 @@ describe("Audiences page", () => {
     expect(src).toContain('role="dialog"');
   });
 
-  it("has NO manual create, filter editor, avatar or AI chat", () => {
+  it("has NO manual create, filter editor or avatar (CRUD via AI chat only)", () => {
     expect(src).not.toContain("New audience");
     expect(src).not.toContain("PersonaCard");
     expect(src).not.toContain("regeneratePersonaAvatar");
-    expect(src).not.toContain("EditWithAIChat");
+  });
+
+  it("edits audiences through the audience-editor AI chat (not the brand-service persona editor)", () => {
+    expect(src).toContain("EditWithAIChat");
+    expect(src).toContain('configKey="audience-editor"');
     expect(src).not.toContain('configKey="persona-editor"');
   });
 

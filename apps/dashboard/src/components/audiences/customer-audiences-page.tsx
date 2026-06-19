@@ -7,7 +7,9 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
+import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { listAudiences, setAudienceStatus, type AudienceStatus, type AudienceWire } from "@/lib/api";
 
 /**
@@ -46,6 +48,7 @@ export function CustomerAudiencesPage() {
 
   const [tab, setTab] = useState<"active" | "archived">("active");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   const { data, isPending } = useAuthQuery(["audiences", brandId], () => listAudiences(brandId));
 
@@ -98,10 +101,18 @@ export function CustomerAudiencesPage() {
           <h1 className="text-xl font-semibold text-gray-900">Audiences</h1>
           <p className="text-sm text-gray-500 mt-1">
             The people we&apos;ll find and prioritize leads from. Create or change
-            audiences by chatting with the AI in onboarding — this page lists them
-            and lets you pause, resume or archive.
+            audiences by chatting with the AI — this page lists them and lets you
+            pause, resume or archive.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setAiOpen(true)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+        >
+          <SparklesIcon className="w-4 h-4" />
+          Edit with AI
+        </button>
       </div>
 
       {/* Active / Archived tabs */}
@@ -212,6 +223,21 @@ export function CustomerAudiencesPage() {
             ? statusMut.variables.status
             : undefined
         }
+      />
+
+      <EditWithAIChat
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        title="Edit audiences with AI"
+        intro="Hi — I can create a new audience from a description, rename one, pause / resume / archive it, or refresh its counts. What would you like to do?"
+        suggestions={[
+          "Create an audience of heads of marketing at Series A SaaS",
+          "Pause the lowest-performing audience",
+          "Refresh counts on all audiences",
+        ]}
+        configKey="audience-editor"
+        brandId={brandId}
+        invalidateKeys={[["audiences", brandId]]}
       />
     </DashboardPage>
   );
