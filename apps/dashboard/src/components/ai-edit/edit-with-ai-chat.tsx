@@ -19,10 +19,10 @@ import {
  * Edit-with-AI — REAL LLM chat (replaces the client-side interpreter mock).
  *
  * POSTs to /api/v1/chat (api-service → chat-service) with a `configKey`
- * ("persona-editor" | "brand-profile-editor") and live request context.
- * chat-service resolves the config's system prompt + tools and streams tool
- * calls back; the tools read/edit the brand's personas / brand profile in
- * brand-service. We render streamed tool calls generically and, whenever a turn
+ * ("brand-profile-editor") and live request context. chat-service resolves the
+ * config's system prompt + tools and streams tool calls back; the tools read/edit
+ * the brand profile in brand-service. We render streamed tool calls generically
+ * and, whenever a turn
  * finishes, invalidate the page's React Query keys so the cards reflect the
  * AI's changes. Mirrors the campaign-prefill chat wiring.
  */
@@ -54,7 +54,7 @@ export function EditWithAIChat({
   title: string;
   intro: string;
   suggestions: string[];
-  configKey: "persona-editor" | "brand-profile-editor";
+  configKey: "brand-profile-editor";
   brandId: string;
   context?: EditChatContext;
   /** Optional storage namespace bump to avoid replaying stale backend sessions after config/context changes. */
