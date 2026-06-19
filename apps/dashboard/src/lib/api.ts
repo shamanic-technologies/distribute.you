@@ -959,164 +959,6 @@ export async function getSalesEconomicsEffective(
   return parsed.data;
 }
 
-// ── Personas + Brand Profile (beta) ───────────────────────────────
-// Persisted per brand in brand-service via api-service /v1/brands/:id/personas
-// and /v1/brands/:id/brand-profile (same gateway convention as sales-economics).
-// Personas are immutable except status (edit = create a new one) and names are
-// unique per brand. Brand-profile saves are immutable forked versions.
-export type PersonaStatusWire = "active" | "paused" | "archived";
-
-export interface PersonaWire {
-  id: string;
-  brandId: string;
-  name: string;
-  filters: Record<string, string[]>;
-  status: PersonaStatusWire;
-  avatarUrl?: string | null;
-  createdAt: string;
-}
-
-const PersonaSchema = z.object({
-  id: z.string(),
-  brandId: z.string(),
-  name: z.string(),
-  filters: z.record(z.string(), z.array(z.string())),
-  status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
-  avatarUrl: z.string().nullable().optional(),
-  createdAt: z.string(),
-});
-
-const ListPersonasResponseSchema = z.object({ personas: z.array(PersonaSchema) });
-const PersonaResponseSchema = z.object({ persona: PersonaSchema });
-
-/** GET /brands/:brandId/personas — all personas for the brand (optionally status-filtered). */
-export async function listPersonas(
-  brandId: string,
-  status?: PersonaStatusWire,
-  token?: string,
-): Promise<{ personas: PersonaWire[] }> {
-  const query = status ? `?status=${status}` : "";
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas${query}`, { token });
-  const parsed = ListPersonasResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] listPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] listPersonas: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** POST /brands/:brandId/personas — create. 409 when the name is already used for the brand. */
-export async function createPersona(
-  brandId: string,
-  input: { name: string; filters: Record<string, string[]> },
-  token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas`, { token, method: "POST", body: input });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] createPersona: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** POST /brands/:brandId/personas/:personaId/avatar/regenerate — replace the generated persona avatar. */
-export async function regeneratePersonaAvatar(
-  brandId: string,
-  personaId: string,
-  token?: string,
-  opts?: { suppressPaymentRequired?: boolean },
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/avatar/regenerate`, {
-    token,
-    method: "POST",
-    body: {},
-    suppressPaymentRequired: opts?.suppressPaymentRequired,
-  });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] regeneratePersonaAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] regeneratePersonaAvatar: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** POST /brands/:brandId/personas/:personaId/duplicate — new persona (name auto-uniquified). */
-export async function duplicatePersona(
-  brandId: string,
-  personaId: string,
-  name?: string,
-  token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/duplicate`, {
-    token,
-    method: "POST",
-    body: name ? { name } : {},
-  });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] duplicatePersona: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] duplicatePersona: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** PATCH /brands/:brandId/personas/:personaId/status — pause / resume / archive / restore. */
-export async function setPersonaStatus(
-  brandId: string,
-  personaId: string,
-  status: PersonaStatusWire,
-  token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/status`, {
-    token,
-    method: "PATCH",
-    body: { status },
-  });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] setPersonaStatus: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] setPersonaStatus: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** A persona DRAFT proposed by the backend — no id/status/createdAt (not persisted). */
-export interface PersonaDraft {
-  name: string;
-  filters: Record<string, string[]>;
-}
-
-const SuggestPersonasResponseSchema = z.object({
-  personas: z.array(z.object({
-    name: z.string(),
-    filters: z.record(z.string(), z.array(z.string())),
-  })),
-});
-
-/**
- * POST /brands/:brandId/personas/suggest — generate persona DRAFTS from the brand
- * profile (does NOT persist). Used by the beta onboarding to propose personas the
- * user edits, then saves the kept ones via `createPersona`.
- */
-export async function suggestPersonas(
-  brandId: string,
-  count?: number,
-  token?: string,
-): Promise<{ personas: PersonaDraft[] }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/suggest`, {
-    token,
-    method: "POST",
-    body: count ? { count } : {},
-  });
-  const parsed = SuggestPersonasResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] suggestPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] suggestPersonas: invalid response shape");
-  }
-  return parsed.data;
-}
-
 // ── Audiences (human-service via gateway /orgs/audiences/*) ──────────
 // A saved people-filter-set, brand-scoped, generated from a natural-language
 // prompt by human-service `/suggest` (apollo + apify candidates, dry-run
@@ -1124,22 +966,38 @@ export async function suggestPersonas(
 // brand-service persona. human-service OWNS these rows; the dashboard reaches
 // them through the api-service gateway, never brand-service.
 
+export type AudienceStatus = "suggested" | "active" | "paused" | "archived";
+
 export interface AudienceCandidate {
-  provider: "apollo" | "apify";
-  label: string;
+  // The PERSISTED audience row id — /suggest creates each candidate at status
+  // "suggested" (inactive). Activating a pick = PATCH this id's status to "active".
+  audienceId: string;
+  name: string;
   rationale: string;
+  provider: "apollo" | "apify";
   filters: Record<string, unknown>;
+  // The winning provider's free dry-run match count (0 = no valid non-empty filters).
   count: number;
+  status: AudienceStatus;
   validationError: string | null;
   truncated: boolean;
 }
 
+const AudienceStatusSchema = z.union([
+  z.literal("suggested"),
+  z.literal("active"),
+  z.literal("paused"),
+  z.literal("archived"),
+]);
+
 const AudienceCandidateSchema = z.object({
-  provider: z.union([z.literal("apollo"), z.literal("apify")]),
-  label: z.string(),
+  audienceId: z.string(),
+  name: z.string(),
   rationale: z.string(),
+  provider: z.union([z.literal("apollo"), z.literal("apify")]),
   filters: z.record(z.string(), z.unknown()),
   count: z.number(),
+  status: AudienceStatusSchema,
   validationError: z.string().nullable(),
   truncated: z.boolean(),
 });
@@ -1149,9 +1007,11 @@ const SuggestAudiencesResponseSchema = z.object({
 });
 
 /**
- * POST /orgs/audiences/suggest — natural-language prompt → candidate audiences
- * (apollo + apify, LLM-generated, live dry-run counted). Does NOT persist; the
- * user picks one or more, which are then saved via `createAudience`.
+ * POST /orgs/audiences/suggest — natural-language prompt → candidate audiences.
+ * ONE candidate per audience (the winning provider, larger free dry-run count).
+ * Each candidate is PERSISTED at status "suggested" (inactive); the user picks
+ * one or more, which are ACTIVATED via `setAudienceStatus(audienceId, "active")`.
+ * Unpicked candidates remain suggested/inactive.
  */
 export async function suggestAudiences(
   brandId: string,
@@ -1178,6 +1038,8 @@ export interface AudienceWire {
   name: string;
   nlPrompt: string | null;
   provider: string | null;
+  status: AudienceStatus;
+  source: string | null;
   filters: Record<string, unknown> | null;
   apolloCount: number | null;
   apifyCount: number | null;
@@ -1194,6 +1056,8 @@ const AudienceSchema = z.object({
   name: z.string(),
   nlPrompt: z.string().nullable(),
   provider: z.string().nullable(),
+  status: AudienceStatusSchema,
+  source: z.string().nullable(),
   filters: z.record(z.string(), z.unknown()).nullable(),
   apolloCount: z.number().nullable(),
   apifyCount: z.number().nullable(),
@@ -1205,24 +1069,25 @@ const AudienceSchema = z.object({
 
 const AudienceResponseSchema = z.object({ audience: AudienceSchema });
 
-/** POST /orgs/audiences — persist a chosen candidate audience on the brand. */
-export async function createAudience(
-  input: {
-    brandId: string;
-    name: string;
-    provider?: string | null;
-    nlPrompt?: string | null;
-    filters?: Record<string, unknown> | null;
-    apolloCount?: number | null;
-    apifyCount?: number | null;
-  },
+/**
+ * PATCH /orgs/audiences/:audienceId/status — change an audience's lifecycle status
+ * (mutates only status). Used to ACTIVATE a suggested candidate ("suggested" →
+ * "active") so it's selected for the brand; unpicked candidates stay suggested.
+ */
+export async function setAudienceStatus(
+  audienceId: string,
+  status: AudienceStatus,
   token?: string,
 ): Promise<{ audience: AudienceWire }> {
-  const raw = await apiCall<unknown>(`/orgs/audiences`, { token, method: "POST", body: input });
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/status`, {
+    token,
+    method: "PATCH",
+    body: { status },
+  });
   const parsed = AudienceResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] createAudience: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] createAudience: invalid response shape");
+    console.error("[dashboard] setAudienceStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] setAudienceStatus: invalid response shape");
   }
   return parsed.data;
 }
@@ -1631,7 +1496,7 @@ export interface FeaturePersonaStatsRow {
   persona: {
     id: string;
     name: string;
-    status: PersonaStatusWire;
+    status: "active" | "paused" | "archived";
     filters: Record<string, string[]>;
     avatarUrl?: string | null;
   };

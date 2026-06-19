@@ -65,23 +65,23 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
 
   it("Overview replaces the bottom cost-source card with real top audiences", () => {
     const api = read("lib/api.ts");
-    const personaCard = read("components/revenue/top-personas-card.tsx");
+    const audiencesCard = read("components/revenue/top-audiences-card.tsx");
     expect(overview).toContain("fetchFeaturePersonaStats");
-    expect(overview).toContain("listPersonas(brandId, \"active\")");
+    expect(overview).toContain("listAudiences(brandId)");
     expect(overview).toContain("featurePersonaStats");
-    expect(overview).toContain("<TopPersonasCard");
-    expect(overview).toContain("personas={personaStatsRevealed ? personasData?.personas : undefined}");
+    expect(overview).toContain("<TopAudiencesCard");
+    expect(overview).toContain("audiences={personaStatsRevealed ? activeAudiences : undefined}");
     expect(overview).toContain("costBottomCard=");
+    // The bottom card no longer reads brand-service personas.
+    expect(overview).not.toContain("listPersonas");
+    // persona-stats is a features-service contract (stat evidence), kept as-is.
     expect(api).toContain("export async function fetchFeaturePersonaStats");
     expect(api).toContain("`/features/${featureSlug}/persona-stats?");
-    expect(personaCard).toContain("Top 3 audiences");
-    expect(personaCard).toContain("fallbackRows");
-    expect(personaCard).toContain("TopPersonaAvatar");
-    expect(personaCard).toContain("persona.avatarUrl");
-    expect(personaCard).toContain("row.metrics.cpcCents");
-    expect(personaCard).toContain("row.metrics.cpprCents");
-    expect(personaCard).toContain('if (cents == null) return "-";');
-    expect(personaCard).not.toContain("No audience-tagged results yet.");
+    expect(audiencesCard).toContain("Top 3 audiences");
+    expect(audiencesCard).toContain("fallbackRows");
+    expect(audiencesCard).toContain("row.metrics.cpcCents");
+    expect(audiencesCard).toContain("row.metrics.cpprCents");
+    expect(audiencesCard).toContain('if (cents == null) return "-";');
   });
 
   it("does not derive hidden cost efficiency ratios in the browser", () => {

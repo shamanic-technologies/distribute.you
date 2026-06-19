@@ -5,7 +5,7 @@ import type {
   FeaturePersonaStatsResponse,
   FeaturePersonaStatsSortMetric,
   FeaturePersonaStatsRow,
-  PersonaWire,
+  AudienceWire,
 } from "@/lib/api";
 
 function formatCents(cents: number | null): string {
@@ -48,13 +48,13 @@ function InfoHint({ text }: { text: string }) {
   );
 }
 
-function personaInitials(name: string): string {
+function audienceInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "A";
   return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
 }
 
-function TopPersonaAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+function TopAudienceAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
   if (avatarUrl) {
     return (
       <img
@@ -67,36 +67,35 @@ function TopPersonaAvatar({ name, avatarUrl }: { name: string; avatarUrl?: strin
 
   return (
     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-brand-100 bg-brand-50 text-[10px] font-semibold text-brand-700">
-      {personaInitials(name)}
+      {audienceInitials(name)}
     </span>
   );
 }
 
-export function TopPersonasCard({
+export function TopAudiencesCard({
   data,
-  personas = [],
+  audiences = [],
   pending = false,
   metric,
 }: {
   data?: FeaturePersonaStatsResponse;
-  personas?: PersonaWire[];
+  audiences?: AudienceWire[];
   pending?: boolean;
   metric: FeaturePersonaStatsSortMetric;
 }) {
   const statsRows = (data?.personas ?? []).slice(0, 3);
-  const seenPersonaIds = new Set(
+  const seenAudienceIds = new Set(
     statsRows.flatMap((row) => [row.customerProfileId, row.persona.id]),
   );
-  const fallbackRows = personas
-    .filter((persona) => !seenPersonaIds.has(persona.id))
+  const fallbackRows = audiences
+    .filter((audience) => !seenAudienceIds.has(audience.id))
     .slice(0, Math.max(0, 3 - statsRows.length));
-  const personasById = new Map(personas.map((persona) => [persona.id, persona]));
   const rows: Array<
     | { kind: "stats"; row: FeaturePersonaStatsRow }
-    | { kind: "persona"; persona: PersonaWire }
+    | { kind: "audience"; audience: AudienceWire }
   > = [
     ...statsRows.map((row) => ({ kind: "stats" as const, row })),
-    ...fallbackRows.map((persona) => ({ kind: "persona" as const, persona })),
+    ...fallbackRows.map((audience) => ({ kind: "audience" as const, audience })),
   ];
   const activeMetric = data?.sortMetric ?? metric;
   const label = metricLabel(activeMetric);
@@ -122,13 +121,9 @@ export function TopPersonasCard({
       ) : (
         rows.map((item) => {
           const isStats = item.kind === "stats";
-          const name = isStats ? item.row.persona.name : item.persona.name;
-          const key = isStats ? item.row.customerProfileId : item.persona.id;
-          const avatarUrl = isStats
-            ? item.row.persona.avatarUrl
-              ?? personasById.get(item.row.persona.id)?.avatarUrl
-              ?? personasById.get(item.row.customerProfileId)?.avatarUrl
-            : item.persona.avatarUrl;
+          const name = isStats ? item.row.persona.name : item.audience.name;
+          const key = isStats ? item.row.customerProfileId : item.audience.id;
+          const avatarUrl = isStats ? item.row.persona.avatarUrl : null;
           const value = isStats
             ? activeMetric === "cpc"
               ? item.row.metrics.cpcCents
@@ -141,7 +136,7 @@ export function TopPersonasCard({
             : "-";
           return (
             <div key={key} className="flex items-center gap-2">
-              <TopPersonaAvatar name={name} avatarUrl={avatarUrl} />
+              <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-gray-700">{name}</span>
                 <span className="block truncate text-[11px] text-gray-400">{count}</span>

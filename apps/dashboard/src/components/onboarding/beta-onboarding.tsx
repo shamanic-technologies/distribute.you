@@ -14,7 +14,6 @@ import {
   CreditCardIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
-  PlusIcon,
   ShieldCheckIcon,
   TrophyIcon,
   XMarkIcon,
@@ -28,10 +27,8 @@ import {
   saveBrandProfileVersion,
   getSalesEconomicsEffective,
   saveBrandSalesEconomics,
-  suggestPersonas,
-  createPersona,
   suggestAudiences,
-  createAudience,
+  setAudienceStatus,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
@@ -46,7 +43,6 @@ import {
   type BrandOptimizationGoal,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
-  type PersonaDraft,
   type FeatureInput,
 } from "@/lib/api";
 import {
@@ -55,16 +51,14 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
-import { type Filters, type Persona } from "@/lib/mock-personas";
-import { PersonaCard, capWords } from "@/components/personas/persona-card";
 import { BrandLogo } from "@/components/brand-logo";
 
 /**
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
  * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
- * runs WHILE the brand is created AND its profile / services / personas / economics /
+ * runs WHILE the brand is created AND its profile / services / economics /
  * pricing projection are fetched for real → services to promote → sales goal →
- * conversion rates → review the AI-proposed persona as an onboarding-only draft
+ * conversion rates → describe audiences in plain language (human-service suggest)
  * → agency-channel consent → outcome-count budget → launches a real campaign.
  * Everything is wired to live endpoints.
  */
@@ -206,11 +200,17 @@ const TAG_TONES = [
 // Outcome-count budget tiers (per month). "Other" is a custom count.
 const COUNT_TIERS = [5, 25, 125];
 
-let personaSeq = 0;
-const nextPersonaId = () => `ob-persona-${++personaSeq}`;
 
 const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
+
+// A background pre-warm of the audience step, started during the loading screen.
+// Resolves the drafted ICP prompt and the suggested candidates (candidates null
+// when the ICP was empty or the suggest call failed — the step then falls back to
+// manual). One promise so the step can show a single "generating" state until ready.
+type AudiencePrefetch = {
+  promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null }>;
+};
 
 type PendingCheckoutLaunch = {
   version: 1;
@@ -227,13 +227,7 @@ type PendingCheckoutLaunch = {
   featureInputs?: Record<string, string>;
   profile?: Record<string, string | string[]>;
   services?: string[];
-  personas?: PersonaLaunchDraft[];
   createdAt: string;
-};
-
-type PersonaLaunchDraft = {
-  name: string;
-  filters: Filters;
 };
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -247,23 +241,6 @@ function isStringRecord(value: unknown): value is Record<string, string> {
 
 function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
-}
-
-function isPersonaLaunchDraftList(value: unknown): value is PersonaLaunchDraft[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (item) =>
-        !!item &&
-        typeof item === "object" &&
-        !Array.isArray(item) &&
-        typeof (item as { name?: unknown }).name === "string" &&
-        !!(item as { filters?: unknown }).filters &&
-        typeof (item as { filters?: unknown }).filters === "object" &&
-        !Array.isArray((item as { filters?: unknown }).filters) &&
-        Object.values((item as { filters: Record<string, unknown> }).filters).every(isStringList),
-    )
-  );
 }
 
 function isProfileRecord(value: unknown): value is Record<string, string | string[]> {
@@ -296,7 +273,6 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
     (parsed.services !== undefined && !isStringList(parsed.services)) ||
-    (parsed.personas !== undefined && !isPersonaLaunchDraftList(parsed.personas)) ||
     typeof parsed.createdAt !== "string"
   ) {
     throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");
@@ -352,7 +328,7 @@ export function BetaOnboarding() {
   const [step, setStep] = useState<Step>("welcome");
   const [url, setUrl] = useState(searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [setupIssues, setSetupIssues] = useState({ extraction: false, persona: false });
+  const [setupIssues, setSetupIssues] = useState({ extraction: false });
   const [busy, setBusy] = useState(false);
 
   const [outcome, setOutcome] = useState<Outcome>("signups");
@@ -368,8 +344,11 @@ export function BetaOnboarding() {
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
   const [customCount, setCustomCount] = useState("");
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(null);
-  const [personaSeeding, setPersonaSeeding] = useState(false);
-  const [personaDrafts, setPersonaDrafts] = useState<Persona[]>([]);
+  // Pre-warmed audience step. During the loading screen we draft the ICP prompt
+  // AND fire the audience suggest in the background, so the audience step opens
+  // with candidates already (or nearly) ready — zero wait, zero click. Stashed in
+  // state (not a ref) so a late-resolving prewarm still flows into the step as a prop.
+  const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
@@ -394,16 +373,12 @@ export function BetaOnboarding() {
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>([]);
 
-  const personaDraftsRef = useRef<Persona[]>([]);
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
-  useEffect(() => {
-    personaDraftsRef.current = personaDrafts;
-  }, [personaDrafts]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
@@ -434,43 +409,30 @@ export function BetaOnboarding() {
     console.info("[dashboard] onboarding setup milestone", props);
   }
 
-  async function seedOnboardingPersonaFromBrandInfo(id: string): Promise<void> {
-    setPersonaSeeding(true);
-    try {
-      const sug = await suggestPersonas(id, 1);
-      const first: PersonaDraft | undefined = sug.personas[0];
-      if (first?.name?.trim()) {
-        setPersonaDrafts((prev) =>
-          prev.length > 0
-            ? prev
-            : [
-                {
-                  id: nextPersonaId(),
-                  name: capWords(first.name.trim()),
-                  filters: first.filters,
-                  status: "active",
-                  unsaved: true,
-                },
-              ],
-        );
-      }
-    } catch (e) {
-      console.error("[dashboard] suggest/create persona (onboarding seed) failed:", e);
-      setSetupIssues((prev) => ({ ...prev, persona: true }));
-    } finally {
-      setPersonaSeeding(false);
-    }
-  }
-
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
-    // Persona drafting is independent from full profile hydration. Start it
-    // immediately so the persona spinner tracks persona work only.
-    const personaSeed = seedOnboardingPersonaFromBrandInfo(id);
-
     await extractBrandFields([id], SALES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields (background) failed:", e);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
     });
+
+    // Pre-warm the audience step: now that the brand profile is extracted, draft
+    // the ICP prompt and fire the audience suggest in the background. By the time
+    // the user clicks through services/goal/rates to the audience step, candidates
+    // are ready. Fail-soft — a failed ICP/suggest resolves candidates:null and the
+    // step falls back to its own draft + manual "Suggest audiences".
+    const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null }> => {
+      try {
+        const { icp } = await suggestBrandIcp(id);
+        const prompt = icp.trim();
+        if (!prompt) return { prompt: "", candidates: null };
+        const { candidates } = await suggestAudiences(id, prompt);
+        return { prompt, candidates };
+      } catch (e) {
+        console.error("[dashboard] audience prewarm (ICP + suggest) failed:", e);
+        return { prompt: "", candidates: null };
+      }
+    })();
+    setAudiencePrefetch({ promise: audiencePrewarm });
 
     const [prof, econRes, proj, feat] = await Promise.all([
       getBrandProfile(id),
@@ -509,7 +471,6 @@ export function BetaOnboarding() {
       setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
     }
     projectionRef.current = proj;
-    await personaSeed;
   }
 
   async function waitForOnboardingHydration(): Promise<void> {
@@ -582,7 +543,7 @@ export function BetaOnboarding() {
   async function startAnalyze() {
     if (!domain) return;
     setError(null);
-    setSetupIssues({ extraction: false, persona: false });
+    setSetupIssues({ extraction: false });
     setStep("loading");
     resetLoadingProgress();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
@@ -706,18 +667,6 @@ export function BetaOnboarding() {
     return featureInputs;
   }
 
-  async function persistPersonaDraftsForLaunch(id: string, drafts: PersonaLaunchDraft[]) {
-    const seenNames = new Set<string>();
-    for (const draft of drafts) {
-      const name = capWords(draft.name.trim());
-      if (!name) continue;
-      const key = name.toLowerCase();
-      if (seenNames.has(key)) continue;
-      seenNames.add(key);
-      await createPersona(id, { name, filters: draft.filters as Record<string, string[]> });
-    }
-  }
-
   async function completeLaunchAfterCheckout(pending: PendingCheckoutLaunch) {
     if (pending.profile && pending.services) {
       await saveBrandProfileVersion(pending.brandId, {
@@ -727,7 +676,8 @@ export function BetaOnboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
-    await persistPersonaDraftsForLaunch(pending.brandId, pending.personas ?? []);
+    // Audiences are activated at the audience step (setAudienceStatus → "active");
+    // nothing to persist here at launch.
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
@@ -803,10 +753,6 @@ export function BetaOnboarding() {
         featureInputs: storedPending?.featureInputs,
         profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
         services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
-        personas:
-          brandIdRef.current === id && normalizedCurrentUrl
-            ? personaDraftsRef.current.map((p) => ({ name: p.name, filters: p.filters }))
-            : storedPending?.personas,
         createdAt: new Date().toISOString(),
       };
       window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
@@ -1123,6 +1069,7 @@ export function BetaOnboarding() {
         brandDomain={domain}
         hostname={hostname}
         services={services}
+        prefetch={audiencePrefetch}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
       />
@@ -1267,105 +1214,17 @@ export function BetaOnboarding() {
   );
 }
 
-// ── Audiences step — onboarding-only drafts ────────────────────────────────
-// No run/campaign exists yet, so this step edits client-side draft personas only.
-// They are persisted once at launch, immediately before the campaign is created.
-let obDraftSeq = 0;
-const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
-
-function OnboardingPersonas({
-  brandDomain,
-  hostname,
-  personas,
-  setPersonas,
-  personaSuggestionFailed,
-  personaSeeding,
-  onBack,
-  onContinue,
-}: {
-  brandDomain: string | null;
-  hostname: string;
-  personas: Persona[];
-  setPersonas: (updater: (prev: Persona[]) => Persona[]) => void;
-  personaSuggestionFailed: boolean;
-  personaSeeding: boolean;
-  onBack: () => void;
-  onContinue: () => void;
-}) {
-  const isNameTaken = (name: string, exceptId?: string) => {
-    const needle = name.trim().toLowerCase();
-    return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
-  };
-  const uniqueName = (base: string) => {
-    const trimmed = base.trim() || "Audience";
-    if (!isNameTaken(trimmed)) return trimmed;
-    for (let i = 2; ; i++) {
-      const candidate = `${trimmed} ${i}`;
-      if (!isNameTaken(candidate)) return candidate;
-    }
-  };
-  const addPersona = () =>
-    setPersonas((prev) => [
-      { id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true },
-      ...prev,
-    ]);
-  const removeDraft = (id: string) => setPersonas((prev) => prev.filter((p) => p.id !== id));
-  const updateDraft = (id: string, name: string, filters: Filters) =>
-    setPersonas((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name: capWords(name), filters, unsaved: true } : p)),
-    );
-  const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
-  return (
-    <div className={card}>
-      <BackButton onClick={onBack} />
-      <BrandStepHeader domain={brandDomain} hostname={hostname} />
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
-          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters or add another before launch.</p>
-        </div>
-      </div>
-      {personaSuggestionFailed && <SetupWarning className="mt-4" />}
-
-      <div className="mt-6 space-y-3">
-        {personaSeeding && personas.length === 0 ? (
-          <div className="flex h-56 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
-            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-            Drafting your first audience...
-          </div>
-        ) : personas.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No audiences yet.</div>
-        ) : (
-          personas.map((persona) => (
-            <PersonaCard
-              key={persona.id}
-              persona={persona}
-              onChange={(name, filters) => updateDraft(persona.id, name, filters)}
-              onRemove={() => removeDraft(persona.id)}
-              showLifecycleActions={false}
-              checkNameTaken={(n) => isNameTaken(n, persona.id)}
-            />
-          ))
-        )}
-      </div>
-
-      <button onClick={addPersona} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
-        <PlusIcon className="h-4 w-4" /> Add an audience
-      </button>
-      <NextButton onClick={onContinue} label="Continue" />
-    </div>
-  );
-}
-
 // Natural-language → audiences. The user describes the people they want to
-// reach; human-service `/suggest` returns candidate audiences (apollo + apify,
-// live-counted); the user picks one or more, which are saved on the brand via
-// `createAudience`. This is the audience concept that replaces the persona step.
+// reach; human-service `/suggest` returns ONE candidate per audience (the winning
+// provider, live-counted), each already persisted at status "suggested". The user
+// picks one or more, which are ACTIVATED via `setAudienceStatus(audienceId,
+// "active")`. This is the audience concept that replaces the persona step.
 function OnboardingAudiences({
   brandId,
   brandDomain,
   hostname,
   services,
+  prefetch,
   onBack,
   onContinue,
 }: {
@@ -1373,6 +1232,7 @@ function OnboardingAudiences({
   brandDomain: string | null;
   hostname: string;
   services: string[];
+  prefetch: AudiencePrefetch | null;
   onBack: () => void;
   onContinue: () => void;
 }) {
@@ -1389,33 +1249,60 @@ function OnboardingAudiences({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Pre-fill the prompt with a real brand ICP — brand-service writes one short,
-  // plain-language ICP line from the brand profile + sales economics. Falls back
-  // to a services-derived line if the fetch fails. Auto-fills once; never clobbers
-  // a prompt the user already edited.
+  // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
+  // the background during the loading screen) when present — zero wait, zero click.
+  // No pre-warm (fast click-through / no brandId yet) → draft the ICP here and
+  // AUTO-FIRE the suggest, so the step still needs no click. Runs once; never
+  // clobbers a prompt the user already edited.
   useEffect(() => {
     if (icpFetchedRef.current) return;
     icpFetchedRef.current = true;
+
+    if (prefetch) {
+      // Pre-warm in flight or already resolved — show drafting/generating until ready.
+      setIcpLoading(true);
+      setLoading(true);
+      prefetch.promise
+        .then(({ prompt: p, candidates: c }) => {
+          setPrompt((cur) => (cur.trim() ? cur : p || fallbackPrompt));
+          if (c) {
+            setCandidates(c);
+            if (c.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+          }
+        })
+        .catch((e) => {
+          console.error("[dashboard] audience prefetch adopt failed:", e);
+          setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+        })
+        .finally(() => {
+          setIcpLoading(false);
+          setLoading(false);
+        });
+      return;
+    }
+
     if (!brandId) {
       setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
       setIcpLoading(false);
       return;
     }
     (async () => {
+      let nl = fallbackPrompt;
       try {
         const { icp } = await suggestBrandIcp(brandId);
-        setPrompt((cur) => (cur.trim() ? cur : icp.trim() || fallbackPrompt));
+        nl = icp.trim() || fallbackPrompt;
       } catch (e) {
         console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
-        setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
       } finally {
         setIcpLoading(false);
       }
+      setPrompt((cur) => (cur.trim() ? cur : nl));
+      if (nl) void runSuggest(nl);
     })();
-  }, [brandId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function runSuggest() {
-    const nl = prompt.trim();
+  async function runSuggest(nlArg?: string) {
+    const nl = (nlArg ?? prompt).trim();
     if (!brandId || !nl) {
       setErr("Describe who you want to reach first.");
       return;
@@ -1458,20 +1345,14 @@ function OnboardingAudiences({
     setErr(null);
     setSaving(true);
     try {
+      // Each candidate is already a persisted audience row (status "suggested").
+      // Selecting = ACTIVATE it for the brand; unpicked candidates stay suggested.
       for (const c of picks) {
-        await createAudience({
-          brandId,
-          name: c.label,
-          provider: c.provider,
-          nlPrompt: prompt.trim(),
-          filters: c.filters,
-          apolloCount: c.provider === "apollo" ? c.count : null,
-          apifyCount: c.provider === "apify" ? c.count : null,
-        });
+        await setAudienceStatus(c.audienceId, "active");
       }
       onContinue();
     } catch (e) {
-      console.error("[dashboard] createAudience failed:", e);
+      console.error("[dashboard] setAudienceStatus (activate) failed:", e);
       setErr("We couldn't save your audiences. Try again.");
       setSaving(false);
     }
@@ -1503,7 +1384,7 @@ function OnboardingAudiences({
         )}
       </div>
       <button
-        onClick={runSuggest}
+        onClick={() => runSuggest()}
         disabled={loading || icpLoading || !prompt.trim()}
         className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -1638,7 +1519,7 @@ function AudienceCandidateCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">{candidate.label}</span>
+          <span className="text-sm font-semibold text-gray-900">{candidate.name}</span>
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
             {candidate.provider}
           </span>
