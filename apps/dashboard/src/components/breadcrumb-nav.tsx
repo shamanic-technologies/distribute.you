@@ -12,6 +12,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
+import { BrandCreateModal, OrgCreateModal } from "./create-flows";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
 interface Brand {
@@ -105,7 +106,15 @@ export function BreadcrumbNav() {
   const { user } = useUser();
   const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  // Self-serve create flows (distinct from /onboarding): "brand" adds a brand to
+  // the active org; "org" creates a new org + its first brand.
+  const [createModal, setCreateModal] = useState<"brand" | "org" | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Per-URL-org display label cache (name/avatar) — keeps the breadcrumb from
+  // flipping when Clerk's shared active org momentarily points at another tab's org.
+  const orgDisplayCacheRef = useRef<
+    Record<string, { name?: string; imageUrl?: string; hasImage?: boolean }>
+  >({});
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
@@ -119,6 +128,30 @@ export function BreadcrumbNav() {
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
   const section = brandId ? pathParts[4] ?? null : null;
+
+  // Display the org from the URL (per-tab), NOT `useOrganization()`. Clerk's active
+  // org is a SHARED browser-global value that flips when another tab switches org —
+  // binding the breadcrumb to it made the org name visibly oscillate between tabs.
+  // The URL org is stable per tab. We cache each org's label the moment the active
+  // org matches the URL (the normal focused case), so the name stays put even while
+  // the shared active org is briefly pointing elsewhere; falls back to the god-mode
+  // all-orgs list / the user's memberships when we haven't cached it yet. (#1948)
+  if (organization && organization.id === orgId) {
+    orgDisplayCacheRef.current[orgId] = {
+      name: organization.name,
+      imageUrl: organization.imageUrl,
+      hasImage: organization.hasImage,
+    };
+  }
+  const displayOrg = orgId
+    ? orgDisplayCacheRef.current[orgId] ??
+      allOrgs.find((o) => o.id === orgId) ??
+      userMemberships?.data?.find((m) => m.organization.id === orgId)?.organization
+    : undefined;
+  const displayOrgName = displayOrg?.name || "Dashboard";
+  const displayOrgImageUrl = displayOrg?.imageUrl;
+  const displayOrgHasImage =
+    (displayOrg as { hasImage?: boolean } | undefined)?.hasImage;
   const workflowId =
     brandId && section === "workflows" && pathParts[5] && pathParts[5] !== "new"
       ? pathParts[5]
@@ -267,6 +300,7 @@ export function BreadcrumbNav() {
   );
 
   return (
+    <>
     <nav
       className={`flex items-center text-sm min-w-0 ${
         // Mobile: the breadcrumb chain can exceed the viewport — scroll it
@@ -279,9 +313,9 @@ export function BreadcrumbNav() {
     >
       {/* ORG — always shown as root */}
       <div className="relative flex items-center">
-        <Link href={organization ? explicitHierarchyHref(`/orgs/${organization.id}`) : explicitHierarchyHref("/")} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
-          <OrgAvatar name={organization?.name || "Dashboard"} imageUrl={organization?.imageUrl} hasImage={organization?.hasImage} sizeClass="w-5 h-5" />
-          <span className="font-medium text-gray-800 max-w-[140px] truncate">{organization?.name || "Dashboard"}</span>
+        <Link href={orgId ? explicitHierarchyHref(`/orgs/${orgId}`) : explicitHierarchyHref("/")} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
+          <OrgAvatar name={displayOrgName} imageUrl={displayOrgImageUrl} hasImage={displayOrgHasImage} sizeClass="w-5 h-5" />
+          <span className="font-medium text-gray-800 max-w-[140px] truncate">{displayOrgName}</span>
         </Link>
         <button onClick={() => toggleDropdown("org")} className="p-1 hover:bg-gray-100 rounded transition">
           <Chevron open={openDropdown === "org"} />
@@ -313,12 +347,12 @@ export function BreadcrumbNav() {
                     key={o.id}
                     onClick={() => handleOrgSwitch(o.id)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                      organization?.id === o.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      orgId === o.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     <OrgAvatar name={o.name} imageUrl={o.imageUrl} hasImage={o.hasImage} sizeClass="w-6 h-6" />
                     <span className="truncate">{o.name}</span>
-                    {organization?.id === o.id && (
+                    {orgId === o.id && (
                       <svg className="w-4 h-4 text-brand-600 ml-auto flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
@@ -332,12 +366,12 @@ export function BreadcrumbNav() {
                   key={m.organization.id}
                   onClick={() => handleOrgSwitch(m.organization.id)}
                   className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
-                    organization?.id === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                    orgId === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <OrgAvatar name={m.organization.name} imageUrl={m.organization.imageUrl} hasImage={m.organization.hasImage} sizeClass="w-6 h-6" />
                   <span className="truncate">{m.organization.name}</span>
-                  {organization?.id === m.organization.id && (
+                  {orgId === m.organization.id && (
                     <svg className="w-4 h-4 text-brand-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
@@ -347,7 +381,7 @@ export function BreadcrumbNav() {
             )}
             <div className="border-t border-gray-100 mt-1 pt-1">
               <button
-                onClick={() => { setOpenDropdown(null); router.push("/onboarding?new=1"); }}
+                onClick={() => { setOpenDropdown(null); setCreateModal("org"); }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition"
               >
                 <div className="w-6 h-6 border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0">
@@ -400,6 +434,17 @@ export function BreadcrumbNav() {
                     </button>
                   ))
                 )}
+                <div className="border-t border-gray-100 mt-1 pt-1">
+                  <button
+                    onClick={() => { setOpenDropdown(null); setCreateModal("brand"); }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition"
+                  >
+                    <div className="w-[18px] h-[18px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0">
+                      <span className="text-gray-400 text-xs font-bold leading-none">+</span>
+                    </div>
+                    <span>New brand</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -438,5 +483,8 @@ export function BreadcrumbNav() {
         </>
       )}
     </nav>
+    {createModal === "brand" && <BrandCreateModal onClose={() => setCreateModal(null)} />}
+    {createModal === "org" && <OrgCreateModal onClose={() => setCreateModal(null)} />}
+    </>
   );
 }

@@ -20,9 +20,9 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("shows sequential setup milestones instead of double-active loading steps", () => {
-    expect(src).toContain("Preparing your workspace");
-    expect(src).toContain("Adding your brand");
-    expect(src).toContain("Extracting your services");
+    expect(src).toContain("Setting up your account");
+    expect(src).toContain("Looking up your company");
+    expect(src).toContain("Finding what you offer");
     expect(src).toContain("setLoadStep(1)");
     expect(src).toContain("setLoadStep(2)");
     expect(src).toContain("const isActive = !isDone && i === loadStep");
@@ -47,6 +47,23 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("createPersona");
     expect(src).toContain("saveBrandProfileVersion");
     expect(src).toContain("createCampaign");
+  });
+
+  it("replaces the persona step with a natural-language audience step (human-service /suggest)", () => {
+    // The audience step calls human-service `/suggest` (via the gateway), shows
+    // candidate audiences, and persists the user's picks via createAudience.
+    expect(src).toContain("suggestAudiences");
+    expect(src).toContain("createAudience");
+    expect(src).toContain('step === "audiences"');
+    expect(src).toContain("Who do you want to reach?");
+    expect(src).toContain("Suggest audiences");
+    // The visible persona step is gone (audiences replaced it).
+    expect(src).not.toContain('step === "personas"');
+  });
+
+  it("pre-fills the audience prompt with a real brand ICP (brand-service /icp/suggest)", () => {
+    expect(src).toContain("suggestBrandIcp");
+    expect(src).toContain("Drafting your ideal customer profile");
   });
 
   it("asks which services to promote and persists them on the brand profile", () => {

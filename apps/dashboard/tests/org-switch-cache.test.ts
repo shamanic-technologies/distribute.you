@@ -35,10 +35,14 @@ describe("Org switch cross-org isolation framework", () => {
 
   // --- Client cache choke point: keyed remount -----------------------------
 
-  it("QueryProvider remounts under a key derived from the active org id", () => {
+  it("QueryProvider remounts under a key derived from the PER-TAB URL org (not the shared active org)", () => {
+    // Clerk's active org is browser-global and flips when another tab switches —
+    // keying the remount on it caused the cross-tab oscillation. Key on the URL org
+    // (per-tab, stable); fall back to the active org only off the /orgs/ tree.
     const content = read(queryProviderPath);
-    expect(content).toContain("useOrganization");
-    expect(content).toContain("organization?.id");
+    expect(content).toContain("usePathname");
+    expect(content).toContain("/orgs/");
+    expect(content).toContain("urlOrgId ?? organization?.id");
     expect(content).toContain("key={orgKey}");
   });
 

@@ -105,13 +105,13 @@
    BASE
    ═══════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 100%; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+html { font-size: 100%; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; overflow-x: clip; }
 body {
   font-family: 'Inter', system-ui, sans-serif;
   font-size: var(--fs-base);
   background: var(--bg);
   color: var(--text);
-  overflow-x: hidden;
+  overflow-x: clip;
   line-height: 1.6;
 }
 img    { max-width: 100%; display: block; }

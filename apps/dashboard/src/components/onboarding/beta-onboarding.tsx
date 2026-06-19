@@ -30,6 +30,10 @@ import {
   saveBrandSalesEconomics,
   suggestPersonas,
   createPersona,
+  suggestAudiences,
+  createAudience,
+  suggestBrandIcp,
+  type AudienceCandidate,
   getWorkflowProjection,
   getFeature,
   prefillFeatureInputs,
@@ -83,7 +87,7 @@ type Step =
   | "services"
   | "objective"
   | "rates"
-  | "personas"
+  | "audiences"
   | "consent"
   | "pricing"
   | "launching";
@@ -167,9 +171,9 @@ const AGENCY_BENEFITS = [
 
 const SERVICES_PROFILE_FIELDS = SALES_PROFILE_FIELDS.filter((f) => f.key === "services");
 const LOADING_STEPS = [
-  { id: "workspace", label: "Preparing your workspace" },
-  { id: "brand", label: "Adding your brand" },
-  { id: "services", label: "Extracting your services" },
+  { id: "workspace", label: "Setting up your account" },
+  { id: "brand", label: "Looking up your company" },
+  { id: "services", label: "Finding what you offer" },
 ];
 const LAUNCH_STEPS = [
   { id: "payment", label: "Confirming payment" },
@@ -674,7 +678,7 @@ export function BetaOnboarding() {
         optimizationGoal: optimizationGoalForOutcome(outcome),
       });
       projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
-      setStep("personas");
+      setStep("audiences");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your rates.");
     } finally {
@@ -1112,15 +1116,13 @@ export function BetaOnboarding() {
     );
   }
 
-  if (step === "personas") {
+  if (step === "audiences") {
     return (
-      <OnboardingPersonas
+      <OnboardingAudiences
+        brandId={brandId}
         brandDomain={domain}
         hostname={hostname}
-        personas={personaDrafts}
-        setPersonas={setPersonaDrafts}
-        personaSuggestionFailed={setupIssues.persona}
-        personaSeeding={personaSeeding}
+        services={services}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
       />
@@ -1130,7 +1132,7 @@ export function BetaOnboarding() {
   if (step === "consent") {
     return (
       <div className={card}>
-        <BackButton onClick={() => setStep("personas")} />
+        <BackButton onClick={() => setStep("audiences")} />
         <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-4 flex items-start gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
@@ -1352,6 +1354,325 @@ function OnboardingPersonas({
       </button>
       <NextButton onClick={onContinue} label="Continue" />
     </div>
+  );
+}
+
+// Natural-language → audiences. The user describes the people they want to
+// reach; human-service `/suggest` returns candidate audiences (apollo + apify,
+// live-counted); the user picks one or more, which are saved on the brand via
+// `createAudience`. This is the audience concept that replaces the persona step.
+function OnboardingAudiences({
+  brandId,
+  brandDomain,
+  hostname,
+  services,
+  onBack,
+  onContinue,
+}: {
+  brandId: string | null;
+  brandDomain: string | null;
+  hostname: string;
+  services: string[];
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const fallbackPrompt = services.length
+    ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
+    : "";
+  const [prompt, setPrompt] = useState("");
+  const [icpLoading, setIcpLoading] = useState(true);
+  const icpFetchedRef = useRef(false);
+  const [candidates, setCandidates] = useState<AudienceCandidate[] | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Pre-fill the prompt with a real brand ICP — brand-service writes one short,
+  // plain-language ICP line from the brand profile + sales economics. Falls back
+  // to a services-derived line if the fetch fails. Auto-fills once; never clobbers
+  // a prompt the user already edited.
+  useEffect(() => {
+    if (icpFetchedRef.current) return;
+    icpFetchedRef.current = true;
+    if (!brandId) {
+      setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+      setIcpLoading(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { icp } = await suggestBrandIcp(brandId);
+        setPrompt((cur) => (cur.trim() ? cur : icp.trim() || fallbackPrompt));
+      } catch (e) {
+        console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
+        setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+      } finally {
+        setIcpLoading(false);
+      }
+    })();
+  }, [brandId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function runSuggest() {
+    const nl = prompt.trim();
+    if (!brandId || !nl) {
+      setErr("Describe who you want to reach first.");
+      return;
+    }
+    setErr(null);
+    setLoading(true);
+    setCandidates(null);
+    setSelected(new Set());
+    try {
+      const res = await suggestAudiences(brandId, nl);
+      setCandidates(res.candidates);
+      if (res.candidates.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+    } catch (e) {
+      console.error("[dashboard] suggestAudiences failed:", e);
+      setErr("We couldn't generate audiences right now. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggle(i: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
+  async function saveAndContinue() {
+    if (!brandId || !candidates) {
+      onContinue();
+      return;
+    }
+    const picks = [...selected].map((i) => candidates[i]).filter((c): c is AudienceCandidate => Boolean(c));
+    if (picks.length === 0) {
+      setErr("Select at least one audience.");
+      return;
+    }
+    setErr(null);
+    setSaving(true);
+    try {
+      for (const c of picks) {
+        await createAudience({
+          brandId,
+          name: c.label,
+          provider: c.provider,
+          nlPrompt: prompt.trim(),
+          filters: c.filters,
+          apolloCount: c.provider === "apollo" ? c.count : null,
+          apifyCount: c.provider === "apify" ? c.count : null,
+        });
+      }
+      onContinue();
+    } catch (e) {
+      console.error("[dashboard] createAudience failed:", e);
+      setErr("We couldn't save your audiences. Try again.");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={card}>
+      <BackButton onClick={onBack} />
+      <BrandStepHeader domain={brandDomain} hostname={hostname} />
+      <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+      <p className="mt-2 text-gray-500">
+        Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
+      </p>
+
+      <div className="relative mt-5">
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+          disabled={icpLoading}
+          placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+          className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+        />
+        {icpLoading && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-500">
+            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+            Drafting your ideal customer profile…
+          </div>
+        )}
+      </div>
+      <button
+        onClick={runSuggest}
+        disabled={loading || icpLoading || !prompt.trim()}
+        className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {loading ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Generating…
+          </>
+        ) : (
+          <>
+            <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Regenerate" : "Suggest audiences"}
+          </>
+        )}
+      </button>
+
+      {err && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
+      )}
+
+      {candidates && candidates.length > 0 && (
+        <>
+          <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            {selected.size} of {candidates.length} selected
+          </div>
+          <div className="space-y-3">
+            {candidates.map((c, i) => (
+              <AudienceCandidateCard key={i} candidate={c} selected={selected.has(i)} onToggle={() => toggle(i)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <NextButton onClick={saveAndContinue} disabled={!candidates || selected.size === 0} busy={saving} label="Continue" />
+    </div>
+  );
+}
+
+// Category vocabulary borrowed from PersonaCard's FILTER_CATEGORIES so audience
+// cards read like the persona cards (colored, category-grouped pills).
+const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: string }[] = [
+  { keys: ["industries", "industry"], label: "Industry", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  { keys: ["roles", "seniority", "seniorities"], label: "Seniority", tone: "bg-purple-50 text-purple-700 border-purple-200" },
+  {
+    keys: ["titles", "personTitles", "jobTitles", "departments", "personDepartments"],
+    label: "Job titles",
+    tone: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  {
+    keys: ["employeeMin", "employeeMax", "employeeRange", "employeeRanges", "headcount"],
+    label: "Employee range",
+    tone: "bg-sky-50 text-sky-700 border-sky-200",
+  },
+  {
+    keys: ["revenueMin", "revenueMax", "revenueRange", "revenue"],
+    label: "Revenue",
+    tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  {
+    keys: ["location", "locations", "country", "countries", "region", "regions"],
+    label: "Location",
+    tone: "bg-rose-50 text-rose-700 border-rose-200",
+  },
+  { keys: ["technologies", "tech", "technology"], label: "Technology", tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  { keys: ["keywords", "keyword"], label: "Keywords", tone: "bg-gray-100 text-gray-600 border-gray-200" },
+];
+
+const NEUTRAL_TONE = "bg-gray-100 text-gray-600 border-gray-200";
+
+function humanizeFilterKey(key: string): string {
+  const s = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+type AudienceFilterGroup = { label: string; tone: string; values: string[] };
+
+// Group a loose PeopleSearchFilters object (apollo/apify use different keys) into
+// labeled, color-toned categories. Unknown keys still render (humanized + neutral),
+// so nothing is silently dropped.
+function audienceFilterGroups(filters: Record<string, unknown>): AudienceFilterGroup[] {
+  const order: string[] = [];
+  const byLabel = new Map<string, AudienceFilterGroup>();
+  const push = (label: string, tone: string, raw: unknown) => {
+    const value = String(raw ?? "").trim();
+    if (!value) return;
+    let g = byLabel.get(label);
+    if (!g) {
+      g = { label, tone, values: [] };
+      byLabel.set(label, g);
+      order.push(label);
+    }
+    if (!g.values.includes(value)) g.values.push(value);
+  };
+  for (const [key, val] of Object.entries(filters ?? {})) {
+    const cat = AUDIENCE_CATEGORY_MAP.find((c) => c.keys.includes(key));
+    const label = cat ? cat.label : humanizeFilterKey(key);
+    const tone = cat ? cat.tone : NEUTRAL_TONE;
+    if (Array.isArray(val)) {
+      for (const v of val) push(label, tone, v);
+    } else if (val != null && typeof val !== "object") {
+      // Scalar (e.g. employeeMin: 20) — prefix with its key so min/max stay distinct.
+      push(label, tone, `${humanizeFilterKey(key)}: ${val}`);
+    }
+  }
+  return order.map((l) => {
+    const g = byLabel.get(l)!;
+    return { ...g, values: g.values.slice(0, 10) };
+  });
+}
+
+function AudienceCandidateCard({
+  candidate,
+  selected,
+  onToggle,
+}: {
+  candidate: AudienceCandidate;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const groups = audienceFilterGroups(candidate.filters);
+  const invalid = Boolean(candidate.validationError) || candidate.count === 0;
+  return (
+    <button
+      onClick={onToggle}
+      className={`flex w-full items-start gap-3 rounded-xl border-2 p-5 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+    >
+      <span
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
+      >
+        {selected && <CheckIcon className="h-3 w-3" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900">{candidate.label}</span>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            {candidate.provider}
+          </span>
+          {!invalid && (
+            <span className="text-[11px] font-medium text-gray-400">~{candidate.count.toLocaleString()} matches</span>
+          )}
+        </span>
+        <span className="mt-1 block text-xs leading-5 text-gray-500">{candidate.rationale}</span>
+        {groups.length > 0 && (
+          <span className="mt-3 flex flex-col gap-2">
+            {groups.map((g) => (
+              <span key={g.label} className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  {g.label}
+                </span>
+                {g.values.map((v, j) => (
+                  <span
+                    key={j}
+                    className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${g.tone}`}
+                  >
+                    <span className="min-w-0 truncate">{v}</span>
+                  </span>
+                ))}
+              </span>
+            ))}
+          </span>
+        )}
+        {invalid && (
+          <span className="mt-2 block text-[11px] text-amber-600">
+            {candidate.validationError ? "Couldn't validate these filters." : "No live matches for these filters."}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 
