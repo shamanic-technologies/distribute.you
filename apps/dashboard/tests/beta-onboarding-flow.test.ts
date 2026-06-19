@@ -69,6 +69,19 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("Drafting your ideal customer profile");
   });
 
+  it("pre-warms the audience step during the loading screen (ICP + suggest in background)", () => {
+    // During hydrateOnboardingInBackground (loading screen) we draft the ICP AND
+    // fire the audience suggest, stash it in state, and feed it to the step as a
+    // `prefetch` prop so candidates are ready on arrival.
+    expect(src).toContain("setAudiencePrefetch");
+    expect(src).toContain("audience prewarm (ICP + suggest)");
+    expect(src).toContain("prefetch={audiencePrefetch}");
+    // The prewarm chains ICP -> suggestAudiences in the parent (background).
+    expect(src).toMatch(/suggestBrandIcp\(id\)[\s\S]{0,400}suggestAudiences\(id, prompt\)/);
+    // Fallback path (no prewarm) still auto-fires the suggest — zero click.
+    expect(src).toContain("void runSuggest(nl)");
+  });
+
   it("asks which services to promote and persists them on the brand profile", () => {
     expect(src).toContain("What services do you want to promote with us?");
     expect(src).toContain("services");
