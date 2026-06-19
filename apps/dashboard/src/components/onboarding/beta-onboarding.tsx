@@ -212,6 +212,14 @@ const nextPersonaId = () => `ob-persona-${++personaSeq}`;
 const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
 
+// A background pre-warm of the audience step, started during the loading screen.
+// Resolves the drafted ICP prompt and the suggested candidates (candidates null
+// when the ICP was empty or the suggest call failed — the step then falls back to
+// manual). One promise so the step can show a single "generating" state until ready.
+type AudiencePrefetch = {
+  promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null }>;
+};
+
 type PendingCheckoutLaunch = {
   version: 1;
   brandId: string;
@@ -370,6 +378,11 @@ export function BetaOnboarding() {
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(null);
   const [personaSeeding, setPersonaSeeding] = useState(false);
   const [personaDrafts, setPersonaDrafts] = useState<Persona[]>([]);
+  // Pre-warmed audience step. During the loading screen we draft the ICP prompt
+  // AND fire the audience suggest in the background, so the audience step opens
+  // with candidates already (or nearly) ready — zero wait, zero click. Stashed in
+  // state (not a ref) so a late-resolving prewarm still flows into the step as a prop.
+  const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
@@ -471,6 +484,25 @@ export function BetaOnboarding() {
       console.error("[dashboard] extractBrandFields (background) failed:", e);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
     });
+
+    // Pre-warm the audience step: now that the brand profile is extracted, draft
+    // the ICP prompt and fire the audience suggest in the background. By the time
+    // the user clicks through services/goal/rates to the audience step, candidates
+    // are ready. Fail-soft — a failed ICP/suggest resolves candidates:null and the
+    // step falls back to its own draft + manual "Suggest audiences".
+    const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null }> => {
+      try {
+        const { icp } = await suggestBrandIcp(id);
+        const prompt = icp.trim();
+        if (!prompt) return { prompt: "", candidates: null };
+        const { candidates } = await suggestAudiences(id, prompt);
+        return { prompt, candidates };
+      } catch (e) {
+        console.error("[dashboard] audience prewarm (ICP + suggest) failed:", e);
+        return { prompt: "", candidates: null };
+      }
+    })();
+    setAudiencePrefetch({ promise: audiencePrewarm });
 
     const [prof, econRes, proj, feat] = await Promise.all([
       getBrandProfile(id),
@@ -1123,6 +1155,7 @@ export function BetaOnboarding() {
         brandDomain={domain}
         hostname={hostname}
         services={services}
+        prefetch={audiencePrefetch}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
       />
@@ -1367,6 +1400,7 @@ function OnboardingAudiences({
   brandDomain,
   hostname,
   services,
+  prefetch,
   onBack,
   onContinue,
 }: {
@@ -1374,6 +1408,7 @@ function OnboardingAudiences({
   brandDomain: string | null;
   hostname: string;
   services: string[];
+  prefetch: AudiencePrefetch | null;
   onBack: () => void;
   onContinue: () => void;
 }) {
@@ -1390,33 +1425,60 @@ function OnboardingAudiences({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Pre-fill the prompt with a real brand ICP — brand-service writes one short,
-  // plain-language ICP line from the brand profile + sales economics. Falls back
-  // to a services-derived line if the fetch fails. Auto-fills once; never clobbers
-  // a prompt the user already edited.
+  // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
+  // the background during the loading screen) when present — zero wait, zero click.
+  // No pre-warm (fast click-through / no brandId yet) → draft the ICP here and
+  // AUTO-FIRE the suggest, so the step still needs no click. Runs once; never
+  // clobbers a prompt the user already edited.
   useEffect(() => {
     if (icpFetchedRef.current) return;
     icpFetchedRef.current = true;
+
+    if (prefetch) {
+      // Pre-warm in flight or already resolved — show drafting/generating until ready.
+      setIcpLoading(true);
+      setLoading(true);
+      prefetch.promise
+        .then(({ prompt: p, candidates: c }) => {
+          setPrompt((cur) => (cur.trim() ? cur : p || fallbackPrompt));
+          if (c) {
+            setCandidates(c);
+            if (c.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+          }
+        })
+        .catch((e) => {
+          console.error("[dashboard] audience prefetch adopt failed:", e);
+          setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+        })
+        .finally(() => {
+          setIcpLoading(false);
+          setLoading(false);
+        });
+      return;
+    }
+
     if (!brandId) {
       setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
       setIcpLoading(false);
       return;
     }
     (async () => {
+      let nl = fallbackPrompt;
       try {
         const { icp } = await suggestBrandIcp(brandId);
-        setPrompt((cur) => (cur.trim() ? cur : icp.trim() || fallbackPrompt));
+        nl = icp.trim() || fallbackPrompt;
       } catch (e) {
         console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
-        setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
       } finally {
         setIcpLoading(false);
       }
+      setPrompt((cur) => (cur.trim() ? cur : nl));
+      if (nl) void runSuggest(nl);
     })();
-  }, [brandId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function runSuggest() {
-    const nl = prompt.trim();
+  async function runSuggest(nlArg?: string) {
+    const nl = (nlArg ?? prompt).trim();
     if (!brandId || !nl) {
       setErr("Describe who you want to reach first.");
       return;
@@ -1498,7 +1560,7 @@ function OnboardingAudiences({
         )}
       </div>
       <button
-        onClick={runSuggest}
+        onClick={() => runSuggest()}
         disabled={loading || icpLoading || !prompt.trim()}
         className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
