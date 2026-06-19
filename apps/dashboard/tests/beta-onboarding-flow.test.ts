@@ -50,10 +50,13 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("replaces the persona step with a natural-language audience step (human-service /suggest)", () => {
-    // The audience step calls human-service `/suggest` (via the gateway), shows
-    // candidate audiences, and persists the user's picks via createAudience.
+    // The audience step calls human-service `/suggest` (via the gateway) and shows
+    // ONE candidate per audience; each candidate is already persisted at status
+    // "suggested", so selecting a pick ACTIVATES it via setAudienceStatus — NOT a
+    // re-save via createAudience.
     expect(src).toContain("suggestAudiences");
-    expect(src).toContain("createAudience");
+    expect(src).toContain('setAudienceStatus(c.audienceId, "active")');
+    expect(src).not.toContain("createAudience");
     expect(src).toContain('step === "audiences"');
     expect(src).toContain("Who do you want to reach?");
     expect(src).toContain("Suggest audiences");

@@ -1124,22 +1124,38 @@ export async function suggestPersonas(
 // brand-service persona. human-service OWNS these rows; the dashboard reaches
 // them through the api-service gateway, never brand-service.
 
+export type AudienceStatus = "suggested" | "active" | "paused" | "archived";
+
 export interface AudienceCandidate {
-  provider: "apollo" | "apify";
-  label: string;
+  // The PERSISTED audience row id — /suggest creates each candidate at status
+  // "suggested" (inactive). Activating a pick = PATCH this id's status to "active".
+  audienceId: string;
+  name: string;
   rationale: string;
+  provider: "apollo" | "apify";
   filters: Record<string, unknown>;
+  // The winning provider's free dry-run match count (0 = no valid non-empty filters).
   count: number;
+  status: AudienceStatus;
   validationError: string | null;
   truncated: boolean;
 }
 
+const AudienceStatusSchema = z.union([
+  z.literal("suggested"),
+  z.literal("active"),
+  z.literal("paused"),
+  z.literal("archived"),
+]);
+
 const AudienceCandidateSchema = z.object({
-  provider: z.union([z.literal("apollo"), z.literal("apify")]),
-  label: z.string(),
+  audienceId: z.string(),
+  name: z.string(),
   rationale: z.string(),
+  provider: z.union([z.literal("apollo"), z.literal("apify")]),
   filters: z.record(z.string(), z.unknown()),
   count: z.number(),
+  status: AudienceStatusSchema,
   validationError: z.string().nullable(),
   truncated: z.boolean(),
 });
@@ -1149,9 +1165,11 @@ const SuggestAudiencesResponseSchema = z.object({
 });
 
 /**
- * POST /orgs/audiences/suggest — natural-language prompt → candidate audiences
- * (apollo + apify, LLM-generated, live dry-run counted). Does NOT persist; the
- * user picks one or more, which are then saved via `createAudience`.
+ * POST /orgs/audiences/suggest — natural-language prompt → candidate audiences.
+ * ONE candidate per audience (the winning provider, larger free dry-run count).
+ * Each candidate is PERSISTED at status "suggested" (inactive); the user picks
+ * one or more, which are ACTIVATED via `setAudienceStatus(audienceId, "active")`.
+ * Unpicked candidates remain suggested/inactive.
  */
 export async function suggestAudiences(
   brandId: string,
@@ -1178,6 +1196,8 @@ export interface AudienceWire {
   name: string;
   nlPrompt: string | null;
   provider: string | null;
+  status: AudienceStatus;
+  source: string | null;
   filters: Record<string, unknown> | null;
   apolloCount: number | null;
   apifyCount: number | null;
@@ -1194,6 +1214,8 @@ const AudienceSchema = z.object({
   name: z.string(),
   nlPrompt: z.string().nullable(),
   provider: z.string().nullable(),
+  status: AudienceStatusSchema,
+  source: z.string().nullable(),
   filters: z.record(z.string(), z.unknown()).nullable(),
   apolloCount: z.number().nullable(),
   apifyCount: z.number().nullable(),
@@ -1205,24 +1227,25 @@ const AudienceSchema = z.object({
 
 const AudienceResponseSchema = z.object({ audience: AudienceSchema });
 
-/** POST /orgs/audiences — persist a chosen candidate audience on the brand. */
-export async function createAudience(
-  input: {
-    brandId: string;
-    name: string;
-    provider?: string | null;
-    nlPrompt?: string | null;
-    filters?: Record<string, unknown> | null;
-    apolloCount?: number | null;
-    apifyCount?: number | null;
-  },
+/**
+ * PATCH /orgs/audiences/:audienceId/status — change an audience's lifecycle status
+ * (mutates only status). Used to ACTIVATE a suggested candidate ("suggested" →
+ * "active") so it's selected for the brand; unpicked candidates stay suggested.
+ */
+export async function setAudienceStatus(
+  audienceId: string,
+  status: AudienceStatus,
   token?: string,
 ): Promise<{ audience: AudienceWire }> {
-  const raw = await apiCall<unknown>(`/orgs/audiences`, { token, method: "POST", body: input });
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/status`, {
+    token,
+    method: "PATCH",
+    body: { status },
+  });
   const parsed = AudienceResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] createAudience: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] createAudience: invalid response shape");
+    console.error("[dashboard] setAudienceStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] setAudienceStatus: invalid response shape");
   }
   return parsed.data;
 }

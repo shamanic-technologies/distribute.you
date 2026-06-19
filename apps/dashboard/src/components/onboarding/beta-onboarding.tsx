@@ -31,7 +31,7 @@ import {
   suggestPersonas,
   createPersona,
   suggestAudiences,
-  createAudience,
+  setAudienceStatus,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
@@ -1358,9 +1358,10 @@ function OnboardingPersonas({
 }
 
 // Natural-language → audiences. The user describes the people they want to
-// reach; human-service `/suggest` returns candidate audiences (apollo + apify,
-// live-counted); the user picks one or more, which are saved on the brand via
-// `createAudience`. This is the audience concept that replaces the persona step.
+// reach; human-service `/suggest` returns ONE candidate per audience (the winning
+// provider, live-counted), each already persisted at status "suggested". The user
+// picks one or more, which are ACTIVATED via `setAudienceStatus(audienceId,
+// "active")`. This is the audience concept that replaces the persona step.
 function OnboardingAudiences({
   brandId,
   brandDomain,
@@ -1458,20 +1459,14 @@ function OnboardingAudiences({
     setErr(null);
     setSaving(true);
     try {
+      // Each candidate is already a persisted audience row (status "suggested").
+      // Selecting = ACTIVATE it for the brand; unpicked candidates stay suggested.
       for (const c of picks) {
-        await createAudience({
-          brandId,
-          name: c.label,
-          provider: c.provider,
-          nlPrompt: prompt.trim(),
-          filters: c.filters,
-          apolloCount: c.provider === "apollo" ? c.count : null,
-          apifyCount: c.provider === "apify" ? c.count : null,
-        });
+        await setAudienceStatus(c.audienceId, "active");
       }
       onContinue();
     } catch (e) {
-      console.error("[dashboard] createAudience failed:", e);
+      console.error("[dashboard] setAudienceStatus (activate) failed:", e);
       setErr("We couldn't save your audiences. Try again.");
       setSaving(false);
     }
@@ -1638,7 +1633,7 @@ function AudienceCandidateCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">{candidate.label}</span>
+          <span className="text-sm font-semibold text-gray-900">{candidate.name}</span>
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
             {candidate.provider}
           </span>
