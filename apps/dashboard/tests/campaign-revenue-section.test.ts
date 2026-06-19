@@ -46,6 +46,6 @@ describe("RevenueCostSummary — replaceable bottom card", () => {
   it("keeps Top cost sources as the generic fallback only", () => {
     expect(card).toContain("Top cost sources");
     expect(overview).toContain("costBottomCard=");
-    expect(overview).toContain("<TopPersonasCard");
+    expect(overview).toContain("<TopAudiencesCard");
   });
 });

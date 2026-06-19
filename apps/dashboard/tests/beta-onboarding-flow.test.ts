@@ -4,7 +4,7 @@ import * as path from "path";
 
 // Source-substring guard for the beta guided onboarding. Pins the load-bearing
 // wiring (live endpoints, services step, goal-driven rate, outcome-count budget,
-// wallet setup, draft-only onboarding personas, agency consent) so a refactor that
+// wallet setup, natural-language audience step, agency consent) so a refactor that
 // silently drops a real fetch / the launch is caught. Beta-gated via isBetaEmail.
 describe("Beta onboarding guided flow", () => {
   const src = fs.readFileSync(
@@ -15,7 +15,6 @@ describe("Beta onboarding guided flow", () => {
   it("fetches real data during the loading step (no fake)", () => {
     expect(src).toContain("getBrandProfile");
     expect(src).toContain("getSalesEconomicsEffective");
-    expect(src).toContain("suggestPersonas");
     expect(src).toContain("getWorkflowProjection");
   });
 
@@ -42,11 +41,14 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain('v: "~$90"');
   });
 
-  it("persists rates, personas, profile and launches a real campaign", () => {
+  it("persists rates and profile and launches a real campaign", () => {
     expect(src).toContain("saveBrandSalesEconomics");
-    expect(src).toContain("createPersona");
     expect(src).toContain("saveBrandProfileVersion");
     expect(src).toContain("createCampaign");
+    // Audiences are NOT persisted at launch (activated at the audience step via
+    // setAudienceStatus); no brand-service persona create at launch.
+    expect(src).not.toContain("createPersona");
+    expect(src).not.toContain("persistPersonaDraftsForLaunch");
   });
 
   it("replaces the persona step with a natural-language audience step (human-service /suggest)", () => {
@@ -94,14 +96,6 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain('extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing" })');
     expect(src).toContain("hydrateOnboardingInBackground");
     expect(src).toContain("extractBrandFields([id], SALES_PROFILE_FIELDS)");
-  });
-
-  it("starts persona drafting independently from full profile hydration", () => {
-    expect(src).toContain("const personaSeed = seedOnboardingPersonaFromBrandInfo(id);");
-    expect(src.indexOf("const personaSeed = seedOnboardingPersonaFromBrandInfo(id);")).toBeLessThan(
-      src.indexOf("extractBrandFields([id], SALES_PROFILE_FIELDS)"),
-    );
-    expect(src).not.toContain("async function hydrateOnboardingInBackground(id: string): Promise<void> {\n    setPersonaSeeding(true);");
   });
 
   it("offers the two sales goals and prices in the chosen unit", () => {
@@ -154,25 +148,23 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("formatRateInput(e.target.value)");
   });
 
-  it("keeps onboarding audiences draft-only until launch", () => {
-    expect(src).toContain("Who do you want to sell to?");
-    expect(src).toContain("onboarding-only drafts");
-    expect(src).toContain("setPersonaDrafts");
-    expect(src).toContain("persistPersonaDraftsForLaunch");
-    expect(src).toContain("personas:");
-    expect(src).toContain("onChange={(name, filters) => updateDraft(persona.id, name, filters)}");
-    expect(src).toContain("showLifecycleActions={false}");
-    expect(src).not.toContain("EditWithAIChat");
+  it("onboarding has no brand-service persona path (audiences only)", () => {
+    // The whole brand-service persona path is gone — onboarding creates audiences
+    // via human-service /suggest + setAudienceStatus, nothing else.
+    expect(src).not.toContain("setPersonaDrafts");
+    expect(src).not.toContain("persistPersonaDraftsForLaunch");
+    expect(src).not.toContain("seedOnboardingPersonaFromBrandInfo");
+    expect(src).not.toContain("OnboardingPersonas");
     expect(src).not.toContain("listPersonas");
+    expect(src).not.toContain("createPersona");
     expect(src).not.toContain("setPersonaStatus");
+    expect(src).not.toContain("suggestPersonas");
     expect(src).not.toContain('configKey="persona-editor"');
-    expect(src).not.toContain("suppressPaymentRequired: true");
-    expect(src).not.toContain("pause, resume and archive your audiences");
+    expect(src).not.toContain("/brands/${id}/personas");
   });
 
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {
-    expect(src).toContain("seedOnboardingPersonaFromBrandInfo");
-    expect(src).toContain("suggest/create persona (onboarding seed) failed");
+    expect(src).toContain("audience prewarm (ICP + suggest)");
     expect(src).toContain("hydrateOnboardingInBackground");
     expect(src).toContain("extractBrandFields failed");
     expect(src).toContain("GENERIC_AI_SETUP_ERROR");

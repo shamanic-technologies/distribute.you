@@ -15,7 +15,7 @@ import {
   getBrandPause,
   getFeaturePipelineActivity,
   fetchFeaturePersonaStats,
-  listPersonas,
+  listAudiences,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
   type WorkflowProjectionResponse,
@@ -30,7 +30,7 @@ import {
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { TopPersonasCard } from "@/components/revenue/top-personas-card";
+import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -246,11 +246,12 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
-  const { data: personasData } = useAuthQuery(
-    ["personas", brandId, "active"],
-    () => listPersonas(brandId, "active"),
+  const { data: audiencesData } = useAuthQuery(
+    ["audiences", brandId],
+    () => listAudiences(brandId),
     { enabled, ...pollOptions },
   );
+  const activeAudiences = audiencesData?.audiences.filter((a) => a.status === "active");
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total/today spend (runs-service) are separate cold chains — gate each on its
@@ -265,7 +266,7 @@ export default function BrandOverviewPage() {
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
   const personaStatsRevealed = useCoordinatedReveal([
     personaStatsData !== undefined,
-    personasData !== undefined,
+    audiencesData !== undefined,
   ]);
   const outcomeRevealed = useCoordinatedReveal([
     budgetData !== undefined,
@@ -344,9 +345,9 @@ export default function BrandOverviewPage() {
         basePath={basePath}
         headerAction={<BrandStatusControl brandId={brandId} />}
         costBottomCard={
-          <TopPersonasCard
+          <TopAudiencesCard
             data={personaStatsRevealed ? personaStatsData : undefined}
-            personas={personaStatsRevealed ? personasData?.personas : undefined}
+            audiences={personaStatsRevealed ? activeAudiences : undefined}
             pending={!personaStatsRevealed}
             metric={personaStatsMetric}
           />

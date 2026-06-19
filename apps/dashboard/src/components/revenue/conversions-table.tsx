@@ -7,7 +7,6 @@ import type {
   ConversionEvent,
 } from "@/lib/revenue-view";
 import { usePaginated, TablePager } from "@/components/table-pagination";
-import { SEED_PERSONAS } from "@/lib/mock-personas";
 import type { ConversionDetail } from "@/components/revenue/conversion-detail-panel";
 
 // ── formatting ──────────────────────────────────────────────────────────────
@@ -185,11 +184,7 @@ function orgDetail(o: ConversionOrg, orgName: string): ConversionDetail {
     date: o.mostAdvancedDate,
   };
 }
-function leadDetail(
-  l: ConversionLead,
-  name: string,
-  persona?: { name: string; dot: string },
-): ConversionDetail {
+function leadDetail(l: ConversionLead, name: string): ConversionDetail {
   return {
     kind: "lead",
     title: name,
@@ -202,8 +197,6 @@ function leadDetail(
     expectedRevenueUsd: l.expectedRevenueUsd,
     date: l.date,
     probabilityPct: l.conversionProbabilityPct ?? null,
-    persona: persona?.name ?? null,
-    personaDot: persona?.dot ?? null,
   };
 }
 
@@ -305,92 +298,6 @@ export function LeadConversionsTable({
             </td>
             <td className="px-4 py-3">
               <ChannelTags tags={l.tags} />
-            </td>
-            <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
-              {formatUsd(l.expectedRevenueUsd)}
-            </td>
-            <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
-              {formatDate(l.date)}
-            </td>
-          </tr>
-        );
-      })}
-    </TableShell>
-  );
-}
-
-// ── Audiences tab (Signups page) ──────────────────────────────────────────────
-// MOCKUP: assign each lead an audience by a stable hash of its id, so the
-// org × user rows group under "who they look like". Replace with real persona
-// attribution once the backend tags leads.
-const PERSONA_POOL = (() => {
-  const active = SEED_PERSONAS.filter((p) => p.status === "active");
-  return active.length ? active : SEED_PERSONAS;
-})();
-const PERSONA_DOT = ["bg-indigo-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-violet-500", "bg-cyan-500"];
-function hashStr(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-function personaForLead(leadId: string): { name: string; dot: string } {
-  const i = hashStr(leadId) % PERSONA_POOL.length;
-  return { name: PERSONA_POOL[i].name, dot: PERSONA_DOT[i % PERSONA_DOT.length] };
-}
-
-/** Audience-grouped lead conversions — Signups "Audiences" tab. Each row is an
- *  org × user (same heads as the Leads tab) with a leading audience column. */
-export function PersonaConversionsTable({
-  leads,
-  onSelect,
-}: {
-  leads: ConversionLead[];
-  onSelect?: (d: ConversionDetail) => void;
-}) {
-  const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(leads);
-  return (
-    <TableShell
-      headers={["Audience", "Lead", "Conversions", "Expected revenue", "Latest activity"]}
-      empty="No lead conversions yet."
-      rows={leads.length}
-      footer={
-        <TablePager page={page} pageCount={pageCount} from={from} to={to} total={total} onPage={setPage} />
-      }
-    >
-      {pageItems.map((l) => {
-        const name = fullName(l.firstName, l.lastName);
-        const persona = personaForLead(l.leadId);
-        return (
-          <tr
-            key={l.leadId}
-            className={clickableRow(onSelect)}
-            onClick={onSelect ? () => onSelect(leadDetail(l, name, persona)) : undefined}
-          >
-            <td className="px-4 py-3">
-              <span className="inline-flex items-center gap-2 text-xs font-medium text-gray-700">
-                <span className={`w-2 h-2 rounded-full ${persona.dot}`} />
-                {persona.name}
-              </span>
-            </td>
-            <td className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Avatar photoUrl={l.photoUrl} name={name} />
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-800 truncate">{name}</p>
-                  <p className="text-xs text-gray-400 truncate flex items-center gap-1">
-                    <OrgLogo logoUrl={l.orgLogoUrl} domain={l.orgDomain} name={l.orgName ?? "—"} />
-                    <span className="truncate">{l.orgName ?? "—"}</span>
-                  </p>
-                </div>
-              </div>
-            </td>
-            <td className="px-4 py-3 text-right">
-              <div className="flex justify-end">
-                <ChannelTags tags={l.tags} />
-              </div>
             </td>
             <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
               {formatUsd(l.expectedRevenueUsd)}
