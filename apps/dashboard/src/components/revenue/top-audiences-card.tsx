@@ -133,13 +133,15 @@ export function TopAudiencesCard({
             ? activeMetric === "cpc"
               ? `${item.row.evidence.websiteClicks.toLocaleString("en-US")} clicks`
               : `${item.row.evidence.positiveReplies.toLocaleString("en-US")} replies`
-            : "-";
+            : null;
           return (
             <div key={key} className="flex items-center gap-2">
               <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-gray-700">{name}</span>
-                <span className="block truncate text-[11px] text-gray-400">{count}</span>
+                {count && (
+                  <span className="block truncate text-[11px] text-gray-400">{count}</span>
+                )}
               </span>
               <span className="text-sm font-medium text-gray-800 tabular-nums">{formatCents(value)}</span>
             </div>
