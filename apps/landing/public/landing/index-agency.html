@@ -244,11 +244,11 @@
 
     /* ═══ Tweet wall ═══ */
     .s-tweets { padding: 5rem 0 4rem; }
-    .tweets-track-wrap { display: flex; flex-direction: column; gap: 2rem; margin-top: 2.5rem; overflow: visible; }
-    .tweets-track { overflow: visible; }
+    .tweets-track-wrap { display: flex; flex-direction: column; gap: 2rem; margin-top: 2.5rem; }
+    .tweets-track { overflow: hidden; }
     .tweets-inner { display: flex; gap: 1.5rem; width: max-content; will-change: transform; }
     .tweet-card {
-      background: oklch(99.8% 0.002 264);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--r-lg);
       padding: 1.25rem 1.5rem;
@@ -257,7 +257,7 @@
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
-      box-shadow: 0 2px 8px oklch(0% 0 0 / 0.07), 0 8px 28px oklch(0% 0 0 / 0.06);
+      box-shadow: var(--shadow-card);
     }
     .tweet-hd { display: flex; justify-content: space-between; align-items: flex-start; }
     .tweet-av-wrap { display: flex; align-items: center; gap: 0.6rem; }
@@ -265,6 +265,7 @@
       width: 36px; height: 36px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       font-size: 0.68rem; font-weight: 700; flex-shrink: 0;
+      object-fit: cover; background: var(--accent-dim);
     }
     .tweet-name   { font-size: var(--fs-sm); font-weight: 700; color: var(--text); line-height: 1.2; }
     .tweet-handle { font-size: var(--fs-xs); color: var(--muted); }
@@ -294,7 +295,7 @@
       </div>
 
       <h1 class="t-hero a2">
-        10 new client meetings.<br>Every month. On autopilot.
+        Your next 10 clients<br>land in your inbox.
       </h1>
 
       <p class="hero-sub a3">
@@ -540,8 +541,8 @@
     <div class="stats-card">
       <div class="stats-inner">
         <div class="stat">
-          <span class="stat-val accent">8</span>
-          <span class="stat-lbl">new client meetings per month on average</span>
+          <span class="stat-val accent">3–12</span>
+          <span class="stat-lbl">new client meetings per week</span>
         </div>
         <div class="stat">
           <span class="stat-val">$90</span>
@@ -822,7 +823,7 @@ Marcus</span>
         </div>
         <div>
           <div class="for-stat">3–12</div>
-          <div class="for-stat-lbl">new client meetings per month</div>
+          <div class="for-stat-lbl">new client meetings per week</div>
         </div>
         <h3 class="for-title">Marketing and growth agencies</h3>
         <p class="for-desc">Run distribute for your own business development and for your clients at the same time. Each campaign has its own dashboard, budget, and reporting. You stay in control of every spend.</p>
@@ -1115,98 +1116,90 @@ Marcus</span>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent)">TN</div>
-              <div><div class="tweet-name">Tom Noel</div><div class="tweet-handle">@tnoel_agency</div></div>
+              <img class="tweet-av" src="/landing/avatars/john-davidson.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">John Davidson</div><div class="tweet-handle">@johndavidsonco</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">3 weeks in. 8 client meetings, 2 closed. We're a 4-person web agency. Old pipeline was referrals and LinkedIn posts. This is completely different.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 84</div>
+          <p class="tweet-body">our sdr cost 6k/mo and booked maybe 8 meetings. @distribute_you booked 23 last month for a fraction of that. not sure what to do with that info but here we are</p>
         </div>
 
         <!-- Card 2 -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple)">DW</div>
-              <div><div class="tweet-name">Dan Whitfield</div><div class="tweet-handle">@danwhitfield</div></div>
+              <img class="tweet-av" src="/landing/avatars/sarah-mitchell.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Sarah Mitchell</div><div class="tweet-handle">@sarahmitchell_</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">was very skeptical tbh. paid the $25 to try it. booked a meeting day 3. just added $200/mo to scale. math is math.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 211</div>
+          <p class="tweet-body">Distribute's reply filtering alone is worth it. open my inbox and it's just people who actually want to talk. forgot what that felt like</p>
         </div>
 
         <!-- Card 3 -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--green-dim);border:1px solid var(--green-brd);color:var(--green)">AP</div>
-              <div><div class="tweet-name">Alex Park</div><div class="tweet-handle">@alexpark_ops</div></div>
+              <img class="tweet-av" src="/landing/avatars/marcus-chen.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Marcus Chen</div><div class="tweet-handle">@marcuschen_b2b</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">tried hiring an SDR twice. both times $5k/mo for 2 meetings a month. distribute gave us 6 meetings this month. annoyed we waited this long.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 178</div>
+          <p class="tweet-body">ok i assumed @distribute_you was another overhyped AI tool. set it up in ~20 min, had a meeting booked 2 days later. still mildly suspicious tbh but the meetings are real</p>
         </div>
 
         <!-- Card 4 -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent)">JS</div>
-              <div><div class="tweet-name">Jamie Sorensen</div><div class="tweet-handle">@jamiesorensen_</div></div>
+              <img class="tweet-av" src="/landing/avatars/agency-founders.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Agency Founders</div><div class="tweet-handle">@agencyfounders</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">ran it for a client's consulting firm. they booked 5 meetings in 2 weeks. now i'm selling this as part of my retainer package. accidental upsell.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 93</div>
+          <p class="tweet-body">We resell Distribute.you to clients now — each gets their own dashboard and campaign, we run everything from one login. Quietly became ~$2k/mo of recurring margin we didn't have. Not glamorous. Just works.</p>
         </div>
 
         <!-- Duplicate set for seamless loop -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent)">TN</div>
-              <div><div class="tweet-name">Tom Noel</div><div class="tweet-handle">@tnoel_agency</div></div>
+              <img class="tweet-av" src="/landing/avatars/john-davidson.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">John Davidson</div><div class="tweet-handle">@johndavidsonco</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">3 weeks in. 8 client meetings, 2 closed. We're a 4-person web agency. Old pipeline was referrals and LinkedIn posts. This is completely different.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 84</div>
+          <p class="tweet-body">our sdr cost 6k/mo and booked maybe 8 meetings. @distribute_you booked 23 last month for a fraction of that. not sure what to do with that info but here we are</p>
         </div>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple)">DW</div>
-              <div><div class="tweet-name">Dan Whitfield</div><div class="tweet-handle">@danwhitfield</div></div>
+              <img class="tweet-av" src="/landing/avatars/sarah-mitchell.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Sarah Mitchell</div><div class="tweet-handle">@sarahmitchell_</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">was very skeptical tbh. paid the $25 to try it. booked a meeting day 3. just added $200/mo to scale. math is math.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 211</div>
+          <p class="tweet-body">Distribute's reply filtering alone is worth it. open my inbox and it's just people who actually want to talk. forgot what that felt like</p>
         </div>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--green-dim);border:1px solid var(--green-brd);color:var(--green)">AP</div>
-              <div><div class="tweet-name">Alex Park</div><div class="tweet-handle">@alexpark_ops</div></div>
+              <img class="tweet-av" src="/landing/avatars/marcus-chen.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Marcus Chen</div><div class="tweet-handle">@marcuschen_b2b</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">tried hiring an SDR twice. both times $5k/mo for 2 meetings a month. distribute gave us 6 meetings this month. annoyed we waited this long.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 178</div>
+          <p class="tweet-body">ok i assumed @distribute_you was another overhyped AI tool. set it up in ~20 min, had a meeting booked 2 days later. still mildly suspicious tbh but the meetings are real</p>
         </div>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent)">JS</div>
-              <div><div class="tweet-name">Jamie Sorensen</div><div class="tweet-handle">@jamiesorensen_</div></div>
+              <img class="tweet-av" src="/landing/avatars/agency-founders.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Agency Founders</div><div class="tweet-handle">@agencyfounders</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">ran it for a client's consulting firm. they booked 5 meetings in 2 weeks. now i'm selling this as part of my retainer package. accidental upsell.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 93</div>
+          <p class="tweet-body">We resell Distribute.you to clients now — each gets their own dashboard and campaign, we run everything from one login. Quietly became ~$2k/mo of recurring margin we didn't have. Not glamorous. Just works.</p>
         </div>
 
       </div>
@@ -1220,98 +1213,90 @@ Marcus</span>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple)">MT</div>
-              <div><div class="tweet-name">Mike Tao</div><div class="tweet-handle">@miketao_b2b</div></div>
+              <img class="tweet-av" src="/landing/avatars/steph-vo.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Steph Vo</div><div class="tweet-handle">@stephvo_growth</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">setup took 18 minutes. i timed it. first reply 31 hours later. both numbers still seem insane to me</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 143</div>
+          <p class="tweet-body">Distribute replaced my freelancer AND the 3 tools i was duct-taping together. wild</p>
         </div>
 
         <!-- Card 6 -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--green-dim);border:1px solid var(--green-brd);color:var(--green)">RO</div>
-              <div><div class="tweet-name">Rachel Osei</div><div class="tweet-handle">@rachelosei_</div></div>
+              <img class="tweet-av" src="/landing/avatars/kai-lambert.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Kai Lambert</div><div class="tweet-handle">@kai_lambert</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">was paying $800/mo in tools (apollo + outreach + warmup) and still managing everything manually. this is $140/mo and zero management.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 201</div>
+          <p class="tweet-body">4 meetings in week one with @distribute_you?? two already turned into paying clients. genuinely annoyed i didn't try it 6 months ago</p>
         </div>
 
         <!-- Card 7 -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent)">CV</div>
-              <div><div class="tweet-name">Chris Vu</div><div class="tweet-handle">@chrisvu_gtm</div></div>
+              <img class="tweet-av" src="/landing/avatars/james-hartley.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">James Hartley</div><div class="tweet-handle">@jameshart_mktg</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">had zero outbound before this. now 4-6 meetings a month. small IT consulting firm. completely changed how we grow.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 67</div>
+          <p class="tweet-body">Was running Apollo + Instantly + a VA to glue it together. Spent more time maintaining the stack than selling. Moved it all to distribute.you last month. Less work, more replies. That's the whole review.</p>
         </div>
 
         <!-- Card 8 -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple)">LM</div>
-              <div><div class="tweet-name">Lisa Marin</div><div class="tweet-handle">@lisamarin__</div></div>
+              <img class="tweet-av" src="/landing/avatars/elle-foster.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Elle Foster</div><div class="tweet-handle">@ellefoster_co</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">the reply filter alone is worth it. i used to dread checking email after a campaign. now i only see people who actually want to talk.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 88</div>
+          <p class="tweet-body">you give Distribute your site and it figures out who to email. no lists, no scraping, no csv hell. i log in twice a week to see who replied, that's it</p>
         </div>
 
         <!-- Duplicate set for seamless loop -->
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple)">MT</div>
-              <div><div class="tweet-name">Mike Tao</div><div class="tweet-handle">@miketao_b2b</div></div>
+              <img class="tweet-av" src="/landing/avatars/steph-vo.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Steph Vo</div><div class="tweet-handle">@stephvo_growth</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">setup took 18 minutes. i timed it. first reply 31 hours later. both numbers still seem insane to me</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 143</div>
+          <p class="tweet-body">Distribute replaced my freelancer AND the 3 tools i was duct-taping together. wild</p>
         </div>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--green-dim);border:1px solid var(--green-brd);color:var(--green)">RO</div>
-              <div><div class="tweet-name">Rachel Osei</div><div class="tweet-handle">@rachelosei_</div></div>
+              <img class="tweet-av" src="/landing/avatars/kai-lambert.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Kai Lambert</div><div class="tweet-handle">@kai_lambert</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">was paying $800/mo in tools (apollo + outreach + warmup) and still managing everything manually. this is $140/mo and zero management.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 201</div>
+          <p class="tweet-body">4 meetings in week one with @distribute_you?? two already turned into paying clients. genuinely annoyed i didn't try it 6 months ago</p>
         </div>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--accent-dim);border:1px solid var(--accent-brd);color:var(--accent)">CV</div>
-              <div><div class="tweet-name">Chris Vu</div><div class="tweet-handle">@chrisvu_gtm</div></div>
+              <img class="tweet-av" src="/landing/avatars/james-hartley.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">James Hartley</div><div class="tweet-handle">@jameshart_mktg</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">had zero outbound before this. now 4-6 meetings a month. small IT consulting firm. completely changed how we grow.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 67</div>
+          <p class="tweet-body">Was running Apollo + Instantly + a VA to glue it together. Spent more time maintaining the stack than selling. Moved it all to distribute.you last month. Less work, more replies. That's the whole review.</p>
         </div>
         <div class="tweet-card">
           <div class="tweet-hd">
             <div class="tweet-av-wrap">
-              <div class="tweet-av" style="background:var(--purple-dim);border:1px solid var(--purple-brd);color:var(--purple)">LM</div>
-              <div><div class="tweet-name">Lisa Marin</div><div class="tweet-handle">@lisamarin__</div></div>
+              <img class="tweet-av" src="/landing/avatars/elle-foster.jpg" alt="" loading="lazy" width="36" height="36">
+              <div><div class="tweet-name">Elle Foster</div><div class="tweet-handle">@ellefoster_co</div></div>
             </div>
             <svg class="tweet-xi" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
-          <p class="tweet-body">the reply filter alone is worth it. i used to dread checking email after a campaign. now i only see people who actually want to talk.</p>
-          <div class="tweet-ft"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 88</div>
+          <p class="tweet-body">you give Distribute your site and it figures out who to email. no lists, no scraping, no csv hell. i log in twice a week to see who replied, that's it</p>
         </div>
 
       </div>
