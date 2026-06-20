@@ -2,9 +2,9 @@
 
 import { Skeleton } from "@/components/skeleton";
 import type {
-  FeaturePersonaStatsResponse,
-  FeaturePersonaStatsSortMetric,
-  FeaturePersonaStatsRow,
+  FeatureAudienceStatsResponse,
+  FeatureAudienceStatsSortMetric,
+  FeatureAudienceStatsRow,
   AudienceWire,
 } from "@/lib/api";
 
@@ -19,11 +19,11 @@ function formatCents(cents: number | null): string {
   })}`;
 }
 
-function metricLabel(metric: FeaturePersonaStatsSortMetric): string {
+function metricLabel(metric: FeatureAudienceStatsSortMetric): string {
   return metric === "cpc" ? "CPC" : "CPPR";
 }
 
-function metricInfo(metric: FeaturePersonaStatsSortMetric): string {
+function metricInfo(metric: FeatureAudienceStatsSortMetric): string {
   return metric === "cpc"
     ? "Cost per click — audience-scoped spend divided by website clicks. Lower is better."
     : "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.";
@@ -78,20 +78,20 @@ export function TopAudiencesCard({
   pending = false,
   metric,
 }: {
-  data?: FeaturePersonaStatsResponse;
+  data?: FeatureAudienceStatsResponse;
   audiences?: AudienceWire[];
   pending?: boolean;
-  metric: FeaturePersonaStatsSortMetric;
+  metric: FeatureAudienceStatsSortMetric;
 }) {
-  const statsRows = (data?.personas ?? []).slice(0, 3);
+  const statsRows = (data?.audiences ?? []).slice(0, 3);
   const seenAudienceIds = new Set(
-    statsRows.flatMap((row) => [row.customerProfileId, row.persona.id]),
+    statsRows.flatMap((row) => [row.audienceId, row.audience.id]),
   );
   const fallbackRows = audiences
     .filter((audience) => !seenAudienceIds.has(audience.id))
     .slice(0, Math.max(0, 3 - statsRows.length));
   const rows: Array<
-    | { kind: "stats"; row: FeaturePersonaStatsRow }
+    | { kind: "stats"; row: FeatureAudienceStatsRow }
     | { kind: "audience"; audience: AudienceWire }
   > = [
     ...statsRows.map((row) => ({ kind: "stats" as const, row })),
@@ -121,9 +121,9 @@ export function TopAudiencesCard({
       ) : (
         rows.map((item) => {
           const isStats = item.kind === "stats";
-          const name = isStats ? item.row.persona.name : item.audience.name;
-          const key = isStats ? item.row.customerProfileId : item.audience.id;
-          const avatarUrl = isStats ? item.row.persona.avatarUrl : null;
+          const name = isStats ? item.row.audience.name : item.audience.name;
+          const key = isStats ? item.row.audienceId : item.audience.id;
+          const avatarUrl = isStats ? item.row.audience.avatarUrl : null;
           const value = isStats
             ? activeMetric === "cpc"
               ? item.row.metrics.cpcCents
@@ -133,13 +133,15 @@ export function TopAudiencesCard({
             ? activeMetric === "cpc"
               ? `${item.row.evidence.websiteClicks.toLocaleString("en-US")} clicks`
               : `${item.row.evidence.positiveReplies.toLocaleString("en-US")} replies`
-            : "-";
+            : null;
           return (
             <div key={key} className="flex items-center gap-2">
               <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-gray-700">{name}</span>
-                <span className="block truncate text-[11px] text-gray-400">{count}</span>
+                {count && (
+                  <span className="block truncate text-[11px] text-gray-400">{count}</span>
+                )}
               </span>
               <span className="text-sm font-medium text-gray-800 tabular-nums">{formatCents(value)}</span>
             </div>
