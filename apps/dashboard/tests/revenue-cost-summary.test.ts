@@ -66,17 +66,17 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
   it("Overview replaces the bottom cost-source card with real top audiences", () => {
     const api = read("lib/api.ts");
     const audiencesCard = read("components/revenue/top-audiences-card.tsx");
-    expect(overview).toContain("fetchFeaturePersonaStats");
+    expect(overview).toContain("fetchFeatureAudienceStats");
     expect(overview).toContain("listAudiences(brandId)");
-    expect(overview).toContain("featurePersonaStats");
+    expect(overview).toContain("featureAudienceStats");
     expect(overview).toContain("<TopAudiencesCard");
-    expect(overview).toContain("audiences={personaStatsRevealed ? activeAudiences : undefined}");
+    expect(overview).toContain("audiences={audienceStatsRevealed ? activeAudiences : undefined}");
     expect(overview).toContain("costBottomCard=");
     // The bottom card no longer reads brand-service personas.
     expect(overview).not.toContain("listPersonas");
-    // persona-stats is a features-service contract (stat evidence), kept as-is.
-    expect(api).toContain("export async function fetchFeaturePersonaStats");
-    expect(api).toContain("`/features/${featureSlug}/persona-stats?");
+    // audience-stats is a features-service contract (stat evidence).
+    expect(api).toContain("export async function fetchFeatureAudienceStats");
+    expect(api).toContain("`/features/${featureSlug}/audience-stats?");
     expect(audiencesCard).toContain("Top 3 audiences");
     expect(audiencesCard).toContain("fallbackRows");
     expect(audiencesCard).toContain("row.metrics.cpcCents");
