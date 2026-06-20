@@ -14,7 +14,7 @@ import {
   getBrandDailyBudget,
   getBrandPause,
   getFeaturePipelineActivity,
-  fetchFeaturePersonaStats,
+  fetchFeatureAudienceStats,
   listAudiences,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
@@ -146,8 +146,8 @@ export default function BrandOverviewPage() {
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
   const visitToMeetingPct =
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
-  const personaStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
-  const personaStatsMetric = personaStatsGoal === "signup" ? "cpc" : "cppr";
+  const audienceStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
+  const audienceStatsMetric = audienceStatsGoal === "signup" ? "cpc" : "cppr";
 
   const { data: budgetData } = useAuthQuery(
     ["brandDailyBudget", brandId],
@@ -234,13 +234,13 @@ export default function BrandOverviewPage() {
     optimizationGoal,
   ]);
 
-  // Real persona-level cost evidence from features-service. This replaces the
-  // old provider-cost-source list; no dashboard-side mock/hash persona split.
-  const { data: personaStatsData } = useAuthQuery(
-    ["featurePersonaStats", featureSlug, brandId, personaStatsGoal],
-    () => fetchFeaturePersonaStats(featureSlug, {
+  // Real audience-level cost evidence from features-service. This replaces the
+  // old provider-cost-source list; no dashboard-side mock/hash audience split.
+  const { data: audienceStatsData } = useAuthQuery(
+    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
+    () => fetchFeatureAudienceStats(featureSlug, {
       brandId,
-      goal: personaStatsGoal,
+      goal: audienceStatsGoal,
       limit: 3,
     }),
     { enabled, ...pollOptions },
@@ -264,8 +264,8 @@ export default function BrandOverviewPage() {
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const todayCostRevealed = useCoordinatedReveal([todayCostData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
-  const personaStatsRevealed = useCoordinatedReveal([
-    personaStatsData !== undefined,
+  const audienceStatsRevealed = useCoordinatedReveal([
+    audienceStatsData !== undefined,
     audiencesData !== undefined,
   ]);
   const outcomeRevealed = useCoordinatedReveal([
@@ -346,10 +346,10 @@ export default function BrandOverviewPage() {
         headerAction={<BrandStatusControl brandId={brandId} />}
         costBottomCard={
           <TopAudiencesCard
-            data={personaStatsRevealed ? personaStatsData : undefined}
-            audiences={personaStatsRevealed ? activeAudiences : undefined}
-            pending={!personaStatsRevealed}
-            metric={personaStatsMetric}
+            data={audienceStatsRevealed ? audienceStatsData : undefined}
+            audiences={audienceStatsRevealed ? activeAudiences : undefined}
+            pending={!audienceStatsRevealed}
+            metric={audienceStatsMetric}
           />
         }
         topRow={

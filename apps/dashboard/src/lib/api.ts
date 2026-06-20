@@ -1487,17 +1487,17 @@ export interface PipelineActivityResponse {
   summary: PipelineActivitySummary;
 }
 
-export type FeaturePersonaStatsGoal = "signup" | "meetingBooked" | "purchase";
-export type FeaturePersonaStatsSortMetric = "cpc" | "cppr";
+export type FeatureAudienceStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeatureAudienceStatsSortMetric = "cpc" | "cppr";
 
-export interface FeaturePersonaStatsRow {
-  customerProfileId: string;
+export interface FeatureAudienceStatsRow {
+  audienceId: string;
   brandProfileId: string | null;
-  persona: {
+  audience: {
     id: string;
     name: string;
     status: "active" | "paused" | "archived";
-    filters: Record<string, string[]>;
+    filters: Record<string, unknown> | null;
     avatarUrl?: string | null;
   };
   evidence: {
@@ -1515,23 +1515,23 @@ export interface FeaturePersonaStatsRow {
   };
 }
 
-export interface FeaturePersonaStatsResponse {
+export interface FeatureAudienceStatsResponse {
   featureSlug: string;
   brandId: string;
-  goal: FeaturePersonaStatsGoal;
+  goal: FeatureAudienceStatsGoal;
   brandProfileId: string | null;
-  sortMetric: FeaturePersonaStatsSortMetric;
-  personas: FeaturePersonaStatsRow[];
+  sortMetric: FeatureAudienceStatsSortMetric;
+  audiences: FeatureAudienceStatsRow[];
 }
 
-const FeaturePersonaStatsRowSchema = z.object({
-  customerProfileId: z.string(),
+const FeatureAudienceStatsRowSchema = z.object({
+  audienceId: z.string(),
   brandProfileId: z.string().nullable(),
-  persona: z.object({
+  audience: z.object({
     id: z.string(),
     name: z.string(),
     status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
-    filters: z.record(z.string(), z.array(z.string())),
+    filters: z.record(z.string(), z.unknown()).nullable(),
     avatarUrl: z.string().nullable().optional(),
   }),
   evidence: z.object({
@@ -1549,13 +1549,13 @@ const FeaturePersonaStatsRowSchema = z.object({
   }),
 });
 
-const FeaturePersonaStatsResponseSchema = z.object({
+const FeatureAudienceStatsResponseSchema = z.object({
   featureSlug: z.string(),
   brandId: z.string(),
   goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
   brandProfileId: z.string().nullable(),
   sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
-  personas: z.array(FeaturePersonaStatsRowSchema),
+  audiences: z.array(FeatureAudienceStatsRowSchema),
 });
 
 /** GET /features — list all features */
@@ -1611,23 +1611,23 @@ export async function fetchFeatureStats(
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
-/** GET /features/:featureSlug/persona-stats — real persona-level cost/outcome evidence. */
-export async function fetchFeaturePersonaStats(
+/** GET /features/:featureSlug/audience-stats — real audience-level cost/outcome evidence. */
+export async function fetchFeatureAudienceStats(
   featureSlug: string,
-  params: { brandId: string; goal: FeaturePersonaStatsGoal; brandProfileId?: string; limit?: number },
+  params: { brandId: string; goal: FeatureAudienceStatsGoal; brandProfileId?: string; limit?: number },
   token?: string,
-): Promise<FeaturePersonaStatsResponse> {
+): Promise<FeatureAudienceStatsResponse> {
   const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/persona-stats?${query.toString()}`, { token });
-  const parsed = FeaturePersonaStatsResponseSchema.safeParse(raw);
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/audience-stats?${query.toString()}`, { token });
+  const parsed = FeatureAudienceStatsResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] fetchFeaturePersonaStats: response shape mismatch", {
+    console.error("[dashboard] fetchFeatureAudienceStats: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] fetchFeaturePersonaStats: invalid response shape");
+    throw new Error("[dashboard] fetchFeatureAudienceStats: invalid response shape");
   }
   return parsed.data;
 }
