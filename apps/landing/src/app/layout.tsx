@@ -1,34 +1,32 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PROD_URLS } from "@/lib/env-urls";
-import {
-  BRAND_LOGO_URL,
-  DEFAULT_OG_IMAGE_PATH,
-  SITE_DESCRIPTION,
-  SITE_NAME,
-  SITE_TITLE,
-  SITE_URL,
-  TWITTER_HANDLE,
-  organizationJsonLd,
-} from "@/lib/seo";
+
+const SITE_URL = PROD_URLS.landing;
+const SITE_NAME = "distribute";
+const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $25 welcome credits, no subscription.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: SITE_TITLE,
+    default: "distribute - Sales cold email outreach done for you",
     template: "%s | distribute",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "AI cold email done for you",
-    "cold email outreach",
-    "solo founder outreach",
-    "micro-SaaS outreach",
+    "client acquisition on autopilot",
+    "sales cold email outreach",
+    "cold email automation",
+    "done for you cold email",
+    "AI sales outreach",
+    "qualified reply automation",
+    "indie hacker outreach",
     "cold email dashboard",
     "AI reply qualification",
     "pay-as-you-go cold email",
-    "pay-as-you-go cold email",
+    "no subscription cold email",
     "distribute.you",
+    "sales automation",
   ],
   authors: [{ name: "distribute" }],
   creator: "distribute",
@@ -43,23 +41,23 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
+    title: "distribute - Sales cold email outreach done for you",
+    description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
     images: [
       {
-        url: DEFAULT_OG_IMAGE_PATH,
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: SITE_TITLE,
+        alt: "distribute - Sales cold email outreach done for you",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    images: [DEFAULT_OG_IMAGE_PATH],
-    creator: TWITTER_HANDLE,
+    title: "distribute - Sales cold email outreach done for you",
+    description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
+    images: ["/og-image.jpg"],
+    creator: "@distribute_you",
   },
   robots: {
     index: true,
@@ -71,6 +69,11 @@ export const metadata: Metadata = {
       "max-image-preview": "large",
       "max-snippet": -1,
     },
+  },
+  icons: {
+    icon: "/favicon.jpg",
+    shortcut: "/favicon.jpg",
+    apple: "/favicon.jpg",
   },
   alternates: {
     canonical: SITE_URL,
@@ -85,23 +88,19 @@ const jsonLd = {
   operatingSystem: "Web",
   description: SITE_DESCRIPTION,
   url: SITE_URL,
-  logo: BRAND_LOGO_URL,
-  image: BRAND_LOGO_URL,
   offers: [
     {
       "@type": "Offer",
-      name: "$25 free credits",
+      name: "Free credits",
       price: "0",
       priceCurrency: "USD",
-      description: "$25 free credits. Cancel anytime. Launch in 5 minutes.",
+      description: "$25 welcome credits for sales cold email outreach",
     },
   ],
   provider: {
     "@type": "Organization",
     name: "distribute",
     url: SITE_URL,
-    logo: BRAND_LOGO_URL,
-    image: BRAND_LOGO_URL,
     sameAs: [
       PROD_URLS.github,
       PROD_URLS.twitter,
@@ -109,9 +108,22 @@ const jsonLd = {
   },
 };
 
-const orgJsonLd = organizationJsonLd(
-  "AI outreach automation for solo founders and micro-SaaS builders. Drop a URL, set a budget, get qualified replies.",
-);
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "distribute",
+  url: SITE_URL,
+  description: "Sales cold email outreach done for you",
+  sameAs: [
+    PROD_URLS.github,
+    PROD_URLS.twitter,
+  ],
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "support@distribute.you",
+    contactType: "customer service",
+  },
+};
 
 const websiteJsonLd = {
   "@context": "https://schema.org",
@@ -119,39 +131,34 @@ const websiteJsonLd = {
   name: "distribute",
   url: SITE_URL,
   description: SITE_DESCRIPTION,
-  publisher: {
-    "@type": "Organization",
-    name: "distribute",
-    logo: BRAND_LOGO_URL,
-  },
 };
 
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "From your URL to 100 sales meetings",
-  description: "Three steps. No setup. No software to learn. No SDR to hire.",
+  name: "How to launch sales cold email outreach with distribute",
+  description: "Drop a URL, set a daily budget, and let distribute find prospects, write cold emails, send sequences, qualify replies, and forward buyers to Gmail.",
   step: [
     {
       "@type": "HowToStep",
       position: 1,
-      name: "Paste your website URL",
-      text: "We read your product. Figure out who your buyers are, and write your campaign. You write nothing. You log in, paste a link, set a budget. Done.",
+      name: "Drop a URL",
+      text: "Create an account and add your product URL. We analyze your offer, tone, proof, and ideal customer profile.",
     },
     {
       "@type": "HowToStep",
       position: 2,
-      name: "We email your buyers",
-      text: "Pre-warmed inboxes start sending the same day. Every email is personalized to the person and the company. No spam folder. No domain setup. Just buyers in their inbox.",
+      name: "Set a daily budget",
+      text: "Set a sales outreach budget before launch. distribute builds the list, writes the sequence, and sends from managed infrastructure.",
     },
     {
       "@type": "HowToStep",
       position: 3,
-      name: "Buyer replies land in Gmail",
-      text: "AI reads every reply. Only real buyers reach your inbox, ready to answer. You read 5 emails a day instead of 200. The other 195 never bother you.",
+      name: "We send, qualify, forward",
+      text: "AI qualifies every reply, and only buyer conversations land in your Gmail. Cost per qualified reply is tracked live.",
     },
   ],
-  totalTime: "PT5M",
+  totalTime: "PT2M",
 };
 
 export default function RootLayout({
@@ -160,13 +167,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
-        {/* Google Analytics + Google Ads (conversion linker auto-on; conversions fire in the dashboard) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('dt');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}})()`,
+          }}
+        />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YJHNGLEJPP');gtag('config','AW-18233267088');`,
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YJHNGLEJPP');`,
           }}
         />
         <script
@@ -180,7 +191,7 @@ export default function RootLayout({
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         <script
           type="application/ld+json"
@@ -191,9 +202,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
         />
       </head>
-      <body className="antialiased">
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
