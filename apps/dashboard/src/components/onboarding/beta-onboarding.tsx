@@ -324,8 +324,11 @@ export function BetaOnboarding() {
   const { createOrganization, setActive } = useOrganizationList();
   const { session } = useSession();
   const forceNew = searchParams.get("new") === "1";
+  // Entered from an in-app "New brand" / "New org" button (vs a fresh signup) —
+  // skip the welcome hero and land straight on the URL step. Same flow otherwise.
+  const fromAdd = searchParams.get("from") === "add";
 
-  const [step, setStep] = useState<Step>("welcome");
+  const [step, setStep] = useState<Step>(fromAdd ? "url" : "welcome");
   const [url, setUrl] = useState(searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
   const [setupIssues, setSetupIssues] = useState({ extraction: false });

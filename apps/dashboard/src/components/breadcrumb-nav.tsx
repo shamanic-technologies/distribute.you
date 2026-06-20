@@ -12,7 +12,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
-import { BrandCreateModal, OrgCreateModal } from "./create-flows";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
 interface Brand {
@@ -108,7 +107,6 @@ export function BreadcrumbNav() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   // Self-serve create flows (distinct from /onboarding): "brand" adds a brand to
   // the active org; "org" creates a new org + its first brand.
-  const [createModal, setCreateModal] = useState<"brand" | "org" | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   // Per-URL-org display label cache (name/avatar) — keeps the breadcrumb from
   // flipping when Clerk's shared active org momentarily points at another tab's org.
@@ -381,7 +379,7 @@ export function BreadcrumbNav() {
             )}
             <div className="border-t border-gray-100 mt-1 pt-1">
               <button
-                onClick={() => { setOpenDropdown(null); setCreateModal("org"); }}
+                onClick={() => { setOpenDropdown(null); router.push("/onboarding?new=1&from=add"); }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition"
               >
                 <div className="w-6 h-6 border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0">
@@ -436,7 +434,7 @@ export function BreadcrumbNav() {
                 )}
                 <div className="border-t border-gray-100 mt-1 pt-1">
                   <button
-                    onClick={() => { setOpenDropdown(null); setCreateModal("brand"); }}
+                    onClick={() => { setOpenDropdown(null); router.push("/onboarding?from=add"); }}
                     className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2 transition"
                   >
                     <div className="w-[18px] h-[18px] border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0">
@@ -483,8 +481,6 @@ export function BreadcrumbNav() {
         </>
       )}
     </nav>
-    {createModal === "brand" && <BrandCreateModal onClose={() => setCreateModal(null)} />}
-    {createModal === "org" && <OrgCreateModal onClose={() => setCreateModal(null)} />}
     </>
   );
 }
