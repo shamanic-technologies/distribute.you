@@ -19,11 +19,12 @@ describe("Org overview page empty state", () => {
     expect(content).toContain("Set up your first brand to get started");
   });
 
-  it("should open the in-app add-brand modal for the CTA, not redirect to onboarding", () => {
-    // The empty-org first-brand CTA now opens the self-serve BrandCreateModal
-    // (adds a brand to the active org) instead of bouncing to /onboarding.
-    expect(content).toContain("BrandCreateModal");
-    expect(content).toContain("setAddBrandOpen(true)");
-    expect(content).not.toContain("/onboarding?new=1");
+  it("should route the add-brand CTA through the full onboarding flow", () => {
+    // The add-brand CTAs now run the same onboarding flow as signup (reusing the
+    // active org), entered via ?from=add to skip the intro — not a stripped-down
+    // modal. See create-buttons-onboarding.
+    expect(content).toContain("/onboarding?from=add");
+    expect(content).not.toContain("BrandCreateModal");
+    expect(content).not.toContain("setAddBrandOpen");
   });
 });
