@@ -4,7 +4,7 @@ import * as path from "path";
 
 // Source-substring guard for the beta guided onboarding. Pins the load-bearing
 // wiring (live endpoints, services step, goal-driven rate, outcome-count budget,
-// wallet setup, draft-only onboarding personas, agency consent) so a refactor that
+// wallet setup, natural-language audience step, agency consent) so a refactor that
 // silently drops a real fetch / the launch is caught. Beta-gated via isBetaEmail.
 describe("Beta onboarding guided flow", () => {
   const src = fs.readFileSync(
@@ -15,14 +15,13 @@ describe("Beta onboarding guided flow", () => {
   it("fetches real data during the loading step (no fake)", () => {
     expect(src).toContain("getBrandProfile");
     expect(src).toContain("getSalesEconomicsEffective");
-    expect(src).toContain("suggestPersonas");
     expect(src).toContain("getWorkflowProjection");
   });
 
   it("shows sequential setup milestones instead of double-active loading steps", () => {
-    expect(src).toContain("Preparing your workspace");
-    expect(src).toContain("Adding your brand");
-    expect(src).toContain("Extracting your services");
+    expect(src).toContain("Setting up your account");
+    expect(src).toContain("Looking up your company");
+    expect(src).toContain("Finding what you offer");
     expect(src).toContain("setLoadStep(1)");
     expect(src).toContain("setLoadStep(2)");
     expect(src).toContain("const isActive = !isDone && i === loadStep");
@@ -42,11 +41,47 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain('v: "~$90"');
   });
 
-  it("persists rates, personas, profile and launches a real campaign", () => {
+  it("persists rates and profile and launches a real campaign", () => {
     expect(src).toContain("saveBrandSalesEconomics");
-    expect(src).toContain("createPersona");
     expect(src).toContain("saveBrandProfileVersion");
     expect(src).toContain("createCampaign");
+    // Audiences are NOT persisted at launch (activated at the audience step via
+    // setAudienceStatus); no brand-service persona create at launch.
+    expect(src).not.toContain("createPersona");
+    expect(src).not.toContain("persistPersonaDraftsForLaunch");
+  });
+
+  it("replaces the persona step with a natural-language audience step (human-service /suggest)", () => {
+    // The audience step calls human-service `/suggest` (via the gateway) and shows
+    // ONE candidate per audience; each candidate is already persisted at status
+    // "suggested", so selecting a pick ACTIVATES it via setAudienceStatus — NOT a
+    // re-save via createAudience.
+    expect(src).toContain("suggestAudiences");
+    expect(src).toContain('setAudienceStatus(c.audienceId, "active")');
+    expect(src).not.toContain("createAudience");
+    expect(src).toContain('step === "audiences"');
+    expect(src).toContain("Who do you want to reach?");
+    expect(src).toContain("Suggest audiences");
+    // The visible persona step is gone (audiences replaced it).
+    expect(src).not.toContain('step === "personas"');
+  });
+
+  it("pre-fills the audience prompt with a real brand ICP (brand-service /icp/suggest)", () => {
+    expect(src).toContain("suggestBrandIcp");
+    expect(src).toContain("Drafting your ideal customer profile");
+  });
+
+  it("pre-warms the audience step during the loading screen (ICP + suggest in background)", () => {
+    // During hydrateOnboardingInBackground (loading screen) we draft the ICP AND
+    // fire the audience suggest, stash it in state, and feed it to the step as a
+    // `prefetch` prop so candidates are ready on arrival.
+    expect(src).toContain("setAudiencePrefetch");
+    expect(src).toContain("audience prewarm (ICP + suggest)");
+    expect(src).toContain("prefetch={audiencePrefetch}");
+    // The prewarm chains ICP -> suggestAudiences in the parent (background).
+    expect(src).toMatch(/suggestBrandIcp\(id\)[\s\S]{0,400}suggestAudiences\(id, prompt\)/);
+    // Fallback path (no prewarm) still auto-fires the suggest — zero click.
+    expect(src).toContain("void runSuggest(nl)");
   });
 
   it("asks which services to promote and persists them on the brand profile", () => {
@@ -61,14 +96,6 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain('extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing" })');
     expect(src).toContain("hydrateOnboardingInBackground");
     expect(src).toContain("extractBrandFields([id], SALES_PROFILE_FIELDS)");
-  });
-
-  it("starts persona drafting independently from full profile hydration", () => {
-    expect(src).toContain("const personaSeed = seedOnboardingPersonaFromBrandInfo(id);");
-    expect(src.indexOf("const personaSeed = seedOnboardingPersonaFromBrandInfo(id);")).toBeLessThan(
-      src.indexOf("extractBrandFields([id], SALES_PROFILE_FIELDS)"),
-    );
-    expect(src).not.toContain("async function hydrateOnboardingInBackground(id: string): Promise<void> {\n    setPersonaSeeding(true);");
   });
 
   it("offers the two sales goals and prices in the chosen unit", () => {
@@ -121,25 +148,23 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("formatRateInput(e.target.value)");
   });
 
-  it("keeps onboarding audiences draft-only until launch", () => {
-    expect(src).toContain("Who do you want to sell to?");
-    expect(src).toContain("onboarding-only drafts");
-    expect(src).toContain("setPersonaDrafts");
-    expect(src).toContain("persistPersonaDraftsForLaunch");
-    expect(src).toContain("personas:");
-    expect(src).toContain("onChange={(name, filters) => updateDraft(persona.id, name, filters)}");
-    expect(src).toContain("showLifecycleActions={false}");
-    expect(src).not.toContain("EditWithAIChat");
+  it("onboarding has no brand-service persona path (audiences only)", () => {
+    // The whole brand-service persona path is gone — onboarding creates audiences
+    // via human-service /suggest + setAudienceStatus, nothing else.
+    expect(src).not.toContain("setPersonaDrafts");
+    expect(src).not.toContain("persistPersonaDraftsForLaunch");
+    expect(src).not.toContain("seedOnboardingPersonaFromBrandInfo");
+    expect(src).not.toContain("OnboardingPersonas");
     expect(src).not.toContain("listPersonas");
+    expect(src).not.toContain("createPersona");
     expect(src).not.toContain("setPersonaStatus");
+    expect(src).not.toContain("suggestPersonas");
     expect(src).not.toContain('configKey="persona-editor"');
-    expect(src).not.toContain("suppressPaymentRequired: true");
-    expect(src).not.toContain("pause, resume and archive your audiences");
+    expect(src).not.toContain("/brands/${id}/personas");
   });
 
   it("does not fail the whole onboarding when optional AI suggestions 502", () => {
-    expect(src).toContain("seedOnboardingPersonaFromBrandInfo");
-    expect(src).toContain("suggest/create persona (onboarding seed) failed");
+    expect(src).toContain("audience prewarm (ICP + suggest)");
     expect(src).toContain("hydrateOnboardingInBackground");
     expect(src).toContain("extractBrandFields failed");
     expect(src).toContain("GENERIC_AI_SETUP_ERROR");

@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { useOrganization } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PERSIST_MAX_AGE_MS,
@@ -100,7 +101,18 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   // ClerkProvider lives in `(authed)/layout.tsx`, an ancestor of every consumer
   // of this provider (dashboard + onboarding), so `useOrganization` is safe.
   const { organization } = useOrganization();
-  const orgId = organization?.id ?? null;
+  const pathname = usePathname();
+
+  // PER-TAB org key. The cache MUST be scoped to the org THIS TAB is viewing —
+  // the URL `/orgs/[id]`, NOT Clerk's active org. Clerk's active org is a SHARED,
+  // browser-global value (the session cookie is a singleton) that flips when ANOTHER
+  // tab switches org (Clerk re-reads the cookie on focus). Keying the remount on
+  // `useOrganization()` therefore remounted this whole subtree every time a sibling
+  // tab switched — the "org oscillates between tabs" storm. The URL is the per-tab
+  // source of truth and never flips cross-tab, so key on it. Fall back to the active
+  // org only OFF the /orgs/ tree (e.g. onboarding, no URL org). (#1948)
+  const urlOrgId = pathname?.match(/\/orgs\/([^/?#]+)/)?.[1] ?? null;
+  const orgId = urlOrgId ?? organization?.id ?? null;
 
   // Pause all interval polling when the tab is hidden OR the user is idle.
   // Installed once on the global focusManager (singleton) — survives org-switch

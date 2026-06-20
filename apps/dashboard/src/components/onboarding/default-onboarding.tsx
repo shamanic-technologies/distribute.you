@@ -69,8 +69,13 @@ export function DefaultOnboarding() {
   // url step — booking + type are skipped for this fast path (type defaults to
   // "company"; the user can still go Back to change it).
   const prefillUrl = (searchParams.get("url") ?? "").trim();
-  const [step, setStep] = useState<Step>(prefillUrl ? "url-input" : "booking-intro");
-  const [accountType, setAccountType] = useState<AccountType | null>(prefillUrl ? "company" : null);
+  // Entered from an in-app "New brand" / "New org" button (vs a fresh signup) —
+  // skip the booking + type-selection intro and land on the url step, same fast
+  // path as the ?url= prefill (type defaults to "company", changeable via Back).
+  const fromAdd = searchParams.get("from") === "add";
+  const skipIntro = !!prefillUrl || fromAdd;
+  const [step, setStep] = useState<Step>(skipIntro ? "url-input" : "booking-intro");
+  const [accountType, setAccountType] = useState<AccountType | null>(skipIntro ? "company" : null);
   const [url, setUrl] = useState(prefillUrl);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);

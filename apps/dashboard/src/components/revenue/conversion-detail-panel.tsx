@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { Avatar, OrgLogo, ChannelTags, fmtUsd, fmtDate } from "@/components/revenue/conversions-table";
 
-/** Normalized row detail shown in the slide-over (works for org / lead / persona rows). */
+/** Normalized row detail shown in the slide-over (works for org / lead rows). */
 export interface ConversionDetail {
   kind: "org" | "lead";
   title: string;
@@ -13,8 +13,6 @@ export interface ConversionDetail {
   logoUrl?: string | null;
   orgDomain?: string | null;
   orgName?: string | null;
-  persona?: string | null;
-  personaDot?: string | null;
   tags: string[];
   expectedRevenueUsd: number;
   date: string | null;
@@ -75,14 +73,6 @@ export function ConversionDetailPanel({
           </button>
         </div>
 
-        {detail.persona && (
-          <Row label="Audience">
-            <span className="inline-flex items-center gap-2 font-medium">
-              <span className={`w-2 h-2 rounded-full ${detail.personaDot ?? "bg-gray-400"}`} />
-              {detail.persona}
-            </span>
-          </Row>
-        )}
         {detail.kind === "lead" && detail.orgName && (
           <Row label="Company">
             <span className="inline-flex items-center gap-2">

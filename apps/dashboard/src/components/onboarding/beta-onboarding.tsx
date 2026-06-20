@@ -14,7 +14,6 @@ import {
   CreditCardIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
-  PlusIcon,
   ShieldCheckIcon,
   TrophyIcon,
   XMarkIcon,
@@ -28,8 +27,10 @@ import {
   saveBrandProfileVersion,
   getSalesEconomicsEffective,
   saveBrandSalesEconomics,
-  suggestPersonas,
-  createPersona,
+  suggestAudiences,
+  setAudienceStatus,
+  suggestBrandIcp,
+  type AudienceCandidate,
   getWorkflowProjection,
   getFeature,
   prefillFeatureInputs,
@@ -42,7 +43,6 @@ import {
   type BrandOptimizationGoal,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
-  type PersonaDraft,
   type FeatureInput,
 } from "@/lib/api";
 import {
@@ -51,16 +51,14 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
-import { type Filters, type Persona } from "@/lib/mock-personas";
-import { PersonaCard, capWords } from "@/components/personas/persona-card";
 import { BrandLogo } from "@/components/brand-logo";
 
 /**
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
  * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
- * runs WHILE the brand is created AND its profile / services / personas / economics /
+ * runs WHILE the brand is created AND its profile / services / economics /
  * pricing projection are fetched for real → services to promote → sales goal →
- * conversion rates → review the AI-proposed persona as an onboarding-only draft
+ * conversion rates → describe audiences in plain language (human-service suggest)
  * → agency-channel consent → outcome-count budget → launches a real campaign.
  * Everything is wired to live endpoints.
  */
@@ -83,7 +81,7 @@ type Step =
   | "services"
   | "objective"
   | "rates"
-  | "personas"
+  | "audiences"
   | "consent"
   | "pricing"
   | "launching";
@@ -167,9 +165,9 @@ const AGENCY_BENEFITS = [
 
 const SERVICES_PROFILE_FIELDS = SALES_PROFILE_FIELDS.filter((f) => f.key === "services");
 const LOADING_STEPS = [
-  { id: "workspace", label: "Preparing your workspace" },
-  { id: "brand", label: "Adding your brand" },
-  { id: "services", label: "Extracting your services" },
+  { id: "workspace", label: "Setting up your account" },
+  { id: "brand", label: "Looking up your company" },
+  { id: "services", label: "Finding what you offer" },
 ];
 const LAUNCH_STEPS = [
   { id: "payment", label: "Confirming payment" },
@@ -202,11 +200,17 @@ const TAG_TONES = [
 // Outcome-count budget tiers (per month). "Other" is a custom count.
 const COUNT_TIERS = [5, 25, 125];
 
-let personaSeq = 0;
-const nextPersonaId = () => `ob-persona-${++personaSeq}`;
 
 const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
+
+// A background pre-warm of the audience step, started during the loading screen.
+// Resolves the drafted ICP prompt and the suggested candidates (candidates null
+// when the ICP was empty or the suggest call failed — the step then falls back to
+// manual). One promise so the step can show a single "generating" state until ready.
+type AudiencePrefetch = {
+  promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null }>;
+};
 
 type PendingCheckoutLaunch = {
   version: 1;
@@ -223,13 +227,7 @@ type PendingCheckoutLaunch = {
   featureInputs?: Record<string, string>;
   profile?: Record<string, string | string[]>;
   services?: string[];
-  personas?: PersonaLaunchDraft[];
   createdAt: string;
-};
-
-type PersonaLaunchDraft = {
-  name: string;
-  filters: Filters;
 };
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -243,23 +241,6 @@ function isStringRecord(value: unknown): value is Record<string, string> {
 
 function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
-}
-
-function isPersonaLaunchDraftList(value: unknown): value is PersonaLaunchDraft[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (item) =>
-        !!item &&
-        typeof item === "object" &&
-        !Array.isArray(item) &&
-        typeof (item as { name?: unknown }).name === "string" &&
-        !!(item as { filters?: unknown }).filters &&
-        typeof (item as { filters?: unknown }).filters === "object" &&
-        !Array.isArray((item as { filters?: unknown }).filters) &&
-        Object.values((item as { filters: Record<string, unknown> }).filters).every(isStringList),
-    )
-  );
 }
 
 function isProfileRecord(value: unknown): value is Record<string, string | string[]> {
@@ -292,7 +273,6 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
     (parsed.services !== undefined && !isStringList(parsed.services)) ||
-    (parsed.personas !== undefined && !isPersonaLaunchDraftList(parsed.personas)) ||
     typeof parsed.createdAt !== "string"
   ) {
     throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");
@@ -344,11 +324,14 @@ export function BetaOnboarding() {
   const { createOrganization, setActive } = useOrganizationList();
   const { session } = useSession();
   const forceNew = searchParams.get("new") === "1";
+  // Entered from an in-app "New brand" / "New org" button (vs a fresh signup) —
+  // skip the welcome hero and land straight on the URL step. Same flow otherwise.
+  const fromAdd = searchParams.get("from") === "add";
 
-  const [step, setStep] = useState<Step>("welcome");
+  const [step, setStep] = useState<Step>(fromAdd ? "url" : "welcome");
   const [url, setUrl] = useState(searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [setupIssues, setSetupIssues] = useState({ extraction: false, persona: false });
+  const [setupIssues, setSetupIssues] = useState({ extraction: false });
   const [busy, setBusy] = useState(false);
 
   const [outcome, setOutcome] = useState<Outcome>("signups");
@@ -364,8 +347,11 @@ export function BetaOnboarding() {
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
   const [customCount, setCustomCount] = useState("");
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(null);
-  const [personaSeeding, setPersonaSeeding] = useState(false);
-  const [personaDrafts, setPersonaDrafts] = useState<Persona[]>([]);
+  // Pre-warmed audience step. During the loading screen we draft the ICP prompt
+  // AND fire the audience suggest in the background, so the audience step opens
+  // with candidates already (or nearly) ready — zero wait, zero click. Stashed in
+  // state (not a ref) so a late-resolving prewarm still flows into the step as a prop.
+  const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
 
@@ -390,16 +376,12 @@ export function BetaOnboarding() {
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>([]);
 
-  const personaDraftsRef = useRef<Persona[]>([]);
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
-  useEffect(() => {
-    personaDraftsRef.current = personaDrafts;
-  }, [personaDrafts]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
@@ -430,43 +412,30 @@ export function BetaOnboarding() {
     console.info("[dashboard] onboarding setup milestone", props);
   }
 
-  async function seedOnboardingPersonaFromBrandInfo(id: string): Promise<void> {
-    setPersonaSeeding(true);
-    try {
-      const sug = await suggestPersonas(id, 1);
-      const first: PersonaDraft | undefined = sug.personas[0];
-      if (first?.name?.trim()) {
-        setPersonaDrafts((prev) =>
-          prev.length > 0
-            ? prev
-            : [
-                {
-                  id: nextPersonaId(),
-                  name: capWords(first.name.trim()),
-                  filters: first.filters,
-                  status: "active",
-                  unsaved: true,
-                },
-              ],
-        );
-      }
-    } catch (e) {
-      console.error("[dashboard] suggest/create persona (onboarding seed) failed:", e);
-      setSetupIssues((prev) => ({ ...prev, persona: true }));
-    } finally {
-      setPersonaSeeding(false);
-    }
-  }
-
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
-    // Persona drafting is independent from full profile hydration. Start it
-    // immediately so the persona spinner tracks persona work only.
-    const personaSeed = seedOnboardingPersonaFromBrandInfo(id);
-
     await extractBrandFields([id], SALES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields (background) failed:", e);
       setSetupIssues((prev) => ({ ...prev, extraction: true }));
     });
+
+    // Pre-warm the audience step: now that the brand profile is extracted, draft
+    // the ICP prompt and fire the audience suggest in the background. By the time
+    // the user clicks through services/goal/rates to the audience step, candidates
+    // are ready. Fail-soft — a failed ICP/suggest resolves candidates:null and the
+    // step falls back to its own draft + manual "Suggest audiences".
+    const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null }> => {
+      try {
+        const { icp } = await suggestBrandIcp(id);
+        const prompt = icp.trim();
+        if (!prompt) return { prompt: "", candidates: null };
+        const { candidates } = await suggestAudiences(id, prompt);
+        return { prompt, candidates };
+      } catch (e) {
+        console.error("[dashboard] audience prewarm (ICP + suggest) failed:", e);
+        return { prompt: "", candidates: null };
+      }
+    })();
+    setAudiencePrefetch({ promise: audiencePrewarm });
 
     const [prof, econRes, proj, feat] = await Promise.all([
       getBrandProfile(id),
@@ -505,7 +474,6 @@ export function BetaOnboarding() {
       setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
     }
     projectionRef.current = proj;
-    await personaSeed;
   }
 
   async function waitForOnboardingHydration(): Promise<void> {
@@ -578,7 +546,7 @@ export function BetaOnboarding() {
   async function startAnalyze() {
     if (!domain) return;
     setError(null);
-    setSetupIssues({ extraction: false, persona: false });
+    setSetupIssues({ extraction: false });
     setStep("loading");
     resetLoadingProgress();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
@@ -674,7 +642,7 @@ export function BetaOnboarding() {
         optimizationGoal: optimizationGoalForOutcome(outcome),
       });
       projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
-      setStep("personas");
+      setStep("audiences");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your rates.");
     } finally {
@@ -702,18 +670,6 @@ export function BetaOnboarding() {
     return featureInputs;
   }
 
-  async function persistPersonaDraftsForLaunch(id: string, drafts: PersonaLaunchDraft[]) {
-    const seenNames = new Set<string>();
-    for (const draft of drafts) {
-      const name = capWords(draft.name.trim());
-      if (!name) continue;
-      const key = name.toLowerCase();
-      if (seenNames.has(key)) continue;
-      seenNames.add(key);
-      await createPersona(id, { name, filters: draft.filters as Record<string, string[]> });
-    }
-  }
-
   async function completeLaunchAfterCheckout(pending: PendingCheckoutLaunch) {
     if (pending.profile && pending.services) {
       await saveBrandProfileVersion(pending.brandId, {
@@ -723,7 +679,8 @@ export function BetaOnboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
-    await persistPersonaDraftsForLaunch(pending.brandId, pending.personas ?? []);
+    // Audiences are activated at the audience step (setAudienceStatus → "active");
+    // nothing to persist here at launch.
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
@@ -799,10 +756,6 @@ export function BetaOnboarding() {
         featureInputs: storedPending?.featureInputs,
         profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
         services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
-        personas:
-          brandIdRef.current === id && normalizedCurrentUrl
-            ? personaDraftsRef.current.map((p) => ({ name: p.name, filters: p.filters }))
-            : storedPending?.personas,
         createdAt: new Date().toISOString(),
       };
       window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
@@ -1112,15 +1065,14 @@ export function BetaOnboarding() {
     );
   }
 
-  if (step === "personas") {
+  if (step === "audiences") {
     return (
-      <OnboardingPersonas
+      <OnboardingAudiences
+        brandId={brandId}
         brandDomain={domain}
         hostname={hostname}
-        personas={personaDrafts}
-        setPersonas={setPersonaDrafts}
-        personaSuggestionFailed={setupIssues.persona}
-        personaSeeding={personaSeeding}
+        services={services}
+        prefetch={audiencePrefetch}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
       />
@@ -1130,7 +1082,7 @@ export function BetaOnboarding() {
   if (step === "consent") {
     return (
       <div className={card}>
-        <BackButton onClick={() => setStep("personas")} />
+        <BackButton onClick={() => setStep("audiences")} />
         <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-4 flex items-start gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
@@ -1265,93 +1217,346 @@ export function BetaOnboarding() {
   );
 }
 
-// ── Audiences step — onboarding-only drafts ────────────────────────────────
-// No run/campaign exists yet, so this step edits client-side draft personas only.
-// They are persisted once at launch, immediately before the campaign is created.
-let obDraftSeq = 0;
-const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
-
-function OnboardingPersonas({
+// Natural-language → audiences. The user describes the people they want to
+// reach; human-service `/suggest` returns ONE candidate per audience (the winning
+// provider, live-counted), each already persisted at status "suggested". The user
+// picks one or more, which are ACTIVATED via `setAudienceStatus(audienceId,
+// "active")`. This is the audience concept that replaces the persona step.
+function OnboardingAudiences({
+  brandId,
   brandDomain,
   hostname,
-  personas,
-  setPersonas,
-  personaSuggestionFailed,
-  personaSeeding,
+  services,
+  prefetch,
   onBack,
   onContinue,
 }: {
+  brandId: string | null;
   brandDomain: string | null;
   hostname: string;
-  personas: Persona[];
-  setPersonas: (updater: (prev: Persona[]) => Persona[]) => void;
-  personaSuggestionFailed: boolean;
-  personaSeeding: boolean;
+  services: string[];
+  prefetch: AudiencePrefetch | null;
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const isNameTaken = (name: string, exceptId?: string) => {
-    const needle = name.trim().toLowerCase();
-    return personas.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === needle);
-  };
-  const uniqueName = (base: string) => {
-    const trimmed = base.trim() || "Audience";
-    if (!isNameTaken(trimmed)) return trimmed;
-    for (let i = 2; ; i++) {
-      const candidate = `${trimmed} ${i}`;
-      if (!isNameTaken(candidate)) return candidate;
-    }
-  };
-  const addPersona = () =>
-    setPersonas((prev) => [
-      { id: nextDraftId(), name: uniqueName("New Audience"), filters: {}, status: "active", unsaved: true },
-      ...prev,
-    ]);
-  const removeDraft = (id: string) => setPersonas((prev) => prev.filter((p) => p.id !== id));
-  const updateDraft = (id: string, name: string, filters: Filters) =>
-    setPersonas((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, name: capWords(name), filters, unsaved: true } : p)),
-    );
   const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const fallbackPrompt = services.length
+    ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
+    : "";
+  const [prompt, setPrompt] = useState("");
+  const [icpLoading, setIcpLoading] = useState(true);
+  const icpFetchedRef = useRef(false);
+  const [candidates, setCandidates] = useState<AudienceCandidate[] | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
+  // the background during the loading screen) when present — zero wait, zero click.
+  // No pre-warm (fast click-through / no brandId yet) → draft the ICP here and
+  // AUTO-FIRE the suggest, so the step still needs no click. Runs once; never
+  // clobbers a prompt the user already edited.
+  useEffect(() => {
+    if (icpFetchedRef.current) return;
+    icpFetchedRef.current = true;
+
+    if (prefetch) {
+      // Pre-warm in flight or already resolved — show drafting/generating until ready.
+      setIcpLoading(true);
+      setLoading(true);
+      prefetch.promise
+        .then(({ prompt: p, candidates: c }) => {
+          setPrompt((cur) => (cur.trim() ? cur : p || fallbackPrompt));
+          if (c) {
+            setCandidates(c);
+            if (c.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+          }
+        })
+        .catch((e) => {
+          console.error("[dashboard] audience prefetch adopt failed:", e);
+          setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+        })
+        .finally(() => {
+          setIcpLoading(false);
+          setLoading(false);
+        });
+      return;
+    }
+
+    if (!brandId) {
+      setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+      setIcpLoading(false);
+      return;
+    }
+    (async () => {
+      let nl = fallbackPrompt;
+      try {
+        const { icp } = await suggestBrandIcp(brandId);
+        nl = icp.trim() || fallbackPrompt;
+      } catch (e) {
+        console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
+      } finally {
+        setIcpLoading(false);
+      }
+      setPrompt((cur) => (cur.trim() ? cur : nl));
+      if (nl) void runSuggest(nl);
+    })();
+  }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function runSuggest(nlArg?: string) {
+    const nl = (nlArg ?? prompt).trim();
+    if (!brandId || !nl) {
+      setErr("Describe who you want to reach first.");
+      return;
+    }
+    setErr(null);
+    setLoading(true);
+    setCandidates(null);
+    setSelected(new Set());
+    try {
+      const res = await suggestAudiences(brandId, nl);
+      setCandidates(res.candidates);
+      if (res.candidates.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+    } catch (e) {
+      console.error("[dashboard] suggestAudiences failed:", e);
+      setErr("We couldn't generate audiences right now. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggle(i: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
+  async function saveAndContinue() {
+    if (!brandId || !candidates) {
+      onContinue();
+      return;
+    }
+    const picks = [...selected].map((i) => candidates[i]).filter((c): c is AudienceCandidate => Boolean(c));
+    if (picks.length === 0) {
+      setErr("Select at least one audience.");
+      return;
+    }
+    setErr(null);
+    setSaving(true);
+    try {
+      // Each candidate is already a persisted audience row (status "suggested").
+      // Selecting = ACTIVATE it for the brand; unpicked candidates stay suggested.
+      for (const c of picks) {
+        await setAudienceStatus(c.audienceId, "active");
+      }
+      onContinue();
+    } catch (e) {
+      console.error("[dashboard] setAudienceStatus (activate) failed:", e);
+      setErr("We couldn't save your audiences. Try again.");
+      setSaving(false);
+    }
+  }
+
   return (
     <div className={card}>
       <BackButton onClick={onBack} />
       <BrandStepHeader domain={brandDomain} hostname={hostname} />
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to sell to?</h2>
-          <p className="mt-2 text-gray-500">We drafted your main audience. Edit the targeting filters or add another before launch.</p>
-        </div>
-      </div>
-      {personaSuggestionFailed && <SetupWarning className="mt-4" />}
+      <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+      <p className="mt-2 text-gray-500">
+        Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
+      </p>
 
-      <div className="mt-6 space-y-3">
-        {personaSeeding && personas.length === 0 ? (
-          <div className="flex h-56 items-center justify-center rounded-xl bg-gray-50 text-sm text-gray-400">
+      <div className="relative mt-5">
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={3}
+          disabled={icpLoading}
+          placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+          className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+        />
+        {icpLoading && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-500">
             <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-            Drafting your first audience...
+            Drafting your ideal customer profile…
           </div>
-        ) : personas.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No audiences yet.</div>
-        ) : (
-          personas.map((persona) => (
-            <PersonaCard
-              key={persona.id}
-              persona={persona}
-              onChange={(name, filters) => updateDraft(persona.id, name, filters)}
-              onRemove={() => removeDraft(persona.id)}
-              showLifecycleActions={false}
-              checkNameTaken={(n) => isNameTaken(n, persona.id)}
-            />
-          ))
         )}
       </div>
-
-      <button onClick={addPersona} className="mt-3 flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
-        <PlusIcon className="h-4 w-4" /> Add an audience
+      <button
+        onClick={() => runSuggest()}
+        disabled={loading || icpLoading || !prompt.trim()}
+        className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {loading ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Generating…
+          </>
+        ) : (
+          <>
+            <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Regenerate" : "Suggest audiences"}
+          </>
+        )}
       </button>
-      <NextButton onClick={onContinue} label="Continue" />
+
+      {err && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
+      )}
+
+      {candidates && candidates.length > 0 && (
+        <>
+          <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            {selected.size} of {candidates.length} selected
+          </div>
+          <div className="space-y-3">
+            {candidates.map((c, i) => (
+              <AudienceCandidateCard key={i} candidate={c} selected={selected.has(i)} onToggle={() => toggle(i)} />
+            ))}
+          </div>
+        </>
+      )}
+
+      <NextButton onClick={saveAndContinue} disabled={!candidates || selected.size === 0} busy={saving} label="Continue" />
     </div>
+  );
+}
+
+// Category vocabulary borrowed from PersonaCard's FILTER_CATEGORIES so audience
+// cards read like the persona cards (colored, category-grouped pills).
+const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: string }[] = [
+  { keys: ["industries", "industry"], label: "Industry", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  { keys: ["roles", "seniority", "seniorities"], label: "Seniority", tone: "bg-purple-50 text-purple-700 border-purple-200" },
+  {
+    keys: ["titles", "personTitles", "jobTitles", "departments", "personDepartments"],
+    label: "Job titles",
+    tone: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  {
+    keys: ["employeeMin", "employeeMax", "employeeRange", "employeeRanges", "headcount"],
+    label: "Employee range",
+    tone: "bg-sky-50 text-sky-700 border-sky-200",
+  },
+  {
+    keys: ["revenueMin", "revenueMax", "revenueRange", "revenue"],
+    label: "Revenue",
+    tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  {
+    keys: ["location", "locations", "country", "countries", "region", "regions"],
+    label: "Location",
+    tone: "bg-rose-50 text-rose-700 border-rose-200",
+  },
+  { keys: ["technologies", "tech", "technology"], label: "Technology", tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  { keys: ["keywords", "keyword"], label: "Keywords", tone: "bg-gray-100 text-gray-600 border-gray-200" },
+];
+
+const NEUTRAL_TONE = "bg-gray-100 text-gray-600 border-gray-200";
+
+function humanizeFilterKey(key: string): string {
+  const s = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+type AudienceFilterGroup = { label: string; tone: string; values: string[] };
+
+// Group a loose PeopleSearchFilters object (apollo/apify use different keys) into
+// labeled, color-toned categories. Unknown keys still render (humanized + neutral),
+// so nothing is silently dropped.
+function audienceFilterGroups(filters: Record<string, unknown>): AudienceFilterGroup[] {
+  const order: string[] = [];
+  const byLabel = new Map<string, AudienceFilterGroup>();
+  const push = (label: string, tone: string, raw: unknown) => {
+    const value = String(raw ?? "").trim();
+    if (!value) return;
+    let g = byLabel.get(label);
+    if (!g) {
+      g = { label, tone, values: [] };
+      byLabel.set(label, g);
+      order.push(label);
+    }
+    if (!g.values.includes(value)) g.values.push(value);
+  };
+  for (const [key, val] of Object.entries(filters ?? {})) {
+    const cat = AUDIENCE_CATEGORY_MAP.find((c) => c.keys.includes(key));
+    const label = cat ? cat.label : humanizeFilterKey(key);
+    const tone = cat ? cat.tone : NEUTRAL_TONE;
+    if (Array.isArray(val)) {
+      for (const v of val) push(label, tone, v);
+    } else if (val != null && typeof val !== "object") {
+      // Scalar (e.g. employeeMin: 20) — prefix with its key so min/max stay distinct.
+      push(label, tone, `${humanizeFilterKey(key)}: ${val}`);
+    }
+  }
+  return order.map((l) => {
+    const g = byLabel.get(l)!;
+    return { ...g, values: g.values.slice(0, 10) };
+  });
+}
+
+function AudienceCandidateCard({
+  candidate,
+  selected,
+  onToggle,
+}: {
+  candidate: AudienceCandidate;
+  selected: boolean;
+  onToggle: () => void;
+}) {
+  const groups = audienceFilterGroups(candidate.filters);
+  const invalid = Boolean(candidate.validationError) || candidate.count === 0;
+  return (
+    <button
+      onClick={onToggle}
+      className={`flex w-full items-start gap-3 rounded-xl border-2 p-5 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+    >
+      <span
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
+      >
+        {selected && <CheckIcon className="h-3 w-3" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900">{candidate.name}</span>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            {candidate.provider}
+          </span>
+          {!invalid && (
+            <span className="text-[11px] font-medium text-gray-400">~{candidate.count.toLocaleString()} matches</span>
+          )}
+        </span>
+        <span className="mt-1 block text-xs leading-5 text-gray-500">{candidate.rationale}</span>
+        {groups.length > 0 && (
+          <span className="mt-3 flex flex-col gap-2">
+            {groups.map((g) => (
+              <span key={g.label} className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  {g.label}
+                </span>
+                {g.values.map((v, j) => (
+                  <span
+                    key={j}
+                    className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${g.tone}`}
+                  >
+                    <span className="min-w-0 truncate">{v}</span>
+                  </span>
+                ))}
+              </span>
+            ))}
+          </span>
+        )}
+        {invalid && (
+          <span className="mt-2 block text-[11px] text-amber-600">
+            {candidate.validationError ? "Couldn't validate these filters." : "No live matches for these filters."}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 

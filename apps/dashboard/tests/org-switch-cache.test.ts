@@ -35,10 +35,14 @@ describe("Org switch cross-org isolation framework", () => {
 
   // --- Client cache choke point: keyed remount -----------------------------
 
-  it("QueryProvider remounts under a key derived from the active org id", () => {
+  it("QueryProvider remounts under a key derived from the PER-TAB URL org (not the shared active org)", () => {
+    // Clerk's active org is browser-global and flips when another tab switches —
+    // keying the remount on it caused the cross-tab oscillation. Key on the URL org
+    // (per-tab, stable); fall back to the active org only off the /orgs/ tree.
     const content = read(queryProviderPath);
-    expect(content).toContain("useOrganization");
-    expect(content).toContain("organization?.id");
+    expect(content).toContain("usePathname");
+    expect(content).toContain("/orgs/");
+    expect(content).toContain("urlOrgId ?? organization?.id");
     expect(content).toContain("key={orgKey}");
   });
 
@@ -57,20 +61,22 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).not.toContain("useQueryClient");
   });
 
-  it("OrgCacheInvalidator still navigates + clears breadcrumb on org change", () => {
+  it("OrgCacheInvalidator clears breadcrumb caches on org change", () => {
     const content = read(invalidatorPath);
     expect(content).toContain("useOrganization");
     expect(content).toContain("prevOrgId");
-    expect(content).toContain("router.push");
-    expect(content).toContain("/orgs/");
     expect(content).toContain("clearBreadcrumbCaches");
   });
 
-  it("OrgCacheInvalidator does not overwrite an org URL that already matches the active org", () => {
+  it("OrgCacheInvalidator NEVER navigates on a (possibly cross-tab) active-org change", () => {
+    // The URL is the per-tab source of truth; the Clerk active-org signal is the
+    // shared/global one and flips when ANOTHER tab switches. Navigating this tab on
+    // that signal yanked tab A onto tab B's org (the cross-tab "switches by itself"
+    // bug). In-tab switches navigate via handleOrgSwitch; URL→active via OrgActivator.
     const content = read(invalidatorPath);
-    expect(content).toContain("usePathname");
-    expect(content).toContain("const urlOrgId = orgIdFromPath(pathname);");
-    expect(content).toContain("if (urlOrgId !== currentOrgId)");
+    expect(content).not.toContain("router.push");
+    expect(content).not.toContain("useRouter");
+    expect(content).not.toContain("usePathname");
   });
 
   it("OrgCacheInvalidator does NOT act on initial mount", () => {
@@ -125,6 +131,19 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("ORG_DESYNC_ERROR");
   });
 
+  it("api.ts attaches this tab's Clerk token as an Authorization Bearer (per-tab org scoping)", () => {
+    // Multi-tab: the session COOKIE is a global singleton (last-focused tab wins), so
+    // the proxy must scope off a PER-TAB token, not the cookie. window.Clerk is per-tab;
+    // its getToken() rides in the Authorization header, which Clerk's auth() honors over
+    // the cookie → the proxy sees the org THIS tab is viewing.
+    const content = read(apiPath);
+    expect(content).toContain("getTabSessionToken");
+    expect(content).toContain("window");
+    expect(content).toContain(".Clerk");
+    expect(content).toContain("session?.getToken()");
+    expect(content).toContain("`Bearer ${tabToken}`");
+  });
+
   // --- Read gate -----------------------------------------------------------
 
   it("useAuthQuery gates org-owned reads on URL-org === active-org", () => {
@@ -148,6 +167,19 @@ describe("Org switch cross-org isolation framework", () => {
   it("handleOrgSwitch awaits setActive before navigating", () => {
     const content = read(breadcrumbPath);
     expect(content).toContain("await setActive({ organization: clerkOrgId })");
+  });
+
+  it("handleOrgSwitch re-mints the session token AFTER setActive, BEFORE navigating", () => {
+    // Without a fresh mint, setActive's Set-Cookie hasn't propagated when router.push
+    // fires → the middleware's organizationSyncOptions reads the STALE token (active =
+    // previous org / not-a-member of the target) and bounces the URL back → the
+    // god-mode switch reverts on its own. The fresh mint closes that race.
+    const content = read(breadcrumbPath);
+    expect(content).toContain('await session?.getToken({ skipCache: true })');
+    const match = content.match(
+      /handleOrgSwitch[\s\S]*?setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
+    );
+    expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
   });
 
   it("handleOrgSwitch clears breadcrumb caches before setActive", () => {

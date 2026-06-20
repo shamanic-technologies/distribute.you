@@ -89,10 +89,33 @@ function activeOrgIdFromPath(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * This tab's Clerk session token (per-tab active org), via the global `window.Clerk`
+ * client — NOT a React hook, so it works from the plain `apiCall` function. Each
+ * browser tab has its own `window.Clerk` with its own in-memory active org, so the
+ * minted token carries the org THIS tab is viewing, regardless of which tab last
+ * wrote the shared session cookie. Returns null on the server, before Clerk loads,
+ * or when signed out → caller omits the Authorization header and falls back to the
+ * cookie. Cached by Clerk (re-mints only near expiry), so per-request cost is low.
+ */
+async function getTabSessionToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const clerk = (
+    window as unknown as {
+      Clerk?: { session?: { getToken: () => Promise<string | null> } | null };
+    }
+  ).Clerk;
+  try {
+    return (await clerk?.session?.getToken()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
 
-  const send = (): Promise<Response> => {
+  const send = async (): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
     let url: string;
 
@@ -103,6 +126,20 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       url = `/api/v1${endpoint}`;
       const activeOrgId = activeOrgIdFromPath();
       if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
+
+      // Per-tab org-scoped auth (Clerk multi-tab guidance). The Clerk session
+      // COOKIE is a global singleton for the whole browser — it reflects whichever
+      // tab was focused LAST, so the proxy's cookie-based `auth()` would scope a
+      // background poll / navigation from a NON-focused tab to the WRONG org
+      // (cross-org bleed + 409 desync churn + the visible "org switches by itself"
+      // across tabs). `window.Clerk` is PER-TAB, so `session.getToken()` returns
+      // THIS tab's active-org token; Clerk's `auth()` honors an Authorization
+      // Bearer over the cookie, giving the proxy the correct per-tab org.
+      // (Clerk docs: "Organizations → multiple browser tabs" + "Making
+      // authenticated requests".) Optional-chained: before Clerk loads, or with no
+      // session, we fall back to the cookie (and checkProxyOrg still fails closed).
+      const tabToken = await getTabSessionToken();
+      if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
     }
 
     return fetch(url, {
@@ -922,160 +959,182 @@ export async function getSalesEconomicsEffective(
   return parsed.data;
 }
 
-// ── Personas + Brand Profile (beta) ───────────────────────────────
-// Persisted per brand in brand-service via api-service /v1/brands/:id/personas
-// and /v1/brands/:id/brand-profile (same gateway convention as sales-economics).
-// Personas are immutable except status (edit = create a new one) and names are
-// unique per brand. Brand-profile saves are immutable forked versions.
-export type PersonaStatusWire = "active" | "paused" | "archived";
+// ── Audiences (human-service via gateway /orgs/audiences/*) ──────────
+// A saved people-filter-set, brand-scoped, generated from a natural-language
+// prompt by human-service `/suggest` (apollo + apify candidates, dry-run
+// counted). This is the unified "audience" concept that replaces the legacy
+// brand-service persona. human-service OWNS these rows; the dashboard reaches
+// them through the api-service gateway, never brand-service.
 
-export interface PersonaWire {
-  id: string;
-  brandId: string;
+export type AudienceStatus = "suggested" | "active" | "paused" | "archived";
+
+export interface AudienceCandidate {
+  // The PERSISTED audience row id — /suggest creates each candidate at status
+  // "suggested" (inactive). Activating a pick = PATCH this id's status to "active".
+  audienceId: string;
   name: string;
-  filters: Record<string, string[]>;
-  status: PersonaStatusWire;
-  avatarUrl?: string | null;
-  createdAt: string;
+  rationale: string;
+  provider: "apollo" | "apify";
+  filters: Record<string, unknown>;
+  // The winning provider's free dry-run match count (0 = no valid non-empty filters).
+  count: number;
+  status: AudienceStatus;
+  validationError: string | null;
+  truncated: boolean;
 }
 
-const PersonaSchema = z.object({
-  id: z.string(),
-  brandId: z.string(),
+const AudienceStatusSchema = z.union([
+  z.literal("suggested"),
+  z.literal("active"),
+  z.literal("paused"),
+  z.literal("archived"),
+]);
+
+const AudienceCandidateSchema = z.object({
+  audienceId: z.string(),
   name: z.string(),
-  filters: z.record(z.string(), z.array(z.string())),
-  status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
-  avatarUrl: z.string().nullable().optional(),
-  createdAt: z.string(),
+  rationale: z.string(),
+  provider: z.union([z.literal("apollo"), z.literal("apify")]),
+  filters: z.record(z.string(), z.unknown()),
+  count: z.number(),
+  status: AudienceStatusSchema,
+  validationError: z.string().nullable(),
+  truncated: z.boolean(),
 });
 
-const ListPersonasResponseSchema = z.object({ personas: z.array(PersonaSchema) });
-const PersonaResponseSchema = z.object({ persona: PersonaSchema });
+const SuggestAudiencesResponseSchema = z.object({
+  candidates: z.array(AudienceCandidateSchema),
+});
 
-/** GET /brands/:brandId/personas — all personas for the brand (optionally status-filtered). */
-export async function listPersonas(
+/**
+ * POST /orgs/audiences/suggest — natural-language prompt → candidate audiences.
+ * ONE candidate per audience (the winning provider, larger free dry-run count).
+ * Each candidate is PERSISTED at status "suggested" (inactive); the user picks
+ * one or more, which are ACTIVATED via `setAudienceStatus(audienceId, "active")`.
+ * Unpicked candidates remain suggested/inactive.
+ */
+export async function suggestAudiences(
   brandId: string,
-  status?: PersonaStatusWire,
+  nlPrompt: string,
   token?: string,
-): Promise<{ personas: PersonaWire[] }> {
-  const query = status ? `?status=${status}` : "";
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas${query}`, { token });
-  const parsed = ListPersonasResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] listPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] listPersonas: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** POST /brands/:brandId/personas — create. 409 when the name is already used for the brand. */
-export async function createPersona(
-  brandId: string,
-  input: { name: string; filters: Record<string, string[]> },
-  token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas`, { token, method: "POST", body: input });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] createPersona: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** POST /brands/:brandId/personas/:personaId/avatar/regenerate — replace the generated persona avatar. */
-export async function regeneratePersonaAvatar(
-  brandId: string,
-  personaId: string,
-  token?: string,
-  opts?: { suppressPaymentRequired?: boolean },
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/avatar/regenerate`, {
+): Promise<{ candidates: AudienceCandidate[] }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/suggest`, {
     token,
     method: "POST",
-    body: {},
-    suppressPaymentRequired: opts?.suppressPaymentRequired,
+    body: { brandId, nlPrompt },
   });
-  const parsed = PersonaResponseSchema.safeParse(raw);
+  const parsed = SuggestAudiencesResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] regeneratePersonaAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] regeneratePersonaAvatar: invalid response shape");
+    console.error("[dashboard] suggestAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestAudiences: invalid response shape");
   }
   return parsed.data;
 }
 
-/** POST /brands/:brandId/personas/:personaId/duplicate — new persona (name auto-uniquified). */
-export async function duplicatePersona(
-  brandId: string,
-  personaId: string,
-  name?: string,
-  token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/duplicate`, {
-    token,
-    method: "POST",
-    body: name ? { name } : {},
-  });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] duplicatePersona: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] duplicatePersona: invalid response shape");
-  }
-  return parsed.data;
+export interface AudienceWire {
+  id: string;
+  orgId: string;
+  brandId: string;
+  name: string;
+  nlPrompt: string | null;
+  provider: string | null;
+  status: AudienceStatus;
+  source: string | null;
+  filters: Record<string, unknown> | null;
+  apolloCount: number | null;
+  apifyCount: number | null;
+  countedAt: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-/** PATCH /brands/:brandId/personas/:personaId/status — pause / resume / archive / restore. */
-export async function setPersonaStatus(
-  brandId: string,
-  personaId: string,
-  status: PersonaStatusWire,
+const AudienceSchema = z.object({
+  id: z.string(),
+  orgId: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+  nlPrompt: z.string().nullable(),
+  provider: z.string().nullable(),
+  status: AudienceStatusSchema,
+  source: z.string().nullable(),
+  filters: z.record(z.string(), z.unknown()).nullable(),
+  apolloCount: z.number().nullable(),
+  apifyCount: z.number().nullable(),
+  countedAt: z.string().nullable(),
+  createdByUserId: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const AudienceResponseSchema = z.object({ audience: AudienceSchema });
+
+/**
+ * PATCH /orgs/audiences/:audienceId/status — change an audience's lifecycle status
+ * (mutates only status). Used to ACTIVATE a suggested candidate ("suggested" →
+ * "active") so it's selected for the brand; unpicked candidates stay suggested.
+ */
+export async function setAudienceStatus(
+  audienceId: string,
+  status: AudienceStatus,
   token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/status`, {
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/status`, {
     token,
     method: "PATCH",
     body: { status },
   });
-  const parsed = PersonaResponseSchema.safeParse(raw);
+  const parsed = AudienceResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] setPersonaStatus: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] setPersonaStatus: invalid response shape");
+    console.error("[dashboard] setAudienceStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] setAudienceStatus: invalid response shape");
   }
   return parsed.data;
 }
 
-/** A persona DRAFT proposed by the backend — no id/status/createdAt (not persisted). */
-export interface PersonaDraft {
-  name: string;
-  filters: Record<string, string[]>;
-}
-
-const SuggestPersonasResponseSchema = z.object({
-  personas: z.array(z.object({
-    name: z.string(),
-    filters: z.record(z.string(), z.array(z.string())),
-  })),
+const ListAudiencesResponseSchema = z.object({
+  audiences: z.array(AudienceSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
 });
 
-/**
- * POST /brands/:brandId/personas/suggest — generate persona DRAFTS from the brand
- * profile (does NOT persist). Used by the beta onboarding to propose personas the
- * user edits, then saves the kept ones via `createPersona`.
- */
-export async function suggestPersonas(
+/** GET /orgs/audiences?brandId= — saved audiences for a brand. */
+export async function listAudiences(
   brandId: string,
-  count?: number,
   token?: string,
-): Promise<{ personas: PersonaDraft[] }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/suggest`, {
+): Promise<{ audiences: AudienceWire[]; total: number }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = ListAudiencesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listAudiences: invalid response shape");
+  }
+  return { audiences: parsed.data.audiences, total: parsed.data.total };
+}
+
+const SuggestBrandIcpResponseSchema = z.object({ icp: z.string() });
+
+/**
+ * POST /brands/:brandId/icp/suggest — brand-service writes ONE short plain-language
+ * ICP line for the brand (seeded from its profile + sales economics). Used to
+ * pre-fill the onboarding audience-step prompt. `existingIcps` lets the caller ask
+ * for an ICP distinct from / complementary to ones already chosen.
+ */
+export async function suggestBrandIcp(
+  brandId: string,
+  existingIcps?: string[],
+  token?: string,
+): Promise<{ icp: string }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
     token,
     method: "POST",
-    body: count ? { count } : {},
+    body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
   });
-  const parsed = SuggestPersonasResponseSchema.safeParse(raw);
+  const parsed = SuggestBrandIcpResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] suggestPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] suggestPersonas: invalid response shape");
+    console.error("[dashboard] suggestBrandIcp: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestBrandIcp: invalid response shape");
   }
   return parsed.data;
 }
@@ -1180,7 +1239,7 @@ export interface CachedField {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
-  { key: "services", description: "Specific services, products or offerings the brand sells and wants to promote — list each as a short phrase (e.g. 'SEO audits', 'Fractional CFO', 'Logo design')" },
+  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. List each as a short phrase." },
   { key: "companyOverview", description: "Company overview" },
   { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
@@ -1437,7 +1496,7 @@ export interface FeaturePersonaStatsRow {
   persona: {
     id: string;
     name: string;
-    status: PersonaStatusWire;
+    status: "active" | "paused" | "archived";
     filters: Record<string, string[]>;
     avatarUrl?: string | null;
   };

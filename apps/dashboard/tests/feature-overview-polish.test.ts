@@ -59,7 +59,9 @@ describe("Org logos render Clerk imageUrl (item 4)", () => {
   const breadcrumb = read("components/breadcrumb-nav.tsx");
   it("breadcrumb root + switcher use organization.imageUrl via OrgAvatar", () => {
     expect(breadcrumb).toContain("function OrgAvatar(");
-    expect(breadcrumb).toContain("imageUrl={organization?.imageUrl}");
+    // Root avatar uses the per-tab URL org's cached image (#1948); the switcher
+    // list still maps each membership's own imageUrl.
+    expect(breadcrumb).toContain("imageUrl={displayOrgImageUrl}");
     expect(breadcrumb).toContain("imageUrl={m.organization.imageUrl}");
     // No more hardcoded-initial-only org badge.
     expect(breadcrumb).not.toContain("{organization?.name?.[0] || \"O\"}");

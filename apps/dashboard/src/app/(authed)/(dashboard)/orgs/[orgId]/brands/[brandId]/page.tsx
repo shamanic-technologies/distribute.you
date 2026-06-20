@@ -15,7 +15,7 @@ import {
   getBrandPause,
   getFeaturePipelineActivity,
   fetchFeaturePersonaStats,
-  listPersonas,
+  listAudiences,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
   type WorkflowProjectionResponse,
@@ -30,7 +30,7 @@ import {
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { TopPersonasCard } from "@/components/revenue/top-personas-card";
+import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -135,11 +135,6 @@ export default function BrandOverviewPage() {
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const totalWebsiteClicks = featureStats.recipientsClicked ?? 0;
-  // Outreach is live once ≥1 lead has been contacted (real email-gateway stat).
-  // NOT systemStats.activeCampaigns — that field is wired to a non-existent
-  // campaign status ("active"/"running") while campaign-service only emits
-  // "ongoing"/"stopped", so it's always 0 and the banner never showed.
-  const hasContactedLeads = (featureStats.recipientsContacted ?? 0) > 0;
 
   // Brand goal config → goal-specific stat card copy.
   const { data: economicsData } = useAuthQuery(
@@ -251,11 +246,12 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
-  const { data: personasData } = useAuthQuery(
-    ["personas", brandId, "active"],
-    () => listPersonas(brandId, "active"),
+  const { data: audiencesData } = useAuthQuery(
+    ["audiences", brandId],
+    () => listAudiences(brandId),
     { enabled, ...pollOptions },
   );
+  const activeAudiences = audiencesData?.audiences.filter((a) => a.status === "active");
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total/today spend (runs-service) are separate cold chains — gate each on its
@@ -270,7 +266,7 @@ export default function BrandOverviewPage() {
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
   const personaStatsRevealed = useCoordinatedReveal([
     personaStatsData !== undefined,
-    personasData !== undefined,
+    audiencesData !== undefined,
   ]);
   const outcomeRevealed = useCoordinatedReveal([
     budgetData !== undefined,
@@ -278,7 +274,7 @@ export default function BrandOverviewPage() {
     monthlyBudgetUsd == null || outcomeProjection !== undefined,
   ]);
   const showFirstClickReassurance =
-    statsRevealed && hasContactedLeads && totalWebsiteClicks < 1 && !isBrandPaused;
+    statsRevealed && totalWebsiteClicks < 1 && !isBrandPaused;
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -349,9 +345,9 @@ export default function BrandOverviewPage() {
         basePath={basePath}
         headerAction={<BrandStatusControl brandId={brandId} />}
         costBottomCard={
-          <TopPersonasCard
+          <TopAudiencesCard
             data={personaStatsRevealed ? personaStatsData : undefined}
-            personas={personaStatsRevealed ? personasData?.personas : undefined}
+            audiences={personaStatsRevealed ? activeAudiences : undefined}
             pending={!personaStatsRevealed}
             metric={personaStatsMetric}
           />
