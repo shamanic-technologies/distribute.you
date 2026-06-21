@@ -84,6 +84,9 @@ export function TopAudiencesCard({
   metric: FeatureAudienceStatsSortMetric;
 }) {
   const statsRows = (data?.audiences ?? []).slice(0, 3);
+  // The audience-stats endpoint's nested `audience` object does not carry
+  // avatarUrl, so resolve it from the AudienceWire list (which does) by id.
+  const avatarById = new Map(audiences.map((audience) => [audience.id, audience.avatarUrl]));
   const seenAudienceIds = new Set(
     statsRows.flatMap((row) => [row.audienceId, row.audience.id]),
   );
@@ -123,7 +126,9 @@ export function TopAudiencesCard({
           const isStats = item.kind === "stats";
           const name = isStats ? item.row.audience.name : item.audience.name;
           const key = isStats ? item.row.audienceId : item.audience.id;
-          const avatarUrl = isStats ? item.row.audience.avatarUrl : item.audience.avatarUrl;
+          const avatarUrl = isStats
+            ? item.row.audience.avatarUrl ?? avatarById.get(item.row.audience.id) ?? null
+            : item.audience.avatarUrl;
           const value = isStats
             ? activeMetric === "cpc"
               ? item.row.metrics.cpcCents
