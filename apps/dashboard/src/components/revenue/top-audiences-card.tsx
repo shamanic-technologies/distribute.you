@@ -123,7 +123,7 @@ export function TopAudiencesCard({
           const isStats = item.kind === "stats";
           const name = isStats ? item.row.audience.name : item.audience.name;
           const key = isStats ? item.row.audienceId : item.audience.id;
-          const avatarUrl = isStats ? item.row.audience.avatarUrl : null;
+          const avatarUrl = isStats ? item.row.audience.avatarUrl : item.audience.avatarUrl;
           const value = isStats
             ? activeMetric === "cpc"
               ? item.row.metrics.cpcCents
