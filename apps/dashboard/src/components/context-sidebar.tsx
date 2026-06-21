@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useOrganization } from "@clerk/nextjs";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
 import { useEntityRegistry } from "@/lib/entity-registry-context";
@@ -341,6 +342,72 @@ function getEntitySidebarIcon(iconName: string): React.ReactNode {
   return iconFn ? iconFn() : <WorkflowIcon />;
 }
 
+// Derive a domain-shaped string from the org name (onboarding sets org name =
+// brand domain). Mirrors the helper in breadcrumb-nav.tsx.
+function orgDomainFromName(name?: string | null): string | null {
+  if (!name) return null;
+  const candidate = name.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
+  return /^[^\s]+\.[^\s]+$/.test(candidate) ? candidate : null;
+}
+
+const CopyIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+// Referral card — anchored at the very bottom of the brand sidebar. No backend:
+// the invite link is just the landing URL carrying a UTM with the user's
+// org-domain. Copy referral terms are hardcoded copy.
+function ReferralCard() {
+  const { organization } = useOrganization();
+  const [copied, setCopied] = useState(false);
+  const campaign = orgDomainFromName(organization?.name) ?? organization?.id ?? "referral";
+  const link = `https://distribute.you?utm_source=referral&utm_medium=invite&utm_campaign=${encodeURIComponent(campaign)}`;
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="p-2">
+      <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 space-y-2">
+        <div className="flex items-start gap-1">
+          <p className="text-xs font-semibold text-gray-700 leading-snug">
+            Give and get $75 credits
+          </p>
+          <span className="group relative inline-flex shrink-0 text-gray-400 mt-0.5">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 hidden w-56 -translate-x-1/2 rounded-md bg-gray-900 px-2.5 py-1.5 text-[11px] leading-snug text-white group-hover:block">
+              We double up to $75 the budget spent by the person you invite for
+              their first day. When they do, we do the same on your next daily
+              amount.
+            </span>
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={copy}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-white border border-brand-200 px-2.5 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-100 transition"
+        >
+          {copied ? <CheckIcon /> : <CopyIcon />}
+          {copied ? "Copied" : "Copy invite link"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Brand Level Sidebar — the product ships the primary feature at the brand level,
 // so everything collapses to the brand level: Overview, the entity Database,
 // and the Brand Settings entry. The sole feature's slug is
@@ -497,7 +564,29 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   ];
 
   return (
-    <SidebarSection title="Brand" backHref={`/orgs/${orgId}`} backLabel="Overview">
+    <SidebarSection
+      title="Brand"
+      backHref={`/orgs/${orgId}`}
+      backLabel="Overview"
+      footer={
+        // Anchored to the bottom (outside the scrollable nav): Brand Settings,
+        // then the referral card.
+        <div className="border-t border-gray-100">
+          <div className="p-2">
+            <SidebarLink
+              item={{
+                id: "settings",
+                label: "Brand Settings",
+                href: `${basePath}/settings`,
+                icon: <SettingsIcon />,
+              }}
+              isActive={pathname.startsWith(`${basePath}/settings`)}
+            />
+          </div>
+          <ReferralCard />
+        </div>
+      }
+    >
       {/* Reveal the WHOLE nav as one group: top items are static and the Database
           items need feature + registry defs. Hold everything behind `defsReady`
           with skeleton rows, then render every item together. Badge numbers are a
@@ -540,17 +629,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               ))}
             </div>
           )}
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            <SidebarLink
-              item={{
-                id: "settings",
-                label: "Brand Settings",
-                href: `${basePath}/settings`,
-                icon: <SettingsIcon />,
-              }}
-              isActive={pathname.startsWith(`${basePath}/settings`)}
-            />
-          </div>
         </>
       )}
     </SidebarSection>
