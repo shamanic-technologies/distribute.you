@@ -10,7 +10,7 @@ import type {
 
 function formatCents(cents: number | null): string {
   if (cents == null) return "-";
-  if (cents <= 0) return "$0.00";
+  if (cents <= 0) return "<$0.01";
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
   return `$${usd.toLocaleString("en-US", {
