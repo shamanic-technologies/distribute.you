@@ -63,6 +63,10 @@ When the user says "shrink / reduce the dashboard by N sizes", "size" means the 
 
 No `release.sh hotfix` here (that targets Railway semver services). Vercel deploys on every `main` merge — no tag, no bump.
 
+**NEVER run `vercel --prod` or `vercel deploy --prod` locally.** This bypasses git entirely, deploys a local build directly to prod, and wipes the Vercel project settings (`rootDirectory`, `framework`, `buildCommand` → all `null`). This has caused 3+ prod outages (pricing 404, stuck alias, copy regressions). The guard hook blocks it. If you see a `2–4s` "build" by `adam-atomic-git` in `vercel ls`, that's a local deploy — run the recovery below. Always push to `origin` via PR and let Vercel auto-deploy from the merge commit.
+
+**Conductor workflow — create a new workspace per task, never `git checkout -b` manually.** Conductor creates each workspace as a git worktree on its own branch and fetches `origin` first, so the branch already starts from the latest remote commit. Branch prefix: `adam/<workspace-name>` (configured via `.conductor/settings.local.toml`). If the workspace has been open a while and `origin/main` has advanced, run `git fetch origin main` before creating a PR.
+
 - **Hotfix** → branch from `origin/main`, PR → `main`, `gh pr merge --auto --squash`.
 - **Bugfix / Feature** → branch from `origin/staging`, PR → `staging`. Promotion to `main` via the staging→main PR flow.
 - **Exception (`apps/dashboard/` + `apps/landing/` only):** dashboard-only and landing-only PRs merge straight to `main` in recent practice. Touching ONLY those dirs → follow the last 5 merges on the file; when in doubt, staging. Cross-cutting (shared/, packages/, multi-app) MUST go through staging.
