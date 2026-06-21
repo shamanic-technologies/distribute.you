@@ -42,3 +42,4 @@ openapi.json
 *.tsbuildinfo
 .eslintcache
 .vercel
+.conductor/settings.local.toml
