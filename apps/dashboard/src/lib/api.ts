@@ -1037,6 +1037,10 @@ export interface AudienceWire {
   brandId: string;
   name: string;
   nlPrompt: string | null;
+  /** Per-audience one-sentence description (what THIS audience targets). Distinct
+   *  from `nlPrompt` (the shared multi-audience batch request). Optional until
+   *  human-service serves it in prod (decoupled rollout). */
+  description?: string | null;
   provider: string | null;
   status: AudienceStatus;
   source: string | null;
@@ -1057,6 +1061,7 @@ const AudienceSchema = z.object({
   brandId: z.string(),
   name: z.string(),
   nlPrompt: z.string().nullable(),
+  description: z.string().nullable().optional(),
   provider: z.string().nullable(),
   status: AudienceStatusSchema,
   source: z.string().nullable(),

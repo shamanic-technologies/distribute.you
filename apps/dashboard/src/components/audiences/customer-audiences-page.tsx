@@ -546,7 +546,7 @@ function AudienceDetailPanel({
           {/* Metadata */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-sm">
             <DetailRow label="Status" value={<span className="capitalize">{audience.status}</span>} />
-            {audience.nlPrompt && <DetailRow label="Described as" value={audience.nlPrompt} />}
+            {audience.description && <DetailRow label="Described as" value={audience.description} />}
             {audience.provider && (
               <DetailRow
                 label="Provider"
