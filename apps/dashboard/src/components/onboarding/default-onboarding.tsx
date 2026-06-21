@@ -17,6 +17,7 @@ import {
 import posthog from "posthog-js";
 import { extractDomain } from "@/lib/extract-domain";
 import { upsertBrand, extractBrandFields, SALES_PROFILE_FIELDS } from "@/lib/api";
+import { displaySetupError } from "@/lib/onboarding-setup-error";
 
 type AccountType = "agency" | "company";
 type Step = "booking-intro" | "type-selection" | "url-input";
@@ -172,7 +173,7 @@ export function DefaultOnboarding() {
         account_type: accountType,
         domain,
       });
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(displaySetupError(err));
       setSubmitting(false);
     }
   };

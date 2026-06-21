@@ -51,6 +51,7 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { extractDomain } from "@/lib/extract-domain";
+import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 
 /**
@@ -178,14 +179,6 @@ const LAUNCH_STEPS = [
 ];
 
 const GENERIC_AI_SETUP_ERROR = "Our AI analysis service had a temporary issue. Your workspace is ready, but some suggestions may need to be filled in manually.";
-
-function displaySetupError(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err);
-  if (/chat-service|LLM call failed|\/complete/i.test(message)) {
-    return "Our AI analysis service had a temporary issue. Please try again in a minute.";
-  }
-  return err instanceof Error ? err.message : "Setup failed. Please try again.";
-}
 
 // Rotating soft-tag palette for the services chips (visual variety, like personas).
 const TAG_TONES = [
