@@ -71,6 +71,8 @@ export function EditWithAIChat({
   context,
   sessionVersion,
   invalidateKeys,
+  showBackdrop = true,
+  panelClassName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -84,6 +86,11 @@ export function EditWithAIChat({
   sessionVersion?: string;
   /** React Query keys to invalidate after each turn (so the cards reflect AI edits). */
   invalidateKeys: unknown[][];
+  /** Dim the rest of the page behind the chat. Default true. Pass false when docked
+   *  beside another panel so that panel stays visible/interactive (live-edit view). */
+  showBackdrop?: boolean;
+  /** Override the chat panel position/size (e.g. to dock left of a detail panel). */
+  panelClassName?: string;
 }) {
   const queryClient = useQueryClient();
   const { showPaymentRequired } = useBillingGuard();
@@ -327,8 +334,8 @@ export function EditWithAIChat({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-50 flex flex-col border-l border-gray-200 animate-slide-in-right">
+      {showBackdrop && <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />}
+      <div className={panelClassName ?? "fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-50 flex flex-col border-l border-gray-200 animate-slide-in-right"}>
         {/* Header */}
         <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2 min-w-0">

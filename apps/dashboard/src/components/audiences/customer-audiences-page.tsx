@@ -10,9 +10,13 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { ProviderLogo } from "@/components/provider-logo";
+import { PROVIDER_DOMAINS } from "@/lib/api-registry";
+import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { pollOptions } from "@/lib/query-options";
 import {
   fetchFeatureAudienceStats,
+  generateAudienceAvatar,
   getBrandSalesEconomics,
   listAudiences,
   setAudienceStatus,
@@ -37,8 +41,9 @@ function formatCents(cents: number | null): string {
  * status toggle (pause / resume / archive / restore). Audiences are CREATED and
  * their filters EDITED only via the AI chat / onboarding — this page does NOT
  * offer a manual create or a filter editor (the filters are provider-shaped and
- * owned by human-service). Selecting a row opens a read-only detail with the
- * status actions.
+ * owned by human-service). Selecting a row opens a detail panel with the colored
+ * targeting tags, the AI-generated avatar (with a (re)generate button), the
+ * provider logo, the status actions, and a docked "Edit with AI" chat.
  */
 
 function audienceInitials(name: string): string {
@@ -47,9 +52,34 @@ function audienceInitials(name: string): string {
   return words.slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 }
 
-function AudienceAvatar({ name }: { name: string }) {
+/** Avatar: the AI-generated image (data: URI) when present, else initials badge. */
+function AudienceAvatar({
+  name,
+  avatarUrl,
+  size = 28,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  size?: number;
+}) {
+  const [error, setError] = useState(false);
+  const box = { width: size, height: size };
+  if (avatarUrl && !error) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        style={box}
+        onError={() => setError(true)}
+        className="shrink-0 rounded-full border border-gray-200 object-cover"
+      />
+    );
+  }
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand-100 bg-brand-50 text-[10px] font-semibold text-brand-700">
+    <span
+      style={{ ...box, fontSize: Math.max(10, Math.round(size * 0.32)) }}
+      className="flex shrink-0 items-center justify-center rounded-full border border-brand-100 bg-brand-50 font-semibold text-brand-700"
+    >
       {audienceInitials(name)}
     </span>
   );
@@ -101,6 +131,22 @@ export function CustomerAudiencesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["audiences", brandId] }),
   });
 
+  // (Re)generate the audience avatar via chat-service. Write the fresh row into the
+  // list cache first (so the avatar appears instantly), then invalidate.
+  const avatarMut = useMutation({
+    mutationFn: (id: string) => generateAudienceAvatar(id),
+    onSuccess: (res) => {
+      queryClient.setQueryData<{ audiences: AudienceWire[]; total: number }>(
+        ["audiences", brandId],
+        (old) =>
+          old
+            ? { ...old, audiences: old.audiences.map((a) => (a.id === res.audience.id ? res.audience : a)) }
+            : old,
+      );
+      queryClient.invalidateQueries({ queryKey: ["audiences", brandId] });
+    },
+  });
+
   // "suggested" candidates are inactive pre-activation rows — not shown on the
   // page (they belong to the onboarding/AI suggest flow until activated).
   const audiences: AudienceWire[] = (data?.audiences ?? []).filter((a) => a.status !== "suggested");
@@ -111,6 +157,15 @@ export function CustomerAudiencesPage() {
   }, [selectedId, selected]);
 
   const setStatus = (id: string, status: AudienceStatus) => statusMut.mutate({ id, status });
+
+  // The chat docks beside the detail panel (no backdrop, panel stays visible) when
+  // an audience is selected, so AI edits show live in the left panel.
+  const aiDocked = aiOpen && Boolean(selected);
+
+  const closeInspector = () => {
+    setSelectedId(null);
+    setAiOpen(false);
+  };
 
   if (!isBeta || !revenueOk) {
     return (
@@ -151,7 +206,10 @@ export function CustomerAudiencesPage() {
         </div>
         <button
           type="button"
-          onClick={() => setAiOpen(true)}
+          onClick={() => {
+            setSelectedId(null);
+            setAiOpen(true);
+          }}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
         >
           <SparklesIcon className="w-4 h-4" />
@@ -227,7 +285,7 @@ export function CustomerAudiencesPage() {
                     >
                       <td className="px-4 py-3">
                         <div className="flex min-w-0 items-center gap-3">
-                          <AudienceAvatar name={audience.name} />
+                          <AudienceAvatar name={audience.name} avatarUrl={audience.avatarUrl} />
                           <div className="min-w-0">
                             <div className="flex min-w-0 flex-wrap items-center gap-2">
                               <p className="min-w-0 truncate font-medium text-gray-900">{audience.name || "Untitled"}</p>
@@ -263,7 +321,15 @@ export function CustomerAudiencesPage() {
 
       <AudienceDetailPanel
         audience={selected}
-        onClose={() => setSelectedId(null)}
+        shiftRight={aiDocked}
+        onClose={closeInspector}
+        onEditWithAI={() => setAiOpen(true)}
+        onRegenerateAvatar={() => {
+          if (selected) avatarMut.mutate(selected.id);
+        }}
+        avatarPending={Boolean(
+          selected && avatarMut.isPending && avatarMut.variables === selected.id,
+        )}
         onSetStatus={(status) => {
           if (!selected) return;
           setStatus(selected.id, status);
@@ -282,7 +348,7 @@ export function CustomerAudiencesPage() {
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         title="Edit audiences with AI"
-        intro="Hi — I can create a new audience from a description, rename one, pause / resume / archive it, or refresh its counts. What would you like to do?"
+        intro="Hi — I can create a new audience from a description, rename one, pause / resume / archive it, refresh its counts, or regenerate its avatar. What would you like to do?"
         suggestions={[
           "Create an audience of heads of marketing at Series A SaaS",
           "Pause the lowest-performing audience",
@@ -290,7 +356,15 @@ export function CustomerAudiencesPage() {
         ]}
         configKey="audience-editor"
         brandId={brandId}
+        context={selected ? { audienceId: selected.id } : undefined}
+        sessionVersion={selected?.id}
         invalidateKeys={[["audiences", brandId]]}
+        showBackdrop={!aiDocked}
+        panelClassName={
+          aiDocked
+            ? "fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-[95] flex flex-col border-l border-gray-200 animate-slide-in-right"
+            : undefined
+        }
       />
     </DashboardPage>
   );
@@ -328,13 +402,21 @@ function StatusButton({
 
 function AudienceDetailPanel({
   audience,
+  shiftRight,
   onClose,
+  onEditWithAI,
+  onRegenerateAvatar,
+  avatarPending,
   onSetStatus,
   statusActionPending,
   statusActionTarget,
 }: {
   audience: AudienceWire | null;
+  shiftRight?: boolean;
   onClose: () => void;
+  onEditWithAI: () => void;
+  onRegenerateAvatar: () => void;
+  avatarPending?: boolean;
   onSetStatus: (status: AudienceStatus) => void;
   statusActionPending?: boolean;
   statusActionTarget?: AudienceStatus;
@@ -352,15 +434,24 @@ function AudienceDetailPanel({
 
   const busy = (target: AudienceStatus) => Boolean(statusActionPending && statusActionTarget === target);
   const count = audience.apolloCount ?? audience.apifyCount;
+  const providerDomain = audience.provider ? PROVIDER_DOMAINS[audience.provider.toLowerCase()] ?? null : null;
+  const groups = audience.filters ? audienceFilterGroups(audience.filters) : [];
 
   return (
     <div className="fixed inset-0 z-[90]" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-gray-900/30" onClick={onClose} />
-      <aside className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-gray-200 bg-gray-50 shadow-xl">
+      <aside
+        className={`absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto border-l border-gray-200 bg-gray-50 shadow-xl transition-[margin] ${
+          shiftRight ? "md:mr-[28rem]" : ""
+        }`}
+      >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-200 bg-white px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Audience details</p>
-            <h2 className="mt-1 truncate text-base font-semibold text-gray-900">{audience.name || "Untitled"}</h2>
+          <div className="flex min-w-0 items-center gap-3">
+            <AudienceAvatar name={audience.name} avatarUrl={audience.avatarUrl} size={40} />
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Audience details</p>
+              <h2 className="mt-0.5 truncate text-base font-semibold text-gray-900">{audience.name || "Untitled"}</h2>
+            </div>
           </div>
           <button
             type="button"
@@ -375,10 +466,70 @@ function AudienceDetailPanel({
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
+          {/* Edit with AI */}
+          <button
+            type="button"
+            onClick={onEditWithAI}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          >
+            <SparklesIcon className="w-4 h-4" />
+            Edit with AI
+          </button>
+
+          {/* Avatar — AI-generated image, (re)generate */}
+          <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
+            <AudienceAvatar name={audience.name} avatarUrl={audience.avatarUrl} size={64} />
+            <div className="min-w-0">
+              <StatusButton
+                label={audience.avatarUrl ? "Regenerate image" : "Generate image"}
+                onClick={onRegenerateAvatar}
+                busy={avatarPending}
+              />
+              <p className="mt-1.5 text-xs text-gray-400">
+                AI-generated from this audience&apos;s traits.
+              </p>
+            </div>
+          </div>
+
+          {/* Targeting — colored filter-category tags */}
+          {groups.length > 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-400">Targeting</p>
+              <div className="flex flex-col gap-2">
+                {groups.map((g) => (
+                  <div key={g.label} className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      {g.label}
+                    </span>
+                    {g.values.map((v, j) => (
+                      <span
+                        key={j}
+                        className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${g.tone}`}
+                      >
+                        <span className="min-w-0 truncate">{v}</span>
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Metadata */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-sm">
             <DetailRow label="Status" value={<span className="capitalize">{audience.status}</span>} />
             {audience.nlPrompt && <DetailRow label="Described as" value={audience.nlPrompt} />}
-            {audience.provider && <DetailRow label="Provider" value={<span className="capitalize">{audience.provider}</span>} />}
+            {audience.provider && (
+              <DetailRow
+                label="Provider"
+                value={
+                  <span className="inline-flex items-center gap-1.5">
+                    <ProviderLogo domain={providerDomain} size={14} />
+                    <span className="capitalize">{audience.provider}</span>
+                  </span>
+                }
+              />
+            )}
             {count != null && <DetailRow label="Approx. matches" value={count.toLocaleString("en-US")} />}
           </div>
 
