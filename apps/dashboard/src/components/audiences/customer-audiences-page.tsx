@@ -10,7 +10,25 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
-import { listAudiences, setAudienceStatus, type AudienceStatus, type AudienceWire } from "@/lib/api";
+import { pollOptions } from "@/lib/query-options";
+import {
+  fetchFeatureAudienceStats,
+  getBrandSalesEconomics,
+  listAudiences,
+  setAudienceStatus,
+  type AudienceStatus,
+  type AudienceWire,
+  type FeatureAudienceStatsRow,
+} from "@/lib/api";
+
+/** Cents → "$X.XX" / "-" / "<$0.01". Mirrors top-audiences-card. */
+function formatCents(cents: number | null): string {
+  if (cents == null) return "-";
+  if (cents <= 0) return "$0.00";
+  const usd = cents / 100;
+  if (usd < 0.01) return "<$0.01";
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 /**
  * Audiences (beta).
@@ -51,6 +69,32 @@ export function CustomerAudiencesPage() {
   const [aiOpen, setAiOpen] = useState(false);
 
   const { data, isPending } = useAuthQuery(["audiences", brandId], () => listAudiences(brandId));
+
+  // Brand optimization goal → audience-stats goal (sorts by CPC for signup, CPPR
+  // otherwise). Same resolution as the brand Overview.
+  const { data: economicsData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    pollOptions,
+  );
+  const audienceStatsGoal =
+    (economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings") === "signups"
+      ? "signup"
+      : "meetingBooked";
+
+  // Per-audience outreach / opens / clicks evidence (features-service). Joined to
+  // the human-service audience rows by audienceId; audiences with no attributed
+  // evidence simply render "-".
+  const { data: audienceStatsData } = useAuthQuery(
+    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
+    () => fetchFeatureAudienceStats(featureSlug, { brandId, goal: audienceStatsGoal }),
+    { enabled: Boolean(featureSlug), ...pollOptions },
+  );
+  const statsByAudienceId = new Map<string, FeatureAudienceStatsRow>();
+  for (const row of audienceStatsData?.audiences ?? []) {
+    statsByAudienceId.set(row.audienceId, row);
+    statsByAudienceId.set(row.audience.id, row);
+  }
 
   const statusMut = useMutation({
     mutationFn: (i: { id: string; status: AudienceStatus }) => setAudienceStatus(i.id, i.status),
@@ -154,15 +198,16 @@ export function CustomerAudiencesPage() {
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <th className="px-4 py-3 font-medium">Audience</th>
+                  <th className="px-4 py-3 text-right font-medium">Outreach</th>
+                  <th className="px-4 py-3 text-right font-medium">Opens</th>
                   <th className="px-4 py-3 text-right font-medium">Clicks</th>
                   <th className="px-4 py-3 text-right font-medium">Cost per click</th>
-                  <th className="px-4 py-3 text-right font-medium">Signups</th>
-                  <th className="px-4 py-3 text-right font-medium">Cost per signup</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((audience) => {
                   const isSelected = selectedId === audience.id;
+                  const stats = statsByAudienceId.get(audience.id);
                   return (
                     <tr
                       key={audience.id}
@@ -195,10 +240,18 @@ export function CustomerAudiencesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-500">-</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                        {stats ? stats.evidence.contacted.toLocaleString("en-US") : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                        {stats?.evidence.opened != null ? stats.evidence.opened.toLocaleString("en-US") : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                        {stats ? stats.evidence.websiteClicks.toLocaleString("en-US") : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                        {stats ? formatCents(stats.metrics.cpcCents) : "-"}
+                      </td>
                     </tr>
                   );
                 })}

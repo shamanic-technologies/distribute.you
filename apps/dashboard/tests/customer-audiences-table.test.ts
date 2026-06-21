@@ -21,14 +21,24 @@ describe("Audiences page", () => {
     expect(src).not.toContain("/brands/");
   });
 
-  it("renders an audiences table with placeholder metric columns", () => {
+  it("renders an audiences table with real outreach / opens / clicks columns", () => {
     expect(src).toContain("<table");
-    for (const header of ["Clicks", "Cost per click", "Signups", "Cost per signup"]) {
+    for (const header of ["Outreach", "Opens", "Clicks", "Cost per click"]) {
       expect(src).toContain(header);
     }
+    // Signups / cost-per-signup have no audience-stats source — dropped.
+    expect(src).not.toContain("Cost per signup");
     expect(src).toContain('audience.status === "paused"');
     expect(src).toContain("Paused");
-    expect(src).toContain('text-gray-500">-</td>');
+  });
+
+  it("joins per-audience evidence from features-service audience-stats by audienceId", () => {
+    expect(src).toContain("fetchFeatureAudienceStats");
+    expect(src).toContain("statsByAudienceId");
+    expect(src).toContain("stats.evidence.contacted");
+    expect(src).toContain("stats.evidence.opened");
+    expect(src).toContain("stats.evidence.websiteClicks");
+    expect(src).toContain("stats.metrics.cpcCents");
   });
 
   it("toggles lifecycle status via the gateway (pause / resume / archive / restore)", () => {
