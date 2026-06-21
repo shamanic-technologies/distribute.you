@@ -10,6 +10,7 @@ export const PROVIDER_DOMAINS: Record<string, string> = {
   anthropic: "anthropic.com",
   openai: "openai.com",
   apollo: "apollo.io",
+  apify: "apify.com",
   instantly: "instantly.ai",
   postmark: "postmarkapp.com",
   twilio: "twilio.com",

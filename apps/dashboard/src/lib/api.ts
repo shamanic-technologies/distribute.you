@@ -1041,6 +1041,8 @@ export interface AudienceWire {
   status: AudienceStatus;
   source: string | null;
   filters: Record<string, unknown> | null;
+  /** AI-generated avatar as a self-contained data: URI. Null = none yet. */
+  avatarUrl: string | null;
   apolloCount: number | null;
   apifyCount: number | null;
   countedAt: string | null;
@@ -1059,6 +1061,7 @@ const AudienceSchema = z.object({
   status: AudienceStatusSchema,
   source: z.string().nullable(),
   filters: z.record(z.string(), z.unknown()).nullable(),
+  avatarUrl: z.string().nullable(),
   apolloCount: z.number().nullable(),
   apifyCount: z.number().nullable(),
   countedAt: z.string().nullable(),
@@ -1088,6 +1091,31 @@ export async function setAudienceStatus(
   if (!parsed.success) {
     console.error("[dashboard] setAudienceStatus: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] setAudienceStatus: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * POST /orgs/audiences/:audienceId/avatar — (re)generate the audience's avatar
+ * image via chat-service (which owns the cost). Optional `prompt` steers the
+ * image; omitted ⟹ derived from the audience's own descriptors. Returns the
+ * updated audience with `avatarUrl` populated (a self-contained data: URI).
+ * May 402 (insufficient credits) — surface via the billing guard at the call site.
+ */
+export async function generateAudienceAvatar(
+  audienceId: string,
+  prompt?: string,
+  token?: string,
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/avatar`, {
+    token,
+    method: "POST",
+    body: prompt ? { prompt } : {},
+  });
+  const parsed = AudienceResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] generateAudienceAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] generateAudienceAvatar: invalid response shape");
   }
   return parsed.data;
 }
