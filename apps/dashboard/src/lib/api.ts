@@ -1506,6 +1506,8 @@ export interface FeatureAudienceStatsRow {
     firstRunAt: string | null;
     lastRunAt: string | null;
     contacted: number;
+    /** Opened-recipient count. Optional until features-service `opened` is live in prod. */
+    opened?: number;
     websiteClicks: number;
     positiveReplies: number;
   };
@@ -1540,6 +1542,7 @@ const FeatureAudienceStatsRowSchema = z.object({
     firstRunAt: z.string().nullable(),
     lastRunAt: z.string().nullable(),
     contacted: z.number(),
+    opened: z.number().optional(),
     websiteClicks: z.number(),
     positiveReplies: z.number(),
   }),
