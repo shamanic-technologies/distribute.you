@@ -9,6 +9,7 @@ import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
+import { Skeleton } from "@/components/skeleton";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
@@ -115,11 +116,14 @@ export function CustomerAudiencesPage() {
   // Per-audience outreach / opens / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed
   // evidence simply render "-".
-  const { data: audienceStatsData } = useAuthQuery(
+  const { data: audienceStatsData, isPending: statsIsPending, isPlaceholderData: statsIsPlaceholder } = useAuthQuery(
     ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
     () => fetchFeatureAudienceStats(featureSlug, { brandId, goal: audienceStatsGoal }),
     { enabled: Boolean(featureSlug), ...pollOptions },
   );
+  // Skeleton the per-row numbers until the stats query resolves (first load or a
+  // goal-key switch), instead of flashing "-" then popping to the real figures.
+  const statsLoading = Boolean(featureSlug) && (statsIsPending || statsIsPlaceholder);
   const statsByAudienceId = new Map<string, FeatureAudienceStatsRow>();
   for (const row of audienceStatsData?.audiences ?? []) {
     statsByAudienceId.set(row.audienceId, row);
@@ -299,16 +303,40 @@ export function CustomerAudiencesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                        {stats ? stats.evidence.contacted.toLocaleString("en-US") : "-"}
+                        {statsLoading ? (
+                          <Skeleton className="ml-auto h-4 w-10" />
+                        ) : stats ? (
+                          stats.evidence.contacted.toLocaleString("en-US")
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                        {stats?.evidence.opened != null ? stats.evidence.opened.toLocaleString("en-US") : "-"}
+                        {statsLoading ? (
+                          <Skeleton className="ml-auto h-4 w-10" />
+                        ) : stats?.evidence.opened != null ? (
+                          stats.evidence.opened.toLocaleString("en-US")
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                        {stats ? stats.evidence.websiteClicks.toLocaleString("en-US") : "-"}
+                        {statsLoading ? (
+                          <Skeleton className="ml-auto h-4 w-10" />
+                        ) : stats ? (
+                          stats.evidence.websiteClicks.toLocaleString("en-US")
+                        ) : (
+                          "-"
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                        {stats ? formatCents(stats.metrics.cpcCents) : "-"}
+                        {statsLoading ? (
+                          <Skeleton className="ml-auto h-4 w-12" />
+                        ) : stats ? (
+                          formatCents(stats.metrics.cpcCents)
+                        ) : (
+                          "-"
+                        )}
                       </td>
                     </tr>
                   );
