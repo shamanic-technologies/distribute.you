@@ -1063,7 +1063,7 @@ export function BetaOnboarding() {
         ) : (
           <div className="space-y-4">
             {rateKeys.map((k) => (
-              <div key={k} className="flex flex-col gap-4 rounded-xl border border-gray-200 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div key={k} className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="text-base font-semibold text-gray-900">{RATE_META[k].label}</div>
                   <div className="mt-1 text-sm leading-5 text-gray-500">{RATE_META[k].hint}</div>
