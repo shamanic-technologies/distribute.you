@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { formatCount, formatUsd, formatCentsAsUsd, formatCentsAsUsdOrNull } from "../src/lib/format-number";
+import {
+  formatCount,
+  formatUsd,
+  formatCentsAsUsd,
+  formatCentsAsUsdOrNull,
+  formatLocaleInteger,
+  formatLocaleNumberInputValue,
+  parseLocaleNumberInput,
+} from "../src/lib/format-number";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -42,6 +50,25 @@ describe("formatCentsAsUsdOrNull", () => {
   });
 });
 
+describe("locale-aware numeric text helpers", () => {
+  it("formats grouped input values with the requested viewer locale", () => {
+    expect(formatLocaleNumberInputValue(1500.5, "en-US")).toBe("1,500.5");
+    expect(formatLocaleNumberInputValue(1500.5, "fr-FR")).toBe("1 500,5");
+    expect(formatLocaleNumberInputValue(1500.5, "de-DE")).toBe("1.500,5");
+  });
+
+  it("parses the viewer locale group and decimal separators", () => {
+    expect(parseLocaleNumberInput("1,500.5", "en-US")).toBe(1500.5);
+    expect(parseLocaleNumberInput("1 500,5", "fr-FR")).toBe(1500.5);
+    expect(parseLocaleNumberInput("1.500,5", "de-DE")).toBe(1500.5);
+  });
+
+  it("formats integer labels with locale-specific thousands separators", () => {
+    expect(formatLocaleInteger(12500, "en-US")).toBe("12,500");
+    expect(formatLocaleInteger(12500, "fr-FR")).toBe("12 500");
+  });
+});
+
 describe("sidebar components use formatCount for badges", () => {
   // mcp-sidebar.tsx was removed with the campaign concept.
   it("context-sidebar imports and uses formatCount", () => {
@@ -66,4 +93,31 @@ describe("sidebar components use formatCount for badges", () => {
 
   // The campaign press-kit detail page (which used formatCount for view stats)
   // was removed with the campaign concept.
+});
+
+describe("sales economics surfaces use locale-aware text inputs", () => {
+  it("settings sales economics uses the shared locale input helpers instead of number inputs", () => {
+    const content = fs.readFileSync(
+      path.join(__dirname, "../src/components/settings/brand-sales-economics-card.tsx"),
+      "utf-8"
+    );
+    expect(content).toContain('from "@/lib/format-number"');
+    expect(content).toContain("formatLocaleNumberInputValue");
+    expect(content).toContain("parseLocaleNumberInput");
+    expect(content).toContain('type="text"');
+    expect(content).toContain('inputMode="decimal"');
+    expect(content).not.toContain('type="number"');
+  });
+
+  it("onboarding rates and budget labels use the shared locale helpers", () => {
+    const content = fs.readFileSync(
+      path.join(__dirname, "../src/components/onboarding/beta-onboarding.tsx"),
+      "utf-8"
+    );
+    expect(content).toContain("formatLocaleInteger");
+    expect(content).toContain("formatLocaleNumberInputValue");
+    expect(content).toContain("parseLocaleNumberInput");
+    expect(content).not.toContain("function groupInt");
+    expect(content).not.toContain('toLocaleString("en-US")');
+  });
 });

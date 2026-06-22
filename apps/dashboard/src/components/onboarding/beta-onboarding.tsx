@@ -54,6 +54,11 @@ import { extractDomain } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
+import {
+  formatLocaleInteger,
+  formatLocaleNumberInputValue,
+  parseLocaleNumberInput,
+} from "@/lib/format-number";
 
 /**
  * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
@@ -116,44 +121,33 @@ const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = { signups: ["v2s"], me
 
 // ── Rate-input formatting ────────────────────────────────────────────
 // Number fields render as TEXT (not <input type="number">) so we can show
-// thousands separators ("2,500") and allow decimals ("0.5"). User input is
+// viewer-locale separators ("2,500" / "2 500") and decimals ("0.5" / "0,5"). User input is
 // intentionally not reformatted on each keystroke; normalizing while typing
 // breaks ordinary edits like turning "3" into "0.3".
-function groupInt(intStr: string): string {
-  return intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
 function parseRateTextInput(raw: string, key: RateKey): number {
   const label = RATE_META[key].label;
   const trimmed = raw.trim();
   if (!trimmed) throw new Error(`${label} is required.`);
+  const value = parseLocaleNumberInput(raw);
+  if (value === null) {
+    throw new Error(
+      RATE_META[key].suffix === "%"
+        ? `${label} must be a decimal number.`
+        : `${label} must be a decimal dollar amount.`,
+    );
+  }
 
   if (RATE_META[key].suffix === "%") {
-    const compact = trimmed.replace(/\s/g, "").replace(",", ".");
-    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(compact)) {
-      throw new Error(`${label} must be a decimal number.`);
-    }
-    const value = Number(compact);
-    if (!Number.isFinite(value)) throw new Error(`${label} must be a decimal number.`);
     if (value < 0 || value > 100) throw new Error(`${label} must be between 0 and 100%.`);
     return value;
   }
 
-  const compact = trimmed.replace(/\s/g, "");
-  if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(compact)) {
-    throw new Error(`${label} must be a decimal dollar amount.`);
-  }
-  const value = Number(compact.replace(/,/g, ""));
-  if (!Number.isFinite(value)) throw new Error(`${label} must be a decimal dollar amount.`);
   if (value < 0) throw new Error(`${label} must be 0 or more.`);
   return value;
 }
 
 function rateToText(n: number): string {
-  if (!isFinite(n)) return "";
-  const [intPart, decPart] = String(n).split(".");
-  const grouped = groupInt(intPart);
-  return decPart !== undefined ? `${grouped}.${decPart}` : grouped;
+  return formatLocaleNumberInputValue(n);
 }
 
 // The five agency-model benefits (landing how-it-works "Sent on your behalf").
@@ -195,8 +189,8 @@ const TAG_TONES = [
 const COUNT_TIERS = [5, 25, 125];
 
 
-const fmtUsd0 = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
-const fmtCount = (n: number) => Math.round(n).toLocaleString("en-US");
+const fmtUsd0 = (n: number) => "$" + formatLocaleInteger(n);
+const fmtCount = (n: number) => formatLocaleInteger(n);
 
 // A background pre-warm of the audience step, started during the loading screen.
 // Resolves the drafted ICP prompt and the suggested candidates (candidates null
@@ -1047,6 +1041,12 @@ export function BetaOnboarding() {
                     launchFeatureInputsRef.current = null;
                     setRateText((t) => ({ ...t, [k]: e.target.value }));
                   }}
+                  onBlur={() => {
+                    const value = parseLocaleNumberInput(rateText[k]);
+                    if (value !== null) {
+                      setRateText((t) => ({ ...t, [k]: rateToText(value) }));
+                    }
+                  }}
                   className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
                 />
                 {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
@@ -1156,8 +1156,9 @@ export function BetaOnboarding() {
         })}
         {/* Other — custom count */}
         {(() => {
-          const customN = Number(customCount);
-          const isCustom = customCount !== "" && customN > 0;
+          const parsedCustomN = parseLocaleNumberInput(customCount);
+          const customN = parsedCustomN === null ? null : Math.round(parsedCustomN);
+          const isCustom = customN !== null && customN > 0;
           const active = isCustom && selectedCount === customN;
           const b = isCustom ? budgetForCount(customN) : null;
           const selectCustomCount = () => {
@@ -1170,13 +1171,17 @@ export function BetaOnboarding() {
             >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
               <input
-                type="number"
-                min={1}
+                type="text"
+                inputMode="numeric"
                 value={customCount}
                 onChange={(e) => {
                   setCustomCount(e.target.value);
-                  const v = Number(e.target.value);
-                  setSelectedCount(v > 0 ? v : null);
+                  const v = parseLocaleNumberInput(e.target.value);
+                  setSelectedCount(v !== null && v > 0 ? Math.round(v) : null);
+                }}
+                onBlur={() => {
+                  const v = parseLocaleNumberInput(customCount);
+                  if (v !== null) setCustomCount(formatLocaleInteger(v));
                 }}
                 placeholder="Custom"
                 className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
