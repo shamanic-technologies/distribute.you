@@ -859,7 +859,9 @@ export function BetaOnboarding() {
     return rec && rec > 0 ? Math.round(rec) : null;
   }
 
-  const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const cardWide = "min-w-0 w-full rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const cardNarrow = "mx-auto w-full max-w-lg min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 md:p-8";
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
   // ── Service-tag editor helpers ────────────────────────────────────
@@ -882,11 +884,11 @@ export function BetaOnboarding() {
   // ── Step renders ─────────────────────────────────────────────────
   if (step === "welcome") {
     return (
-      <div className={card}>
+      <div className={cardWide}>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">Beta</span>
-        <h1 className="mt-4 font-display text-3xl font-bold leading-tight text-gray-950">Pay per outcome,<br />like Google Ads.</h1>
-        <p className="mt-3 text-sm leading-6 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
-        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+        <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-gray-950">Pay per outcome, like Google Ads.</h1>
+        <p className="mt-3 text-base leading-7 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
+        <div className="mt-7 grid gap-4 sm:grid-cols-3">
           {[
             {
               title: "Drop your URL",
@@ -904,16 +906,16 @@ export function BetaOnboarding() {
               Icon: TrophyIcon,
             },
           ].map((f) => (
-            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600">
-                <f.Icon className="h-4 w-4" />
+            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600">
+                <f.Icon className="h-5 w-5" />
               </div>
-              <div className="mt-3 text-sm font-semibold text-gray-950">{f.title}</div>
-              <div className="mt-1 text-xs leading-5 text-gray-500">{f.desc}</div>
+              <div className="mt-4 text-base font-semibold text-gray-950">{f.title}</div>
+              <div className="mt-1.5 text-sm leading-6 text-gray-500">{f.desc}</div>
             </div>
           ))}
         </div>
-        <button onClick={() => setStep("url")} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700">
+        <button onClick={() => setStep("url")} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-700">
           Get started <ArrowRightIcon className="h-4 w-4" />
         </button>
       </div>
@@ -922,7 +924,7 @@ export function BetaOnboarding() {
 
   if (step === "url") {
     return (
-      <div className={card}>
+      <div className={cardNarrow}>
         <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
         <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -942,7 +944,7 @@ export function BetaOnboarding() {
   if (step === "loading") {
     const loadingComplete = fetchDoneRef.current || loadStep >= LOADING_STEPS.length;
     return (
-      <div className={card}>
+      <div className={cardNarrow}>
         <BrandStepHeader domain={domain} hostname={hostname} />
         <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
         <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
@@ -969,7 +971,7 @@ export function BetaOnboarding() {
 
   if (step === "services") {
     return (
-      <div className={card}>
+      <div className={cardWide}>
         <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
@@ -1027,37 +1029,70 @@ export function BetaOnboarding() {
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className="space-y-3">
-          {rateKeys.map((k) => (
-            <div key={k} className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-gray-900">{RATE_META[k].label}</div>
-                <div className="mt-0.5 text-xs leading-5 text-gray-500">{RATE_META[k].hint}</div>
+        {outcome === "meetings" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {rateKeys.map((k) => (
+              <div key={k} className="flex flex-col gap-4 rounded-xl border border-gray-200 p-4">
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">{RATE_META[k].label}</div>
+                  <div className="mt-1 text-xs leading-5 text-gray-500">{RATE_META[k].hint}</div>
+                </div>
+                <div className="flex items-center justify-center gap-1 rounded-xl border-2 border-gray-200 px-3 py-5 focus-within:border-brand-400">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={rateText[k]}
+                    onChange={(e) => {
+                      ratesEditedRef.current = true;
+                      launchFeatureInputsRef.current = null;
+                      setRateText((t) => ({ ...t, [k]: e.target.value }));
+                    }}
+                    onBlur={() => {
+                      const value = parseLocaleNumberInput(rateText[k]);
+                      if (value !== null) {
+                        setRateText((t) => ({ ...t, [k]: rateToText(value) }));
+                      }
+                    }}
+                    className="w-full bg-transparent text-center text-4xl font-bold text-gray-900 focus:outline-none"
+                  />
+                  <span className="text-xl font-semibold text-gray-400">%</span>
+                </div>
               </div>
-              <div className="flex w-full items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 sm:w-auto sm:shrink-0">
-                {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-400">$</span>}
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={rateText[k]}
-                  onChange={(e) => {
-                    ratesEditedRef.current = true;
-                    launchFeatureInputsRef.current = null;
-                    setRateText((t) => ({ ...t, [k]: e.target.value }));
-                  }}
-                  onBlur={() => {
-                    const value = parseLocaleNumberInput(rateText[k]);
-                    if (value !== null) {
-                      setRateText((t) => ({ ...t, [k]: rateToText(value) }));
-                    }
-                  }}
-                  className="w-full bg-transparent text-right text-sm text-gray-900 focus:outline-none sm:w-20"
-                />
-                {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-400">%</span>}
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {rateKeys.map((k) => (
+              <div key={k} className="flex flex-col gap-4 rounded-xl border border-gray-200 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-base font-semibold text-gray-900">{RATE_META[k].label}</div>
+                  <div className="mt-1 text-sm leading-5 text-gray-500">{RATE_META[k].hint}</div>
+                </div>
+                <div className="flex items-center gap-1.5 rounded-xl border-2 border-gray-200 px-4 py-3 focus-within:border-brand-400 sm:w-36 sm:shrink-0">
+                  {RATE_META[k].suffix === "$" && <span className="text-xl font-semibold text-gray-400">$</span>}
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={rateText[k]}
+                    onChange={(e) => {
+                      ratesEditedRef.current = true;
+                      launchFeatureInputsRef.current = null;
+                      setRateText((t) => ({ ...t, [k]: e.target.value }));
+                    }}
+                    onBlur={() => {
+                      const value = parseLocaleNumberInput(rateText[k]);
+                      if (value !== null) {
+                        setRateText((t) => ({ ...t, [k]: rateToText(value) }));
+                      }
+                    }}
+                    className="w-full bg-transparent text-right text-2xl font-bold text-gray-900 focus:outline-none"
+                  />
+                  {RATE_META[k].suffix === "%" && <span className="text-xl font-semibold text-gray-400">%</span>}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
       </div>
     );
@@ -1242,7 +1277,7 @@ function OnboardingAudiences({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
@@ -1392,15 +1427,15 @@ function OnboardingAudiences({
       <button
         onClick={() => runSuggest()}
         disabled={loading || icpLoading || !prompt.trim()}
-        className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? (
           <>
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Generating…
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
           </>
         ) : (
           <>
-            <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Regenerate" : "Suggest audiences"}
+            <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
           </>
         )}
       </button>
