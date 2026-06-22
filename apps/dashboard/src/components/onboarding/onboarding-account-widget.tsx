@@ -28,7 +28,7 @@ export function OnboardingAccountWidget() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm transition hover:border-gray-300 hover:bg-gray-50"
+        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm transition hover:border-gray-300 hover:bg-gray-50"
       >
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
