@@ -859,9 +859,9 @@ export function BetaOnboarding() {
     return rec && rec > 0 ? Math.round(rec) : null;
   }
 
-  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
-  const cardWide = "min-w-0 w-full rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
-  const cardNarrow = "mx-auto w-full max-w-lg min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 md:p-8";
+  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
+  const cardWide = "min-w-0 w-full rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
+  const cardNarrow = "mx-auto w-full max-w-md min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-6 md:p-8";
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
   // ── Service-tag editor helpers ────────────────────────────────────
@@ -1037,7 +1037,7 @@ export function BetaOnboarding() {
                   <div className="text-sm font-semibold text-gray-900">{RATE_META[k].label}</div>
                   <div className="mt-1 text-xs leading-5 text-gray-500">{RATE_META[k].hint}</div>
                 </div>
-                <div className="flex items-center justify-center gap-1 rounded-xl border-2 border-gray-200 px-3 py-5 focus-within:border-brand-400">
+                <div className="flex items-center justify-center gap-1 rounded-xl border border-gray-200 px-3 py-5 focus-within:border-brand-400">
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1053,9 +1053,9 @@ export function BetaOnboarding() {
                         setRateText((t) => ({ ...t, [k]: rateToText(value) }));
                       }
                     }}
-                    className="w-full bg-transparent text-center text-4xl font-bold text-gray-900 focus:outline-none"
+                    className="w-full bg-transparent text-center text-5xl font-bold text-gray-900 focus:outline-none"
                   />
-                  <span className="text-xl font-semibold text-gray-400">%</span>
+                  <span className="text-2xl font-semibold text-gray-400">%</span>
                 </div>
               </div>
             ))}
@@ -1068,8 +1068,8 @@ export function BetaOnboarding() {
                   <div className="text-base font-semibold text-gray-900">{RATE_META[k].label}</div>
                   <div className="mt-1 text-sm leading-5 text-gray-500">{RATE_META[k].hint}</div>
                 </div>
-                <div className="flex items-center gap-1.5 rounded-xl border-2 border-gray-200 px-4 py-3 focus-within:border-brand-400 sm:w-36 sm:shrink-0">
-                  {RATE_META[k].suffix === "$" && <span className="text-xl font-semibold text-gray-400">$</span>}
+                <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 focus-within:border-brand-400 sm:w-40 sm:shrink-0">
+                  {RATE_META[k].suffix === "$" && <span className="text-2xl font-semibold text-gray-400">$</span>}
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1085,9 +1085,9 @@ export function BetaOnboarding() {
                         setRateText((t) => ({ ...t, [k]: rateToText(value) }));
                       }
                     }}
-                    className="w-full bg-transparent text-right text-2xl font-bold text-gray-900 focus:outline-none"
+                    className="w-full bg-transparent text-right text-3xl font-bold text-gray-900 focus:outline-none"
                   />
-                  {RATE_META[k].suffix === "%" && <span className="text-xl font-semibold text-gray-400">%</span>}
+                  {RATE_META[k].suffix === "%" && <span className="text-2xl font-semibold text-gray-400">%</span>}
                 </div>
               </div>
             ))}
@@ -1277,13 +1277,14 @@ function OnboardingAudiences({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
   const [prompt, setPrompt] = useState("");
   const [icpLoading, setIcpLoading] = useState(true);
   const icpFetchedRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [candidates, setCandidates] = useState<AudienceCandidate[] | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -1341,6 +1342,15 @@ function OnboardingAudiences({
       if (nl) void runSuggest(nl);
     })();
   }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-grow textarea to fit content — fires whenever prompt changes (user typing
+  // or programmatic prefill). Reset height to "auto" first so shrinking works too.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [prompt]);
 
   async function runSuggest(nlArg?: string) {
     const nl = (nlArg ?? prompt).trim();
@@ -1410,11 +1420,12 @@ function OnboardingAudiences({
 
       <div className="relative mt-5">
         <textarea
+          ref={textareaRef}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
           disabled={icpLoading}
           placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+          style={{ minHeight: "80px", overflow: "hidden" }}
           className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
         />
         {icpLoading && (
