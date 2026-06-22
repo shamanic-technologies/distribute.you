@@ -21,7 +21,7 @@ describe("Brand overview pipeline activity chart", () => {
   });
 
   it("replaces the revenue area chart with the 7-day activity bar chart", () => {
-    expect(section).toContain("Pipeline activity next 7 days");
+    expect(section).toContain("Outreach activity next 7 days");
     expect(section).toContain("PipelineActivityChart");
     expect(section).toContain("expectedOutcome");
     expect(section).toContain("formatOutcomeCount");

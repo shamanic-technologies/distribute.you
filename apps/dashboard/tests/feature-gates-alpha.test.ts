@@ -135,7 +135,7 @@ describe("brand overview page — is the (sole) feature's Revenue overview", () 
   );
 
   // The feature segment was flattened into the brand level (single-feature
-  // product): the brand root renders the feature's Revenue & Conversions overview
+  // product): the brand root renders the feature's Outreach & Conversions overview
   // inline. The old feature-grid + Ahrefs BrandMetricsHeader + per-feature alpha
   // gating + Brand Info card were all REMOVED from this page.
   it("renders the Revenue overview inline (not a feature grid / metrics header)", () => {
