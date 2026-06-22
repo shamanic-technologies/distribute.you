@@ -127,7 +127,7 @@ section  { padding: 6rem 0; }
 
 
 /* ── TYPOGRAPHY ── */
-.t-hero { font-size: clamp(2.8rem, 6.5vw, 5.25rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.04; }
+.t-hero { font-size: clamp(1.5rem, 4vw, 3rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.04; }
 .t-h2   { font-size: clamp(1.75rem, 3vw, 2.5rem);   font-weight: 800; line-height: 1.1;  letter-spacing: -0.03em; }
 .t-h3   { font-size: var(--fs-lg);   font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; }
 .t-body { font-size: var(--fs-base);   line-height: 1.72; }
