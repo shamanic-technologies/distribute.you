@@ -39,6 +39,11 @@ const RevenueLeadSchema = z.object({
   // Only present on a `?lens=` (Signups / Booked Meetings / Sales) response;
   // `.nullish()` so the un-lensed overview parse (no field) still succeeds.
   conversionProbabilityPct: z.number().nullish(),
+  // email-gateway delivery evidence (features-service#372). `.optional()` /
+  // `.nullish()` decouple the backend rollout — once prod serves them the
+  // Outreach card + graph-actual read straight off this payload.
+  contacted: z.boolean().optional(),
+  contactedAt: z.string().nullish(),
   date: z.string().nullable(),
 });
 const RevenueEventSchema = z.object({

@@ -21,6 +21,7 @@ import {
   type WorkflowProjectionResponse,
 } from "@/lib/api";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
+import { countContactedLeads, bucketContactedByDay } from "@/lib/contacted-leads";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import {
@@ -109,6 +110,31 @@ export default function BrandOverviewPage() {
     () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
     { enabled, ...pollOptions },
   );
+
+  // ── Single-source "contacted" (features-service#372) ──────────────────────
+  // The Outreach stat card count + the 7-day graph's ACTUAL outreach series now
+  // derive from the SAME `/revenue` `leads[]` the table renders, so a newly-
+  // contacted lead lands on all three surfaces in one refresh (no table→card→
+  // graph stagger). The graph's EXPECTED/forecast series stays from
+  // pipeline-activity untouched — only the outreach actual is overridden.
+  const contactedLeadCount = useMemo(
+    () => (data ? countContactedLeads(data.leads) : null),
+    [data],
+  );
+  const mergedPipelineActivity = useMemo(() => {
+    if (!pipelineActivity || !data) return undefined;
+    const contactedByDay = bucketContactedByDay(data.leads, timezone);
+    return {
+      ...pipelineActivity,
+      days: pipelineActivity.days.map((day) => ({
+        ...day,
+        metrics: {
+          ...day.metrics,
+          outreach: { ...day.metrics.outreach, actual: contactedByDay.get(day.date) ?? 0 },
+        },
+      })),
+    };
+  }, [pipelineActivity, data, timezone]);
 
   // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
   // Cost & efficiency card. Shares the Campaigns page's query key + 5s cadence so
@@ -257,9 +283,13 @@ export default function BrandOverviewPage() {
   // total/today spend (runs-service) are separate cold chains — gate each on its
   // own query so the fast cost figures aren't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
+  // Graph reveals with revenue too — its actual outreach series is sourced from
+  // `/revenue` (mergedPipelineActivity), so it must wait for `data` to avoid a
+  // backend-then-/revenue flip on the outreach bar.
   const activityRevealed = useCoordinatedReveal([
     pipelineActivity !== undefined,
     economicsData !== undefined,
+    data !== undefined,
   ]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const todayCostRevealed = useCoordinatedReveal([todayCostData !== undefined]);
@@ -319,7 +349,7 @@ export default function BrandOverviewPage() {
       {showFirstClickReassurance && <FirstClickReassuranceBanner />}
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
-        pipelineActivity={activityRevealed ? pipelineActivity : undefined}
+        pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         optimizationGoal={optimizationGoal}
         visitToMeetingPct={visitToMeetingPct}
         revenuePending={!revenueRevealed}
@@ -359,8 +389,9 @@ export default function BrandOverviewPage() {
           <OutreachStatCards
             stats={featureStats}
             totalCostCents={totalCostCents}
-            pending={!statsRevealed}
+            pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
+            outreachOverride={contactedLeadCount}
           />
         }
       />
