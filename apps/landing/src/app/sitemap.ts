@@ -62,6 +62,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Statically-served pages (src/app/<page>/route.ts → staticResponse) that were
+  // missing from the sitemap — all live + indexable. Keep in lockstep with the
+  // public/landing/**.html set when adding/removing a static page.
+  const STATIC_SEO_PATHS: { path: string; priority: number }[] = [
+    { path: "/pro", priority: 0.8 },
+    { path: "/agency", priority: 0.8 },
+    { path: "/how-it-works", priority: 0.8 },
+    { path: "/use-cases", priority: 0.8 },
+    { path: "/privacy", priority: 0.3 },
+    { path: "/performance/brands", priority: 0.7 },
+    { path: "/performance/models", priority: 0.7 },
+    // Cold-email SEO cluster (3 pillars + 12 supporting pages)
+    { path: "/cold-email-cost-guide", priority: 0.7 },
+    { path: "/cold-email-cost-guide/cold-email-cost-per-contact", priority: 0.6 },
+    { path: "/cold-email-cost-guide/cold-email-roi", priority: 0.6 },
+    { path: "/cold-email-cost-guide/cold-email-setup-cost", priority: 0.6 },
+    { path: "/cold-email-cost-guide/linkedin-inmail-cost-vs-cold-email", priority: 0.6 },
+    { path: "/cold-email-vs-linkedin", priority: 0.7 },
+    { path: "/cold-email-vs-linkedin/b2b-outbound-channel-comparison", priority: 0.6 },
+    { path: "/cold-email-vs-linkedin/cold-email-vs-linkedin-ads", priority: 0.6 },
+    { path: "/cold-email-vs-linkedin/linkedin-connection-request-vs-cold-email", priority: 0.6 },
+    { path: "/cold-email-vs-linkedin/multichannel-outreach-strategy", priority: 0.6 },
+    { path: "/cold-email-for-saas-founders", priority: 0.7 },
+    { path: "/cold-email-for-saas-founders/ai-cold-email-saas-founders", priority: 0.6 },
+    { path: "/cold-email-for-saas-founders/b2b-cold-email-reply-rate", priority: 0.6 },
+    { path: "/cold-email-for-saas-founders/cold-email-personalization-at-scale", priority: 0.6 },
+    { path: "/cold-email-for-saas-founders/cold-email-subject-lines-saas", priority: 0.6 },
+  ];
+
+  staticEntries.push(
+    ...STATIC_SEO_PATHS.map((e) => ({
+      url: `${baseUrl}${e.path}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: e.priority,
+    })),
+  );
+
   const articleEntries: MetadataRoute.Sitemap = articles.map((a) => ({
     url: `${baseUrl}/blog/${a.slug}`,
     lastModified: new Date(a.updatedAt),
