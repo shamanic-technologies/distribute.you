@@ -43,15 +43,24 @@ export function OutreachStatCards({
   totalCostCents,
   pending,
   optimizationGoal,
+  outreachOverride,
 }: {
   stats: Record<string, number>;
   totalCostCents: number;
   pending: boolean;
   optimizationGoal?: BrandOptimizationGoal;
+  /**
+   * When set, the Outreach count comes from this value (the brand Overview passes
+   * the number of `contacted` leads on the SAME `/revenue` payload the table +
+   * graph read, so all three move together). Absent → the legacy
+   * `/stats`-sourced count (entity pages that don't fetch `/revenue`).
+   */
+  outreachOverride?: number | null;
 }) {
   const isBeta = useIsBetaUser();
   const goal = optimizationGoal ?? "sales_meetings";
-  const outreach = stats.leadsContacted ?? stats.recipientsContacted ?? 0;
+  const outreach =
+    outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
   const opens = stats.recipientsOpened ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
   const beta = <MaturityBadge level="beta" />;

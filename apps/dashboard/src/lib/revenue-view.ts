@@ -55,6 +55,19 @@ export interface ConversionLead {
    * single source — the dashboard never derives it.
    */
   conversionProbabilityPct?: number | null;
+  /**
+   * email-gateway delivery flag (features-service#372). True once the lead is
+   * contacted; STAYS true after click/reply, so a count never undercounts. The
+   * single source for the Outreach stat card + the 7-day graph's actual outreach
+   * series. Optional on the wire to decouple the backend rollout.
+   */
+  contacted?: boolean;
+  /**
+   * Real per-lead `firstContactedAt` ISO timestamp; null when not yet contacted
+   * or the date is unknown (NEVER synthesized). Buckets the graph's actual
+   * outreach series by its local calendar day.
+   */
+  contactedAt?: string | null;
   /** Most-advanced event date; null until per-event timestamps exist. */
   date: string | null;
 }
