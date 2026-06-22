@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Avatar, OrgLogo, ChannelTags, fmtUsd, fmtDate } from "@/components/revenue/conversions-table";
+import { Avatar, OrgLogo, ChannelTags, fmtDate } from "@/components/revenue/conversions-table";
 
 /** Normalized row detail shown in the slide-over (works for org / lead rows). */
 export interface ConversionDetail {
@@ -87,9 +87,6 @@ export function ConversionDetailPanel({
         {detail.probabilityPct != null && (
           <Row label="Signup probability">{Math.round(detail.probabilityPct)}%</Row>
         )}
-        <Row label="Expected revenue">
-          <span className="font-semibold">{fmtUsd(detail.expectedRevenueUsd)}</span>
-        </Row>
         <Row label="Latest activity">{fmtDate(detail.date)}</Row>
       </aside>
     </div>

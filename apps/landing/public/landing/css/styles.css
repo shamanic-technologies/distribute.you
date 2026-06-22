@@ -1092,6 +1092,7 @@ section  { padding: 6rem 0; }
   box-shadow: 0 4px 20px oklch(0% 0 0 / 0.10), 0 1px 4px oklch(0% 0 0 / 0.06);
   display: flex; gap: 0.25rem;
   white-space: nowrap;
+  max-width: calc(100vw - 1.5rem); overflow-x: auto;
 }
 .uc-sticky-nav.uc-sticky-visible {
   transform: translateX(-50%) translateY(0);

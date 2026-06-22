@@ -214,7 +214,7 @@ export function OrgConversionsTable({
   const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(orgs);
   return (
     <TableShell
-      headers={["Organization", "Conversions", "Expected revenue", "Latest activity"]}
+      headers={["Organization", "Conversions", "Latest activity"]}
       empty="No conversions yet."
       rows={orgs.length}
       footer={
@@ -245,9 +245,6 @@ export function OrgConversionsTable({
             <td className="px-4 py-3">
               <ChannelTags tags={o.tags} />
             </td>
-            <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
-              {formatUsd(o.expectedRevenueUsd)}
-            </td>
             <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
               {formatDate(o.mostAdvancedDate)}
             </td>
@@ -269,7 +266,7 @@ export function LeadConversionsTable({
   const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(leads);
   return (
     <TableShell
-      headers={["Lead", "Conversions", "Expected revenue", "Latest activity"]}
+      headers={["Lead", "Conversions", "Latest activity"]}
       empty="No lead conversions yet."
       rows={leads.length}
       footer={
@@ -299,9 +296,6 @@ export function LeadConversionsTable({
             <td className="px-4 py-3">
               <ChannelTags tags={l.tags} />
             </td>
-            <td className="px-4 py-3 text-right font-semibold text-gray-800 whitespace-nowrap">
-              {formatUsd(l.expectedRevenueUsd)}
-            </td>
             <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
               {formatDate(l.date)}
             </td>
@@ -328,7 +322,7 @@ export function EventConversionsTable({
   const { pageItems, page, setPage, pageCount, total, from, to } = usePaginated(events);
   return (
     <TableShell
-      headers={["Lead", "Event", "Pipeline added", "Date"]}
+      headers={["Lead", "Event", "Date"]}
       empty="No conversion events yet."
       rows={events.length}
       footer={
@@ -356,9 +350,6 @@ export function EventConversionsTable({
               <span className={`text-[10px] px-2 py-0.5 rounded-full border ${meta.className}`}>
                 {meta.label}
               </span>
-            </td>
-            <td className="px-4 py-3 text-right font-medium text-gray-700 whitespace-nowrap">
-              {formatUsd(e.contributionUsd)}
             </td>
             <td className="px-4 py-3 text-right text-gray-500 whitespace-nowrap">
               {formatDate(e.eventDate)}
