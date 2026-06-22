@@ -18,10 +18,11 @@ import {
   listAudiences,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
+  keepLastGoodFeatureRevenue,
   type WorkflowProjectionResponse,
 } from "@/lib/api";
+import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
-import { countContactedLeads, bucketContactedByDay } from "@/lib/contacted-leads";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import {
@@ -102,7 +103,17 @@ export default function BrandOverviewPage() {
   const { data } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
-    { enabled, ...pollOptionsSlow },
+    {
+      enabled,
+      ...pollOptionsSlow,
+      // Keep the last-good `outreachContacted` (Outreach card + graph-actual source)
+      // across a transient degenerate refetch that drops it on a valid 200.
+      structuralSharing: (prev, next) =>
+        keepLastGoodFeatureRevenue(
+          prev as RevenueOverview | undefined,
+          next as RevenueOverview,
+        ),
+    },
   );
 
   const { data: pipelineActivity } = useAuthQuery(
@@ -111,30 +122,35 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
-  // ── Single-source "contacted" (features-service#372) ──────────────────────
+  // ── Single-source "contacted" (features-service#371/#372) ─────────────────
   // The Outreach stat card count + the 7-day graph's ACTUAL outreach series now
-  // derive from the SAME `/revenue` `leads[]` the table renders, so a newly-
-  // contacted lead lands on all three surfaces in one refresh (no table→card→
-  // graph stagger). The graph's EXPECTED/forecast series stays from
-  // pipeline-activity untouched — only the outreach actual is overridden.
-  const contactedLeadCount = useMemo(
-    () => (data ? countContactedLeads(data.leads) : null),
-    [data],
-  );
+  // read the SAME server-computed `outreachContacted` aggregate that
+  // features-service derives from the same `/revenue` `leads[]` snapshot the
+  // table renders — so a newly-contacted lead lands on all three surfaces from
+  // ONE snapshot (no table→card→graph stagger). RENDER-ONLY: the backend already
+  // computed the total + daily buckets; the dashboard never re-sums/re-buckets
+  // leads here. The graph's EXPECTED/forecast series stays from pipeline-activity
+  // untouched — only the outreach actual is overridden. `outreachContacted` is
+  // optional during rollout: when absent, the card falls back to the legacy
+  // /stats outreach count and the graph keeps its /pipeline-activity actual.
+  const contactedTotal = data?.outreachContacted?.total ?? null;
   const mergedPipelineActivity = useMemo(() => {
-    if (!pipelineActivity || !data) return undefined;
-    const contactedByDay = bucketContactedByDay(data.leads, timezone);
+    if (!pipelineActivity) return undefined;
+    const daily = data?.outreachContacted?.daily;
+    // No server aggregate yet (cold/pre-rollout) → leave pipeline-activity actual.
+    if (!daily) return pipelineActivity;
+    const countByDay = new Map(daily.map((d) => [d.date, d.count] as const));
     return {
       ...pipelineActivity,
       days: pipelineActivity.days.map((day) => ({
         ...day,
         metrics: {
           ...day.metrics,
-          outreach: { ...day.metrics.outreach, actual: contactedByDay.get(day.date) ?? 0 },
+          outreach: { ...day.metrics.outreach, actual: countByDay.get(day.date) ?? 0 },
         },
       })),
     };
-  }, [pipelineActivity, data, timezone]);
+  }, [pipelineActivity, data]);
 
   // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
   // Cost & efficiency card. Shares the Campaigns page's query key + 5s cadence so
@@ -391,7 +407,7 @@ export default function BrandOverviewPage() {
             totalCostCents={totalCostCents}
             pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
-            outreachOverride={contactedLeadCount}
+            outreachOverride={contactedTotal}
           />
         }
       />

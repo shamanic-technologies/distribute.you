@@ -72,6 +72,34 @@ export interface ConversionLead {
   date: string | null;
 }
 
+/** One day of the server-computed contacted-lead series (ascending). */
+export interface OutreachContactedDay {
+  /** UTC calendar day (YYYY-MM-DD) of the contacted-lead bucket. */
+  date: string;
+  /** Number of leads first contacted on this UTC day. */
+  count: number;
+}
+
+/**
+ * Server-computed contacted aggregate (features-service#371/#372), from the SAME
+ * `/revenue` `leads[]` snapshot the table renders — the single source for the
+ * Overview Outreach stat card (`total`) AND the 7-day graph's ACTUAL outreach
+ * series (`daily`). The dashboard renders only: it never re-sums or re-buckets
+ * leads client-side. `total = sum(daily[].count) + undatedCount`.
+ */
+export interface OutreachContacted {
+  /** Total contacted leads in scope — the Outreach stat-card count. */
+  total: number;
+  /**
+   * Per-day contacted buckets (the Outreach ACTUAL series), keyed by the UTC day
+   * of each lead's contactedAt, ascending. Complete series — one entry per day
+   * with ≥1 dated contacted lead; the graph slices its 7-day window from it.
+   */
+  daily: OutreachContactedDay[];
+  /** Contacted leads with a null contactedAt (counted in total, in no day bucket). */
+  undatedCount: number;
+}
+
 /** One raw event row (Events tab), single channel. */
 export interface ConversionEvent {
   leadId: string;
@@ -111,6 +139,13 @@ export interface RevenueOverview {
   totalPipelineUsd: number | null;
   /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */
   costEconomics: CostEconomics;
+  /**
+   * Server-computed contacted aggregate — the single source for the Outreach stat
+   * card + the 7-day graph actual. Optional: absent on a cold / pre-rollout payload
+   * (degrade the card to the legacy /stats outreach count, the graph to /pipeline-
+   * activity actual). Populated in prod (features-service v0.62.0).
+   */
+  outreachContacted?: OutreachContacted;
   timeSeries: RevenuePoint[];
   organizations: ConversionOrg[];
   leads: ConversionLead[];

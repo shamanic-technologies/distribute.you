@@ -1,95 +1,98 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import {
-  countContactedLeads,
-  localDayInTimeZone,
-  bucketContactedByDay,
-} from "../src/lib/contacted-leads";
-import type { ConversionLead } from "../src/lib/revenue-view";
+import { parseFeatureRevenue } from "../src/lib/revenue-parse";
+import { keepLastGoodFeatureRevenue } from "../src/lib/api";
+import type { RevenueOverview } from "../src/lib/revenue-view";
 
 const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
-function lead(partial: Partial<ConversionLead>): ConversionLead {
+// A minimal-but-valid /revenue overview payload, optionally with outreachContacted.
+function rawRevenue(outreachContacted?: unknown) {
   return {
-    leadId: partial.leadId ?? "l",
-    firstName: null,
-    lastName: null,
-    photoUrl: null,
-    orgName: null,
-    orgLogoUrl: null,
-    tags: [],
-    expectedRevenueUsd: 0,
-    date: null,
-    ...partial,
+    featureSlug: "sales-cold-email-outreach",
+    ...(outreachContacted !== undefined ? { outreachContacted } : {}),
+    headline: { totalPipelineUsd: 1000 },
+    costEconomics: { totalCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
+    timeSeries: [],
+    organizations: [],
+    leads: [],
+    events: [],
   };
 }
 
-describe("countContactedLeads", () => {
-  it("counts only leads flagged contacted === true", () => {
-    const leads = [
-      lead({ leadId: "a", contacted: true }),
-      lead({ leadId: "b", contacted: false }),
-      lead({ leadId: "c", contacted: true, contactedAt: null }),
-      lead({ leadId: "d" }), // contacted undefined (field not yet on the wire)
-    ];
-    expect(countContactedLeads(leads)).toBe(2);
+describe("parseFeatureRevenue → outreachContacted (server-computed, render-only)", () => {
+  it("parses the server outreachContacted aggregate (total / daily / undatedCount)", () => {
+    const view = parseFeatureRevenue(
+      rawRevenue({
+        total: 5,
+        daily: [
+          { date: "2026-06-21", count: 2 },
+          { date: "2026-06-22", count: 2 },
+        ],
+        undatedCount: 1,
+      }),
+      "test",
+    );
+    expect(view.outreachContacted?.total).toBe(5);
+    expect(view.outreachContacted?.daily).toEqual([
+      { date: "2026-06-21", count: 2 },
+      { date: "2026-06-22", count: 2 },
+    ]);
+    expect(view.outreachContacted?.undatedCount).toBe(1);
   });
 
-  it("counts a contacted lead even with no contactedAt (date unknown still counts)", () => {
-    expect(
-      countContactedLeads([lead({ contacted: true, contactedAt: null })]),
-    ).toBe(1);
+  it("coerces string integers on the wire (Postgres numeric/bigint serialize as string)", () => {
+    const view = parseFeatureRevenue(
+      rawRevenue({
+        total: "7",
+        daily: [{ date: "2026-06-22", count: "7" }],
+        undatedCount: "0",
+      }),
+      "test",
+    );
+    expect(view.outreachContacted?.total).toBe(7);
+    expect(view.outreachContacted?.daily[0].count).toBe(7);
+    expect(view.outreachContacted?.undatedCount).toBe(0);
+  });
+
+  it("tolerates an absent outreachContacted (optional during rollout)", () => {
+    const view = parseFeatureRevenue(rawRevenue(undefined), "test");
+    expect(view.outreachContacted).toBeUndefined();
+    // the rest of the overview still parses
+    expect(view.totalPipelineUsd).toBe(1000);
   });
 });
 
-describe("localDayInTimeZone", () => {
-  it("returns the YYYY-MM-DD local day in the given zone", () => {
-    // 2026-06-22T02:30:00Z is still 2026-06-21 in America/Los_Angeles.
-    expect(localDayInTimeZone("2026-06-22T02:30:00Z", "America/Los_Angeles")).toBe(
-      "2026-06-21",
-    );
-    expect(localDayInTimeZone("2026-06-22T02:30:00Z", "UTC")).toBe("2026-06-22");
+describe("keepLastGoodFeatureRevenue (cache-write boundary)", () => {
+  const withContacted = parseFeatureRevenue(
+    rawRevenue({ total: 9, daily: [{ date: "2026-06-22", count: 9 }], undatedCount: 0 }),
+    "test",
+  );
+  const withoutContacted = parseFeatureRevenue(rawRevenue(undefined), "test");
+
+  it("keeps last-good outreachContacted when a refetch drops it on a valid 200", () => {
+    const merged = keepLastGoodFeatureRevenue(withContacted, withoutContacted);
+    expect(merged.outreachContacted?.total).toBe(9);
   });
 
-  it("returns null for null/empty/unparseable (NEVER synthesizes a day)", () => {
-    expect(localDayInTimeZone(null, "UTC")).toBeNull();
-    expect(localDayInTimeZone(undefined, "UTC")).toBeNull();
-    expect(localDayInTimeZone("not-a-date", "UTC")).toBeNull();
+  it("adopts a fresh non-null outreachContacted (no stale pinning)", () => {
+    const next = parseFeatureRevenue(
+      rawRevenue({ total: 11, daily: [], undatedCount: 11 }),
+      "test",
+    );
+    const merged = keepLastGoodFeatureRevenue(withContacted, next);
+    expect(merged.outreachContacted?.total).toBe(11);
+  });
+
+  it("returns next unchanged when there is no previous value", () => {
+    const merged = keepLastGoodFeatureRevenue(undefined as unknown as RevenueOverview, withContacted);
+    expect(merged.outreachContacted?.total).toBe(9);
   });
 });
 
-describe("bucketContactedByDay", () => {
-  it("buckets contacted leads by their real contactedAt local day", () => {
-    const byDay = bucketContactedByDay(
-      [
-        lead({ leadId: "a", contacted: true, contactedAt: "2026-06-22T10:00:00Z" }),
-        lead({ leadId: "b", contacted: true, contactedAt: "2026-06-22T23:00:00Z" }),
-        lead({ leadId: "c", contacted: true, contactedAt: "2026-06-21T10:00:00Z" }),
-      ],
-      "UTC",
-    );
-    expect(byDay.get("2026-06-22")).toBe(2);
-    expect(byDay.get("2026-06-21")).toBe(1);
-  });
-
-  it("excludes contacted-but-dateless and non-contacted leads from every bucket", () => {
-    const byDay = bucketContactedByDay(
-      [
-        lead({ leadId: "a", contacted: true, contactedAt: null }),
-        lead({ leadId: "b", contacted: false, contactedAt: "2026-06-22T10:00:00Z" }),
-        lead({ leadId: "c", contacted: true, contactedAt: "2026-06-22T10:00:00Z" }),
-      ],
-      "UTC",
-    );
-    expect(byDay.get("2026-06-22")).toBe(1);
-    // the dateless contacted lead is in no bucket
-    expect([...byDay.values()].reduce((n, v) => n + v, 0)).toBe(1);
-  });
-});
-
-describe("single-source wiring (Overview card + graph read /revenue)", () => {
+describe("single-source wiring (Overview card + graph read /revenue outreachContacted)", () => {
   const page = read(
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
   );
@@ -97,16 +100,17 @@ describe("single-source wiring (Overview card + graph read /revenue)", () => {
   const view = read("../src/lib/revenue-view.ts");
   const cards = read("../src/components/revenue/outreach-stat-cards.tsx");
 
-  it("parses the new per-lead contacted + contactedAt fields off /revenue", () => {
-    expect(parse).toContain("contacted: z.boolean().optional()");
-    expect(parse).toContain("contactedAt: z.string().nullish()");
-    expect(view).toContain("contacted?: boolean");
-    expect(view).toContain("contactedAt?: string | null");
+  it("revenue-parse declares the optional, coercing outreachContacted schema", () => {
+    expect(parse).toContain("outreachContacted: OutreachContactedSchema.optional()");
+    expect(parse).toContain("total: z.coerce.number()");
+    expect(parse).toContain("count: z.coerce.number()");
+    expect(parse).toContain("undatedCount: z.coerce.number()");
+    expect(view).toContain("outreachContacted?: OutreachContacted");
   });
 
-  it("Outreach card count comes from /revenue contacted leads", () => {
-    expect(page).toContain("countContactedLeads(data.leads)");
-    expect(page).toContain("outreachOverride={contactedLeadCount}");
+  it("Outreach card count comes from the server outreachContacted.total", () => {
+    expect(page).toContain("data?.outreachContacted?.total ?? null");
+    expect(page).toContain("outreachOverride={contactedTotal}");
     expect(cards).toContain("outreachOverride?: number | null");
     // legacy /stats fallback kept for entity pages that don't fetch /revenue
     expect(cards).toContain(
@@ -114,13 +118,16 @@ describe("single-source wiring (Overview card + graph read /revenue)", () => {
     );
   });
 
-  it("graph actual outreach is bucketed from /revenue by contactedAt, expected untouched", () => {
-    expect(page).toContain("bucketContactedByDay(data.leads, timezone)");
+  it("graph actual outreach is mapped from outreachContacted.daily, expected untouched", () => {
+    expect(page).toContain("data?.outreachContacted?.daily");
     expect(page).toContain(
-      "outreach: { ...day.metrics.outreach, actual: contactedByDay.get(day.date) ?? 0 }",
+      "outreach: { ...day.metrics.outreach, actual: countByDay.get(day.date) ?? 0 }",
     );
     expect(page).toContain("pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}");
-    // graph reveals with revenue so the outreach bar never flips backend→/revenue
-    expect(page).toContain("data !== undefined");
+  });
+
+  it("featureRevenue query keeps last-good outreachContacted via structuralSharing", () => {
+    expect(page).toContain("keepLastGoodFeatureRevenue");
+    expect(page).toContain("structuralSharing");
   });
 });
