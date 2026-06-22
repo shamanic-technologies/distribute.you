@@ -450,13 +450,17 @@ export function BetaOnboarding() {
     if (econRes.economics && !ratesEditedRef.current) {
       const e = econRes.economics;
       econRef.current = e;
+      // Cap the prefilled DEFAULT to a single decimal (8.8429 → 8.8). The backend
+      // economics carry full precision; we never seed a default with more than one
+      // decimal digit. The user can still type finer precision manually.
+      const round1 = (n: number) => Math.round(n * 10) / 10;
       const loaded: Record<RateKey, number> = {
-        ltv: e.lifetimeRevenueUsd,
-        v2s: e.visitToSignupPct,
-        s2c: e.signupToPaidClientPct,
-        v2m: e.visitToMeetingPct,
-        r2m: e.replyToMeetingPct,
-        m2c: e.meetingToClosePct,
+        ltv: round1(e.lifetimeRevenueUsd),
+        v2s: round1(e.visitToSignupPct),
+        s2c: round1(e.signupToPaidClientPct),
+        v2m: round1(e.visitToMeetingPct),
+        r2m: round1(e.replyToMeetingPct),
+        m2c: round1(e.meetingToClosePct),
       };
       setRates(loaded);
       setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
