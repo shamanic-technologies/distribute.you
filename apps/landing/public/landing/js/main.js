@@ -193,7 +193,7 @@ if (dashEl) {
     /* ROI count-up (indices 1-3 skip budget which has id) */
     const roiVals = dashEl.querySelectorAll('.uid-roi-val');
     [
-      { target: 45,   prefix: '',  suffix: 'x', decimals: 0, delay: 200 },
+      { target: 1.3,  prefix: '',  suffix: 'x', decimals: 1, delay: 200 },
       { target: 9800, prefix: '$', suffix: '',  decimals: 0, delay: 260 },
     ].forEach((d, i) => {
       const el = roiVals[i + 1]; // +1 because index 0 is budget (managed by loop)
