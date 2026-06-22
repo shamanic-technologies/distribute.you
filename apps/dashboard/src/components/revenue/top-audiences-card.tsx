@@ -1,6 +1,7 @@
 "use client";
 
 import { Skeleton } from "@/components/skeleton";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import type {
   FeatureAudienceStatsResponse,
   FeatureAudienceStatsSortMetric,
@@ -27,25 +28,6 @@ function metricInfo(metric: FeatureAudienceStatsSortMetric): string {
   return metric === "cpc"
     ? "Cost per click — audience-scoped spend divided by website clicks. Lower is better."
     : "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.";
-}
-
-function InfoHint({ text }: { text: string }) {
-  return (
-    <span className="relative group inline-flex items-center align-middle">
-      <svg
-        className="w-3.5 h-3.5 text-gray-300 hover:text-gray-500 cursor-help"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <circle cx="12" cy="12" r="9" strokeWidth={2} />
-        <path strokeLinecap="round" strokeWidth={2} d="M12 16v-4M12 8h.01" />
-      </svg>
-      <span className="pointer-events-none absolute bottom-full right-0 z-20 mb-1.5 w-56 rounded-lg bg-gray-900 px-2.5 py-1.5 text-[11px] leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-        {text}
-      </span>
-    </span>
-  );
 }
 
 function audienceInitials(name: string): string {
@@ -109,7 +91,7 @@ export function TopAudiencesCard({
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top 3 audiences</p>
         <p className="flex items-center gap-1 text-xs font-medium text-gray-500">
           {label}
-          <InfoHint text={metricInfo(activeMetric)} />
+          <InfoTooltip tip={metricInfo(activeMetric)} placement="bottom" />
         </p>
       </div>
 
