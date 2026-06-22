@@ -1697,6 +1697,24 @@ export async function getFeatureRevenue(
   return parseFeatureRevenue(raw, "getFeatureRevenue");
 }
 
+/**
+ * `structuralSharing` merge for the `["featureRevenue", ...]` query. `outreachContacted`
+ * (the single source for the Outreach stat card + 7-day graph actual) is `.optional()`
+ * on the wire to decouple the backend rollout — but a transient degenerate refetch
+ * (cold features-service half-warming) can drop it back to `undefined` on a VALID 200,
+ * which would collapse the card to "—" and zero out the graph's actual bars mid-session.
+ * Keep the last-good `outreachContacted` across such a refetch (fail-loud console.error
+ * in keep-last-good); a real persistent absence still logs. Opt-in here ONLY — absence
+ * is "transient/not-ready", never "removed". See lib/keep-last-good.ts + CLAUDE.md
+ * "keep-last-good (cache-write boundary)".
+ */
+export function keepLastGoodFeatureRevenue(
+  prev: RevenueOverview | undefined,
+  next: RevenueOverview,
+): RevenueOverview {
+  return keepLastGoodFields(prev, next, ["outreachContacted"], "featureRevenue");
+}
+
 const PipelineActivityMetricSchema = z.object({
   actual: z.number().nullable(),
   expected: z.number().nullable(),
