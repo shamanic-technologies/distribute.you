@@ -179,9 +179,11 @@ describe("Billing guard provider", () => {
     expect(content).toContain("selectedAmount");
   });
 
-  it("should redirect to Stripe checkout directly from the modal", () => {
-    expect(content).toContain("createCheckoutSession");
+  it("should capture the card via in-modal Embedded Checkout (no hosted-page redirect)", () => {
+    expect(content).toContain("createEmbeddedCheckoutSession");
+    expect(content).toContain("<EmbeddedCheckout />");
     expect(content).toContain("handleCheckout");
+    expect(content).not.toContain("window.location.href = session.url");
   });
 
   it("should clean up event listener on unmount", () => {
@@ -416,10 +418,9 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("Turn on auto-top-up");
   });
 
-  it("should use paid top-up checkout when no payment method", () => {
-    expect(content).toContain("topup_amount_cents: effectiveAmountCents");
+  it("should fund the top-up via embedded checkout for the chosen amount", () => {
+    expect(content).toContain("createEmbeddedCheckoutSession(effectiveAmountCents)");
     expect(content).not.toContain('mode: "setup"');
-    expect(content).toContain("!account?.has_payment_method");
   });
 
   it("should fetch billing account when modal opens to pre-fill auto-topup config", () => {
@@ -427,9 +428,11 @@ describe("Billing guard auto-topup in modal", () => {
     expect(content).toContain("setAccount(acct)");
   });
 
-  it("should add pending_campaign param to success URL in proactive checkout flow", () => {
-    expect(content).toContain("pending_campaign");
+  it("should signal callers to resume after credit is added (embedded onComplete / auto-topup)", () => {
     expect(content).toContain("info.proactive");
+    expect(content).toContain("handleEmbeddedComplete");
+    expect(content).toContain('new CustomEvent("billing:resolved")');
+    expect(content).toContain("info.onComplete");
   });
 });
 

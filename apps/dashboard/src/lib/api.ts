@@ -37,6 +37,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * True when an error is a 402 insufficient-credits failure. apiCall auto-dispatches
+ * the billing-guard modal on a 402 (see the 402 branch above), so callers use this
+ * to AVOID treating a credit failure as a hard error (no destructive reset / error
+ * banner) — the modal handles it and a `billing:resolved` event signals recovery.
+ */
+export function isInsufficientCredit(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 402;
+}
+
 function asErrorBody(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -2764,6 +2774,11 @@ export interface CheckoutSession {
   session_id: string;
 }
 
+export interface EmbeddedCheckoutSession {
+  client_secret: string;
+  session_id: string;
+}
+
 export type WalletSetupResult = BillingAccount & {
   initial_load_amount_cents: number;
   initial_load_payment_intent_id: string;
@@ -2804,6 +2819,24 @@ export async function createCheckoutSession(
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
+  });
+}
+
+/**
+ * Create an EMBEDDED Stripe Checkout session — card is captured in an in-app modal
+ * (iframe), no redirect to a hosted Stripe page. Returns a `client_secret` the
+ * front-end mounts via @stripe/react-stripe-js <EmbeddedCheckout>. The card is saved
+ * off-session (auto-topup) and `topup_amount_cents` charged; credit lands via the
+ * existing checkout.session.completed webhook (same accounting as the hosted path).
+ */
+export async function createEmbeddedCheckoutSession(
+  topup_amount_cents: number,
+  token?: string
+): Promise<EmbeddedCheckoutSession> {
+  return apiCall<EmbeddedCheckoutSession>("/billing/checkout-sessions", {
+    token,
+    method: "POST",
+    body: { ui_mode: "embedded", topup_amount_cents },
   });
 }
 
