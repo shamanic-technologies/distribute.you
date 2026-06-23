@@ -4250,6 +4250,18 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+// ahref-service `normalizeDomain` rejects anything that isn't a bare host with a
+// 400 ("not a valid domain: -"), and that 400 fails the ENTIRE chunk it lands in
+// — blanking DR / Monthly Visits for up to DOMAIN_READ_CHUNK_SIZE valid domains
+// sharing the chunk. Outlet records carry a "-" placeholder for "no domain" and
+// occasionally a path-bearing value (a.com/section); `.sort()` puts "-" first, so
+// it poisons chunk 0 on every load. Filter to bare, dotted hosts BEFORE chunking
+// so one junk value can't take down its chunk-mates. Dropping a non-domain loses
+// nothing — ahref can't enrich it anyway.
+function isQueryableDomain(domain: string): boolean {
+  return domain.length > 0 && domain !== "-" && domain.includes(".") && !/[/\s]/.test(domain);
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Bound a request so it can never hang forever. ahref-service prod is a tiny
@@ -4306,8 +4318,14 @@ export async function getDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
-  if (domains.length === 0) return [];
-  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[dashboard] getDomainTrafficHistories: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
+    });
+  }
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
   // Best-effort enrichment: a chunk that stays unreachable after retries drops
   // to [] (those domains render blank) instead of throwing and blanking EVERY
   // domain. The failure is logged loudly, not swallowed silently.
@@ -4355,8 +4373,14 @@ export async function getDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
-  if (domains.length === 0) return [];
-  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[dashboard] getDomainDrStatuses: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
+    });
+  }
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
   // Best-effort enrichment (see getDomainTrafficHistories): an unreachable chunk
   // drops to [] (blank for its domains) instead of blanking every domain.
   const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
