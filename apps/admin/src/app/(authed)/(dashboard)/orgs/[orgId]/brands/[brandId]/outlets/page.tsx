@@ -693,7 +693,7 @@ export default function BrandOutletsPage() {
               )}
             </div>
           </div>
-          <CsvDownloadButton filename={`outlets-${brandId}.csv`} csv={csv} isEmpty={outlets.length === 0} preparing={isDomainTrafficHistoriesPending || isDomainDrStatusesPending} />
+          <CsvDownloadButton filename={`outlets-${brandId}.csv`} csv={csv} isEmpty={outlets.length === 0} />
         </div>
 
         {/* Status tabs */}
