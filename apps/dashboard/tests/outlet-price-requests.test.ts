@@ -128,7 +128,7 @@ describe("outlet pages wire the Get Domain Ratings control", () => {
   it("posts a batch of domains to the gateway DR compute endpoint", () => {
     expect(api).toContain("export async function computeDomainDrStatuses");
     expect(api).toContain('"/orgs/domains/dr-compute"');
-    expect(api).toContain("body: { domains: queryable }");
+    expect(api).toContain("body: { domains }");
   });
 
   for (const [level, pagePath] of Object.entries(outletPages)) {
@@ -164,7 +164,7 @@ describe("outlet pages wire the Get Monthly Visits control", () => {
   it("posts a batch of domains to the gateway traffic compute endpoint", () => {
     expect(api).toContain("export async function computeDomainTrafficHistories");
     expect(api).toContain('"/orgs/domains/traffic-compute"');
-    expect(api).toContain("body: { domains: queryable }");
+    expect(api).toContain("body: { domains }");
   });
 
   it("reads cached traffic histories for many domains", () => {
