@@ -3730,12 +3730,28 @@ async function mapWithConcurrency<I, O>(
   return results;
 }
 
+/**
+ * A value safe to send to ahref-service: a bare dotted host. Drops the junk that
+ * 400s the whole chunk (empty string, the "-" no-domain placeholder, paths/spaces)
+ * — see CLAUDE.md #2070. Filtering here protects EVERY caller (bulk readers + the
+ * on-demand compute mutations), not just one page memo.
+ */
+function isQueryableDomain(domain: string): boolean {
+  return domain.length > 0 && domain !== "-" && domain.includes(".") && !/[/\s]/.test(domain);
+}
+
 export async function getDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
-  if (domains.length === 0) return [];
-  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[admin] getDomainTrafficHistories: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
+    });
+  }
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
   // Best-effort enrichment: a chunk that stays unreachable after retries drops
   // to [] (those domains render blank) instead of throwing and blanking EVERY
   // domain. The failure is logged loudly, not swallowed silently.
@@ -3783,8 +3799,14 @@ export async function getDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
-  if (domains.length === 0) return [];
-  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[admin] getDomainDrStatuses: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
+    });
+  }
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
   // Best-effort enrichment (see getDomainTrafficHistories): an unreachable chunk
   // drops to [] (blank for its domains) instead of blanking every domain.
   const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
@@ -3835,10 +3857,12 @@ export async function computeDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length === 0) return [];
   const raw = await apiCall<unknown>("/orgs/domains/traffic-compute", {
     token,
     method: "POST",
-    body: { domains },
+    body: { domains: queryable },
   });
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
@@ -3855,10 +3879,12 @@ export async function computeDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length === 0) return [];
   const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
     token,
     method: "POST",
-    body: { domains },
+    body: { domains: queryable },
   });
   const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
   if (!parsed.success) {
