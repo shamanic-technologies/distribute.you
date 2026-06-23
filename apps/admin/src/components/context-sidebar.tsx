@@ -529,7 +529,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const dbAlphaOk = useFeatureFlag(FEATURE_GATES["brand-database"].flag);
   const dbMaturity = FEATURE_GATES["brand-database"].maturity;
   const outcomeItems: SidebarItem[] = [
-    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.total, maturity: dbMaturity },
+    { id: "outlets", label: "Outlets", href: `${basePath}/outlets`, icon: <OutcomeOutletIcon />, badge: outletsData?.outlets?.length, maturity: dbMaturity },
     { id: "journalists", label: "Journalists", href: `${basePath}/journalists`, icon: <NewspaperIcon />, badge: journalistsData?.total ?? journalistsData?.journalists?.length, maturity: dbMaturity },
     { id: "articles", label: "Articles", href: `${basePath}/articles`, icon: <OutcomeArticleIcon />, badge: articlesData?.discoveries?.length, maturity: dbMaturity },
     { id: "leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: leadsData?.leads?.length },
@@ -752,7 +752,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const listingFallback: Record<string, number | undefined> = {
     leads: leadsData?.leads?.length,
     emails: emailsData?.emails?.length,
-    outlets: outletsData?.total,
+    outlets: outletsData?.outlets?.length,
     journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
     // Open (non-pitched) count so the badge == the queue the page renders — the
