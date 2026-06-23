@@ -434,7 +434,7 @@ export default function FeatureOutletsPage() {
 
   const { data, isPending } = useAuthQuery(
     outletsQueryKey,
-    () => listBrandOutlets(brandId, featureSlug),
+    () => listBrandOutlets(brandId, featureSlug, undefined, undefined, true),
     pollOptions,
   );
 
@@ -532,21 +532,31 @@ export default function FeatureOutletsPage() {
     },
   });
 
+  // Seed from the server-enriched outlet fields (outlets-service resilient
+  // ahref join via enrich=ahref — reliable at any scale), then overlay any
+  // on-demand client-scraped values (the per-page "Get DR" / "Get Monthly
+  // Visits" buttons write into the legacy domain queries).
   const drMap = useMemo(() => {
     const map = new Map<string, number>();
+    for (const o of outlets) {
+      if (o.domainRating != null) map.set(normalizeDomain(o.outletDomain), o.domainRating);
+    }
     for (const status of domainDrStatuses ?? []) {
       if (status.latestValidDr != null) map.set(normalizeDomain(status.domain), status.latestValidDr);
     }
     return map;
-  }, [domainDrStatuses]);
+  }, [outlets, domainDrStatuses]);
 
   const trafficMap = useMemo(() => {
     const map = new Map<string, number>();
+    for (const o of outlets) {
+      if (o.trafficMonthlyAvg != null) map.set(normalizeDomain(o.outletDomain), o.trafficMonthlyAvg);
+    }
     for (const history of domainTrafficHistories ?? []) {
       if (history.trafficMonthlyAvg != null) map.set(normalizeDomain(history.domain), history.trafficMonthlyAvg);
     }
     return map;
-  }, [domainTrafficHistories]);
+  }, [outlets, domainTrafficHistories]);
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();

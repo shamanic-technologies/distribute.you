@@ -2805,10 +2805,6 @@ export async function configureAutoTopup(
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "PATCH", body });
 }
 
-export async function disableAutoTopup(token?: string): Promise<BillingAccount> {
-  return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
-}
-
 export async function createCheckoutSession(
   params:
     | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
