@@ -2215,6 +2215,45 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
 }
 
+// Staff-only free-credit grants (billing-service local_promos via the api-service
+// staff-gated proxy). `amountCents` is a full-precision decimal string (e.g.
+// "2500.0000000000"); use parseFloat / formatBillingCents, never Number().
+// `orgId` is the internal billing org uuid. Live spec: https://billing.distribute.you/openapi.json
+export interface CreditGrant {
+  id: string;
+  orgId: string;
+  amountCents: string;
+  reason: string;
+  note: string | null;
+  grantedBy: string | null;
+  createdAt: string;
+}
+
+// Grant an arbitrary free-credit amount to the active org. `amountCents` is an
+// integer number of cents. A fresh idempotencyKey per call lets grants STACK
+// while protecting against a double-submit (same key = one row, no double-credit).
+export async function grantCredits(
+  amountCents: number,
+  note: string,
+  token?: string,
+): Promise<{ ok: boolean; newBalanceCents: string }> {
+  return apiCall<{ ok: boolean; newBalanceCents: string }>("/billing/credits/grant", {
+    token,
+    method: "POST",
+    body: { amountCents, note, idempotencyKey: globalThis.crypto.randomUUID() },
+  });
+}
+
+// Grants made to the currently-active org.
+export async function listOrgCreditGrants(token?: string): Promise<{ grants: CreditGrant[] }> {
+  return apiCall<{ grants: CreditGrant[] }>("/billing/credits/grants", { token });
+}
+
+// Platform-wide ledger — every grant ever made, across all orgs (staff oversight).
+export async function listAllCreditGrants(token?: string): Promise<{ grants: CreditGrant[] }> {
+  return apiCall<{ grants: CreditGrant[] }>("/billing/credits/grants/all", { token });
+}
+
 // `mode: "setup"` mints a no-charge Stripe Checkout that only captures a reusable
 // off-session card (omit topup_amount_cents). Default "payment" charges the amount.
 export async function createCheckoutSession(
