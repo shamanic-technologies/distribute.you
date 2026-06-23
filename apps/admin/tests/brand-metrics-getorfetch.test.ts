@@ -34,9 +34,14 @@ describe("api.ts — on-demand Ahrefs compute helpers", () => {
   });
 
   it("sends the documented request bodies", () => {
-    // traffic + DR take a domains array; ai-visibility takes a single domain.
-    expect(apiSrc).toContain("body: { domains }");
+    // traffic + DR take a domains array (filtered to queryable before the POST so a
+    // junk/empty domain can't 400 the whole call); ai-visibility takes a single domain.
+    expect(apiSrc).toContain("body: { domains: queryable }");
     expect(apiSrc).toContain("body: { domain }");
+  });
+
+  it("filters non-queryable domains before the compute POST (no empty/junk → ahref 400)", () => {
+    expect(apiSrc).toContain("const queryable = domains.filter(isQueryableDomain);");
   });
 
   it("validates ai-visibility response shape (fail-loud, no fallback)", () => {

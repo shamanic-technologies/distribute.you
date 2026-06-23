@@ -4441,10 +4441,12 @@ export async function computeDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length === 0) return [];
   const raw = await apiCall<unknown>("/orgs/domains/traffic-compute", {
     token,
     method: "POST",
-    body: { domains },
+    body: { domains: queryable },
   });
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
@@ -4461,10 +4463,12 @@ export async function computeDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length === 0) return [];
   const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
     token,
     method: "POST",
-    body: { domains },
+    body: { domains: queryable },
   });
   const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
   if (!parsed.success) {
