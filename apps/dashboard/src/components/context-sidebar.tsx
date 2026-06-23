@@ -494,7 +494,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const listingFallback: Record<string, number | undefined> = {
     leads: leadsData?.leads?.length,
     emails: emailsData?.emails?.length,
-    outlets: outletsData?.total,
+    outlets: outletsData?.outlets?.length,
     journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
     articles: articlesData?.discoveries?.length,
     // Open (non-pitched) count so the badge == the queue the page renders.

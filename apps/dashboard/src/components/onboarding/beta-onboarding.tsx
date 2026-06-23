@@ -14,6 +14,7 @@ import {
   CreditCardIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
+  PencilSquareIcon,
   ShieldCheckIcon,
   TrophyIcon,
   XMarkIcon,
@@ -859,9 +860,9 @@ export function BetaOnboarding() {
     return rec && rec > 0 ? Math.round(rec) : null;
   }
 
-  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
-  const cardWide = "min-w-0 w-full rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
-  const cardNarrow = "mx-auto w-full max-w-lg min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 md:p-8";
+  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
+  const cardWide = "min-w-0 w-full rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
+  const cardNarrow = "mx-auto w-full max-w-md min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-6 md:p-8";
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
   // ── Service-tag editor helpers ────────────────────────────────────
@@ -944,35 +945,38 @@ export function BetaOnboarding() {
   if (step === "loading") {
     const loadingComplete = fetchDoneRef.current || loadStep >= LOADING_STEPS.length;
     return (
-      <div className={cardNarrow}>
-        <BrandStepHeader domain={domain} hostname={hostname} />
-        <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
-        <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
-        <div className="space-y-2">
-          {LOADING_STEPS.map((s, i) => {
-            const isDone = loadingComplete || i < loadStep;
-            const isActive = !isDone && i === loadStep;
-            return (
-              <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center">
-                  {isDone ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckIcon className="h-3.5 w-3.5" /></span>
-                    : isActive ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-                    : <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />}
-                </span>
-                <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.label}</span>
-              </div>
-            );
-          })}
+      <div className="mx-auto w-full max-w-md min-w-0 flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={cardNarrow}>
+          <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
+          <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
+          <div className="space-y-2">
+            {LOADING_STEPS.map((s, i) => {
+              const isDone = loadingComplete || i < loadStep;
+              const isActive = !isDone && i === loadStep;
+              return (
+                <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+                    {isDone ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckIcon className="h-3.5 w-3.5" /></span>
+                      : isActive ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                      : <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />}
+                  </span>
+                  <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.label}</span>
+                </div>
+              );
+            })}
+          </div>
+          {!loadingComplete && <p className="mt-5 text-center text-xs text-gray-400">This may take a few minutes.</p>}
         </div>
-        {!loadingComplete && loadStep >= 2 && <p className="mt-5 text-center text-xs text-gray-400">Service extraction can take a minute for a new domain.</p>}
       </div>
     );
   }
 
   if (step === "services") {
     return (
-      <div className={cardWide}>
-        <BrandStepHeader domain={domain} hostname={hostname} />
+      <div className="min-w-0 w-full flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={cardWide}>
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
         {setupIssues.extraction && <SetupWarning />}
@@ -999,23 +1003,26 @@ export function BetaOnboarding() {
         </div>
         {services.length === 0 && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
         <NextButton onClick={() => setStep("objective")} disabled={services.length === 0} />
+        </div>
       </div>
     );
   }
 
   if (step === "objective") {
     return (
-      <div className={card}>
-        <BackButton onClick={() => setStep("services")} />
-        <BrandStepHeader domain={domain} hostname={hostname} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
-        <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {OUTCOMES.map((o) => (
-            <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
-          ))}
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={card}>
+          <BackButton onClick={() => setStep("services")} />
+          <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
+          <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {OUTCOMES.map((o) => (
+              <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
+            ))}
+          </div>
+          <NextButton onClick={() => setStep("rates")} />
         </div>
-        <NextButton onClick={() => setStep("rates")} />
       </div>
     );
   }
@@ -1023,9 +1030,10 @@ export function BetaOnboarding() {
   if (step === "rates") {
     const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
     return (
-      <div className={card}>
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
-        <BrandStepHeader domain={domain} hostname={hostname} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -1037,7 +1045,7 @@ export function BetaOnboarding() {
                   <div className="text-sm font-semibold text-gray-900">{RATE_META[k].label}</div>
                   <div className="mt-1 text-xs leading-5 text-gray-500">{RATE_META[k].hint}</div>
                 </div>
-                <div className="flex items-center justify-center gap-1 rounded-xl border-2 border-gray-200 px-3 py-5 focus-within:border-brand-400">
+                <div className="flex items-center justify-center gap-1 rounded-xl border border-gray-200 px-3 py-5 focus-within:border-brand-400">
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1053,9 +1061,9 @@ export function BetaOnboarding() {
                         setRateText((t) => ({ ...t, [k]: rateToText(value) }));
                       }
                     }}
-                    className="w-full bg-transparent text-center text-4xl font-bold text-gray-900 focus:outline-none"
+                    className="w-full bg-transparent text-center text-5xl font-bold text-gray-900 focus:outline-none"
                   />
-                  <span className="text-xl font-semibold text-gray-400">%</span>
+                  <span className="text-2xl font-semibold text-gray-400">%</span>
                 </div>
               </div>
             ))}
@@ -1068,8 +1076,8 @@ export function BetaOnboarding() {
                   <div className="text-base font-semibold text-gray-900">{RATE_META[k].label}</div>
                   <div className="mt-1 text-sm leading-5 text-gray-500">{RATE_META[k].hint}</div>
                 </div>
-                <div className="flex items-center gap-1.5 rounded-xl border-2 border-gray-200 px-4 py-3 focus-within:border-brand-400 sm:w-36 sm:shrink-0">
-                  {RATE_META[k].suffix === "$" && <span className="text-xl font-semibold text-gray-400">$</span>}
+                <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 focus-within:border-brand-400 sm:w-40 sm:shrink-0">
+                  {RATE_META[k].suffix === "$" && <span className="text-2xl font-semibold text-gray-400">$</span>}
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1085,15 +1093,16 @@ export function BetaOnboarding() {
                         setRateText((t) => ({ ...t, [k]: rateToText(value) }));
                       }
                     }}
-                    className="w-full bg-transparent text-right text-2xl font-bold text-gray-900 focus:outline-none"
+                    className="w-full bg-transparent text-right text-3xl font-bold text-gray-900 focus:outline-none"
                   />
-                  {RATE_META[k].suffix === "%" && <span className="text-xl font-semibold text-gray-400">%</span>}
+                  {RATE_META[k].suffix === "%" && <span className="text-2xl font-semibold text-gray-400">%</span>}
                 </div>
               </div>
             ))}
           </div>
         )}
         <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
+        </div>
       </div>
     );
   }
@@ -1108,27 +1117,30 @@ export function BetaOnboarding() {
         prefetch={audiencePrefetch}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
+        onEdit={() => setStep("url")}
       />
     );
   }
 
   if (step === "consent") {
     return (
-      <div className={card}>
-        <BackButton onClick={() => setStep("audiences")} />
-        <BrandStepHeader domain={domain} hostname={hostname} />
-        <div className="mb-4 flex items-start gap-2">
-          <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
-          <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={card}>
+          <BackButton onClick={() => setStep("audiences")} />
+          <div className="mb-4 flex items-start gap-2">
+            <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
+            <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
+          </div>
+          <p className="mb-4 text-sm leading-6 text-gray-500">distribute is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong> — never from yours, like a PR firm pitching from its own contacts.</p>
+          <ul className="mb-6 space-y-1.5">
+            {AGENCY_BENEFITS.map((b) => (
+              <li key={b} className="flex items-start gap-2 text-xs leading-5 text-gray-600"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{b}</li>
+            ))}
+          </ul>
+          <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
+          <NextButton onClick={() => setStep("pricing")} label="Continue" />
         </div>
-        <p className="mb-4 text-sm leading-6 text-gray-500">distribute is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong> — never from yours, like a PR firm pitching from its own contacts.</p>
-        <ul className="mb-6 space-y-1.5">
-          {AGENCY_BENEFITS.map((b) => (
-            <li key={b} className="flex items-start gap-2 text-xs leading-5 text-gray-600"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{b}</li>
-          ))}
-        </ul>
-        <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
-        <NextButton onClick={() => setStep("pricing")} label="Continue" />
       </div>
     );
   }
@@ -1136,25 +1148,27 @@ export function BetaOnboarding() {
   if (step === "launching") {
     const brand = launchingBrand ?? { domain, hostname };
     return (
-      <div className={card}>
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
         <BrandStepHeader domain={brand.domain} hostname={brand.hostname} />
-        <div className="mb-2 text-center text-lg font-semibold text-gray-950">Launching your campaign...</div>
-        <p className="mb-6 text-center text-sm text-gray-500">Keep this tab open while we finish setup.</p>
-        <div className="space-y-2">
-          {LAUNCH_STEPS.map((s, i) => {
-            const isDone = i < launchStep;
-            const isActive = i === launchStep;
-            return (
-              <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center">
-                  {isDone ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckIcon className="h-3.5 w-3.5" /></span>
-                    : isActive ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-                    : <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />}
-                </span>
-                <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.label}</span>
-              </div>
-            );
-          })}
+        <div className={card}>
+          <div className="mb-2 text-center text-lg font-semibold text-gray-950">Launching your campaign...</div>
+          <p className="mb-6 text-center text-sm text-gray-500">Keep this tab open while we finish setup.</p>
+          <div className="space-y-2">
+            {LAUNCH_STEPS.map((s, i) => {
+              const isDone = i < launchStep;
+              const isActive = i === launchStep;
+              return (
+                <div key={s.id} className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${isActive ? "border-brand-200 bg-brand-50" : "border-gray-100 bg-white"} ${isDone || isActive ? "opacity-100" : "opacity-40"}`}>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+                    {isDone ? <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><CheckIcon className="h-3.5 w-3.5" /></span>
+                      : isActive ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                      : <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />}
+                  </span>
+                  <span className={`text-sm ${isActive ? "font-medium text-gray-900" : "text-gray-600"}`}>{s.label}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -1165,9 +1179,10 @@ export function BetaOnboarding() {
   const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
   const checkoutAmount = selectedBudget;
   return (
-    <div className={card}>
+    <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+      <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+      <div className={card}>
       <BackButton onClick={() => setStep("consent")} />
-      <BrandStepHeader domain={domain} hostname={hostname} />
       <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
       <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -1251,6 +1266,7 @@ export function BetaOnboarding() {
           </>
         )}
       </button>
+      </div>
     </div>
   );
 }
@@ -1268,6 +1284,7 @@ function OnboardingAudiences({
   prefetch,
   onBack,
   onContinue,
+  onEdit,
 }: {
   brandId: string | null;
   brandDomain: string | null;
@@ -1276,14 +1293,16 @@ function OnboardingAudiences({
   prefetch: AudiencePrefetch | null;
   onBack: () => void;
   onContinue: () => void;
+  onEdit?: () => void;
 }) {
-  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12";
+  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
   const [prompt, setPrompt] = useState("");
   const [icpLoading, setIcpLoading] = useState(true);
   const icpFetchedRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [candidates, setCandidates] = useState<AudienceCandidate[] | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -1341,6 +1360,15 @@ function OnboardingAudiences({
       if (nl) void runSuggest(nl);
     })();
   }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-grow textarea to fit content — fires whenever prompt changes (user typing
+  // or programmatic prefill). Reset height to "auto" first so shrinking works too.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [prompt]);
 
   async function runSuggest(nlArg?: string) {
     const nl = (nlArg ?? prompt).trim();
@@ -1400,9 +1428,10 @@ function OnboardingAudiences({
   }
 
   return (
-    <div className={card}>
+    <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+      <BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />
+      <div className={card}>
       <BackButton onClick={onBack} />
-      <BrandStepHeader domain={brandDomain} hostname={hostname} />
       <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
       <p className="mt-2 text-gray-500">
         Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
@@ -1410,11 +1439,12 @@ function OnboardingAudiences({
 
       <div className="relative mt-5">
         <textarea
+          ref={textareaRef}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
           disabled={icpLoading}
           placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+          style={{ minHeight: "80px", overflow: "hidden" }}
           className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
         />
         {icpLoading && (
@@ -1458,6 +1488,7 @@ function OnboardingAudiences({
       )}
 
       <NextButton onClick={saveAndContinue} disabled={!candidates || selected.size === 0} busy={saving} label="Continue" />
+      </div>
     </div>
   );
 }
@@ -1523,10 +1554,10 @@ function AudienceCandidateCard({
   );
 }
 
-function BrandStepHeader({ domain, hostname }: { domain: string | null; hostname: string }) {
+function BrandStepHeader({ domain, hostname, onEdit }: { domain: string | null; hostname: string; onEdit?: () => void }) {
   const label = domain ?? hostname;
   return (
-    <div className="mb-5 flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white">
         <BrandLogo
           domain={label}
@@ -1535,10 +1566,20 @@ function BrandStepHeader({ domain, hostname }: { domain: string | null; hostname
           fallbackClassName="h-5 w-5 text-gray-400"
         />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Brand</div>
         <div className="truncate text-sm font-semibold text-gray-900">{label}</div>
       </div>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label="Change website"
+          className="ml-auto flex items-center justify-center rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-200 hover:text-gray-600"
+        >
+          <PencilSquareIcon className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }

@@ -30,7 +30,7 @@ describe("Onboarding mobile responsiveness", () => {
   });
 
   it("keeps beta onboarding controls from forcing horizontal overflow", () => {
-    expect(betaFlow).toContain("min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12");
+    expect(betaFlow).toContain("min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12");
     expect(betaFlow).toContain("basis-full bg-transparent");
     expect(betaFlow).toContain("sm:min-w-[8rem] sm:basis-auto");
     expect(betaFlow).toContain("flex flex-col items-stretch gap-4");

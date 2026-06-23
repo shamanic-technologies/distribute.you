@@ -3603,24 +3603,114 @@ export async function getDomainTrafficHistory(
   return data[0] ?? null;
 }
 
+// Both domain cache-readers take a `?domains=a.com,b.com,…` query string. A
+// brand can own thousands of outlet domains (12k+ seen in prod), and passing
+// every domain in ONE request blows the URL/header size limit → the request
+// fails → the DR / Monthly-Visits maps come back empty (blank columns in the
+// CSV + cards). Split into bounded chunks fetched with limited concurrency.
+//
+// ahref-service prod runs on a tiny fixed compute (0.25 CU, small pg pool) with
+// Neon scale-to-zero, so a burst of chunk requests hits cold-start +
+// pool-saturation transients (ECONNRESET / 5xx / "timeout exceeded when trying
+// to connect"). The reads are idempotent GETs, so each chunk RETRIES transient
+// failures with backoff; only a chunk that still fails after all attempts
+// throws (fail loud). Without the retry, ONE dropped chunk would empty the whole
+// enrichment map (the merge awaits every chunk), which is exactly how DR +
+// Monthly Visits went blank for the 12k-outlet brand even after chunking.
+const DOMAIN_READ_CHUNK_SIZE = 200;
+const DOMAIN_READ_CONCURRENCY = 4;
+const DOMAIN_READ_RETRIES = 2;
+const DOMAIN_READ_BACKOFF_MS = [400, 1200];
+const DOMAIN_READ_TIMEOUT_MS = 12_000;
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Bound a request so it can never hang forever. ahref-service prod is a tiny
+// 0.25 CU compute; a single slow/queued chunk with no timeout left the whole
+// enrichment query PENDING indefinitely (blank DR/Visits + a stuck "Loading"
+// button), which retry alone could not fix because a hang never throws.
+function withTimeout<O>(promise: Promise<O>, ms: number, label: string): Promise<O> {
+  return new Promise<O>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`[dashboard] ${label}: request timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+// Retry an idempotent, time-bounded read on a thrown transport/5xx/timeout
+// error. Throws the last error once attempts are exhausted; the CALLER decides
+// whether a persistently-failing chunk drops to empty (best-effort enrichment)
+// or propagates.
+async function retryTransientRead<O>(fn: () => Promise<O>, label: string): Promise<O> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= DOMAIN_READ_RETRIES; attempt++) {
+    try {
+      return await withTimeout(fn(), DOMAIN_READ_TIMEOUT_MS, label);
+    } catch (err) {
+      lastError = err;
+      if (attempt < DOMAIN_READ_RETRIES) {
+        await sleep(DOMAIN_READ_BACKOFF_MS[Math.min(attempt, DOMAIN_READ_BACKOFF_MS.length - 1)]);
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function mapWithConcurrency<I, O>(
+  items: I[],
+  limit: number,
+  fn: (item: I) => Promise<O>,
+): Promise<O[]> {
+  const results: O[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const current = next++;
+      results[current] = await fn(items[current]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 export async function getDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
-  const params = new URLSearchParams({ domains: domains.join(",") });
-  const raw = await apiCall<unknown>(
-    `/orgs/domains/traffic-history?${params}`,
-    { token },
-  );
-  const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
-  }
-  return parsed.data;
+  if (domains.length === 0) return [];
+  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  // Best-effort enrichment: a chunk that stays unreachable after retries drops
+  // to [] (those domains render blank) instead of throwing and blanking EVERY
+  // domain. The failure is logged loudly, not swallowed silently.
+  const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
+    try {
+      const raw = await retryTransientRead(
+        () => apiCall<unknown>(`/orgs/domains/traffic-history?${new URLSearchParams({ domains: batch.join(",") })}`, { token }),
+        "getDomainTrafficHistories",
+      );
+      const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
+      if (!parsed.success) {
+        console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
+          issues: parsed.error.issues,
+          raw,
+        });
+        return [];
+      }
+      return parsed.data;
+    } catch (err) {
+      console.error("[dashboard] getDomainTrafficHistories: chunk unreachable, rendering its domains blank", err);
+      return [];
+    }
+  });
+  return batchResults.flat();
 }
 
 /**
@@ -3644,20 +3734,31 @@ export async function getDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
-  const params = new URLSearchParams({ domains: domains.join(",") });
-  const raw = await apiCall<unknown>(
-    `/orgs/domains/dr-status?${params}`,
-    { token },
-  );
-  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
-  }
-  return parsed.data;
+  if (domains.length === 0) return [];
+  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  // Best-effort enrichment (see getDomainTrafficHistories): an unreachable chunk
+  // drops to [] (blank for its domains) instead of blanking every domain.
+  const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
+    try {
+      const raw = await retryTransientRead(
+        () => apiCall<unknown>(`/orgs/domains/dr-status?${new URLSearchParams({ domains: batch.join(",") })}`, { token }),
+        "getDomainDrStatuses",
+      );
+      const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+      if (!parsed.success) {
+        console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
+          issues: parsed.error.issues,
+          raw,
+        });
+        return [];
+      }
+      return parsed.data;
+    } catch (err) {
+      console.error("[dashboard] getDomainDrStatuses: chunk unreachable, rendering its domains blank", err);
+      return [];
+    }
+  });
+  return batchResults.flat();
 }
 
 // ─── On-demand Ahrefs fetch (get-or-fetch-if-never-seen) ────────────────────

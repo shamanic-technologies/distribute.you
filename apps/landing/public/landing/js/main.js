@@ -191,6 +191,7 @@ if (dashEl) {
     });
 
 
+
     /* Table rows stagger */
     dashEl.querySelectorAll('.uid-table tbody tr').forEach((row, i) => {
       setTimeout(() => row.classList.add('dash-row-in'), 500 + i * 100);
