@@ -3603,24 +3603,61 @@ export async function getDomainTrafficHistory(
   return data[0] ?? null;
 }
 
+// Both domain cache-readers take a `?domains=a.com,b.com,…` query string. A
+// brand can own thousands of outlet domains (12k+ seen in prod), and passing
+// every domain in ONE request blows the URL/header size limit → the request
+// fails → the DR / Monthly-Visits maps come back empty (blank columns in the
+// CSV + cards). Split into bounded chunks fetched with limited concurrency so
+// the readers scale to any outlet count; each chunk still fails loud.
+const DOMAIN_READ_CHUNK_SIZE = 150;
+const DOMAIN_READ_CONCURRENCY = 6;
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+async function mapWithConcurrency<I, O>(
+  items: I[],
+  limit: number,
+  fn: (item: I) => Promise<O>,
+): Promise<O[]> {
+  const results: O[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const current = next++;
+      results[current] = await fn(items[current]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 export async function getDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
-  const params = new URLSearchParams({ domains: domains.join(",") });
-  const raw = await apiCall<unknown>(
-    `/orgs/domains/traffic-history?${params}`,
-    { token },
-  );
-  const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
-  }
-  return parsed.data;
+  if (domains.length === 0) return [];
+  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
+    const params = new URLSearchParams({ domains: batch.join(",") });
+    const raw = await apiCall<unknown>(
+      `/orgs/domains/traffic-history?${params}`,
+      { token },
+    );
+    const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
+    if (!parsed.success) {
+      console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
+        issues: parsed.error.issues,
+        raw,
+      });
+      throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
+    }
+    return parsed.data;
+  });
+  return batchResults.flat();
 }
 
 /**
@@ -3644,20 +3681,25 @@ export async function getDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
-  const params = new URLSearchParams({ domains: domains.join(",") });
-  const raw = await apiCall<unknown>(
-    `/orgs/domains/dr-status?${params}`,
-    { token },
-  );
-  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
-  }
-  return parsed.data;
+  if (domains.length === 0) return [];
+  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
+    const params = new URLSearchParams({ domains: batch.join(",") });
+    const raw = await apiCall<unknown>(
+      `/orgs/domains/dr-status?${params}`,
+      { token },
+    );
+    const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+    if (!parsed.success) {
+      console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
+        issues: parsed.error.issues,
+        raw,
+      });
+      throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
+    }
+    return parsed.data;
+  });
+  return batchResults.flat();
 }
 
 // ─── On-demand Ahrefs fetch (get-or-fetch-if-never-seen) ────────────────────
