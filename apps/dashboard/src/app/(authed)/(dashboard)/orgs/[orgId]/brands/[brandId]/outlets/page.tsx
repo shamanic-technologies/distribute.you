@@ -651,7 +651,7 @@ export default function FeatureOutletsPage() {
     if (!search) return displayedOutlets;
     const q = search.toLowerCase();
     return displayedOutlets.filter((o) =>
-      o.outletName.toLowerCase().includes(q) || o.outletDomain.toLowerCase().includes(q)
+      (o.outletName ?? "").toLowerCase().includes(q) || (o.outletDomain ?? "").toLowerCase().includes(q)
     );
   }, [displayedOutlets, search]);
   const paginatedOutlets = usePaginated(filteredOutlets);
