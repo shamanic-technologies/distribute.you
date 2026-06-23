@@ -3,8 +3,16 @@
 // site (the brand scrape fails with a raw "Fetch failed") never surfaces as
 // backend jargon to the user. Display fallback only — an unmatched message
 // still shows verbatim, so this never hides a real signal.
+import { isInsufficientCredit } from "@/lib/api";
+
 export function displaySetupError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
+
+  // Insufficient credit (402). The add-credit modal is opened by apiCall; this is a
+  // defensive fallback so any 402 that still reaches an error banner reads clearly.
+  if (isInsufficientCredit(err)) {
+    return "You're out of setup credit. Add credit in the popup to continue.";
+  }
 
   // Unreachable / non-existent site — the brand scrape couldn't load the URL.
   if (

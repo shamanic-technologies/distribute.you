@@ -45,6 +45,7 @@ import {
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
   type FeatureInput,
+  isInsufficientCredit,
 } from "@/lib/api";
 import {
   selectWorkflowForOptimizationGoal,
@@ -354,6 +355,11 @@ export function BetaOnboarding() {
   const fetchDoneRef = useRef(false);
   const loadingStartedAtRef = useRef<number | null>(null);
   const checkoutResumeStartedRef = useRef(false);
+  // When a step's action 402s (insufficient credit), the API client auto-opens the
+  // add-credit modal and we stash the failed action here instead of resetting the
+  // step. Once the user adds credit in the modal, billing-guard dispatches
+  // `billing:resolved` and we re-run it — no page reload, so no state is lost.
+  const creditRetryRef = useRef<null | (() => void | Promise<void>)>(null);
 
   const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
   const econRef = useRef<EffectiveSalesEconomics | null>(null);
@@ -548,6 +554,13 @@ export function BetaOnboarding() {
       await createBrandAndFetchServices();
       maybeAdvancePastLoading();
     } catch (err) {
+      if (isInsufficientCredit(err)) {
+        // Welcome credit ran out during AI setup. The add-credit modal is already
+        // open (auto-fired on the 402); stay on the loading screen and resume on credit add
+        // instead of bouncing back to the URL step with a raw error.
+        creditRetryRef.current = () => startAnalyze();
+        return;
+      }
       posthog.capture("onboarding_workspace_create_failed", { flow: "beta", domain });
       timers.current.forEach(clearTimeout);
       console.error("[dashboard] onboarding setup failed:", err);
@@ -637,6 +650,12 @@ export function BetaOnboarding() {
       projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
       setStep("audiences");
     } catch (err) {
+      if (isInsufficientCredit(err)) {
+        // Out of credit while pricing the projection — the add-credit modal is open;
+        // resume this same step on credit add (no reset, no raw error).
+        creditRetryRef.current = () => saveRatesAndContinue();
+        return;
+      }
       setError(err instanceof Error ? err.message : "Could not save your rates.");
     } finally {
       setBusy(false);
@@ -791,6 +810,20 @@ export function BetaOnboarding() {
       setBusy(false);
     }
   }
+
+  // After the user adds credit in the billing-guard modal, re-run the step action
+  // that 402'd. Embedded Checkout completes in-page (no reload), so the React state
+  // for this onboarding session is intact and the retry resumes seamlessly.
+  useEffect(() => {
+    function onResolved() {
+      const retry = creditRetryRef.current;
+      creditRetryRef.current = null;
+      setError(null);
+      if (retry) void retry();
+    }
+    window.addEventListener("billing:resolved", onResolved);
+    return () => window.removeEventListener("billing:resolved", onResolved);
+  }, []);
 
   useEffect(() => {
     const launchCheckout = searchParams.get("launch_checkout");

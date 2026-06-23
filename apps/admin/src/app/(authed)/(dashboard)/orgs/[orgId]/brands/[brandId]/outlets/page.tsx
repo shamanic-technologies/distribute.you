@@ -433,7 +433,7 @@ export default function BrandOutletsPage() {
 
   const { data, isPending } = useAuthQuery(
     outletsQueryKey,
-    () => listBrandOutlets(brandId),
+    () => listBrandOutlets(brandId, undefined, undefined, undefined, true),
     pollOptions,
   );
 
@@ -461,16 +461,20 @@ export default function BrandOutletsPage() {
     [outletDomains],
   );
 
-  const { data: domainTrafficHistories, isPending: isDomainTrafficHistoriesPending } = useAuthQuery(
+  // DR + Monthly Visits now arrive server-side on each outlet (enrich=ahref,
+  // resilient at scale). These queries no longer auto-fetch — they survive only
+  // as the cache the per-page "Get DR" / "Get Monthly Visits" scrape mutations
+  // write into; drMap/trafficMap overlay those scraped values on the server seed.
+  const { data: domainTrafficHistories } = useAuthQuery(
     domainTrafficQueryKey,
     () => getDomainTrafficHistories(outletDomains),
-    { enabled: outletDomains.length > 0 },
+    { enabled: false },
   );
 
-  const { data: domainDrStatuses, isPending: isDomainDrStatusesPending } = useAuthQuery(
+  const { data: domainDrStatuses } = useAuthQuery(
     domainDrQueryKey,
     () => getDomainDrStatuses(outletDomains),
-    { enabled: outletDomains.length > 0 },
+    { enabled: false },
   );
 
   const fetchMonthlyVisitsMutation = useMutation({
@@ -531,21 +535,30 @@ export default function BrandOutletsPage() {
     },
   });
 
+  // Seed from the server-enriched outlet fields (outlets-service resilient
+  // ahref join via enrich=ahref — reliable at any scale), then overlay any
+  // on-demand client-scraped values.
   const drMap = useMemo(() => {
     const map = new Map<string, number>();
+    for (const o of outlets) {
+      if (o.domainRating != null) map.set(normalizeDomain(o.outletDomain), o.domainRating);
+    }
     for (const status of domainDrStatuses ?? []) {
       if (status.latestValidDr != null) map.set(normalizeDomain(status.domain), status.latestValidDr);
     }
     return map;
-  }, [domainDrStatuses]);
+  }, [outlets, domainDrStatuses]);
 
   const trafficMap = useMemo(() => {
     const map = new Map<string, number>();
+    for (const o of outlets) {
+      if (o.trafficMonthlyAvg != null) map.set(normalizeDomain(o.outletDomain), o.trafficMonthlyAvg);
+    }
     for (const history of domainTrafficHistories ?? []) {
       if (history.trafficMonthlyAvg != null) map.set(normalizeDomain(history.domain), history.trafficMonthlyAvg);
     }
     return map;
-  }, [domainTrafficHistories]);
+  }, [outlets, domainTrafficHistories]);
 
   const costMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -644,7 +657,7 @@ export default function BrandOutletsPage() {
   }, [activeTab, search, paginatedOutlets.setPage]);
   const currentPageDomainsMissingDr = useMemo(
     () => {
-      if (isDomainDrStatusesPending) return [];
+      if (isPending) return [];
       return [
         ...new Set(
           paginatedOutlets.pageItems
@@ -653,11 +666,11 @@ export default function BrandOutletsPage() {
         ),
       ];
     },
-    [isDomainDrStatusesPending, paginatedOutlets.pageItems, drMap],
+    [isPending, paginatedOutlets.pageItems, drMap],
   );
   const currentPageDomainsMissingTraffic = useMemo(
     () => {
-      if (isDomainTrafficHistoriesPending) return [];
+      if (isPending) return [];
       return [
         ...new Set(
           paginatedOutlets.pageItems
@@ -666,7 +679,7 @@ export default function BrandOutletsPage() {
         ),
       ];
     },
-    [isDomainTrafficHistoriesPending, paginatedOutlets.pageItems, trafficMap],
+    [isPending, paginatedOutlets.pageItems, trafficMap],
   );
 
   return (
@@ -743,7 +756,7 @@ export default function BrandOutletsPage() {
               <button
                 type="button"
                 onClick={() => fetchPageMonthlyVisitsMutation.mutate(currentPageDomainsMissingTraffic)}
-                disabled={isDomainTrafficHistoriesPending || fetchPageMonthlyVisitsMutation.isPending || currentPageDomainsMissingTraffic.length === 0}
+                disabled={isPending || fetchPageMonthlyVisitsMutation.isPending || currentPageDomainsMissingTraffic.length === 0}
                 className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
               >
                 {fetchPageMonthlyVisitsMutation.isPending ? "Fetching..." : `Get Monthly Visits (${currentPageDomainsMissingTraffic.length})`}
@@ -751,7 +764,7 @@ export default function BrandOutletsPage() {
               <button
                 type="button"
                 onClick={() => fetchPageDomainRatingsMutation.mutate(currentPageDomainsMissingDr)}
-                disabled={isDomainDrStatusesPending || fetchPageDomainRatingsMutation.isPending || currentPageDomainsMissingDr.length === 0}
+                disabled={isPending || fetchPageDomainRatingsMutation.isPending || currentPageDomainsMissingDr.length === 0}
                 className="h-10 shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-50"
               >
                 {fetchPageDomainRatingsMutation.isPending ? "Fetching..." : `Get Domain Ratings (${currentPageDomainsMissingDr.length})`}

@@ -37,6 +37,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * True when an error is a 402 insufficient-credits failure. apiCall auto-dispatches
+ * the billing-guard modal on a 402 (see the 402 branch above), so callers use this
+ * to AVOID treating a credit failure as a hard error (no destructive reset / error
+ * banner) — the modal handles it and a `billing:resolved` event signals recovery.
+ */
+export function isInsufficientCredit(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 402;
+}
+
 function asErrorBody(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -2764,6 +2774,11 @@ export interface CheckoutSession {
   session_id: string;
 }
 
+export interface EmbeddedCheckoutSession {
+  client_secret: string;
+  session_id: string;
+}
+
 export type WalletSetupResult = BillingAccount & {
   initial_load_amount_cents: number;
   initial_load_payment_intent_id: string;
@@ -2790,10 +2805,6 @@ export async function configureAutoTopup(
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "PATCH", body });
 }
 
-export async function disableAutoTopup(token?: string): Promise<BillingAccount> {
-  return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
-}
-
 export async function createCheckoutSession(
   params:
     | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
@@ -2804,6 +2815,24 @@ export async function createCheckoutSession(
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
+  });
+}
+
+/**
+ * Create an EMBEDDED Stripe Checkout session — card is captured in an in-app modal
+ * (iframe), no redirect to a hosted Stripe page. Returns a `client_secret` the
+ * front-end mounts via @stripe/react-stripe-js <EmbeddedCheckout>. The card is saved
+ * off-session (auto-topup) and `topup_amount_cents` charged; credit lands via the
+ * existing checkout.session.completed webhook (same accounting as the hosted path).
+ */
+export async function createEmbeddedCheckoutSession(
+  topup_amount_cents: number,
+  token?: string
+): Promise<EmbeddedCheckoutSession> {
+  return apiCall<EmbeddedCheckoutSession>("/billing/checkout-sessions", {
+    token,
+    method: "POST",
+    body: { ui_mode: "embedded", topup_amount_cents },
   });
 }
 
@@ -3061,6 +3090,11 @@ export interface DeduplicatedOutlet {
   priceRequestStatus: "ongoing" | "received" | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
+  // Ahrefs enrichment, present only when the request passes `enrich=ahref`
+  // (outlets-service joins these server-side, resilient/chunked). null when
+  // ahref has no trustworthy cached value for the domain.
+  domainRating?: number | null;
+  trafficMonthlyAvg?: number | null;
 }
 
 export interface OutletPriceRequestResult {
@@ -3106,10 +3140,15 @@ export async function listBrandOutlets(
   featureSlug?: string,
   token?: string,
   campaignId?: string,
+  enrich?: boolean,
 ): Promise<OutletListResponse> {
   const params = new URLSearchParams({ brandId });
   if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
+  // enrich=ahref → each outlet carries domainRating + trafficMonthlyAvg
+  // (server-side resilient join). Opt-in so the high-frequency sidebar count
+  // query stays cheap.
+  if (enrich) params.set("enrich", "ahref");
   const data = await apiCall<OutletListResponse>(
     `/outlets?${params}`,
     { token },
@@ -4221,6 +4260,18 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+// ahref-service `normalizeDomain` rejects anything that isn't a bare host with a
+// 400 ("not a valid domain: -"), and that 400 fails the ENTIRE chunk it lands in
+// — blanking DR / Monthly Visits for up to DOMAIN_READ_CHUNK_SIZE valid domains
+// sharing the chunk. Outlet records carry a "-" placeholder for "no domain" and
+// occasionally a path-bearing value (a.com/section); `.sort()` puts "-" first, so
+// it poisons chunk 0 on every load. Filter to bare, dotted hosts BEFORE chunking
+// so one junk value can't take down its chunk-mates. Dropping a non-domain loses
+// nothing — ahref can't enrich it anyway.
+function isQueryableDomain(domain: string): boolean {
+  return domain.length > 0 && domain !== "-" && domain.includes(".") && !/[/\s]/.test(domain);
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Bound a request so it can never hang forever. ahref-service prod is a tiny
@@ -4277,8 +4328,14 @@ export async function getDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
-  if (domains.length === 0) return [];
-  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[dashboard] getDomainTrafficHistories: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
+    });
+  }
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
   // Best-effort enrichment: a chunk that stays unreachable after retries drops
   // to [] (those domains render blank) instead of throwing and blanking EVERY
   // domain. The failure is logged loudly, not swallowed silently.
@@ -4326,8 +4383,14 @@ export async function getDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
-  if (domains.length === 0) return [];
-  const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[dashboard] getDomainDrStatuses: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
+    });
+  }
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
   // Best-effort enrichment (see getDomainTrafficHistories): an unreachable chunk
   // drops to [] (blank for its domains) instead of blanking every domain.
   const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {

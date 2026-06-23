@@ -8,8 +8,12 @@ import {
   listOrgRuns,
   createCheckoutSession,
   createPortalSession,
+  grantCredits,
+  listOrgCreditGrants,
+  listAllCreditGrants,
   type BillingAccount,
   type OrgRun,
+  type CreditGrant,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
@@ -45,6 +49,47 @@ export default function BillingPage() {
     () => listOrgRuns(RUNS_PAGE_SIZE, runsPage * RUNS_PAGE_SIZE),
     pollOptions,
   );
+
+  // Free-credit grants — this org's grants + the platform-wide ledger (staff oversight).
+  const { data: orgGrantsData } = useAuthQuery<{ grants: CreditGrant[] }>(
+    ["creditGrants"],
+    () => listOrgCreditGrants(),
+  );
+  const { data: allGrantsData } = useAuthQuery<{ grants: CreditGrant[] }>(
+    ["creditGrantsAll"],
+    () => listAllCreditGrants(),
+  );
+
+  // Grant form state
+  const [grantDollars, setGrantDollars] = useState("");
+  const [grantNote, setGrantNote] = useState("");
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [grantError, setGrantError] = useState<string | null>(null);
+  const [grantSuccess, setGrantSuccess] = useState<string | null>(null);
+
+  async function handleGrant() {
+    const amountCents = Math.round(parseFloat(grantDollars) * 100);
+    if (!amountCents || amountCents <= 0) {
+      setGrantError("Enter an amount greater than $0.");
+      return;
+    }
+    setGrantLoading(true);
+    setGrantError(null);
+    setGrantSuccess(null);
+    try {
+      await grantCredits(amountCents, grantNote.trim());
+      setGrantDollars("");
+      setGrantNote("");
+      setGrantSuccess(`Granted ${formatBillingCents(amountCents)}.`);
+      queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
+      queryClient.invalidateQueries({ queryKey: ["creditGrants"] });
+      queryClient.invalidateQueries({ queryKey: ["creditGrantsAll"] });
+    } catch (err) {
+      setGrantError(err instanceof Error ? err.message : "Failed to grant credits");
+    } finally {
+      setGrantLoading(false);
+    }
+  }
 
   // Top-up state
   const [topupSelected, setTopupSelected] = useState(2500);
@@ -254,6 +299,19 @@ export default function BillingPage() {
   const orgRuns: OrgRun[] = runsData?.runs ?? [];
   const runsHasNext = orgRuns.length === RUNS_PAGE_SIZE;
   const runsHasPrev = runsPage > 0;
+
+  const orgGrants: CreditGrant[] = orgGrantsData?.grants ?? [];
+  const allGrants: CreditGrant[] = allGrantsData?.grants ?? [];
+
+  function formatGrantDate(iso: string): string {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 
   function runRowLabel(run: OrgRun): string {
     if (run.taskName && run.serviceName) return `${run.serviceName}.${run.taskName}`;
@@ -531,6 +589,82 @@ export default function BillingPage() {
           </div>
         )}
 
+        {/* Grant free credits (staff-only) — drops straight into spendable balance */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-lg font-medium text-gray-900 mb-1">Grant free credits</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Adds credit to this org&apos;s spendable balance immediately. No card, no charge.
+          </p>
+
+          {grantSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg mb-3 text-sm">
+              {grantSuccess}
+            </div>
+          )}
+          {grantError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3 text-sm">
+              {grantError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Amount ($)</label>
+              <input
+                type="number"
+                value={grantDollars}
+                onChange={(e) => { setGrantDollars(e.target.value); setGrantError(null); }}
+                placeholder="e.g. 50"
+                min="0"
+                step="1"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Note (optional)</label>
+              <input
+                type="text"
+                value={grantNote}
+                onChange={(e) => setGrantNote(e.target.value)}
+                placeholder="e.g. onboarding goodwill"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={handleGrant}
+            disabled={grantLoading || !grantDollars}
+            className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
+          >
+            {grantLoading ? "Granting..." : "Grant credits"}
+          </button>
+
+          {/* This org's grant history */}
+          <div className="border-t border-gray-100 pt-4 mt-5">
+            <h3 className="text-sm font-medium text-gray-800 mb-2">Credit grants for this org</h3>
+            {orgGrants.length === 0 ? (
+              <p className="text-sm text-gray-500">No grants yet.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {orgGrants.map((g) => (
+                  <div key={g.id} className="flex items-start justify-between py-2.5">
+                    <div className="min-w-0 pr-3">
+                      <p className="text-sm text-gray-800">{g.note || <span className="text-gray-400">No note</span>}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {g.grantedBy ?? "—"} · {formatGrantDate(g.createdAt)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-green-600 whitespace-nowrap">
+                      +{formatBillingCents(g.amountCents)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Runs Ledger — per-run cost history (sourced from runs-service) */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
@@ -602,6 +736,46 @@ export default function BillingPage() {
                 </div>
               )}
             </>
+          )}
+        </div>
+
+        {/* Platform-wide grant ledger — every free credit ever issued, across all orgs */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-lg font-medium text-gray-900 mb-1">All credit grants</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Every free-credit grant issued so far, across all orgs.
+          </p>
+          {allGrants.length === 0 ? (
+            <p className="text-sm text-gray-500">No grants issued yet.</p>
+          ) : (
+            <div className="overflow-x-auto -mx-5 px-5">
+              <table className="min-w-[560px] w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                    <th className="py-2 pr-3 font-medium">Org</th>
+                    <th className="py-2 pr-3 font-medium">Amount</th>
+                    <th className="py-2 pr-3 font-medium">By</th>
+                    <th className="py-2 pr-3 font-medium">Note</th>
+                    <th className="py-2 font-medium">When</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {allGrants.map((g) => (
+                    <tr key={g.id}>
+                      <td className="py-2.5 pr-3 font-mono text-xs text-gray-500" title={g.orgId}>
+                        {g.orgId.slice(0, 8)}
+                      </td>
+                      <td className="py-2.5 pr-3 font-medium text-green-600 whitespace-nowrap">
+                        +{formatBillingCents(g.amountCents)}
+                      </td>
+                      <td className="py-2.5 pr-3 text-gray-600 whitespace-nowrap">{g.grantedBy ?? "—"}</td>
+                      <td className="py-2.5 pr-3 text-gray-600">{g.note || <span className="text-gray-400">—</span>}</td>
+                      <td className="py-2.5 text-gray-400 whitespace-nowrap">{formatGrantDate(g.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
