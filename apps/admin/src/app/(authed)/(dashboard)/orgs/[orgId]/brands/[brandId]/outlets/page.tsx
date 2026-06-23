@@ -62,8 +62,8 @@ function formatMonthlyVisits(visits: number): string {
   return Math.round(visits).toLocaleString("en-US");
 }
 
-function normalizeDomain(domain: string): string {
-  return domain.trim().toLowerCase().replace(/^www\./, "");
+function normalizeDomain(domain: string | null | undefined): string {
+  return (domain ?? "").trim().toLowerCase().replace(/^www\./, "");
 }
 
 function relevanceColor(score: number): string {
@@ -449,7 +449,7 @@ export default function BrandOutletsPage() {
   );
 
   const outletDomains = useMemo(
-    () => [...new Set(outlets.map((o) => normalizeDomain(o.outletDomain)))].sort(),
+    () => [...new Set(outlets.map((o) => normalizeDomain(o.outletDomain)).filter(Boolean))].sort(),
     [outlets],
   );
   const domainDrQueryKey = useMemo(
