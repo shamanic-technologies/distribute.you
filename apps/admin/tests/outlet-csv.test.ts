@@ -35,6 +35,7 @@ describe("buildOutletCsv helper", () => {
       '"URL"',
       '"Status"',
       '"DR"',
+      '"Monthly Visits"',
       '"Purchase Price"',
       '"Relevance %"',
       '"Why Relevant"',
