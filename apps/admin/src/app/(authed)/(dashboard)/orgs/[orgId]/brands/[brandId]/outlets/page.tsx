@@ -14,6 +14,7 @@ import {
   getDomainDrStatuses,
   computeDomainDr,
   computeDomainDrStatuses,
+  isQueryableDomain,
   type DomainTrafficHistory,
   type DomainDrStatus,
   type DeduplicatedOutlet,
@@ -662,7 +663,7 @@ export default function BrandOutletsPage() {
         ...new Set(
           paginatedOutlets.pageItems
             .map((outlet) => normalizeDomain(outlet.outletDomain))
-            .filter((domain) => !drMap.has(domain)),
+            .filter((domain) => !drMap.has(domain) && isQueryableDomain(domain)),
         ),
       ];
     },
@@ -675,7 +676,7 @@ export default function BrandOutletsPage() {
         ...new Set(
           paginatedOutlets.pageItems
             .map((outlet) => normalizeDomain(outlet.outletDomain))
-            .filter((domain) => !trafficMap.has(domain)),
+            .filter((domain) => !trafficMap.has(domain) && isQueryableDomain(domain)),
         ),
       ];
     },

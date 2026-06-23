@@ -3736,7 +3736,7 @@ async function mapWithConcurrency<I, O>(
  * — see CLAUDE.md #2070. Filtering here protects EVERY caller (bulk readers + the
  * on-demand compute mutations), not just one page memo.
  */
-function isQueryableDomain(domain: string): boolean {
+export function isQueryableDomain(domain: string): boolean {
   return domain.length > 0 && domain !== "-" && domain.includes(".") && !/[/\s]/.test(domain);
 }
 
