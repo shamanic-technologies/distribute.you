@@ -10,19 +10,25 @@
  *  4. persisted cache (this file)       — restores the last-known content on
  *     return / reload instead of cold-loading a skeleton.
  *
- * ⚠️ PERFORMANCE INVARIANT (the #1273 memory-overflow incident, 2026-06-02):
- * `PersistQueryClientProvider` calls `dehydrate()` + writes storage on EVERY
- * cache mutation (TanStack issue #9775, "wontfix / known limitation"). If the
- * cache holds large or 5s-polled lists, that re-serializes megabytes on the main
- * thread every poll → multi-second freeze; and a 24h `gcTime` keeps every visited
- * big list in the JS heap for a day → memory overflow. So:
- *   - Persist ONLY small, slow-changing roots (the allowlist below). Default OFF:
- *     a new query is not persisted unless explicitly added. Missing a small root
- *     = minor (no instant-return for that page). Persisting a big/polled root =
- *     perf regression. Fail toward the safe side.
- *   - Bound `gcTime` (== `maxAge`) so inactive big lists leave the heap quickly.
- * NEVER add a list / leads / emails / journalists / outlets / articles / runs /
- * pitches / opportunities / media-kit / cost-breakdown root to the allowlist.
+ * POLICY (2026-06-23 — "persist everything that exists, no skeleton on reload"):
+ * the allowlist holds EVERY live non-sensitive query root, big lists included, so
+ * NO page cold-skeletons on reload — it restores the last-known content for all of
+ * them. This deliberately reverses the original small-roots-only allowlist (the
+ * #1273 memory-overflow fix). It stays safe because the two mechanisms that caused
+ * #1273 are now bounded independently of payload size:
+ *   - `gcTime == maxAge == 30min` (NOT the old 24h) caps in-memory retention, so a
+ *     big list cannot pile up in the heap for a day → no OOM.
+ *   - `removeOldestQuery` (query-provider.tsx) evicts on the ~5MB localStorage cap
+ *     and NEVER throws — an oversized single list (e.g. a 12k-row outlets payload
+ *     that alone exceeds 5MB) simply self-evicts, so that one page may still
+ *     skeleton on reload, but nothing crashes.
+ *   - `buster: cacheBuildId()` discards the whole cache on every deploy.
+ * RESIDUAL WATCH-ITEM: `dehydrate()` re-serializes the persisted set on EVERY cache
+ * mutation (TanStack #9775). With 5s-polled big lists this adds main-thread cost on
+ * heavy pages while they are actively viewed. Mitigation if it bites: an idle/blur
+ * gate on the persister, or a per-query size cap — not a return to the allowlist.
+ * The allowlist is now an INVENTORY of live roots (default-OFF still holds for a
+ * future UNKNOWN root, so a new query is opt-in, never silently auto-persisted).
  */
 
 /**
@@ -42,38 +48,74 @@ export const PERSIST_MAX_AGE_MS = 30 * 60 * 1000;
 export const SENSITIVE_QUERY_ROOTS = new Set(["apiKeys", "byokKeys", "keySources"]);
 
 /**
- * ALLOWLIST — only these roots persist to disk. Default OFF for everything else.
- * Each entry MUST be small (KB, not MB) AND slow-changing. These are navigation /
- * config / single-entity metadata / small counters — the data whose instant
- * restore actually matters and whose serialization cost is negligible.
- *
- * Deliberately EXCLUDED (big and/or 5s-polled — see the perf invariant above):
- * leads, emails, journalists, outlets, articles, opportunities, quote pitches,
- * media kits, visibility/campaign/brand runs, event logs, cost breakdowns,
- * sales workflow test outputs. Those refetch on demand (they poll anyway).
+ * INVENTORY of every LIVE non-sensitive query root in the dashboard — all persist
+ * to disk so no page cold-skeletons on reload (see the POLICY block above). Keep
+ * this in lockstep with the queries the app actually uses: add a root when a new
+ * query ships, drop a root when its surface is removed (the dead campaign- and
+ * quote- roots from the #1768 campaign-UI removal were dropped here). Secrets stay out via
+ * SENSITIVE_QUERY_ROOTS; a future UNKNOWN root is default-OFF until listed here.
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
-  // Navigation / config — warm, slow-changing, high instant-return value
+  // Navigation / config / registries
   "features",
   "feature",
   "statsRegistry",
   "entityRegistry",
   "platformPrices",
   "billingAccount",
-  // Brand + campaign METADATA (single entities + small lists), NOT their sub-lists
+  // Brand metadata + config + small summaries
   "brand",
   "brands",
+  "brandProfile",
   "brandExtractedFields",
   "brandSalesEconomics",
-  "campaign",
-  "campaigns",
-  // Workflow definitions / summaries — metadata, NOT run logs or test outputs
+  "brandDailyBudget",
+  "brandPause",
+  "brandCostBreakdown",
+  "brandCostBreakdownToday",
+  // Brand entity sub-lists (big — persisted so their pages skip the reload skeleton)
+  "brandLeads",
+  "brandEmails",
+  "brandOutlets",
+  "brandArticles",
+  "brandJournalists",
+  "enrichedJournalists",
+  "brandRuns",
+  "brandMediaKits",
+  "mediaKit",
+  // Feature-level stats / revenue / activity
+  "featureStats",
+  "featureRevenue",
+  "featurePipelineActivity",
+  "featureAudienceStats",
+  "featureWorkflows",
+  "featureQuotePitches",
+  // Opportunities / pitches
+  "rankedOpportunities",
+  "quotePitches",
+  // Audiences
+  "audiences",
+  // Workflow defs / projections / summaries
   "workflow",
   "workflows",
   "workflow-summary",
-  // Small stat counters (plain numbers — cheap to serialize even when polled)
-  "featureStats",
-  "campaignStats",
+  "workflow-key-status",
+  "workflowProjection",
+  "globalRankedWorkflows",
+  // Outlet cost stats
+  "outletStatsCosts",
+  // Campaign (the launch-modal self-fetch is the only surviving campaign UI)
+  "campaign",
+  "campaigns",
+  "campaignLeads",
+  "campaignActivity",
+  // Visibility runs
+  "visibilityRuns",
+  "visibilityRun",
+  // Per-domain metric objects
+  "domainTrafficHistory",
+  "domainDrStatus",
+  "domainAiVisibility",
 ]);
 
 export interface PersistableQuery {

@@ -38,24 +38,39 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
     expect(SENSITIVE_QUERY_ROOTS.has("keySources")).toBe(true);
   });
 
-  it("persists only allowlisted small / slow-changing roots", () => {
+  it("persists EVERY live non-sensitive root (persist-all-live policy — no reload skeleton)", () => {
     for (const root of [
-      "features", "feature", "brand", "brands", "campaign", "campaigns",
-      "brandSalesEconomics",
-      "featureStats", "campaignStats", "billingAccount", "platformPrices",
-      "workflow", "workflows",
+      // config / registries
+      "features", "feature", "statsRegistry", "entityRegistry", "platformPrices", "billingAccount",
+      // brand metadata + config
+      "brand", "brands", "brandProfile", "brandExtractedFields", "brandSalesEconomics",
+      "brandDailyBudget", "brandPause", "brandCostBreakdown", "brandCostBreakdownToday",
+      // brand entity sub-lists (big — now persisted too)
+      "brandLeads", "brandEmails", "brandOutlets", "brandArticles", "brandJournalists",
+      "enrichedJournalists", "brandRuns", "brandMediaKits", "mediaKit",
+      // feature-level
+      "featureStats", "featureRevenue", "featurePipelineActivity", "featureAudienceStats",
+      "featureWorkflows", "featureQuotePitches",
+      // opportunities / pitches / audiences
+      "rankedOpportunities", "quotePitches", "audiences",
+      // workflows
+      "workflow", "workflows", "workflow-summary", "workflow-key-status",
+      "workflowProjection", "globalRankedWorkflows",
+      // outlet stats / campaign launch-modal / visibility / domain metrics
+      "outletStatsCosts", "campaign", "campaigns", "campaignLeads", "campaignActivity",
+      "visibilityRuns", "visibilityRun",
+      "domainTrafficHistory", "domainDrStatus", "domainAiVisibility",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(true);
     }
   });
 
-  it("NEVER persists big / 5s-polled list roots (memory + dehydrate main-thread cost, #9775)", () => {
+  it("never persists dead roots removed from the dashboard (no live consumer)", () => {
+    // Removed with the #1768 campaign-UI flatten + earlier surfaces — must not linger.
     for (const root of [
-      "brandLeads", "campaignLeads", "brandEmails", "campaignEmails",
-      "enrichedJournalists", "brandOutlets", "campaignOutlets", "brandArticles",
-      "rankedOpportunities", "quotePitches", "featureQuotePitches", "quoteRequests",
-      "campaignMediaKits", "mediaKit", "visibilityRuns", "campaignRuns",
-      "campaignEvents", "orgCostBreakdown", "salesWorkflowTests",
+      "campaignStats", "campaignEmails", "campaignOutlets", "campaignRuns",
+      "campaignEvents", "campaignMediaKits", "quoteRequests", "orgCostBreakdown",
+      "salesWorkflowTests",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(false);
     }
