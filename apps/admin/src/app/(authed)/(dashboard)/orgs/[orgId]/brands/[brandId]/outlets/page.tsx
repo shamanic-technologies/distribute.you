@@ -586,8 +586,9 @@ export default function BrandOutletsPage() {
       (o) => costMap.get(o.id) ?? null,
       (o) => drMap.get(normalizeDomain(o.outletDomain)),
       (o) => formatPurchasePrice(o),
+      (o) => trafficMap.get(normalizeDomain(o.outletDomain)) ?? null,
     ),
-    [outlets, latchedStatuses, costMap, drMap],
+    [outlets, latchedStatuses, costMap, drMap, trafficMap],
   );
 
   // Group outlets by display status

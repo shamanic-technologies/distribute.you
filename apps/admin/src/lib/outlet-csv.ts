@@ -31,6 +31,7 @@ export function buildOutletCsv(
   costCentsFor: (outlet: DeduplicatedOutlet) => string | null,
   drFor: (outlet: DeduplicatedOutlet) => number | null | undefined,
   purchasePriceFor: (outlet: DeduplicatedOutlet) => string | null,
+  monthlyVisitsFor: (outlet: DeduplicatedOutlet) => number | null | undefined,
 ): string {
   const columns: CsvColumn<DeduplicatedOutlet>[] = [
     { label: "Outlet", value: (o) => o.outletName },
@@ -38,6 +39,7 @@ export function buildOutletCsv(
     { label: "URL", value: (o) => o.outletUrl },
     { label: "Status", value: (o) => statusLabel(displayStatusFor(o)) },
     { label: "DR", value: (o) => drFor(o) ?? "" },
+    { label: "Monthly Visits", value: (o) => monthlyVisitsFor(o) ?? "" },
     { label: "Purchase Price", value: (o) => purchasePriceFor(o) ?? "" },
     { label: "Relevance %", value: (o) => o.relevanceScore },
     { label: "Why Relevant", value: (o) => whyRelevantFor(o) },
