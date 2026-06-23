@@ -4199,15 +4199,46 @@ export async function getDomainTrafficHistory(
 // brand can own thousands of outlet domains (12k+ seen in prod), and passing
 // every domain in ONE request blows the URL/header size limit → the request
 // fails → the DR / Monthly-Visits maps come back empty (blank columns in the
-// CSV + cards). Split into bounded chunks fetched with limited concurrency so
-// the readers scale to any outlet count; each chunk still fails loud.
-const DOMAIN_READ_CHUNK_SIZE = 150;
-const DOMAIN_READ_CONCURRENCY = 6;
+// CSV + cards). Split into bounded chunks fetched with limited concurrency.
+//
+// ahref-service prod runs on a tiny fixed compute (0.25 CU, small pg pool) with
+// Neon scale-to-zero, so a burst of chunk requests hits cold-start +
+// pool-saturation transients (ECONNRESET / 5xx / "timeout exceeded when trying
+// to connect"). The reads are idempotent GETs, so each chunk RETRIES transient
+// failures with backoff; only a chunk that still fails after all attempts
+// throws (fail loud). Without the retry, ONE dropped chunk would empty the whole
+// enrichment map (the merge awaits every chunk), which is exactly how DR +
+// Monthly Visits went blank for the 12k-outlet brand even after chunking.
+const DOMAIN_READ_CHUNK_SIZE = 200;
+const DOMAIN_READ_CONCURRENCY = 4;
+const DOMAIN_READ_RETRIES = 4;
+const DOMAIN_READ_BACKOFF_MS = [300, 700, 1500, 3000];
 
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
   return chunks;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Retry an idempotent read on a thrown transport/5xx error. Re-throws the last
+// error once attempts are exhausted (fail loud — a persistent failure is a real
+// outage, not something to swallow).
+async function retryTransientRead<O>(fn: () => Promise<O>, label: string): Promise<O> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= DOMAIN_READ_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < DOMAIN_READ_RETRIES) {
+        await sleep(DOMAIN_READ_BACKOFF_MS[Math.min(attempt, DOMAIN_READ_BACKOFF_MS.length - 1)]);
+      }
+    }
+  }
+  console.error(`[dashboard] ${label}: chunk failed after ${DOMAIN_READ_RETRIES + 1} attempts`, lastError);
+  throw lastError;
 }
 
 async function mapWithConcurrency<I, O>(
@@ -4235,9 +4266,9 @@ export async function getDomainTrafficHistories(
   const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
   const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
     const params = new URLSearchParams({ domains: batch.join(",") });
-    const raw = await apiCall<unknown>(
-      `/orgs/domains/traffic-history?${params}`,
-      { token },
+    const raw = await retryTransientRead(
+      () => apiCall<unknown>(`/orgs/domains/traffic-history?${params}`, { token }),
+      "getDomainTrafficHistories",
     );
     const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
     if (!parsed.success) {
@@ -4277,9 +4308,9 @@ export async function getDomainDrStatuses(
   const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
   const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
     const params = new URLSearchParams({ domains: batch.join(",") });
-    const raw = await apiCall<unknown>(
-      `/orgs/domains/dr-status?${params}`,
-      { token },
+    const raw = await retryTransientRead(
+      () => apiCall<unknown>(`/orgs/domains/dr-status?${params}`, { token }),
+      "getDomainDrStatuses",
     );
     const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
     if (!parsed.success) {

@@ -694,7 +694,7 @@ export default function FeatureOutletsPage() {
               )}
             </div>
           </div>
-          <CsvDownloadButton filename={`outlets-${featureSlug}.csv`} csv={csv} isEmpty={outlets.length === 0} />
+          <CsvDownloadButton filename={`outlets-${featureSlug}.csv`} csv={csv} isEmpty={outlets.length === 0} preparing={isDomainTrafficHistoriesPending || isDomainDrStatusesPending} />
         </div>
 
         {/* Status tabs */}

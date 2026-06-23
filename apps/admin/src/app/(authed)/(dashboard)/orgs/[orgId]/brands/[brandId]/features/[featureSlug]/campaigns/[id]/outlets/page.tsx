@@ -680,7 +680,7 @@ export default function CampaignOutletsPage() {
               )}
             </div>
           </div>
-          <CsvDownloadButton filename={`outlets-${campaignId}.csv`} csv={csv} isEmpty={outlets.length === 0} />
+          <CsvDownloadButton filename={`outlets-${campaignId}.csv`} csv={csv} isEmpty={outlets.length === 0} preparing={isDomainTrafficHistoriesPending || isDomainDrStatusesPending} />
         </div>
 
         {/* Status tabs */}
