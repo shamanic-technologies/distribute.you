@@ -48,7 +48,6 @@ export default function BillingPage() {
   // Edit mode for existing auto-topup config
   const [editingTopup, setEditingTopup] = useState(false);
   const [savingTopup, setSavingTopup] = useState(false);
-  const [disablingTopup, setDisablingTopup] = useState(false);
 
   // Portal state
   const [portalLoading, setPortalLoading] = useState(false);
@@ -164,9 +163,6 @@ export default function BillingPage() {
           const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
           const { configureAutoTopup } = await import("@/lib/api");
           await configureAutoTopup(topupCents, thresholdCents);
-        } else if (!enableAutoTopup && hasAutoTopup) {
-          const { disableAutoTopup } = await import("@/lib/api");
-          await disableAutoTopup();
         }
       }
 
@@ -207,21 +203,6 @@ export default function BillingPage() {
       setError(err instanceof Error ? err.message : "Failed to update auto-topup settings");
     } finally {
       setSavingTopup(false);
-    }
-  }
-
-  async function handleDisableTopup() {
-    setDisablingTopup(true);
-    setError(null);
-    try {
-      const { disableAutoTopup } = await import("@/lib/api");
-      await disableAutoTopup();
-      queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
-      setEditingTopup(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disable auto-topup");
-    } finally {
-      setDisablingTopup(false);
     }
   }
 
@@ -389,13 +370,6 @@ export default function BillingPage() {
                     className="w-full px-5 py-2 text-sm text-gray-600 transition hover:text-gray-800 sm:w-auto"
                   >
                     Cancel
-                  </button>
-                  <button
-                    onClick={handleDisableTopup}
-                    disabled={disablingTopup}
-                    className="text-sm font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50 sm:ml-auto"
-                  >
-                    {disablingTopup ? "Disabling..." : "Disable auto-topup"}
                   </button>
                 </div>
               </>

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   createCheckoutSession,
   configureAutoTopup,
-  disableAutoTopup,
   getBillingAccount,
   type BillingAccount,
 } from "@/lib/api";
@@ -189,8 +188,6 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
           const topupCents = Math.round(parseFloat(topupAmount) * 100);
           const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
           await configureAutoTopup(topupCents, thresholdCents);
-        } else if (!enableAutoTopup && account.has_auto_topup) {
-          await disableAutoTopup();
         }
       }
 
