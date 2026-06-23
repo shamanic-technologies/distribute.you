@@ -3619,8 +3619,9 @@ export async function getDomainTrafficHistory(
 // Monthly Visits went blank for the 12k-outlet brand even after chunking.
 const DOMAIN_READ_CHUNK_SIZE = 200;
 const DOMAIN_READ_CONCURRENCY = 4;
-const DOMAIN_READ_RETRIES = 4;
-const DOMAIN_READ_BACKOFF_MS = [300, 700, 1500, 3000];
+const DOMAIN_READ_RETRIES = 2;
+const DOMAIN_READ_BACKOFF_MS = [400, 1200];
+const DOMAIN_READ_TIMEOUT_MS = 12_000;
 
 function chunkArray<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -3630,14 +3631,29 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Retry an idempotent read on a thrown transport/5xx error. Re-throws the last
-// error once attempts are exhausted (fail loud — a persistent failure is a real
-// outage, not something to swallow).
+// Bound a request so it can never hang forever. ahref-service prod is a tiny
+// 0.25 CU compute; a single slow/queued chunk with no timeout left the whole
+// enrichment query PENDING indefinitely (blank DR/Visits + a stuck "Loading"
+// button), which retry alone could not fix because a hang never throws.
+function withTimeout<O>(promise: Promise<O>, ms: number, label: string): Promise<O> {
+  return new Promise<O>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`[dashboard] ${label}: request timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+// Retry an idempotent, time-bounded read on a thrown transport/5xx/timeout
+// error. Throws the last error once attempts are exhausted; the CALLER decides
+// whether a persistently-failing chunk drops to empty (best-effort enrichment)
+// or propagates.
 async function retryTransientRead<O>(fn: () => Promise<O>, label: string): Promise<O> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= DOMAIN_READ_RETRIES; attempt++) {
     try {
-      return await fn();
+      return await withTimeout(fn(), DOMAIN_READ_TIMEOUT_MS, label);
     } catch (err) {
       lastError = err;
       if (attempt < DOMAIN_READ_RETRIES) {
@@ -3645,7 +3661,6 @@ async function retryTransientRead<O>(fn: () => Promise<O>, label: string): Promi
       }
     }
   }
-  console.error(`[dashboard] ${label}: chunk failed after ${DOMAIN_READ_RETRIES + 1} attempts`, lastError);
   throw lastError;
 }
 
@@ -3672,21 +3687,28 @@ export async function getDomainTrafficHistories(
 ): Promise<DomainTrafficHistory[]> {
   if (domains.length === 0) return [];
   const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  // Best-effort enrichment: a chunk that stays unreachable after retries drops
+  // to [] (those domains render blank) instead of throwing and blanking EVERY
+  // domain. The failure is logged loudly, not swallowed silently.
   const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
-    const params = new URLSearchParams({ domains: batch.join(",") });
-    const raw = await retryTransientRead(
-      () => apiCall<unknown>(`/orgs/domains/traffic-history?${params}`, { token }),
-      "getDomainTrafficHistories",
-    );
-    const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
-    if (!parsed.success) {
-      console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
-        issues: parsed.error.issues,
-        raw,
-      });
-      throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
+    try {
+      const raw = await retryTransientRead(
+        () => apiCall<unknown>(`/orgs/domains/traffic-history?${new URLSearchParams({ domains: batch.join(",") })}`, { token }),
+        "getDomainTrafficHistories",
+      );
+      const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
+      if (!parsed.success) {
+        console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
+          issues: parsed.error.issues,
+          raw,
+        });
+        return [];
+      }
+      return parsed.data;
+    } catch (err) {
+      console.error("[dashboard] getDomainTrafficHistories: chunk unreachable, rendering its domains blank", err);
+      return [];
     }
-    return parsed.data;
   });
   return batchResults.flat();
 }
@@ -3714,21 +3736,27 @@ export async function getDomainDrStatuses(
 ): Promise<DomainDrStatus[]> {
   if (domains.length === 0) return [];
   const batches = chunkArray(domains, DOMAIN_READ_CHUNK_SIZE);
+  // Best-effort enrichment (see getDomainTrafficHistories): an unreachable chunk
+  // drops to [] (blank for its domains) instead of blanking every domain.
   const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
-    const params = new URLSearchParams({ domains: batch.join(",") });
-    const raw = await retryTransientRead(
-      () => apiCall<unknown>(`/orgs/domains/dr-status?${params}`, { token }),
-      "getDomainDrStatuses",
-    );
-    const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
-    if (!parsed.success) {
-      console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
-        issues: parsed.error.issues,
-        raw,
-      });
-      throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
+    try {
+      const raw = await retryTransientRead(
+        () => apiCall<unknown>(`/orgs/domains/dr-status?${new URLSearchParams({ domains: batch.join(",") })}`, { token }),
+        "getDomainDrStatuses",
+      );
+      const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+      if (!parsed.success) {
+        console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
+          issues: parsed.error.issues,
+          raw,
+        });
+        return [];
+      }
+      return parsed.data;
+    } catch (err) {
+      console.error("[dashboard] getDomainDrStatuses: chunk unreachable, rendering its domains blank", err);
+      return [];
     }
-    return parsed.data;
   });
   return batchResults.flat();
 }
