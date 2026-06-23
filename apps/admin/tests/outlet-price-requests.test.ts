@@ -142,7 +142,7 @@ describe("outlet pages wire the Get Domain Ratings control", () => {
       expect(content).toContain("computeDomainDrStatuses");
       expect(content).toContain("currentPageDomainsMissingDr");
       expect(content).toContain("paginatedOutlets.pageItems");
-      expect(content).toContain(".filter((domain) => !drMap.has(domain))");
+      expect(content).toContain(".filter((domain) => !drMap.has(domain) && isQueryableDomain(domain))");
       expect(content).toContain("Get Domain Ratings");
     });
 
@@ -183,7 +183,7 @@ describe("outlet pages wire the Get Monthly Visits control", () => {
       expect(content).toContain("computeDomainTrafficHistories");
       expect(content).toContain("currentPageDomainsMissingTraffic");
       expect(content).toContain("paginatedOutlets.pageItems");
-      expect(content).toContain(".filter((domain) => !trafficMap.has(domain))");
+      expect(content).toContain(".filter((domain) => !trafficMap.has(domain) && isQueryableDomain(domain))");
       expect(content).toContain("Get Monthly Visits");
     });
 
