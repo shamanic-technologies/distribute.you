@@ -2508,6 +2508,11 @@ export interface DeduplicatedOutlet {
   priceRequestStatus: "ongoing" | "received" | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
+  // Ahrefs enrichment, present only when the request passes `enrich=ahref`
+  // (outlets-service joins these server-side, resilient/chunked). null when
+  // ahref has no trustworthy cached value for the domain.
+  domainRating?: number | null;
+  trafficMonthlyAvg?: number | null;
 }
 
 export interface OutletPriceRequestResult {
@@ -2553,10 +2558,15 @@ export async function listBrandOutlets(
   featureSlug?: string,
   token?: string,
   campaignId?: string,
+  enrich?: boolean,
 ): Promise<OutletListResponse> {
   const params = new URLSearchParams({ brandId });
   if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
+  // enrich=ahref → each outlet carries domainRating + trafficMonthlyAvg
+  // (server-side resilient join). Opt-in so the high-frequency sidebar count
+  // query stays cheap.
+  if (enrich) params.set("enrich", "ahref");
   const data = await apiCall<OutletListResponse>(
     `/outlets?${params}`,
     { token },
