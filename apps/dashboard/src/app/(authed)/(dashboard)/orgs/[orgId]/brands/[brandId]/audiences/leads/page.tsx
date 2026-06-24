@@ -1,5 +1,5 @@
 import { EngagedLeadsPage } from "@/components/audiences/engaged-leads-page";
 
-export default function BrandLeadsPage() {
+export default function AudiencesLeadsPage() {
   return <EngagedLeadsPage />;
 }
