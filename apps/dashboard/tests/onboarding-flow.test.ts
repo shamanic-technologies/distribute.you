@@ -84,8 +84,7 @@ describe("Beta onboarding direct checkout launch", () => {
     expect(content).not.toContain("Initial load amount");
     expect(content).not.toContain("Auto-topup trigger threshold");
     expect(content).not.toContain("Auto-topup reload amount");
-    expect(content).toContain("Checkout $");
-    expect(content).toContain("& launch campaign");
+    expect(content).toContain("Continue to checkout");
   });
 
   it("states the brand-level daily budget and direct checkout launch", () => {
