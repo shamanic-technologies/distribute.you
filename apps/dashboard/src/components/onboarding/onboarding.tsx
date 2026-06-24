@@ -12,6 +12,7 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   CreditCardIcon,
+  GiftIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   PencilSquareIcon,
@@ -27,6 +28,7 @@ import {
   getBrandProfile,
   saveBrandProfileVersion,
   getSalesEconomicsEffective,
+  saveBrandClickDestination,
   saveBrandSalesEconomics,
   suggestAudiences,
   setAudienceStatus,
@@ -83,7 +85,7 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 // the tab, auto-cleared on close → no stale cross-session bleed. Bump VERSION to bust
 // an incompatible shape after a flow change. Cleared on genuine completion (launch()).
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
-const ONBOARDING_STATE_VERSION = 1;
+const ONBOARDING_STATE_VERSION = 2;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
@@ -100,11 +102,13 @@ type Step =
   | "url"
   | "loading"
   | "services"
+  | "destination"
   | "objective"
   | "rates"
   | "audiences"
   | "consent"
   | "pricing"
+  | "bonus"
   | "launching";
 
 // The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
@@ -246,6 +250,8 @@ type PersistedOnboardingState = {
   rates: Record<RateKey, number>;
   rateText: Record<RateKey, string>;
   services: string[];
+  // User-chosen page outreach clicks land on. "" = the brand domain default.
+  clickDestinationUrl: string;
   profile: Record<string, string | string[]>;
   selectedCount: number | null;
   customCount: string;
@@ -354,7 +360,7 @@ function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
   return keys.every((k) => typeof (value as Record<string, unknown>)[k] === "string");
 }
 const ALL_STEPS: Step[] = [
-  "welcome", "url", "loading", "services", "objective", "rates", "audiences", "consent", "pricing", "launching",
+  "welcome", "url", "loading", "services", "destination", "objective", "rates", "audiences", "consent", "pricing", "bonus", "launching",
 ];
 
 function readOnboardingState(): PersistedOnboardingState | null {
@@ -370,7 +376,7 @@ function readOnboardingState(): PersistedOnboardingState | null {
       typeof p.url !== "string" ||
       (p.outcome !== "signups" && p.outcome !== "meetings") ||
       !isRateRecord(p.rates) || !isRateTextRecord(p.rateText) ||
-      !isStringList(p.services) || !isProfileRecord(p.profile) ||
+      !isStringList(p.services) || typeof p.clickDestinationUrl !== "string" || !isProfileRecord(p.profile) ||
       !(p.selectedCount === null || typeof p.selectedCount === "number") ||
       typeof p.customCount !== "string" ||
       !(p.checkoutBudgetUsd === null || typeof p.checkoutBudgetUsd === "number") ||
@@ -451,6 +457,9 @@ export function Onboarding() {
   const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25" });
   const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
   const [serviceDraft, setServiceDraft] = useState("");
+  // Page outreach clicks land on. "" means "use the brand domain" (the default
+  // selection); a non-empty value is a user-typed custom page.
+  const [clickDestinationUrl, setClickDestinationUrl] = useState<string>(() => restored?.clickDestinationUrl ?? "");
   const [profile, setProfile] = useState<Record<string, string | string[]>>(() => restored?.profile ?? {});
   // Outcome-count budget selection. selectedCount drives the derived $/day; budget
   // is the $/day value sent to the campaign. Tiers are derived from a STABLE base
@@ -498,6 +507,17 @@ export function Onboarding() {
 
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  // The default click destination = the brand's homepage (domain root). Used as
+  // the pre-selected option on the destination step and the fallback when the
+  // user leaves the custom field empty.
+  const trimmedUrl = url.trim();
+  const defaultDestinationUrl = domain
+    ? `https://${domain}`
+    : trimmedUrl
+      ? /^https?:\/\//i.test(trimmedUrl)
+        ? trimmedUrl
+        : `https://${trimmedUrl}`
+      : "";
 
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
@@ -535,6 +555,7 @@ export function Onboarding() {
       rates,
       rateText,
       services,
+      clickDestinationUrl,
       profile,
       selectedCount,
       customCount,
@@ -544,7 +565,7 @@ export function Onboarding() {
       servicesEdited: servicesEditedRef.current,
       ratesEdited: ratesEditedRef.current,
     });
-  }, [step, url, outcome, rates, rateText, services, profile, selectedCount, customCount, checkoutBudgetUsd, brandId, flowKey, searchParams]);
+  }, [step, url, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedCount, customCount, checkoutBudgetUsd, brandId, flowKey, searchParams]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -867,6 +888,38 @@ export function Onboarding() {
         return;
       }
       setError(err instanceof Error ? err.message : "Could not save your rates.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Persist the chosen click-destination page to brand-service, then advance.
+  // Empty custom field = the domain default. Validated as an http(s) URL.
+  async function saveDestinationAndContinue() {
+    const id = brandIdRef.current;
+    if (!id) {
+      setError("Your brand is still being set up — give it a moment, then try again.");
+      return;
+    }
+    const chosen = clickDestinationUrl.trim() || defaultDestinationUrl;
+    let normalized: string;
+    try {
+      normalized = new URL(/^https?:\/\//i.test(chosen) ? chosen : `https://${chosen}`).toString();
+    } catch {
+      setError("Enter a valid page URL (e.g. https://yoursite.com/pricing).");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      await saveBrandClickDestination(id, normalized);
+      setStep("objective");
+    } catch (err) {
+      if (isInsufficientCredit(err)) {
+        creditRetryRef.current = () => saveDestinationAndContinue();
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Could not save your destination page.");
     } finally {
       setBusy(false);
     }
@@ -1280,7 +1333,46 @@ export function Onboarding() {
           />
         </div>
         {services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
-        <NextButton onClick={() => { addService(serviceDraft); setStep("objective"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />
+        <NextButton onClick={() => { addService(serviceDraft); setStep("destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "destination") {
+    const usingDefault = clickDestinationUrl.trim() === "";
+    return (
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={card}>
+          <BackButton onClick={() => setStep("services")} />
+          <h2 className="font-display text-2xl font-bold text-gray-900">Where should clicks go?</h2>
+          <p className="mt-2 mb-6 text-gray-500">When a prospect clicks the link in your email, this is the page they land on. We use your homepage by default.</p>
+          <button
+            type="button"
+            onClick={() => setClickDestinationUrl("")}
+            className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition ${usingDefault ? "border-brand-300 bg-brand-50 ring-1 ring-brand-300" : "border-gray-200 hover:border-gray-300"}`}
+          >
+            <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${usingDefault ? "border-brand-500 bg-brand-500" : "border-gray-300"}`} />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-gray-900">Your homepage</span>
+              <span className="block break-words text-sm text-gray-500">{defaultDestinationUrl || hostname}</span>
+            </span>
+          </button>
+          <div className="mt-4">
+            <label htmlFor="ob-destination" className="block text-sm font-medium text-gray-700">Or send clicks to a specific page</label>
+            <input
+              id="ob-destination"
+              type="url"
+              inputMode="url"
+              value={clickDestinationUrl}
+              onChange={(e) => setClickDestinationUrl(e.target.value)}
+              placeholder="https://yoursite.com/pricing"
+              className="mt-2 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            />
+          </div>
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          <NextButton onClick={saveDestinationAndContinue} busy={busy} disabled={busy} />
         </div>
       </div>
     );
@@ -1291,7 +1383,7 @@ export function Onboarding() {
       <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
         <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
         <div className={card}>
-          <BackButton onClick={() => setStep("services")} />
+          <BackButton onClick={() => setStep("destination")} />
           <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
           <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -1452,10 +1544,43 @@ export function Onboarding() {
     );
   }
 
+  if (step === "bonus") {
+    const amount = derivedBudget() ?? checkoutBudgetUsd;
+    return (
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={card}>
+          <BackButton onClick={() => setStep("pricing")} />
+          {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-center">
+            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+              <GiftIcon className="h-7 w-7 text-brand-600" />
+            </span>
+            <h2 className="font-display text-2xl font-bold text-gray-900">Your first $25 is on us.</h2>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
+              Spend $25 and we match it, $1 for $1. The credits unlock the moment your spend reaches $25.
+            </p>
+          </div>
+          <button onClick={beginCheckoutAndLaunch} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {busy ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Redirecting to checkout…
+              </>
+            ) : (
+              <>
+                {amount != null ? `Continue to checkout (${fmtUsd0(amount)})` : "Continue to checkout"} <ArrowRightIcon className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // pricing — outcome-count budget
   const unitCost = outcomeUnitCost();
   const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
-  const checkoutAmount = selectedBudget;
   return (
     <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
       <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
@@ -1533,17 +1658,8 @@ export function Onboarding() {
         </div>
       )}
 
-      <button onClick={beginCheckoutAndLaunch} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-        {busy ? (
-          <>
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-            Redirecting to checkout…
-          </>
-        ) : (
-          <>
-            {checkoutAmount != null ? `Checkout ${fmtUsd0(checkoutAmount)} & launch campaign` : "Checkout & launch campaign"} <ArrowRightIcon className="h-4 w-4" />
-          </>
-        )}
+      <button onClick={() => setStep("bonus")} disabled={selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        Continue <ArrowRightIcon className="h-4 w-4" />
       </button>
       </div>
     </div>

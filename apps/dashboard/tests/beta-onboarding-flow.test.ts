@@ -186,7 +186,7 @@ describe("Beta onboarding guided flow", () => {
   it("budget is picked as outcome-count tiers before direct checkout", () => {
     expect(src).toContain("COUNT_TIERS");
     expect(src).toContain("budgetForCount");
-    expect(src).toContain("Checkout $");
+    expect(src).toContain("Continue to checkout");
     expect(src).toContain("const checkoutAmountCents = Math.round(budget * 100)");
     expect(src).toContain("topupAmountCents: checkoutAmountCents");
     expect(src).toContain("topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS");
