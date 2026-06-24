@@ -1,25 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useOrganization } from "@clerk/nextjs";
-import { keepPreviousData } from "@tanstack/react-query";
 import { useFeatures } from "@/lib/features-context";
-import { useEntityRegistry } from "@/lib/entity-registry-context";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { Skeleton } from "@/components/skeleton";
-import {
-  fetchFeatureStats,
-  listBrandOutlets,
-  listJournalistsEnriched,
-  listBrandLeads,
-  listBrandEmails,
-  listBrandArticles,
-  listAllRankedOpportunities,
-} from "@/lib/api";
-import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -327,22 +313,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   );
 }
 
-// Entity icon mapping for sidebar — maps registry icon names to SVG components
-const ENTITY_ICON_MAP: Record<string, () => React.ReactNode> = {
-  users: () => <OrgIcon />,
-  newspaper: () => <OrgIcon />,
-  "pen-tool": () => <NewspaperIcon />,
-  "scroll-text": () => <DocumentIcon />,
-  building: () => <OrgIcon />,
-  envelope: () => <EnvelopeIcon />,
-  document: () => <DocumentIcon />,
-};
-
-function getEntitySidebarIcon(iconName: string): React.ReactNode {
-  const iconFn = ENTITY_ICON_MAP[iconName];
-  return iconFn ? iconFn() : <WorkflowIcon />;
-}
-
 // Derive a domain-shaped string from the org name (onboarding sets org name =
 // brand domain). Mirrors the helper in breadcrumb-nav.tsx.
 function orgDomainFromName(name?: string | null): string | null {
@@ -417,120 +387,14 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 }) {
   const featureSlug = useSoleFeatureSlug();
   const isBeta = useIsBetaUser();
-  const { getFeature, isLoading: featuresLoading } = useFeatures();
-  const { registry, isLoading: registryLoading } = useEntityRegistry();
+  const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const feature = getFeature(featureSlug);
-  const entities = feature?.entities ?? [];
-  const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
-  // Feature stats scoped to this brand — same pattern as campaign sidebar
-  const resolvedFeatureSlug = feature?.slug;
-  const statsEnabled = !!resolvedFeatureSlug;
-  const { data: featureStatsData, isPending: statsPending } = useAuthQuery(
-    ["featureStats", resolvedFeatureSlug, "brand", brandId],
-    () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
-    { enabled: statsEnabled, refetchInterval: 5_000, placeholderData: keepPreviousData },
-  );
-  const fStats = featureStatsData?.stats ?? {};
-
-  // Listing fallbacks for entities without a countKey — filtered by featureSlug
-  const outletsEnabled = entityNames.includes("outlets");
-  const { data: outletsData, isPending: outletsPending } = useAuthQuery(
-    ["brandOutlets", brandId, featureSlug],
-    () => listBrandOutlets(brandId, featureSlug),
-    { enabled: outletsEnabled, refetchInterval: 5_000 },
-  );
-  const journalistsEnabled = entityNames.includes("journalists");
-  const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
-    ["enrichedJournalists", brandId, featureSlug],
-    () => listJournalistsEnriched(brandId, { featureSlug }),
-    { enabled: journalistsEnabled, refetchInterval: 5_000 },
-  );
-  const leadsEnabled = entityNames.includes("leads");
-  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
-    ["brandLeads", brandId],
-    () => listBrandLeads(brandId),
-    { enabled: leadsEnabled, refetchInterval: 5_000 },
-  );
-  const emailsEnabled = entityNames.includes("emails");
-  const { data: emailsData, isPending: emailsPending } = useAuthQuery(
-    ["brandEmails", brandId],
-    () => listBrandEmails(brandId),
-    { enabled: emailsEnabled, refetchInterval: 5_000 },
-  );
-  const articlesEnabled = entityNames.includes("articles");
-  const { data: articlesData, isPending: articlesPending } = useAuthQuery(
-    ["brandArticles", brandId, featureSlug],
-    () => listBrandArticles(brandId, featureSlug),
-    { enabled: articlesEnabled, refetchInterval: 5_000 },
-  );
-  // Gold catalog (GET /orgs/opportunities) — same source the quote-requests page
-  // renders, so the badge equals the page count.
-  const rankedOppsEnabled = entityNames.includes("quote-requests");
-  const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
-    ["rankedOpportunities", { brandId }],
-    () => listAllRankedOpportunities({ brandId }),
-    { enabled: rankedOppsEnabled, refetchInterval: 5_000 },
-  );
-
-  // Reveal EVERY entity badge together (one paint), then keep the numbers
-  // latched. A disabled query stays `isPending: true` forever, so each flag is
-  // gated behind its own `enabled` condition. `defsReady` gates the barrier FIRST
-  // (until the feature + registry load, entityNames is empty → every count query
-  // disabled). See CLAUDE.md → "Coordinated reveal".
-  const defsReady = !featuresLoading && !registryLoading;
-  const badgesRevealed = useCoordinatedReveal([
-    defsReady,
-    !statsEnabled || !statsPending,
-    !outletsEnabled || !outletsPending,
-    !journalistsEnabled || !journalistsPending,
-    !leadsEnabled || !leadsPending,
-    !emailsEnabled || !emailsPending,
-    !articlesEnabled || !articlesPending,
-    !rankedOppsEnabled || !rankedOppsPending,
-  ]);
-
-  const listingFallback: Record<string, number | undefined> = {
-    leads: leadsData?.leads?.length,
-    emails: emailsData?.emails?.length,
-    outlets: outletsData?.outlets?.length,
-    journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
-    articles: articlesData?.discoveries?.length,
-    // Open (non-pitched) count so the badge == the queue the page renders.
-    "quote-requests": rankedOppsData?.opportunities.filter((o) =>
-      isOpportunityOpen(o.pitchStatus),
-    ).length,
-  };
-
-  const entityCounts = useMemo(() => {
-    const result: Record<string, number | undefined> = {};
-    for (const entity of entities) {
-      if (listingFallback[entity.name] != null) {
-        result[entity.name] = listingFallback[entity.name];
-      } else if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
-      }
-    }
-    return result;
-  }, [entities, fStats, listingFallback]);
-
-  const entityItems: SidebarItem[] = entities
-    .filter((e) => registry[e.name])
-    // No companies page yet (blocked on a brand-scoped companies API) — the
-    // backend declares the entity, so the link would 404. Hide it until the page
-    // exists. Campaign-level companies page is unaffected.
-    .filter((e) => e.name !== "companies")
-    .map((e) => {
-      const config = registry[e.name];
-      return {
-        id: e.name,
-        label: config.label,
-        href: `${basePath}/${config.pathSuffix}`,
-        icon: getEntitySidebarIcon(config.icon),
-        badge: entityCounts[e.name],
-      };
-    });
+  // The "Database" section (raw entity rows: Leads/Emails/Outlets/…) was removed
+  // from the sidebar — lead data is now surfaced through the overview's lead
+  // detail panel. With it gone, all the per-entity count queries + badge-reveal
+  // plumbing that fed it are dropped; the top nav is static.
+  const defsReady = !featuresLoading;
 
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
   // today). GA. Overview is the brand root. Audiences is still gated to the
@@ -584,21 +448,13 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
         </div>
       }
     >
-      {/* Reveal the WHOLE nav as one group: top items are static and the Database
-          items need feature + registry defs. Hold everything behind `defsReady`
-          with skeleton rows, then render every item together. Badge numbers are a
-          finer sub-group revealed via badgePending. */}
+      {/* Top nav is static (Overview + Audiences). Held behind `defsReady` only
+          to avoid a flash before the sole feature resolves. */}
       {!defsReady ? (
         <>
           {[0, 1, 2].map((i) => (
             <SidebarNavRowSkeleton key={`top-${i}`} />
           ))}
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-            {[0, 1, 2, 3].map((i) => (
-              <SidebarNavRowSkeleton key={`out-${i}`} />
-            ))}
-          </div>
         </>
       ) : (
         <>
@@ -613,19 +469,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               }
             />
           ))}
-          {entityItems.length > 0 && (
-            <div className="pt-2 mt-2 border-t border-gray-100">
-              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-              {entityItems.map((item) => (
-                <SidebarLink
-                  key={item.id}
-                  item={item}
-                  badgePending={!badgesRevealed}
-                  isActive={pathname.startsWith(item.href)}
-                />
-              ))}
-            </div>
-          )}
         </>
       )}
     </SidebarSection>

@@ -30,8 +30,12 @@ describe("Sidebars render Feature Service entities flat — no hardcoded outcome
       expect(contextSidebar).not.toMatch(/outcomeItems/);
     });
 
-    it("renders FeatureLevelSidebar entityItems flat", () => {
-      expect(contextSidebar).toMatch(/entityItems\.map\(/);
+    it("no longer renders a Database entity section", () => {
+      // The "Database" section (raw entity rows: Leads/Emails/Outlets/…) was
+      // removed from the sidebar — lead data is surfaced via the overview's lead
+      // detail panel. The entity-badge plumbing went with it.
+      expect(contextSidebar).not.toMatch(/entityItems/);
+      expect(contextSidebar).not.toMatch(/>Database</);
     });
 
     it("has no hardcoded Sales/Hiring/Journalists group labels", () => {

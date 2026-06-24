@@ -147,7 +147,7 @@ export function RevenueOverviewSection({
       {/* Conversions — the default Organizations / Leads tabs, OR a caller-
           supplied replacement (the Signups page passes its own engaged-leads
           table: opened / clicked / signed up). */}
-      {conversions ?? <ConversionsTabs data={data} pending={revenueLoading} />}
+      {conversions ?? <ConversionsTabs data={data} pending={revenueLoading} enableDetail />}
     </div>
   );
 }

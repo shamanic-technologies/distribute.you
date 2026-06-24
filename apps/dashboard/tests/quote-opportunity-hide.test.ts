@@ -88,9 +88,8 @@ describe("Opportunities surfaces hide already-pitched (filter via isOpportunityO
     expect(featureRequestsPage).toMatch(/filter\([\s\S]*?isOpportunityOpen/);
   });
 
-  it("the brand sidebar badge counts the open set (badge == page)", () => {
-    expect(contextSidebar).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
-  });
+  // (The brand sidebar quote-requests badge was removed with the entity Database
+  // section — the feature page filter above is the surviving guard.)
 });
 
 // The "campaign HITL quote-requests page filters" + "Submit threads campaignId"

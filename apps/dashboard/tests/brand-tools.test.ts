@@ -178,20 +178,13 @@ describe("brand-tools removal", () => {
     const sidebarPath = path.join(SRC, "src/components/context-sidebar.tsx");
     const sidebarSrc = fs.readFileSync(sidebarPath, "utf-8");
 
-    it("imports useEntityRegistry", () => {
-      expect(sidebarSrc).toContain("useEntityRegistry");
-      expect(sidebarSrc).toContain("entity-registry-context");
-    });
-
-    it("FeatureLevelSidebar uses entity registry to build entity items", () => {
-      expect(sidebarSrc).toContain("registry[e.name]");
-      expect(sidebarSrc).toContain("entityItems");
-    });
-
-    it("FeatureLevelSidebar fetches brand-level counts for entity badges", () => {
-      expect(sidebarSrc).toContain("fetchFeatureStats");
-      expect(sidebarSrc).toContain("entityCounts");
-      expect(sidebarSrc).toContain("badge: entityCounts[e.name]");
+    it("no longer builds an entity Database section (removed from the sidebar)", () => {
+      // The "Database" section (raw entity rows + their count badges) was removed
+      // — lead data is surfaced via the overview's lead detail panel. The entity
+      // registry, per-entity count queries and badge plumbing went with it.
+      expect(sidebarSrc).not.toContain("useEntityRegistry");
+      expect(sidebarSrc).not.toContain("entityItems");
+      expect(sidebarSrc).not.toContain("entityCounts");
     });
   });
 
