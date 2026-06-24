@@ -5,6 +5,7 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
+import { BrandClickDestinationCard } from "@/components/settings/brand-click-destination-card";
 
 export default function BrandSettingsPage() {
   const params = useParams();
@@ -21,6 +22,13 @@ export default function BrandSettingsPage() {
             <BrandStatusControl brandId={brandId} />
           </div>
           <BrandDailyBudgetCard brandId={brandId} variant="section" />
+        </div>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">Click Destination</h2>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <BrandClickDestinationCard brandId={brandId} variant="section" />
         </div>
       </section>
 
