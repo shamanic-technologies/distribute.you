@@ -30,6 +30,8 @@ import {
   saveBrandSalesEconomics,
   suggestAudiences,
   setAudienceStatus,
+  listAudiences,
+  generateAudienceAvatar,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
@@ -177,6 +179,7 @@ const LOADING_STEPS = [
 const LAUNCH_STEPS = [
   { id: "payment", label: "Confirming payment" },
   { id: "topup", label: "Setting auto-topup" },
+  { id: "audiences", label: "Creating audience profiles" },
   { id: "campaign", label: "Launching campaign" },
   { id: "access", label: "Opening dashboard access" },
   { id: "dashboard", label: "Opening your dashboard" },
@@ -880,6 +883,13 @@ export function BetaOnboarding() {
     setLaunchStep(1);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
     setLaunchStep(2);
+    // Generate a profile picture for each audience the user activated. Runs only now
+    // (post-checkout, card on file) because image generation costs LLM credits
+    // (chat-service owns the cost; may 402). Best-effort + parallel: a failed/absent
+    // avatar must NOT abort the launch — the campaign + onboarding-complete are the
+    // critical path. Idempotent (skips audiences that already carry an avatar).
+    await generateActiveAudienceAvatars(pending.brandId);
+    setLaunchStep(3);
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
     const { campaign } = await createCampaignWithoutBrandEnrichment({
       name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
@@ -889,7 +899,7 @@ export function BetaOnboarding() {
       featureInputs,
       maxBudgetDailyUsd: String(pending.budgetUsd),
     });
-    setLaunchStep(3);
+    setLaunchStep(4);
     posthog.capture("onboarding_completed", {
       flow: "beta",
       outcome: pending.outcome,
@@ -913,8 +923,30 @@ export function BetaOnboarding() {
     // Flow genuinely finished — drop the resume snapshot so the next onboarding (a new
     // brand/org in the same tab) starts clean instead of resuming this completed one.
     clearOnboardingState();
-    setLaunchStep(4);
+    setLaunchStep(5);
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
+  }
+
+  /**
+   * Generate an AI profile picture for every audience the user activated at the
+   * audiences step. Best-effort: per-audience failures are logged, never thrown, so
+   * a 402/error on one image can't block the campaign launch. Parallel across
+   * audiences; idempotent — only the active audiences missing an avatar are generated.
+   */
+  async function generateActiveAudienceAvatars(brandId: string) {
+    try {
+      const { audiences } = await listAudiences(brandId);
+      const targets = audiences.filter((a) => a.status === "active" && !a.avatarUrl);
+      await Promise.allSettled(
+        targets.map((a) =>
+          generateAudienceAvatar(a.id).catch((e) => {
+            console.error(`[dashboard] generateAudienceAvatar failed for ${a.id}:`, e);
+          }),
+        ),
+      );
+    } catch (e) {
+      console.error("[dashboard] generateActiveAudienceAvatars: listAudiences failed:", e);
+    }
   }
 
   async function beginCheckoutAndLaunch() {
