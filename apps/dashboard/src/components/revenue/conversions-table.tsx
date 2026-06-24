@@ -187,6 +187,7 @@ function orgDetail(o: ConversionOrg, orgName: string): ConversionDetail {
 function leadDetail(l: ConversionLead, name: string): ConversionDetail {
   return {
     kind: "lead",
+    leadId: l.leadId,
     title: name,
     subtitle: l.orgName,
     photoUrl: l.photoUrl,

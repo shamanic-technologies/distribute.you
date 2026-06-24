@@ -124,8 +124,10 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(brandSettings).toMatch(/`\$\{brandBase\}\/brand-profile`/);
   });
 
-  it("BrandLevelSidebar renders a GA Database section header (for all users)", () => {
-    expect(brand).toMatch(/Database<\/h4>/);
+  it("BrandLevelSidebar no longer renders a Database section header", () => {
+    // The entity Database section was removed — lead data is surfaced via the
+    // overview's lead detail panel.
+    expect(brand).not.toMatch(/Database<\/h4>/);
   });
 });
 

@@ -1156,6 +1156,52 @@ export async function listAudiences(
   return { audiences: parsed.data.audiences, total: parsed.data.total };
 }
 
+/** One person matched to their audience memberships (audience id + name). */
+export interface AudienceMembershipMatch {
+  personId: string;
+  emailNorm: string | null;
+  fullName: string | null;
+  audiences: { audienceId: string; name: string }[];
+}
+
+const AudienceMembershipMatchSchema = z.object({
+  personId: z.string(),
+  emailNorm: z.string().nullable(),
+  fullName: z.string().nullable(),
+  audiences: z.array(z.object({ audienceId: z.string(), name: z.string() })),
+});
+
+// Only `matched` is consumed (lead → audience membership); `unmatched`/`byAudience`
+// are passthrough — `.passthrough()` keeps them without re-declaring.
+const AudienceStatsResponseSchema = z
+  .object({ matched: z.array(AudienceMembershipMatchSchema) })
+  .passthrough();
+
+/**
+ * POST /orgs/audiences/stats — per-audience membership for a list of emails (or
+ * personIds). Used by the overview lead detail panel to answer "which audience
+ * does this lead belong to" on-demand: pass the clicked lead's email, get back
+ * its audience memberships, then join `audienceId` to `listAudiences` for the
+ * audience name / description / avatar / targeting filters. human-service owns
+ * the mapping; the dashboard never derives it.
+ */
+export async function getAudienceMembershipStats(
+  args: { emails?: string[]; personIds?: string[] },
+  token?: string,
+): Promise<{ matched: AudienceMembershipMatch[] }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/stats`, {
+    token,
+    method: "POST",
+    body: args,
+  });
+  const parsed = AudienceStatsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getAudienceMembershipStats: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getAudienceMembershipStats: invalid response shape");
+  }
+  return { matched: parsed.data.matched };
+}
+
 const SuggestBrandIcpResponseSchema = z.object({ icp: z.string() });
 
 /**
