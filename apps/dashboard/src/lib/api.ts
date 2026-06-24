@@ -603,6 +603,11 @@ export interface Brand {
   createdAt: string | null;
   updatedAt: string | null;
   logoUrl: string | null;
+  // The page outreach clicks should land on (user-chosen in onboarding / Brand
+  // Settings). null = never set → consumers fall back to the brand domain.
+  // Optional on the wire so the dashboard ships ahead of the brand-service field
+  // (additive rollout) — absent reads as undefined, present populates.
+  clickDestinationUrl?: string | null;
 }
 
 export type BrandDetail = Brand;
@@ -783,6 +788,35 @@ export async function saveBrandSalesEconomics(
       raw,
     });
     throw new Error("[dashboard] saveBrandSalesEconomics: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── Brand click-destination URL (where outreach clicks land) ──
+// Per-brand config persisted in brand-service via api-service
+// PUT /v1/brands/:brandId/click-destination. Idempotent set; returns the
+// saved value. Defaults to the brand domain at onboarding when unset.
+const SaveBrandClickDestinationResponseSchema = z.object({
+  clickDestinationUrl: z.string().nullable(),
+});
+
+export async function saveBrandClickDestination(
+  brandId: string,
+  clickDestinationUrl: string,
+  token?: string,
+): Promise<{ clickDestinationUrl: string | null }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/click-destination`, {
+    token,
+    method: "PUT",
+    body: { clickDestinationUrl },
+  });
+  const parsed = SaveBrandClickDestinationResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandClickDestination: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] saveBrandClickDestination: invalid response shape");
   }
   return parsed.data;
 }
