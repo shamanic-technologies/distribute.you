@@ -11,7 +11,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   PERSIST_MAX_AGE_MS,
-  cacheBuildId,
+  persistCacheVersion,
   persisterStorageKey,
   shouldPersistQuery,
 } from "@/lib/persist-cache";
@@ -83,8 +83,11 @@ function OrgScopedQueryClientProvider({
     return {
       persister,
       maxAge: PERSIST_MAX_AGE_MS,
-      // A new deploy busts the persisted cache (the data shape may have changed).
-      buster: cacheBuildId(),
+      // MANUAL cache version (bumped by hand on an incompatible shape change), NOT
+      // the git commit SHA. The SHA changed every deploy (~12/day here) → the disk
+      // cache was discarded on essentially every visit, defeating persist-all
+      // (#2074) → cold skeletons everywhere. See persistCacheVersion().
+      buster: persistCacheVersion(),
       // Only successful, non-sensitive queries touch disk.
       dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
     };

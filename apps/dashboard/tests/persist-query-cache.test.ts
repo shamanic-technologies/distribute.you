@@ -4,7 +4,7 @@ import path from "path";
 import {
   shouldPersistQuery,
   persisterStorageKey,
-  cacheBuildId,
+  persistCacheVersion,
   PERSIST_MAX_AGE_MS,
   SENSITIVE_QUERY_ROOTS,
   type PersistableQuery,
@@ -96,16 +96,23 @@ describe("persisterStorageKey — org-scoped bucket (DIS-143 cross-org isolation
   });
 });
 
-describe("cacheBuildId — deploy buster", () => {
-  it("falls back to `dev` when no build env var is set", () => {
+describe("persistCacheVersion — manual cache buster (NOT the commit SHA)", () => {
+  it("is a stable string that does NOT read the git commit SHA / build env", () => {
     const prev = {
       sha: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
       build: process.env.NEXT_PUBLIC_BUILD_ID,
     };
-    delete process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
-    delete process.env.NEXT_PUBLIC_BUILD_ID;
-    expect(cacheBuildId()).toBe("dev");
+    // A different deploy SHA must NOT change the buster — that was the bug: the
+    // SHA flips every deploy, wiping the disk cache on ~every visit (#2074 defeat).
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA = "sha-aaaa";
+    const v1 = persistCacheVersion();
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA = "sha-bbbb";
+    const v2 = persistCacheVersion();
+    expect(v1).toBe(v2);
+    expect(v1).not.toContain("sha-");
+    expect(v1.length).toBeGreaterThan(0);
     if (prev.sha !== undefined) process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA = prev.sha;
+    else delete process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
     if (prev.build !== undefined) process.env.NEXT_PUBLIC_BUILD_ID = prev.build;
   });
 });
@@ -137,8 +144,9 @@ describe("query-provider wiring — persisted cache", () => {
     expect(src).toContain("maxAge: PERSIST_MAX_AGE_MS");
   });
 
-  it("busts the cache per deploy and scopes the bucket per org", () => {
-    expect(src).toContain("buster: cacheBuildId()");
+  it("busts the cache on a MANUAL version bump (not per-deploy) and scopes the bucket per org", () => {
+    expect(src).toContain("buster: persistCacheVersion()");
+    expect(src).not.toContain("cacheBuildId");
     expect(src).toContain("persisterStorageKey(orgId)");
   });
 
