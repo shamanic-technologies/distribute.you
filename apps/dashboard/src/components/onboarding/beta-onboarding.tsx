@@ -606,15 +606,22 @@ export function BetaOnboarding() {
     // are ready. Fail-soft — a failed ICP/suggest resolves candidates:null and the
     // step falls back to its own draft + manual "Suggest audiences".
     const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null }> => {
+      // Fetch the real ICP first and HOLD it independently of the audience-suggest
+      // step. suggestAudiences is flaky (fails often); if it throws AFTER the ICP
+      // already resolved, we must still return that ICP — otherwise the real
+      // brand-service ICP is discarded and the step shows the generic fallback
+      // "Find the ideal customers for <brand>" line. candidates stay null so the
+      // step renders the real ICP + a manual "Find my perfect audiences" retry.
+      let prompt = "";
       try {
         const { icp } = await suggestBrandIcp(id);
-        const prompt = icp.trim();
+        prompt = icp.trim();
         if (!prompt) return { prompt: "", candidates: null };
         const { candidates } = await suggestAudiences(id, prompt);
         return { prompt, candidates };
       } catch (e) {
         console.error("[dashboard] audience prewarm (ICP + suggest) failed:", e);
-        return { prompt: "", candidates: null };
+        return { prompt, candidates: null };
       }
     })();
     setAudiencePrefetch({ promise: audiencePrewarm });
