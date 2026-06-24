@@ -167,8 +167,11 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("audience prewarm (ICP + suggest)");
     expect(src).toContain("hydrateOnboardingInBackground");
     expect(src).toContain("extractBrandFields failed");
-    expect(src).toContain("GENERIC_AI_SETUP_ERROR");
     expect(src).toContain("displaySetupError");
+    // A failed/empty service extraction shows NO error banner — the user just fills
+    // the services in by hand and assumes it is normal (reassurance, not debug).
+    expect(src).not.toContain("GENERIC_AI_SETUP_ERROR");
+    expect(src).not.toContain("SetupWarning");
   });
 
   it("agency consent with no channel checkboxes", () => {
