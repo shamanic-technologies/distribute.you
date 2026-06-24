@@ -16,7 +16,7 @@ describe("Beta onboarding resume persistence", () => {
 
   it("persists to a versioned sessionStorage snapshot key", () => {
     expect(src).toContain('ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state"');
-    expect(src).toContain("ONBOARDING_STATE_VERSION = 2");
+    expect(src).toContain("ONBOARDING_STATE_VERSION = 3");
     expect(src).toContain("window.sessionStorage.setItem(ONBOARDING_STATE_KEY");
   });
 
@@ -32,15 +32,20 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain("restored?.outcome ??");
     expect(src).toContain("restored?.rates ??");
     expect(src).toContain("restored?.services ??");
+    expect(src).toContain("restored?.audiencePrompt ??");
+    expect(src).toContain("restored?.audienceCandidates ??");
+    expect(src).toContain("restored?.selectedAudienceIds ??");
     expect(src).toContain("restored?.brandId ??");
     // edited-guards restored so a resume's re-extraction can't clobber user edits.
     expect(src).toContain("restored?.servicesEdited ??");
     expect(src).toContain("restored?.ratesEdited ??");
   });
 
-  it("defers to the Stripe checkout-return resume (skips snapshot when launch_checkout present)", () => {
-    expect(src).toContain('searchParams.get("launch_checkout") ? null : readOnboardingState()');
-    expect(src).toContain('if (searchParams.get("launch_checkout")) return;');
+  it("uses the full onboarding snapshot even when returning from Stripe checkout", () => {
+    expect(src).toContain("readCheckoutOnboardingSnapshot()");
+    expect(src).toContain("pending.onboardingState");
+    expect(src).not.toContain('searchParams.get("launch_checkout") ? null : readOnboardingState()');
+    expect(src).toContain('if (searchParams.get("launch_checkout") === "success") return;');
   });
 
   it("does not bleed a snapshot across flow intents (signup vs add vs new)", () => {
@@ -65,5 +70,16 @@ describe("Beta onboarding resume persistence", () => {
 
   it("clears the snapshot on genuine completion", () => {
     expect(src).toContain("clearOnboardingState();");
+  });
+
+  it("persists pricing and audience display state, not only launch state", () => {
+    expect(src).toContain("workflowProjection: projectionRef.current");
+    expect(src).toContain("salesInputs: salesInputsRef.current");
+    expect(src).toContain("launchFeatureInputs: launchFeatureInputsRef.current");
+    expect(src).toContain("audiencePrompt");
+    expect(src).toContain("audienceCandidates");
+    expect(src).toContain("selectedAudienceIds");
+    expect(src).toContain("isWorkflowProjectionResponse");
+    expect(src).toContain("isAudienceCandidateList");
   });
 });

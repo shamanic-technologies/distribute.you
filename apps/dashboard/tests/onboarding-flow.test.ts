@@ -97,6 +97,12 @@ describe("Onboarding direct checkout launch", () => {
   it("can retry checkout from the pending launch after Stripe cancel", () => {
     expect(content).toContain("readPendingCheckoutLaunchOrNull");
     expect(content).toContain("const storedPending = readPendingCheckoutLaunchOrNull()");
+    expect(content).toContain("onboardingState: checkoutState");
+    expect(content).toContain("readCheckoutOnboardingSnapshot()");
+    expect(content).toContain("hydratePricingForRestoredCheckout");
+    expect(content).toContain("setAudiencePrompt");
+    expect(content).toContain("setAudienceCandidates");
+    expect(content).toContain("setSelectedAudienceIds");
     expect(content).toContain("storedPending?.workflowSlug");
     expect(content).toContain("storedPending?.brandUrl");
     expect(content).toContain("setBusy(false);");

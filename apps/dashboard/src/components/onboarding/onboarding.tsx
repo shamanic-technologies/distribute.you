@@ -85,7 +85,7 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 // the tab, auto-cleared on close → no stale cross-session bleed. Bump VERSION to bust
 // an incompatible shape after a flow change. Cleared on genuine completion (launch()).
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
-const ONBOARDING_STATE_VERSION = 2;
+const ONBOARDING_STATE_VERSION = 3;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
@@ -232,6 +232,7 @@ type PendingCheckoutLaunch = {
   featureInputs?: Record<string, string>;
   profile?: Record<string, string | string[]>;
   services?: string[];
+  onboardingState: PersistedOnboardingState;
   createdAt: string;
 };
 
@@ -256,6 +257,12 @@ type PersistedOnboardingState = {
   selectedCount: number | null;
   customCount: string;
   checkoutBudgetUsd: number | null;
+  audiencePrompt: string;
+  audienceCandidates: AudienceCandidate[] | null;
+  selectedAudienceIds: string[];
+  workflowProjection: WorkflowProjectionResponse | null;
+  salesInputs: FeatureInput[];
+  launchFeatureInputs: Record<string, string> | null;
   brandId: string | null;
   orgId: string | null;
   servicesEdited: boolean;
@@ -284,12 +291,66 @@ function isProfileRecord(value: unknown): value is Record<string, string | strin
   );
 }
 
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function isAudienceCandidate(value: unknown): value is AudienceCandidate {
+  if (!isUnknownRecord(value)) return false;
+  return (
+    typeof value.audienceId === "string" &&
+    typeof value.name === "string" &&
+    typeof value.rationale === "string" &&
+    (value.provider === "apollo" || value.provider === "apify") &&
+    isUnknownRecord(value.filters) &&
+    typeof value.count === "number" &&
+    (value.status === "suggested" || value.status === "active" || value.status === "paused" || value.status === "archived") &&
+    (value.validationError === null || typeof value.validationError === "string") &&
+    typeof value.truncated === "boolean"
+  );
+}
+
+function isAudienceCandidateList(value: unknown): value is AudienceCandidate[] {
+  return Array.isArray(value) && value.every(isAudienceCandidate);
+}
+
+function isFeatureInputList(value: unknown): value is FeatureInput[] {
+  return (
+    Array.isArray(value) &&
+    value.every((input) => {
+      if (!isUnknownRecord(input)) return false;
+      return (
+        typeof input.key === "string" &&
+        typeof input.label === "string" &&
+        (input.type === "text" || input.type === "textarea" || input.type === "number" || input.type === "select") &&
+        typeof input.placeholder === "string" &&
+        typeof input.description === "string" &&
+        typeof input.extractKey === "string" &&
+        (input.options === undefined || isStringList(input.options))
+      );
+    })
+  );
+}
+
+function isWorkflowProjectionResponse(value: unknown): value is WorkflowProjectionResponse {
+  if (!isUnknownRecord(value)) return false;
+  return (
+    typeof value.featureSlug === "string" &&
+    (value.objective === "meeting-booked" || value.objective === "self-serve") &&
+    Array.isArray(value.workflows) &&
+    value.workflows.every((workflow) => isUnknownRecord(workflow) && typeof workflow.workflowDynastySlug === "string") &&
+    (value.recommendedWorkflowDynastySlug === null || typeof value.recommendedWorkflowDynastySlug === "string") &&
+    (value.recommendedBudgetUsd === null || typeof value.recommendedBudgetUsd === "number")
+  );
+}
+
 function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   const raw = window.sessionStorage.getItem(CHECKOUT_PENDING_KEY);
   if (!raw) {
     throw new Error("Checkout returned, but the pending launch state is missing. Campaign was not launched.");
   }
   const parsed = JSON.parse(raw) as Partial<PendingCheckoutLaunch>;
+  const onboardingState = parseOnboardingState(parsed.onboardingState);
   if (
     parsed.version !== 1 ||
     typeof parsed.brandId !== "string" ||
@@ -305,11 +366,12 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
     (parsed.services !== undefined && !isStringList(parsed.services)) ||
+    !onboardingState ||
     typeof parsed.createdAt !== "string"
   ) {
     throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");
   }
-  return parsed as PendingCheckoutLaunch;
+  return { ...parsed, onboardingState } as PendingCheckoutLaunch;
 }
 
 function readPendingCheckoutLaunchOrNull(): PendingCheckoutLaunch | null {
@@ -363,30 +425,50 @@ const ALL_STEPS: Step[] = [
   "welcome", "url", "loading", "services", "destination", "objective", "rates", "audiences", "consent", "pricing", "bonus", "launching",
 ];
 
+function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
+  if (!isUnknownRecord(value)) return null;
+  const p = value as Partial<PersistedOnboardingState>;
+  if (
+    p.version !== ONBOARDING_STATE_VERSION ||
+    (p.flowKey !== "signup" && p.flowKey !== "add" && p.flowKey !== "new") ||
+    typeof p.step !== "string" || !ALL_STEPS.includes(p.step as Step) ||
+    typeof p.url !== "string" ||
+    (p.outcome !== "signups" && p.outcome !== "meetings") ||
+    !isRateRecord(p.rates) || !isRateTextRecord(p.rateText) ||
+    !isStringList(p.services) || typeof p.clickDestinationUrl !== "string" || !isProfileRecord(p.profile) ||
+    !(p.selectedCount === null || typeof p.selectedCount === "number") ||
+    typeof p.customCount !== "string" ||
+    !(p.checkoutBudgetUsd === null || typeof p.checkoutBudgetUsd === "number") ||
+    typeof p.audiencePrompt !== "string" ||
+    !(p.audienceCandidates === null || isAudienceCandidateList(p.audienceCandidates)) ||
+    !isStringList(p.selectedAudienceIds) ||
+    !(p.workflowProjection === null || isWorkflowProjectionResponse(p.workflowProjection)) ||
+    !isFeatureInputList(p.salesInputs) ||
+    !(p.launchFeatureInputs === null || isStringRecord(p.launchFeatureInputs)) ||
+    !(p.brandId === null || typeof p.brandId === "string") ||
+    !(p.orgId === null || typeof p.orgId === "string") ||
+    typeof p.servicesEdited !== "boolean" || typeof p.ratesEdited !== "boolean"
+  ) {
+    return null;
+  }
+  return p as PersistedOnboardingState;
+}
+
 function readOnboardingState(): PersistedOnboardingState | null {
   if (typeof window === "undefined") return null;
   const raw = window.sessionStorage.getItem(ONBOARDING_STATE_KEY);
   if (!raw) return null;
   try {
-    const p = JSON.parse(raw) as Partial<PersistedOnboardingState>;
-    if (
-      p.version !== ONBOARDING_STATE_VERSION ||
-      (p.flowKey !== "signup" && p.flowKey !== "add" && p.flowKey !== "new") ||
-      typeof p.step !== "string" || !ALL_STEPS.includes(p.step as Step) ||
-      typeof p.url !== "string" ||
-      (p.outcome !== "signups" && p.outcome !== "meetings") ||
-      !isRateRecord(p.rates) || !isRateTextRecord(p.rateText) ||
-      !isStringList(p.services) || typeof p.clickDestinationUrl !== "string" || !isProfileRecord(p.profile) ||
-      !(p.selectedCount === null || typeof p.selectedCount === "number") ||
-      typeof p.customCount !== "string" ||
-      !(p.checkoutBudgetUsd === null || typeof p.checkoutBudgetUsd === "number") ||
-      !(p.brandId === null || typeof p.brandId === "string") ||
-      !(p.orgId === null || typeof p.orgId === "string") ||
-      typeof p.servicesEdited !== "boolean" || typeof p.ratesEdited !== "boolean"
-    ) {
-      return null;
-    }
-    return p as PersistedOnboardingState;
+    return parseOnboardingState(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function readCheckoutOnboardingSnapshot(): PersistedOnboardingState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return readPendingCheckoutLaunch().onboardingState;
   } catch {
     return null;
   }
@@ -437,7 +519,7 @@ export function Onboarding() {
   // a different flow intent (signup vs add vs new) in the same tab.
   const restoreRef = useRef<PersistedOnboardingState | null>(null);
   if (restoreRef.current === null) {
-    const snap = searchParams.get("launch_checkout") ? null : readOnboardingState();
+    const snap = searchParams.get("launch_checkout") ? readCheckoutOnboardingSnapshot() : readOnboardingState();
     restoreRef.current = snap && snap.flowKey === flowKey ? snap : null;
   }
   const restored = restoreRef.current;
@@ -468,6 +550,9 @@ export function Onboarding() {
   const [selectedCount, setSelectedCount] = useState<number | null>(() => restored?.selectedCount ?? null);
   const [customCount, setCustomCount] = useState(() => restored?.customCount ?? "");
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(() => restored?.checkoutBudgetUsd ?? null);
+  const [audiencePrompt, setAudiencePrompt] = useState(() => restored?.audiencePrompt ?? "");
+  const [audienceCandidates, setAudienceCandidates] = useState<AudienceCandidate[] | null>(() => restored?.audienceCandidates ?? null);
+  const [selectedAudienceIds, setSelectedAudienceIds] = useState<string[]>(() => restored?.selectedAudienceIds ?? []);
   // Pre-warmed audience step. During the loading screen we draft the ICP prompt
   // AND fire the audience suggest in the background, so the audience step opens
   // with candidates already (or nearly) ready — zero wait, zero click. Stashed in
@@ -492,9 +577,10 @@ export function Onboarding() {
   // `billing:resolved` and we re-run it — no page reload, so no state is lost.
   const creditRetryRef = useRef<null | (() => void | Promise<void>)>(null);
 
-  const projectionRef = useRef<WorkflowProjectionResponse | null>(null);
+  const [pricingHydrationVersion, setPricingHydrationVersion] = useState(0);
+  const projectionRef = useRef<WorkflowProjectionResponse | null>(restored?.workflowProjection ?? null);
   const econRef = useRef<EffectiveSalesEconomics | null>(null);
-  const launchFeatureInputsRef = useRef<Record<string, string> | null>(null);
+  const launchFeatureInputsRef = useRef<Record<string, string> | null>(restored?.launchFeatureInputs ?? null);
   const hydrationPromiseRef = useRef<Promise<void> | null>(null);
   // Seed the "user edited this" guards from the snapshot so a resume's re-extraction /
   // re-hydration does NOT clobber values the user already changed (see hydrateOnboarding
@@ -503,7 +589,7 @@ export function Onboarding() {
   const ratesEditedRef = useRef(restored?.ratesEdited ?? false);
   // The sales feature's declared input definitions — needed to build the
   // `featureInputs` map the /campaigns create endpoint requires at launch.
-  const salesInputsRef = useRef<FeatureInput[]>([]);
+  const salesInputsRef = useRef<FeatureInput[]>(restored?.salesInputs ?? []);
 
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
@@ -541,15 +627,11 @@ export function Onboarding() {
   );
   const resumeStartedRef = useRef(false);
 
-  // Persist the in-progress wizard on every change so a refresh / back resumes here.
-  // Skipped while a Stripe checkout owns the resume (?launch_checkout=…); the raw step is
-  // fine to store — resolveResumeStep remaps transient loading/launching on the way back.
-  useEffect(() => {
-    if (searchParams.get("launch_checkout")) return;
-    writeOnboardingState({
+  function buildOnboardingState(opts?: { step?: Step; checkoutBudgetUsd?: number | null }): PersistedOnboardingState {
+    return {
       version: ONBOARDING_STATE_VERSION,
       flowKey,
-      step,
+      step: opts?.step ?? step,
       url,
       outcome,
       rates,
@@ -559,13 +641,27 @@ export function Onboarding() {
       profile,
       selectedCount,
       customCount,
-      checkoutBudgetUsd,
+      checkoutBudgetUsd: opts?.checkoutBudgetUsd ?? checkoutBudgetUsd,
+      audiencePrompt,
+      audienceCandidates,
+      selectedAudienceIds,
+      workflowProjection: projectionRef.current,
+      salesInputs: salesInputsRef.current,
+      launchFeatureInputs: launchFeatureInputsRef.current,
       brandId,
       orgId: orgIdRef.current,
       servicesEdited: servicesEditedRef.current,
       ratesEdited: ratesEditedRef.current,
-    });
-  }, [step, url, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedCount, customCount, checkoutBudgetUsd, brandId, flowKey, searchParams]);
+    };
+  }
+
+  // Persist the in-progress wizard on every change so a refresh / back resumes here.
+  // Skipped only while Stripe success owns the launch path. A cancelled checkout must
+  // keep writing the restored full snapshot so further edits persist normally.
+  useEffect(() => {
+    if (searchParams.get("launch_checkout") === "success") return;
+    writeOnboardingState(buildOnboardingState());
+  }, [step, url, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedCount, customCount, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -694,6 +790,7 @@ export function Onboarding() {
       setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
     }
     projectionRef.current = proj;
+    setPricingHydrationVersion((value) => value + 1);
   }
 
   async function waitForOnboardingHydration(): Promise<void> {
@@ -875,6 +972,7 @@ export function Onboarding() {
       // (derivedBudget → recommendedBudgetUsd). (#1766)
       try {
         projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
+        setPricingHydrationVersion((value) => value + 1);
       } catch (projErr) {
         if (isInsufficientCredit(projErr)) throw projErr;
         console.error("[dashboard] onboarding: projection refresh after rates non-fatal; advancing", projErr);
@@ -1048,6 +1146,8 @@ export function Onboarding() {
       if (!workflowSlug) {
         throw new Error("Campaign workflow setup is still missing. Please try again.");
       }
+      const checkoutState = buildOnboardingState({ step: "pricing", checkoutBudgetUsd: budget });
+      writeOnboardingState(checkoutState);
 
       const pending: PendingCheckoutLaunch = {
         version: 1,
@@ -1064,6 +1164,7 @@ export function Onboarding() {
         featureInputs: storedPending?.featureInputs,
         profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
         services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
+        onboardingState: checkoutState,
         createdAt: new Date().toISOString(),
       };
       window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
@@ -1092,6 +1193,7 @@ export function Onboarding() {
     setError(null);
     try {
       const pending = readPendingCheckoutLaunch();
+      applyRestoredOnboardingState(pending.onboardingState, { step: "launching" });
       setCheckoutBudgetUsd(pending.budgetUsd);
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
       setLaunchStep(0);
@@ -1105,6 +1207,50 @@ export function Onboarding() {
       setStep("pricing");
       setBusy(false);
     }
+  }
+
+  function applyRestoredOnboardingState(state: PersistedOnboardingState, opts?: { step?: Step }) {
+    setUrl(state.url);
+    setOutcome(state.outcome);
+    setRates(state.rates);
+    setRateText(state.rateText);
+    setServices(state.services);
+    setClickDestinationUrl(state.clickDestinationUrl);
+    setProfile(state.profile);
+    setSelectedCount(state.selectedCount);
+    setCustomCount(state.customCount);
+    setCheckoutBudgetUsd(state.checkoutBudgetUsd);
+    setAudiencePrompt(state.audiencePrompt);
+    setAudienceCandidates(state.audienceCandidates);
+    setSelectedAudienceIds(state.selectedAudienceIds);
+    setBrandId(state.brandId);
+    brandIdRef.current = state.brandId;
+    orgIdRef.current = state.orgId;
+    servicesEditedRef.current = state.servicesEdited;
+    ratesEditedRef.current = state.ratesEdited;
+    projectionRef.current = state.workflowProjection;
+    salesInputsRef.current = state.salesInputs;
+    launchFeatureInputsRef.current = state.launchFeatureInputs;
+    setPricingHydrationVersion((value) => value + 1);
+    setStep(opts?.step ?? resolveResumeStep(state.step, state.brandId));
+  }
+
+  async function hydratePricingForRestoredCheckout(state: PersistedOnboardingState): Promise<void> {
+    if (state.workflowProjection) {
+      projectionRef.current = state.workflowProjection;
+      setPricingHydrationVersion((value) => value + 1);
+      return;
+    }
+    if (!state.brandId) {
+      throw new Error("Checkout returned without a brand id for pricing restore.");
+    }
+    projectionRef.current = await getWorkflowProjection({
+      featureSlug: SALES_FEATURE_SLUG,
+      brandId: state.brandId,
+      objective: salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(state.outcome)),
+      budgetUsd: PROJECTION_REF_BUDGET,
+    });
+    setPricingHydrationVersion((value) => value + 1);
   }
 
   // After the user adds credit in the billing-guard modal, re-run the step action
@@ -1132,17 +1278,16 @@ export function Onboarding() {
     if (launchCheckout === "cancelled") {
       checkoutResumeStartedRef.current = true;
       setBusy(false);
-      setStep("pricing");
       try {
         const pending = readPendingCheckoutLaunch();
-        // Restore the brand identity so the step header shows the name + logo again
-        // (domain/hostname both derive from `url`, which the checkout-return mount
-        // skips restoring). Budget + outcome come back too so the cards are intact.
-        setUrl(pending.brandUrl);
-        setCheckoutBudgetUsd(pending.budgetUsd);
-        setOutcome(pending.outcome);
+        applyRestoredOnboardingState(pending.onboardingState, { step: "pricing" });
+        void hydratePricingForRestoredCheckout(pending.onboardingState).catch((e) => {
+          console.error("[dashboard] onboarding checkout-cancel pricing restore failed:", e);
+          setError(e instanceof Error ? e.message : "Could not restore your budget options. Try again.");
+        });
       } catch {
         // Pending state missing — still land on pricing with the reassuring note.
+        setStep("pricing");
       }
       setCancelNotice(CHECKOUT_CANCELLED_NOTICE);
     }
@@ -1485,6 +1630,12 @@ export function Onboarding() {
         hostname={hostname}
         services={services}
         prefetch={audiencePrefetch}
+        prompt={audiencePrompt}
+        onPromptChange={setAudiencePrompt}
+        candidates={audienceCandidates}
+        onCandidatesChange={setAudienceCandidates}
+        selectedAudienceIds={selectedAudienceIds}
+        onSelectedAudienceIdsChange={setSelectedAudienceIds}
         onBack={() => setStep("rates")}
         onContinue={() => setStep("consent")}
         onEdit={() => setStep("url")}
@@ -1677,6 +1828,12 @@ function OnboardingAudiences({
   hostname,
   services,
   prefetch,
+  prompt,
+  onPromptChange,
+  candidates,
+  onCandidatesChange,
+  selectedAudienceIds,
+  onSelectedAudienceIdsChange,
   onBack,
   onContinue,
   onEdit,
@@ -1686,6 +1843,12 @@ function OnboardingAudiences({
   hostname: string;
   services: string[];
   prefetch: AudiencePrefetch | null;
+  prompt: string;
+  onPromptChange: (value: string) => void;
+  candidates: AudienceCandidate[] | null;
+  onCandidatesChange: (value: AudienceCandidate[] | null) => void;
+  selectedAudienceIds: string[];
+  onSelectedAudienceIdsChange: (value: string[]) => void;
   onBack: () => void;
   onContinue: () => void;
   onEdit?: () => void;
@@ -1694,15 +1857,13 @@ function OnboardingAudiences({
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
-  const [prompt, setPrompt] = useState("");
   const [icpLoading, setIcpLoading] = useState(true);
   const icpFetchedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [candidates, setCandidates] = useState<AudienceCandidate[] | null>(null);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const selectedAudienceIdSet = new Set(selectedAudienceIds);
 
   // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
   // the background during the loading screen) when present — zero wait, zero click.
@@ -1712,6 +1873,10 @@ function OnboardingAudiences({
   useEffect(() => {
     if (icpFetchedRef.current) return;
     icpFetchedRef.current = true;
+    if (prompt.trim() || candidates) {
+      setIcpLoading(false);
+      return;
+    }
 
     if (prefetch) {
       // Pre-warm in flight or already resolved — show drafting/generating until ready.
@@ -1719,15 +1884,15 @@ function OnboardingAudiences({
       setLoading(true);
       prefetch.promise
         .then(({ prompt: p, candidates: c }) => {
-          setPrompt((cur) => (cur.trim() ? cur : p || fallbackPrompt));
+          onPromptChange(prompt.trim() ? prompt : p || fallbackPrompt);
           if (c) {
-            setCandidates(c);
+            onCandidatesChange(c);
             if (c.length === 0) setErr("No audiences matched that description. Try rephrasing.");
           }
         })
         .catch((e) => {
           console.error("[dashboard] audience prefetch adopt failed:", e);
-          setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+          onPromptChange(prompt.trim() ? prompt : fallbackPrompt);
         })
         .finally(() => {
           setIcpLoading(false);
@@ -1737,7 +1902,7 @@ function OnboardingAudiences({
     }
 
     if (!brandId) {
-      setPrompt((cur) => (cur.trim() ? cur : fallbackPrompt));
+      onPromptChange(prompt.trim() ? prompt : fallbackPrompt);
       setIcpLoading(false);
       return;
     }
@@ -1751,7 +1916,7 @@ function OnboardingAudiences({
       } finally {
         setIcpLoading(false);
       }
-      setPrompt((cur) => (cur.trim() ? cur : nl));
+      onPromptChange(prompt.trim() ? prompt : nl);
       if (nl) void runSuggest(nl);
     })();
   }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1773,11 +1938,11 @@ function OnboardingAudiences({
     }
     setErr(null);
     setLoading(true);
-    setCandidates(null);
-    setSelected(new Set());
+    onCandidatesChange(null);
+    onSelectedAudienceIdsChange([]);
     try {
       const res = await suggestAudiences(brandId, nl);
-      setCandidates(res.candidates);
+      onCandidatesChange(res.candidates);
       if (res.candidates.length === 0) setErr("No audiences matched that description. Try rephrasing.");
     } catch (e) {
       console.error("[dashboard] suggestAudiences failed:", e);
@@ -1787,13 +1952,11 @@ function OnboardingAudiences({
     }
   }
 
-  function toggle(i: number) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
+  function toggle(candidate: AudienceCandidate) {
+    const next = new Set(selectedAudienceIds);
+    if (next.has(candidate.audienceId)) next.delete(candidate.audienceId);
+    else next.add(candidate.audienceId);
+    onSelectedAudienceIdsChange([...next]);
   }
 
   async function saveAndContinue() {
@@ -1801,7 +1964,7 @@ function OnboardingAudiences({
       onContinue();
       return;
     }
-    const picks = [...selected].map((i) => candidates[i]).filter((c): c is AudienceCandidate => Boolean(c));
+    const picks = candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId));
     if (picks.length === 0) {
       setErr("Select at least one audience.");
       return;
@@ -1836,7 +1999,7 @@ function OnboardingAudiences({
         <textarea
           ref={textareaRef}
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => onPromptChange(e.target.value)}
           disabled={icpLoading}
           placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
           style={{ minHeight: "80px", overflow: "hidden" }}
@@ -1872,17 +2035,17 @@ function OnboardingAudiences({
       {candidates && candidates.length > 0 && (
         <>
           <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-            {selected.size} of {candidates.length} selected
+            {candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId)).length} of {candidates.length} selected
           </div>
           <div className="space-y-3">
             {candidates.map((c, i) => (
-              <AudienceCandidateCard key={i} candidate={c} selected={selected.has(i)} onToggle={() => toggle(i)} />
+              <AudienceCandidateCard key={c.audienceId || i} candidate={c} selected={selectedAudienceIdSet.has(c.audienceId)} onToggle={() => toggle(c)} />
             ))}
           </div>
         </>
       )}
 
-      <NextButton onClick={saveAndContinue} disabled={!candidates || selected.size === 0} busy={saving} label="Continue" />
+      <NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} busy={saving} label="Continue" />
       </div>
     </div>
   );
