@@ -178,6 +178,9 @@ importers:
       canvas-confetti:
         specifier: ^1.9.4
         version: 1.9.4
+      driver.js:
+        specifier: ^1.5.0
+        version: 1.5.0
       isomorphic-dompurify:
         specifier: ^3.12.0
         version: 3.12.0
@@ -2379,6 +2382,9 @@ packages:
   dotenv@17.2.2:
     resolution: {integrity: sha512-Sf2LSQP+bOlhKWWyhFsn0UsfdK/kCWRv1iuA2gXAwt3dyNabr6QSj00I2V10pidqz69soatm9ZwZvpQMTIOd5Q==}
     engines: {node: '>=12'}
+
+  driver.js@1.5.0:
+    resolution: {integrity: sha512-j31Yi1V3/fTCI6+JmS6Z30bHE3YbpT5+UlrsN0o5aswCuZVDwfaZKsMSN0tMCQbWk99RNXxEyAhALC1otj31/w==}
 
   electron-to-chromium@1.5.282:
     resolution: {integrity: sha512-FCPkJtpst28UmFzd903iU7PdeVTfY0KAeJy+Lk0GLZRwgwYHn/irRcaCbQQOmr5Vytc/7rcavsYLvTM8RiHYhQ==}
@@ -5894,6 +5900,8 @@ snapshots:
       '@types/trusted-types': 2.0.7
 
   dotenv@17.2.2: {}
+
+  driver.js@1.5.0: {}
 
   electron-to-chromium@1.5.282: {}
 
