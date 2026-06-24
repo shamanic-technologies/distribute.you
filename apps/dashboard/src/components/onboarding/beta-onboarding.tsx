@@ -1075,6 +1075,7 @@ export function BetaOnboarding() {
 
   if (step === "rates") {
     const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
+    const isSingle = rateKeys.length === 1;
     return (
       <div className={card}>
         <BackButton onClick={() => setStep("objective")} />
@@ -1082,28 +1083,54 @@ export function BetaOnboarding() {
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We filled these in from your profile. An estimate works fine — you can change them later.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <div className={`grid gap-4 ${rateKeys.length > 1 ? "sm:grid-cols-2" : ""}`}>
-          {rateKeys.map((k) => (
-            <div key={k} className="flex flex-col items-center rounded-2xl border border-gray-200 bg-gray-50 px-6 py-8 text-center">
-              <div className="mb-1 text-sm font-semibold text-gray-800">{RATE_META[k].label}</div>
-              <div className="mb-5 text-xs leading-5 text-gray-400">{RATE_META[k].hint}</div>
-              <div className="flex items-end gap-1">
-                {RATE_META[k].suffix === "$" && <span className="mb-2 text-2xl font-bold text-gray-400">$</span>}
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={rateText[k]}
-                  onChange={(e) => {
-                    ratesEditedRef.current = true;
-                    launchFeatureInputsRef.current = null;
-                    setRateText((t) => ({ ...t, [k]: e.target.value }));
-                  }}
-                  className="w-32 bg-transparent text-center text-6xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
-                />
-                {RATE_META[k].suffix === "%" && <span className="mb-2 text-2xl font-bold text-gray-400">%</span>}
+        <div className={`grid gap-4 ${isSingle ? "" : "sm:grid-cols-2"}`}>
+          {rateKeys.map((k) =>
+            isSingle ? (
+              // Horizontal layout for single rate (signups): label left, input right
+              <div key={k} className="flex items-center justify-between gap-6 rounded-2xl border border-gray-200 bg-gray-50 px-6 py-5">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-gray-800">{RATE_META[k].label}</div>
+                  <div className="mt-1 text-xs leading-5 text-gray-400">{RATE_META[k].hint}</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1 rounded-xl border border-gray-300 bg-white px-3 py-2 focus-within:border-brand-400 focus-within:ring-1 focus-within:ring-brand-300">
+                  {RATE_META[k].suffix === "$" && <span className="text-lg font-bold text-gray-400">$</span>}
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={rateText[k]}
+                    onChange={(e) => {
+                      ratesEditedRef.current = true;
+                      launchFeatureInputsRef.current = null;
+                      setRateText((t) => ({ ...t, [k]: e.target.value }));
+                    }}
+                    className="w-20 bg-transparent text-center text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+                  />
+                  {RATE_META[k].suffix === "%" && <span className="text-lg font-bold text-gray-400">%</span>}
+                </div>
               </div>
-            </div>
-          ))}
+            ) : (
+              // Vertical layout for multiple rates (meetings): flex-col so inputs align at bottom
+              <div key={k} className="flex flex-col rounded-2xl border border-gray-200 bg-gray-50 px-6 py-6">
+                <div className="mb-1 text-sm font-semibold text-gray-800">{RATE_META[k].label}</div>
+                <div className="mb-5 flex-1 text-xs leading-5 text-gray-400">{RATE_META[k].hint}</div>
+                <div className="flex items-center justify-center gap-1 rounded-xl border border-gray-300 bg-white px-3 py-3 focus-within:border-brand-400 focus-within:ring-1 focus-within:ring-brand-300">
+                  {RATE_META[k].suffix === "$" && <span className="text-2xl font-bold text-gray-400">$</span>}
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={rateText[k]}
+                    onChange={(e) => {
+                      ratesEditedRef.current = true;
+                      launchFeatureInputsRef.current = null;
+                      setRateText((t) => ({ ...t, [k]: e.target.value }));
+                    }}
+                    className="w-24 bg-transparent text-center text-4xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+                  />
+                  {RATE_META[k].suffix === "%" && <span className="text-2xl font-bold text-gray-400">%</span>}
+                </div>
+              </div>
+            )
+          )}
         </div>
         <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
       </div>
@@ -1309,6 +1336,17 @@ export function BetaOnboarding() {
 let obDraftSeq = 0;
 const nextDraftId = () => `ob-draft-${++obDraftSeq}`;
 
+const FILTER_LABELS: Record<string, string> = {
+  location: "Location",
+  companySize: "Company size",
+  industry: "Industry",
+  jobTitle: "Job title",
+  seniority: "Seniority",
+  companyRevenue: "Revenue",
+  department: "Department",
+  employeeCount: "Employees",
+};
+
 function OnboardingPersonas({
   brandDomain,
   hostname,
@@ -1332,6 +1370,8 @@ function OnboardingPersonas({
 }) {
   const [addingNew, setAddingNew] = useState(false);
   const [aiRefreshingId, setAiRefreshingId] = useState<string | null>(null);
+  const [directiveInputId, setDirectiveInputId] = useState<string | null>(null);
+  const [directiveTexts, setDirectiveTexts] = useState<Record<string, string>>({});
 
   const removeDraft = (id: string) => setPersonas((prev) => prev.filter((p) => p.id !== id));
   const updateText = (id: string, text: string) =>
@@ -1352,7 +1392,7 @@ function OnboardingPersonas({
       const text = first ? first.name : "";
       setPersonas((prev) => [
         ...prev,
-        { id: nextDraftId(), name: text, filters: {}, status: "active", unsaved: true },
+        { id: nextDraftId(), name: text, filters: first?.filters ?? {}, status: "active", unsaved: true },
       ]);
     } catch {
       setPersonas((prev) => [
@@ -1367,12 +1407,17 @@ function OnboardingPersonas({
   const refreshWithAI = async (id: string) => {
     if (!brandId) return;
     setAiRefreshingId(id);
+    setDirectiveInputId(null);
     try {
       const sug = await suggestPersonas(brandId, 1);
       const first = sug.personas[0];
-      if (first) updateText(id, first.name);
+      if (first) {
+        setPersonas((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, name: first.name, filters: first.filters, unsaved: true } : p))
+        );
+      }
     } catch {
-      // keep existing text on failure
+      // keep existing on failure
     } finally {
       setAiRefreshingId(null);
     }
@@ -1400,37 +1445,98 @@ function OnboardingPersonas({
             No audiences yet. Add one below.
           </div>
         ) : (
-          personas.map((persona) => (
-            <div key={persona.id} className="group relative rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <textarea
-                value={persona.name}
-                onChange={(e) => updateText(persona.id, e.target.value)}
-                rows={3}
-                placeholder="Describe your target audience..."
-                className="w-full resize-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-300 focus:outline-none"
-              />
-              <div className="mt-2 flex items-center justify-between">
-                <button
-                  onClick={() => refreshWithAI(persona.id)}
-                  disabled={aiRefreshingId === persona.id || !brandId}
-                  className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {aiRefreshingId === persona.id ? (
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-                  ) : (
-                    <SparklesIcon className="h-3.5 w-3.5" />
+          personas.map((persona) => {
+            const filterEntries = Object.entries(persona.filters ?? {}).filter(([, vals]) => vals.length > 0);
+            const isDirectiveOpen = directiveInputId === persona.id;
+            return (
+              <div key={persona.id} className="overflow-hidden rounded-xl border border-gray-200">
+                {/* Content: textarea + filter attributes as text */}
+                <div className="bg-gray-50 p-4">
+                  <textarea
+                    value={persona.name}
+                    onChange={(e) => updateText(persona.id, e.target.value)}
+                    rows={3}
+                    placeholder="Describe your target audience..."
+                    className="w-full resize-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-300 focus:outline-none"
+                  />
+                  {filterEntries.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-200 pt-2">
+                      {filterEntries.map(([key, vals]) => (
+                        <span key={key} className="text-xs text-gray-500">
+                          <span className="font-medium text-gray-600">
+                            {FILTER_LABELS[key] ?? capWords(key)}:
+                          </span>{" "}
+                          {vals.map(capWords).join(", ")}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  Rewrite with AI
-                </button>
-                <button
-                  onClick={() => removeDraft(persona.id)}
-                  className="text-xs text-gray-400 hover:text-red-500"
-                >
-                  Remove
-                </button>
+                </div>
+
+                {/* Directive input panel — shown when user clicks "Write with AI" */}
+                {isDirectiveOpen && (
+                  <div className="border-t border-gray-200 bg-white px-4 py-3">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Add directives (e.g. more senior, focus on SaaS startups)..."
+                      value={directiveTexts[persona.id] ?? ""}
+                      onChange={(e) =>
+                        setDirectiveTexts((prev) => ({ ...prev, [persona.id]: e.target.value }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void refreshWithAI(persona.id);
+                        if (e.key === "Escape") setDirectiveInputId(null);
+                      }}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-300"
+                    />
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => void refreshWithAI(persona.id)}
+                        disabled={aiRefreshingId === persona.id}
+                        className="flex items-center gap-1.5 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 disabled:opacity-50"
+                      >
+                        {aiRefreshingId === persona.id ? (
+                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                        ) : (
+                          <SparklesIcon className="h-3.5 w-3.5" />
+                        )}
+                        Generate
+                      </button>
+                      <button
+                        onClick={() => setDirectiveInputId(null)}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action bar — always visible, bordered buttons */}
+                <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-2.5">
+                  <button
+                    onClick={() => setDirectiveInputId(isDirectiveOpen ? null : persona.id)}
+                    disabled={aiRefreshingId === persona.id || !brandId}
+                    className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {aiRefreshingId === persona.id ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+                    ) : (
+                      <SparklesIcon className="h-3.5 w-3.5" />
+                    )}
+                    {isDirectiveOpen ? "Close AI" : "Write with AI"}
+                  </button>
+                  <button
+                    onClick={() => removeDraft(persona.id)}
+                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
