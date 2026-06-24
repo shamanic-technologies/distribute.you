@@ -31,9 +31,11 @@ describe("Brand overview pipeline activity chart", () => {
   });
 
   it("renders selectable metric cards and line/area series instead of stacked bars", () => {
-    for (const key of ["outreach", "opens", "clicks", "signups"]) {
+    for (const key of ["outreach", "opens", "clicks"]) {
       expect(chart).toContain(`key: "${key}"`);
     }
+    expect(chart).not.toContain('key: "signups"');
+    expect(chart).not.toContain('label: "Signups"');
     expect(chart).toContain('key: "salesMeetings"');
     expect(chart).toContain('label: "Sales meetings"');
     expect(chart).toContain("AreaChart");
@@ -61,7 +63,7 @@ describe("Brand overview pipeline activity chart", () => {
     expect(section).toContain("visitToMeetingPct");
     expect(section).toContain("visitToSignupPct");
     expect(chart).toContain("type ChartMetricKey = PipelineActivityMetricKey | \"salesMeetings\"");
-    expect(chart).toContain('if (optimizationGoal === "signups") return METRICS');
+    expect(chart).toContain("return optimizationGoal === \"sales_meetings\"");
     expect(chart).toContain("projectedMetric(baseMetrics.clicks, visitToSignupPct)");
     expect(chart).toContain("projectedMetric(baseMetrics.clicks, visitToMeetingPct)");
     expect(chart).toContain("isOutcomeMetric(metric)");
@@ -93,6 +95,8 @@ describe("Brand overview pipeline activity chart", () => {
     expect(chart).toContain("pipelineActualSeries");
     expect(chart).toContain("buildDailyCountMap");
     expect(chart).toContain("buildPastDates");
+    expect(chart).toContain("cumulativeActuals");
+    expect(chart).toContain("cumulativeForecasts");
     expect(chart).toContain("phase: \"actual\"");
     expect(chart).toContain("phase: \"forecast\"");
     expect(chart).toContain("forecastStartValue");
