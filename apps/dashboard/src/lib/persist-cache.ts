@@ -148,14 +148,28 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
 }
 
 /**
- * Cache buster. Any new deploy changes the build id → the persister `buster`
- * mismatches and discards a cache shaped for the previous code, so a schema /
- * shape change never restores stale data into new components.
+ * MANUAL cache version — the persister `buster`. Bump this string BY HAND, and
+ * ONLY when a persisted query's response shape changes incompatibly (a renamed /
+ * removed field a restored-from-disk component would crash on). On a bump the
+ * persister `buster` mismatches and discards the whole disk cache, so stale-shaped
+ * data never restores into new components.
+ *
+ * WHY NOT the git commit SHA (the previous design): the SHA changes on EVERY
+ * deploy, so a high-velocity app (≈12 deploys/day here) busted the entire
+ * persisted cache on essentially every visit → the persist-everything work
+ * (#2074) never survived to a return visit and every page cold-skeletoned on the
+ * slow Neon chain. The shape almost never changes; the SHA always does — so the
+ * SHA was the wrong key. This is TanStack's own recommended pattern for actively
+ * deployed apps. Cross-deploy shape safety still holds without the per-deploy
+ * bust: `safeParse` / `z.coerce` on the list readers, keep-last-good
+ * `structuralSharing`, and the 30-min `maxAge` bound each tolerate a drifted shape.
+ *
+ * Bump checklist (increment the integer): renamed/removed a field on a response
+ * type consumed straight from cache without a safeParse guard. Additive fields
+ * (new optional field) do NOT need a bump.
  */
-export function cacheBuildId(): string {
-  return (
-    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ??
-    process.env.NEXT_PUBLIC_BUILD_ID ??
-    "dev"
-  );
+const PERSIST_CACHE_VERSION = "1";
+
+export function persistCacheVersion(): string {
+  return PERSIST_CACHE_VERSION;
 }
