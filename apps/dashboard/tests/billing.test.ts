@@ -37,8 +37,10 @@ describe("Billing API wrappers", () => {
     expect(content).toContain('"PATCH"');
   });
 
-  it("should NOT export disableAutoTopup (customer disable removed; admin-only)", () => {
-    expect(content).not.toContain("export async function disableAutoTopup");
+  it("should export disableAutoTopup function using DELETE /auto_topup", () => {
+    expect(content).toContain("export async function disableAutoTopup");
+    expect(content).toContain("/billing/accounts/auto_topup");
+    expect(content).toContain('"DELETE"');
   });
 
   it("should send topup_amount_cents / topup_threshold_cents in configureAutoTopup body", () => {
@@ -232,10 +234,8 @@ describe("Billing page", () => {
     expect(content).toContain("configureAutoTopup");
   });
 
-  it("should NOT let the customer disable auto-topup (admin-only)", () => {
-    expect(content).not.toContain("disableAutoTopup");
-    expect(content).not.toContain("handleDisableTopup");
-    expect(content).not.toContain("Disable auto-topup");
+  it("should use disableAutoTopup when user unchecks auto-topup", () => {
+    expect(content).toContain("disableAutoTopup");
   });
 
   it("should NOT reference legacy configureAutoReload / disableAutoReload", () => {
@@ -264,7 +264,9 @@ describe("Billing page", () => {
   it("should show editable auto-topup section when already configured", () => {
     expect(content).toContain("editingTopup");
     expect(content).toContain("handleSaveTopup");
+    expect(content).toContain("handleDisableTopup");
     expect(content).toContain("Save changes");
+    expect(content).toContain("Disable auto-topup");
   });
 
   it("should integrate auto-topup as a checkbox inside the Add Credits card", () => {
