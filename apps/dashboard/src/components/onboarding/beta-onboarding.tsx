@@ -12,6 +12,7 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   CreditCardIcon,
+  GiftIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   PencilSquareIcon,
@@ -105,6 +106,7 @@ type Step =
   | "audiences"
   | "consent"
   | "pricing"
+  | "bonus"
   | "launching";
 
 // The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
@@ -354,7 +356,7 @@ function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
   return keys.every((k) => typeof (value as Record<string, unknown>)[k] === "string");
 }
 const ALL_STEPS: Step[] = [
-  "welcome", "url", "loading", "services", "objective", "rates", "audiences", "consent", "pricing", "launching",
+  "welcome", "url", "loading", "services", "objective", "rates", "audiences", "consent", "pricing", "bonus", "launching",
 ];
 
 function readOnboardingState(): PersistedOnboardingState | null {
@@ -1442,10 +1444,43 @@ export function BetaOnboarding() {
     );
   }
 
+  if (step === "bonus") {
+    const amount = derivedBudget() ?? checkoutBudgetUsd;
+    return (
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
+        <div className={card}>
+          <BackButton onClick={() => setStep("pricing")} />
+          {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-center">
+            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+              <GiftIcon className="h-7 w-7 text-brand-600" />
+            </span>
+            <h2 className="font-display text-2xl font-bold text-gray-900">Your first $25 is on us.</h2>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
+              Spend $25 and we match it, $1 for $1. The credits unlock the moment your spend reaches $25.
+            </p>
+          </div>
+          <button onClick={beginCheckoutAndLaunch} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {busy ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Redirecting to checkout…
+              </>
+            ) : (
+              <>
+                {amount != null ? `Continue to checkout (${fmtUsd0(amount)})` : "Continue to checkout"} <ArrowRightIcon className="h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // pricing — outcome-count budget
   const unitCost = outcomeUnitCost();
   const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
-  const checkoutAmount = selectedBudget;
   return (
     <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
       <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
@@ -1523,17 +1558,8 @@ export function BetaOnboarding() {
         </div>
       )}
 
-      <button onClick={beginCheckoutAndLaunch} disabled={busy || selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-        {busy ? (
-          <>
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-            Redirecting to checkout…
-          </>
-        ) : (
-          <>
-            {checkoutAmount != null ? `Checkout ${fmtUsd0(checkoutAmount)} & launch campaign` : "Checkout & launch campaign"} <ArrowRightIcon className="h-4 w-4" />
-          </>
-        )}
+      <button onClick={() => setStep("bonus")} disabled={selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        Continue <ArrowRightIcon className="h-4 w-4" />
       </button>
       </div>
     </div>
