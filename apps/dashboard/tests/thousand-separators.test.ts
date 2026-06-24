@@ -111,7 +111,7 @@ describe("sales economics surfaces use locale-aware text inputs", () => {
 
   it("onboarding rates and budget labels use the shared locale helpers", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/components/onboarding/beta-onboarding.tsx"),
+      path.join(__dirname, "../src/components/onboarding/onboarding.tsx"),
       "utf-8"
     );
     expect(content).toContain("formatLocaleInteger");

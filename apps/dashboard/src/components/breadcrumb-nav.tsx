@@ -271,7 +271,7 @@ export function BreadcrumbNav() {
     // re-syncs the client to the previous org → the switch reverts on its own.
     // Forcing a fresh mint closes that race at the source (CLAUDE.md "Stale token —
     // a claim is frozen at JWT mint, force getToken({ skipCache: true }) before
-    // navigating"; same fix proven in beta-onboarding's onboarding-complete hop).
+    // navigating"; same fix proven in onboarding's onboarding-complete hop).
     await session?.getToken({ skipCache: true }).catch(() => {});
     router.push(`/orgs/${clerkOrgId}`);
   };

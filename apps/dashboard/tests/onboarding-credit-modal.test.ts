@@ -47,7 +47,7 @@ describe("billing-guard in-modal embedded checkout", () => {
 });
 
 describe("onboarding 402 recovery", () => {
-  const ob = read("../src/components/onboarding/beta-onboarding.tsx");
+  const ob = read("../src/components/onboarding/onboarding.tsx");
   it("listens for billing:resolved and retries the failed step", () => {
     expect(ob).toContain('addEventListener("billing:resolved"');
     expect(ob).toContain("creditRetryRef");
