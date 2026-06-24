@@ -9,7 +9,7 @@ import { Section } from "@/components/section";
 export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
-const LAST_UPDATED = "May 28, 2026";
+const LAST_UPDATED = "June 24, 2026";
 const COMPANY = "Shamanic Technologies";
 const SERVICE = "distribute";
 const SUPPORT_EMAIL = "support@distribute.you";
@@ -107,16 +107,15 @@ const SECTIONS: SectionDef[] = [
       <>
         <p>
           {SERVICE} is a done-for-you (DFY), bring-your-own-keys (BYOK)
-          automation platform built on the Model Context Protocol. You provide
-          a URL and a budget; we orchestrate lead discovery, message
-          generation, outreach delivery, reply qualification, and reporting
-          across multiple channels (sales cold email, PR, VC outreach, hiring,
-          accelerators, journalist pitching, and more).
+          cold email outreach platform built on the Model Context Protocol.
+          You provide a URL and a budget; we orchestrate lead discovery,
+          message generation, cold email delivery, reply qualification, and
+          reporting on your behalf.
         </p>
         <p>
           The Service depends on AI providers, data providers, email
-          infrastructure, social account infrastructure, and other third
-          parties. See Section 8 (Third-Party Services).
+          infrastructure, and other third parties. See Section 8
+          (Third-Party Services).
         </p>
       </>
     ),
@@ -192,23 +191,20 @@ const SECTIONS: SectionDef[] = [
       <>
         <p>
           <strong>Authorization.</strong> By using the Service you authorize
-          {" "}{SERVICE} and its affiliates to send email, social messages,
-          replies, follow-ups, and other outreach on your behalf, referencing
+          {" "}{SERVICE} and its affiliates to send cold email, replies,
+          follow-ups, and other outreach on your behalf, referencing
           your brand, product, founders, and content.
         </p>
         <p>
-          <strong>Our infrastructure.</strong> Unless you explicitly configure
-          and connect your own sending infrastructure, outreach is sent from
-          sending infrastructure owned, operated, or contracted by us or our
+          <strong>Our infrastructure.</strong> Outreach is sent from sending
+          infrastructure owned, operated, or contracted by us or our
           affiliated marketing agency, including but not limited to: email
           inboxes on domains we or our agency own; email accounts that we
-          pre-warm and maintain; LinkedIn, X (Twitter), and other social
-          accounts operated by our agency on behalf of multiple customers;
-          shared and dedicated IP pools; and third-party sending platforms
-          such as Postmark, Instantly, Apollo, and equivalents. Messages may
-          be sent from email addresses, domains, and social handles that do
-          not match your own brand, and replies may be routed through our
-          infrastructure before being forwarded to you.
+          pre-warm and maintain; shared and dedicated IP pools; and
+          third-party sending platforms such as Postmark, Instantly, Apollo,
+          and equivalents. Messages are sent from email addresses and domains
+          that we own, not from your own brand domain, and replies are routed
+          through our infrastructure before being forwarded to you.
         </p>
         <p>
           <strong>Shared deliverability risk.</strong> Because some
@@ -228,8 +224,8 @@ const SECTIONS: SectionDef[] = [
           complies with all applicable laws and platform terms, including
           without limitation the CAN-SPAM Act (U.S.), CASL (Canada), GDPR
           (EU/UK), PECR (UK), CCPA / CPRA (California), TCPA (U.S.), and the
-          terms of service of LinkedIn, X (Twitter), Google, Microsoft, and
-          every other platform involved. You represent and warrant that (a)
+          terms of service of Google, Microsoft, and every other email
+          platform involved. You represent and warrant that (a)
           you have a lawful basis to contact each recipient; (b) you have not
           targeted recipients on suppression lists or who have unsubscribed;
           (c) your content is truthful, not misleading, and does not infringe
@@ -331,9 +327,9 @@ const SECTIONS: SectionDef[] = [
       <>
         <p>
           The Service relies on third-party providers, including without
-          limitation Anthropic, OpenAI, Google, Apollo, Muck Rack, Featured,
-          Postmark, Stripe, Clerk, Vercel, Neon, Railway, LinkedIn, X
-          (Twitter), and others. We are not responsible for the availability,
+          limitation Anthropic, OpenAI, Google, Apollo, Postmark, Instantly,
+          Stripe, Clerk, Vercel, Neon, Railway, and others. We are not
+          responsible for the availability,
           accuracy, or behavior of third-party services. Outages, rate limits,
           API changes, deprecations, and policy changes at any provider may
           degrade or interrupt the Service, change pricing, or require
@@ -471,7 +467,7 @@ const SECTIONS: SectionDef[] = [
           implied, statutory, or otherwise, including without limitation
           warranties of merchantability, fitness for a particular purpose,
           title, non-infringement, accuracy of AI-generated content,
-          deliverability of email or social messages, achievement of any
+          deliverability of email, achievement of any
           performance metric, uninterrupted or error-free operation, or that
           defects will be corrected.
         </p>

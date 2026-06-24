@@ -182,8 +182,6 @@ const LAUNCH_STEPS = [
   { id: "dashboard", label: "Opening your dashboard" },
 ];
 
-const GENERIC_AI_SETUP_ERROR = "Our AI analysis service had a temporary issue. Your workspace is ready, but some suggestions may need to be filled in manually.";
-
 // Rotating soft-tag palette for the services chips (visual variety, like personas).
 const TAG_TONES = [
   "bg-indigo-50 text-indigo-700 border-indigo-200",
@@ -437,7 +435,6 @@ export function BetaOnboarding() {
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [setupIssues, setSetupIssues] = useState({ extraction: false });
   const [busy, setBusy] = useState(false);
 
   const [outcome, setOutcome] = useState<Outcome>(() => restored?.outcome ?? "signups");
@@ -598,7 +595,6 @@ export function BetaOnboarding() {
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
     await extractBrandFields([id], SALES_PROFILE_FIELDS).catch((e) => {
       console.error("[dashboard] extractBrandFields (background) failed:", e);
-      setSetupIssues((prev) => ({ ...prev, extraction: true }));
     });
 
     // Pre-warm the audience step: now that the brand profile is extracted, draft
@@ -707,7 +703,6 @@ export function BetaOnboarding() {
     const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing" }).catch((e) => {
       console.error("[dashboard] extractBrandFields failed:", e);
       captureSetupMilestone("services_extract_failed", servicesStartedAt);
-      setSetupIssues((prev) => ({ ...prev, extraction: true }));
       return null;
     });
     if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
@@ -721,11 +716,7 @@ export function BetaOnboarding() {
       if (nextServices.length > 0) {
         setProfile((prev) => ({ ...prev, services: nextServices }));
         setServices(nextServices);
-      } else {
-        setSetupIssues((prev) => ({ ...prev, extraction: true }));
       }
-    } else {
-      setSetupIssues((prev) => ({ ...prev, extraction: true }));
     }
     fetchDoneRef.current = true;
     setLoadStep(LOADING_STEPS.length);
@@ -738,7 +729,6 @@ export function BetaOnboarding() {
   async function startAnalyze() {
     if (!domain) return;
     setError(null);
-    setSetupIssues({ extraction: false });
     setStep("loading");
     resetLoadingProgress();
     posthog.capture("onboarding_workspace_create_started", { flow: "beta", domain });
@@ -1208,7 +1198,6 @@ export function BetaOnboarding() {
         <div className={cardWide}>
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
-        {setupIssues.extraction && <SetupWarning />}
         <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-3 sm:p-4">
           {services.map((s, i) => (
             <span key={s} className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${TAG_TONES[i % TAG_TONES.length]}`}>
@@ -1230,8 +1219,8 @@ export function BetaOnboarding() {
             className="min-w-0 flex-1 basis-full bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none sm:min-w-[8rem] sm:basis-auto"
           />
         </div>
-        {services.length === 0 && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
-        <NextButton onClick={() => setStep("objective")} disabled={services.length === 0} />
+        {services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
+        <NextButton onClick={() => { addService(serviceDraft); setStep("objective"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />
         </div>
       </div>
     );
@@ -1809,14 +1798,6 @@ function BrandStepHeader({ domain, hostname, onEdit }: { domain: string | null; 
           <PencilSquareIcon className="h-4 w-4" />
         </button>
       )}
-    </div>
-  );
-}
-
-function SetupWarning({ className = "mb-4" }: { className?: string }) {
-  return (
-    <div className={`${className} rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800`}>
-      {GENERIC_AI_SETUP_ERROR}
     </div>
   );
 }
