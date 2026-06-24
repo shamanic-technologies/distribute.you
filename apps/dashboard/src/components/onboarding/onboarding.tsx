@@ -67,8 +67,8 @@ import {
 } from "@/lib/format-number";
 
 /**
- * Beta onboarding (allowlist only — see `beta-allowlist.ts`). A guided flow ported
- * from the app.distribute.you mockup: welcome → URL → an ANIMATED build sequence that
+ * Onboarding — the guided signup flow ported from the app.distribute.you mockup:
+ * welcome → URL → an ANIMATED build sequence that
  * runs WHILE the brand is created AND its profile / services / economics /
  * pricing projection are fetched for real → services to promote → sales goal →
  * conversion rates → describe audiences in plain language (human-service suggest)
@@ -418,7 +418,7 @@ function resolveResumeStep(step: Step, brandId: string | null): Step {
   return step;
 }
 
-export function BetaOnboarding() {
+export function Onboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { organization } = useOrganization();
@@ -867,7 +867,18 @@ export function BetaOnboarding() {
         signupToPaidClientPct: nextRates.s2c,
         optimizationGoal: optimizationGoalForOutcome(outcome),
       });
-      projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
+      // Refresh the projection BEST-EFFORT — never block the step on it. The
+      // projection comes off a cold Neon chain and can return stale/degenerate
+      // (no usable workflow cost data) for a given brand; throwing there left
+      // Continue a dead button. Keep the last-good projection on failure; the
+      // pricing/budget step refreshes it and degrades gracefully
+      // (derivedBudget → recommendedBudgetUsd). (#1766)
+      try {
+        projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
+      } catch (projErr) {
+        if (isInsufficientCredit(projErr)) throw projErr;
+        console.error("[dashboard] onboarding: projection refresh after rates non-fatal; advancing", projErr);
+      }
       setStep("audiences");
     } catch (err) {
       if (isInsufficientCredit(err)) {
@@ -1208,8 +1219,7 @@ export function BetaOnboarding() {
   if (step === "welcome") {
     return (
       <div className={cardWide}>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-600">Beta</span>
-        <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-gray-950">Pay per outcome, like Google Ads.</h1>
+        <h1 className="font-display text-4xl font-bold leading-tight text-gray-950">Pay per outcome, like Google Ads.</h1>
         <p className="mt-3 text-base leading-7 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
         <div className="mt-7 grid gap-4 sm:grid-cols-3">
           {[

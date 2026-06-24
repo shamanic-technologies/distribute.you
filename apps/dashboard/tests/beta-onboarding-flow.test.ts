@@ -8,7 +8,7 @@ import * as path from "path";
 // silently drops a real fetch / the launch is caught. Beta-gated via isBetaEmail.
 describe("Beta onboarding guided flow", () => {
   const src = fs.readFileSync(
-    path.join(__dirname, "../src/components/onboarding/beta-onboarding.tsx"),
+    path.join(__dirname, "../src/components/onboarding/onboarding.tsx"),
     "utf-8",
   );
 

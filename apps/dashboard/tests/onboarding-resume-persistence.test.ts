@@ -11,7 +11,7 @@ import * as path from "path";
  * load-bearing source, matching the repo's other onboarding guards.)
  */
 describe("Beta onboarding resume persistence", () => {
-  const filePath = path.join(__dirname, "../src/components/onboarding/beta-onboarding.tsx");
+  const filePath = path.join(__dirname, "../src/components/onboarding/onboarding.tsx");
   const src = fs.readFileSync(filePath, "utf-8");
 
   it("persists to a versioned sessionStorage snapshot key", () => {
