@@ -72,11 +72,11 @@ export interface ConversionLead {
   date: string | null;
 }
 
-/** One day of the server-computed contacted-lead series (ascending). */
-export interface OutreachContactedDay {
-  /** UTC calendar day (YYYY-MM-DD) of the contacted-lead bucket. */
+/** One day of a server-computed signal series (ascending). */
+export interface SignalSeriesDay {
+  /** UTC calendar day (YYYY-MM-DD) of the signal bucket. */
   date: string;
-  /** Number of leads first contacted on this UTC day. */
+  /** Number of leads first carrying the signal on this UTC day. */
   count: number;
 }
 
@@ -95,10 +95,13 @@ export interface OutreachContacted {
    * of each lead's contactedAt, ascending. Complete series — one entry per day
    * with ≥1 dated contacted lead; the graph slices its 7-day window from it.
    */
-  daily: OutreachContactedDay[];
+  daily: SignalSeriesDay[];
   /** Contacted leads with a null contactedAt (counted in total, in no day bucket). */
   undatedCount: number;
 }
+
+/** Same shape as `outreachContacted`, for opened / clicked / goal-outcome actuals. */
+export type SignalSeries = OutreachContacted;
 
 /** One raw event row (Events tab), single channel. */
 export interface ConversionEvent {
@@ -146,6 +149,16 @@ export interface RevenueOverview {
    * activity actual). Populated in prod (features-service v0.62.0).
    */
   outreachContacted?: OutreachContacted;
+  /**
+   * Server-computed actual series from the SAME `/revenue` `leads[]` snapshot as
+   * `outreachContacted`: Opens, Clicks, and observed goal outcomes. Optional
+   * during backend rollout; when absent the chart keeps legacy pipeline-activity
+   * actuals for that series.
+   */
+  opened?: SignalSeries;
+  clicked?: SignalSeries;
+  meetingsBooked?: SignalSeries;
+  purchased?: SignalSeries;
   timeSeries: RevenuePoint[];
   organizations: ConversionOrg[];
   leads: ConversionLead[];

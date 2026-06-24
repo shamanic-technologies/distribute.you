@@ -206,9 +206,15 @@ function buildMetricValues(
   optimizationGoal: BrandOptimizationGoal,
   visitToMeetingPct: number | null | undefined,
 ): Record<ChartMetricKey, PipelineActivityMetric> {
+  const projectedSalesMeetings = projectedMetric(day.metrics.clicks, visitToMeetingPct);
+  const explicitSalesMeetings = (
+    day.metrics as typeof day.metrics & { salesMeetings?: PipelineActivityMetric }
+  ).salesMeetings;
   return {
     ...day.metrics,
-    salesMeetings: projectedMetric(day.metrics.clicks, visitToMeetingPct),
+    salesMeetings: explicitSalesMeetings
+      ? { ...projectedSalesMeetings, actual: explicitSalesMeetings.actual }
+      : projectedSalesMeetings,
   };
 }
 

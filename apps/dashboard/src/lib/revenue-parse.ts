@@ -63,11 +63,10 @@ const CostEconomicsSchema = z.object({
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
 });
-// Server-computed contacted aggregate (features-service#371/#372). `.optional()`
-// decouples the backend rollout — once prod serves it (v0.62.0) the Outreach card
-// + graph-actual read straight off it. `z.coerce.number()` because Postgres
-// numeric/bigint can serialize as a string on the wire.
-const OutreachContactedSchema = z.object({
+// Server-computed signal aggregate. `.optional()` on the response fields decouples
+// backend rollout; `z.coerce.number()` because Postgres numeric/bigint can
+// serialize as a string on the wire.
+const SignalSeriesSchema = z.object({
   total: z.coerce.number(),
   daily: z.array(
     z.object({ date: z.string(), count: z.coerce.number() }),
@@ -77,7 +76,11 @@ const OutreachContactedSchema = z.object({
 
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
-  outreachContacted: OutreachContactedSchema.optional(),
+  outreachContacted: SignalSeriesSchema.optional(),
+  opened: SignalSeriesSchema.optional(),
+  clicked: SignalSeriesSchema.optional(),
+  meetingsBooked: SignalSeriesSchema.optional(),
+  purchased: SignalSeriesSchema.optional(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
   costEconomics: CostEconomicsSchema,
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
@@ -101,6 +104,10 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
     totalPipelineUsd: d.headline.totalPipelineUsd,
     costEconomics: d.costEconomics,
     outreachContacted: d.outreachContacted,
+    opened: d.opened,
+    clicked: d.clicked,
+    meetingsBooked: d.meetingsBooked,
+    purchased: d.purchased,
     timeSeries: d.timeSeries,
     organizations: d.organizations,
     leads: d.leads,
