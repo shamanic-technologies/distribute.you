@@ -19,6 +19,7 @@ import {
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
   keepLastGoodFeatureRevenue,
+  type PipelineActivityMetric,
   type WorkflowProjectionResponse,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
@@ -38,6 +39,23 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 const DEFAULT_VISIT_TO_MEETING_PCT = 20;
+
+function countByDay(series: RevenueOverview["outreachContacted"]): Map<string, number> | null {
+  if (!series) return null;
+  return new Map(series.daily.map((d) => [d.date, d.count] as const));
+}
+
+function actualFrom(
+  byDay: Map<string, number> | null,
+  date: string,
+  fallback: number | null,
+): number | null {
+  return byDay ? byDay.get(date) ?? 0 : fallback;
+}
+
+function withActual(metric: PipelineActivityMetric, actual: number | null): PipelineActivityMetric {
+  return { ...metric, actual };
+}
 
 function FirstClickReassuranceBanner() {
   return (
@@ -122,31 +140,47 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
-  // ── Single-source "contacted" (features-service#371/#372) ─────────────────
-  // The Outreach stat card count + the 7-day graph's ACTUAL outreach series now
-  // read the SAME server-computed `outreachContacted` aggregate that
-  // features-service derives from the same `/revenue` `leads[]` snapshot the
-  // table renders — so a newly-contacted lead lands on all three surfaces from
-  // ONE snapshot (no table→card→graph stagger). RENDER-ONLY: the backend already
-  // computed the total + daily buckets; the dashboard never re-sums/re-buckets
-  // leads here. The graph's EXPECTED/forecast series stays from pipeline-activity
-  // untouched — only the outreach actual is overridden. `outreachContacted` is
-  // optional during rollout: when absent, the card falls back to the legacy
-  // /stats outreach count and the graph keeps its /pipeline-activity actual.
+  // ── Single-source graph ACTUALS (features-service#371/#372/#377) ───────────
+  // The stat cards, graph actual bars and conversions table now read the SAME
+  // `/revenue` snapshot aggregates. Forecast/expected values stay from
+  // pipeline-activity. Each server series is optional during backend rollout:
+  // absent series keep the legacy pipeline-activity actual for that metric.
   const contactedTotal = data?.outreachContacted?.total ?? null;
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
-    const daily = data?.outreachContacted?.daily;
-    // No server aggregate yet (cold/pre-rollout) → leave pipeline-activity actual.
-    if (!daily) return pipelineActivity;
-    const countByDay = new Map(daily.map((d) => [d.date, d.count] as const));
+    const contactedByDay = countByDay(data?.outreachContacted);
+    const openedByDay = countByDay(data?.opened);
+    const clickedByDay = countByDay(data?.clicked);
+    const meetingsByDay = countByDay(data?.meetingsBooked);
+    if (!contactedByDay && !openedByDay && !clickedByDay && !meetingsByDay) {
+      return pipelineActivity;
+    }
     return {
       ...pipelineActivity,
       days: pipelineActivity.days.map((day) => ({
         ...day,
         metrics: {
           ...day.metrics,
-          outreach: { ...day.metrics.outreach, actual: countByDay.get(day.date) ?? 0 },
+          outreach: withActual(
+            day.metrics.outreach,
+            actualFrom(contactedByDay, day.date, day.metrics.outreach.actual),
+          ),
+          opens: withActual(
+            day.metrics.opens,
+            actualFrom(openedByDay, day.date, day.metrics.opens.actual),
+          ),
+          clicks: withActual(
+            day.metrics.clicks,
+            actualFrom(clickedByDay, day.date, day.metrics.clicks.actual),
+          ),
+          signups: withActual(
+            day.metrics.signups,
+            actualFrom(clickedByDay, day.date, day.metrics.signups.actual),
+          ),
+          salesMeetings: withActual(
+            { actual: null, expected: null, conversionPct: null },
+            actualFrom(meetingsByDay, day.date, null),
+          ),
         },
       })),
     };

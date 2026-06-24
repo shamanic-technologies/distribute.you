@@ -8,11 +8,11 @@ import type { RevenueOverview } from "../src/lib/revenue-view";
 const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
-// A minimal-but-valid /revenue overview payload, optionally with outreachContacted.
-function rawRevenue(outreachContacted?: unknown) {
+// A minimal-but-valid /revenue overview payload, optionally with actual signal series.
+function rawRevenue(series?: Partial<Record<"outreachContacted" | "opened" | "clicked" | "meetingsBooked" | "purchased", unknown>>) {
   return {
     featureSlug: "sales-cold-email-outreach",
-    ...(outreachContacted !== undefined ? { outreachContacted } : {}),
+    ...(series ?? {}),
     headline: { totalPipelineUsd: 1000 },
     costEconomics: { totalCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
     timeSeries: [],
@@ -26,12 +26,14 @@ describe("parseFeatureRevenue → outreachContacted (server-computed, render-onl
   it("parses the server outreachContacted aggregate (total / daily / undatedCount)", () => {
     const view = parseFeatureRevenue(
       rawRevenue({
-        total: 5,
-        daily: [
-          { date: "2026-06-21", count: 2 },
-          { date: "2026-06-22", count: 2 },
-        ],
-        undatedCount: 1,
+        outreachContacted: {
+          total: 5,
+          daily: [
+            { date: "2026-06-21", count: 2 },
+            { date: "2026-06-22", count: 2 },
+          ],
+          undatedCount: 1,
+        },
       }),
       "test",
     );
@@ -46,9 +48,11 @@ describe("parseFeatureRevenue → outreachContacted (server-computed, render-onl
   it("coerces string integers on the wire (Postgres numeric/bigint serialize as string)", () => {
     const view = parseFeatureRevenue(
       rawRevenue({
-        total: "7",
-        daily: [{ date: "2026-06-22", count: "7" }],
-        undatedCount: "0",
+        outreachContacted: {
+          total: "7",
+          daily: [{ date: "2026-06-22", count: "7" }],
+          undatedCount: "0",
+        },
       }),
       "test",
     );
@@ -58,28 +62,48 @@ describe("parseFeatureRevenue → outreachContacted (server-computed, render-onl
   });
 
   it("tolerates an absent outreachContacted (optional during rollout)", () => {
-    const view = parseFeatureRevenue(rawRevenue(undefined), "test");
+    const view = parseFeatureRevenue(rawRevenue(), "test");
     expect(view.outreachContacted).toBeUndefined();
     // the rest of the overview still parses
     expect(view.totalPipelineUsd).toBe(1000);
+  });
+
+  it("parses opened/clicked/goal-outcome series from the same signal-series schema", () => {
+    const view = parseFeatureRevenue(
+      rawRevenue({
+        opened: { total: 2, daily: [{ date: "2026-06-24", count: 2 }], undatedCount: 0 },
+        clicked: { total: 1, daily: [{ date: "2026-06-24", count: 1 }], undatedCount: 0 },
+        meetingsBooked: { total: 1, daily: [{ date: "2026-06-25", count: 1 }], undatedCount: 0 },
+        purchased: { total: 0, daily: [], undatedCount: 0 },
+      }),
+      "test",
+    );
+    expect(view.opened?.daily).toEqual([{ date: "2026-06-24", count: 2 }]);
+    expect(view.clicked?.total).toBe(1);
+    expect(view.meetingsBooked?.daily).toEqual([{ date: "2026-06-25", count: 1 }]);
+    expect(view.purchased?.total).toBe(0);
   });
 });
 
 describe("keepLastGoodFeatureRevenue (cache-write boundary)", () => {
   const withContacted = parseFeatureRevenue(
-    rawRevenue({ total: 9, daily: [{ date: "2026-06-22", count: 9 }], undatedCount: 0 }),
+    rawRevenue({
+      outreachContacted: { total: 9, daily: [{ date: "2026-06-22", count: 9 }], undatedCount: 0 },
+      opened: { total: 4, daily: [{ date: "2026-06-22", count: 4 }], undatedCount: 0 },
+    }),
     "test",
   );
-  const withoutContacted = parseFeatureRevenue(rawRevenue(undefined), "test");
+  const withoutContacted = parseFeatureRevenue(rawRevenue(), "test");
 
-  it("keeps last-good outreachContacted when a refetch drops it on a valid 200", () => {
+  it("keeps last-good actual series when a refetch drops them on a valid 200", () => {
     const merged = keepLastGoodFeatureRevenue(withContacted, withoutContacted);
     expect(merged.outreachContacted?.total).toBe(9);
+    expect(merged.opened?.total).toBe(4);
   });
 
   it("adopts a fresh non-null outreachContacted (no stale pinning)", () => {
     const next = parseFeatureRevenue(
-      rawRevenue({ total: 11, daily: [], undatedCount: 11 }),
+      rawRevenue({ outreachContacted: { total: 11, daily: [], undatedCount: 11 } }),
       "test",
     );
     const merged = keepLastGoodFeatureRevenue(withContacted, next);
@@ -100,12 +124,17 @@ describe("single-source wiring (Overview card + graph read /revenue outreachCont
   const view = read("../src/lib/revenue-view.ts");
   const cards = read("../src/components/revenue/outreach-stat-cards.tsx");
 
-  it("revenue-parse declares the optional, coercing outreachContacted schema", () => {
-    expect(parse).toContain("outreachContacted: OutreachContactedSchema.optional()");
+  it("revenue-parse declares optional, coercing signal-series schemas", () => {
+    expect(parse).toContain("outreachContacted: SignalSeriesSchema.optional()");
+    expect(parse).toContain("opened: SignalSeriesSchema.optional()");
+    expect(parse).toContain("clicked: SignalSeriesSchema.optional()");
+    expect(parse).toContain("meetingsBooked: SignalSeriesSchema.optional()");
+    expect(parse).toContain("purchased: SignalSeriesSchema.optional()");
     expect(parse).toContain("total: z.coerce.number()");
     expect(parse).toContain("count: z.coerce.number()");
     expect(parse).toContain("undatedCount: z.coerce.number()");
     expect(view).toContain("outreachContacted?: OutreachContacted");
+    expect(view).toContain("opened?: SignalSeries");
   });
 
   it("Outreach card count comes from the server outreachContacted.total", () => {
@@ -118,16 +147,21 @@ describe("single-source wiring (Overview card + graph read /revenue outreachCont
     );
   });
 
-  it("graph actual outreach is mapped from outreachContacted.daily, expected untouched", () => {
-    expect(page).toContain("data?.outreachContacted?.daily");
-    expect(page).toContain(
-      "outreach: { ...day.metrics.outreach, actual: countByDay.get(day.date) ?? 0 }",
-    );
+  it("graph actuals are mapped from /revenue series, expected untouched", () => {
+    expect(page).toContain("const contactedByDay = countByDay(data?.outreachContacted)");
+    expect(page).toContain("const openedByDay = countByDay(data?.opened)");
+    expect(page).toContain("const clickedByDay = countByDay(data?.clicked)");
+    expect(page).toContain("const meetingsByDay = countByDay(data?.meetingsBooked)");
+    expect(page).toContain("opens: withActual(");
+    expect(page).toContain("clicks: withActual(");
+    expect(page).toContain("signups: withActual(");
+    expect(page).toContain("salesMeetings: withActual(");
     expect(page).toContain("pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}");
   });
 
-  it("featureRevenue query keeps last-good outreachContacted via structuralSharing", () => {
+  it("featureRevenue query keeps last-good actual series via structuralSharing", () => {
     expect(page).toContain("keepLastGoodFeatureRevenue");
     expect(page).toContain("structuralSharing");
+    expect(parse).toContain("meetingsBooked: d.meetingsBooked");
   });
 });
