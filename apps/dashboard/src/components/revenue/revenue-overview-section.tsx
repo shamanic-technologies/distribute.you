@@ -6,7 +6,7 @@ import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
 import type { BrandOptimizationGoal, CostByName, PipelineActivityResponse } from "@/lib/api";
-import type { RevenueOverview } from "@/lib/revenue-view";
+import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 
 function formatOutcomeCount(n: number | null): string {
   if (n === null) return "—";
@@ -30,8 +30,10 @@ export function RevenueOverviewSection({
   headerAction,
   topRow,
   pipelineActivity,
+  pipelineActualSeries,
   optimizationGoal,
   visitToMeetingPct,
+  visitToSignupPct,
   expectedOutcome,
   costBottomCard,
   revenuePending = false,
@@ -43,8 +45,16 @@ export function RevenueOverviewSection({
 }: {
   data?: RevenueOverview;
   pipelineActivity?: PipelineActivityResponse;
+  pipelineActualSeries?: {
+    outreach?: SignalSeries;
+    opens?: SignalSeries;
+    clicks?: SignalSeries;
+    signups?: SignalSeries;
+    salesMeetings?: SignalSeries;
+  };
   optimizationGoal: BrandOptimizationGoal;
   visitToMeetingPct: number | null | undefined;
+  visitToSignupPct: number | null | undefined;
   costBreakdown: CostByName[];
   todayCostBreakdown?: CostByName[];
   dailyBudgetCents?: number | null;
@@ -60,7 +70,7 @@ export function RevenueOverviewSection({
   costBottomCard?: ReactNode;
   /** features-service `/revenue` reveal — headline and conversions. */
   revenuePending?: boolean;
-  /** features-service pipeline-activity reveal — 7-day actual/expected chart. */
+  /** features-service pipeline-activity reveal — forecast for the graph. */
   activityPending?: boolean;
   /** Goal-specific expected monthly outcome, replacing the old revenue headline. */
   expectedOutcome?: {
@@ -106,7 +116,7 @@ export function RevenueOverviewSection({
         {/* Headline + activity chart */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 md:p-6">
           <div className="flex items-baseline justify-between mb-4">
-            <h3 className="font-medium text-gray-800">Outreach activity next 7 days</h3>
+            <h3 className="font-medium text-gray-800">Outreach activity</h3>
             <div className="text-right">
               {outcomeLoading ? (
                 <Skeleton className="h-8 w-28" />
@@ -123,8 +133,10 @@ export function RevenueOverviewSection({
           ) : (
             <PipelineActivityChart
               data={pipelineActivity}
+              pipelineActualSeries={pipelineActualSeries}
               optimizationGoal={optimizationGoal}
               visitToMeetingPct={visitToMeetingPct}
+              visitToSignupPct={visitToSignupPct}
             />
           )}
         </div>
