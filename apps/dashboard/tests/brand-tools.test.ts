@@ -155,10 +155,12 @@ describe("brand-tools removal", () => {
       expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
     });
 
-    it("feature leads page uses listBrandLeads (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/leads/page.tsx");
+    it("audiences leads page uses listBrandLeads (brand-level filter)", () => {
+      const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listBrandLeads");
+      expect(src).toContain("replyClassification === \"positive\"");
+      expect(src).toContain("lead.clicked");
     });
 
     it("feature emails page uses listBrandEmails (brand-level filter)", () => {
@@ -179,9 +181,9 @@ describe("brand-tools removal", () => {
     const sidebarSrc = fs.readFileSync(sidebarPath, "utf-8");
 
     it("no longer builds an entity Database section (removed from the sidebar)", () => {
-      // The "Database" section (raw entity rows + their count badges) was removed
-      // — lead data is surfaced via the overview's lead detail panel. The entity
-      // registry, per-entity count queries and badge plumbing went with it.
+      // The "Database" section (raw entity rows + their count badges) was removed.
+      // The entity registry, per-entity count queries and badge plumbing went
+      // with it; engaged leads now live under Audiences.
       expect(sidebarSrc).not.toContain("useEntityRegistry");
       expect(sidebarSrc).not.toContain("entityItems");
       expect(sidebarSrc).not.toContain("entityCounts");

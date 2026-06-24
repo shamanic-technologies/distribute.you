@@ -21,6 +21,7 @@ interface SidebarItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  depth?: number;
   comingSoon?: boolean;
   badge?: number;
   maturity?: Maturity;
@@ -42,6 +43,7 @@ function SidebarLink({
       href={item.href}
       className={`
         flex min-w-0 items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition
+        ${item.depth ? "ml-6" : ""}
         ${item.comingSoon
           ? "text-gray-400 opacity-60 hover:opacity-80"
           : isActive
@@ -202,6 +204,12 @@ const AudiencesIcon = () => (
   </svg>
 );
 
+const LeadsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0M18 8.25h3m-1.5-1.5v3" />
+  </svg>
+);
+
 const BrandProfileIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
@@ -266,7 +274,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: explicitHierarchyHref(`/orgs/${orgId}`), icon: <HomeIcon /> },
   ];
-
   return (
     <SidebarSection title="Organization">
       {topItems.map((item) => (
@@ -390,10 +397,9 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
-  // The "Database" section (raw entity rows: Leads/Emails/Outlets/…) was removed
-  // from the sidebar — lead data is now surfaced through the overview's lead
-  // detail panel. With it gone, all the per-entity count queries + badge-reveal
-  // plumbing that fed it are dropped; the top nav is static.
+  // The old "Database" section (raw entity rows: Leads/Emails/Outlets/…) stays
+  // removed. Engaged leads are now surfaced under Audiences; the per-entity count
+  // queries + badge-reveal plumbing that fed Database remain dropped.
   const defsReady = !featuresLoading;
 
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
@@ -423,6 +429,18 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
         ]
       : []),
   ];
+  const audienceItems: SidebarItem[] =
+    revenueOk && isBeta
+      ? [
+          {
+            id: "audience-leads",
+            label: "Leads",
+            href: `${basePath}/audiences/leads`,
+            icon: <LeadsIcon />,
+            depth: 1,
+          },
+        ]
+      : [];
 
   return (
     <SidebarSection
@@ -465,8 +483,17 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               isActive={
                 item.id === "overview"
                   ? pathname === basePath
+                  : item.id === "audiences"
+                    ? pathname === item.href
                   : pathname.startsWith(item.href)
               }
+            />
+          ))}
+          {audienceItems.map((item) => (
+            <SidebarLink
+              key={item.id}
+              item={item}
+              isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
             />
           ))}
         </>
