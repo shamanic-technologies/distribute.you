@@ -39,6 +39,7 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 const DEFAULT_VISIT_TO_MEETING_PCT = 20;
+const DEFAULT_VISIT_TO_SIGNUP_PCT = 25;
 
 function countByDay(series: RevenueOverview["outreachContacted"]): Map<string, number> | null {
   if (!series) return null;
@@ -185,6 +186,13 @@ export default function BrandOverviewPage() {
       })),
     };
   }, [pipelineActivity, data]);
+  const pipelineActualSeries = useMemo(() => ({
+    outreach: data?.outreachContacted,
+    opens: data?.opened,
+    clicks: data?.clicked,
+    signups: data?.clicked,
+    salesMeetings: data?.meetingsBooked,
+  }), [data]);
 
   // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
   // Cost & efficiency card. Shares the Campaigns page's query key + 5s cadence so
@@ -222,6 +230,8 @@ export default function BrandOverviewPage() {
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
   const visitToMeetingPct =
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
+  const visitToSignupPct =
+    economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
   const audienceStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
   const audienceStatsMetric = audienceStatsGoal === "signup" ? "cpc" : "cppr";
 
@@ -400,8 +410,10 @@ export default function BrandOverviewPage() {
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
+        pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
         optimizationGoal={optimizationGoal}
         visitToMeetingPct={visitToMeetingPct}
+        visitToSignupPct={visitToSignupPct}
         revenuePending={!revenueRevealed}
         activityPending={!activityRevealed}
         expectedOutcome={
