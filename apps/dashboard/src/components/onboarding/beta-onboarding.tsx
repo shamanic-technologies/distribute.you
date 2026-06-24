@@ -75,6 +75,13 @@ import {
 const SALES_FEATURE_SLUG = "sales-cold-email-outreach";
 const PROJECTION_REF_BUDGET = 100; // counts come back at this budget; unit costs are budget-invariant
 const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
+// Per-tab snapshot of the in-progress onboarding so a refresh / back-navigation
+// resumes on the SAME step with everything the user typed/selected intact, instead
+// of resetting to the welcome screen. sessionStorage (not localStorage): scoped to
+// the tab, auto-cleared on close → no stale cross-session bleed. Bump VERSION to bust
+// an incompatible shape after a flow change. Cleared on genuine completion (launch()).
+const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
+const ONBOARDING_STATE_VERSION = 1;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 const PRICING_REFRESH_RETRIES = 3;
 const PRICING_REFRESH_RETRY_DELAY_MS = 500;
@@ -218,6 +225,31 @@ type PendingCheckoutLaunch = {
   createdAt: string;
 };
 
+// What we snapshot to resume the wizard after a refresh / back. Only user-entered or
+// user-selected state + the ids needed to re-hydrate the backing data — never transient
+// UI (busy/error) or runtime-recomputable values (audiencePrefetch). `flowKey` keeps a
+// fresh-signup snapshot from bleeding into a "New brand" (?from=add) / "New org" (?new=1)
+// session in the same tab, and vice-versa.
+type OnboardingFlowKey = "signup" | "add" | "new";
+type PersistedOnboardingState = {
+  version: typeof ONBOARDING_STATE_VERSION;
+  flowKey: OnboardingFlowKey;
+  step: Step;
+  url: string;
+  outcome: Outcome;
+  rates: Record<RateKey, number>;
+  rateText: Record<RateKey, string>;
+  services: string[];
+  profile: Record<string, string | string[]>;
+  selectedCount: number | null;
+  customCount: string;
+  checkoutBudgetUsd: number | null;
+  brandId: string | null;
+  orgId: string | null;
+  servicesEdited: boolean;
+  ratesEdited: boolean;
+};
+
 function isStringRecord(value: unknown): value is Record<string, string> {
   return (
     !!value &&
@@ -305,6 +337,75 @@ function normalizeServices(value: unknown): string[] {
   return toStringList(value).filter(isUsefulServiceLabel);
 }
 
+function isRateRecord(value: unknown): value is Record<RateKey, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c"];
+  return keys.every((k) => typeof (value as Record<string, unknown>)[k] === "number");
+}
+function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c"];
+  return keys.every((k) => typeof (value as Record<string, unknown>)[k] === "string");
+}
+const ALL_STEPS: Step[] = [
+  "welcome", "url", "loading", "services", "objective", "rates", "audiences", "consent", "pricing", "launching",
+];
+
+function readOnboardingState(): PersistedOnboardingState | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.sessionStorage.getItem(ONBOARDING_STATE_KEY);
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as Partial<PersistedOnboardingState>;
+    if (
+      p.version !== ONBOARDING_STATE_VERSION ||
+      (p.flowKey !== "signup" && p.flowKey !== "add" && p.flowKey !== "new") ||
+      typeof p.step !== "string" || !ALL_STEPS.includes(p.step as Step) ||
+      typeof p.url !== "string" ||
+      (p.outcome !== "signups" && p.outcome !== "meetings") ||
+      !isRateRecord(p.rates) || !isRateTextRecord(p.rateText) ||
+      !isStringList(p.services) || !isProfileRecord(p.profile) ||
+      !(p.selectedCount === null || typeof p.selectedCount === "number") ||
+      typeof p.customCount !== "string" ||
+      !(p.checkoutBudgetUsd === null || typeof p.checkoutBudgetUsd === "number") ||
+      !(p.brandId === null || typeof p.brandId === "string") ||
+      !(p.orgId === null || typeof p.orgId === "string") ||
+      typeof p.servicesEdited !== "boolean" || typeof p.ratesEdited !== "boolean"
+    ) {
+      return null;
+    }
+    return p as PersistedOnboardingState;
+  } catch {
+    return null;
+  }
+}
+
+function writeOnboardingState(state: PersistedOnboardingState): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(ONBOARDING_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // quota / private-mode — persistence is best-effort, never block the flow.
+  }
+}
+
+function clearOnboardingState(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(ONBOARDING_STATE_KEY);
+}
+
+// Map a persisted step to where the resume should LAND. `loading` and `launching`
+// are transient action steps (an async create/launch was mid-flight when the page
+// died) — never restore INTO them: resolve to the nearest stable step the user can
+// act on. A post-URL stable step needs the backing data (brand record, economics,
+// projection) the loading screen fetched, so the resume replays that hydration first
+// (see resumeOnboarding) and only THEN shows this step.
+function resolveResumeStep(step: Step, brandId: string | null): Step {
+  if (step === "loading") return brandId ? "services" : "url";
+  if (step === "launching") return "pricing";
+  return step;
+}
+
 export function BetaOnboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -315,25 +416,40 @@ export function BetaOnboarding() {
   // Entered from an in-app "New brand" / "New org" button (vs a fresh signup) —
   // skip the welcome hero and land straight on the URL step. Same flow otherwise.
   const fromAdd = searchParams.get("from") === "add";
+  const flowKey: OnboardingFlowKey = fromAdd ? "add" : forceNew ? "new" : "signup";
 
-  const [step, setStep] = useState<Step>(fromAdd ? "url" : "welcome");
-  const [url, setUrl] = useState(searchParams.get("url")?.trim() ?? "");
+  // Resume snapshot (refresh / back). Read ONCE, synchronously, before first paint —
+  // a `useRef` lazy-init seeds every field below so `url`/`outcome`/`rates`/etc. are
+  // already correct on render 1 (no setState-async restore flash). Skipped when a
+  // Stripe checkout return owns the resume (?launch_checkout=…) or the snapshot is from
+  // a different flow intent (signup vs add vs new) in the same tab.
+  const restoreRef = useRef<PersistedOnboardingState | null>(null);
+  if (restoreRef.current === null) {
+    const snap = searchParams.get("launch_checkout") ? null : readOnboardingState();
+    restoreRef.current = snap && snap.flowKey === flowKey ? snap : null;
+  }
+  const restored = restoreRef.current;
+
+  const [step, setStep] = useState<Step>(() =>
+    restored ? resolveResumeStep(restored.step, restored.brandId) : fromAdd ? "url" : "welcome",
+  );
+  const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [outcome, setOutcome] = useState<Outcome>("signups");
-  const [rates, setRates] = useState<Record<RateKey, number>>({ ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 });
-  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => ({ ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25" }));
-  const [services, setServices] = useState<string[]>([]);
+  const [outcome, setOutcome] = useState<Outcome>(() => restored?.outcome ?? "signups");
+  const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 });
+  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25" });
+  const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
   const [serviceDraft, setServiceDraft] = useState("");
-  const [profile, setProfile] = useState<Record<string, string | string[]>>({});
+  const [profile, setProfile] = useState<Record<string, string | string[]>>(() => restored?.profile ?? {});
   // Outcome-count budget selection. selectedCount drives the derived $/day; budget
   // is the $/day value sent to the campaign. Tiers are derived from a STABLE base
   // (the projection unit cost), never from the selection — so clicking a card never
   // reshuffles the cards (the old $/day-tier bug).
-  const [selectedCount, setSelectedCount] = useState<number | null>(null);
-  const [customCount, setCustomCount] = useState("");
-  const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(null);
+  const [selectedCount, setSelectedCount] = useState<number | null>(() => restored?.selectedCount ?? null);
+  const [customCount, setCustomCount] = useState(() => restored?.customCount ?? "");
+  const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(() => restored?.checkoutBudgetUsd ?? null);
   // Pre-warmed audience step. During the loading screen we draft the ICP prompt
   // AND fire the audience suggest in the background, so the audience step opens
   // with candidates already (or nearly) ready — zero wait, zero click. Stashed in
@@ -346,9 +462,9 @@ export function BetaOnboarding() {
   // client milestones: org ready, brand upserted, then service extraction.
   const [loadStep, setLoadStep] = useState(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const [brandId, setBrandId] = useState<string | null>(null);
-  const brandIdRef = useRef<string | null>(null);
-  const orgIdRef = useRef<string | null>(null);
+  const [brandId, setBrandId] = useState<string | null>(() => restored?.brandId ?? null);
+  const brandIdRef = useRef<string | null>(restored?.brandId ?? null);
+  const orgIdRef = useRef<string | null>(restored?.orgId ?? null);
   const fetchDoneRef = useRef(false);
   const loadingStartedAtRef = useRef<number | null>(null);
   const checkoutResumeStartedRef = useRef(false);
@@ -362,8 +478,11 @@ export function BetaOnboarding() {
   const econRef = useRef<EffectiveSalesEconomics | null>(null);
   const launchFeatureInputsRef = useRef<Record<string, string> | null>(null);
   const hydrationPromiseRef = useRef<Promise<void> | null>(null);
-  const servicesEditedRef = useRef(false);
-  const ratesEditedRef = useRef(false);
+  // Seed the "user edited this" guards from the snapshot so a resume's re-extraction /
+  // re-hydration does NOT clobber values the user already changed (see hydrateOnboarding
+  // InBackground / createBrandAndFetchServices, which both respect these refs).
+  const servicesEditedRef = useRef(restored?.servicesEdited ?? false);
+  const ratesEditedRef = useRef(restored?.ratesEdited ?? false);
   // The sales feature's declared input definitions — needed to build the
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>([]);
@@ -381,6 +500,75 @@ export function BetaOnboarding() {
     }
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  // Where a post-URL refresh should land once its backing data is re-hydrated. Computed
+  // once from the snapshot; null when there's nothing to replay (fresh start, or a
+  // welcome/url snapshot that needs no backing data — those restore directly above).
+  const resumeTargetRef = useRef<Step | null>(
+    restored && !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId))
+      ? resolveResumeStep(restored.step, restored.brandId)
+      : null,
+  );
+  const resumeStartedRef = useRef(false);
+
+  // Persist the in-progress wizard on every change so a refresh / back resumes here.
+  // Skipped while a Stripe checkout owns the resume (?launch_checkout=…); the raw step is
+  // fine to store — resolveResumeStep remaps transient loading/launching on the way back.
+  useEffect(() => {
+    if (searchParams.get("launch_checkout")) return;
+    writeOnboardingState({
+      version: ONBOARDING_STATE_VERSION,
+      flowKey,
+      step,
+      url,
+      outcome,
+      rates,
+      rateText,
+      services,
+      profile,
+      selectedCount,
+      customCount,
+      checkoutBudgetUsd,
+      brandId,
+      orgId: orgIdRef.current,
+      servicesEdited: servicesEditedRef.current,
+      ratesEdited: ratesEditedRef.current,
+    });
+  }, [step, url, outcome, rates, rateText, services, profile, selectedCount, customCount, checkoutBudgetUsd, brandId, flowKey, searchParams]);
+
+  // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
+  // economics, projection, feature inputs) the deeper steps depend on, then land the
+  // user back on the exact step they were on. The brand already exists → idempotent.
+  async function runResume(target: Step): Promise<void> {
+    setStep("loading");
+    resetLoadingProgress();
+    try {
+      await createBrandAndFetchServices({ isResume: true });
+      setStep(target);
+    } catch (err) {
+      if (isInsufficientCredit(err)) {
+        // Welcome credit ran out during re-hydration — the add-credit modal auto-opened;
+        // resume the replay on credit add instead of bouncing to the URL step.
+        creditRetryRef.current = () => runResume(target);
+        return;
+      }
+      console.error("[dashboard] onboarding resume failed:", err);
+      setStep("url");
+    }
+  }
+
+  useEffect(() => {
+    if (!resumeTargetRef.current || resumeStartedRef.current) return;
+    resumeStartedRef.current = true;
+    if (!restored?.brandId || !restored.url) {
+      // No brand to re-hydrate from — fall back to the URL step (fields stay filled).
+      resumeTargetRef.current = null;
+      setStep("url");
+      return;
+    }
+    void runResume(resumeTargetRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function maybeAdvancePastLoading() {
@@ -477,14 +665,19 @@ export function BetaOnboarding() {
   }
 
   // Create the brand for real, then block only on the services needed by the next step.
-  async function createBrandAndFetchServices(): Promise<void> {
+  // On a RESUME (refresh after the brand was already created) the org + brand already
+  // exist: force org reuse so we never spin up a duplicate org, and the idempotent
+  // upsertBrand below returns the same brandId.
+  async function createBrandAndFetchServices(opts?: { isResume?: boolean }): Promise<void> {
+    const isResume = opts?.isResume ?? false;
     const trimmed = url.trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     const workspaceStartedAt = performance.now();
-    const reuseOrg = !forceNew && !!organization?.id;
+    const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
+    const reuseOrg = (isResume || !forceNew) && !!reuseOrgId;
     let targetOrgId: string;
     if (reuseOrg) {
-      targetOrgId = organization.id;
+      targetOrgId = reuseOrgId!;
     } else {
       if (!createOrganization || !setActive) {
         throw new Error("Organization setup is not ready yet. Please try again.");
@@ -717,6 +910,9 @@ export function BetaOnboarding() {
     // JWT loops the next navigation back to /onboarding (DIS-111).
     await session?.getToken({ skipCache: true }).catch(() => {});
     window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
+    // Flow genuinely finished — drop the resume snapshot so the next onboarding (a new
+    // brand/org in the same tab) starts clean instead of resuming this completed one.
+    clearOnboardingState();
     setLaunchStep(4);
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
   }
