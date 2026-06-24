@@ -238,6 +238,21 @@
       background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
     }
 
+    /* ═══ Light-mode gradients ═══ */
+    [data-theme="light"] .step-illu {
+      background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
+    }
+    [data-theme="light"] .feat-card {
+      background: linear-gradient(170deg, oklch(88% 0.036 232) 0%, oklch(99.5% 0.001 264) 50%);
+    }
+    [data-theme="light"] .metrics-table {
+      background: var(--surface);
+      box-shadow: 0 2px 14px oklch(0% 0 0 / 0.06), 0 1px 4px oklch(0% 0 0 / 0.04);
+    }
+    [data-theme="light"] .metrics-table th {
+      background: linear-gradient(160deg, oklch(88% 0.036 232) 0%, oklch(96% 0.010 238) 100%);
+    }
+
     /* ═══ Responsive ═══ */
     @media (max-width: 900px) {
       .steps-bento { grid-template-columns: 1fr; }
