@@ -9,6 +9,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type ManualQualificationStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { Skeleton } from "@/components/skeleton";
 import { WorkflowTag } from "@/components/report/workflow-tag";
 import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
 import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
@@ -116,6 +117,38 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
+function LeadsLoadingSkeleton() {
+  return (
+    <>
+      <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="px-4 py-2">
+            <Skeleton className="h-5 w-24 rounded" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="mb-4 h-10 w-full rounded-lg" />
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="divide-y divide-gray-100">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_7rem_5rem] gap-4 px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="h-6 w-6 rounded" />
+                <Skeleton className="h-4 w-32 rounded" />
+              </div>
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-36 rounded" />
+                <Skeleton className="h-3 w-28 rounded" />
+              </div>
+              <Skeleton className="hidden h-5 w-20 rounded-full sm:block" />
+              <Skeleton className="hidden h-4 w-12 rounded md:block" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
 
 function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
   leads: Lead[];
@@ -199,7 +232,7 @@ export function EngagedLeadsPage() {
   const [editStatusOpen, setEditStatusOpen] = useState(false);
   const hasAutoSelectedTab = useRef(false);
 
-  const { data, isPending } = useAuthQuery(
+  const { data, isPending, isPlaceholderData } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     { refetchInterval: POLL_INTERVAL },
@@ -302,7 +335,7 @@ export function EngagedLeadsPage() {
   // search) paints immediately; only the table region skeletons while the slow
   // `brandLeads` fetch (lead-service is the bottleneck) is still cold. Gating the
   // WHOLE page on this blanked the screen for the entire load.
-  const loading = isPending && !data;
+  const loading = isPending || isPlaceholderData;
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
@@ -317,42 +350,46 @@ export function EngagedLeadsPage() {
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
-            {!loading && <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} with website visits or positive replies)</span>}
+            {loading ? (
+              <Skeleton className="ml-2 inline-block h-4 w-56 align-middle" />
+            ) : (
+              <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} with website visits or positive replies)</span>
+            )}
           </h1>
         </div>
 
-        <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => { setActiveTab(tab.key); setSelectedLead(null); }}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
-                activeTab === tab.key
-                  ? "border-brand-600 text-brand-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {tab.label}
-              <span className="ml-1.5 text-xs font-normal text-gray-400">({tab.count})</span>
-            </button>
-          ))}
-        </div>
-
-        <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
-
         {loading ? (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="animate-pulse divide-y divide-gray-100">
-              {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-14 bg-gray-50" />)}
-            </div>
-          </div>
-        ) : leads.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No engaged leads yet</h3>
-            <p className="text-gray-600 text-sm">Leads appear here after a website visit or a positive reply.</p>
-          </div>
+          <LeadsLoadingSkeleton />
         ) : (
-          <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} />
+          <>
+            <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => { setActiveTab(tab.key); setSelectedLead(null); }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                    activeTab === tab.key
+                      ? "border-brand-600 text-brand-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {tab.label}
+                  <span className="ml-1.5 text-xs font-normal text-gray-400">({tab.count})</span>
+                </button>
+              ))}
+            </div>
+
+            <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
+
+            {leads.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No engaged leads yet</h3>
+                <p className="text-gray-600 text-sm">Leads appear here after a website visit or a positive reply.</p>
+              </div>
+            ) : (
+              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} />
+            )}
+          </>
         )}
       </div>
 
@@ -401,7 +438,6 @@ export function EngagedLeadsPage() {
                     <p className="mt-1"><WorkflowTag name={workflowNameBySlug.get(selectedLead.workflowSlug) ?? selectedLead.workflowSlug} /></p>
                   </div>
                 )}
-                {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
             {selectedOrg && (selectedOrg.name || selectedOrg.primaryDomain || selectedOrg.industry) && (

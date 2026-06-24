@@ -21,7 +21,6 @@ interface SidebarItem {
   label: string;
   href: string;
   icon: React.ReactNode;
-  depth?: number;
   comingSoon?: boolean;
   badge?: number;
   maturity?: Maturity;
@@ -43,7 +42,6 @@ function SidebarLink({
       href={item.href}
       className={`
         flex min-w-0 items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition
-        ${item.depth ? "ml-6" : ""}
         ${item.comingSoon
           ? "text-gray-400 opacity-60 hover:opacity-80"
           : isActive
@@ -426,21 +424,15 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             href: `${basePath}/audiences`,
             icon: <AudiencesIcon />,
           } satisfies SidebarItem,
-        ]
-      : []),
-  ];
-  const audienceItems: SidebarItem[] =
-    revenueOk && isBeta
-      ? [
           {
             id: "audience-leads",
             label: "Leads",
             href: `${basePath}/audiences/leads`,
             icon: <LeadsIcon />,
-            depth: 1,
-          },
+          } satisfies SidebarItem,
         ]
-      : [];
+      : []),
+  ];
 
   return (
     <SidebarSection
@@ -487,13 +479,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
                     ? pathname === item.href
                   : pathname.startsWith(item.href)
               }
-            />
-          ))}
-          {audienceItems.map((item) => (
-            <SidebarLink
-              key={item.id}
-              item={item}
-              isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
             />
           ))}
         </>
