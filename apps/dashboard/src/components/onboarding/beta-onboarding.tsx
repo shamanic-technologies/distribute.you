@@ -85,6 +85,9 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
 const ONBOARDING_STATE_VERSION = 1;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
+// Shown on the pricing step when a user returns from Stripe checkout without paying.
+// Reassuring, not an error: the brand/budget setup is intact and they finish from here.
+const CHECKOUT_CANCELLED_NOTICE = "Your setup is saved. Finish checkout below to launch your campaign.";
 const PRICING_REFRESH_RETRIES = 3;
 const PRICING_REFRESH_RETRY_DELAY_MS = 500;
 
@@ -438,6 +441,9 @@ export function BetaOnboarding() {
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
+  // Reassuring (non-error) note shown on the pricing step after a cancelled checkout
+  // return — the setup is saved and the user can finish payment from the same screen.
+  const [cancelNotice, setCancelNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [outcome, setOutcome] = useState<Outcome>(() => restored?.outcome ?? "signups");
@@ -959,6 +965,7 @@ export function BetaOnboarding() {
   async function beginCheckoutAndLaunch() {
     setBusy(true);
     setError(null);
+    setCancelNotice(null);
     try {
       const storedPending = readPendingCheckoutLaunchOrNull();
       const id = brandIdRef.current ?? storedPending?.brandId ?? null;
@@ -1061,15 +1068,19 @@ export function BetaOnboarding() {
     if (launchCheckout === "cancelled") {
       checkoutResumeStartedRef.current = true;
       setBusy(false);
+      setStep("pricing");
       try {
         const pending = readPendingCheckoutLaunch();
+        // Restore the brand identity so the step header shows the name + logo again
+        // (domain/hostname both derive from `url`, which the checkout-return mount
+        // skips restoring). Budget + outcome come back too so the cards are intact.
+        setUrl(pending.brandUrl);
         setCheckoutBudgetUsd(pending.budgetUsd);
         setOutcome(pending.outcome);
-        setStep("pricing");
-        setError("Checkout was canceled. Your campaign was not launched.");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Checkout was canceled. Campaign was not launched.");
+      } catch {
+        // Pending state missing — still land on pricing with the reassuring note.
       }
+      setCancelNotice(CHECKOUT_CANCELLED_NOTICE);
     }
   }, [searchParams]);
 
@@ -1442,6 +1453,7 @@ export function BetaOnboarding() {
       <BackButton onClick={() => setStep("consent")} />
       <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
       <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
+      {cancelNotice && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{cancelNotice}</div>}
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
