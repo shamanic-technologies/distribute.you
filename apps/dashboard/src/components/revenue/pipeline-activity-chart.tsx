@@ -32,7 +32,6 @@ const METRICS: Array<{
   { key: "outreach", label: "Outreach", color: "#334155" },
   { key: "opens", label: "Opens", color: "#4f46e5" },
   { key: "clicks", label: "Clicks", color: "#0891b2" },
-  { key: "signups", label: "Signups", color: "#059669" },
 ];
 
 const SALES_MEETINGS_METRIC = {
@@ -107,8 +106,7 @@ function formatAxis(n: number): string {
 }
 
 function activeMetrics(optimizationGoal: BrandOptimizationGoal): typeof METRICS {
-  if (optimizationGoal === "signups") return METRICS;
-  return [...METRICS.slice(0, 3), SALES_MEETINGS_METRIC];
+  return optimizationGoal === "sales_meetings" ? [...METRICS, SALES_MEETINGS_METRIC] : METRICS;
 }
 
 function projectedMetric(
@@ -187,14 +185,16 @@ function buildChartData({
   visitToSignupPct: number | null | undefined;
 }): ChartDatum[] {
   const today = data.days.find((day) => day.isToday)?.date ?? formatIsoDate(new Date());
+  const metrics = activeMetrics(optimizationGoal);
   const maps: Partial<Record<ChartMetricKey, Map<string, number>>> = {};
-  for (const metric of activeMetrics(optimizationGoal)) {
+  for (const metric of metrics) {
     maps[metric.key] = buildDailyCountMap(pipelineActualSeries?.[metric.key]);
   }
 
+  const cumulativeActuals: Partial<Record<ChartMetricKey, number>> = {};
   const actualRows = buildPastDates(today, rangeDays).map((date) => {
     const raw = emptyMetrics();
-    for (const metric of activeMetrics(optimizationGoal)) {
+    for (const metric of metrics) {
       raw[metric.key] = {
         actual: maps[metric.key]?.get(date) ?? 0,
         expected: null,
@@ -217,13 +217,22 @@ function buildChartData({
       phase: "actual",
       raw: values,
     };
-    for (const metric of activeMetrics(optimizationGoal)) {
-      datum[`${metric.key}Actual`] = finite(values[metric.key].actual);
+    for (const metric of metrics) {
+      const nextActual = finite(cumulativeActuals[metric.key]) + finite(values[metric.key].actual);
+      cumulativeActuals[metric.key] = nextActual;
+      datum[`${metric.key}Actual`] = nextActual;
       datum[`${metric.key}Forecast`] = null;
     }
     return datum as ChartDatum;
   });
 
+  const cumulativeForecasts: Partial<Record<ChartMetricKey, number>> = {};
+  for (const metric of metrics) {
+    cumulativeForecasts[metric.key] =
+      actualRows.length > 0
+        ? finite(actualRows[actualRows.length - 1][`${metric.key}Actual`])
+        : 0;
+  }
   const forecastRows = data.days
     .filter((day) => day.date !== today)
     .map((day) => {
@@ -239,11 +248,16 @@ function buildChartData({
         phase: "forecast",
         raw: values,
       };
-      for (const metric of activeMetrics(optimizationGoal)) {
+      for (const metric of metrics) {
+        const expected = values[metric.key].expected;
         datum[`${metric.key}Actual`] = null;
-        datum[`${metric.key}Forecast`] = values[metric.key].expected == null
-          ? null
-          : finite(values[metric.key].expected);
+        if (expected == null) {
+          datum[`${metric.key}Forecast`] = null;
+          continue;
+        }
+        const nextForecast = finite(cumulativeForecasts[metric.key]) + finite(expected);
+        cumulativeForecasts[metric.key] = nextForecast;
+        datum[`${metric.key}Forecast`] = nextForecast;
       }
       return datum as ChartDatum;
     });
@@ -256,7 +270,7 @@ function buildChartData({
       visitToSignupPct,
     );
     const lastActual = actualRows[actualRows.length - 1];
-    for (const metric of activeMetrics(optimizationGoal)) {
+    for (const metric of metrics) {
       lastActual[`${metric.key}Forecast`] = forecastStartValue(
         lastActual,
         metric.key,
@@ -332,7 +346,7 @@ export function PipelineActivityChart({
   visitToSignupPct: number | null | undefined;
 }) {
   const metrics = activeMetrics(optimizationGoal);
-  const outcomeMetric = optimizationGoal === "signups" ? "signups" : "salesMeetings";
+  const outcomeMetric = optimizationGoal === "sales_meetings" ? "salesMeetings" : "opens";
   const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(30);
   const [selectedMetrics, setSelectedMetrics] = useState<ChartMetricKey[]>([
     "outreach",
