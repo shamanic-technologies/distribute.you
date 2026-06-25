@@ -31,7 +31,7 @@ describe("audienceFilterGroups — faithful Apollo field names", () => {
     expect(labelFor("qOrganizationKeywordTags", ["payments"])).toBe("Keywords");
   });
 
-  it("formats Apollo values for the detail panel", () => {
+  it("formats Apollo values for the detail panel — and NEVER hides a filter", () => {
     const groups = audienceFilterGroups({
       q_keywords: "marketing agency OR advertising agency",
       person_seniorities: ["owner", "founder", "c_suite"],
@@ -55,12 +55,26 @@ describe("audienceFilterGroups — faithful Apollo field names", () => {
         tone: "bg-sky-50 text-sky-700 border-sky-200",
         values: ["1-200 employees"],
       },
+      // contact_email_status is no longer hidden — every stored filter renders.
+      {
+        label: "Contact email status",
+        tone: "bg-gray-100 text-gray-600 border-gray-200",
+        values: ["Contact email status: verified"],
+      },
     ]);
   });
 
-  it("keeps already-supported faithful keys (personTitles, revenueRange) on their groups", () => {
+  it("renders range objects ({min,max}) instead of dropping them", () => {
     expect(labelFor("personTitles", ["Founder"])).toBe("Job titles");
-    expect(labelFor("revenueRange", { min: 1000000 })).toBeUndefined(); // object value → no scalar pill
+    // revenue_range / revenueRange object → Revenue group, formatted currency range.
+    const rev = audienceFilterGroups({ revenue_range: { min: 10000000, max: 50000000 } }).at(0);
+    expect(rev?.label).toBe("Revenue");
+    expect(rev?.values).toEqual(["$10M-$50M"]);
+    // hiring signal → Open roles group.
+    const jobs = audienceFilterGroups({ organization_num_jobs_range: { min: 5 } }).at(0);
+    expect(jobs?.label).toBe("Open roles");
+    expect(jobs?.values).toEqual(["5+ open roles"]);
+    // scalar revenue string still works.
     expect(labelFor("revenueRange", "1M-10M")).toBe("Revenue");
   });
 
