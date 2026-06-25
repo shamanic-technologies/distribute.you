@@ -29,7 +29,7 @@ describe("Multi-brand campaign support", () => {
   });
 
   it("callers of extractBrandFields pass brandIds array as first arg", () => {
-    const onboardingPageRel = "../src/components/onboarding/default-onboarding.tsx";
+    const onboardingPageRel = "../src/components/onboarding/onboarding.tsx";
     const onboardingPage = fs.readFileSync(path.join(__dirname, onboardingPageRel), "utf-8");
     expect(onboardingPage).toContain("extractBrandFields([newBrandId]");
 

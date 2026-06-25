@@ -9,6 +9,10 @@ import {
   type BrandSalesEconomics,
   type BrandSalesEconomicsInput,
 } from "@/lib/api";
+import {
+  formatLocaleNumberInputValue,
+  parseLocaleNumberInput,
+} from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 
 // Seed values when a brand has never saved economics — mirrors the campaign-creation
@@ -50,7 +54,12 @@ type SalesEconomicsQueryData = { salesEconomics: BrandSalesEconomics | null };
 
 function defaultForm(): FormState {
   return {
-    ...DEFAULTS,
+    lifetimeRevenueUsd: formatLocaleNumberInputValue(Number(DEFAULTS.lifetimeRevenueUsd)),
+    replyToMeetingPct: formatLocaleNumberInputValue(Number(DEFAULTS.replyToMeetingPct)),
+    visitToMeetingPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToMeetingPct)),
+    meetingToClosePct: formatLocaleNumberInputValue(Number(DEFAULTS.meetingToClosePct)),
+    visitToSignupPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToSignupPct)),
+    signupToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.signupToPaidClientPct)),
     optimizationGoal: "sales_meetings",
   };
 }
@@ -58,12 +67,12 @@ function defaultForm(): FormState {
 function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState {
   if (!e) return defaultForm();
   return {
-    lifetimeRevenueUsd: String(e.lifetimeRevenueUsd),
-    replyToMeetingPct: String(e.replyToMeetingPct),
-    visitToMeetingPct: String(e.visitToMeetingPct),
-    meetingToClosePct: String(e.meetingToClosePct),
-    visitToSignupPct: String(e.visitToSignupPct),
-    signupToPaidClientPct: String(e.signupToPaidClientPct),
+    lifetimeRevenueUsd: formatLocaleNumberInputValue(e.lifetimeRevenueUsd),
+    replyToMeetingPct: formatLocaleNumberInputValue(e.replyToMeetingPct),
+    visitToMeetingPct: formatLocaleNumberInputValue(e.visitToMeetingPct),
+    meetingToClosePct: formatLocaleNumberInputValue(e.meetingToClosePct),
+    visitToSignupPct: formatLocaleNumberInputValue(e.visitToSignupPct),
+    signupToPaidClientPct: formatLocaleNumberInputValue(e.signupToPaidClientPct),
     optimizationGoal: e.optimizationGoal,
   };
 }
@@ -114,11 +123,13 @@ const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
   visitToSignupPct: "Website visit → signup",
 };
 
-const hasNumericValue = (v: string) => v.trim() !== "" && Number.isFinite(Number(v));
+const hasNumericValue = (v: string) => parseLocaleNumberInput(v) !== null;
+const parseNumberOrDefault = (v: string, fallback: string) =>
+  parseLocaleNumberInput(v) ?? Number(fallback);
 const toIntOrDefault = (v: string, fallback: string) =>
-  Math.round(hasNumericValue(v) ? Number(v) : Number(fallback));
+  Math.round(parseNumberOrDefault(v, fallback));
 const toPctOrDefault = (v: string, fallback: string) =>
-  hasNumericValue(v) ? Number(v) : Number(fallback);
+  parseNumberOrDefault(v, fallback);
 
 export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   const queryClient = useQueryClient();
@@ -175,6 +186,12 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     markDirty();
+  }
+
+  function normalizeNumberInput(key: Exclude<keyof FormState, "optimizationGoal">) {
+    const parsed = parseLocaleNumberInput(form[key]);
+    if (parsed === null) return;
+    setForm((f) => ({ ...f, [key]: formatLocaleNumberInputValue(parsed) }));
   }
 
   function handleSave() {
@@ -269,11 +286,11 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
                 $
               </span>
               <input
-                type="number"
-                min="0"
-                step="100"
+                type="text"
+                inputMode="decimal"
                 value={form.lifetimeRevenueUsd}
                 onChange={(e) => update("lifetimeRevenueUsd", e.target.value)}
+                onBlur={() => normalizeNumberInput("lifetimeRevenueUsd")}
                 className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </div>
@@ -287,12 +304,11 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
+                  type="text"
+                  inputMode="decimal"
                   value={form[f.key]}
                   onChange={(e) => update(f.key, e.target.value)}
+                  onBlur={() => normalizeNumberInput(f.key)}
                   className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">

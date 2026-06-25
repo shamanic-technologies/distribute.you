@@ -105,13 +105,13 @@
    BASE
    ═══════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 100%; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+html { font-size: 100%; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; overflow-x: clip; }
 body {
   font-family: 'Inter', system-ui, sans-serif;
   font-size: var(--fs-base);
   background: var(--bg);
   color: var(--text);
-  overflow-x: hidden;
+  overflow-x: clip;
   line-height: 1.6;
 }
 img    { max-width: 100%; display: block; }
@@ -127,7 +127,7 @@ section  { padding: 6rem 0; }
 
 
 /* ── TYPOGRAPHY ── */
-.t-hero { font-size: clamp(2.8rem, 6.5vw, 5.25rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.04; }
+.t-hero { font-size: 4rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1.04; }
 .t-h2   { font-size: clamp(1.75rem, 3vw, 2.5rem);   font-weight: 800; line-height: 1.1;  letter-spacing: -0.03em; }
 .t-h3   { font-size: var(--fs-lg);   font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; }
 .t-body { font-size: var(--fs-base);   line-height: 1.72; }
@@ -1092,6 +1092,7 @@ section  { padding: 6rem 0; }
   box-shadow: 0 4px 20px oklch(0% 0 0 / 0.10), 0 1px 4px oklch(0% 0 0 / 0.06);
   display: flex; gap: 0.25rem;
   white-space: nowrap;
+  max-width: calc(100vw - 1.5rem); overflow-x: auto;
 }
 .uc-sticky-nav.uc-sticky-visible {
   transform: translateX(-50%) translateY(0);
@@ -1847,7 +1848,8 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   transform: translateY(-2px);
 }
 .hiw-link-illu {
-  width: 100%; height: 148px; overflow: hidden; position: relative; flex-shrink: 0;
+  width: 100%; height: 260px; overflow: hidden; position: relative; flex-shrink: 0;
+  background: linear-gradient(170deg, oklch(88% 0.036 232) 0%, oklch(99.5% 0.001 264) 100%);
 }
 .hiw-link-illu svg { width: 100%; height: 100%; display: block; }
 .hiw-link-body {

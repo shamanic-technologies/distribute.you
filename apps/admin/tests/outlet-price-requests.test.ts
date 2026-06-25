@@ -132,7 +132,7 @@ describe("outlet pages wire the Get Domain Ratings control", () => {
   it("posts a batch of domains to the gateway DR compute endpoint", () => {
     expect(api).toContain("export async function computeDomainDrStatuses");
     expect(api).toContain('"/orgs/domains/dr-compute"');
-    expect(api).toContain("body: { domains }");
+    expect(api).toContain("body: { domains: queryable }");
   });
 
   for (const [level, pagePath] of Object.entries(outletPages)) {
@@ -142,7 +142,7 @@ describe("outlet pages wire the Get Domain Ratings control", () => {
       expect(content).toContain("computeDomainDrStatuses");
       expect(content).toContain("currentPageDomainsMissingDr");
       expect(content).toContain("paginatedOutlets.pageItems");
-      expect(content).toContain(".filter((domain) => !drMap.has(domain))");
+      expect(content).toContain(".filter((domain) => !drMap.has(domain) && isQueryableDomain(domain))");
       expect(content).toContain("Get Domain Ratings");
     });
 
@@ -168,7 +168,7 @@ describe("outlet pages wire the Get Monthly Visits control", () => {
   it("posts a batch of domains to the gateway traffic compute endpoint", () => {
     expect(api).toContain("export async function computeDomainTrafficHistories");
     expect(api).toContain('"/orgs/domains/traffic-compute"');
-    expect(api).toContain("body: { domains }");
+    expect(api).toContain("body: { domains: queryable }");
   });
 
   it("reads cached traffic histories for many domains", () => {
@@ -183,7 +183,7 @@ describe("outlet pages wire the Get Monthly Visits control", () => {
       expect(content).toContain("computeDomainTrafficHistories");
       expect(content).toContain("currentPageDomainsMissingTraffic");
       expect(content).toContain("paginatedOutlets.pageItems");
-      expect(content).toContain(".filter((domain) => !trafficMap.has(domain))");
+      expect(content).toContain(".filter((domain) => !trafficMap.has(domain) && isQueryableDomain(domain))");
       expect(content).toContain("Get Monthly Visits");
     });
 

@@ -9,8 +9,8 @@ export function RevenueEmptyState() {
     <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
       <h3 className="font-medium text-gray-800">No metrics yet</h3>
       <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
-        Once outreach starts reaching leads, expected pipeline revenue and
-        conversions show up here.
+        Once outreach starts reaching leads, your clicks and conversions show up
+        here.
       </p>
     </div>
   );

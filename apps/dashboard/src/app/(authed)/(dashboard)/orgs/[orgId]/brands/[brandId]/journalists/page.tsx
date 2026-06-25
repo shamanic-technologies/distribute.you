@@ -142,7 +142,7 @@ export default function FeatureJournalistsPage() {
     const q = search.toLowerCase();
     return activeList.filter((j) => {
       const outletName = j.outletName ?? "";
-      return j.journalistName.toLowerCase().includes(q) || outletName.toLowerCase().includes(q);
+      return (j.journalistName ?? "").toLowerCase().includes(q) || outletName.toLowerCase().includes(q);
     });
   }, [activeList, search]);
 

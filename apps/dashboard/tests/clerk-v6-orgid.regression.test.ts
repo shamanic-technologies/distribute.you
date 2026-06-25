@@ -35,7 +35,7 @@ describe("@clerk/nextjs v6 compatibility", () => {
   it("onboarding should use full page reload after setActive", () => {
     const onboardingPath = path.resolve(
       __dirname,
-      "../src/components/onboarding/default-onboarding.tsx"
+      "../src/components/onboarding/onboarding.tsx"
     );
     const content = fs.readFileSync(onboardingPath, "utf-8");
     expect(content).toContain('window.location.href =');

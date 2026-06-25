@@ -2,13 +2,14 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import {
-  createCheckoutSession,
+  createEmbeddedCheckoutSession,
   configureAutoTopup,
-  disableAutoTopup,
   getBillingAccount,
   type BillingAccount,
 } from "@/lib/api";
+import { getStripe } from "@/lib/stripe";
 import { formatBillingCents } from "@/lib/format-number";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
@@ -21,6 +22,10 @@ interface PaymentRequiredInfo {
   proactive?: boolean;
   /** Callback invoked after the user dismisses the modal having set up auto-topup (proactive flow only) */
   onAutoTopupConfigured?: () => void;
+  /** Callback invoked once credit has been successfully added (embedded checkout completed
+   *  or auto-topup configured on an existing card), so an explicit caller can resume its
+   *  blocked action. The decoupled `billing:resolved` window event covers auto-fired 402s. */
+  onComplete?: () => void;
   /** Suggested auto-topup reload amount (cents) — proactive flow pre-fills the "Top-up amount"
    *  field with this (= campaign daily price × 10) instead of the flat $25 default. */
   suggestedTopupCents?: number;
@@ -67,6 +72,9 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const [customAmountError, setCustomAmountError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  // When set, the modal body renders the in-page Embedded Checkout (card iframe)
+  // instead of the amount/auto-topup form — no redirect to a hosted Stripe page.
+  const [embeddedSecret, setEmbeddedSecret] = useState<string | null>(null);
   const pathname = usePathname();
 
   // Auto-topup state
@@ -146,6 +154,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setCheckoutError(null);
     setCheckoutLoading(false);
     setSavingAutoTopup(false);
+    setEmbeddedSecret(null);
     setVisible(true);
 
     // Fetch latest account info to pre-fill auto-topup from existing config
@@ -164,6 +173,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
     setInfo({});
     setCheckoutError(null);
     setAccount(null);
+    setEmbeddedSecret(null);
   }, []);
 
   // Listen for custom events from the API error handler
@@ -178,46 +188,52 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
   const effectiveAmountCents = customAmount ? Math.round(parseFloat(customAmount) * 100) : selectedAmount;
 
+  // Open the in-page Embedded Checkout (card iframe) for a one-time top-up of
+  // effectiveAmountCents — no redirect to a hosted Stripe page. The session saves
+  // the card off-session; the chosen auto-topup config is applied in
+  // handleEmbeddedComplete once the card is visible.
   async function handleCheckout() {
     if (hasValidationError) return;
     setCheckoutLoading(true);
     setCheckoutError(null);
     try {
-      // If user already has a payment method, save auto-topup now
-      if (account?.has_payment_method) {
-        if (enableAutoTopup && topupAmount) {
-          const topupCents = Math.round(parseFloat(topupAmount) * 100);
-          const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
-          await configureAutoTopup(topupCents, thresholdCents);
-        } else if (!enableAutoTopup && account.has_auto_topup) {
-          await disableAutoTopup();
-        }
-      }
-
-      // Build success URL with pending auto-topup params if no payment method yet
-      const successUrl = new URL(window.location.href);
-      // Mark that this checkout was triggered from a pending action (e.g. campaign creation)
-      if (info.proactive) {
-        successUrl.searchParams.set("pending_campaign", "true");
-      }
-      successUrl.searchParams.set("success", "true");
-      if (enableAutoTopup && topupAmount && !account?.has_payment_method) {
-        const topupCents = Math.round(parseFloat(topupAmount) * 100);
-        const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
-        successUrl.searchParams.set("pending_topup", topupCents.toString());
-        successUrl.searchParams.set("pending_threshold", thresholdCents.toString());
-      }
-
-      const session = await createCheckoutSession({
-        topup_amount_cents: effectiveAmountCents,
-        success_url: successUrl.toString(),
-        cancel_url: window.location.href,
-      });
-      window.location.href = session.url;
+      const { client_secret } = await createEmbeddedCheckoutSession(effectiveAmountCents);
+      setEmbeddedSecret(client_secret);
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Failed to start checkout");
+    } finally {
       setCheckoutLoading(false);
     }
+  }
+
+  // Stripe fires this when the embedded session completes (redirect_on_completion:"never").
+  // Card + top-up credit land via the checkout.session.completed webhook; here we apply
+  // the chosen auto-topup once the saved card is visible, then signal resume.
+  async function handleEmbeddedComplete() {
+    let acct: BillingAccount | null = null;
+    for (let i = 0; i < 8; i++) {
+      try {
+        acct = await getBillingAccount();
+        if (acct.has_payment_method) break;
+      } catch {
+        /* transient (webhook still reconciling the saved card) — retry */
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    try {
+      if (enableAutoTopup && topupAmount && acct?.has_payment_method) {
+        const topupCents = Math.round(parseFloat(topupAmount) * 100);
+        const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
+        await configureAutoTopup(topupCents, thresholdCents);
+      }
+    } catch (err) {
+      console.error("[dashboard] auto-topup config after embedded checkout failed:", err);
+    }
+    // Signal any blocked caller (onboarding step, proactive launch) to resume.
+    window.dispatchEvent(new CustomEvent("billing:resolved"));
+    info.onComplete?.();
+    setEmbeddedSecret(null);
+    setVisible(false);
   }
 
   /** Proactive flow: just configure auto-topup and proceed without checkout */
@@ -231,7 +247,9 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
       await configureAutoTopup(topupCents, thresholdCents);
       setVisible(false);
+      window.dispatchEvent(new CustomEvent("billing:resolved"));
       info.onAutoTopupConfigured?.();
+      info.onComplete?.();
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : "Failed to configure auto-topup");
     } finally {
@@ -253,6 +271,26 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       {visible && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            {embeddedSecret ? (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">Add credits</h2>
+                  <button
+                    onClick={dismissPaymentRequired}
+                    className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <EmbeddedCheckoutProvider
+                  stripe={getStripe()}
+                  options={{ clientSecret: embeddedSecret, onComplete: handleEmbeddedComplete }}
+                >
+                  <EmbeddedCheckout />
+                </EmbeddedCheckoutProvider>
+              </div>
+            ) : (
+            <>
             <div className="flex items-center gap-3 mb-4">
               {isProactive ? (
                 <div className="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -456,7 +494,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                     className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${checkoutLoading ? "cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
                   >
                     {checkoutLoading && <Spinner />}
-                    {checkoutLoading ? "Redirecting…" : `Load ${formatBillingCents(effectiveAmountCents || 0)} & turn on auto-top-up →`}
+                    {checkoutLoading ? "Loading…" : `Load ${formatBillingCents(effectiveAmountCents || 0)} & turn on auto-top-up →`}
                   </button>
                 )
               ) : (
@@ -465,10 +503,12 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   disabled={checkoutLoading || hasValidationError}
                   className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
                 >
-                  {checkoutLoading ? "Redirecting..." : `Add ${formatBillingCents(effectiveAmountCents || 0)} \u2192`}
+                  {checkoutLoading ? "Loading\u2026" : `Add ${formatBillingCents(effectiveAmountCents || 0)} \u2192`}
                 </button>
               )}
             </div>
+            </>
+            )}
           </div>
         </div>
       )}

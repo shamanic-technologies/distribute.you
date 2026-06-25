@@ -10,11 +10,9 @@ const read = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
 const apiLib = read("../src/lib/api.ts");
-const submitHook = read("../src/lib/use-quote-opportunities.ts");
 const featureRequestsPage = read(
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/quote-requests/page.tsx",
 );
-const contextSidebar = read("../src/components/context-sidebar.tsx");
 
 describe("isOpportunityOpen — hide ⟺ Send would be blocked (backend reply idempotency)", () => {
   it("treats a never-pitched opportunity (null) as open", () => {
@@ -88,23 +86,11 @@ describe("Opportunities surfaces hide already-pitched (filter via isOpportunityO
     expect(featureRequestsPage).toMatch(/filter\([\s\S]*?isOpportunityOpen/);
   });
 
-  it("the brand sidebar badge counts the open set (badge == page)", () => {
-    expect(contextSidebar).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
-  });
+  // (The brand sidebar quote-requests badge was removed with the entity Database
+  // section — the feature page filter above is the surviving guard.)
 });
 
 // The "campaign HITL quote-requests page filters" + "Submit threads campaignId"
 // blocks were removed: the campaign-level quote-requests page (+ its
 // sidebar-wrapper) was deleted with the campaign concept. The brand-level page
 // + the brand sidebar badge are the survivors.
-
-describe("useSubmitQuotePitch invalidates the pages' actual query keys (prefix form)", () => {
-  it("invalidates rankedOpportunities + quotePitches + featureQuotePitches by prefix", () => {
-    const onSuccess = submitHook.split("onSuccess:")[1] ?? "";
-    expect(onSuccess).toMatch(/queryKey:\s*\["rankedOpportunities"\]/);
-    expect(onSuccess).toMatch(/queryKey:\s*\["quotePitches"\]/);
-    expect(onSuccess).toMatch(/queryKey:\s*\["featureQuotePitches"\]/);
-    // The old brand-scoped object key never matched the pages' keys.
-    expect(onSuccess).not.toMatch(/\["quotePitches",\s*\{\s*brandId/);
-  });
-});
