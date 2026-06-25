@@ -72,6 +72,16 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain("clearOnboardingState();");
   });
 
+  it("checkout amount prefers the LIVE selection over a stale restored budget", () => {
+    // After a checkout cancel, checkoutBudgetUsd holds the PRIOR tier; re-picking a
+    // different tier updates derivedBudget() (selectedCount), so the charge must read
+    // derivedBudget() FIRST — same precedence as the bonus/pricing display.
+    expect(src).toContain("const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;");
+    expect(src).not.toContain("const budget = checkoutBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();");
+    // display precedence the charge now matches
+    expect(src).toContain("const amount = derivedBudget() ?? checkoutBudgetUsd;");
+  });
+
   it("opportunistic checkout read tolerates a stale/invalid blob (purge + null, no throw)", () => {
     // readPendingCheckoutLaunchOrNull is a fallback source; a leftover blob from a
     // prior schema must not block a fresh checkout. It must swallow + purge, while

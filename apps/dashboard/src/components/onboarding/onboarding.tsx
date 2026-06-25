@@ -1158,7 +1158,12 @@ export function Onboarding() {
       const storedPending = readPendingCheckoutLaunchOrNull();
       const id = brandIdRef.current ?? storedPending?.brandId ?? null;
       const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
-      const budget = checkoutBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();
+      // Live selection wins, matching the display precedence (derivedBudget() ??
+      // checkoutBudgetUsd at the bonus/pricing steps). checkoutBudgetUsd is only ever
+      // written from a restored/resumed snapshot, so after a checkout cancel it holds
+      // the PRIOR budget — putting it first would charge the stale amount even though
+      // the user re-picked a different tier.
+      const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
       const trimmed = url.trim();
       const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
       const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
