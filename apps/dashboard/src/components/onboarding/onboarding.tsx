@@ -1868,7 +1868,7 @@ function OnboardingAudiences({
   onContinue: () => void;
   onEdit?: () => void;
 }) {
-  const card = "mx-auto w-full max-w-4xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
+  const card = "mx-auto w-full max-w-5xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
@@ -2001,7 +2001,7 @@ function OnboardingAudiences({
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl min-w-0 flex flex-col gap-3">
+    <div className="mx-auto w-full max-w-5xl min-w-0 flex flex-col gap-3">
       <BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />
       <div className={card}>
       <div className="max-w-xl">
