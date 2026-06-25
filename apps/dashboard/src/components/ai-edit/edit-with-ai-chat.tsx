@@ -270,6 +270,13 @@ export function EditWithAIChat({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Focus the message box the moment the chat opens (textarea mounts only when open).
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => textareaRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
   const submit = useCallback(
     (text: string) => {
       const value = text.trim();
