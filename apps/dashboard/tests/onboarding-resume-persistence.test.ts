@@ -72,6 +72,22 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain("clearOnboardingState();");
   });
 
+  it("opportunistic checkout read tolerates a stale/invalid blob (purge + null, no throw)", () => {
+    // readPendingCheckoutLaunchOrNull is a fallback source; a leftover blob from a
+    // prior schema must not block a fresh checkout. It must swallow + purge, while
+    // the strict readPendingCheckoutLaunch keeps throwing for resume/cancel paths.
+    const orNull = src.slice(
+      src.indexOf("function readPendingCheckoutLaunchOrNull"),
+      src.indexOf("function toStringList"),
+    );
+    expect(orNull).toContain("try {");
+    expect(orNull).toContain("return readPendingCheckoutLaunch();");
+    expect(orNull).toContain("window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);");
+    expect(orNull).toContain("return null;");
+    // strict reader still fail-loud
+    expect(src).toContain('throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");');
+  });
+
   it("persists pricing and audience display state, not only launch state", () => {
     expect(src).toContain("workflowProjection: projectionRef.current");
     expect(src).toContain("salesInputs: salesInputsRef.current");
