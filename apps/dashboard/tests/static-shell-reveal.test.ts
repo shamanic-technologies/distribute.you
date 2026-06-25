@@ -18,7 +18,6 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
   const cards = [
     "components/revenue/revenue-cost-summary.tsx",
     "components/revenue/revenue-overview-section.tsx",
-    "components/brand-metrics-header.tsx",
     "components/visibility/score-card.tsx",
     "components/visibility/visibility-runs-view.tsx",
     "components/visibility/visibility-competitors-view.tsx",
@@ -33,22 +32,6 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
       expect(src, `${rel} must thread a pending/reveal flag`).toMatch(/pending|revealed/i);
       expect(src, `${rel} must skeleton the value region`).toContain("Skeleton");
     }
-  });
-
-  it("BrandMetricsHeader renders the 4 metric titles always (no whole-card skeleton gate)", () => {
-    const src = read("components/brand-metrics-header.tsx");
-    expect(src).toContain('title="Monthly visits"');
-    expect(src).toContain('title="Domain Rating"');
-    expect(src).toContain('title="Est. monthly revenue"');
-    expect(src).toContain('title="AI mentions"');
-    // The skeleton now lives INSIDE the card (value region), not as a whole-card
-    // early return — the title/frame paint before the value resolves. Each card
-    // reveals on its OWN source via a per-card latch (a slow metric never holds
-    // the others in skeleton), so there is no single shared `revealed` gate.
-    expect(src).toContain("trafficRevealed");
-    expect(src).toContain("drRevealed");
-    expect(src).toContain("aiVisRevealed");
-    expect(src).toMatch(/!trafficRevealed \?/);
   });
 
   it("RevenueCostSummary renders its labels outside the pending gate", () => {

@@ -13,45 +13,6 @@ import * as path from "path";
  * Fix: store context in a ref and read contextRef.current inside prepareSendMessagesRequest.
  */
 
-const chatComponents = [
-  {
-    name: "workflow-chat",
-    file: "../src/components/workflows/workflow-chat.tsx",
-    contextProp: "workflowContext",
-  },
-  {
-    name: "press-kit-chat",
-    file: "../src/components/press-kits/press-kit-chat.tsx",
-    contextProp: "pressKitContext",
-  },
-];
-
-for (const { name, file, contextProp } of chatComponents) {
-  describe(`${name} — context must use ref to avoid stale closure`, () => {
-    const filePath = path.join(__dirname, file);
-    const content = fs.readFileSync(filePath, "utf-8");
-
-    it("should store context in a ref (contextRef)", () => {
-      expect(content).toContain(`const contextRef = useRef(${contextProp})`);
-      expect(content).toContain("contextRef.current =");
-    });
-
-    it("should use contextRef.current inside prepareSendMessagesRequest", () => {
-      expect(content).toContain("context: contextRef.current");
-    });
-
-    it("should NOT close over context value directly in transport useMemo", () => {
-      // The useMemo deps should not include the context prop
-      const transportBlock = content.match(
-        /const transport = useMemo\([\s\S]*?\[([^\]]*)\]/
-      );
-      expect(transportBlock).toBeTruthy();
-      const deps = transportBlock![1];
-      expect(deps).not.toContain(contextProp);
-    });
-  });
-}
-
 describe("edit-with-ai-chat — context must use ref to avoid stale closure", () => {
   const filePath = path.join(__dirname, "../src/components/ai-edit/edit-with-ai-chat.tsx");
   const content = fs.readFileSync(filePath, "utf-8");

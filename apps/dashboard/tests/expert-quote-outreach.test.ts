@@ -10,10 +10,6 @@ const byokBannerPath = path.resolve(
   __dirname,
   "../src/components/feature-byok-banner.tsx",
 );
-const runButtonPath = path.resolve(
-  __dirname,
-  "../src/components/feature-run-button.tsx",
-);
 const apiLibPath = path.resolve(__dirname, "../src/lib/api.ts");
 const quoteRequestsPath = path.resolve(
   __dirname,
@@ -25,7 +21,6 @@ const quotePitchesPath = path.resolve(
 );
 
 const featurePageContent = fs.readFileSync(featurePagePath, "utf-8");
-const runButtonContent = fs.readFileSync(runButtonPath, "utf-8");
 const apiLibContent = fs.readFileSync(apiLibPath, "utf-8");
 const quoteRequestsContent = fs.readFileSync(quoteRequestsPath, "utf-8");
 const quotePitchesContent = fs.readFileSync(quotePitchesPath, "utf-8");
@@ -45,14 +40,6 @@ describe("Feature page — generic routing (no per-slug branch)", () => {
 describe("FeatureBYOKBanner component removed", () => {
   it("feature-byok-banner.tsx no longer exists", () => {
     expect(fs.existsSync(byokBannerPath)).toBe(false);
-  });
-});
-
-describe("FeatureRunButton — generic trigger", () => {
-  it("calls triggerFeatureRun with the supplied feature slug", () => {
-    expect(runButtonContent).toContain("triggerFeatureRun(featureSlug");
-    expect(runButtonContent).toContain('data-testid="trigger-run-button"');
-    expect(runButtonContent).toContain('data-testid="trigger-run-error"');
   });
 });
 

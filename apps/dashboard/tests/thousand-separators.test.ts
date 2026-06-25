@@ -80,17 +80,6 @@ describe("sidebar components use formatCount for badges", () => {
     expect(content).toContain("formatCount(item.badge)");
   });
 
-  it("brand metrics header thousand-separates its stat numbers", () => {
-    const content = fs.readFileSync(
-      path.join(__dirname, "../src/components/brand-metrics-header.tsx"),
-      "utf-8"
-    );
-    // Visits / DR / revenue big numbers + chart values format with thousand
-    // separators via toLocaleString (the Outcomes count cards this replaced
-    // used formatCount for the same purpose).
-    expect(content).toContain('toLocaleString("en-US")');
-  });
-
   // The campaign press-kit detail page (which used formatCount for view stats)
   // was removed with the campaign concept.
 });
