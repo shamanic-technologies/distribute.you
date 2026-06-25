@@ -2056,7 +2056,7 @@ function OnboardingAudiences({
           <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
             {candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId)).length} of {candidates.length} selected
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-wrap justify-center gap-3">
             {candidates.map((c, i) => (
               <AudienceCandidateCard key={c.audienceId || i} candidate={c} selected={selectedAudienceIdSet.has(c.audienceId)} onToggle={() => toggle(c)} />
             ))}
@@ -2086,7 +2086,7 @@ function AudienceCandidateCard({
   return (
     <button
       onClick={onToggle}
-      className={`flex w-full items-start gap-3 rounded-xl border-2 p-5 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+      className={`flex w-full items-start gap-3 rounded-xl border-2 p-5 text-left transition sm:w-72 ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
     >
       <span
         className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
