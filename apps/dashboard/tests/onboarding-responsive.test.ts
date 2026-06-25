@@ -27,4 +27,9 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).toContain("sm:flex-row sm:items-center sm:justify-between");
     expect(onboardingFlow).toContain("grid gap-3 sm:grid-cols-2 lg:grid-cols-4");
   });
+
+  it("gives generated audience cards equal-width rows up to three columns", () => {
+    expect(onboardingFlow).toContain("mx-auto w-full max-w-4xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12");
+    expect(onboardingFlow).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3");
+  });
 });

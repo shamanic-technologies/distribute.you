@@ -1868,7 +1868,7 @@ function OnboardingAudiences({
   onContinue: () => void;
   onEdit?: () => void;
 }) {
-  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
+  const card = "mx-auto w-full max-w-4xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
@@ -2001,58 +2001,60 @@ function OnboardingAudiences({
   }
 
   return (
-    <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
+    <div className="mx-auto w-full max-w-4xl min-w-0 flex flex-col gap-3">
       <BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />
       <div className={card}>
-      <BackButton onClick={onBack} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
-      <p className="mt-2 text-gray-500">
-        Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
-      </p>
+      <div className="max-w-xl">
+        <BackButton onClick={onBack} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+        <p className="mt-2 text-gray-500">
+          Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
+        </p>
 
-      <div className="relative mt-5">
-        <textarea
-          ref={textareaRef}
-          value={prompt}
-          onChange={(e) => onPromptChange(e.target.value)}
-          disabled={icpLoading}
-          placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
-          style={{ minHeight: "80px", overflow: "hidden" }}
-          className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-        />
-        {icpLoading && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-500">
-            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-            Drafting your ideal customer profile…
-          </div>
+        <div className="relative mt-5">
+          <textarea
+            ref={textareaRef}
+            value={prompt}
+            onChange={(e) => onPromptChange(e.target.value)}
+            disabled={icpLoading}
+            placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+            style={{ minHeight: "80px", overflow: "hidden" }}
+            className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+          />
+          {icpLoading && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-500">
+              <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+              Drafting your ideal customer profile…
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => runSuggest()}
+          disabled={loading || icpLoading || !prompt.trim()}
+          className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
+            </>
+          ) : (
+            <>
+              <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
+            </>
+          )}
+        </button>
+
+        {err && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
         )}
       </div>
-      <button
-        onClick={() => runSuggest()}
-        disabled={loading || icpLoading || !prompt.trim()}
-        className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? (
-          <>
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
-          </>
-        ) : (
-          <>
-            <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
-          </>
-        )}
-      </button>
-
-      {err && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
-      )}
 
       {candidates && candidates.length > 0 && (
         <>
           <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
             {candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId)).length} of {candidates.length} selected
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {candidates.map((c, i) => (
               <AudienceCandidateCard key={c.audienceId || i} candidate={c} selected={selectedAudienceIdSet.has(c.audienceId)} onToggle={() => toggle(c)} />
             ))}
@@ -2060,7 +2062,9 @@ function OnboardingAudiences({
         </>
       )}
 
-      <NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} busy={saving} label="Continue" />
+      <div className="max-w-xl">
+        <NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} busy={saving} label="Continue" />
+      </div>
       </div>
     </div>
   );
