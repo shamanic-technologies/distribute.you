@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -55,6 +55,7 @@ type ChartDatum = {
   date: string;
   label: string;
   isToday: boolean;
+  isFuture: boolean;
   raw: Record<ChartMetricKey, { actual: number; expected: number }>;
 } & Record<`${ChartMetricKey}Actual`, number> &
   Record<`${ChartMetricKey}ExpectedRemaining`, number>;
@@ -91,8 +92,22 @@ function formatAxis(n: number): string {
   return String(Math.round(n));
 }
 
-function buildPastDates(today: string, rangeDays: number): string[] {
-  return Array.from({ length: rangeDays }, (_, i) => addDays(today, i - rangeDays + 1));
+/**
+ * Past+today calendar dates for the window, left-edge CLAMPED to the first day the
+ * brand has actual data — so a brand launched today shows only today (+ forecast),
+ * never empty leading days. Window = [max(today−range+1, firstDataDate) … today].
+ */
+function buildWindowDates(
+  today: string,
+  rangeDays: number,
+  firstDataDate: string | undefined,
+): string[] {
+  const windowStart = addDays(today, -(rangeDays - 1));
+  let start = firstDataDate && firstDataDate > windowStart ? firstDataDate : windowStart;
+  if (start > today) start = today;
+  const out: string[] = [];
+  for (let d = start; d <= today; d = addDays(d, 1)) out.push(d);
+  return out;
 }
 
 function buildDailyCountMap(series: SignalSeries | undefined): Map<string, number> {
@@ -132,7 +147,15 @@ function buildChartData({
   }
   const forecastByDate = new Map(data.days.map((day) => [day.date, day.metrics]));
 
-  const pastDates = buildPastDates(today, rangeDays); // includes today (last entry)
+  // First day the brand has ANY actual signal — clamps the window's left edge.
+  let firstDataDate: string | undefined;
+  for (const metric of metrics) {
+    for (const date of maps[metric.key]?.keys() ?? []) {
+      if (!firstDataDate || date < firstDataDate) firstDataDate = date;
+    }
+  }
+
+  const pastDates = buildWindowDates(today, rangeDays, firstDataDate); // includes today (last entry)
   const futureDates = data.days
     .filter((day) => day.date > today)
     .map((day) => day.date);
@@ -146,12 +169,15 @@ function buildChartData({
       date,
       label: isToday ? "Today" : formatDate(date),
       isToday,
+      isFuture,
       raw,
     };
     for (const metric of metrics) {
       const actual = isFuture ? 0 : finite(maps[metric.key]?.get(date));
-      const expected = isToday || isFuture ? forecastExpected(forecastMetrics, metric.key) : 0;
-      const expectedRemaining = isToday ? Math.max(expected - actual, 0) : isFuture ? expected : 0;
+      // Today shows ACTUAL-so-far only (no expected ghost); only future days carry
+      // the forecast. Past days are pure actuals.
+      const expected = isFuture ? forecastExpected(forecastMetrics, metric.key) : 0;
+      const expectedRemaining = isFuture ? expected : 0;
       raw[metric.key] = { actual, expected };
       datum[`${metric.key}Actual`] = actual;
       datum[`${metric.key}ExpectedRemaining`] = expectedRemaining;
@@ -179,7 +205,8 @@ function ChartTooltip({
       <div className="space-y-1.5">
         {metrics.map((metric) => {
           const value = day.raw[metric.key];
-          const showActual = !day.isToday && !(value.actual === 0 && value.expected > 0);
+          // Past + today → ACTUAL so far; only future days read as "expected".
+          const showActual = !day.isFuture;
           const display = showActual ? value.actual : value.expected;
           const color = showActual ? metric.actual : metric.expected;
           return (
@@ -213,12 +240,20 @@ export function PipelineActivityChart({
   visitToSignupPct?: number | null;
 }) {
   const metrics = activeMetrics(optimizationGoal);
-  const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(30);
+  const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(7);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const chartData = useMemo(
     () => buildChartData({ data, pipelineActualSeries, rangeDays, optimizationGoal }),
     [data, pipelineActualSeries, rangeDays, optimizationGoal],
   );
+
+  // Keep the live edge (today + forecast) in view — wider windows would otherwise
+  // scroll the meaningful right side off-screen behind the empty older past days.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [rangeDays, chartData.length]);
 
   if (data.days.length === 0) {
     return (
@@ -264,7 +299,7 @@ export function PipelineActivityChart({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div ref={scrollRef} className="overflow-x-auto">
         <div className="h-[300px]" style={{ minWidth }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart

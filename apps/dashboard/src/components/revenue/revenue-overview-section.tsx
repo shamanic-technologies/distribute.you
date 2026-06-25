@@ -101,6 +101,23 @@ export function RevenueOverviewSection({
     : pipelineActualSeries?.repliedPositive;
   const outcomeLabel = isSignups ? "Website clicks" : "Positive replies";
   const outcomeColor = isSignups ? "#0891b2" : "#dc2626";
+
+  // Forward projection for the Outcome line — the expected daily increments past
+  // today (today + forecast horizon). Signups read the per-day clicks forecast;
+  // meetings have no per-day reply forecast, so the monthly expected outcome is
+  // spread evenly across the horizon (option a).
+  const finitePos = (n: number | null | undefined): number =>
+    typeof n === "number" && Number.isFinite(n) && n > 0 ? n : 0;
+  const todayIso = pipelineActivity?.days.find((d) => d.isToday)?.date;
+  const futureDays = (pipelineActivity?.days ?? []).filter(
+    (d) => todayIso != null && d.date > todayIso,
+  );
+  const monthlyExpected = finitePos(expectedOutcome?.value);
+  const outcomeFuture = isSignups
+    ? futureDays.map((d) => ({ date: d.date, value: finitePos(d.metrics.clicks?.expected) }))
+    : monthlyExpected > 0 && futureDays.length > 0
+      ? futureDays.map((d) => ({ date: d.date, value: monthlyExpected / 30 }))
+      : [];
   return (
     <div className="space-y-4">
       {!hideHeader && (
@@ -122,6 +139,7 @@ export function RevenueOverviewSection({
             stretches to match the cost summary on its right (items-stretch). */}
         <OutcomeTrendCard
           series={outcomeSeries}
+          future={outcomeFuture}
           label={outcomeLabel}
           color={outcomeColor}
           expected={expectedOutcome}
