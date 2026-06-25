@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import type {
@@ -85,6 +87,10 @@ export function TopAudiencesCard({
   const activeMetric = data?.sortMetric ?? metric;
   const label = metricLabel(activeMetric);
 
+  const params = useParams();
+  const orgId = params.orgId as string;
+  const brandId = params.brandId as string;
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
       <div className="flex items-center justify-between gap-3">
@@ -122,7 +128,11 @@ export function TopAudiencesCard({
               : `${item.row.evidence.positiveReplies.toLocaleString("en-US")} replies`
             : null;
           return (
-            <div key={key} className="flex items-center gap-2">
+            <Link
+              key={key}
+              href={`/orgs/${orgId}/brands/${brandId}/audiences?audienceId=${key}`}
+              className="-mx-1 flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-gray-50"
+            >
               <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-gray-700">{name}</span>
@@ -131,7 +141,7 @@ export function TopAudiencesCard({
                 )}
               </span>
               <span className="text-sm font-medium text-gray-800 tabular-nums">{formatCents(value)}</span>
-            </div>
+            </Link>
           );
         })
       )}

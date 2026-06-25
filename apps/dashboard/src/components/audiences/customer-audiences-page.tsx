@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -96,10 +96,16 @@ export function CustomerAudiencesPage() {
 
   const params = useParams();
   const brandId = params.brandId as string;
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
+  // Deep-link seed: `?audienceId=` (e.g. from the brand-overview Top 3 audiences
+  // card) opens that audience's detail panel on first paint. Selection is local
+  // state thereafter — the param only seeds the initial open.
+  const initialAudienceId = searchParams.get("audienceId");
+
   const [tab, setTab] = useState<"active" | "archived">("active");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialAudienceId);
   const [aiOpen, setAiOpen] = useState(false);
 
   const { data: activeData, isPending: activePending } = useAuthQuery(
@@ -177,9 +183,12 @@ export function CustomerAudiencesPage() {
   ];
   const selected = selectedId ? audiences.find((a) => a.id === selectedId) ?? null : null;
 
+  // Clear a stale selection only once the lists have loaded — otherwise a
+  // deep-linked `?audienceId=` seed would be wiped during the initial fetch
+  // (selected is null until the audience row arrives).
   useEffect(() => {
-    if (selectedId && !selected) setSelectedId(null);
-  }, [selectedId, selected]);
+    if (!isPending && selectedId && !selected) setSelectedId(null);
+  }, [isPending, selectedId, selected]);
 
   const setStatus = (id: string, status: AudienceStatus) => statusMut.mutate({ id, status });
 
