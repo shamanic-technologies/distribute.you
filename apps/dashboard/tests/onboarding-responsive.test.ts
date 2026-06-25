@@ -30,8 +30,9 @@ describe("Onboarding mobile responsiveness", () => {
 
   it("gives generated audience cards equal-width rows up to three columns", () => {
     expect(layout).toContain("w-full max-w-5xl min-w-0");
-    expect(onboardingFlow).toContain("mx-auto w-full max-w-5xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12");
-    expect(onboardingFlow).toContain("mx-auto w-full max-w-5xl min-w-0 flex flex-col gap-3");
+    expect(onboardingFlow).toContain('>= 3 ? "max-w-5xl"');
+    expect(onboardingFlow).toContain('=== 2 ? "max-w-3xl" : "max-w-xl"');
+    expect(onboardingFlow).toContain("mx-auto w-full ${audienceShellWidth} min-w-0 flex flex-col gap-3");
     expect(onboardingFlow).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3");
   });
 });
