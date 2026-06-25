@@ -5,7 +5,15 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
-import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
+import {
+  listBrandLeads,
+  getLeadConsolidatedStatus,
+  getAudienceMembershipStats,
+  listAudiences,
+  getBrandSalesEconomics,
+  type Lead,
+  type LeadConsolidatedStatus,
+} from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
@@ -106,6 +114,31 @@ function CompanyLogo({ domain, name }: { domain: string | null; name: string | n
   );
 }
 
+// Per-lead audience (name from human-service membership stats, avatar joined
+// from `listAudiences`). Null when the lead's email matches no active audience.
+type LeadAudience = { name: string; avatarUrl: string | null };
+
+function AudienceCell({ audience }: { audience: LeadAudience | null }) {
+  if (!audience) return <span className="text-xs text-gray-300">-</span>;
+  return (
+    <div className="flex items-center gap-2">
+      {audience.avatarUrl ? (
+        <img
+          src={audience.avatarUrl}
+          alt=""
+          className="w-6 h-6 rounded object-cover bg-white border border-gray-200 shrink-0"
+          loading="lazy"
+        />
+      ) : (
+        <span className="w-6 h-6 rounded bg-brand-100 text-brand-700 text-xs font-semibold flex items-center justify-center shrink-0">
+          {audience.name.charAt(0).toUpperCase()}
+        </span>
+      )}
+      <span className="text-gray-700 truncate max-w-[140px]">{audience.name}</span>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
@@ -124,7 +157,7 @@ function LeadsLoadingSkeleton() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-100">
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_7rem_5rem] gap-4 px-4 py-3">
+            <div key={i} className="grid grid-cols-[1fr_1fr_8rem_7rem_5rem] gap-4 px-4 py-3">
               <div className="flex items-center gap-2.5">
                 <Skeleton className="h-6 w-6 rounded" />
                 <Skeleton className="h-4 w-32 rounded" />
@@ -132,6 +165,10 @@ function LeadsLoadingSkeleton() {
               <div className="space-y-1">
                 <Skeleton className="h-4 w-36 rounded" />
                 <Skeleton className="h-3 w-28 rounded" />
+              </div>
+              <div className="hidden items-center gap-2 md:flex">
+                <Skeleton className="h-6 w-6 rounded" />
+                <Skeleton className="h-4 w-20 rounded" />
               </div>
               <Skeleton className="hidden h-5 w-20 rounded-full sm:block" />
               <Skeleton className="hidden h-4 w-12 rounded md:block" />
@@ -143,11 +180,12 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
+function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }: {
   leads: Lead[];
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
   statusOf: (lead: Lead) => LeadConsolidatedStatus;
+  audienceOf: (lead: Lead) => LeadAudience | null;
 }) {
   if (leads.length === 0) {
     return (
@@ -163,6 +201,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             <th className="px-4 py-3">Company</th>
             <th className="px-4 py-3">Contact</th>
+            <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 hidden sm:table-cell">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Found</th>
           </tr>
@@ -198,6 +237,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
                     )}
                   </div>
                 </td>
+                <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {lead.servedAt ? (
@@ -230,6 +270,50 @@ export function EngagedLeadsPage() {
   );
 
   const leads = useMemo(() => (data?.leads ?? []).filter(isEngagedLead), [data]);
+
+  // Brand optimization goal drives the default tab: signups → Website visits,
+  // sales_meetings (server default when unset) → Positive replies.
+  const { data: econData } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    {},
+  );
+  const optimizationGoal = econData?.salesEconomics?.optimizationGoal ?? null;
+
+  // Audience per lead — human-service owns the email → audience membership
+  // (name); `listAudiences` supplies the avatar. Joined client-side, fetched
+  // on-demand off the engaged leads' emails (no widening of `listBrandLeads`).
+  const engagedEmails = useMemo(
+    () => Array.from(new Set(leads.map((l) => l.email).filter((e): e is string => !!e))),
+    [leads],
+  );
+  const { data: audStatsData } = useAuthQuery(
+    ["audienceStats", brandId, engagedEmails],
+    () => getAudienceMembershipStats({ emails: engagedEmails }),
+    { enabled: engagedEmails.length > 0 },
+  );
+  const { data: audiencesData } = useAuthQuery(
+    ["audiences", brandId],
+    () => listAudiences(brandId),
+    {},
+  );
+  const audienceByEmail = useMemo(() => {
+    const avatarById = new Map(
+      (audiencesData?.audiences ?? []).map((a) => [a.id, a.avatarUrl] as const),
+    );
+    const map = new Map<string, LeadAudience>();
+    for (const m of audStatsData?.matched ?? []) {
+      const first = m.audiences[0];
+      if (!m.emailNorm || !first) continue;
+      map.set(m.emailNorm.toLowerCase(), {
+        name: first.name,
+        avatarUrl: avatarById.get(first.audienceId) ?? null,
+      });
+    }
+    return map;
+  }, [audStatsData, audiencesData]);
+  const audienceOf = (lead: Lead): LeadAudience | null =>
+    lead.email ? audienceByEmail.get(lead.email.toLowerCase()) ?? null : null;
 
   const sortedLeads = useMemo(
     () => [...leads].sort((a, b) => {
@@ -267,12 +351,15 @@ export function EngagedLeadsPage() {
     return groups;
   }, [sortedLeads]);
 
+  // Open the tab matching what the brand optimizes for (once, after leads + the
+  // goal have loaded). User manual tab switches latch the ref and are never
+  // overridden by a later poll. Honors the goal tab even when empty.
   useEffect(() => {
-    if (hasAutoSelectedTab.current || sortedLeads.length === 0) return;
+    if (hasAutoSelectedTab.current) return;
+    if (sortedLeads.length === 0 || optimizationGoal === null) return;
     hasAutoSelectedTab.current = true;
-    const first = (["positive-replies", "website-visits"] as const).find((s) => (groupedByTab.get(s)?.length ?? 0) > 0);
-    if (first) setActiveTab(first);
-  }, [sortedLeads.length, groupedByTab]);
+    setActiveTab(optimizationGoal === "signups" ? "website-visits" : "positive-replies");
+  }, [sortedLeads.length, optimizationGoal]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
@@ -349,7 +436,7 @@ export function EngagedLeadsPage() {
                 <p className="text-gray-600 text-sm">Leads appear here after a website visit or a positive reply.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} />
+              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} />
             )}
           </>
         )}
