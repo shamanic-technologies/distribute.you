@@ -1,21 +1,14 @@
 "use client";
 
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
-
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
-import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type ManualQualificationStatus } from "@/lib/api";
+import { listBrandLeads, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { Skeleton } from "@/components/skeleton";
-import { WorkflowTag } from "@/components/report/workflow-tag";
-import { ManualQualificationBadge } from "@/components/leads/manual-qualification-badge";
-import { EditLeadStatusModal } from "@/components/leads/edit-lead-status-modal";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
-import { useManualQualifications } from "@/lib/use-manual-qualification";
-import { buildLatestQualificationMap, qualificationKey } from "@/lib/manual-qualification";
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -225,39 +218,15 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf }: {
 export function EngagedLeadsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const featureSlug = useSoleFeatureSlug();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("positive-replies");
   const [search, setSearch] = useState("");
-  const [editStatusOpen, setEditStatusOpen] = useState(false);
   const hasAutoSelectedTab = useRef(false);
 
   const { data, isPending, isPlaceholderData } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
     { refetchInterval: POLL_INTERVAL },
-  );
-
-  // Workflow display names — fetched once per feature and looked up by
-  // `lead.workflowSlug` so the side panel can render a colored
-  // `<WorkflowTag>` for the lead's workflow. Same hue across the public
-  // report and the internal page (deterministic hash on the display name).
-  const { data: workflowsData } = useAuthQuery(
-    ["featureWorkflows", featureSlug],
-    () => listWorkflows({ featureSlug }),
-  );
-  const workflowNameBySlug = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const w of workflowsData?.workflows ?? []) {
-      map.set(w.workflowSlug, w.workflowDynastyName);
-    }
-    return map;
-  }, [workflowsData]);
-
-  const { data: qualificationsData } = useManualQualifications(brandId);
-  const qualificationByKey = useMemo(
-    () => buildLatestQualificationMap(qualificationsData?.qualifications ?? []),
-    [qualificationsData],
   );
 
   const leads = useMemo(() => (data?.leads ?? []).filter(isEngagedLead), [data]);
@@ -305,10 +274,6 @@ export function EngagedLeadsPage() {
     if (first) setActiveTab(first);
   }, [sortedLeads.length, groupedByTab]);
 
-  useEffect(() => {
-    if (!selectedLead && editStatusOpen) setEditStatusOpen(false);
-  }, [selectedLead, editStatusOpen]);
-
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
   const filteredLeads = useMemo(() => {
@@ -339,9 +304,6 @@ export function EngagedLeadsPage() {
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
-  const selectedManualStatus: ManualQualificationStatus | null = selectedLead
-    ? qualificationByKey.get(qualificationKey(selectedLead.campaignId, selectedLead.email))?.status ?? null
-    : null;
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -414,30 +376,7 @@ export function EngagedLeadsPage() {
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
                 <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={statusOf(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
-                <div className="sm:col-span-2">
-                  <span className="text-gray-500">Manual qualif:</span>
-                  <p className="mt-1 flex items-center gap-2 flex-wrap">
-                    {selectedManualStatus ? (
-                      <ManualQualificationBadge status={selectedManualStatus} />
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                    <button
-                      type="button"
-                      data-testid="open-edit-status-modal"
-                      onClick={() => setEditStatusOpen(true)}
-                      className="text-xs px-2.5 py-1 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50"
-                    >
-                      Edit status
-                    </button>
-                  </p>
-                </div>
-                {selectedLead.workflowSlug && (
-                  <div className="sm:col-span-2">
-                    <span className="text-gray-500">Workflow:</span>
-                    <p className="mt-1"><WorkflowTag name={workflowNameBySlug.get(selectedLead.workflowSlug) ?? selectedLead.workflowSlug} /></p>
-                  </div>
-                )}
+                {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
             {selectedOrg && (selectedOrg.name || selectedOrg.primaryDomain || selectedOrg.industry) && (
@@ -456,14 +395,6 @@ export function EngagedLeadsPage() {
             )}
           </div>
         </div>
-      )}
-      {editStatusOpen && selectedLead && (
-        <EditLeadStatusModal
-          lead={selectedLead}
-          brandId={brandId}
-          currentStatus={selectedManualStatus}
-          onClose={() => setEditStatusOpen(false)}
-        />
       )}
     </div>
   );
