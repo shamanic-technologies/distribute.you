@@ -20,6 +20,12 @@ import type { SignalSeries } from "@/lib/revenue-view";
  */
 
 type OutcomePoint = { date: string; label: string; value: number };
+type OutcomeChartPoint = {
+  date: string;
+  label: string;
+  actualValue: number | null;
+  projectedValue: number | null;
+};
 
 function dateObject(date: string): Date {
   const [year, month, day] = date.split("-").map(Number);
@@ -53,25 +59,67 @@ function buildCumulative(series: SignalSeries | undefined): OutcomePoint[] {
   });
 }
 
+/**
+ * Continues the cumulative line past today with the expected daily increments
+ * (`future`, ascending, per-day). For a signups brand these are the clicks
+ * forecast; for a meetings brand they're the monthly expected outcome spread
+ * evenly across the forecast horizon. Rendered as a dashed segment that joins the
+ * solid actual line at today.
+ */
+function buildChartPoints(
+  series: SignalSeries | undefined,
+  future: { date: string; value: number }[] | undefined,
+): OutcomeChartPoint[] {
+  const actual = buildCumulative(series);
+  const startRun = actual.length > 0 ? actual[actual.length - 1].value : 0;
+  let run = startRun;
+  const projected = (future ?? []).map((f) => {
+    run += finite(f.value);
+    return { date: f.date, label: formatDate(f.date), value: run };
+  });
+  const points: OutcomeChartPoint[] = [
+    ...actual.map((p) => ({
+      date: p.date,
+      label: p.label,
+      actualValue: p.value,
+      projectedValue: null as number | null,
+    })),
+    ...projected.map((p) => ({
+      date: p.date,
+      label: p.label,
+      actualValue: null as number | null,
+      projectedValue: p.value,
+    })),
+  ];
+  // Join the dashed projection to the solid line at the last actual point.
+  if (actual.length > 0 && projected.length > 0) {
+    points[actual.length - 1].projectedValue = startRun;
+  }
+  return points;
+}
+
 function OutcomeTooltip({
   active,
   payload,
   label,
 }: {
   active?: boolean;
-  payload?: Array<{ payload: OutcomePoint }>;
+  payload?: Array<{ payload: OutcomeChartPoint }>;
   label: string;
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
+  const isProjected = point.actualValue == null;
+  const value = point.actualValue ?? point.projectedValue ?? 0;
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
       <p className="mb-1 font-medium text-gray-800">{formatDate(point.date)}</p>
       <p className="text-gray-500">
         {label}{" "}
         <span className="font-medium text-gray-800">
-          {point.value.toLocaleString("en-US")}
+          {Math.round(value).toLocaleString("en-US")}
         </span>
+        {isProjected && <span className="ml-1 text-gray-400">expected</span>}
       </p>
     </div>
   );
@@ -79,6 +127,7 @@ function OutcomeTooltip({
 
 export function OutcomeTrendCard({
   series,
+  future,
   label,
   color,
   expected,
@@ -86,6 +135,8 @@ export function OutcomeTrendCard({
 }: {
   /** Cumulative source: `clicked` (signups) or `repliedPositive` (meetings). */
   series: SignalSeries | undefined;
+  /** Expected daily increments past today (ascending) — the dashed forecast line. */
+  future?: { date: string; value: number }[];
   /** Human label for the outcome ("Website clicks" / "Positive replies"). */
   label: string;
   /** Line + fill color. */
@@ -94,8 +145,9 @@ export function OutcomeTrendCard({
   expected?: { value: number | null; label: string };
   pending?: boolean;
 }) {
-  const data = useMemo(() => buildCumulative(series), [series]);
-  const total = series?.total ?? (data.length > 0 ? data[data.length - 1].value : 0);
+  const data = useMemo(() => buildChartPoints(series, future), [series, future]);
+  const lastActual = [...data].reverse().find((p) => p.actualValue != null)?.actualValue;
+  const total = series?.total ?? lastActual ?? 0;
 
   return (
     <div className="lg:col-span-2 flex flex-col bg-white rounded-xl border border-gray-200 p-4 md:p-6">
@@ -161,12 +213,25 @@ export function OutcomeTrendCard({
               />
               <Area
                 type="monotone"
-                dataKey="value"
+                dataKey="actualValue"
                 stroke={color}
                 strokeWidth={2}
                 fill="url(#outcome-fill)"
                 dot={false}
                 activeDot={{ r: 4 }}
+                connectNulls
+                isAnimationActive={false}
+              />
+              <Area
+                type="monotone"
+                dataKey="projectedValue"
+                stroke={color}
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                fill="none"
+                dot={false}
+                activeDot={{ r: 4 }}
+                connectNulls
                 isAnimationActive={false}
               />
             </AreaChart>

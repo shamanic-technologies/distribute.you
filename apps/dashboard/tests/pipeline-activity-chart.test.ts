@@ -85,8 +85,26 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(chart).toContain("Past {days} days");
     expect(chart).toContain("h-[300px]");
     expect(chart).toContain("buildDailyCountMap");
-    expect(chart).toContain("buildPastDates");
+    expect(chart).toContain("buildWindowDates");
     expect(chart).toContain("forecastExpected");
+  });
+
+  it("activity window clamps to the first data day and today reads as actual, not expected", () => {
+    // New brand → no empty leading days; window left-edge clamps to firstDataDate.
+    expect(chart).toContain("firstDataDate");
+    expect(chart).toContain("buildWindowDates");
+    // Hovering today shows ACTUAL so far (only future days read as "expected").
+    expect(chart).toContain("const showActual = !day.isFuture");
+    // Wider windows auto-scroll so today + forecast stay in view.
+    expect(chart).toContain("el.scrollLeft = el.scrollWidth");
+  });
+
+  it("Outcome line extends past today with a dashed expected projection", () => {
+    expect(outcome).toContain("projectedValue");
+    expect(outcome).toContain('strokeDasharray="4 4"');
+    expect(outcome).toContain("buildChartPoints");
+    expect(section).toContain("outcomeFuture");
+    expect(section).toContain("future={outcomeFuture}");
   });
 
   it("wires the repliedPositive series through view-model, parser, and page", () => {
