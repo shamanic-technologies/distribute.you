@@ -2037,7 +2037,7 @@ function OnboardingAudiences({
           <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
             {candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId)).length} of {candidates.length} selected
           </div>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {candidates.map((c, i) => (
               <AudienceCandidateCard key={c.audienceId || i} candidate={c} selected={selectedAudienceIdSet.has(c.audienceId)} onToggle={() => toggle(c)} />
             ))}
