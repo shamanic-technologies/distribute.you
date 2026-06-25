@@ -8,7 +8,6 @@ import { useFeatures } from "@/lib/features-context";
 import { Skeleton } from "@/components/skeleton";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -391,7 +390,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   pathname: string;
 }) {
   const featureSlug = useSoleFeatureSlug();
-  const isBeta = useIsBetaUser();
   const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -415,8 +413,8 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    // Audiences — Apollo-style targeting cards. Email-allowlist gate.
-    ...(revenueOk && isBeta
+    // Audiences — Apollo-style targeting cards. GA (revenue features only).
+    ...(revenueOk
       ? [
           {
             id: "audiences",
