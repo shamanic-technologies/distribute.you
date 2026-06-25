@@ -519,7 +519,7 @@ export function EditWithAIChat({
 
         {/* Input */}
         <form onSubmit={onFormSubmit} className="border-t border-gray-200 p-3">
-          <div className="flex items-end gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:border-brand-300 focus-within:ring-2 focus-within:ring-brand-500/10 transition">
+          <div className="relative rounded-2xl border border-gray-200 bg-white px-4 py-3 focus-within:border-brand-300 focus-within:ring-2 focus-within:ring-brand-500/10 transition">
             <textarea
               ref={textareaRef}
               value={draft}
@@ -530,16 +530,16 @@ export function EditWithAIChat({
                   submit(draft);
                 }
               }}
-              rows={1}
+              rows={2}
               placeholder="Ask the AI to make a change…"
-              className="flex-1 resize-none text-sm text-gray-800 bg-transparent focus:outline-none max-h-32 overflow-y-auto"
+              className="block w-full resize-none bg-transparent pr-10 text-sm leading-relaxed text-gray-800 placeholder:text-gray-400 focus:outline-none min-h-[3rem] max-h-40 overflow-y-auto"
             />
             {isStreaming ? (
-              <button type="button" onClick={() => stop()} aria-label="Stop" className="shrink-0 rounded-lg bg-gray-200 p-1.5 text-gray-700 hover:bg-gray-300 transition">
+              <button type="button" onClick={() => stop()} aria-label="Stop" className="absolute bottom-2.5 right-2.5 shrink-0 rounded-lg bg-gray-200 p-1.5 text-gray-700 hover:bg-gray-300 transition">
                 <StopIcon className="w-4 h-4" />
               </button>
             ) : (
-              <button type="submit" disabled={!draft.trim()} aria-label="Send" className="shrink-0 rounded-lg bg-brand-600 p-1.5 text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
+              <button type="submit" disabled={!draft.trim()} aria-label="Send" className="absolute bottom-2.5 right-2.5 shrink-0 rounded-lg bg-brand-600 p-1.5 text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed transition">
                 <ArrowUpIcon className="w-4 h-4" />
               </button>
             )}
