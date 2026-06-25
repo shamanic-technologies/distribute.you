@@ -5,11 +5,14 @@
  * detail panel so both read the same way (colored, category-grouped pills).
  * A loose provider-shaped filters object (apollo/apify use different keys) is
  * grouped into labeled categories. EVERY stored filter renders — scalars,
- * arrays, AND range objects ({min,max}) — and nothing is hidden by key, so a
- * filter that exists in the data is always visible to the user.
+ * arrays, AND range objects ({min,max}) — so a filter that exists in the data
+ * is always visible. The ONLY exception is contact_email_status: it is an
+ * internal deliverability flag (always "verified"), not a targeting choice the
+ * user made, so it is hidden by key.
  */
 
 const NEUTRAL_TONE = "bg-gray-100 text-gray-600 border-gray-200";
+const HIDDEN_FILTER_KEYS = new Set(["contactEmailStatus", "contact_email_status"]);
 
 // Category vocabulary borrowed from PersonaCard's FILTER_CATEGORIES so audience
 // cards read like the persona cards (colored, category-grouped pills).
@@ -203,6 +206,7 @@ export function audienceFilterGroups(filters: Record<string, unknown>): Audience
     pushValue(label, tone, formatFilterValue(key, label, raw, isKnownCategory));
   };
   for (const [key, val] of Object.entries(filters ?? {})) {
+    if (HIDDEN_FILTER_KEYS.has(key)) continue;
     const cat = AUDIENCE_CATEGORY_MAP.find((c) => c.keys.includes(key));
     const label = cat ? cat.label : humanizeFilterKey(key);
     const tone = cat ? cat.tone : NEUTRAL_TONE;
