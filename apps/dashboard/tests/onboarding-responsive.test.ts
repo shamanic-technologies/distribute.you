@@ -33,8 +33,10 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).toContain('>= 3 ? "max-w-5xl"');
     expect(onboardingFlow).toContain('=== 2 ? "max-w-3xl" : "max-w-xl"');
     expect(onboardingFlow).toContain("mx-auto w-full ${audienceShellWidth} min-w-0 flex flex-col gap-3");
-    // Cards fill their column, so a single card spans the full (count-sized) shell.
-    expect(onboardingFlow).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3");
+    // Column count follows the card count, so a single card spans the full shell
+    // (grid-cols-1) instead of a 1/3-wide column at desktop width.
+    expect(onboardingFlow).toContain('candidateCount >= 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : candidateCount === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"');
+    expect(onboardingFlow).toContain("grid gap-3 ${audienceGridCols}");
     expect(onboardingFlow).toContain("flex w-full items-start gap-3 rounded-xl border-2");
   });
 });
