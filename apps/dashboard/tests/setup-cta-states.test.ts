@@ -17,15 +17,3 @@ describe("Dashboard root only routes", () => {
     expect(content).not.toContain("PublicAnalyticsChart");
   });
 });
-
-describe("BrandsList shows 'View campaigns' CTA", () => {
-  it("should display a 'View campaigns' link on each brand card", () => {
-    const componentPath = path.join(
-      __dirname,
-      "../src/components/brands-list.tsx"
-    );
-    const content = fs.readFileSync(componentPath, "utf-8");
-    expect(content).toContain("View campaigns");
-    expect(content).toContain("text-brand-500");
-  });
-});

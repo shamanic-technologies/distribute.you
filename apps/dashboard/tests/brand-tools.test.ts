@@ -155,10 +155,12 @@ describe("brand-tools removal", () => {
       expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
     });
 
-    it("feature leads page uses listBrandLeads (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/leads/page.tsx");
+    it("audiences leads page uses listBrandLeads (brand-level filter)", () => {
+      const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("listBrandLeads");
+      expect(src).toContain("replyClassification === \"positive\"");
+      expect(src).toContain("lead.clicked");
     });
 
     it("feature emails page uses listBrandEmails (brand-level filter)", () => {
@@ -178,20 +180,13 @@ describe("brand-tools removal", () => {
     const sidebarPath = path.join(SRC, "src/components/context-sidebar.tsx");
     const sidebarSrc = fs.readFileSync(sidebarPath, "utf-8");
 
-    it("imports useEntityRegistry", () => {
-      expect(sidebarSrc).toContain("useEntityRegistry");
-      expect(sidebarSrc).toContain("entity-registry-context");
-    });
-
-    it("FeatureLevelSidebar uses entity registry to build entity items", () => {
-      expect(sidebarSrc).toContain("registry[e.name]");
-      expect(sidebarSrc).toContain("entityItems");
-    });
-
-    it("FeatureLevelSidebar fetches brand-level counts for entity badges", () => {
-      expect(sidebarSrc).toContain("fetchFeatureStats");
-      expect(sidebarSrc).toContain("entityCounts");
-      expect(sidebarSrc).toContain("badge: entityCounts[e.name]");
+    it("no longer builds an entity Database section (removed from the sidebar)", () => {
+      // The "Database" section (raw entity rows + their count badges) was removed.
+      // The entity registry, per-entity count queries and badge plumbing went
+      // with it; engaged leads now live under Audiences.
+      expect(sidebarSrc).not.toContain("useEntityRegistry");
+      expect(sidebarSrc).not.toContain("entityItems");
+      expect(sidebarSrc).not.toContain("entityCounts");
     });
   });
 

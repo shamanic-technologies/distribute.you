@@ -19,10 +19,12 @@ describe("Org overview page empty state", () => {
     expect(content).toContain("Set up your first brand to get started");
   });
 
-  it("should link to onboarding for the CTA", () => {
-    // The app-level `/features/[featureId]/new` create page was removed (#1768
-    // follow-up). An empty org with no brand sends the user to onboarding to
-    // create their first brand.
-    expect(content).toContain("/onboarding?new=1");
+  it("should route the add-brand CTA through the full onboarding flow", () => {
+    // The add-brand CTAs now run the same onboarding flow as signup (reusing the
+    // active org), entered via ?from=add to skip the intro — not a stripped-down
+    // modal. See create-buttons-onboarding.
+    expect(content).toContain("/onboarding?from=add");
+    expect(content).not.toContain("BrandCreateModal");
+    expect(content).not.toContain("setAddBrandOpen");
   });
 });

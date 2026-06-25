@@ -182,7 +182,8 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
 
   it("marks logo and breadcrumb parent links as explicit hierarchy navigation", () => {
     expect(header).toContain('explicitHierarchyHref("/")');
-    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${organization.id}`)");
+    // Org root link uses the per-tab URL org, not the shared active org (#1948).
+    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
   });
 

@@ -1,10 +1,10 @@
 # distribute
 
-> Pay-as-you-go cloud platform that runs cold email, PR, hiring, VC, and other
-> outbound channels on behalf of solo founders. You give us a URL and a daily
-> budget; we send from agency-warmed inboxes, AI-qualify replies, and forward
-> only the positive ones to your Gmail. Every workflow is open source on
-> GitHub under MIT. Every unit cost is published live. Cancel anytime.
+> Pay-as-you-go cloud platform that runs cold email outreach on behalf of solo
+> founders. You give us a URL and a daily budget; we send from agency-warmed
+> inboxes, AI-qualify replies, and forward only the positive ones to your Gmail.
+> Every workflow is open source on GitHub under MIT. Every unit cost is published
+> live. Cancel anytime.
 
 ## Brand
 
@@ -17,7 +17,7 @@
 
 ## Key pages
 
-- [Home](https://distribute.you/): hero, channels live, pricing summary, expert quotes mosaic, sourced industry stats
+- [Home](https://distribute.you/): hero, how it works, pricing summary, expert quotes mosaic, sourced industry stats
 - [Pricing](https://distribute.you/pricing): live unit-cost catalog grouped by provider, 3-layer pricing stack (primitives / workflows / outcomes)
 - [Performance](https://distribute.you/performance): public leaderboard of workflow performance by cost per positive reply
 - [Performance · Brands](https://distribute.you/performance/brands): per-brand campaign performance leaderboard
@@ -32,9 +32,12 @@
 - 2–3× more replies with personalization (only 5% of senders do it) — TheDigitalBloom
 - 15–25% reply rate for top-quartile campaigns — TheDigitalBloom
 
-## Channels live
+## What we do
 
-Sales cold email · PR outreach · Hiring cold email · VC outreach · Journalist pitch · Influencer pitch · Podcaster pitch · Thought leader pitch · Google Ads · Reddit Ads (more every month)
+Cold email outreach, done for you. We own and warm the sending domains, write and
+send the emails, AI-qualify every reply, and forward only the positive ones to
+your Gmail. You drop a URL and a daily budget — no SDR, no setup, no inbox to
+babysit.
 
 ## Pricing pages of record
 

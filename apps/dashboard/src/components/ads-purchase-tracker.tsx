@@ -13,6 +13,14 @@ import { useSearchParams } from "next/navigation";
  * The AW tag (config in app/layout.tsx) reads the `_gcl_aw` gclid cookie that the
  * landing set on `.distribute.you` for cross-subdomain attribution.
  *
+ * Conversion VALUE: the checkout `success_url` carries `pending_topup` (the top-up
+ * amount in cents — set by billing-guard + the billing page). We forward it as
+ * `value` (dollars) + `currency` so the campaign's "Maximize conversion value"
+ * bidding optimizes on real revenue, not a flat per-conversion default. The Ads
+ * conversion action must be set to "Use different values for each conversion" or
+ * the sent value is ignored. When the amount is absent/zero we fire without a
+ * value rather than reporting $0.
+ *
  * Fire-only: it does NOT strip the param — the launch pages / billing page already
  * read `pending_topup` and strip the params to arm auto-topup, and stripping here
  * would race that logic. A per-session
@@ -35,8 +43,14 @@ export function AdsPurchaseTracker() {
     fired.current = true;
     sessionStorage.setItem(dedupKey, "1");
 
+    const cents = Number(searchParams.get("pending_topup"));
+    const valueParams =
+      Number.isFinite(cents) && cents > 0
+        ? { value: cents / 100, currency: "USD" }
+        : undefined;
+
     const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-    gtag?.("event", "manual_event_PURCHASE");
+    gtag?.("event", "manual_event_PURCHASE", valueParams);
   }, [searchParams]);
 
   return null;

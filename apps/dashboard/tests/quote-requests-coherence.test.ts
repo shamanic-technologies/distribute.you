@@ -25,16 +25,15 @@ const read = (rel: string) =>
 const contextSidebar = read("../src/components/context-sidebar.tsx");
 
 describe("quote-requests badge ↔ page coherence (gold catalog single source)", () => {
-  // The campaign sidebar (sidebar-wrapper.tsx) was deleted with the campaign
-  // concept; the brand-level sidebar is the survivor.
+  // The entity "Database" section (and with it the per-entity sidebar badges,
+  // incl. quote-requests) was removed from the brand sidebar — lead data is now
+  // surfaced via the overview's lead detail panel. There is no sidebar badge left
+  // to diverge from the page, so the coherence concern is moot. Guard that the
+  // badge machinery is gone (so it can't silently reappear out of sync).
   describe("brand sidebar (context-sidebar.tsx BrandLevelSidebar)", () => {
-    it("imports listAllRankedOpportunities", () => {
-      expect(contextSidebar).toContain("listAllRankedOpportunities");
-    });
-
-    it("sources the quote-requests badge from the OPEN (non-pitched) gold opportunities (badge == page)", () => {
-      expect(contextSidebar).toContain("isOpportunityOpen");
-      expect(contextSidebar).toMatch(/"quote-requests":[\s\S]*?isOpportunityOpen/);
+    it("no longer sources a quote-requests sidebar badge", () => {
+      expect(contextSidebar).not.toContain("listAllRankedOpportunities");
+      expect(contextSidebar).not.toMatch(/"quote-requests":/);
     });
   });
 });

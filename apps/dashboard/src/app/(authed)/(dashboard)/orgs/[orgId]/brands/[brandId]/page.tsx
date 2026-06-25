@@ -14,12 +14,15 @@ import {
   getBrandDailyBudget,
   getBrandPause,
   getFeaturePipelineActivity,
-  fetchFeaturePersonaStats,
-  listPersonas,
+  fetchFeatureAudienceStats,
+  listAudiences,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
+  keepLastGoodFeatureRevenue,
+  type PipelineActivityMetric,
   type WorkflowProjectionResponse,
 } from "@/lib/api";
+import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -30,12 +33,30 @@ import {
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
-import { TopPersonasCard } from "@/components/revenue/top-personas-card";
+import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 const DEFAULT_VISIT_TO_MEETING_PCT = 20;
+const DEFAULT_VISIT_TO_SIGNUP_PCT = 25;
+
+function countByDay(series: RevenueOverview["outreachContacted"]): Map<string, number> | null {
+  if (!series) return null;
+  return new Map(series.daily.map((d) => [d.date, d.count] as const));
+}
+
+function actualFrom(
+  byDay: Map<string, number> | null,
+  date: string,
+  fallback: number | null,
+): number | null {
+  return byDay ? byDay.get(date) ?? 0 : fallback;
+}
+
+function withActual(metric: PipelineActivityMetric, actual: number | null): PipelineActivityMetric {
+  return { ...metric, actual };
+}
 
 function FirstClickReassuranceBanner() {
   return (
@@ -101,7 +122,17 @@ export default function BrandOverviewPage() {
   const { data } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
-    { enabled, ...pollOptionsSlow },
+    {
+      enabled,
+      ...pollOptionsSlow,
+      // Keep the last-good `outreachContacted` (Outreach card + graph-actual source)
+      // across a transient degenerate refetch that drops it on a valid 200.
+      structuralSharing: (prev, next) =>
+        keepLastGoodFeatureRevenue(
+          prev as RevenueOverview | undefined,
+          next as RevenueOverview,
+        ),
+    },
   );
 
   const { data: pipelineActivity } = useAuthQuery(
@@ -109,6 +140,60 @@ export default function BrandOverviewPage() {
     () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
     { enabled, ...pollOptions },
   );
+
+  // ── Single-source graph ACTUALS (features-service#371/#372/#377) ───────────
+  // The stat cards, graph actual bars and conversions table now read the SAME
+  // `/revenue` snapshot aggregates. Forecast/expected values stay from
+  // pipeline-activity. Each server series is optional during backend rollout:
+  // absent series keep the legacy pipeline-activity actual for that metric.
+  const contactedTotal = data?.outreachContacted?.total ?? null;
+  const mergedPipelineActivity = useMemo(() => {
+    if (!pipelineActivity) return undefined;
+    const contactedByDay = countByDay(data?.outreachContacted);
+    const openedByDay = countByDay(data?.opened);
+    const clickedByDay = countByDay(data?.clicked);
+    const meetingsByDay = countByDay(data?.meetingsBooked);
+    if (!contactedByDay && !openedByDay && !clickedByDay && !meetingsByDay) {
+      return pipelineActivity;
+    }
+    return {
+      ...pipelineActivity,
+      days: pipelineActivity.days.map((day) => ({
+        ...day,
+        metrics: {
+          ...day.metrics,
+          outreach: withActual(
+            day.metrics.outreach,
+            actualFrom(contactedByDay, day.date, day.metrics.outreach.actual),
+          ),
+          opens: withActual(
+            day.metrics.opens,
+            actualFrom(openedByDay, day.date, day.metrics.opens.actual),
+          ),
+          clicks: withActual(
+            day.metrics.clicks,
+            actualFrom(clickedByDay, day.date, day.metrics.clicks.actual),
+          ),
+          signups: withActual(
+            day.metrics.signups,
+            actualFrom(clickedByDay, day.date, day.metrics.signups.actual),
+          ),
+          salesMeetings: withActual(
+            { actual: null, expected: null, conversionPct: null },
+            actualFrom(meetingsByDay, day.date, null),
+          ),
+        },
+      })),
+    };
+  }, [pipelineActivity, data]);
+  const pipelineActualSeries = useMemo(() => ({
+    outreach: data?.outreachContacted,
+    opens: data?.opened,
+    clicks: data?.clicked,
+    signups: data?.clicked,
+    repliedPositive: data?.repliedPositive,
+    salesMeetings: data?.meetingsBooked,
+  }), [data]);
 
   // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
   // Cost & efficiency card. Shares the Campaigns page's query key + 5s cadence so
@@ -135,11 +220,6 @@ export default function BrandOverviewPage() {
   const featureStats = featureStatsData?.stats ?? {};
   const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const totalWebsiteClicks = featureStats.recipientsClicked ?? 0;
-  // Outreach is live once ≥1 lead has been contacted (real email-gateway stat).
-  // NOT systemStats.activeCampaigns — that field is wired to a non-existent
-  // campaign status ("active"/"running") while campaign-service only emits
-  // "ongoing"/"stopped", so it's always 0 and the banner never showed.
-  const hasContactedLeads = (featureStats.recipientsContacted ?? 0) > 0;
 
   // Brand goal config → goal-specific stat card copy.
   const { data: economicsData } = useAuthQuery(
@@ -151,8 +231,10 @@ export default function BrandOverviewPage() {
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
   const visitToMeetingPct =
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
-  const personaStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
-  const personaStatsMetric = personaStatsGoal === "signup" ? "cpc" : "cppr";
+  const visitToSignupPct =
+    economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
+  const audienceStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
+  const audienceStatsMetric = audienceStatsGoal === "signup" ? "cpc" : "cppr";
 
   const { data: budgetData } = useAuthQuery(
     ["brandDailyBudget", brandId],
@@ -239,38 +321,43 @@ export default function BrandOverviewPage() {
     optimizationGoal,
   ]);
 
-  // Real persona-level cost evidence from features-service. This replaces the
-  // old provider-cost-source list; no dashboard-side mock/hash persona split.
-  const { data: personaStatsData } = useAuthQuery(
-    ["featurePersonaStats", featureSlug, brandId, personaStatsGoal],
-    () => fetchFeaturePersonaStats(featureSlug, {
+  // Real audience-level cost evidence from features-service. This replaces the
+  // old provider-cost-source list; no dashboard-side mock/hash audience split.
+  const { data: audienceStatsData } = useAuthQuery(
+    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
+    () => fetchFeatureAudienceStats(featureSlug, {
       brandId,
-      goal: personaStatsGoal,
+      goal: audienceStatsGoal,
       limit: 3,
     }),
     { enabled, ...pollOptions },
   );
 
-  const { data: personasData } = useAuthQuery(
-    ["personas", brandId, "active"],
-    () => listPersonas(brandId, "active"),
+  const { data: audiencesData } = useAuthQuery(
+    ["audiences", brandId],
+    () => listAudiences(brandId),
     { enabled, ...pollOptions },
   );
+  const activeAudiences = audiencesData?.audiences.filter((a) => a.status === "active");
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total/today spend (runs-service) are separate cold chains — gate each on its
   // own query so the fast cost figures aren't held by the slower revenue call.
   const revenueRevealed = useCoordinatedReveal([data !== undefined]);
+  // Graph reveals with revenue too — its actual outreach series is sourced from
+  // `/revenue` (mergedPipelineActivity), so it must wait for `data` to avoid a
+  // backend-then-/revenue flip on the outreach bar.
   const activityRevealed = useCoordinatedReveal([
     pipelineActivity !== undefined,
     economicsData !== undefined,
+    data !== undefined,
   ]);
   const costRevealed = useCoordinatedReveal([costData !== undefined]);
   const todayCostRevealed = useCoordinatedReveal([todayCostData !== undefined]);
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
-  const personaStatsRevealed = useCoordinatedReveal([
-    personaStatsData !== undefined,
-    personasData !== undefined,
+  const audienceStatsRevealed = useCoordinatedReveal([
+    audienceStatsData !== undefined,
+    audiencesData !== undefined,
   ]);
   const outcomeRevealed = useCoordinatedReveal([
     budgetData !== undefined,
@@ -278,7 +365,7 @@ export default function BrandOverviewPage() {
     monthlyBudgetUsd == null || outcomeProjection !== undefined,
   ]);
   const showFirstClickReassurance =
-    statsRevealed && hasContactedLeads && totalWebsiteClicks < 1 && !isBrandPaused;
+    statsRevealed && totalWebsiteClicks < 1 && !isBrandPaused;
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -323,19 +410,17 @@ export default function BrandOverviewPage() {
       {showFirstClickReassurance && <FirstClickReassuranceBanner />}
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
-        pipelineActivity={activityRevealed ? pipelineActivity : undefined}
+        pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
+        pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
         optimizationGoal={optimizationGoal}
         visitToMeetingPct={visitToMeetingPct}
+        visitToSignupPct={visitToSignupPct}
         revenuePending={!revenueRevealed}
         activityPending={!activityRevealed}
         expectedOutcome={
           outcomeRevealed
             ? {
                 value: expectedMonthlyOutcome,
-                label:
-                  optimizationGoal === "signups"
-                    ? "expected signups / month"
-                    : "expected sales meetings / month",
               }
             : undefined
         }
@@ -349,11 +434,11 @@ export default function BrandOverviewPage() {
         basePath={basePath}
         headerAction={<BrandStatusControl brandId={brandId} />}
         costBottomCard={
-          <TopPersonasCard
-            data={personaStatsRevealed ? personaStatsData : undefined}
-            personas={personaStatsRevealed ? personasData?.personas : undefined}
-            pending={!personaStatsRevealed}
-            metric={personaStatsMetric}
+          <TopAudiencesCard
+            data={audienceStatsRevealed ? audienceStatsData : undefined}
+            audiences={audienceStatsRevealed ? activeAudiences : undefined}
+            pending={!audienceStatsRevealed}
+            metric={audienceStatsMetric}
           />
         }
         topRow={
@@ -363,10 +448,12 @@ export default function BrandOverviewPage() {
           <OutreachStatCards
             stats={featureStats}
             totalCostCents={totalCostCents}
-            pending={!statsRevealed}
+            pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
+            outreachOverride={contactedTotal}
           />
         }
+        conversions={null}
       />
     </DashboardPage>
   );

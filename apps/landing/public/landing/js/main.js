@@ -190,18 +190,7 @@ if (dashEl) {
       if (el) setTimeout(() => countUp(el, d.target, 900, d.prefix, d.suffix, d.decimals), d.delay);
     });
 
-    /* ROI count-up (indices 1-3 skip budget which has id) */
-    const roiVals = dashEl.querySelectorAll('.uid-roi-val');
-    [
-      { target: 45,   prefix: '',  suffix: 'x', decimals: 0, delay: 200 },
-      { target: 9800, prefix: '$', suffix: '',  decimals: 0, delay: 260 },
-    ].forEach((d, i) => {
-      const el = roiVals[i + 1]; // +1 because index 0 is budget (managed by loop)
-      if (el) {
-        el.textContent = d.prefix + (d.decimals ? (0).toFixed(d.decimals) : '0') + d.suffix;
-        setTimeout(() => countUp(el, d.target, 950, d.prefix, d.suffix, d.decimals), d.delay);
-      }
-    });
+
 
     /* Table rows stagger */
     dashEl.querySelectorAll('.uid-table tbody tr').forEach((row, i) => {

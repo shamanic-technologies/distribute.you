@@ -1,24 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { keepPreviousData } from "@tanstack/react-query";
+import { useOrganization } from "@clerk/nextjs";
 import { useFeatures } from "@/lib/features-context";
-import { useEntityRegistry } from "@/lib/entity-registry-context";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { Skeleton } from "@/components/skeleton";
-import {
-  fetchFeatureStats,
-  listBrandOutlets,
-  listJournalistsEnriched,
-  listBrandLeads,
-  listBrandEmails,
-  listBrandArticles,
-  listAllRankedOpportunities,
-} from "@/lib/api";
-import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -27,6 +14,7 @@ import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 
 interface SidebarItem {
   id: string;
@@ -208,9 +196,15 @@ const OverviewIcon = () => (
   </svg>
 );
 
-const PersonasIcon = () => (
+const AudiencesIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+  </svg>
+);
+
+const LeadsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 6.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0M18 8.25h3m-1.5-1.5v3" />
   </svg>
 );
 
@@ -278,7 +272,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: explicitHierarchyHref(`/orgs/${orgId}`), icon: <HomeIcon /> },
   ];
-
   return (
     <SidebarSection title="Organization">
       {topItems.map((item) => (
@@ -325,20 +318,66 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   );
 }
 
-// Entity icon mapping for sidebar — maps registry icon names to SVG components
-const ENTITY_ICON_MAP: Record<string, () => React.ReactNode> = {
-  users: () => <OrgIcon />,
-  newspaper: () => <OrgIcon />,
-  "pen-tool": () => <NewspaperIcon />,
-  "scroll-text": () => <DocumentIcon />,
-  building: () => <OrgIcon />,
-  envelope: () => <EnvelopeIcon />,
-  document: () => <DocumentIcon />,
-};
+// Derive a domain-shaped string from the org name (onboarding sets org name =
+// brand domain). Mirrors the helper in breadcrumb-nav.tsx.
+function orgDomainFromName(name?: string | null): string | null {
+  if (!name) return null;
+  const candidate = name.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
+  return /^[^\s]+\.[^\s]+$/.test(candidate) ? candidate : null;
+}
 
-function getEntitySidebarIcon(iconName: string): React.ReactNode {
-  const iconFn = ENTITY_ICON_MAP[iconName];
-  return iconFn ? iconFn() : <WorkflowIcon />;
+const CopyIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+// Referral card — anchored at the very bottom of the brand sidebar. No backend:
+// the invite link is just the landing URL carrying a UTM with the user's
+// org-domain. Copy referral terms are hardcoded copy.
+function ReferralCard() {
+  const { organization } = useOrganization();
+  const [copied, setCopied] = useState(false);
+  const campaign = orgDomainFromName(organization?.name) ?? organization?.id ?? "referral";
+  const link = `https://distribute.you?utm_source=referral&utm_medium=invite&utm_campaign=${encodeURIComponent(campaign)}`;
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="p-2">
+      <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 space-y-2">
+        <div className="flex items-start gap-1">
+          <p className="text-xs font-semibold text-gray-700 leading-snug">
+            Give and get $75 credits
+          </p>
+          <span className="shrink-0 mt-0.5">
+            <InfoTooltip
+              tip="We double up to $75 the budget spent by the person you invite for their first day. When they do, we do the same on your next daily amount."
+              placement="bottom"
+            />
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={copy}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-white border border-brand-200 px-2.5 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-100 transition"
+        >
+          {copied ? <CheckIcon /> : <CopyIcon />}
+          {copied ? "Copied" : "Copy invite link"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // Brand Level Sidebar — the product ships the primary feature at the brand level,
@@ -353,120 +392,13 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 }) {
   const featureSlug = useSoleFeatureSlug();
   const isBeta = useIsBetaUser();
-  const { getFeature, isLoading: featuresLoading } = useFeatures();
-  const { registry, isLoading: registryLoading } = useEntityRegistry();
+  const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const feature = getFeature(featureSlug);
-  const entities = feature?.entities ?? [];
-  const entityNames = useMemo(() => entities.map((e) => e.name), [entities]);
 
-  // Feature stats scoped to this brand — same pattern as campaign sidebar
-  const resolvedFeatureSlug = feature?.slug;
-  const statsEnabled = !!resolvedFeatureSlug;
-  const { data: featureStatsData, isPending: statsPending } = useAuthQuery(
-    ["featureStats", resolvedFeatureSlug, "brand", brandId],
-    () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
-    { enabled: statsEnabled, refetchInterval: 5_000, placeholderData: keepPreviousData },
-  );
-  const fStats = featureStatsData?.stats ?? {};
-
-  // Listing fallbacks for entities without a countKey — filtered by featureSlug
-  const outletsEnabled = entityNames.includes("outlets");
-  const { data: outletsData, isPending: outletsPending } = useAuthQuery(
-    ["brandOutlets", brandId, featureSlug],
-    () => listBrandOutlets(brandId, featureSlug),
-    { enabled: outletsEnabled, refetchInterval: 5_000 },
-  );
-  const journalistsEnabled = entityNames.includes("journalists");
-  const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
-    ["enrichedJournalists", brandId, featureSlug],
-    () => listJournalistsEnriched(brandId, { featureSlug }),
-    { enabled: journalistsEnabled, refetchInterval: 5_000 },
-  );
-  const leadsEnabled = entityNames.includes("leads");
-  const { data: leadsData, isPending: leadsPending } = useAuthQuery(
-    ["brandLeads", brandId],
-    () => listBrandLeads(brandId),
-    { enabled: leadsEnabled, refetchInterval: 5_000 },
-  );
-  const emailsEnabled = entityNames.includes("emails");
-  const { data: emailsData, isPending: emailsPending } = useAuthQuery(
-    ["brandEmails", brandId],
-    () => listBrandEmails(brandId),
-    { enabled: emailsEnabled, refetchInterval: 5_000 },
-  );
-  const articlesEnabled = entityNames.includes("articles");
-  const { data: articlesData, isPending: articlesPending } = useAuthQuery(
-    ["brandArticles", brandId, featureSlug],
-    () => listBrandArticles(brandId, featureSlug),
-    { enabled: articlesEnabled, refetchInterval: 5_000 },
-  );
-  // Gold catalog (GET /orgs/opportunities) — same source the quote-requests page
-  // renders, so the badge equals the page count.
-  const rankedOppsEnabled = entityNames.includes("quote-requests");
-  const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
-    ["rankedOpportunities", { brandId }],
-    () => listAllRankedOpportunities({ brandId }),
-    { enabled: rankedOppsEnabled, refetchInterval: 5_000 },
-  );
-
-  // Reveal EVERY entity badge together (one paint), then keep the numbers
-  // latched. A disabled query stays `isPending: true` forever, so each flag is
-  // gated behind its own `enabled` condition. `defsReady` gates the barrier FIRST
-  // (until the feature + registry load, entityNames is empty → every count query
-  // disabled). See CLAUDE.md → "Coordinated reveal".
-  const defsReady = !featuresLoading && !registryLoading;
-  const badgesRevealed = useCoordinatedReveal([
-    defsReady,
-    !statsEnabled || !statsPending,
-    !outletsEnabled || !outletsPending,
-    !journalistsEnabled || !journalistsPending,
-    !leadsEnabled || !leadsPending,
-    !emailsEnabled || !emailsPending,
-    !articlesEnabled || !articlesPending,
-    !rankedOppsEnabled || !rankedOppsPending,
-  ]);
-
-  const listingFallback: Record<string, number | undefined> = {
-    leads: leadsData?.leads?.length,
-    emails: emailsData?.emails?.length,
-    outlets: outletsData?.total,
-    journalists: journalistsData?.total ?? journalistsData?.journalists?.length,
-    articles: articlesData?.discoveries?.length,
-    // Open (non-pitched) count so the badge == the queue the page renders.
-    "quote-requests": rankedOppsData?.opportunities.filter((o) =>
-      isOpportunityOpen(o.pitchStatus),
-    ).length,
-  };
-
-  const entityCounts = useMemo(() => {
-    const result: Record<string, number | undefined> = {};
-    for (const entity of entities) {
-      if (listingFallback[entity.name] != null) {
-        result[entity.name] = listingFallback[entity.name];
-      } else if (entity.countKey && fStats[entity.countKey] != null) {
-        result[entity.name] = fStats[entity.countKey];
-      }
-    }
-    return result;
-  }, [entities, fStats, listingFallback]);
-
-  const entityItems: SidebarItem[] = entities
-    .filter((e) => registry[e.name])
-    // No companies page yet (blocked on a brand-scoped companies API) — the
-    // backend declares the entity, so the link would 404. Hide it until the page
-    // exists. Campaign-level companies page is unaffected.
-    .filter((e) => e.name !== "companies")
-    .map((e) => {
-      const config = registry[e.name];
-      return {
-        id: e.name,
-        label: config.label,
-        href: `${basePath}/${config.pathSuffix}`,
-        icon: getEntitySidebarIcon(config.icon),
-        badge: entityCounts[e.name],
-      };
-    });
+  // The old "Database" section (raw entity rows: Leads/Emails/Outlets/…) stays
+  // removed. Engaged leads are now surfaced under Audiences; the per-entity count
+  // queries + badge-reveal plumbing that fed Database remain dropped.
+  const defsReady = !featuresLoading;
 
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
   // today). GA. Overview is the brand root. Audiences is still gated to the
@@ -487,60 +419,31 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
     ...(revenueOk && isBeta
       ? [
           {
-            id: "personas",
+            id: "audiences",
             label: "Audiences",
-            href: `${basePath}/personas`,
-            icon: <PersonasIcon />,
+            href: `${basePath}/audiences`,
+            icon: <AudiencesIcon />,
+          } satisfies SidebarItem,
+          {
+            id: "audience-leads",
+            label: "Leads",
+            href: `${basePath}/audiences/leads`,
+            icon: <LeadsIcon />,
           } satisfies SidebarItem,
         ]
       : []),
   ];
 
   return (
-    <SidebarSection title="Brand" backHref={`/orgs/${orgId}`} backLabel="Overview">
-      {/* Reveal the WHOLE nav as one group: top items are static and the Database
-          items need feature + registry defs. Hold everything behind `defsReady`
-          with skeleton rows, then render every item together. Badge numbers are a
-          finer sub-group revealed via badgePending. */}
-      {!defsReady ? (
-        <>
-          {[0, 1, 2].map((i) => (
-            <SidebarNavRowSkeleton key={`top-${i}`} />
-          ))}
-          <div className="pt-2 mt-2 border-t border-gray-100">
-            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-            {[0, 1, 2, 3].map((i) => (
-              <SidebarNavRowSkeleton key={`out-${i}`} />
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          {topItems.map((item) => (
-            <SidebarLink
-              key={item.id}
-              item={item}
-              isActive={
-                item.id === "overview"
-                  ? pathname === basePath
-                  : pathname.startsWith(item.href)
-              }
-            />
-          ))}
-          {entityItems.length > 0 && (
-            <div className="pt-2 mt-2 border-t border-gray-100">
-              <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Database</h4>
-              {entityItems.map((item) => (
-                <SidebarLink
-                  key={item.id}
-                  item={item}
-                  badgePending={!badgesRevealed}
-                  isActive={pathname.startsWith(item.href)}
-                />
-              ))}
-            </div>
-          )}
-          <div className="pt-2 mt-2 border-t border-gray-100">
+    <SidebarSection
+      title="Brand"
+      backHref={`/orgs/${orgId}`}
+      backLabel="Overview"
+      footer={
+        // Anchored to the bottom (outside the scrollable nav): Brand Settings,
+        // then the referral card.
+        <div className="border-t border-gray-100">
+          <div className="p-2">
             <SidebarLink
               item={{
                 id: "settings",
@@ -551,6 +454,33 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               isActive={pathname.startsWith(`${basePath}/settings`)}
             />
           </div>
+          <ReferralCard />
+        </div>
+      }
+    >
+      {/* Top nav is static (Overview + Audiences). Held behind `defsReady` only
+          to avoid a flash before the sole feature resolves. */}
+      {!defsReady ? (
+        <>
+          {[0, 1, 2].map((i) => (
+            <SidebarNavRowSkeleton key={`top-${i}`} />
+          ))}
+        </>
+      ) : (
+        <>
+          {topItems.map((item) => (
+            <SidebarLink
+              key={item.id}
+              item={item}
+              isActive={
+                item.id === "overview"
+                  ? pathname === basePath
+                  : item.id === "audiences"
+                    ? pathname === item.href
+                  : pathname.startsWith(item.href)
+              }
+            />
+          ))}
         </>
       )}
     </SidebarSection>
@@ -565,10 +495,11 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   pathname: string;
 }) {
   const featureSlug = useSoleFeatureSlug();
-  const isBeta = useIsBetaUser();
   const brandBase = `/orgs/${orgId}/brands/${brandId}`;
   const basePath = `${brandBase}/settings`;
-  const brandProfileOk = isRevenueFeature(featureSlug) && isBeta;
+  // Brand Profile is GA (scoped to revenue features) — only the "Edit with AI"
+  // button inside it stays beta-gated.
+  const brandProfileOk = isRevenueFeature(featureSlug);
   // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog resolves.
   const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
   const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);

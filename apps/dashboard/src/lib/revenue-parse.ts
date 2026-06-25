@@ -39,6 +39,11 @@ const RevenueLeadSchema = z.object({
   // Only present on a `?lens=` (Signups / Booked Meetings / Sales) response;
   // `.nullish()` so the un-lensed overview parse (no field) still succeeds.
   conversionProbabilityPct: z.number().nullish(),
+  // email-gateway delivery evidence (features-service#372). `.optional()` /
+  // `.nullish()` decouple the backend rollout — once prod serves them the
+  // Outreach card + graph-actual read straight off this payload.
+  contacted: z.boolean().optional(),
+  contactedAt: z.string().nullish(),
   date: z.string().nullable(),
 });
 const RevenueEventSchema = z.object({
@@ -58,8 +63,25 @@ const CostEconomicsSchema = z.object({
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
 });
+// Server-computed signal aggregate. `.optional()` on the response fields decouples
+// backend rollout; `z.coerce.number()` because Postgres numeric/bigint can
+// serialize as a string on the wire.
+const SignalSeriesSchema = z.object({
+  total: z.coerce.number(),
+  daily: z.array(
+    z.object({ date: z.string(), count: z.coerce.number() }),
+  ),
+  undatedCount: z.coerce.number(),
+});
+
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
+  outreachContacted: SignalSeriesSchema.optional(),
+  opened: SignalSeriesSchema.optional(),
+  clicked: SignalSeriesSchema.optional(),
+  repliedPositive: SignalSeriesSchema.optional(),
+  meetingsBooked: SignalSeriesSchema.optional(),
+  purchased: SignalSeriesSchema.optional(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
   costEconomics: CostEconomicsSchema,
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
@@ -82,6 +104,12 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
     costEconomics: d.costEconomics,
+    outreachContacted: d.outreachContacted,
+    opened: d.opened,
+    clicked: d.clicked,
+    repliedPositive: d.repliedPositive,
+    meetingsBooked: d.meetingsBooked,
+    purchased: d.purchased,
     timeSeries: d.timeSeries,
     organizations: d.organizations,
     leads: d.leads,

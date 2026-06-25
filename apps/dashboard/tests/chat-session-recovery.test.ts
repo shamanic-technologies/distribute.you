@@ -1,14 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import * as fs from "node:fs";
-import * as path from "node:path";
 
 import {
   isSessionNotFoundError,
   clearStoredSession,
   SESSION_NOT_FOUND_NOTICE,
 } from "../src/lib/chat-session";
-
-const SRC = path.resolve(__dirname, "..");
 
 /**
  * In-memory localStorage shim — the dashboard tests run in plain Node
@@ -77,33 +73,4 @@ describe("chat-session helpers", () => {
     expect(SESSION_NOT_FOUND_NOTICE.length).toBeGreaterThan(0);
     expect(SESSION_NOT_FOUND_NOTICE.toLowerCase()).toContain("session");
   });
-});
-
-describe("chat components wire session_not_found recovery", () => {
-  const components = [
-    "src/components/workflows/workflow-chat.tsx",
-    "src/components/press-kits/press-kit-chat.tsx",
-  ];
-
-  for (const rel of components) {
-    describe(rel, () => {
-      const src = fs.readFileSync(path.join(SRC, rel), "utf-8");
-
-      it("imports session helpers from @/lib/chat-session", () => {
-        expect(src).toMatch(/from\s+["']@\/lib\/chat-session["']/);
-      });
-
-      it("calls isSessionNotFoundError on data-error-info events", () => {
-        expect(src).toContain("isSessionNotFoundError");
-      });
-
-      it("clears the stored session on session_not_found", () => {
-        expect(src).toContain("clearStoredSession");
-      });
-
-      it("renders the session reset notice constant", () => {
-        expect(src).toContain("SESSION_NOT_FOUND_NOTICE");
-      });
-    });
-  }
 });

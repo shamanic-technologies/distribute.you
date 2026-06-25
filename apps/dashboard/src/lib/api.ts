@@ -37,6 +37,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * True when an error is a 402 insufficient-credits failure. apiCall auto-dispatches
+ * the billing-guard modal on a 402 (see the 402 branch above), so callers use this
+ * to AVOID treating a credit failure as a hard error (no destructive reset / error
+ * banner) — the modal handles it and a `billing:resolved` event signals recovery.
+ */
+export function isInsufficientCredit(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 402;
+}
+
 function asErrorBody(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -89,10 +99,33 @@ function activeOrgIdFromPath(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * This tab's Clerk session token (per-tab active org), via the global `window.Clerk`
+ * client — NOT a React hook, so it works from the plain `apiCall` function. Each
+ * browser tab has its own `window.Clerk` with its own in-memory active org, so the
+ * minted token carries the org THIS tab is viewing, regardless of which tab last
+ * wrote the shared session cookie. Returns null on the server, before Clerk loads,
+ * or when signed out → caller omits the Authorization header and falls back to the
+ * cookie. Cached by Clerk (re-mints only near expiry), so per-request cost is low.
+ */
+async function getTabSessionToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const clerk = (
+    window as unknown as {
+      Clerk?: { session?: { getToken: () => Promise<string | null> } | null };
+    }
+  ).Clerk;
+  try {
+    return (await clerk?.session?.getToken()) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
 
-  const send = (): Promise<Response> => {
+  const send = async (): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
     let url: string;
 
@@ -103,6 +136,20 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       url = `/api/v1${endpoint}`;
       const activeOrgId = activeOrgIdFromPath();
       if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
+
+      // Per-tab org-scoped auth (Clerk multi-tab guidance). The Clerk session
+      // COOKIE is a global singleton for the whole browser — it reflects whichever
+      // tab was focused LAST, so the proxy's cookie-based `auth()` would scope a
+      // background poll / navigation from a NON-focused tab to the WRONG org
+      // (cross-org bleed + 409 desync churn + the visible "org switches by itself"
+      // across tabs). `window.Clerk` is PER-TAB, so `session.getToken()` returns
+      // THIS tab's active-org token; Clerk's `auth()` honors an Authorization
+      // Bearer over the cookie, giving the proxy the correct per-tab org.
+      // (Clerk docs: "Organizations → multiple browser tabs" + "Making
+      // authenticated requests".) Optional-chained: before Clerk loads, or with no
+      // session, we fall back to the cookie (and checkProxyOrg still fails closed).
+      const tabToken = await getTabSessionToken();
+      if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
     }
 
     return fetch(url, {
@@ -556,6 +603,11 @@ export interface Brand {
   createdAt: string | null;
   updatedAt: string | null;
   logoUrl: string | null;
+  // The page outreach clicks should land on (user-chosen in onboarding / Brand
+  // Settings). null = never set → consumers fall back to the brand domain.
+  // Optional on the wire so the dashboard ships ahead of the brand-service field
+  // (additive rollout) — absent reads as undefined, present populates.
+  clickDestinationUrl?: string | null;
 }
 
 export type BrandDetail = Brand;
@@ -736,6 +788,35 @@ export async function saveBrandSalesEconomics(
       raw,
     });
     throw new Error("[dashboard] saveBrandSalesEconomics: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── Brand click-destination URL (where outreach clicks land) ──
+// Per-brand config persisted in brand-service via api-service
+// PUT /v1/brands/:brandId/click-destination. Idempotent set; returns the
+// saved value. Defaults to the brand domain at onboarding when unset.
+const SaveBrandClickDestinationResponseSchema = z.object({
+  clickDestinationUrl: z.string().nullable(),
+});
+
+export async function saveBrandClickDestination(
+  brandId: string,
+  clickDestinationUrl: string,
+  token?: string,
+): Promise<{ clickDestinationUrl: string | null }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/click-destination`, {
+    token,
+    method: "PUT",
+    body: { clickDestinationUrl },
+  });
+  const parsed = SaveBrandClickDestinationResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandClickDestination: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] saveBrandClickDestination: invalid response shape");
   }
   return parsed.data;
 }
@@ -922,160 +1003,261 @@ export async function getSalesEconomicsEffective(
   return parsed.data;
 }
 
-// ── Personas + Brand Profile (beta) ───────────────────────────────
-// Persisted per brand in brand-service via api-service /v1/brands/:id/personas
-// and /v1/brands/:id/brand-profile (same gateway convention as sales-economics).
-// Personas are immutable except status (edit = create a new one) and names are
-// unique per brand. Brand-profile saves are immutable forked versions.
-export type PersonaStatusWire = "active" | "paused" | "archived";
+// ── Audiences (human-service via gateway /orgs/audiences/*) ──────────
+// A saved people-filter-set, brand-scoped, generated from a natural-language
+// prompt by human-service `/suggest` (apollo + apify candidates, dry-run
+// counted). This is the unified "audience" concept that replaces the legacy
+// brand-service persona. human-service OWNS these rows; the dashboard reaches
+// them through the api-service gateway, never brand-service.
 
-export interface PersonaWire {
-  id: string;
-  brandId: string;
+export type AudienceStatus = "suggested" | "active" | "paused" | "archived";
+
+export interface AudienceCandidate {
+  // The PERSISTED audience row id — /suggest creates each candidate at status
+  // "suggested" (inactive). Activating a pick = PATCH this id's status to "active".
+  audienceId: string;
   name: string;
-  filters: Record<string, string[]>;
-  status: PersonaStatusWire;
-  avatarUrl?: string | null;
-  createdAt: string;
+  rationale: string;
+  provider: "apollo" | "apify";
+  filters: Record<string, unknown>;
+  // The winning provider's free dry-run match count (0 = no valid non-empty filters).
+  count: number;
+  status: AudienceStatus;
+  validationError: string | null;
+  truncated: boolean;
 }
 
-const PersonaSchema = z.object({
-  id: z.string(),
-  brandId: z.string(),
+const AudienceStatusSchema = z.union([
+  z.literal("suggested"),
+  z.literal("active"),
+  z.literal("paused"),
+  z.literal("archived"),
+]);
+
+const AudienceCandidateSchema = z.object({
+  audienceId: z.string(),
   name: z.string(),
-  filters: z.record(z.string(), z.array(z.string())),
-  status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
-  avatarUrl: z.string().nullable().optional(),
-  createdAt: z.string(),
+  rationale: z.string(),
+  provider: z.union([z.literal("apollo"), z.literal("apify")]),
+  filters: z.record(z.string(), z.unknown()),
+  count: z.number(),
+  status: AudienceStatusSchema,
+  validationError: z.string().nullable(),
+  truncated: z.boolean(),
 });
 
-const ListPersonasResponseSchema = z.object({ personas: z.array(PersonaSchema) });
-const PersonaResponseSchema = z.object({ persona: PersonaSchema });
+const SuggestAudiencesResponseSchema = z.object({
+  candidates: z.array(AudienceCandidateSchema),
+});
 
-/** GET /brands/:brandId/personas — all personas for the brand (optionally status-filtered). */
-export async function listPersonas(
+/**
+ * POST /orgs/audiences/suggest — natural-language prompt → candidate audiences.
+ * ONE candidate per audience (the winning provider, larger free dry-run count).
+ * Each candidate is PERSISTED at status "suggested" (inactive); the user picks
+ * one or more, which are ACTIVATED via `setAudienceStatus(audienceId, "active")`.
+ * Unpicked candidates remain suggested/inactive.
+ */
+export async function suggestAudiences(
   brandId: string,
-  status?: PersonaStatusWire,
+  nlPrompt: string,
   token?: string,
-): Promise<{ personas: PersonaWire[] }> {
-  const query = status ? `?status=${status}` : "";
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas${query}`, { token });
-  const parsed = ListPersonasResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] listPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] listPersonas: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** POST /brands/:brandId/personas — create. 409 when the name is already used for the brand. */
-export async function createPersona(
-  brandId: string,
-  input: { name: string; filters: Record<string, string[]> },
-  token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas`, { token, method: "POST", body: input });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] createPersona: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] createPersona: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** POST /brands/:brandId/personas/:personaId/avatar/regenerate — replace the generated persona avatar. */
-export async function regeneratePersonaAvatar(
-  brandId: string,
-  personaId: string,
-  token?: string,
-  opts?: { suppressPaymentRequired?: boolean },
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/avatar/regenerate`, {
+): Promise<{ candidates: AudienceCandidate[] }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/suggest`, {
     token,
     method: "POST",
-    body: {},
-    suppressPaymentRequired: opts?.suppressPaymentRequired,
+    body: { brandId, nlPrompt },
   });
-  const parsed = PersonaResponseSchema.safeParse(raw);
+  const parsed = SuggestAudiencesResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] regeneratePersonaAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] regeneratePersonaAvatar: invalid response shape");
+    console.error("[dashboard] suggestAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestAudiences: invalid response shape");
   }
   return parsed.data;
 }
 
-/** POST /brands/:brandId/personas/:personaId/duplicate — new persona (name auto-uniquified). */
-export async function duplicatePersona(
-  brandId: string,
-  personaId: string,
-  name?: string,
-  token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/duplicate`, {
-    token,
-    method: "POST",
-    body: name ? { name } : {},
-  });
-  const parsed = PersonaResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] duplicatePersona: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] duplicatePersona: invalid response shape");
-  }
-  return parsed.data;
+export interface AudienceWire {
+  id: string;
+  orgId: string;
+  brandId: string;
+  name: string;
+  nlPrompt: string | null;
+  /** Per-audience one-sentence description (what THIS audience targets). Distinct
+   *  from `nlPrompt` (the shared multi-audience batch request). Optional until
+   *  human-service serves it in prod (decoupled rollout). */
+  description?: string | null;
+  provider: string | null;
+  status: AudienceStatus;
+  source: string | null;
+  filters: Record<string, unknown> | null;
+  /** AI-generated avatar as a self-contained data: URI. Null = none yet. */
+  avatarUrl: string | null;
+  apolloCount: number | null;
+  apifyCount: number | null;
+  countedAt: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-/** PATCH /brands/:brandId/personas/:personaId/status — pause / resume / archive / restore. */
-export async function setPersonaStatus(
-  brandId: string,
-  personaId: string,
-  status: PersonaStatusWire,
+const AudienceSchema = z.object({
+  id: z.string(),
+  orgId: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+  nlPrompt: z.string().nullable(),
+  description: z.string().nullable().optional(),
+  provider: z.string().nullable(),
+  status: AudienceStatusSchema,
+  source: z.string().nullable(),
+  filters: z.record(z.string(), z.unknown()).nullable(),
+  avatarUrl: z.string().nullable(),
+  apolloCount: z.number().nullable(),
+  apifyCount: z.number().nullable(),
+  countedAt: z.string().nullable(),
+  createdByUserId: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+const AudienceResponseSchema = z.object({ audience: AudienceSchema });
+
+/**
+ * PATCH /orgs/audiences/:audienceId/status — change an audience's lifecycle status
+ * (mutates only status). Used to ACTIVATE a suggested candidate ("suggested" →
+ * "active") so it's selected for the brand; unpicked candidates stay suggested.
+ */
+export async function setAudienceStatus(
+  audienceId: string,
+  status: AudienceStatus,
   token?: string,
-): Promise<{ persona: PersonaWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/${personaId}/status`, {
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/status`, {
     token,
     method: "PATCH",
     body: { status },
   });
-  const parsed = PersonaResponseSchema.safeParse(raw);
+  const parsed = AudienceResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] setPersonaStatus: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] setPersonaStatus: invalid response shape");
+    console.error("[dashboard] setAudienceStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] setAudienceStatus: invalid response shape");
   }
   return parsed.data;
 }
 
-/** A persona DRAFT proposed by the backend — no id/status/createdAt (not persisted). */
-export interface PersonaDraft {
-  name: string;
-  filters: Record<string, string[]>;
-}
-
-const SuggestPersonasResponseSchema = z.object({
-  personas: z.array(z.object({
-    name: z.string(),
-    filters: z.record(z.string(), z.array(z.string())),
-  })),
-});
-
 /**
- * POST /brands/:brandId/personas/suggest — generate persona DRAFTS from the brand
- * profile (does NOT persist). Used by the beta onboarding to propose personas the
- * user edits, then saves the kept ones via `createPersona`.
+ * POST /orgs/audiences/:audienceId/avatar — (re)generate the audience's avatar
+ * image via chat-service (which owns the cost). Optional `prompt` steers the
+ * image; omitted ⟹ derived from the audience's own descriptors. Returns the
+ * updated audience with `avatarUrl` populated (a self-contained data: URI).
+ * May 402 (insufficient credits) — surface via the billing guard at the call site.
  */
-export async function suggestPersonas(
-  brandId: string,
-  count?: number,
+export async function generateAudienceAvatar(
+  audienceId: string,
+  prompt?: string,
   token?: string,
-): Promise<{ personas: PersonaDraft[] }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/personas/suggest`, {
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/avatar`, {
     token,
     method: "POST",
-    body: count ? { count } : {},
+    body: prompt ? { prompt } : {},
   });
-  const parsed = SuggestPersonasResponseSchema.safeParse(raw);
+  const parsed = AudienceResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] suggestPersonas: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] suggestPersonas: invalid response shape");
+    console.error("[dashboard] generateAudienceAvatar: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] generateAudienceAvatar: invalid response shape");
+  }
+  return parsed.data;
+}
+
+const ListAudiencesResponseSchema = z.object({
+  audiences: z.array(AudienceSchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+});
+
+/** GET /orgs/audiences?brandId= — saved audiences for a brand. */
+export async function listAudiences(
+  brandId: string,
+  token?: string,
+): Promise<{ audiences: AudienceWire[]; total: number }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences?brandId=${encodeURIComponent(brandId)}`, { token });
+  const parsed = ListAudiencesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] listAudiences: invalid response shape");
+  }
+  return { audiences: parsed.data.audiences, total: parsed.data.total };
+}
+
+/** One person matched to their audience memberships (audience id + name). */
+export interface AudienceMembershipMatch {
+  personId: string;
+  emailNorm: string | null;
+  fullName: string | null;
+  audiences: { audienceId: string; name: string }[];
+}
+
+const AudienceMembershipMatchSchema = z.object({
+  personId: z.string(),
+  emailNorm: z.string().nullable(),
+  fullName: z.string().nullable(),
+  audiences: z.array(z.object({ audienceId: z.string(), name: z.string() })),
+});
+
+// Only `matched` is consumed (lead → audience membership); `unmatched`/`byAudience`
+// are passthrough — `.passthrough()` keeps them without re-declaring.
+const AudienceStatsResponseSchema = z
+  .object({ matched: z.array(AudienceMembershipMatchSchema) })
+  .passthrough();
+
+/**
+ * POST /orgs/audiences/stats — per-audience membership for a list of emails (or
+ * personIds). Used by the overview lead detail panel to answer "which audience
+ * does this lead belong to" on-demand: pass the clicked lead's email, get back
+ * its audience memberships, then join `audienceId` to `listAudiences` for the
+ * audience name / description / avatar / targeting filters. human-service owns
+ * the mapping; the dashboard never derives it.
+ */
+export async function getAudienceMembershipStats(
+  args: { emails?: string[]; personIds?: string[] },
+  token?: string,
+): Promise<{ matched: AudienceMembershipMatch[] }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/stats`, {
+    token,
+    method: "POST",
+    body: args,
+  });
+  const parsed = AudienceStatsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getAudienceMembershipStats: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getAudienceMembershipStats: invalid response shape");
+  }
+  return { matched: parsed.data.matched };
+}
+
+const SuggestBrandIcpResponseSchema = z.object({ icp: z.string() });
+
+/**
+ * POST /brands/:brandId/icp/suggest — brand-service writes ONE short plain-language
+ * ICP line for the brand (seeded from its profile + sales economics). Used to
+ * pre-fill the onboarding audience-step prompt. `existingIcps` lets the caller ask
+ * for an ICP distinct from / complementary to ones already chosen.
+ */
+export async function suggestBrandIcp(
+  brandId: string,
+  existingIcps?: string[],
+  token?: string,
+): Promise<{ icp: string }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
+    token,
+    method: "POST",
+    body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
+  });
+  const parsed = SuggestBrandIcpResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] suggestBrandIcp: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] suggestBrandIcp: invalid response shape");
   }
   return parsed.data;
 }
@@ -1180,7 +1362,7 @@ export interface CachedField {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
-  { key: "services", description: "Specific services, products or offerings the brand sells and wants to promote — list each as a short phrase (e.g. 'SEO audits', 'Fractional CFO', 'Logo design')" },
+  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. List each as a short phrase." },
   { key: "companyOverview", description: "Company overview" },
   { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
@@ -1428,17 +1610,17 @@ export interface PipelineActivityResponse {
   summary: PipelineActivitySummary;
 }
 
-export type FeaturePersonaStatsGoal = "signup" | "meetingBooked" | "purchase";
-export type FeaturePersonaStatsSortMetric = "cpc" | "cppr";
+export type FeatureAudienceStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeatureAudienceStatsSortMetric = "cpc" | "cppr";
 
-export interface FeaturePersonaStatsRow {
-  customerProfileId: string;
+export interface FeatureAudienceStatsRow {
+  audienceId: string;
   brandProfileId: string | null;
-  persona: {
+  audience: {
     id: string;
     name: string;
-    status: PersonaStatusWire;
-    filters: Record<string, string[]>;
+    status: "active" | "paused" | "archived";
+    filters: Record<string, unknown> | null;
     avatarUrl?: string | null;
   };
   evidence: {
@@ -1447,6 +1629,8 @@ export interface FeaturePersonaStatsRow {
     firstRunAt: string | null;
     lastRunAt: string | null;
     contacted: number;
+    /** Opened-recipient count. Optional until features-service `opened` is live in prod. */
+    opened?: number;
     websiteClicks: number;
     positiveReplies: number;
   };
@@ -1456,23 +1640,23 @@ export interface FeaturePersonaStatsRow {
   };
 }
 
-export interface FeaturePersonaStatsResponse {
+export interface FeatureAudienceStatsResponse {
   featureSlug: string;
   brandId: string;
-  goal: FeaturePersonaStatsGoal;
+  goal: FeatureAudienceStatsGoal;
   brandProfileId: string | null;
-  sortMetric: FeaturePersonaStatsSortMetric;
-  personas: FeaturePersonaStatsRow[];
+  sortMetric: FeatureAudienceStatsSortMetric;
+  audiences: FeatureAudienceStatsRow[];
 }
 
-const FeaturePersonaStatsRowSchema = z.object({
-  customerProfileId: z.string(),
+const FeatureAudienceStatsRowSchema = z.object({
+  audienceId: z.string(),
   brandProfileId: z.string().nullable(),
-  persona: z.object({
+  audience: z.object({
     id: z.string(),
     name: z.string(),
     status: z.union([z.literal("active"), z.literal("paused"), z.literal("archived")]),
-    filters: z.record(z.string(), z.array(z.string())),
+    filters: z.record(z.string(), z.unknown()).nullable(),
     avatarUrl: z.string().nullable().optional(),
   }),
   evidence: z.object({
@@ -1481,6 +1665,7 @@ const FeaturePersonaStatsRowSchema = z.object({
     firstRunAt: z.string().nullable(),
     lastRunAt: z.string().nullable(),
     contacted: z.number(),
+    opened: z.number().optional(),
     websiteClicks: z.number(),
     positiveReplies: z.number(),
   }),
@@ -1490,13 +1675,13 @@ const FeaturePersonaStatsRowSchema = z.object({
   }),
 });
 
-const FeaturePersonaStatsResponseSchema = z.object({
+const FeatureAudienceStatsResponseSchema = z.object({
   featureSlug: z.string(),
   brandId: z.string(),
   goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
   brandProfileId: z.string().nullable(),
   sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
-  personas: z.array(FeaturePersonaStatsRowSchema),
+  audiences: z.array(FeatureAudienceStatsRowSchema),
 });
 
 /** GET /features — list all features */
@@ -1552,23 +1737,23 @@ export async function fetchFeatureStats(
   return apiCall<FeatureStatsResponse>(`/features/${featureSlug}/stats${qs ? `?${qs}` : ""}`, { token });
 }
 
-/** GET /features/:featureSlug/persona-stats — real persona-level cost/outcome evidence. */
-export async function fetchFeaturePersonaStats(
+/** GET /features/:featureSlug/audience-stats — real audience-level cost/outcome evidence. */
+export async function fetchFeatureAudienceStats(
   featureSlug: string,
-  params: { brandId: string; goal: FeaturePersonaStatsGoal; brandProfileId?: string; limit?: number },
+  params: { brandId: string; goal: FeatureAudienceStatsGoal; brandProfileId?: string; limit?: number },
   token?: string,
-): Promise<FeaturePersonaStatsResponse> {
+): Promise<FeatureAudienceStatsResponse> {
   const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
-  const raw = await apiCall<unknown>(`/features/${featureSlug}/persona-stats?${query.toString()}`, { token });
-  const parsed = FeaturePersonaStatsResponseSchema.safeParse(raw);
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/audience-stats?${query.toString()}`, { token });
+  const parsed = FeatureAudienceStatsResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] fetchFeaturePersonaStats: response shape mismatch", {
+    console.error("[dashboard] fetchFeatureAudienceStats: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] fetchFeaturePersonaStats: invalid response shape");
+    throw new Error("[dashboard] fetchFeatureAudienceStats: invalid response shape");
   }
   return parsed.data;
 }
@@ -1600,6 +1785,28 @@ export async function getFeatureRevenue(
   if (campaignId) query.set("campaignId", campaignId);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
+}
+
+/**
+ * `structuralSharing` merge for the `["featureRevenue", ...]` query. The
+ * server-computed actual series (`outreachContacted`, `opened`, `clicked`,
+ * `repliedPositive`, `meetingsBooked`, `purchased`) are `.optional()` on the wire to decouple the
+ * backend rollout — but a transient degenerate refetch can drop them back to
+ * `undefined` on a VALID 200, which would collapse chart actuals mid-session.
+ * Keep the last-good series across such a refetch (fail-loud console.error in
+ * keep-last-good); a real persistent absence still logs. Opt-in here ONLY —
+ * absence is "transient/not-ready", never "removed".
+ */
+export function keepLastGoodFeatureRevenue(
+  prev: RevenueOverview | undefined,
+  next: RevenueOverview,
+): RevenueOverview {
+  return keepLastGoodFields(
+    prev,
+    next,
+    ["outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
+    "featureRevenue",
+  );
 }
 
 const PipelineActivityMetricSchema = z.object({
@@ -1942,6 +2149,10 @@ export interface Lead {
   workflowSlug: string | null;
   featureSlug: string | null;
   servedAt: string | null;
+  // First-click date (first-occurrence ISO timestamp from email-gateway,
+  // forwarded by lead-service). Optional: present once lead-service ships it;
+  // `.passthrough()` on LeadDeliverySchema keeps it at runtime. #audiences-leads-date
+  firstClickedAt?: string | null;
   contacted: boolean;
   sent: boolean;
   delivered: boolean;
@@ -2411,12 +2622,9 @@ export async function fetchGlobalRankedWorkflows(params: {
 
 // ── Sales-funnel workflow projection ────────────────────────────────────────
 // features-service owns the per-workflow GLOBAL unit costs (contacted/reply/click $ — cross-org,
-// feature-scoped, econ-INDEPENDENT) + the recommended workflow. It ALSO returns a server-computed
-// cost-per-close + funnel projection from the brand's SAVED economics, but the campaigns/new page
-// no longer renders those directly: it recomputes cost-per-close + the funnel CLIENT-side from the
-// unit costs × the LIVE §2 econ inputs (lib/sales-funnel-projection.ts mirrors the server formula)
-// so the budget cards update instantly without a per-edit round-trip through the cold Neon chain.
-// On first paint the live econ == the saved econ, so the client numbers equal the server's exactly.
+// feature-scoped, econ-INDEPENDENT) + the recommended workflow, AND returns a server-computed
+// cost-per-close + funnel projection from the brand's SAVED economics. Consumers (brand overview,
+// workflows page, onboarding) render those server values directly via getWorkflowProjection.
 // Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
 export type SalesObjective = "meeting-booked" | "self-serve";
 
@@ -2651,6 +2859,11 @@ export interface CheckoutSession {
   session_id: string;
 }
 
+export interface EmbeddedCheckoutSession {
+  client_secret: string;
+  session_id: string;
+}
+
 export type WalletSetupResult = BillingAccount & {
   initial_load_amount_cents: number;
   initial_load_payment_intent_id: string;
@@ -2691,6 +2904,24 @@ export async function createCheckoutSession(
     token,
     method: "POST",
     body: params as unknown as Record<string, unknown>,
+  });
+}
+
+/**
+ * Create an EMBEDDED Stripe Checkout session — card is captured in an in-app modal
+ * (iframe), no redirect to a hosted Stripe page. Returns a `client_secret` the
+ * front-end mounts via @stripe/react-stripe-js <EmbeddedCheckout>. The card is saved
+ * off-session (auto-topup) and `topup_amount_cents` charged; credit lands via the
+ * existing checkout.session.completed webhook (same accounting as the hosted path).
+ */
+export async function createEmbeddedCheckoutSession(
+  topup_amount_cents: number,
+  token?: string
+): Promise<EmbeddedCheckoutSession> {
+  return apiCall<EmbeddedCheckoutSession>("/billing/checkout-sessions", {
+    token,
+    method: "POST",
+    body: { ui_mode: "embedded", topup_amount_cents },
   });
 }
 
@@ -2948,6 +3179,11 @@ export interface DeduplicatedOutlet {
   priceRequestStatus: "ongoing" | "received" | null;
   relevanceScore: number;
   campaigns: OutletCampaign[];
+  // Ahrefs enrichment, present only when the request passes `enrich=ahref`
+  // (outlets-service joins these server-side, resilient/chunked). null when
+  // ahref has no trustworthy cached value for the domain.
+  domainRating?: number | null;
+  trafficMonthlyAvg?: number | null;
 }
 
 export interface OutletPriceRequestResult {
@@ -2993,10 +3229,15 @@ export async function listBrandOutlets(
   featureSlug?: string,
   token?: string,
   campaignId?: string,
+  enrich?: boolean,
 ): Promise<OutletListResponse> {
   const params = new URLSearchParams({ brandId });
   if (featureSlug) params.set("featureSlug", featureSlug);
   if (campaignId) params.set("campaignId", campaignId);
+  // enrich=ahref → each outlet carries domainRating + trafficMonthlyAvg
+  // (server-side resilient join). Opt-in so the high-frequency sidebar count
+  // query stays cheap.
+  if (enrich) params.set("enrich", "ahref");
   const data = await apiCall<OutletListResponse>(
     `/outlets?${params}`,
     { token },
@@ -4082,24 +4323,132 @@ export async function getDomainTrafficHistory(
   return data[0] ?? null;
 }
 
+// Both domain cache-readers take a `?domains=a.com,b.com,…` query string. A
+// brand can own thousands of outlet domains (12k+ seen in prod), and passing
+// every domain in ONE request blows the URL/header size limit → the request
+// fails → the DR / Monthly-Visits maps come back empty (blank columns in the
+// CSV + cards). Split into bounded chunks fetched with limited concurrency.
+//
+// ahref-service prod runs on a tiny fixed compute (0.25 CU, small pg pool) with
+// Neon scale-to-zero, so a burst of chunk requests hits cold-start +
+// pool-saturation transients (ECONNRESET / 5xx / "timeout exceeded when trying
+// to connect"). The reads are idempotent GETs, so each chunk RETRIES transient
+// failures with backoff; only a chunk that still fails after all attempts
+// throws (fail loud). Without the retry, ONE dropped chunk would empty the whole
+// enrichment map (the merge awaits every chunk), which is exactly how DR +
+// Monthly Visits went blank for the 12k-outlet brand even after chunking.
+const DOMAIN_READ_CHUNK_SIZE = 200;
+const DOMAIN_READ_CONCURRENCY = 4;
+const DOMAIN_READ_RETRIES = 2;
+const DOMAIN_READ_BACKOFF_MS = [400, 1200];
+const DOMAIN_READ_TIMEOUT_MS = 12_000;
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+// ahref-service `normalizeDomain` rejects anything that isn't a bare host with a
+// 400 ("not a valid domain: -"), and that 400 fails the ENTIRE chunk it lands in
+// — blanking DR / Monthly Visits for up to DOMAIN_READ_CHUNK_SIZE valid domains
+// sharing the chunk. Outlet records carry a "-" placeholder for "no domain" and
+// occasionally a path-bearing value (a.com/section); `.sort()` puts "-" first, so
+// it poisons chunk 0 on every load. Filter to bare, dotted hosts BEFORE chunking
+// so one junk value can't take down its chunk-mates. Dropping a non-domain loses
+// nothing — ahref can't enrich it anyway.
+function isQueryableDomain(domain: string): boolean {
+  return domain.length > 0 && domain !== "-" && domain.includes(".") && !/[/\s]/.test(domain);
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Bound a request so it can never hang forever. ahref-service prod is a tiny
+// 0.25 CU compute; a single slow/queued chunk with no timeout left the whole
+// enrichment query PENDING indefinitely (blank DR/Visits + a stuck "Loading"
+// button), which retry alone could not fix because a hang never throws.
+function withTimeout<O>(promise: Promise<O>, ms: number, label: string): Promise<O> {
+  return new Promise<O>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`[dashboard] ${label}: request timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+// Retry an idempotent, time-bounded read on a thrown transport/5xx/timeout
+// error. Throws the last error once attempts are exhausted; the CALLER decides
+// whether a persistently-failing chunk drops to empty (best-effort enrichment)
+// or propagates.
+async function retryTransientRead<O>(fn: () => Promise<O>, label: string): Promise<O> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= DOMAIN_READ_RETRIES; attempt++) {
+    try {
+      return await withTimeout(fn(), DOMAIN_READ_TIMEOUT_MS, label);
+    } catch (err) {
+      lastError = err;
+      if (attempt < DOMAIN_READ_RETRIES) {
+        await sleep(DOMAIN_READ_BACKOFF_MS[Math.min(attempt, DOMAIN_READ_BACKOFF_MS.length - 1)]);
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function mapWithConcurrency<I, O>(
+  items: I[],
+  limit: number,
+  fn: (item: I) => Promise<O>,
+): Promise<O[]> {
+  const results: O[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const current = next++;
+      results[current] = await fn(items[current]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 export async function getDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
-  const params = new URLSearchParams({ domains: domains.join(",") });
-  const raw = await apiCall<unknown>(
-    `/orgs/domains/traffic-history?${params}`,
-    { token },
-  );
-  const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[dashboard] getDomainTrafficHistories: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
     });
-    throw new Error("[dashboard] getDomainTrafficHistories: invalid response shape");
   }
-  return parsed.data;
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
+  // Best-effort enrichment: a chunk that stays unreachable after retries drops
+  // to [] (those domains render blank) instead of throwing and blanking EVERY
+  // domain. The failure is logged loudly, not swallowed silently.
+  const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
+    try {
+      const raw = await retryTransientRead(
+        () => apiCall<unknown>(`/orgs/domains/traffic-history?${new URLSearchParams({ domains: batch.join(",") })}`, { token }),
+        "getDomainTrafficHistories",
+      );
+      const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
+      if (!parsed.success) {
+        console.error("[dashboard] getDomainTrafficHistories: response shape mismatch", {
+          issues: parsed.error.issues,
+          raw,
+        });
+        return [];
+      }
+      return parsed.data;
+    } catch (err) {
+      console.error("[dashboard] getDomainTrafficHistories: chunk unreachable, rendering its domains blank", err);
+      return [];
+    }
+  });
+  return batchResults.flat();
 }
 
 /**
@@ -4123,20 +4472,37 @@ export async function getDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
-  const params = new URLSearchParams({ domains: domains.join(",") });
-  const raw = await apiCall<unknown>(
-    `/orgs/domains/dr-status?${params}`,
-    { token },
-  );
-  const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length < domains.length) {
+    console.warn("[dashboard] getDomainDrStatuses: dropped non-queryable domains before ahref call", {
+      dropped: domains.filter((d) => !isQueryableDomain(d)),
     });
-    throw new Error("[dashboard] getDomainDrStatuses: invalid response shape");
   }
-  return parsed.data;
+  if (queryable.length === 0) return [];
+  const batches = chunkArray(queryable, DOMAIN_READ_CHUNK_SIZE);
+  // Best-effort enrichment (see getDomainTrafficHistories): an unreachable chunk
+  // drops to [] (blank for its domains) instead of blanking every domain.
+  const batchResults = await mapWithConcurrency(batches, DOMAIN_READ_CONCURRENCY, async (batch) => {
+    try {
+      const raw = await retryTransientRead(
+        () => apiCall<unknown>(`/orgs/domains/dr-status?${new URLSearchParams({ domains: batch.join(",") })}`, { token }),
+        "getDomainDrStatuses",
+      );
+      const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
+      if (!parsed.success) {
+        console.error("[dashboard] getDomainDrStatuses: response shape mismatch", {
+          issues: parsed.error.issues,
+          raw,
+        });
+        return [];
+      }
+      return parsed.data;
+    } catch (err) {
+      console.error("[dashboard] getDomainDrStatuses: chunk unreachable, rendering its domains blank", err);
+      return [];
+    }
+  });
+  return batchResults.flat();
 }
 
 // ─── On-demand Ahrefs fetch (get-or-fetch-if-never-seen) ────────────────────
@@ -4164,10 +4530,12 @@ export async function computeDomainTrafficHistories(
   domains: string[],
   token?: string,
 ): Promise<DomainTrafficHistory[]> {
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length === 0) return [];
   const raw = await apiCall<unknown>("/orgs/domains/traffic-compute", {
     token,
     method: "POST",
-    body: { domains },
+    body: { domains: queryable },
   });
   const parsed = z.array(DomainTrafficHistorySchema).safeParse(raw);
   if (!parsed.success) {
@@ -4184,10 +4552,12 @@ export async function computeDomainDrStatuses(
   domains: string[],
   token?: string,
 ): Promise<DomainDrStatus[]> {
+  const queryable = domains.filter(isQueryableDomain);
+  if (queryable.length === 0) return [];
   const raw = await apiCall<unknown>("/orgs/domains/dr-compute", {
     token,
     method: "POST",
-    body: { domains },
+    body: { domains: queryable },
   });
   const parsed = z.array(DomainDrStatusSchema).safeParse(raw);
   if (!parsed.success) {

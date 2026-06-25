@@ -150,8 +150,9 @@ describe("BrandSalesEconomicsCard component", () => {
 
   it("keeps fractional conversion percentages instead of rounding them before save", () => {
     expect(content).toContain("const toPctOrDefault = (v: string, fallback: string) =>");
+    expect(content).toContain("parseLocaleNumberInput(v)");
     expect(content).toContain("visitToSignupPct: toPctOrDefault(");
-    expect(content).toContain('step="0.1"');
+    expect(content).toContain('inputMode="decimal"');
   });
 
   it("shows only the conversion fields relevant to the selected optimization goal", () => {

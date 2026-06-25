@@ -6,10 +6,6 @@ const genericModalPath = path.resolve(
   __dirname,
   "../src/components/manual-qualification/edit-manual-qualification-modal.tsx",
 );
-const leadsWrapperPath = path.resolve(
-  __dirname,
-  "../src/components/leads/edit-lead-status-modal.tsx",
-);
 const journalistsPagePath = path.resolve(
   __dirname,
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx",
@@ -35,25 +31,6 @@ describe("Generic EditManualQualificationModal — decoupled from Lead", () => {
     expect(src).toMatch(/campaignId(?:,|\s*})/);
     expect(src).toMatch(/email(?:,|\s*})/);
     expect(src).not.toMatch(/lead\.campaignId/);
-  });
-});
-
-describe("EditLeadStatusModal — thin wrapper", () => {
-  const src = fs.readFileSync(leadsWrapperPath, "utf-8");
-
-  it("imports the generic modal", () => {
-    expect(src).toContain("EditManualQualificationModal");
-    expect(src).toMatch(
-      /from\s+["']@\/components\/manual-qualification\/edit-manual-qualification-modal["']/,
-    );
-  });
-
-  it("renders the generic modal", () => {
-    expect(src).toMatch(/<EditManualQualificationModal/);
-  });
-
-  it("still exports EditLeadStatusModal for existing call sites", () => {
-    expect(src).toMatch(/export function EditLeadStatusModal/);
   });
 });
 

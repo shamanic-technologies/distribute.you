@@ -7,16 +7,8 @@ describe("Onboarding mobile responsiveness", () => {
     path.join(__dirname, "../src/app/(authed)/onboarding/layout.tsx"),
     "utf-8",
   );
-  const defaultFlow = fs.readFileSync(
-    path.join(__dirname, "../src/components/onboarding/default-onboarding.tsx"),
-    "utf-8",
-  );
-  const betaFlow = fs.readFileSync(
-    path.join(__dirname, "../src/components/onboarding/beta-onboarding.tsx"),
-    "utf-8",
-  );
-  const personaCard = fs.readFileSync(
-    path.join(__dirname, "../src/components/personas/persona-card.tsx"),
+  const onboardingFlow = fs.readFileSync(
+    path.join(__dirname, "../src/components/onboarding/onboarding.tsx"),
     "utf-8",
   );
 
@@ -27,29 +19,12 @@ describe("Onboarding mobile responsiveness", () => {
     expect(layout).toContain("min-w-0");
   });
 
-  it("uses smaller mobile padding in the default onboarding cards", () => {
-    expect(defaultFlow).toContain("px-5 py-4 sm:px-7 sm:py-7");
-    expect(defaultFlow).toContain("p-5 sm:p-8 md:p-12");
-    expect(defaultFlow).toContain("grid grid-cols-1 gap-4 sm:grid-cols-2");
-  });
-
-  it("keeps beta onboarding controls from forcing horizontal overflow", () => {
-    expect(betaFlow).toContain("min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-8 md:p-12");
-    expect(betaFlow).toContain("basis-full bg-transparent");
-    expect(betaFlow).toContain("sm:min-w-[8rem] sm:basis-auto");
-    // Goal step uses responsive 2-col grid on larger screens
-    expect(betaFlow).toContain("grid gap-3 sm:grid-cols-2");
-    // Budget step uses 4-col grid on large screens
-    expect(betaFlow).toContain("grid gap-3 sm:grid-cols-2 lg:grid-cols-4");
-    // Welcome step uses responsive 3-col grid
-    expect(betaFlow).toContain("sm:grid-cols-3");
-  });
-
-  it("lets embedded persona editing stack on narrow screens", () => {
-    expect(personaCard).toContain("grid grid-cols-1 items-start gap-1 sm:grid-cols-[7.5rem_1fr]");
-    expect(personaCard).toContain("inline-flex max-w-full items-center");
-    expect(personaCard).toContain("min-w-0 break-words");
-    expect(personaCard).toContain("flex flex-col items-stretch gap-2");
-    expect(personaCard).toContain("sm:flex-row sm:items-center sm:justify-between");
+  it("keeps onboarding controls from forcing horizontal overflow", () => {
+    expect(onboardingFlow).toContain("min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12");
+    expect(onboardingFlow).toContain("basis-full bg-transparent");
+    expect(onboardingFlow).toContain("sm:min-w-[8rem] sm:basis-auto");
+    expect(onboardingFlow).toContain("flex flex-col items-stretch gap-4");
+    expect(onboardingFlow).toContain("sm:flex-row sm:items-center sm:justify-between");
+    expect(onboardingFlow).toContain("grid gap-3 sm:grid-cols-2 lg:grid-cols-4");
   });
 });

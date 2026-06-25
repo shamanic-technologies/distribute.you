@@ -17,7 +17,7 @@ const routePath = path.join(
 );
 const onboardingPagePath = path.join(
   __dirname,
-  "../src/components/onboarding/default-onboarding.tsx"
+  "../src/components/onboarding/onboarding.tsx"
 );
 
 describe("onboarding-complete server route", () => {

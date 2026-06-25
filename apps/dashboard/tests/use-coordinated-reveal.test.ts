@@ -70,15 +70,14 @@ describe("consumers adopt the coordinated reveal", () => {
     expect(featurePage).not.toMatch(/const allReady\s*=/);
   });
 
-  it("sidebar reveals all entity badges together, latched, with a skeleton pill", () => {
-    expect(sidebar).toContain("useCoordinatedReveal");
-    expect(sidebar).toContain("badgePending");
-    // Badge value still flows from the page's own data source (brand-tools guard).
-    expect(sidebar).toContain("badge: entityCounts[e.name]");
-    // The barrier MUST gate on entity defs first, else every count query is
-    // disabled at first paint and the group reveals empty + un-skeletoned.
-    expect(sidebar).toContain("defsReady");
-    expect(sidebar).toMatch(/useCoordinatedReveal\(\[\s*defsReady/);
+  it("sidebar no longer has the entity-badge reveal machinery (Database removed)", () => {
+    // The entity Database section + its count badges were removed — lead data is
+    // surfaced via the overview's lead detail panel. The badge-reveal latch went
+    // with it; the nav-row skeleton (next test) still gates the static top items.
+    // (SidebarLink keeps a generic `badgePending` prop; what's gone is the
+    // entity-count wiring that fed the Database badges.)
+    expect(sidebar).not.toContain("entityCounts");
+    expect(sidebar).not.toContain("badge: entityCounts");
   });
 
   it("sidebar reveals the whole nav group at once (no static-first / data-later wave)", () => {
@@ -86,22 +85,6 @@ describe("consumers adopt the coordinated reveal", () => {
     // the Outcomes block appear together, not in two waves.
     expect(sidebar).toContain("SidebarNavRowSkeleton");
     expect(sidebar).toMatch(/!defsReady \? \(/);
-  });
-});
-
-describe("CoordinatedReveal — reusable component wrapper", () => {
-  const component = fs.readFileSync(
-    path.join(__dirname, "../src/components/coordinated-reveal.tsx"),
-    "utf-8",
-  );
-
-  it("wraps the latch hook and defers content via a render function", () => {
-    expect(component).toContain("useCoordinatedReveal");
-    // children is a render function so the content closure only runs once
-    // revealed — it dereferences resolved query data that is undefined while
-    // the skeleton is showing.
-    expect(component).toContain("children: () => ReactNode");
-    expect(component).toContain("revealed ? children() : skeleton");
   });
 });
 

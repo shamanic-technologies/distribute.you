@@ -5,13 +5,16 @@ import * as path from "path";
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
-describe("Brand overview pipeline activity chart", () => {
+describe("Brand overview outcome + outreach-activity charts", () => {
   const api = read("lib/api.ts");
   const page = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
   const section = read("components/revenue/revenue-overview-section.tsx");
   const chart = read("components/revenue/pipeline-activity-chart.tsx");
+  const outcome = read("components/revenue/outcome-trend-card.tsx");
+  const revenueView = read("lib/revenue-view.ts");
+  const revenueParse = read("lib/revenue-parse.ts");
 
-  it("fetches the locked pipeline-activity endpoint with brand, days, and timezone", () => {
+  it("fetches the locked pipeline-activity forecast endpoint with brand, days, and timezone", () => {
     expect(api).toContain("getFeaturePipelineActivity");
     expect(api).toContain("/pipeline-activity?");
     expect(api).toContain('query.set("days", String(params.days))');
@@ -20,96 +23,106 @@ describe("Brand overview pipeline activity chart", () => {
     expect(page).toContain("days: 7");
   });
 
-  it("replaces the revenue area chart with the 7-day activity bar chart", () => {
-    expect(section).toContain("Pipeline activity next 7 days");
+  it("top row pairs the Outcome card with the cost summary, full-width activity below", () => {
+    expect(section).toContain("OutcomeTrendCard");
+    expect(section).toContain("Outreach activity");
     expect(section).toContain("PipelineActivityChart");
-    expect(section).toContain("expectedOutcome");
-    expect(section).toContain("formatOutcomeCount");
-    expect(section).not.toContain("expected pipeline</p>");
+    expect(section).toContain("pipelineActualSeries");
+    expect(section).toContain("items-stretch");
+    // The old single-card headline projection helper is gone — the Outcome card owns its headline.
+    expect(section).not.toContain("formatOutcomeCount");
     expect(section).not.toContain("RevenueChart");
   });
 
-  it("renders four metric bars and stacks actual with expected on the same metric bar", () => {
-    for (const key of ["outreach", "opens", "clicks", "signups"]) {
-      expect(chart).toContain(`key: "${key}"`);
-      expect(chart).toContain(`stackId={metric.key}`);
-    }
-    expect(chart).toContain('key: "salesMeetings"');
-    expect(chart).toContain('label: "Sales meetings"');
-    expect(chart).toContain("Record<`${ChartMetricKey}Actual`, number>");
-    expect(chart).toContain("Record<`${ChartMetricKey}ExpectedRemaining`, number>");
-    expect(chart).toContain("dataKey={`${metric.key}Actual`}");
-    expect(chart).toContain("dataKey={`${metric.key}ExpectedRemaining`}");
-    expect(chart).toContain("Math.max(expected - actual, 0)");
-    expect(chart).toContain("function visiblePointSize");
-    expect(chart).toContain("minPointSize={visiblePointSize}");
-    expect(chart).toContain("LabelList");
-    expect(chart).toContain("renderBarLabel");
-    expect(chart).toContain("value.conversionPct");
-    expect(chart).toContain('stroke="#ffffff"');
-    expect(chart).toContain('paintOrder="stroke"');
+  it("Outcome card is a single all-time cumulative line with no window picker", () => {
+    expect(outcome).toContain("OutcomeTrendCard");
+    expect(outcome).toContain("buildCumulative");
+    expect(outcome).toContain("since launch");
+    expect(outcome).toContain("AreaChart");
+    // No range selector on the Outcome card — cumulative from the very beginning.
+    expect(outcome).not.toContain("RANGES");
+    expect(outcome).not.toContain("setRangeDays");
+    expect(outcome).not.toContain("BarChart");
+  });
+
+  it("selects the cumulative outcome series by goal (clicks for signups, replies for meetings)", () => {
+    expect(section).toContain('optimizationGoal === "signups"');
+    expect(section).toContain("pipelineActualSeries?.clicks");
+    expect(section).toContain("pipelineActualSeries?.repliedPositive");
+    expect(section).toContain('"Website clicks"');
+    expect(section).toContain('"Positive replies"');
+  });
+
+  it("Outreach activity renders per-day stacked BARS, not an area/line chart", () => {
+    expect(chart).toContain("BarChart");
+    expect(chart).toContain("stackId={metric.key}");
+    expect(chart).toContain("ExpectedRemaining");
     expect(chart).toContain("isAnimationActive={false}");
+    // The #2121/#2124 line+cumulative version is fully replaced.
+    expect(chart).not.toContain("AreaChart");
+    expect(chart).not.toContain("selectedMetrics");
+    expect(chart).not.toContain("toggleMetric");
+    expect(chart).not.toContain("MAX_SELECTED_METRICS");
+    expect(chart).not.toContain("cumulativeActuals");
   });
 
-  it("switches the final outcome metric from signups to sales meetings from brand economics", () => {
-    expect(page).toContain("DEFAULT_VISIT_TO_MEETING_PCT");
-    expect(page).toContain("economicsData?.salesEconomics?.visitToMeetingPct");
-    expect(page).toContain("pipelineActivity !== undefined");
-    expect(page).toContain("economicsData !== undefined");
-    expect(section).toContain("optimizationGoal");
-    expect(section).toContain("visitToMeetingPct");
-    expect(chart).toContain("type ChartMetricKey = PipelineActivityMetricKey | \"salesMeetings\"");
-    expect(chart).toContain('if (optimizationGoal === "signups") return METRICS');
-    expect(chart).toContain("projectedMetric(day.metrics.clicks, visitToMeetingPct)");
-    expect(chart).toContain("source.actual * rate");
-    expect(chart).toContain("source.expected * rate");
-    expect(chart).toContain("isOutcomeMetric(metric.key)");
+  it("activity bars carry the three goal-specific metrics with positive replies for meetings", () => {
+    for (const key of ["outreach", "opens", "clicks"]) {
+      expect(chart).toContain(`key: "${key}"`);
+    }
+    expect(chart).toContain('key: "repliedPositive"');
+    expect(chart).toContain('label: "Positive replies"');
+    expect(chart).toContain('optimizationGoal === "signups"');
+    expect(chart).toContain("POSITIVE_REPLIES");
+    // No client-side salesMeetings projection anymore — the series is server-computed.
+    expect(chart).not.toContain('label: "Sales meetings"');
+    expect(chart).not.toContain("projectedMetric");
   });
 
-  it("uses metric-color legend labels and reserves room for visible bar values", () => {
-    expect(chart).toContain("{metric.label}");
-    expect(chart).toContain('min-w-[1120px]');
-    expect(chart).toContain('h-[300px]');
-    expect(chart).toContain("maxBarSize={28}");
-    expect(chart).toContain('barCategoryGap="18%"');
-    expect(chart).toContain("margin={{ top: 36");
-    expect(chart).not.toContain(">Actual<");
-    expect(chart).not.toContain(">Expected<");
-    expect(chart).not.toContain("Timezone:");
+  it("activity chart keeps the 7/30/90-day window toggle and forecast bars", () => {
+    expect(chart).toContain("RANGES");
+    expect(chart).toContain("setRangeDays");
+    expect(chart).toContain("Past {days} days");
+    expect(chart).toContain("h-[300px]");
+    expect(chart).toContain("buildDailyCountMap");
+    expect(chart).toContain("buildWindowDates");
+    expect(chart).toContain("forecastExpected");
   });
 
-  it("colors tooltip values by the rendered graph segment and shows today actuals only", () => {
-    expect(chart).toContain("const color = day.isToday ? metric.actual : metric.expected;");
-    expect(chart).toContain("const displayedValue = day.isToday ? value.actual : value.expected;");
-    expect(chart).toContain("style={{ backgroundColor: color }}");
-    expect(chart).toContain("{formatValue(displayedValue, metric.key)}");
-    expect(chart).toContain("!day.isToday && isOutcomeMetric(metric.key)");
-    expect(chart).not.toContain("`${formatValue(value.actual, metric.key)} / `");
+  it("activity window clamps to the first data day and today reads as actual, not expected", () => {
+    // New brand → no empty leading days; window left-edge clamps to firstDataDate.
+    expect(chart).toContain("firstDataDate");
+    expect(chart).toContain("buildWindowDates");
+    // Hovering today shows ACTUAL so far (only future days read as "expected").
+    expect(chart).toContain("const showActual = !day.isFuture");
+    // Wider windows auto-scroll so today + forecast stay in view.
+    expect(chart).toContain("el.scrollLeft = el.scrollWidth");
   });
 
-  it("labels today's stacked bars with actual values and future bars with expected values", () => {
-    expect(chart).toContain("if (day.isToday)");
-    expect(chart).toContain("if (renderedValue <= 0) return null;");
-    expect(chart).toContain("{formatValue(actual, metricKey)}");
-    expect(chart).toContain("if (!day.isToday || actual <= 0 || expectedRemaining > 0) return null;");
-    expect(chart).toContain("{formatValue(expected, metricKey)}");
+  it("Outcome line extends past today with a dashed expected projection", () => {
+    expect(outcome).toContain("projectedValue");
+    expect(outcome).toContain('strokeDasharray="4 4"');
+    expect(outcome).toContain("buildChartPoints");
+    expect(section).toContain("outcomeFuture");
+    expect(section).toContain("future={outcomeFuture}");
   });
 
-  it("shows the goal-specific expected monthly outcome instead of pipeline revenue", () => {
-    expect(page).toContain("getBrandDailyBudget");
+  it("wires the repliedPositive series through view-model, parser, and page", () => {
+    expect(revenueView).toContain("repliedPositive?: SignalSeries");
+    expect(revenueParse).toContain("repliedPositive: SignalSeriesSchema.optional()");
+    expect(revenueParse).toContain("repliedPositive: d.repliedPositive");
+    expect(page).toContain("repliedPositive: data?.repliedPositive");
+    expect(api).toContain('"repliedPositive"');
+  });
+
+  it("still computes the goal-specific expected monthly outcome for projections without showing it in the footer", () => {
     expect(page).toContain("getWorkflowProjection");
     expect(page).toContain('"overview-outcome"');
-    expect(page).toContain('economicsData?.salesEconomics?.updatedAt ?? "no-economics"');
-    expect(page).toContain("placeholderData: undefined");
-    expect(page).toContain('objective: optimizationGoal === "signups" ? "self-serve" : "meeting-booked"');
     expect(page).toContain("selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal");
     expect(page).toContain("workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal");
-    expect(page).toContain("replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct");
-    expect(page).toContain("visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct");
     expect(page).toContain("monthlyBudgetUsd / unitCost");
-    expect(page).not.toContain("activeOutcomeProjection?.meetings");
-    expect(section).toContain("return Math.round(n).toLocaleString");
-    expect(page).toContain('"expected signups / month"');
-    expect(page).toContain('"expected sales meetings / month"');
+    expect(page).toContain("expectedMonthlyOutcome");
+    expect(outcome).not.toContain("expected?:");
+    expect(outcome).toContain("expected");
   });
 });
