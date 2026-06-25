@@ -16,8 +16,7 @@ import {
   PERSIST_MAX_AGE_MS,
   persistCacheVersion,
   persisterStorageKey,
-  shouldPersistQuery,
-  type PersistableQuery,
+  isPersistableQueryKey,
 } from "@/lib/persist-cache";
 import { installIdleFocusManager } from "@/lib/idle-focus-manager";
 
@@ -58,9 +57,13 @@ function makeQueryClient(orgId: string | null) {
     maxAge: PERSIST_MAX_AGE_MS,
     buster: persistCacheVersion(),
     prefix: persisterStorageKey(orgId),
+    // STATUS-AGNOSTIC predicate (matches on the query key only). The persister
+    // evaluates this ONCE at the top of its wrapped queryFn and uses the verdict for
+    // BOTH restore (query still `pending`) AND persist — a `status === "success"`
+    // check here would be `false` at restore time → the persister silently never
+    // restores and never writes (a total no-op). See isPersistableQueryKey.
     filters: {
-      predicate: (query: Query) =>
-        shouldPersistQuery(query as unknown as PersistableQuery),
+      predicate: (query: Query) => isPersistableQueryKey(query.queryKey),
     },
   });
 
