@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import {
   shouldPersistQuery,
+  isPersistableQueryKey,
   persisterStorageKey,
   persistCacheVersion,
   PERSIST_MAX_AGE_MS,
@@ -79,6 +80,28 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
 
   it("default-off: an unlisted root never persists (a future big query can't melt perf)", () => {
     expect(shouldPersistQuery(q("success", ["someBrandNewQuery", "x"]))).toBe(false);
+  });
+});
+
+describe("isPersistableQueryKey — STATUS-AGNOSTIC predicate (the per-query persister gate)", () => {
+  // REGRESSION: the per-query persister evaluates this ONCE while the query is still
+  // `pending` (data undefined) and reuses the verdict for BOTH restore and persist.
+  // A status check here ⇒ false at restore time ⇒ the persister is a silent total
+  // no-op (every load cold-fetches the 30s Neon chain). So it MUST ignore status.
+  it("matches an allowlisted key regardless of status (pending must still match)", () => {
+    expect(isPersistableQueryKey(["featureRevenue", "b1", "slug"])).toBe(true);
+    expect(isPersistableQueryKey(["brand", "b1"])).toBe(true);
+    // The bug: shouldPersistQuery (status-aware) is FALSE on a pending query — which
+    // is exactly the state at restore time — so it must NOT be the persister predicate.
+    expect(shouldPersistQuery(q("pending", ["featureRevenue", "b1"]))).toBe(false);
+    expect(isPersistableQueryKey(["featureRevenue", "b1"])).toBe(true);
+  });
+
+  it("excludes secrets and unlisted roots (key-only, no status)", () => {
+    for (const root of SENSITIVE_QUERY_ROOTS) {
+      expect(isPersistableQueryKey([root, "x"])).toBe(false);
+    }
+    expect(isPersistableQueryKey(["someBrandNewQuery", "x"])).toBe(false);
   });
 });
 
@@ -162,9 +185,12 @@ describe("query-provider wiring — local-first per-query persisted cache", () =
     expect(src).toContain("prefix: persisterStorageKey(orgId)");
   });
 
-  it("only persists successful, non-sensitive queries (predicate)", () => {
+  it("uses a STATUS-AGNOSTIC predicate (isPersistableQueryKey), NOT the status-aware one", () => {
+    // shouldPersistQuery requires status==="success" → false at restore time (pending)
+    // → the persister becomes a silent no-op. The predicate must key off the query key.
     expect(src).toContain("predicate");
-    expect(src).toContain("shouldPersistQuery");
+    expect(src).toContain("isPersistableQueryKey(query.queryKey)");
+    expect(src).not.toContain("shouldPersistQuery");
   });
 
   it("keeps the global SWR defaults intact (keepPreviousData, silent refetch)", () => {

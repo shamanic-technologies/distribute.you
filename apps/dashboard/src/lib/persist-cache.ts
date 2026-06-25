@@ -154,17 +154,32 @@ export interface PersistableQuery {
 }
 
 /**
- * Decide whether a query is eligible to be written to the persisted cache.
- * Replaces TanStack's default `shouldDehydrateQuery`. Only a successful, NON-
- * sensitive, ALLOWLISTED query persists — errors / pending would restore a broken
- * UI; secrets must not touch disk; big/volatile roots must not melt the main
- * thread (#9775). Default OFF: an unlisted root never persists.
+ * Decide whether a query KEY is eligible for the persisted cache — NON-sensitive +
+ * ALLOWLISTED. Deliberately STATUS-AGNOSTIC: this is the predicate the per-query
+ * persister (`experimental_createQueryPersister`) evaluates ONCE at the top of its
+ * wrapped queryFn, and that one verdict gates BOTH the restore (which runs while the
+ * query is still `pending`, data `undefined`) AND the post-fetch persist. A status
+ * check here (`=== "success"`) makes the predicate `false` at restore time → the
+ * persister NEVER restores AND NEVER writes → a silent total no-op (every load cold-
+ * fetches). So status MUST NOT be part of this predicate; the persister itself only
+ * reaches its persist line after a successful `queryFn` (an error throws first), so
+ * errors are never persisted regardless. Default OFF: an unlisted root never persists.
+ */
+export function isPersistableQueryKey(queryKey: readonly unknown[]): boolean {
+  const root = String(queryKey[0] ?? "");
+  if (SENSITIVE_QUERY_ROOTS.has(root)) return false;
+  return PERSISTABLE_QUERY_ROOTS.has(root);
+}
+
+/**
+ * Status-AWARE variant (success + {@link isPersistableQueryKey}). For dehydrate-style
+ * callers that evaluate an ALREADY-RESOLVED query (the old whole-client
+ * `shouldDehydrateQuery`); do NOT use it as the per-query persister `filters.predicate`
+ * — see the no-op trap documented on {@link isPersistableQueryKey}.
  */
 export function shouldPersistQuery(query: PersistableQuery): boolean {
   if (query.state.status !== "success") return false;
-  const root = String(query.queryKey[0] ?? "");
-  if (SENSITIVE_QUERY_ROOTS.has(root)) return false;
-  return PERSISTABLE_QUERY_ROOTS.has(root);
+  return isPersistableQueryKey(query.queryKey);
 }
 
 /**
