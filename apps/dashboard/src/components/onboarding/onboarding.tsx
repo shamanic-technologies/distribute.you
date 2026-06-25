@@ -1868,7 +1868,6 @@ function OnboardingAudiences({
   onContinue: () => void;
   onEdit?: () => void;
 }) {
-  const card = "mx-auto w-full max-w-5xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
@@ -1879,6 +1878,9 @@ function OnboardingAudiences({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const selectedAudienceIdSet = new Set(selectedAudienceIds);
+  const audienceShellWidth =
+    (candidates?.length ?? 0) >= 3 ? "max-w-5xl" : (candidates?.length ?? 0) === 2 ? "max-w-3xl" : "max-w-xl";
+  const card = `mx-auto w-full ${audienceShellWidth} min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12`;
 
   // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
   // the background during the loading screen) when present — zero wait, zero click.
@@ -2001,7 +2003,7 @@ function OnboardingAudiences({
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl min-w-0 flex flex-col gap-3">
+    <div className={`mx-auto w-full ${audienceShellWidth} min-w-0 flex flex-col gap-3`}>
       <BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />
       <div className={card}>
       <div className="max-w-xl">
