@@ -48,11 +48,13 @@ describe("Org switch cross-org isolation framework", () => {
 
   it("persister no-ops while orgId is null (never persists under a shared anon bucket)", () => {
     // While orgId is null the disk cache must NOT be written: a shared `cache:anon`
-    // bucket would restore org A's data under org B (DIS-143 / OWASP shared-key).
+    // key space would restore org A's data under org B (DIS-143 / OWASP shared-key).
+    // The per-query persister storage is undefined unless a resolved org is present.
     const content = read(queryProviderPath);
     expect(content).toContain(
-      'typeof window !== "undefined" && orgId ? window.localStorage : undefined',
+      'typeof window !== "undefined" && !!orgId',
     );
+    expect(content).toContain("persistEnabled ? idbStorage : undefined");
   });
 
   it("OrgCacheInvalidator no longer clears the React Query cache (remount supersedes)", () => {

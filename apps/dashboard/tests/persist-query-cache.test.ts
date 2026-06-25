@@ -6,6 +6,7 @@ import {
   persisterStorageKey,
   persistCacheVersion,
   PERSIST_MAX_AGE_MS,
+  PERSIST_GC_TIME_MS,
   SENSITIVE_QUERY_ROOTS,
   type PersistableQuery,
 } from "../src/lib/persist-cache";
@@ -117,41 +118,53 @@ describe("persistCacheVersion — manual cache buster (NOT the commit SHA)", () 
   });
 });
 
-describe("query-provider wiring — persisted cache", () => {
+describe("query-provider wiring — local-first per-query persisted cache", () => {
   const src = fs.readFileSync(
     path.join(__dirname, "../src/lib/query-provider.tsx"),
     "utf-8",
   );
 
-  it("wraps children in PersistQueryClientProvider, not a bare QueryClientProvider", () => {
-    expect(src).toContain("PersistQueryClientProvider");
-    expect(src).not.toContain("<QueryClientProvider");
+  it("uses the PER-QUERY persister (createQueryPersister), not the whole-client one", () => {
+    // Per-query persistence writes each query separately on change (no whole-cache
+    // re-serialize per 5s poll = no main-thread jank) and decouples disk retention
+    // from gcTime (so maxAge can be Infinity without pinning the heap).
+    expect(src).toContain("experimental_createQueryPersister");
+    expect(src).not.toContain("PersistQueryClientProvider");
+    expect(src).toContain("persister.persisterFn");
   });
 
-  it("uses the sync localStorage persister (SWR-style, synchronous restore)", () => {
-    expect(src).toContain("createSyncStoragePersister");
-    expect(src).toContain("window.localStorage");
-    // SSR guard so the persister is a no-op on the server (no window).
+  it("wires it as a default query option in a plain QueryClientProvider", () => {
+    expect(src).toContain("<QueryClientProvider");
+    expect(src).toContain("persister: persister.persisterFn");
+  });
+
+  it("stores in IndexedDB (idb-keyval), NOT localStorage (no ~5MB cap, off main thread)", () => {
+    expect(src).toContain("idb-keyval");
+    expect(src).not.toContain("localStorage");
+    expect(src).not.toContain("createSyncStoragePersister");
+    expect(src).not.toContain("removeOldestQuery");
+  });
+
+  it("no-ops the persister storage while orgId is null / on the server (no anon bleed)", () => {
+    // No org / no window → storage undefined → nothing persists under a shared bucket.
     expect(src).toContain('typeof window !== "undefined"');
+    expect(src).toContain("persistEnabled ? idbStorage : undefined");
   });
 
-  it("survives the 5MB localStorage cap via removeOldestQuery (never throws)", () => {
-    expect(src).toContain("removeOldestQuery");
-  });
-
-  it("gcTime equals the persister maxAge (TanStack rule: gcTime >= maxAge)", () => {
-    expect(src).toContain("gcTime: PERSIST_MAX_AGE_MS");
+  it("keeps disk forever (maxAge Infinity) while bounding memory (gcTime) separately", () => {
     expect(src).toContain("maxAge: PERSIST_MAX_AGE_MS");
+    expect(src).toContain("gcTime: PERSIST_GC_TIME_MS");
   });
 
-  it("busts the cache on a MANUAL version bump (not per-deploy) and scopes the bucket per org", () => {
+  it("busts on a MANUAL version bump (not per-deploy) and org-scopes the key prefix", () => {
     expect(src).toContain("buster: persistCacheVersion()");
     expect(src).not.toContain("cacheBuildId");
-    expect(src).toContain("persisterStorageKey(orgId)");
+    expect(src).toContain("prefix: persisterStorageKey(orgId)");
   });
 
-  it("only persists successful, non-sensitive queries", () => {
-    expect(src).toContain("shouldDehydrateQuery: shouldPersistQuery");
+  it("only persists successful, non-sensitive queries (predicate)", () => {
+    expect(src).toContain("predicate");
+    expect(src).toContain("shouldPersistQuery");
   });
 
   it("keeps the global SWR defaults intact (keepPreviousData, silent refetch)", () => {
@@ -160,8 +173,12 @@ describe("query-provider wiring — persisted cache", () => {
   });
 });
 
-describe("PERSIST_MAX_AGE_MS", () => {
-  it("is 30 minutes — bounds in-memory retention (was 24h, the #1273 overflow)", () => {
-    expect(PERSIST_MAX_AGE_MS).toBe(30 * 60 * 1000);
+describe("cache retention durations", () => {
+  it("maxAge is Infinity — disk entries never expire (local-first, instant cross-session)", () => {
+    expect(PERSIST_MAX_AGE_MS).toBe(Infinity);
+  });
+
+  it("gcTime is 30 min — bounds MEMORY only (disk is independent via per-query persister)", () => {
+    expect(PERSIST_GC_TIME_MS).toBe(30 * 60 * 1000);
   });
 });
