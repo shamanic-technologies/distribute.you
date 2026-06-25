@@ -374,9 +374,20 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   return { ...parsed, onboardingState } as PendingCheckoutLaunch;
 }
 
+// Opportunistic recovery read: callers fall back to current state when this
+// returns null, so a stale blob from a prior onboarding attempt on an older
+// schema must NOT block a fresh checkout. Log loud + purge the poison key +
+// return null. The strict readPendingCheckoutLaunch stays fail-loud for the
+// resume/cancel-return paths where the blob is the sole source of truth.
 function readPendingCheckoutLaunchOrNull(): PendingCheckoutLaunch | null {
   if (!window.sessionStorage.getItem(CHECKOUT_PENDING_KEY)) return null;
-  return readPendingCheckoutLaunch();
+  try {
+    return readPendingCheckoutLaunch();
+  } catch (err) {
+    console.error("[dashboard] discarding stale/invalid pending checkout launch state:", err);
+    window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
+    return null;
+  }
 }
 
 // Coerce a stored profile field (string | string[]) to a string[] of trimmed items.
