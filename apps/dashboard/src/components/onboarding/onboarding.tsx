@@ -823,8 +823,23 @@ export function Onboarding() {
     captureSetupMilestone("organization_ready", workspaceStartedAt);
     setLoadStep(1);
     const brandStartedAt = performance.now();
+    const previousBrandId = brandIdRef.current;
     const { brandId: newBrandId } = await upsertBrand(brandUrl);
     captureSetupMilestone("brand_upserted", brandStartedAt);
+    // Brand SWITCH (user edited the URL → a different brand): every brand-derived
+    // prefill in state is now stale (ICP prompt, suggested audiences, rate defaults).
+    // Drop them + clear the "user edited" guards so the fresh hydration reseeds the
+    // new brand cleanly. Without this the audience step's seed effect sees the OLD
+    // prompt/candidates ("already filled") and keeps the previous brand's ICP +
+    // audiences; rates stay stale because ratesEditedRef is still set. A same-brand
+    // RESUME has equal ids → no reset → user edits preserved.
+    if (previousBrandId && previousBrandId !== newBrandId) {
+      setAudiencePrompt("");
+      setAudienceCandidates(null);
+      setSelectedAudienceIds([]);
+      servicesEditedRef.current = false;
+      ratesEditedRef.current = false;
+    }
     setLoadStep(2);
     // NOTE: onboarding is marked complete only at the END of the flow (in
     // launch(), after the campaign is created) — NOT here. Marking it complete
