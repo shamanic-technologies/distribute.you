@@ -10,35 +10,65 @@
  *  4. persisted cache (this file)       — restores the last-known content on
  *     return / reload instead of cold-loading a skeleton.
  *
- * POLICY (2026-06-23 — "persist everything that exists, no skeleton on reload"):
- * the allowlist holds EVERY live non-sensitive query root, big lists included, so
- * NO page cold-skeletons on reload — it restores the last-known content for all of
- * them. This deliberately reverses the original small-roots-only allowlist (the
- * #1273 memory-overflow fix). It stays safe because the two mechanisms that caused
- * #1273 are now bounded independently of payload size:
- *   - `gcTime == maxAge == 30min` (NOT the old 24h) caps in-memory retention, so a
- *     big list cannot pile up in the heap for a day → no OOM.
- *   - `removeOldestQuery` (query-provider.tsx) evicts on the ~5MB localStorage cap
- *     and NEVER throws — an oversized single list (e.g. a 12k-row outlets payload
- *     that alone exceeds 5MB) simply self-evicts, so that one page may still
- *     skeleton on reload, but nothing crashes.
- *   - `buster: cacheBuildId()` discards the whole cache on every deploy.
- * RESIDUAL WATCH-ITEM: `dehydrate()` re-serializes the persisted set on EVERY cache
- * mutation (TanStack #9775). With 5s-polled big lists this adds main-thread cost on
- * heavy pages while they are actively viewed. Mitigation if it bites: an idle/blur
- * gate on the persister, or a per-query size cap — not a return to the allowlist.
- * The allowlist is now an INVENTORY of live roots (default-OFF still holds for a
- * future UNKNOWN root, so a new query is opt-in, never silently auto-persisted).
+ * POLICY (2026-06-25 — "local-first SWR cache: open a page → its content NOW"):
+ * the dashboard is a LOCAL-FIRST, stale-while-revalidate (SWR) surface — the on-disk
+ * cache is the source the UI paints FIRST, the network is secondary (TkDodo: "stale
+ * data is better than no data, because no data means a loading spinner = perceived
+ * slow"). The allowlist holds EVERY live non-sensitive query root, big lists
+ * included, so NO page cold-skeletons after the first ever load.
+ *
+ * PERSISTER = the PER-QUERY persister (`experimental_createQueryPersister`,
+ * query-provider.tsx), NOT the old whole-client `persistQueryClient`. Two reasons it
+ * is strictly better for this polling-heavy app (TanStack docs "createPersister"):
+ *   1. Each query is written to storage SEPARATELY (keyed by its query hash), only
+ *      when IT changes — so a 5s poll of one query does NOT re-serialize the whole
+ *      cache. This kills the main-thread "lourd/lent" jank of the whole-client
+ *      persister, which re-`dehydrate()`d the ENTIRE set on every mutation (#9775).
+ *   2. A query persisted to disk survives even after it is GC'd from MEMORY — disk
+ *      retention is DECOUPLED from `gcTime`. That lets us keep `maxAge: Infinity`
+ *      (disk = keep forever → never expire → no cross-session cold skeleton) WITHOUT
+ *      pinning everything in the JS heap forever. `gcTime` stays a modest bound on
+ *      MEMORY only (the #1273 heap-overflow lever); the disk holds it regardless.
+ *
+ * STORAGE = IndexedDB (idb-keyval), NOT localStorage. localStorage's hard ~5MB
+ * per-origin cap was the regression: a big list (leads/emails on a heavy brand)
+ * blew the cap → `removeOldestQuery` evicted the small overview queries → the
+ * overview cold-skeletoned on the slow Neon chain (the very thing persist-all was
+ * meant to prevent). IndexedDB has no such cap, so nothing is evicted and big-list
+ * pages persist fully too.
+ *
+ * NB admin ≠ dashboard: `admin.distribute.you` is a SEPARATE origin with its OWN
+ * storage — its heavy outlets/journalists cache never touches this dashboard cache.
+ *
+ * SAFETY (cross-deploy shape drift, with `maxAge: Infinity` and no per-deploy bust):
+ * `buster` (manual version, bumped by hand on an incompatible shape change) is the
+ * only forced invalidation; `safeParse` / `z.coerce` on list readers, keep-last-good
+ * `structuralSharing`, and the org-scoped `prefix` each tolerate a drifted shape.
+ * The allowlist is an INVENTORY of live roots (default-OFF still holds for a future
+ * UNKNOWN root, so a new query is opt-in, never silently auto-persisted).
  */
 
 /**
- * Persisted-cache freshness window AND the in-memory `gcTime` (they must be
- * equal — TanStack rule `gcTime >= maxAge`, else GC drops a query before its
- * persisted copy can restore). 30 min: long enough for "leave a page and come
- * back" within a work session, short enough that inactive big lists do not pile
- * up in the heap. Was 24h (#1273) — that retention was the memory overflow.
+ * Persisted-cache freshness window (the per-query persister `maxAge`). `Infinity`
+ * = NEVER expire on disk → opening any page on a later session/day paints its
+ * last-known content instantly, then revalidates in the background (SWR). Safe to
+ * be infinite ONLY because the persister is PER-QUERY: disk retention is decoupled
+ * from `gcTime`, so "keep forever on disk" does NOT pin everything in the JS heap
+ * (that decoupling is impossible with the whole-client persister, where disk
+ * mirrors memory and `maxAge: Infinity` would force `gcTime: Infinity` → the #1273
+ * heap overflow). Shape drift across deploys is handled by `buster` + safeParse, not
+ * by expiry. Was 30 min (and before that 24h, #1273).
  */
-export const PERSIST_MAX_AGE_MS = 30 * 60 * 1000;
+export const PERSIST_MAX_AGE_MS = Infinity;
+
+/**
+ * In-memory `gcTime` — how long an INACTIVE query stays in the JS heap. Bounds
+ * memory ONLY (the #1273 lever); it is INDEPENDENT of disk retention now that the
+ * persister is per-query (a heap-GC'd query stays on disk up to `maxAge`, so the
+ * page still restores instantly). 30 min: covers "leave a page and come back"
+ * in-session warm, short enough that inactive big lists leave the heap.
+ */
+export const PERSIST_GC_TIME_MS = 30 * 60 * 1000;
 
 /**
  * Query-key roots whose data is secret (key material) and must NEVER be written
@@ -138,10 +168,12 @@ export function shouldPersistQuery(query: PersistableQuery): boolean {
 }
 
 /**
- * Storage key is org-scoped so org A's persisted cache never restores under
- * org B after a reload — closing the cross-org vector of DIS-143 (React Query
- * keys are not yet org-scoped). Before Clerk resolves the org we use "anon", an
- * empty bucket that holds nothing.
+ * Org-scoped storage PREFIX for the per-query persister. Each query is stored under
+ * `${prefix}-${queryHash}`, so scoping the prefix by org id keeps org A's persisted
+ * queries in a different IndexedDB key space than org B — closing the cross-org
+ * vector of DIS-143 (React Query keys are not yet org-scoped). While the org is
+ * unresolved the persister storage is `undefined` (a no-op, see query-provider.tsx),
+ * so the "anon" value here is only a defensive default and persists nothing.
  */
 export function persisterStorageKey(orgId: string | null | undefined): string {
   return `distribute-dashboard-cache:${orgId ?? "anon"}`;
