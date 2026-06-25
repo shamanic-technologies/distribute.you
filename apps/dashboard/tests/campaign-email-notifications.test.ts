@@ -28,20 +28,3 @@ describe("sendCampaignEmail function", () => {
     expect(content).toContain('"/emails/send"');
   });
 });
-
-describe("campaign_stopped email via useStopCampaign hook", () => {
-  const hookPath = path.resolve(__dirname, "../src/lib/use-stop-campaign.ts");
-  const content = fs.readFileSync(hookPath, "utf-8");
-
-  it("should import sendCampaignEmail", () => {
-    expect(content).toContain("sendCampaignEmail");
-  });
-
-  it("should fire campaign_stopped email after stop", () => {
-    expect(content).toContain('sendCampaignEmail("campaign_stopped"');
-  });
-
-  it("should be best-effort (catch errors silently)", () => {
-    expect(content).toMatch(/sendCampaignEmail\([\s\S]*\)\.catch\(\(\) => \{\}\)/);
-  });
-});

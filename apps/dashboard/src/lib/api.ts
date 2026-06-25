@@ -2618,12 +2618,9 @@ export async function fetchGlobalRankedWorkflows(params: {
 
 // ── Sales-funnel workflow projection ────────────────────────────────────────
 // features-service owns the per-workflow GLOBAL unit costs (contacted/reply/click $ — cross-org,
-// feature-scoped, econ-INDEPENDENT) + the recommended workflow. It ALSO returns a server-computed
-// cost-per-close + funnel projection from the brand's SAVED economics, but the campaigns/new page
-// no longer renders those directly: it recomputes cost-per-close + the funnel CLIENT-side from the
-// unit costs × the LIVE §2 econ inputs (lib/sales-funnel-projection.ts mirrors the server formula)
-// so the budget cards update instantly without a per-edit round-trip through the cold Neon chain.
-// On first paint the live econ == the saved econ, so the client numbers equal the server's exactly.
+// feature-scoped, econ-INDEPENDENT) + the recommended workflow, AND returns a server-computed
+// cost-per-close + funnel projection from the brand's SAVED economics. Consumers (brand overview,
+// workflows page, onboarding) render those server values directly via getWorkflowProjection.
 // Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
 export type SalesObjective = "meeting-booked" | "self-serve";
 

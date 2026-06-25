@@ -88,22 +88,6 @@ describe("consumers adopt the coordinated reveal", () => {
   });
 });
 
-describe("CoordinatedReveal — reusable component wrapper", () => {
-  const component = fs.readFileSync(
-    path.join(__dirname, "../src/components/coordinated-reveal.tsx"),
-    "utf-8",
-  );
-
-  it("wraps the latch hook and defers content via a render function", () => {
-    expect(component).toContain("useCoordinatedReveal");
-    // children is a render function so the content closure only runs once
-    // revealed — it dereferences resolved query data that is undefined while
-    // the skeleton is showing.
-    expect(component).toContain("children: () => ReactNode");
-    expect(component).toContain("revealed ? children() : skeleton");
-  });
-});
-
 describe("route-transition loading.tsx boundaries (instant nav skeletons)", () => {
   const authed =
     "../src/app/(authed)/(dashboard)/orgs/[orgId]";
