@@ -134,7 +134,7 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
           {audience.name.charAt(0).toUpperCase()}
         </span>
       )}
-      <span className="text-gray-700 truncate max-w-[140px]">{audience.name}</span>
+      <span className="text-gray-700">{audience.name}</span>
     </div>
   );
 }
@@ -203,7 +203,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
             <th className="px-4 py-3">Contact</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 hidden sm:table-cell">Status</th>
-            <th className="px-4 py-3 hidden md:table-cell">Found</th>
+            <th className="px-4 py-3 hidden md:table-cell">Date</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -240,8 +240,8 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  {lead.servedAt ? (
-                    <span className="text-xs text-gray-500" title={new Date(lead.servedAt).toLocaleString()}>{timeAgo(lead.servedAt)}</span>
+                  {lead.firstClickedAt ? (
+                    <span className="text-xs text-gray-500" title={new Date(lead.firstClickedAt).toLocaleString()}>{timeAgo(lead.firstClickedAt)}</span>
                   ) : (
                     <span className="text-xs text-gray-300">-</span>
                   )}
