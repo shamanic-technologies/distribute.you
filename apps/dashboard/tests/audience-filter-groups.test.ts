@@ -31,12 +31,12 @@ describe("audienceFilterGroups — faithful Apollo field names", () => {
     expect(labelFor("qOrganizationKeywordTags", ["payments"])).toBe("Keywords");
   });
 
-  it("formats Apollo values for the detail panel — and NEVER hides a filter", () => {
+  it("formats Apollo values for the detail panel — and hides only contact_email_status", () => {
     const groups = audienceFilterGroups({
       q_keywords: "marketing agency OR advertising agency",
       person_seniorities: ["owner", "founder", "c_suite"],
       organization_num_employees_ranges: ["1,200"],
-      contact_email_status: ["verified"],
+      contact_email_status: ["verified"], // internal deliverability flag — hidden
     });
 
     expect(groups).toEqual([
@@ -54,12 +54,6 @@ describe("audienceFilterGroups — faithful Apollo field names", () => {
         label: "Employee range",
         tone: "bg-sky-50 text-sky-700 border-sky-200",
         values: ["1-200 employees"],
-      },
-      // contact_email_status is no longer hidden — every stored filter renders.
-      {
-        label: "Contact email status",
-        tone: "bg-gray-100 text-gray-600 border-gray-200",
-        values: ["Contact email status: verified"],
       },
     ]);
   });
