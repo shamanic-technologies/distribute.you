@@ -115,14 +115,14 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(api).toContain('"repliedPositive"');
   });
 
-  it("still computes the goal-specific expected monthly outcome (kept as a secondary figure)", () => {
+  it("still computes the goal-specific expected monthly outcome for projections without showing it in the footer", () => {
     expect(page).toContain("getWorkflowProjection");
     expect(page).toContain('"overview-outcome"');
     expect(page).toContain("selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal");
     expect(page).toContain("workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal");
     expect(page).toContain("monthlyBudgetUsd / unitCost");
-    expect(page).toContain('"expected signups / month"');
-    expect(page).toContain('"expected sales meetings / month"');
+    expect(page).toContain("expectedMonthlyOutcome");
+    expect(outcome).not.toContain("expected?:");
     expect(outcome).toContain("expected");
   });
 });

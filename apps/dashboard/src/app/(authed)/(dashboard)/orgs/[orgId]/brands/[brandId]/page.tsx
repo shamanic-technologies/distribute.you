@@ -421,10 +421,6 @@ export default function BrandOverviewPage() {
           outcomeRevealed
             ? {
                 value: expectedMonthlyOutcome,
-                label:
-                  optimizationGoal === "signups"
-                    ? "expected signups / month"
-                    : "expected sales meetings / month",
               }
             : undefined
         }
