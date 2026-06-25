@@ -69,9 +69,14 @@ export const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: strin
     tone: "bg-cyan-50 text-cyan-700 border-cyan-200",
   },
   {
-    keys: ["keywords", "keyword", "qKeywords", "qOrganizationKeywordTags"],
+    keys: ["keywords", "keyword", "qKeywords", "qOrganizationKeywordTags", "q_organization_keyword_tags"],
     label: "Keywords",
     tone: "bg-gray-100 text-gray-600 border-gray-200",
+  },
+  {
+    keys: ["qOrganizationJobTitles", "q_organization_job_titles"],
+    label: "Hiring for",
+    tone: "bg-orange-50 text-orange-700 border-orange-200",
   },
   {
     keys: ["q_keywords"],
@@ -84,7 +89,10 @@ export function humanizeFilterKey(key: string): string {
   const s = key
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
-    .trim();
+    .trim()
+    // Apollo query keys carry a leading "q" token (q_organization_… → "q organization …");
+    // drop it so unmapped keys never render as "Q organization keyword tags".
+    .replace(/^q\s+(?=\S)/i, "");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 

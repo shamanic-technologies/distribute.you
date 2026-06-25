@@ -2129,9 +2129,6 @@ function AudienceCandidateCard({
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-gray-900">{candidate.name}</span>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-            {candidate.provider}
-          </span>
           {!invalid && (
             <span className="text-[11px] font-medium text-gray-400">~{candidate.count.toLocaleString()} matches</span>
           )}
