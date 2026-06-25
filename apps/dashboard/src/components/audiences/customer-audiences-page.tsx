@@ -201,7 +201,7 @@ export function CustomerAudiencesPage() {
     setAiOpen(false);
   };
 
-  if (!isBeta || !revenueOk) {
+  if (!revenueOk) {
     return (
       <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
@@ -382,6 +382,7 @@ export function CustomerAudiencesPage() {
         shiftRight={aiDocked}
         onClose={closeInspector}
         onEditWithAI={() => setAiOpen(true)}
+        isBeta={isBeta}
         onRegenerateAvatar={() => {
           if (selected) avatarMut.mutate(selected.id);
         }}
@@ -470,6 +471,7 @@ function AudienceDetailPanel({
   shiftRight,
   onClose,
   onEditWithAI,
+  isBeta,
   onRegenerateAvatar,
   avatarPending,
   onSetStatus,
@@ -480,6 +482,7 @@ function AudienceDetailPanel({
   shiftRight?: boolean;
   onClose: () => void;
   onEditWithAI: () => void;
+  isBeta?: boolean;
   onRegenerateAvatar: () => void;
   avatarPending?: boolean;
   onSetStatus: (status: AudienceStatus) => void;
@@ -531,16 +534,19 @@ function AudienceDetailPanel({
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
-          {/* Edit with AI */}
-          <button
-            type="button"
-            onClick={onEditWithAI}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            Edit with AI
-            <MaturityBadge level="beta" />
-          </button>
+          {/* Edit with AI — stays beta-gated (AI editing), even though the
+              Audiences view itself is GA. */}
+          {isBeta && (
+            <button
+              type="button"
+              onClick={onEditWithAI}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            >
+              <SparklesIcon className="w-4 h-4" />
+              Edit with AI
+              <MaturityBadge level="beta" />
+            </button>
+          )}
 
           {/* Avatar — AI-generated image, (re)generate */}
           <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
