@@ -27,6 +27,8 @@ import {
   type FeatureAudienceStatsRow,
 } from "@/lib/api";
 
+const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
+
 /** Cents → "$X.XX" / "-" / "<$0.01". Mirrors top-audiences-card. */
 function formatCents(cents: number | null): string {
   if (cents == null) return "-";
@@ -100,7 +102,18 @@ export function CustomerAudiencesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
 
-  const { data, isPending } = useAuthQuery(["audiences", brandId], () => listAudiences(brandId));
+  const { data: activeData, isPending: activePending } = useAuthQuery(
+    ["audiences", brandId, "active"],
+    () => listAudiences(brandId, { status: "active" }),
+  );
+  const { data: pausedData, isPending: pausedPending } = useAuthQuery(
+    ["audiences", brandId, "paused"],
+    () => listAudiences(brandId, { status: "paused" }),
+  );
+  const { data: archivedData, isPending: archivedPending } = useAuthQuery(
+    ["audiences", brandId, "archived"],
+    () => listAudiences(brandId, { status: "archived" }),
+  );
 
   // Brand optimization goal → audience-stats goal (sorts by CPC for signup, CPPR
   // otherwise). Same resolution as the brand Overview.
@@ -141,20 +154,27 @@ export function CustomerAudiencesPage() {
   const avatarMut = useMutation({
     mutationFn: (id: string) => generateAudienceAvatar(id),
     onSuccess: (res) => {
-      queryClient.setQueryData<{ audiences: AudienceWire[]; total: number }>(
-        ["audiences", brandId],
-        (old) =>
-          old
-            ? { ...old, audiences: old.audiences.map((a) => (a.id === res.audience.id ? res.audience : a)) }
-            : old,
-      );
+      for (const status of VISIBLE_AUDIENCE_STATUSES) {
+        queryClient.setQueryData<{ audiences: AudienceWire[]; total: number }>(
+          ["audiences", brandId, status],
+          (old) =>
+            old
+              ? { ...old, audiences: old.audiences.map((a) => (a.id === res.audience.id ? res.audience : a)) }
+              : old,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["audiences", brandId] });
     },
   });
 
-  // "suggested" candidates are inactive pre-activation rows — not shown on the
-  // page (they belong to the onboarding/AI suggest flow until activated).
-  const audiences: AudienceWire[] = (data?.audiences ?? []).filter((a) => a.status !== "suggested");
+  const isPending = activePending || pausedPending || archivedPending;
+  // Read only user-visible lifecycle states. human-service keeps suggested and
+  // deprecated rows out of these status-specific reads.
+  const audiences: AudienceWire[] = [
+    ...(activeData?.audiences ?? []),
+    ...(pausedData?.audiences ?? []),
+    ...(archivedData?.audiences ?? []),
+  ];
   const selected = selectedId ? audiences.find((a) => a.id === selectedId) ?? null : null;
 
   useEffect(() => {

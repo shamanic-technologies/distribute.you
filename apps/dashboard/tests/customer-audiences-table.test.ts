@@ -14,8 +14,10 @@ describe("Audiences page", () => {
   );
 
   it("reads audiences from the gateway, not brand-service personas", () => {
-    expect(src).toContain("listAudiences(brandId)");
-    expect(src).toContain('["audiences", brandId]');
+    expect(src).toContain('listAudiences(brandId, { status: "active" })');
+    expect(src).toContain('listAudiences(brandId, { status: "paused" })');
+    expect(src).toContain('listAudiences(brandId, { status: "archived" })');
+    expect(src).toContain('["audiences", brandId, "active"]');
     expect(src).not.toContain("listPersonas");
     expect(src).not.toContain("createPersona");
     expect(src).not.toContain("/brands/");
@@ -71,7 +73,8 @@ describe("Audiences page", () => {
     expect(src).not.toContain("Contact email status");
   });
 
-  it("hides pre-activation suggested candidates from the list", () => {
-    expect(src).toContain('a.status !== "suggested"');
+  it("only lists user-visible lifecycle statuses", () => {
+    expect(src).toContain('const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const');
+    expect(src).not.toContain('a.status !== "suggested"');
   });
 });

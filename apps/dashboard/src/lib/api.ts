@@ -1010,7 +1010,7 @@ export async function getSalesEconomicsEffective(
 // brand-service persona. human-service OWNS these rows; the dashboard reaches
 // them through the api-service gateway, never brand-service.
 
-export type AudienceStatus = "suggested" | "active" | "paused" | "archived";
+export type AudienceStatus = "suggested" | "active" | "paused" | "archived" | "deprecated";
 
 export interface AudienceCandidate {
   // The PERSISTED audience row id — /suggest creates each candidate at status
@@ -1032,6 +1032,7 @@ const AudienceStatusSchema = z.union([
   z.literal("active"),
   z.literal("paused"),
   z.literal("archived"),
+  z.literal("deprecated"),
 ]);
 
 const AudienceCandidateSchema = z.object({
@@ -1179,9 +1180,14 @@ const ListAudiencesResponseSchema = z.object({
 /** GET /orgs/audiences?brandId= — saved audiences for a brand. */
 export async function listAudiences(
   brandId: string,
+  params?: { status?: AudienceStatus; limit?: number; offset?: number },
   token?: string,
 ): Promise<{ audiences: AudienceWire[]; total: number }> {
-  const raw = await apiCall<unknown>(`/orgs/audiences?brandId=${encodeURIComponent(brandId)}`, { token });
+  const query = new URLSearchParams({ brandId });
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  const raw = await apiCall<unknown>(`/orgs/audiences?${query.toString()}`, { token });
   const parsed = ListAudiencesResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] listAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
