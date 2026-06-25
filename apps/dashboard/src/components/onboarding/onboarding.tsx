@@ -1494,9 +1494,9 @@ export function Onboarding() {
 
   if (step === "services") {
     return (
-      <div className="min-w-0 w-full flex flex-col gap-3">
+      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
         <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={cardWide}>
+        <div className={card}>
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
         <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-3 sm:p-4">
@@ -2039,7 +2039,7 @@ function OnboardingAudiences({
     <div className={`mx-auto w-full ${audienceShellWidth} min-w-0 flex flex-col gap-3`}>
       <BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />
       <div className={card}>
-      <div className="max-w-xl">
+      <div>
         <BackButton onClick={onBack} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
         <p className="mt-2 text-gray-500">
@@ -2097,7 +2097,7 @@ function OnboardingAudiences({
         </>
       )}
 
-      <div className="max-w-xl">
+      <div>
         <NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} busy={saving} label="Continue" />
       </div>
       </div>

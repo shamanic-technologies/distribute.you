@@ -39,4 +39,12 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).toContain("grid gap-3 ${audienceGridCols}");
     expect(onboardingFlow).toContain("flex w-full items-start gap-3 rounded-xl border-2");
   });
+
+  it("keeps the services step narrow (cardWide is the welcome-only wide shell)", () => {
+    // cardWide has no max-w cap, so it fills the max-w-5xl route shell. Only the
+    // welcome hero should use it — the services step must use the narrow `card`.
+    const wideUses = onboardingFlow.match(/className=\{cardWide\}/g) ?? [];
+    expect(wideUses.length).toBe(1);
+    expect(onboardingFlow).toContain('What services do you want to promote with us?');
+  });
 });
