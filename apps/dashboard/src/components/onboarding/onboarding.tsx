@@ -32,8 +32,6 @@ import {
   saveBrandSalesEconomics,
   suggestAudiences,
   setAudienceStatus,
-  listAudiences,
-  generateAudienceAvatar,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
@@ -1084,12 +1082,10 @@ export function Onboarding() {
     setLaunchStep(1);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
     setLaunchStep(2);
-    // Generate a profile picture for each audience the user activated. Runs only now
-    // (post-checkout, card on file) because image generation costs LLM credits
-    // (chat-service owns the cost; may 402). Best-effort + parallel: a failed/absent
-    // avatar must NOT abort the launch — the campaign + onboarding-complete are the
-    // critical path. Idempotent (skips audiences that already carry an avatar).
-    await generateActiveAudienceAvatars(pending.brandId);
+    // Audience avatars are generated server-side by human-service the moment an
+    // audience flips to `active` (org-billed, fire-and-forget, idempotent), so the
+    // onboarding no longer generates them here — that would race the server gen and
+    // double-bill. See human-service #144.
     setLaunchStep(3);
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
     const { campaign } = await createCampaignWithoutBrandEnrichment({
@@ -1126,28 +1122,6 @@ export function Onboarding() {
     clearOnboardingState();
     setLaunchStep(5);
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
-  }
-
-  /**
-   * Generate an AI profile picture for every audience the user activated at the
-   * audiences step. Best-effort: per-audience failures are logged, never thrown, so
-   * a 402/error on one image can't block the campaign launch. Parallel across
-   * audiences; idempotent — only the active audiences missing an avatar are generated.
-   */
-  async function generateActiveAudienceAvatars(brandId: string) {
-    try {
-      const { audiences } = await listAudiences(brandId);
-      const targets = audiences.filter((a) => a.status === "active" && !a.avatarUrl);
-      await Promise.allSettled(
-        targets.map((a) =>
-          generateAudienceAvatar(a.id).catch((e) => {
-            console.error(`[dashboard] generateAudienceAvatar failed for ${a.id}:`, e);
-          }),
-        ),
-      );
-    } catch (e) {
-      console.error("[dashboard] generateActiveAudienceAvatars: listAudiences failed:", e);
-    }
   }
 
   async function beginCheckoutAndLaunch() {
