@@ -1,12 +1,13 @@
 // First-visit onboarding copy + reminder copy. Kept in a pure module so the
 // strings are unit-testable (presence + no em-dash) and reusable by both the
-// driver.js welcome tour and the reminder modals. User-facing copy: humanized,
-// no em-dash (per project copy discipline).
+// welcome carousel and the reminder modals. User-facing copy: humanized,
+// no em-dash (per project copy discipline). Rich blocks (example email,
+// timeline) are styled with the landing design tokens (brand accent, mono).
 
 export interface WelcomeStep {
   /** Centered modal title. */
   title: string;
-  /** HTML description rendered inside the driver.js popover. */
+  /** HTML description rendered inside the welcome carousel card. */
   description: string;
 }
 
@@ -14,7 +15,11 @@ export interface WelcomeStep {
 // caption makes clear the real emails differ; the point is to convey the
 // spirit, not a literal template.
 const EXAMPLE_EMAIL_HTML = `
-<pre style="white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:8px 0 4px;color:#334155;">Hey Sophie,
+<div style="margin:14px 0 6px;border:1px solid var(--color-brand-200,#c7d2fe);border-radius:12px;overflow:hidden;background:#fff;">
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--color-brand-50,#eef2ff);border-bottom:1px solid var(--color-brand-100,#e0e7ff);font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-brand-700,#4338ca);">
+    <span style="width:6px;height:6px;border-radius:999px;background:var(--color-brand-500,#6366f1);flex:none;"></span>From: distribute.you
+  </div>
+  <pre style="white-space:pre-wrap;font-family:var(--font-mono);font-size:12px;line-height:1.6;padding:12px 14px;margin:0;color:#334155;">Hey Sophie,
 
 I reached out on behalf of your brand because what they offer lines up with what you do at your company.
 
@@ -23,7 +28,8 @@ Their site: your-url.com
 Best,
 Kevin
 Founder, distribute.you</pre>
-<span style="font-size:11px;color:#94a3b8;">Your emails will not read exactly like this. It is just the idea.</span>`;
+</div>
+<span style="display:block;margin-top:6px;font-size:11px;color:#94a3b8;">Your emails will not read exactly like this. It is just the idea.</span>`;
 
 export const WELCOME_STEPS: WelcomeStep[] = [
   {
@@ -45,10 +51,10 @@ export const WELCOME_STEPS: WelcomeStep[] = [
   {
     title: "What happens next",
     description:
-      "<ul style='margin:0;padding-left:18px;line-height:1.7;'>" +
-      "<li>Within 1 hour, your first emails start going out.</li>" +
-      "<li>Within 2 to 3 days, your first website clicks arrive.</li>" +
-      "<li>Every day, you get a recap email with the clicks you got that day.</li>" +
+      "<ul style='margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;'>" +
+      "<li style='display:flex;gap:10px;align-items:flex-start;'><span style='flex:none;margin-top:1px;width:18px;height:18px;border-radius:999px;background:var(--color-brand-50,#eef2ff);color:var(--color-brand-700,#4338ca);font-family:var(--font-mono);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;'>1h</span><span>Within 1 hour, your first emails start going out.</span></li>" +
+      "<li style='display:flex;gap:10px;align-items:flex-start;'><span style='flex:none;margin-top:1px;width:18px;height:18px;border-radius:999px;background:var(--color-brand-50,#eef2ff);color:var(--color-brand-700,#4338ca);font-family:var(--font-mono);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;'>2d</span><span>Within 2 to 3 days, your first website clicks arrive.</span></li>" +
+      "<li style='display:flex;gap:10px;align-items:flex-start;'><span style='flex:none;margin-top:1px;width:18px;height:18px;border-radius:999px;background:var(--color-brand-50,#eef2ff);color:var(--color-brand-700,#4338ca);font-family:var(--font-mono);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;'>∞</span><span>Every day, you get a recap email with the clicks you got that day.</span></li>" +
       "</ul>",
   },
   {

@@ -57,7 +57,7 @@ export function NoAudienceBanner() {
       </span>
       <Link
         href={`/orgs/${orgId}/brands/${brandId}/audiences`}
-        className="font-semibold underline underline-offset-2 hover:opacity-90"
+        className="rounded-full bg-white/15 px-3 py-0.5 font-semibold ring-1 ring-white/25 transition hover:bg-white/25"
       >
         {NO_AUDIENCE_BANNER_COPY.cta} →
       </Link>
