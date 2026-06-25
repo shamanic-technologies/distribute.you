@@ -13,15 +13,15 @@ const NEUTRAL_TONE = "bg-gray-100 text-gray-600 border-gray-200";
 // Category vocabulary borrowed from PersonaCard's FILTER_CATEGORIES so audience
 // cards read like the persona cards (colored, category-grouped pills).
 export const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: string }[] = [
-  { keys: ["industries", "industry"], label: "Industry", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  { keys: ["roles", "seniority", "seniorities"], label: "Seniority", tone: "bg-purple-50 text-purple-700 border-purple-200" },
+  { keys: ["industries", "industry", "qOrganizationIndustryTagIds"], label: "Industry", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  { keys: ["roles", "seniority", "seniorities", "personSeniorities"], label: "Seniority", tone: "bg-purple-50 text-purple-700 border-purple-200" },
   {
     keys: ["titles", "personTitles", "jobTitles", "departments", "personDepartments"],
     label: "Job titles",
     tone: "bg-amber-50 text-amber-700 border-amber-200",
   },
   {
-    keys: ["employeeMin", "employeeMax", "employeeRange", "employeeRanges", "headcount"],
+    keys: ["employeeMin", "employeeMax", "employeeRange", "employeeRanges", "headcount", "organizationNumEmployeesRanges"],
     label: "Employee range",
     tone: "bg-sky-50 text-sky-700 border-sky-200",
   },
@@ -31,12 +31,12 @@ export const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: strin
     tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
   {
-    keys: ["location", "locations", "country", "countries", "region", "regions"],
+    keys: ["location", "locations", "country", "countries", "region", "regions", "personLocations", "organizationLocations"],
     label: "Location",
     tone: "bg-rose-50 text-rose-700 border-rose-200",
   },
-  { keys: ["technologies", "tech", "technology"], label: "Technology", tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
-  { keys: ["keywords", "keyword"], label: "Keywords", tone: "bg-gray-100 text-gray-600 border-gray-200" },
+  { keys: ["technologies", "tech", "technology", "currentlyUsingAnyOfTechnologyUids"], label: "Technology", tone: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  { keys: ["keywords", "keyword", "qKeywords", "qOrganizationKeywordTags"], label: "Keywords", tone: "bg-gray-100 text-gray-600 border-gray-200" },
 ];
 
 export function humanizeFilterKey(key: string): string {
