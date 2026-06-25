@@ -33,9 +33,8 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).toContain('>= 3 ? "max-w-5xl"');
     expect(onboardingFlow).toContain('=== 2 ? "max-w-3xl" : "max-w-xl"');
     expect(onboardingFlow).toContain("mx-auto w-full ${audienceShellWidth} min-w-0 flex flex-col gap-3");
-    // Cards are fixed-width and centered, so a single card keeps one column's
-    // width instead of stretching across the whole shell.
-    expect(onboardingFlow).toContain("flex flex-wrap justify-center gap-3");
-    expect(onboardingFlow).toContain("transition sm:w-72");
+    // Cards fill their column, so a single card spans the full (count-sized) shell.
+    expect(onboardingFlow).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3");
+    expect(onboardingFlow).toContain("flex w-full items-start gap-3 rounded-xl border-2");
   });
 });
