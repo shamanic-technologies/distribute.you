@@ -10,6 +10,7 @@ import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { DashboardPage } from "@/components/dashboard-page";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { getBrandProfile, saveBrandProfileVersion } from "@/lib/api";
 import { ALL_FIELDS, SECTIONS, cloneFields, fieldsEqual, FieldEditor, type FieldDef, type FieldSection, type ProfileFields } from "./field-editor";
 
@@ -73,7 +74,7 @@ export function BrandProfilePage() {
     },
   });
 
-  if (!isBeta || !revenueOk) {
+  if (!revenueOk) {
     return (
       <DashboardPage width="narrow">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
@@ -179,14 +180,17 @@ export function BrandProfilePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setAiOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            Edit with AI
-          </button>
+          {isBeta && (
+            <button
+              type="button"
+              onClick={() => setAiOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            >
+              <SparklesIcon className="w-4 h-4" />
+              Edit with AI
+              <MaturityBadge level="beta" />
+            </button>
+          )}
           {dirty && (
             <button
               type="button"
