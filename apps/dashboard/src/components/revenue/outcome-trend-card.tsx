@@ -130,7 +130,6 @@ export function OutcomeTrendCard({
   future,
   label,
   color,
-  expected,
   pending = false,
 }: {
   /** Cumulative source: `clicked` (signups) or `repliedPositive` (meetings). */
@@ -141,8 +140,6 @@ export function OutcomeTrendCard({
   label: string;
   /** Line + fill color. */
   color: string;
-  /** Optional forward projection kept as a small secondary figure (expected / month). */
-  expected?: { value: number | null; label: string };
   pending?: boolean;
 }) {
   const data = useMemo(() => buildChartPoints(series, future), [series, future]);
@@ -166,11 +163,6 @@ export function OutcomeTrendCard({
           )}
           <p className="text-[11px] text-gray-400 mt-1">
             total {label.toLowerCase()}
-            {expected && expected.value != null && (
-              <span className="ml-2 text-gray-300">
-                · {Math.round(expected.value).toLocaleString("en-US")} {expected.label}
-              </span>
-            )}
           </p>
         </div>
       </div>

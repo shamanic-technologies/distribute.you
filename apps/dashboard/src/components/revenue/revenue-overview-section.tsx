@@ -73,7 +73,6 @@ export function RevenueOverviewSection({
   /** Goal-specific expected monthly outcome, replacing the old revenue headline. */
   expectedOutcome?: {
     value: number | null;
-    label: string;
   };
   /** runs-service cost-breakdown reveal — the Total-spent figure only. */
   costPending?: boolean;
@@ -142,7 +141,6 @@ export function RevenueOverviewSection({
           future={outcomeFuture}
           label={outcomeLabel}
           color={outcomeColor}
-          expected={expectedOutcome}
           pending={activityLoading}
         />
 
