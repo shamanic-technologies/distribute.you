@@ -495,10 +495,11 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   pathname: string;
 }) {
   const featureSlug = useSoleFeatureSlug();
-  const isBeta = useIsBetaUser();
   const brandBase = `/orgs/${orgId}/brands/${brandId}`;
   const basePath = `${brandBase}/settings`;
-  const brandProfileOk = isRevenueFeature(featureSlug) && isBeta;
+  // Brand Profile is GA (scoped to revenue features) — only the "Edit with AI"
+  // button inside it stays beta-gated.
+  const brandProfileOk = isRevenueFeature(featureSlug);
   // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog resolves.
   const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
   const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
