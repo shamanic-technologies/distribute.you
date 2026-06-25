@@ -60,6 +60,15 @@ describe("Audiences page", () => {
     expect(src).toContain("EditWithAIChat");
     expect(src).toContain('configKey="audience-editor"');
     expect(src).not.toContain('configKey="persona-editor"');
+    expect(src).toContain("MaturityBadge");
+    expect(src).toContain('MaturityBadge level="beta"');
+  });
+
+  it("renders readable detail-panel status and targeting tags", () => {
+    expect(src).toContain("statusPillTone");
+    expect(src).toContain("bg-emerald-50 text-emerald-700 border-emerald-200");
+    expect(src).toContain("grid grid-cols-[7.5rem_minmax(0,1fr)]");
+    expect(src).not.toContain("Contact email status");
   });
 
   it("hides pre-activation suggested candidates from the list", () => {

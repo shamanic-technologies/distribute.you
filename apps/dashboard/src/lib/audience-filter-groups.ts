@@ -9,22 +9,23 @@
  */
 
 const NEUTRAL_TONE = "bg-gray-100 text-gray-600 border-gray-200";
+const HIDDEN_FILTER_KEYS = new Set(["contactEmailStatus", "contact_email_status"]);
 
 // Category vocabulary borrowed from PersonaCard's FILTER_CATEGORIES so audience
 // cards read like the persona cards (colored, category-grouped pills).
 export const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: string }[] = [
   {
-    keys: ["industries", "industry", "qOrganizationIndustryTagIds"],
+    keys: ["industries", "industry", "qOrganizationIndustryTagIds", "q_organization_industry_tag_ids"],
     label: "Industry",
     tone: "bg-indigo-50 text-indigo-700 border-indigo-200",
   },
   {
-    keys: ["roles", "seniority", "seniorities", "personSeniorities"],
+    keys: ["roles", "seniority", "seniorities", "personSeniorities", "person_seniorities"],
     label: "Seniority",
     tone: "bg-purple-50 text-purple-700 border-purple-200",
   },
   {
-    keys: ["titles", "personTitles", "jobTitles", "departments", "personDepartments"],
+    keys: ["titles", "personTitles", "person_titles", "jobTitles", "departments", "personDepartments"],
     label: "Job titles",
     tone: "bg-amber-50 text-amber-700 border-amber-200",
   },
@@ -36,6 +37,7 @@ export const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: strin
       "employeeRanges",
       "headcount",
       "organizationNumEmployeesRanges",
+      "organization_num_employees_ranges",
     ],
     label: "Employee range",
     tone: "bg-sky-50 text-sky-700 border-sky-200",
@@ -55,12 +57,14 @@ export const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: strin
       "regions",
       "personLocations",
       "organizationLocations",
+      "person_locations",
+      "organization_locations",
     ],
     label: "Location",
     tone: "bg-rose-50 text-rose-700 border-rose-200",
   },
   {
-    keys: ["technologies", "tech", "technology", "currentlyUsingAnyOfTechnologyUids"],
+    keys: ["technologies", "tech", "technology", "currentlyUsingAnyOfTechnologyUids", "currently_using_any_of_technology_uids"],
     label: "Technology",
     tone: "bg-cyan-50 text-cyan-700 border-cyan-200",
   },
@@ -68,6 +72,11 @@ export const AUDIENCE_CATEGORY_MAP: { keys: string[]; label: string; tone: strin
     keys: ["keywords", "keyword", "qKeywords", "qOrganizationKeywordTags"],
     label: "Keywords",
     tone: "bg-gray-100 text-gray-600 border-gray-200",
+  },
+  {
+    keys: ["q_keywords"],
+    label: "Search terms",
+    tone: "bg-lime-50 text-lime-700 border-lime-200",
   },
 ];
 
@@ -81,11 +90,50 @@ export function humanizeFilterKey(key: string): string {
 
 export type AudienceFilterGroup = { label: string; tone: string; values: string[] };
 
+function titleizeEnumValue(raw: unknown): string {
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+  if (value.toLowerCase() === "c_suite") return "C-suite";
+  return value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => {
+      const lower = part.toLowerCase();
+      if (lower === "vp") return "VP";
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
+function formatEmployeeRange(raw: unknown): string {
+  if (Array.isArray(raw) && raw.length >= 2) {
+    return `${String(raw[0]).trim()}-${String(raw[1]).trim()} employees`;
+  }
+  const value = String(raw ?? "").trim();
+  const commaRange = value.match(/^(\d+)\s*,\s*(\d+)$/);
+  if (commaRange) return `${commaRange[1]}-${commaRange[2]} employees`;
+  if (/^\d+\s*-\s*\d+$/.test(value)) return `${value.replace(/\s+/g, "")} employees`;
+  return value;
+}
+
+function shouldPrefixScalar(key: string): boolean {
+  return /(^|_)(min|max)$/.test(key) || /(Min|Max)$/.test(key);
+}
+
+function formatFilterValue(key: string, label: string, raw: unknown, isKnownCategory: boolean): string {
+  if (label === "Employee range") return formatEmployeeRange(raw);
+  if (label === "Seniority") return titleizeEnumValue(raw);
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+  if (isKnownCategory && !shouldPrefixScalar(key)) return value;
+  return `${humanizeFilterKey(key)}: ${value}`;
+}
+
 export function audienceFilterGroups(filters: Record<string, unknown>): AudienceFilterGroup[] {
   const order: string[] = [];
   const byLabel = new Map<string, AudienceFilterGroup>();
-  const push = (label: string, tone: string, raw: unknown) => {
-    const value = String(raw ?? "").trim();
+  const push = (key: string, label: string, tone: string, raw: unknown, isKnownCategory: boolean) => {
+    const value = formatFilterValue(key, label, raw, isKnownCategory);
     if (!value) return;
     let g = byLabel.get(label);
     if (!g) {
@@ -96,14 +144,14 @@ export function audienceFilterGroups(filters: Record<string, unknown>): Audience
     if (!g.values.includes(value)) g.values.push(value);
   };
   for (const [key, val] of Object.entries(filters ?? {})) {
+    if (HIDDEN_FILTER_KEYS.has(key)) continue;
     const cat = AUDIENCE_CATEGORY_MAP.find((c) => c.keys.includes(key));
     const label = cat ? cat.label : humanizeFilterKey(key);
     const tone = cat ? cat.tone : NEUTRAL_TONE;
     if (Array.isArray(val)) {
-      for (const v of val) push(label, tone, v);
+      for (const v of val) push(key, label, tone, v, Boolean(cat));
     } else if (val != null && typeof val !== "object") {
-      // Scalar (e.g. employeeMin: 20) — prefix with its key so min/max stay distinct.
-      push(label, tone, `${humanizeFilterKey(key)}: ${val}`);
+      push(key, label, tone, val, Boolean(cat));
     }
   }
   return order.map((l) => {

@@ -11,6 +11,7 @@ import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
@@ -428,6 +429,13 @@ function StatusButton({
   );
 }
 
+function statusPillTone(status: AudienceStatus): string {
+  if (status === "active") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (status === "paused") return "bg-amber-50 text-amber-700 border-amber-200";
+  if (status === "archived") return "bg-gray-100 text-gray-600 border-gray-200";
+  return "bg-sky-50 text-sky-700 border-sky-200";
+}
+
 function AudienceDetailPanel({
   audience,
   shiftRight,
@@ -502,6 +510,7 @@ function AudienceDetailPanel({
           >
             <SparklesIcon className="w-4 h-4" />
             Edit with AI
+            <MaturityBadge level="beta" />
           </button>
 
           {/* Avatar — AI-generated image, (re)generate */}
@@ -525,18 +534,20 @@ function AudienceDetailPanel({
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-400">Targeting</p>
               <div className="flex flex-col gap-2">
                 {groups.map((g) => (
-                  <div key={g.label} className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  <div key={g.label} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-start gap-2">
+                    <span className="pt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                       {g.label}
                     </span>
-                    {g.values.map((v, j) => (
-                      <span
-                        key={j}
-                        className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${g.tone}`}
-                      >
-                        <span className="min-w-0 truncate">{v}</span>
-                      </span>
-                    ))}
+                    <div className="flex min-w-0 flex-wrap gap-1.5">
+                      {g.values.map((v, j) => (
+                        <span
+                          key={j}
+                          className={`inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-medium leading-5 ${g.tone}`}
+                        >
+                          <span className="min-w-0 whitespace-normal break-words">{v}</span>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -545,7 +556,16 @@ function AudienceDetailPanel({
 
           {/* Metadata */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-sm">
-            <DetailRow label="Status" value={<span className="capitalize">{audience.status}</span>} />
+            <DetailRow
+              label="Status"
+              value={
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusPillTone(audience.status)}`}
+                >
+                  {audience.status}
+                </span>
+              }
+            />
             {audience.description && <DetailRow label="Described as" value={audience.description} />}
             {audience.provider && (
               <DetailRow
