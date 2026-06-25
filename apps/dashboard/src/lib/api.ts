@@ -1790,7 +1790,7 @@ export async function getFeatureRevenue(
 /**
  * `structuralSharing` merge for the `["featureRevenue", ...]` query. The
  * server-computed actual series (`outreachContacted`, `opened`, `clicked`,
- * `meetingsBooked`, `purchased`) are `.optional()` on the wire to decouple the
+ * `repliedPositive`, `meetingsBooked`, `purchased`) are `.optional()` on the wire to decouple the
  * backend rollout — but a transient degenerate refetch can drop them back to
  * `undefined` on a VALID 200, which would collapse chart actuals mid-session.
  * Keep the last-good series across such a refetch (fail-loud console.error in
@@ -1804,7 +1804,7 @@ export function keepLastGoodFeatureRevenue(
   return keepLastGoodFields(
     prev,
     next,
-    ["outreachContacted", "opened", "clicked", "meetingsBooked", "purchased"],
+    ["outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
     "featureRevenue",
   );
 }

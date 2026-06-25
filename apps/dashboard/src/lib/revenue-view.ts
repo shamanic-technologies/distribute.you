@@ -157,6 +157,15 @@ export interface RevenueOverview {
    */
   opened?: SignalSeries;
   clicked?: SignalSeries;
+  /**
+   * Positive-reply ACTUAL series — the meeting-goal engagement signal (a screened
+   * positive reply = a buyer conversation; the booked-meetings lens's P=replyToMeeting
+   * signal, and the cost-per-positive-reply headline). Same shape as the others,
+   * server-computed from the SAME leads[] snapshot (features-service). Optional
+   * during backend rollout; absent → the meeting-goal positive-reply line/bars render
+   * empty until features-service ships it.
+   */
+  repliedPositive?: SignalSeries;
   meetingsBooked?: SignalSeries;
   purchased?: SignalSeries;
   timeSeries: RevenuePoint[];
