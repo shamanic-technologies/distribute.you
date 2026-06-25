@@ -1878,8 +1878,13 @@ function OnboardingAudiences({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const selectedAudienceIdSet = new Set(selectedAudienceIds);
+  const candidateCount = candidates?.length ?? 0;
   const audienceShellWidth =
-    (candidates?.length ?? 0) >= 3 ? "max-w-5xl" : (candidates?.length ?? 0) === 2 ? "max-w-3xl" : "max-w-xl";
+    candidateCount >= 3 ? "max-w-5xl" : candidateCount === 2 ? "max-w-3xl" : "max-w-xl";
+  // Columns follow the CARD COUNT, not the breakpoint — so a single card spans the
+  // full shell (grid-cols-1) instead of getting a 1/3-wide column at desktop width.
+  const audienceGridCols =
+    candidateCount >= 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : candidateCount === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1";
   const card = `mx-auto w-full ${audienceShellWidth} min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12`;
 
   // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
@@ -2056,7 +2061,7 @@ function OnboardingAudiences({
           <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
             {candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId)).length} of {candidates.length} selected
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={`grid gap-3 ${audienceGridCols}`}>
             {candidates.map((c, i) => (
               <AudienceCandidateCard key={c.audienceId || i} candidate={c} selected={selectedAudienceIdSet.has(c.audienceId)} onToggle={() => toggle(c)} />
             ))}
