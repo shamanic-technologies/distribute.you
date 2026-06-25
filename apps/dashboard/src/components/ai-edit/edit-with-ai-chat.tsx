@@ -95,6 +95,7 @@ export function EditWithAIChat({
   const queryClient = useQueryClient();
   const { showPaymentRequired } = useBillingGuard();
   const [draft, setDraft] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef<string | null>(null);
   const userHasScrolledRef = useRef(false);
@@ -209,6 +210,16 @@ export function EditWithAIChat({
 
   const isStreaming = status === "streaming" || status === "submitted";
 
+  // Auto-grow the input as the user types (the `max-h-32` cap then scrolls).
+  // Without this the `rows={1}` textarea stays one line tall and multi-line
+  // drafts scroll hidden inside it.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft, open]);
+
   // Auto-scroll: defer to next frame so pending scroll events update the ref first.
   useEffect(() => {
     if (userHasScrolledRef.current) return;
@@ -268,6 +279,7 @@ export function EditWithAIChat({
       setShowScrollPill(false);
       sendMessage({ text: value });
       setDraft("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
     },
     [isStreaming, sendMessage],
   );
@@ -509,6 +521,7 @@ export function EditWithAIChat({
         <form onSubmit={onFormSubmit} className="border-t border-gray-200 p-3">
           <div className="flex items-end gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:border-brand-300 focus-within:ring-2 focus-within:ring-brand-500/10 transition">
             <textarea
+              ref={textareaRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -519,7 +532,7 @@ export function EditWithAIChat({
               }}
               rows={1}
               placeholder="Ask the AI to make a change…"
-              className="flex-1 resize-none text-sm text-gray-800 bg-transparent focus:outline-none max-h-32"
+              className="flex-1 resize-none text-sm text-gray-800 bg-transparent focus:outline-none max-h-32 overflow-y-auto"
             />
             {isStreaming ? (
               <button type="button" onClick={() => stop()} aria-label="Stop" className="shrink-0 rounded-lg bg-gray-200 p-1.5 text-gray-700 hover:bg-gray-300 transition">
