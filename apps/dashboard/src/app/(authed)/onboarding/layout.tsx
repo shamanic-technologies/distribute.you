@@ -19,7 +19,7 @@ export default function OnboardingLayout({
           <OnboardingAccountWidget />
         </div>
         <div className="flex min-h-dvh items-start justify-center bg-gray-50 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
-          <div className="w-full max-w-2xl min-w-0">
+          <div className="w-full max-w-5xl min-w-0">
             <OnboardingCreditGate>{children}</OnboardingCreditGate>
           </div>
         </div>
