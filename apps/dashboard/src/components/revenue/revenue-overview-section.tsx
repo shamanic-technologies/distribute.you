@@ -2,22 +2,19 @@
 
 import type { ReactNode } from "react";
 import { PipelineActivityChart } from "@/components/revenue/pipeline-activity-chart";
+import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
 import type { BrandOptimizationGoal, CostByName, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 
-function formatOutcomeCount(n: number | null): string {
-  if (n === null) return "—";
-  return Math.round(n).toLocaleString("en-US");
-}
-
 /**
- * Outreach overview block — expected monthly outcome headline, 7-day outreach
- * activity chart, and the Organizations / Leads / Events conversion tabs (same set
- * as the dedicated Conversions page; each table paginates 20/page). Pure render —
- * the page owns the gate + query.
+ * Outreach overview block — top row: the "Outcome" card (cumulative goal signal
+ * since launch: clicks for signups / positive replies for meetings) beside the cost
+ * summary; full-width "Outreach activity" per-day bars below; then the
+ * Organizations / Leads / Events conversion tabs. Pure render — the page owns the
+ * gate + query.
  */
 export function RevenueOverviewSection({
   data,
@@ -50,6 +47,7 @@ export function RevenueOverviewSection({
     opens?: SignalSeries;
     clicks?: SignalSeries;
     signups?: SignalSeries;
+    repliedPositive?: SignalSeries;
     salesMeetings?: SignalSeries;
   };
   optimizationGoal: BrandOptimizationGoal;
@@ -95,7 +93,14 @@ export function RevenueOverviewSection({
   // (runs-service) reveals on its own `costPending` so it never waits on revenue.
   const revenueLoading = revenuePending || !data;
   const activityLoading = activityPending || !pipelineActivity;
-  const outcomeLoading = expectedOutcome === undefined;
+  // The "Outcome" card's single cumulative line tracks the brand's goal signal:
+  // website clicks for a signups brand, positive replies for a meetings brand.
+  const isSignups = optimizationGoal === "signups";
+  const outcomeSeries = isSignups
+    ? pipelineActualSeries?.clicks
+    : pipelineActualSeries?.repliedPositive;
+  const outcomeLabel = isSignups ? "Website clicks" : "Positive replies";
+  const outcomeColor = isSignups ? "#0891b2" : "#dc2626";
   return (
     <div className="space-y-4">
       {!hideHeader && (
@@ -112,34 +117,16 @@ export function RevenueOverviewSection({
 
       {topRow}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Headline + activity chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-          <div className="flex items-baseline justify-between mb-4">
-            <h3 className="font-medium text-gray-800">Outreach activity</h3>
-            <div className="text-right">
-              {outcomeLoading ? (
-                <Skeleton className="h-8 w-28" />
-              ) : (
-                <p className="text-2xl font-bold text-gray-900 leading-none">
-                  {formatOutcomeCount(expectedOutcome.value)}
-                </p>
-              )}
-              <p className="text-[11px] text-gray-400 mt-1">{expectedOutcome?.label ?? "expected / month"}</p>
-            </div>
-          </div>
-          {activityLoading ? (
-            <Skeleton className="h-[260px] w-full rounded" />
-          ) : (
-            <PipelineActivityChart
-              data={pipelineActivity}
-              pipelineActualSeries={pipelineActualSeries}
-              optimizationGoal={optimizationGoal}
-              visitToMeetingPct={visitToMeetingPct}
-              visitToSignupPct={visitToSignupPct}
-            />
-          )}
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        {/* Outcome — ONE cumulative line of the goal signal since launch. Height
+            stretches to match the cost summary on its right (items-stretch). */}
+        <OutcomeTrendCard
+          series={outcomeSeries}
+          label={outcomeLabel}
+          color={outcomeColor}
+          expected={expectedOutcome}
+          pending={activityLoading}
+        />
 
         {/* Cost summary — actual spend and source breakdown.
             Bottom card defaults to the brand-wide Top-3 cost-source list (the old
@@ -154,6 +141,24 @@ export function RevenueOverviewSection({
           todayCostPending={todayCostPending}
           bottomCard={costBottomCard}
         />
+      </div>
+
+      {/* Outreach activity — full-width per-day BARS: outreach / opens / the goal
+          engagement (clicks for signups, positive replies for meetings) across the
+          past (actuals) + today + forecast, with the 7/30/90-day window toggle. */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+        <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
+        {activityLoading ? (
+          <Skeleton className="h-[300px] w-full rounded" />
+        ) : (
+          <PipelineActivityChart
+            data={pipelineActivity}
+            pipelineActualSeries={pipelineActualSeries}
+            optimizationGoal={optimizationGoal}
+            visitToMeetingPct={visitToMeetingPct}
+            visitToSignupPct={visitToSignupPct}
+          />
+        )}
       </div>
 
       {/* Conversions — the default Organizations / Leads tabs, OR a caller-

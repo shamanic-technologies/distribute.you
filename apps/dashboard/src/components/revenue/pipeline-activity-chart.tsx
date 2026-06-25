@@ -2,10 +2,9 @@
 
 import { useMemo, useState } from "react";
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
-  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,41 +13,51 @@ import {
 import type {
   BrandOptimizationGoal,
   PipelineActivityMetric,
-  PipelineActivityMetricKey,
   PipelineActivityResponse,
 } from "@/lib/api";
 import type { SignalSeries } from "@/lib/revenue-view";
 
-type ChartMetricKey = PipelineActivityMetricKey | "salesMeetings";
+/**
+ * Outreach activity — per-day BARS of the three outreach signals (outreach, opens,
+ * and the goal's engagement: clicks for signups / positive replies for meetings),
+ * across the past (actuals from the /revenue snapshot) + today + forecast days
+ * (expected from pipeline-activity). 7/30/90-day window toggle. Each metric stacks
+ * actual + remaining-expected so a single day reads as one bar per metric.
+ */
 
-const MAX_SELECTED_METRICS = 2;
+type ChartMetricKey = "outreach" | "opens" | "clicks" | "repliedPositive";
+
 const RANGES = [7, 30, 90] as const;
 
-const METRICS: Array<{
+type MetricDef = {
   key: ChartMetricKey;
   label: string;
-  color: string;
-}> = [
-  { key: "outreach", label: "Outreach", color: "#334155" },
-  { key: "opens", label: "Opens", color: "#4f46e5" },
-  { key: "clicks", label: "Clicks", color: "#0891b2" },
-];
+  actual: string;
+  expected: string;
+};
 
-const SALES_MEETINGS_METRIC = {
-  key: "salesMeetings",
-  label: "Sales meetings",
-  color: "#dc2626",
-} satisfies (typeof METRICS)[number];
+const OUTREACH: MetricDef = { key: "outreach", label: "Outreach", actual: "#334155", expected: "#cbd5e1" };
+const OPENS: MetricDef = { key: "opens", label: "Opens", actual: "#4f46e5", expected: "#c7d2fe" };
+const CLICKS: MetricDef = { key: "clicks", label: "Clicks", actual: "#0891b2", expected: "#bae6fd" };
+const POSITIVE_REPLIES: MetricDef = {
+  key: "repliedPositive",
+  label: "Positive replies",
+  actual: "#dc2626",
+  expected: "#fecaca",
+};
 
-type PipelineActualSeries = Partial<Record<ChartMetricKey, SignalSeries | undefined>>;
+/** Bars with NO pipeline-activity forecast (no projection rate) get expected = 0. */
+const FORECASTABLE: ReadonlySet<ChartMetricKey> = new Set(["outreach", "opens", "clicks"]);
+
+type PipelineActualSeries = Partial<Record<string, SignalSeries | undefined>>;
 
 type ChartDatum = {
   date: string;
   label: string;
-  phase: "actual" | "forecast";
-  raw: Record<ChartMetricKey, PipelineActivityMetric>;
-} & Record<`${ChartMetricKey}Actual`, number | null> &
-  Record<`${ChartMetricKey}Forecast`, number | null>;
+  isToday: boolean;
+  raw: Record<ChartMetricKey, { actual: number; expected: number }>;
+} & Record<`${ChartMetricKey}Actual`, number> &
+  Record<`${ChartMetricKey}ExpectedRemaining`, number>;
 
 function finite(n: number | null | undefined): number {
   return typeof n === "number" && Number.isFinite(n) ? Math.max(0, n) : 0;
@@ -77,6 +86,11 @@ function formatDate(date: string): string {
   });
 }
 
+function formatAxis(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  return String(Math.round(n));
+}
+
 function buildPastDates(today: string, rangeDays: number): string[] {
   return Array.from({ length: rangeDays }, (_, i) => addDays(today, i - rangeDays + 1));
 }
@@ -85,88 +99,18 @@ function buildDailyCountMap(series: SignalSeries | undefined): Map<string, numbe
   return new Map((series?.daily ?? []).map((d) => [d.date, finite(d.count)] as const));
 }
 
-function isOutcomeMetric(metric: ChartMetricKey): boolean {
-  return metric === "signups" || metric === "salesMeetings";
+function activeMetrics(optimizationGoal: BrandOptimizationGoal): MetricDef[] {
+  return optimizationGoal === "signups"
+    ? [OUTREACH, OPENS, CLICKS]
+    : [OUTREACH, OPENS, POSITIVE_REPLIES];
 }
 
-function formatValue(n: number | null | undefined, metric: ChartMetricKey): string {
-  if (n == null || !Number.isFinite(n)) return "-";
-  if (!isOutcomeMetric(metric)) return Math.round(n).toLocaleString("en-US");
-  if (n > 0 && n < 0.01) return "<0.01";
-  return n.toLocaleString("en-US", {
-    maximumFractionDigits: n >= 10 ? 0 : 2,
-  });
-}
-
-function formatAxis(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
-  if (n >= 10) return String(Math.round(n));
-  if (n === 0) return "0";
-  return n.toFixed(1).replace(/\.0$/, "");
-}
-
-function activeMetrics(optimizationGoal: BrandOptimizationGoal): typeof METRICS {
-  return optimizationGoal === "sales_meetings" ? [...METRICS, SALES_MEETINGS_METRIC] : METRICS;
-}
-
-function projectedMetric(
-  source: PipelineActivityMetric,
-  conversionPct: number | null | undefined,
-): PipelineActivityMetric {
-  if (conversionPct == null || !Number.isFinite(conversionPct)) {
-    return { actual: null, expected: null, conversionPct: null };
-  }
-  const rate = conversionPct / 100;
-  return {
-    actual: source.actual == null ? null : source.actual * rate,
-    expected: source.expected == null ? null : source.expected * rate,
-    conversionPct,
-  };
-}
-
-function emptyMetrics(): Record<ChartMetricKey, PipelineActivityMetric> {
-  return {
-    outreach: { actual: null, expected: null },
-    opens: { actual: null, expected: null },
-    clicks: { actual: null, expected: null },
-    signups: { actual: null, expected: null },
-    salesMeetings: { actual: null, expected: null },
-  };
-}
-
-function buildMetricValues(
-  baseMetrics: Record<PipelineActivityMetricKey, PipelineActivityMetric>,
-  optimizationGoal: BrandOptimizationGoal,
-  visitToMeetingPct: number | null | undefined,
-  visitToSignupPct: number | null | undefined,
-): Record<ChartMetricKey, PipelineActivityMetric> {
-  const projectedSalesMeetings = projectedMetric(baseMetrics.clicks, visitToMeetingPct);
-  const explicitSalesMeetings = (
-    baseMetrics as typeof baseMetrics & { salesMeetings?: PipelineActivityMetric }
-  ).salesMeetings;
-  return {
-    ...baseMetrics,
-    signups:
-      optimizationGoal === "signups"
-        ? {
-            ...projectedMetric(baseMetrics.clicks, visitToSignupPct),
-            expected: baseMetrics.signups.expected,
-          }
-        : baseMetrics.signups,
-    salesMeetings: explicitSalesMeetings
-      ? { ...projectedSalesMeetings, actual: explicitSalesMeetings.actual }
-      : projectedSalesMeetings,
-  };
-}
-
-function forecastStartValue(
-  datum: ChartDatum,
-  metric: ChartMetricKey,
-  fallback: PipelineActivityMetric,
-): number | null {
-  const actual = datum[`${metric}Actual`];
-  if (actual != null) return actual;
-  return fallback.expected == null ? null : finite(fallback.expected);
+function forecastExpected(
+  metrics: Record<string, PipelineActivityMetric> | undefined,
+  key: ChartMetricKey,
+): number {
+  if (!metrics || !FORECASTABLE.has(key)) return 0;
+  return finite(metrics[key]?.expected);
 }
 
 function buildChartData({
@@ -174,15 +118,11 @@ function buildChartData({
   pipelineActualSeries,
   rangeDays,
   optimizationGoal,
-  visitToMeetingPct,
-  visitToSignupPct,
 }: {
   data: PipelineActivityResponse;
   pipelineActualSeries: PipelineActualSeries | undefined;
   rangeDays: number;
   optimizationGoal: BrandOptimizationGoal;
-  visitToMeetingPct: number | null | undefined;
-  visitToSignupPct: number | null | undefined;
 }): ChartDatum[] {
   const today = data.days.find((day) => day.isToday)?.date ?? formatIsoDate(new Date());
   const metrics = activeMetrics(optimizationGoal);
@@ -190,140 +130,68 @@ function buildChartData({
   for (const metric of metrics) {
     maps[metric.key] = buildDailyCountMap(pipelineActualSeries?.[metric.key]);
   }
+  const forecastByDate = new Map(data.days.map((day) => [day.date, day.metrics]));
 
-  const cumulativeActuals: Partial<Record<ChartMetricKey, number>> = {};
-  const actualRows = buildPastDates(today, rangeDays).map((date) => {
-    const raw = emptyMetrics();
-    for (const metric of metrics) {
-      raw[metric.key] = {
-        actual: maps[metric.key]?.get(date) ?? 0,
-        expected: null,
-      };
-    }
-    const values = buildMetricValues(
-      {
-        outreach: raw.outreach,
-        opens: raw.opens,
-        clicks: raw.clicks,
-        signups: raw.signups,
-      },
-      optimizationGoal,
-      visitToMeetingPct,
-      visitToSignupPct,
-    );
+  const pastDates = buildPastDates(today, rangeDays); // includes today (last entry)
+  const futureDates = data.days
+    .filter((day) => day.date > today)
+    .map((day) => day.date);
+
+  return [...pastDates, ...futureDates].map((date) => {
+    const isToday = date === today;
+    const isFuture = date > today;
+    const forecastMetrics = forecastByDate.get(date);
+    const raw = {} as ChartDatum["raw"];
     const datum: Partial<ChartDatum> = {
       date,
-      label: date === today ? "Today" : formatDate(date),
-      phase: "actual",
-      raw: values,
+      label: isToday ? "Today" : formatDate(date),
+      isToday,
+      raw,
     };
     for (const metric of metrics) {
-      const nextActual = finite(cumulativeActuals[metric.key]) + finite(values[metric.key].actual);
-      cumulativeActuals[metric.key] = nextActual;
-      datum[`${metric.key}Actual`] = nextActual;
-      datum[`${metric.key}Forecast`] = null;
+      const actual = isFuture ? 0 : finite(maps[metric.key]?.get(date));
+      const expected = isToday || isFuture ? forecastExpected(forecastMetrics, metric.key) : 0;
+      const expectedRemaining = isToday ? Math.max(expected - actual, 0) : isFuture ? expected : 0;
+      raw[metric.key] = { actual, expected };
+      datum[`${metric.key}Actual`] = actual;
+      datum[`${metric.key}ExpectedRemaining`] = expectedRemaining;
     }
     return datum as ChartDatum;
   });
-
-  const cumulativeForecasts: Partial<Record<ChartMetricKey, number>> = {};
-  for (const metric of metrics) {
-    cumulativeForecasts[metric.key] =
-      actualRows.length > 0
-        ? finite(actualRows[actualRows.length - 1][`${metric.key}Actual`])
-        : 0;
-  }
-  const forecastRows = data.days
-    .filter((day) => day.date !== today)
-    .map((day) => {
-      const values = buildMetricValues(
-        day.metrics,
-        optimizationGoal,
-        visitToMeetingPct,
-        visitToSignupPct,
-      );
-      const datum: Partial<ChartDatum> = {
-        date: day.date,
-        label: formatDate(day.date),
-        phase: "forecast",
-        raw: values,
-      };
-      for (const metric of metrics) {
-        const expected = values[metric.key].expected;
-        datum[`${metric.key}Actual`] = null;
-        if (expected == null) {
-          datum[`${metric.key}Forecast`] = null;
-          continue;
-        }
-        const nextForecast = finite(cumulativeForecasts[metric.key]) + finite(expected);
-        cumulativeForecasts[metric.key] = nextForecast;
-        datum[`${metric.key}Forecast`] = nextForecast;
-      }
-      return datum as ChartDatum;
-    });
-
-  if (actualRows.length > 0 && data.days.length > 0) {
-    const todayForecast = buildMetricValues(
-      data.days.find((day) => day.isToday)?.metrics ?? data.days[0].metrics,
-      optimizationGoal,
-      visitToMeetingPct,
-      visitToSignupPct,
-    );
-    const lastActual = actualRows[actualRows.length - 1];
-    for (const metric of metrics) {
-      lastActual[`${metric.key}Forecast`] = forecastStartValue(
-        lastActual,
-        metric.key,
-        todayForecast[metric.key],
-      );
-    }
-  }
-
-  return [...actualRows, ...forecastRows];
 }
 
 function ChartTooltip({
   active,
   payload,
-  selectedMetrics,
   metrics,
 }: {
   active?: boolean;
   payload?: Array<{ payload: ChartDatum }>;
-  selectedMetrics: ChartMetricKey[];
-  metrics: ReturnType<typeof activeMetrics>;
+  metrics: MetricDef[];
 }) {
   if (!active || !payload?.length) return null;
   const day = payload[0].payload;
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
-      <p className="mb-2 font-medium text-gray-800">{formatDate(day.date)}</p>
+      <p className="mb-2 font-medium text-gray-800">
+        {day.isToday ? "Today" : formatDate(day.date)}
+      </p>
       <div className="space-y-1.5">
-        {selectedMetrics.map((key) => {
-          const metric = metrics.find((m) => m.key === key);
-          if (!metric) return null;
-          const color = metric.color;
-          const actualValue = day[`${key}Actual`];
-          const forecastValue = day[`${key}Forecast`];
+        {metrics.map((metric) => {
+          const value = day.raw[metric.key];
+          const showActual = !day.isToday && !(value.actual === 0 && value.expected > 0);
+          const display = showActual ? value.actual : value.expected;
+          const color = showActual ? metric.actual : metric.expected;
           return (
-            <div key={key} className="space-y-1">
-              <div className="grid grid-cols-[10px_82px_1fr] items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-                <span className="text-gray-500">{metric.label}</span>
-                <span className="font-medium text-gray-800">
-                  Actual {formatValue(actualValue, metric.key)}
-                </span>
-              </div>
-              {forecastValue != null && (
-                <div className="grid grid-cols-[10px_82px_1fr] items-center gap-2 text-gray-500">
-                  <span
-                    className="h-0.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span>Forecast</span>
-                  <span>{formatValue(forecastValue, metric.key)}</span>
-                </div>
-              )}
+            <div key={metric.key} className="grid grid-cols-[10px_96px_1fr] items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: color }} />
+              <span className="text-gray-500">{metric.label}</span>
+              <span className="font-medium text-gray-800">
+                {Math.round(display).toLocaleString("en-US")}
+                {!showActual && value.expected > 0 && (
+                  <span className="ml-1 font-normal text-gray-400">expected</span>
+                )}
+              </span>
             </div>
           );
         })}
@@ -336,91 +204,47 @@ export function PipelineActivityChart({
   data,
   pipelineActualSeries,
   optimizationGoal,
-  visitToMeetingPct,
-  visitToSignupPct,
 }: {
   data: PipelineActivityResponse;
   pipelineActualSeries?: PipelineActualSeries;
   optimizationGoal: BrandOptimizationGoal;
-  visitToMeetingPct: number | null | undefined;
-  visitToSignupPct: number | null | undefined;
+  /** Kept for call-site compatibility; projection no longer happens client-side. */
+  visitToMeetingPct?: number | null;
+  visitToSignupPct?: number | null;
 }) {
   const metrics = activeMetrics(optimizationGoal);
-  const outcomeMetric = optimizationGoal === "sales_meetings" ? "salesMeetings" : "opens";
   const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(30);
-  const [selectedMetrics, setSelectedMetrics] = useState<ChartMetricKey[]>([
-    "outreach",
-    outcomeMetric,
-  ]);
 
   const chartData = useMemo(
-    () =>
-      buildChartData({
-        data,
-        pipelineActualSeries,
-        rangeDays,
-        optimizationGoal,
-        visitToMeetingPct,
-        visitToSignupPct,
-      }),
-    [
-      data,
-      pipelineActualSeries,
-      rangeDays,
-      optimizationGoal,
-      visitToMeetingPct,
-      visitToSignupPct,
-    ],
+    () => buildChartData({ data, pipelineActualSeries, rangeDays, optimizationGoal }),
+    [data, pipelineActualSeries, rangeDays, optimizationGoal],
   );
-
-  function toggleMetric(key: ChartMetricKey) {
-    setSelectedMetrics((current) => {
-      if (current.includes(key)) {
-        return current.length === 1 ? current : current.filter((m) => m !== key);
-      }
-      return [...current.slice(-(MAX_SELECTED_METRICS - 1)), key];
-    });
-  }
 
   if (data.days.length === 0) {
     return (
       <div className="flex h-[260px] items-center justify-center text-sm text-gray-400">
-        No activity forecast yet.
+        No activity yet.
       </div>
     );
   }
 
+  // ~26px per day-group keeps grouped bars legible; scrolls horizontally past the
+  // viewport for the 30/90-day windows.
+  const minWidth = Math.max(760, chartData.length * 26);
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {metrics.map((metric) => {
-            const active = selectedMetrics.includes(metric.key);
-            const total = pipelineActualSeries?.[metric.key]?.total ?? 0;
-            return (
-              <button
-                key={metric.key}
-                type="button"
-                onClick={() => toggleMetric(metric.key)}
-                className={`min-h-[68px] rounded-lg border px-3 py-2 text-left transition ${
-                  active
-                    ? "border-gray-300 bg-white shadow-sm"
-                    : "border-gray-200 bg-gray-50 hover:bg-white"
-                }`}
-              >
-                <span className="flex items-center gap-2 text-xs font-medium text-gray-500">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: metric.color }}
-                  />
-                  {metric.label}
-                </span>
-                <span className="mt-2 block text-xl font-semibold text-gray-900">
-                  {formatValue(total, metric.key)}
-                </span>
-              </button>
-            );
-          })}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-gray-500">
+          {metrics.map((metric) => (
+            <span key={metric.key} className="inline-flex items-center gap-1.5">
+              <span className="inline-flex h-2.5 w-4 overflow-hidden rounded-sm border border-white/60">
+                <span className="h-full flex-1" style={{ backgroundColor: metric.actual }} />
+                <span className="h-full flex-1" style={{ backgroundColor: metric.expected }} />
+              </span>
+              {metric.label}
+            </span>
+          ))}
         </div>
         <div className="inline-flex w-fit rounded-lg border border-gray-200 bg-gray-50 p-1">
           {RANGES.map((days) => (
@@ -441,99 +265,57 @@ export function PipelineActivityChart({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="h-[300px] min-w-[760px]">
+        <div className="h-[300px]" style={{ minWidth }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 20, right: 16, left: 0, bottom: 0 }}>
-              <defs>
-                {metrics.map((metric) => (
-                  <linearGradient
-                    key={metric.key}
-                    id={`pipeline-${metric.key}-fill`}
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor={metric.color} stopOpacity={0.16} />
-                    <stop offset="100%" stopColor={metric.color} stopOpacity={0} />
-                  </linearGradient>
-                ))}
-              </defs>
+            <BarChart
+              data={chartData}
+              margin={{ top: 20, right: 16, left: 0, bottom: 0 }}
+              barCategoryGap="18%"
+              barGap={3}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="label"
-                minTickGap={24}
+                minTickGap={16}
                 tick={{ fontSize: 11, fill: "#94a3b8" }}
                 tickLine={false}
                 axisLine={{ stroke: "#e2e8f0" }}
               />
               <YAxis
-                yAxisId="left"
                 tickFormatter={formatAxis}
                 tick={{ fontSize: 11, fill: "#94a3b8" }}
                 tickLine={false}
                 axisLine={false}
                 width={40}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tickFormatter={formatAxis}
-                tick={{ fontSize: 11, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={false}
-                width={40}
+                allowDecimals={false}
               />
               <Tooltip
-                content={
-                  <ChartTooltip
-                    selectedMetrics={selectedMetrics}
-                    metrics={metrics}
-                  />
-                }
-                cursor={{ stroke: "#cbd5e1", strokeWidth: 1 }}
+                content={<ChartTooltip metrics={metrics} />}
+                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
               />
-              {selectedMetrics.map((key, index) => {
-                const metric = metrics.find((m) => m.key === key);
-                if (!metric) return null;
-                const yAxisId = index === 0 ? "left" : "right";
-                return (
-                  <Area
-                    key={`${key}-actual`}
-                    yAxisId={yAxisId}
-                    type="monotone"
-                    dataKey={`${key}Actual`}
-                    stroke={metric.color}
-                    strokeWidth={2}
-                    fill={`url(#pipeline-${key}-fill)`}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                    connectNulls={false}
-                    isAnimationActive={false}
-                  />
-                );
-              })}
-              {selectedMetrics.map((key, index) => {
-                const metric = metrics.find((m) => m.key === key);
-                if (!metric) return null;
-                const yAxisId = index === 0 ? "left" : "right";
-                return (
-                  <Line
-                    key={`${key}-forecast`}
-                    yAxisId={yAxisId}
-                    type="monotone"
-                    dataKey={`${key}Forecast`}
-                    stroke={metric.color}
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                    connectNulls={false}
-                    isAnimationActive={false}
-                  />
-                );
-              })}
-            </AreaChart>
+              {metrics.map((metric) => (
+                <Bar
+                  key={`${metric.key}-actual`}
+                  dataKey={`${metric.key}Actual`}
+                  stackId={metric.key}
+                  fill={metric.actual}
+                  radius={[2, 2, 0, 0]}
+                  maxBarSize={20}
+                  isAnimationActive={false}
+                />
+              ))}
+              {metrics.map((metric) => (
+                <Bar
+                  key={`${metric.key}-expected`}
+                  dataKey={`${metric.key}ExpectedRemaining`}
+                  stackId={metric.key}
+                  fill={metric.expected}
+                  radius={[2, 2, 0, 0]}
+                  maxBarSize={20}
+                  isAnimationActive={false}
+                />
+              ))}
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>

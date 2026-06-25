@@ -191,6 +191,7 @@ export default function BrandOverviewPage() {
     opens: data?.opened,
     clicks: data?.clicked,
     signups: data?.clicked,
+    repliedPositive: data?.repliedPositive,
     salesMeetings: data?.meetingsBooked,
   }), [data]);
 
