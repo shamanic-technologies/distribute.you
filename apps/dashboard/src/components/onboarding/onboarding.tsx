@@ -534,7 +534,17 @@ export function Onboarding() {
   const restored = restoreRef.current;
 
   const [step, setStep] = useState<Step>(() =>
-    restored ? resolveResumeStep(restored.step, restored.brandId) : fromAdd ? "url" : "welcome",
+    restored
+      ? // A Stripe checkout SUCCESS return is owned by the dedicated checkout effect
+        // (resumeCheckoutLaunch → "launching"); land there on the first paint so the
+        // budget step never flashes before that effect runs. A cancelled return still
+        // resolves to its snapshot step (pricing).
+        searchParams.get("launch_checkout") === "success"
+        ? "launching"
+        : resolveResumeStep(restored.step, restored.brandId)
+      : fromAdd
+        ? "url"
+        : "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -629,8 +639,16 @@ export function Onboarding() {
   // Where a post-URL refresh should land once its backing data is re-hydrated. Computed
   // once from the snapshot; null when there's nothing to replay (fresh start, or a
   // welcome/url snapshot that needs no backing data — those restore directly above).
+  // A Stripe checkout return (?launch_checkout=success|cancelled) is owned end-to-end
+  // by the dedicated checkout effect (resumeCheckoutLaunch / the cancel branch below).
+  // The generic resume MUST NOT also fire for it — otherwise both run on mount and
+  // race: the generic one re-hydrates the brand and lands on "pricing", flashing the
+  // budget modal over the real "launching" flow. Null here = the generic resume effect
+  // no-ops on any checkout return.
   const resumeTargetRef = useRef<Step | null>(
-    restored && !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId))
+    !searchParams.get("launch_checkout") &&
+    restored &&
+    !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId))
       ? resolveResumeStep(restored.step, restored.brandId)
       : null,
   );
@@ -1076,8 +1094,19 @@ export function Onboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
-    // Audiences are activated at the audience step (setAudienceStatus → "active");
-    // nothing to persist here at launch.
+    // Activate the picked audiences as the TERMINAL launch commit. The audience step
+    // also activates on Continue, but a refresh/resume could land the user past it, and
+    // a launched campaign with zero active audiences is a hard dead end (the dashboard's
+    // "No active audience yet" blocker — outreach can't run). setAudienceStatus is
+    // idempotent, so re-activating an already-active row is a no-op. Done BEFORE avatar
+    // generation so generateActiveAudienceAvatars covers them.
+    const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];
+    if (launchAudienceIds.length === 0) {
+      throw new Error("No audience was selected — go back and pick at least one audience before launching.");
+    }
+    for (const audienceId of launchAudienceIds) {
+      await setAudienceStatus(audienceId, "active");
+    }
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
@@ -1145,6 +1174,15 @@ export function Onboarding() {
       const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
       if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
         throw new Error("Checkout state is missing. Go back to pricing and try again.");
+      }
+      // Block payment when no audience is picked — outreach can't run without one, so
+      // a campaign launched audience-less is a paid-for dead end. Live selection wins,
+      // falling back to the resumed snapshot (same precedence as budget above).
+      const launchAudienceIds = selectedAudienceIds.length
+        ? selectedAudienceIds
+        : storedPending?.onboardingState.selectedAudienceIds ?? [];
+      if (launchAudienceIds.length === 0) {
+        throw new Error("Pick at least one audience before launching — go back to the audience step.");
       }
       const checkoutAmountCents = Math.round(budget * 100);
       const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;

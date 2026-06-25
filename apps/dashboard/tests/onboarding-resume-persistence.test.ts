@@ -98,6 +98,37 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain('throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");');
   });
 
+  it("does not double-resume on a Stripe checkout return (generic resume no-ops)", () => {
+    // The dedicated checkout effect owns ?launch_checkout=success|cancelled. The
+    // generic resume must NOT also fire (it would re-hydrate the brand and land on
+    // "pricing", flashing the budget modal over the real "launching" flow).
+    expect(src).toContain('!searchParams.get("launch_checkout") &&');
+    // success first-paint goes straight to "launching", never the budget step.
+    expect(src).toContain('searchParams.get("launch_checkout") === "success"\n        ? "launching"');
+  });
+
+  it("activates the picked audiences as the terminal launch commit", () => {
+    // A launched campaign with zero active audiences is a hard dead end (the
+    // "No active audience yet" blocker). completeLaunchAfterCheckout activates the
+    // selected audiences idempotently before campaign create; fail-loud if none.
+    const launch = src.slice(
+      src.indexOf("async function completeLaunchAfterCheckout"),
+      src.indexOf("async function generateActiveAudienceAvatars"),
+    );
+    expect(launch).toContain("const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];");
+    expect(launch).toContain('await setAudienceStatus(audienceId, "active");');
+    expect(launch).toContain("if (launchAudienceIds.length === 0) {");
+  });
+
+  it("blocks checkout when no audience is selected (no paid audience-less launch)", () => {
+    const begin = src.slice(
+      src.indexOf("async function beginCheckoutAndLaunch"),
+      src.indexOf("async function resumeCheckoutLaunch"),
+    );
+    expect(begin).toContain("const launchAudienceIds = selectedAudienceIds.length");
+    expect(begin).toContain("if (launchAudienceIds.length === 0) {");
+  });
+
   it("persists pricing and audience display state, not only launch state", () => {
     expect(src).toContain("workflowProjection: projectionRef.current");
     expect(src).toContain("salesInputs: salesInputsRef.current");
