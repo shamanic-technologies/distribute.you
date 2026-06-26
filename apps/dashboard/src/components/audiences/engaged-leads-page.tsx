@@ -315,10 +315,12 @@ export function EngagedLeadsPage() {
   const audienceOf = (lead: Lead): LeadAudience | null =>
     lead.email ? audienceByEmail.get(lead.email.toLowerCase()) ?? null : null;
 
+  // Sort by the Date column shown in the table (`firstClickedAt`), most recent
+  // first. Leads with no click date sink to the bottom (null → 0).
   const sortedLeads = useMemo(
     () => [...leads].sort((a, b) => {
-      const aTime = a.servedAt ? new Date(a.servedAt).getTime() : 0;
-      const bTime = b.servedAt ? new Date(b.servedAt).getTime() : 0;
+      const aTime = a.firstClickedAt ? new Date(a.firstClickedAt).getTime() : 0;
+      const bTime = b.firstClickedAt ? new Date(b.firstClickedAt).getTime() : 0;
       return bTime - aTime;
     }),
     [leads],
