@@ -12,7 +12,7 @@ import {
 
 type AudiencesResponse = { audiences: AudienceWire[]; total: number };
 import { useBillingGuard } from "@/lib/billing-guard";
-import { pollOptionsSlower } from "@/lib/query-options";
+import { pollOptions } from "@/lib/query-options";
 import { REMINDER_COPY } from "@/lib/onboarding-content";
 import {
   nextReminder,
@@ -40,12 +40,12 @@ export function OnboardingReminders() {
   const { data: account } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
-    pollOptionsSlower,
+    pollOptions,
   );
   const { data: audiencesData } = useAuthQuery<AudiencesResponse>(
     ["audiences", brandId],
     () => listAudiences(brandId!),
-    { enabled: brandId !== null, ...pollOptionsSlower },
+    { enabled: brandId !== null, ...pollOptions },
   );
 
   if (!brandId || !account || !audiencesData) return null;

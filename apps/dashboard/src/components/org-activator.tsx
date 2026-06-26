@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { useOrganizationList, useOrganization, useUser } from "@clerk/nextjs";
+import { useOrganizationList, useOrganization, useUser, useSession } from "@clerk/nextjs";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 
 function orgIdFromPath(pathname: string | null): string | null {
@@ -18,6 +18,7 @@ export function OrgActivator() {
   const pathname = usePathname();
   const { organization } = useOrganization();
   const { user, isLoaded: userLoaded } = useUser();
+  const { session } = useSession();
   const { isLoaded, userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   });
@@ -51,6 +52,12 @@ export function OrgActivator() {
         }
       }
       await setActive({ organization: targetOrgId });
+      // Re-mint the session token so the freshly-activated org is in the cookie
+      // BEFORE the next /api/v1 read hits proxy.ts (organizationSyncOptions +
+      // checkProxyOrg). setActive resolves on the client before its Set-Cookie
+      // propagates, so without this the next read carries the STALE active org →
+      // 409 org_desync. Mirrors handleOrgSwitch (CLAUDE.md DIS-143 item 3).
+      await session?.getToken({ skipCache: true }).catch(() => {});
     })()
       .catch((err) => {
         console.error("[dashboard] org activation failed:", err);
@@ -64,6 +71,7 @@ export function OrgActivator() {
     currentOrgId,
     isLoaded,
     isStaff,
+    session,
     setActive,
     urlOrgId,
     userLoaded,

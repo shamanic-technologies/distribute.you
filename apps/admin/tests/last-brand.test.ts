@@ -245,9 +245,16 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
   });
 
   it("marks sidebar back links and overview rows as explicit hierarchy navigation", () => {
+    // The real invariant: every sidebar nav href carries the `?view=overview`
+    // hierarchy intent. In admin that is enforced GENERICALLY by SidebarLink
+    // (`href={explicitHierarchyHref(href)}`), plus the org-overview row. We do NOT
+    // assert the dashboard-only brand `explicitHierarchyHref(basePath)` Overview
+    // row here: admin is a structurally-divergent fork (it still ships the
+    // feature-/campaign-level sidebars the dashboard dropped in #1768) and its
+    // BrandLevelSidebar has no such row. Asserting it tested a dashboard
+    // implementation detail admin never had. (KevinLourd/admin-hierarchy-test-parity)
     expect(contextSidebar).toContain("href={explicitHierarchyHref(href)}");
     expect(contextSidebar).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
-    expect(contextSidebar).toContain("explicitHierarchyHref(basePath)");
     expect(campaignSidebar).toContain("explicitHierarchyHref(");
   });
 });

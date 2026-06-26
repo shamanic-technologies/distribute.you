@@ -119,10 +119,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "featurePipelineActivity",
   "featureAudienceStats",
   "featureWorkflows",
-  "featureQuotePitches",
-  // Opportunities / pitches
-  "rankedOpportunities",
-  "quotePitches",
   // Audiences
   "audiences",
   // Workflow defs / projections / summaries
@@ -139,9 +135,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "campaigns",
   "campaignLeads",
   "campaignActivity",
-  // Visibility runs
-  "visibilityRuns",
-  "visibilityRun",
   // Per-domain metric objects
   "domainTrafficHistory",
   "domainDrStatus",

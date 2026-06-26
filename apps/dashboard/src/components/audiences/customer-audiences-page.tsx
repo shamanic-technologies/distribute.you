@@ -111,14 +111,17 @@ export function CustomerAudiencesPage() {
   const { data: activeData, isPending: activePending } = useAuthQuery(
     ["audiences", brandId, "active"],
     () => listAudiences(brandId, { status: "active" }),
+    pollOptions,
   );
   const { data: pausedData, isPending: pausedPending } = useAuthQuery(
     ["audiences", brandId, "paused"],
     () => listAudiences(brandId, { status: "paused" }),
+    pollOptions,
   );
   const { data: archivedData, isPending: archivedPending } = useAuthQuery(
     ["audiences", brandId, "archived"],
     () => listAudiences(brandId, { status: "archived" }),
+    pollOptions,
   );
 
   // Brand optimization goal → audience-stats goal (sorts by CPC for signup, CPPR
