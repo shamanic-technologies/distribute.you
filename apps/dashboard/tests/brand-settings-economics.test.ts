@@ -122,7 +122,7 @@ describe("BrandSalesEconomicsCard component", () => {
   });
 
   it("renders the goal-driven economics fields + Save", () => {
-    expect(content).toContain("Customer Lifetime Revenue");
+    expect(content).not.toContain("Customer Lifetime Revenue");
     expect(content).toContain("Positive reply → meeting");
     expect(content).toContain("Website visit → meeting");
     expect(content).toContain("Website visit → signup");
