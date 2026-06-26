@@ -126,17 +126,19 @@ describe("feature pages adopt the coordinated body reveal", () => {
   const read = (rel: string) =>
     fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
-  it("feature overview reveals revenue + cost cards on their OWN data (per-card barrier)", () => {
+  it("feature overview reveals revenue + cost cards together (spend rides /revenue)", () => {
     const src = read(
       "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     );
     expect(src).toContain("useCoordinatedReveal");
-    // Revenue (features-service) and Total-spent (runs-service) resolve on different
-    // cold chains → SEPARATE latches, so the fast cost card never waits on the slower
-    // revenue call (#1551: one barrier per card, never a single AND of both queries).
+    // The cost card's spend block now rides the SAME features-service /revenue
+    // payload (server-computed Total spent / sources), so it reveals WITH revenue
+    // — there's no separate runs-service cost-breakdown chain to gate it on.
     expect(src).toMatch(/useCoordinatedReveal\(\[data !== undefined\]\)/);
-    expect(src).toMatch(/useCoordinatedReveal\(\[costData !== undefined\]\)/);
-    expect(src).not.toMatch(/data !== undefined,\s*costData !== undefined/);
+    expect(src).toContain("const costRevealed = revenueRevealed;");
+    // No stale runs-service cost-breakdown query / latch survives.
+    expect(src).not.toContain("costData");
+    expect(src).not.toContain("todayCostRevealed");
   });
 
   // The legacy app-level feature page (`features/[featureId]/page.tsx`, the

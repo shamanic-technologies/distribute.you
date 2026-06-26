@@ -8,7 +8,6 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
   getFeatureRevenue,
-  getBrandCostBreakdown,
   fetchFeatureStats,
   getBrandSalesEconomics,
   getBrandDailyBudget,
@@ -98,17 +97,6 @@ export default function BrandOverviewPage() {
       return "UTC";
     }
   }, []);
-  const todayCostWindow = useMemo(() => {
-    const startedAfter = new Date();
-    startedAfter.setHours(0, 0, 0, 0);
-    const startedBefore = new Date(startedAfter);
-    startedBefore.setDate(startedAfter.getDate() + 1);
-    return {
-      startedAfter: startedAfter.toISOString(),
-      startedBefore: startedBefore.toISOString(),
-    };
-  }, [timezone]);
-
   // isPending (not isLoading): a query suspended by the org-consistency gate
   // reports isLoading:false while still unresolved, which would flash "Brand
   // not found" during the org-settle window.
@@ -195,20 +183,9 @@ export default function BrandOverviewPage() {
     salesMeetings: data?.meetingsBooked,
   }), [data]);
 
-  // Cost breakdown (runs-service) → total spend + top-3 provider sources for the
-  // Cost & efficiency card. Shares the Campaigns page's query key + 5s cadence so
-  // both observers refetch the shared cache entry together (identical source mix).
-  const { data: costData } = useAuthQuery(
-    ["brandCostBreakdown", { brandId, featureSlug }],
-    () => getBrandCostBreakdown(brandId, { featureSlug }),
-    { enabled, ...pollOptions },
-  );
-
-  const { data: todayCostData } = useAuthQuery(
-    ["brandCostBreakdownToday", { brandId, featureSlug, ...todayCostWindow }],
-    () => getBrandCostBreakdown(brandId, { featureSlug, ...todayCostWindow }),
-    { enabled, ...pollOptions },
-  );
+  // Total spent + today + top-3 cost sources now come VERBATIM from the
+  // features-service `/revenue` `spend` block (above), reconciled to runs ACTUAL
+  // spend — the dashboard no longer fetches + sums the runs cost breakdown here.
 
   // Feature-level stats (Impressions / Clicks / CPC cards). Shares the Campaigns
   // page's query key + 5s cadence so both observers refetch one cache entry.
@@ -218,7 +195,6 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
   const featureStats = featureStatsData?.stats ?? {};
-  const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const totalWebsiteClicks = featureStats.recipientsClicked ?? 0;
 
   // Brand goal config → goal-specific stat card copy.
@@ -352,8 +328,9 @@ export default function BrandOverviewPage() {
     economicsData !== undefined,
     data !== undefined,
   ]);
-  const costRevealed = useCoordinatedReveal([costData !== undefined]);
-  const todayCostRevealed = useCoordinatedReveal([todayCostData !== undefined]);
+  // The cost card's spend block rides the `/revenue` payload now → it reveals
+  // with revenue (was its own runs-service cost-breakdown chain).
+  const costRevealed = revenueRevealed;
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
   const audienceStatsRevealed = useCoordinatedReveal([
     audienceStatsData !== undefined,
@@ -425,9 +402,7 @@ export default function BrandOverviewPage() {
             : undefined
         }
         costPending={!costRevealed}
-        costBreakdown={costData?.costs ?? []}
-        todayCostPending={!todayCostRevealed}
-        todayCostBreakdown={todayCostData?.costs ?? []}
+        todayCostPending={!costRevealed}
         dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}
         brandId={brandId}
         featureSlug={featureSlug}
@@ -447,7 +422,7 @@ export default function BrandOverviewPage() {
              and beta outcome pair. */
           <OutreachStatCards
             stats={featureStats}
-            totalCostCents={totalCostCents}
+            spend={revenueRevealed ? data?.spend : null}
             pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
             outreachOverride={contactedTotal}
