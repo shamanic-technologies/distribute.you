@@ -5,16 +5,19 @@ import { ScoreCard } from "@/components/visibility/score-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import type { BrandOptimizationGoal } from "@/lib/api";
+import type { Spend } from "@/lib/revenue-view";
 
 function formatCount(n: number): string {
   return Number(n).toLocaleString("en-US");
 }
 
-// Cost per <unit> = total spent / unit count. No units → no defined cost (show
-// "—", never a divide-by-zero / fake $0).
-function costPer(totalCostCents: number, denom: number): string {
-  if (denom <= 0) return "—";
-  const usd = totalCostCents / 100 / denom;
+// Render a server-computed cost metric (USD cents) verbatim. features-service is
+// the single source — the dashboard no longer divides spend by a unit count in
+// the browser (that diverged from the displayed Total spent). Null cents (no
+// usable denominator / spend basis) → "—", never a false $0.
+function formatCostCents(cents: number | null | undefined): string {
+  if (cents == null) return "—";
+  const usd = cents / 100;
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -34,19 +37,27 @@ function Cell({ children }: { children: ReactNode }) {
  * Beta cards (allowlist only — `useIsBetaUser`): the goal outcome pair
  * (Signups/CPS or Sales Meetings/CPSM), each badged `beta`.
  *
- * All values derive from already-fetched featureStats + systemStats cost — no
- * new query. Static-shell-first: labels paint instantly, values skeleton until
- * `pending` clears.
+ * The COUNTS derive from already-fetched featureStats; the COST metrics (CPC /
+ * CPS / CPSM) are read VERBATIM from the features-service `/revenue` `spend`
+ * block — the dashboard no longer divides spend by a unit count (that diverged
+ * from the displayed Total spent). `spend` is absent on entity pages that carry
+ * no `/revenue` payload → the cost cards render "—". Static-shell-first: labels
+ * paint instantly, values skeleton until `pending` clears.
  */
 export function OutreachStatCards({
   stats,
-  totalCostCents,
+  spend,
   pending,
   optimizationGoal,
   outreachOverride,
 }: {
   stats: Record<string, number>;
-  totalCostCents: number;
+  /**
+   * features-service `/revenue` spend block — the single source for the CPC /
+   * CPS / CPSM cost cards (rendered verbatim). Absent/null on a page with no
+   * `/revenue` payload (entity pages) or a cold payload → cost cards show "—".
+   */
+  spend?: Spend | null;
   pending: boolean;
   optimizationGoal?: BrandOptimizationGoal;
   /**
@@ -72,7 +83,7 @@ export function OutreachStatCards({
     value: formatCount(clicks),
     costLabel: "CPC",
     costTooltip: "Cost per click — total spent divided by link clicks.",
-    costValue: costPer(totalCostCents, clicks),
+    costValue: formatCostCents(spend?.cpcCents),
   };
 
   const outcomeMetric =
@@ -81,11 +92,13 @@ export function OutreachStatCards({
           label: "Sales Meetings",
           costLabel: "CPSM",
           costTooltip: "Cost per Sales Meetings.",
+          costValue: formatCostCents(spend?.cpsmCents),
         }
       : {
           label: "Signups",
           costLabel: "CPS",
           costTooltip: "Cost per signup — total spent divided by signups. Coming soon.",
+          costValue: formatCostCents(spend?.cpsCents),
         };
 
   return (
@@ -132,7 +145,7 @@ export function OutreachStatCards({
               label={outcomeMetric.costLabel}
               badge={beta}
               tooltip={outcomeMetric.costTooltip}
-              value="—"
+              value={outcomeMetric.costValue}
               pending={pending}
             />
           </Cell>

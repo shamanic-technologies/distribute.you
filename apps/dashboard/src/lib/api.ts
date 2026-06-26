@@ -1795,10 +1795,11 @@ export async function getFeatureRevenue(
 
 /**
  * `structuralSharing` merge for the `["featureRevenue", ...]` query. The
- * server-computed actual series (`outreachContacted`, `opened`, `clicked`,
- * `repliedPositive`, `meetingsBooked`, `purchased`) are `.optional()` on the wire to decouple the
- * backend rollout — but a transient degenerate refetch can drop them back to
- * `undefined` on a VALID 200, which would collapse chart actuals mid-session.
+ * server-computed `spend` block (cost card) and the actual series
+ * (`outreachContacted`, `opened`, `clicked`, `repliedPositive`, `meetingsBooked`,
+ * `purchased`) are `.optional()` on the wire to decouple the backend rollout — but
+ * a transient degenerate refetch can drop them back to `undefined`/`null` on a
+ * VALID 200, which would collapse the cost card / chart actuals mid-session.
  * Keep the last-good series across such a refetch (fail-loud console.error in
  * keep-last-good); a real persistent absence still logs. Opt-in here ONLY —
  * absence is "transient/not-ready", never "removed".
@@ -1810,7 +1811,7 @@ export function keepLastGoodFeatureRevenue(
   return keepLastGoodFields(
     prev,
     next,
-    ["outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
+    ["spend", "outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
     "featureRevenue",
   );
 }
@@ -2664,6 +2665,10 @@ const WorkflowProjectionItemSchema = z.object({
   costPerSignupUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable().optional(),
+  // Lifetime ROI multiple = LTR / costPerCloseUsd (= 100 / cacPct), budget-
+  // independent — rendered VERBATIM instead of inverting cacPct client-side
+  // (features-service#396). `.optional()` decouples the backend rollout.
+  roiMultiple: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowFunnelProjectionSchema.nullable(),
 });

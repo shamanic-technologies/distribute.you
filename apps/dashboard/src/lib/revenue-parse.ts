@@ -74,8 +74,29 @@ const SignalSeriesSchema = z.object({
   undatedCount: z.coerce.number(),
 });
 
+// Canonical spend block (features-service#396). `*Cents` tolerate string OR
+// number on the wire (Postgres numeric/bigint can serialize as a string) via
+// `z.coerce.number()`; the cost metrics are `.nullable()` (null → render "—").
+// `spend` itself is `.nullable()` (null on a lensed response) + `.optional()`
+// (absent on a cold / pre-rollout payload) so the overview parse survives both.
+const SpendSchema = z.object({
+  totalSpentCents: z.coerce.number(),
+  todaySpentCents: z.coerce.number(),
+  sources: z.array(
+    z.object({
+      source: z.string(),
+      spentCents: z.coerce.number(),
+      sharePct: z.coerce.number(),
+    }),
+  ),
+  cpcCents: z.coerce.number().nullable(),
+  cpsCents: z.coerce.number().nullable(),
+  cpsmCents: z.coerce.number().nullable(),
+});
+
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
+  spend: SpendSchema.nullable().optional(),
   outreachContacted: SignalSeriesSchema.optional(),
   opened: SignalSeriesSchema.optional(),
   clicked: SignalSeriesSchema.optional(),
@@ -104,6 +125,7 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
     costEconomics: d.costEconomics,
+    spend: d.spend,
     outreachContacted: d.outreachContacted,
     opened: d.opened,
     clicked: d.clicked,

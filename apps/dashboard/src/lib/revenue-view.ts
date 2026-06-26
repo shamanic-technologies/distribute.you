@@ -135,6 +135,39 @@ export interface CostEconomics {
   costPerConversionUsd?: number | null;
 }
 
+/** One pre-computed cost source (descending) in the spend block. */
+export interface SpendSource {
+  /** runs-service cost name (billable line item, e.g. "apollo people-search"). */
+  source: string;
+  /** Actual spend attributed to this source, USD cents. */
+  spentCents: number;
+  /** This source's share of totalSpentCents, percent (0–100). */
+  sharePct: number;
+}
+
+/**
+ * Canonical spend block for the Overview cost card — server-computed by
+ * features-service, reconciled to runs ACTUAL spend (single source, the
+ * dashboard renders verbatim instead of summing the runs breakdown client-side).
+ * Present on the un-lensed OVERVIEW response; null on a lensed (`?lens=`) response.
+ * `*Cents` values are USD cents → divide by 100 for display; a null cost metric
+ * renders "—", never a false $0. (features-service#396)
+ */
+export interface Spend {
+  /** Canonical "Total spent" — Σ sources[].spentCents (excludes provisioned holds). */
+  totalSpentCents: number;
+  /** Actual spend for runs started since 00:00 UTC today. */
+  todaySpentCents: number;
+  /** Per cost-name actual spend + share-of-total, descending — the "top cost sources" list. */
+  sources: SpendSource[];
+  /** Cost per click = totalSpentCents / clicks. Null (renders "—"), never a false $0. */
+  cpcCents: number | null;
+  /** Cost per signup, USD cents (PROJECTED). Null when no usable economics. */
+  cpsCents: number | null;
+  /** Cost per sales meeting booked, USD cents (PROJECTED). Null when no usable economics. */
+  cpsmCents: number | null;
+}
+
 /** Everything the overview + conversions pages render for a feature+brand. */
 export interface RevenueOverview {
   featureSlug: string;
@@ -142,6 +175,13 @@ export interface RevenueOverview {
   totalPipelineUsd: number | null;
   /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */
   costEconomics: CostEconomics;
+  /**
+   * Canonical spend block (Total spent / today / top sources / CPC / CPS / CPSM),
+   * server-computed + reconciled to runs ACTUAL spend. Present on the un-lensed
+   * overview; null on a lensed response. Optional in the view-model so a cold /
+   * pre-rollout payload (absent block) degrades the cost card gracefully.
+   */
+  spend?: Spend | null;
   /**
    * Server-computed contacted aggregate — the single source for the Outreach stat
    * card + the 7-day graph actual. Optional: absent on a cold / pre-rollout payload

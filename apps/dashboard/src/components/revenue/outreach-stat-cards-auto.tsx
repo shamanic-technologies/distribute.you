@@ -51,14 +51,15 @@ export function OutreachStatCardsAuto() {
   if (!enabled) return null;
 
   const featureStats = featureStatsData?.stats ?? {};
-  const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const optimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
 
+  // Entity pages carry no `/revenue` payload → no `spend` block; the cost cards
+  // (CPC / CPS / CPSM) render "—". features-service is the single source for the
+  // cost metrics, fetched only where `/revenue` is loaded (the brand Overview).
   return (
     <OutreachStatCards
       stats={featureStats}
-      totalCostCents={totalCostCents}
       pending={!statsRevealed}
       optimizationGoal={optimizationGoal}
     />

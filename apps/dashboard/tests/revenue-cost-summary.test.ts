@@ -28,33 +28,37 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(card).not.toContain("formatUsd(s.cents");
   });
 
-  it("Overview wires the cost breakdown through the revenue section into the summary card", () => {
-    expect(overview).toContain("getBrandCostBreakdown");
-    expect(overview).toContain("costBreakdown={costData?.costs ?? []}");
-    expect(overview).toContain("todayCostBreakdown={todayCostData?.costs ?? []}");
+  it("Overview wires the server-computed spend block into the summary card", () => {
+    // Total spent / today / top sources now come VERBATIM from the
+    // features-service /revenue `spend` block — no client cost-breakdown fetch.
+    expect(overview).not.toContain("getBrandCostBreakdown");
+    expect(overview).not.toContain("costBreakdown={costData?.costs ?? []}");
     expect(overview).toContain("dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}");
     const section = read("components/revenue/revenue-overview-section.tsx");
     // The cost summary lives in the right-of-chart column, replacing the old
-    // org/lead/event counters.
+    // org/lead/event counters, fed by the revenue payload's spend block.
     expect(section).toContain("RevenueCostSummary");
-    expect(section).toContain("todayCostBreakdown={todayCostBreakdown}");
+    expect(section).toContain("spend={data?.spend}");
     expect(section).toContain("dailyBudgetCents={dailyBudgetCents}");
     expect(section).not.toContain("costEconomics={data?.costEconomics}");
+    expect(section).not.toContain("costBreakdown={costBreakdown}");
     expect(section).not.toContain("Converting organizations");
     expect(section).not.toContain("Lead conversions");
   });
 
-  it("Total spent and provider shares use actual costs only", () => {
-    expect(card).toContain("parseFloat(c.actualCostInUsdCents)");
-    expect(card).toContain("actualCents(todayCostBreakdown)");
-    expect(card).not.toContain("parseFloat(c.totalCostInUsdCents)");
+  it("Total spent and provider shares render the server spend block verbatim", () => {
+    // No client reduce / share-% math: the figures come straight off `spend`.
+    expect(card).toContain("spend?.totalSpentCents");
+    expect(card).toContain("spend?.todaySpentCents");
+    expect(card).toContain("spend?.sources");
+    expect(card).not.toContain("parseFloat(c.actualCostInUsdCents)");
+    expect(card).not.toContain("reduce(");
   });
 
-  it("Budget spent today fetches a local-day actual-cost window", () => {
-    expect(overview).toContain("brandCostBreakdownToday");
-    expect(overview).toContain("startedAfter.setHours(0, 0, 0, 0)");
-    expect(overview).toContain("startedBefore.setDate(startedAfter.getDate() + 1)");
-    expect(overview).toContain("getBrandCostBreakdown(brandId, { featureSlug, ...todayCostWindow })");
+  it("Budget spent today reads the server-computed todaySpentCents", () => {
+    // The local-day cost-window fetch is gone — the server computes today's spend.
+    expect(overview).not.toContain("brandCostBreakdownToday");
+    expect(card).toContain("spend?.todaySpentCents ?? 0");
   });
 
   it("Total spent only keeps cents below ten dollars", () => {
@@ -92,9 +96,12 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(card).not.toContain("totalPipelineUsd");
   });
 
-  it("the /revenue parser threads costEconomics through the view-model", () => {
+  it("the /revenue parser threads costEconomics + the spend block through the view-model", () => {
     const parser = read("lib/revenue-parse.ts");
     expect(parser).toContain("costEconomics: CostEconomicsSchema");
     expect(parser).toContain("costEconomics: d.costEconomics");
+    // The canonical spend block is parsed (nullable + optional) and flattened.
+    expect(parser).toContain("spend: SpendSchema.nullable().optional()");
+    expect(parser).toContain("spend: d.spend");
   });
 });
