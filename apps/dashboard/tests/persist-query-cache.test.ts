@@ -52,15 +52,14 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "enrichedJournalists", "brandRuns", "brandMediaKits", "mediaKit",
       // feature-level
       "featureStats", "featureRevenue", "featurePipelineActivity", "featureAudienceStats",
-      "featureWorkflows", "featureQuotePitches",
-      // opportunities / pitches / audiences
-      "rankedOpportunities", "quotePitches", "audiences",
+      "featureWorkflows",
+      // audiences
+      "audiences",
       // workflows
       "workflow", "workflows", "workflow-summary", "workflow-key-status",
       "workflowProjection", "globalRankedWorkflows",
-      // outlet stats / campaign launch-modal / visibility / domain metrics
+      // outlet stats / campaign launch-modal / domain metrics
       "outletStatsCosts", "campaign", "campaigns", "campaignLeads", "campaignActivity",
-      "visibilityRuns", "visibilityRun",
       "domainTrafficHistory", "domainDrStatus", "domainAiVisibility",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(true);
@@ -69,10 +68,14 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
 
   it("never persists dead roots removed from the dashboard (no live consumer)", () => {
     // Removed with the #1768 campaign-UI flatten + earlier surfaces — must not linger.
+    // The quote-pitch + AI-visibility roots went with the orphaned route deletion
+    // (quote-pitches/quote-requests/visibility-runs/competitors/prompts had no nav).
     for (const root of [
       "campaignStats", "campaignEmails", "campaignOutlets", "campaignRuns",
       "campaignEvents", "campaignMediaKits", "quoteRequests", "orgCostBreakdown",
       "salesWorkflowTests",
+      "featureQuotePitches", "rankedOpportunities", "quotePitches",
+      "visibilityRuns", "visibilityRun",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(false);
     }

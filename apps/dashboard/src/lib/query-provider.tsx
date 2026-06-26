@@ -7,7 +7,12 @@ import {
   type Query,
 } from "@tanstack/react-query";
 import { experimental_createQueryPersister } from "@tanstack/react-query-persist-client";
-import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
+import {
+  get as idbGet,
+  set as idbSet,
+  del as idbDel,
+  entries as idbEntries,
+} from "idb-keyval";
 import { useOrganization } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -31,6 +36,11 @@ const idbStorage = {
   getItem: (key: string) => idbGet(key),
   setItem: (key: string, value: string) => idbSet(key, value),
   removeItem: (key: string) => idbDel(key),
+  // Needed by the persister's `restoreQueries` (whole-prefix scan). Without it the
+  // method throws in dev / no-ops in prod, and the hard-refresh seed below can't run.
+  // Keys are always the string `${prefix}-${queryHash}` and values the serialized
+  // JSON we wrote, so the idb-keyval `IDBValidKey`/`any` tuple is safe to narrow.
+  entries: () => idbEntries() as Promise<[string, string][]>,
 };
 
 /**
@@ -67,7 +77,7 @@ function makeQueryClient(orgId: string | null) {
     },
   });
 
-  return new QueryClient({
+  const client = new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 60_000,
@@ -83,6 +93,8 @@ function makeQueryClient(orgId: string | null) {
       mutations: { retry: 0 },
     },
   });
+
+  return { client, persister };
 }
 
 /**
@@ -101,11 +113,26 @@ function OrgScopedQueryClientProvider({
 }) {
   // Created once per mount; the component is keyed by orgId upstream, so this runs
   // fresh per org and the persister prefix can never point at another org's keys.
-  const [queryClient] = useState(() => makeQueryClient(orgId));
+  const [{ client, persister }] = useState(() => makeQueryClient(orgId));
 
-  return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  // HARD-REFRESH INSTANT PAINT. On a cold load the in-memory cache is empty AND
+  // Clerk's active org is still resolving, so every org-scoped `useAuthQuery` is
+  // DISABLED by the org-consistency gate (use-auth-query.ts) — which means the
+  // per-query persister, whose restore runs INSIDE the (now-skipped) queryFn, never
+  // fires → infinite skeletons until Clerk settles. Fix: synchronously seed the
+  // in-memory cache from this org's IndexedDB entries on mount. `restoreQueries`
+  // iterates only the keys under THIS org's prefix (`persisterStorageKey(orgId)`),
+  // is READ-ONLY (pure `setQueryData`, zero network → no cross-org request → DIS-143
+  // gate untouched), and preserves each entry's `dataUpdatedAt` so a still-mounted
+  // disabled query reads the seeded data immediately, then revalidates once Clerk
+  // resolves (SWR). No-op when persistence is off (storage undefined → no `entries`).
+  useEffect(() => {
+    if (orgId) void persister.restoreQueries(client);
+    // Run once per org-scoped mount (keyed by orgId upstream).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
 export function QueryProvider({ children }: { children: ReactNode }) {

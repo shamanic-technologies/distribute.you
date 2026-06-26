@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listAudiences, type AudienceWire } from "@/lib/api";
-import { pollOptionsSlower } from "@/lib/query-options";
+import { pollOptions } from "@/lib/query-options";
 import { NO_AUDIENCE_BANNER_COPY } from "@/lib/onboarding-content";
 import { shouldShowNoAudienceBanner } from "@/lib/onboarding-reminders";
 
@@ -25,7 +25,7 @@ export function NoAudienceBanner() {
   const { data } = useAuthQuery<AudiencesResponse>(
     ["audiences", brandId],
     () => listAudiences(brandId!),
-    { enabled: brandId !== null, ...pollOptionsSlower },
+    { enabled: brandId !== null, ...pollOptions },
   );
 
   const activeAudienceCount =

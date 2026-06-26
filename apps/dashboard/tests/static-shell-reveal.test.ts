@@ -19,9 +19,6 @@ describe("static-shell-first: cards accept `pending` and skeleton only values", 
     "components/revenue/revenue-cost-summary.tsx",
     "components/revenue/revenue-overview-section.tsx",
     "components/visibility/score-card.tsx",
-    "components/visibility/visibility-runs-view.tsx",
-    "components/visibility/visibility-competitors-view.tsx",
-    "components/visibility/visibility-prompts-view.tsx",
   ];
 
   it("every refactored card threads a pending/reveal flag and renders a Skeleton for values", () => {

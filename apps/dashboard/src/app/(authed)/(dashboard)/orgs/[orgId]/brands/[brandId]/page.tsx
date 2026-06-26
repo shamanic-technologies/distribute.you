@@ -23,7 +23,7 @@ import {
   type WorkflowProjectionResponse,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
-import { pollOptions, pollOptionsSlow } from "@/lib/query-options";
+import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import {
@@ -124,7 +124,7 @@ export default function BrandOverviewPage() {
     () => getFeatureRevenue(featureSlug, brandId),
     {
       enabled,
-      ...pollOptionsSlow,
+      ...pollOptions,
       // Keep the last-good `outreachContacted` (Outreach card + graph-actual source)
       // across a transient degenerate refetch that drops it on a valid 200.
       structuralSharing: (prev, next) =>
