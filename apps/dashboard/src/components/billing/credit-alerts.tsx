@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBillingAccount, listCampaigns, type BillingAccount, type Campaign } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
-import { pollOptionsSlower } from "@/lib/query-options";
+import { pollOptions } from "@/lib/query-options";
 import { computeRunway, runwaySeverity } from "@/lib/campaign-runway";
 
 const DEPLETED_MODAL_SESSION_KEY = "credit-depleted-modal-shown";
@@ -30,12 +30,12 @@ export function CreditAlerts() {
   const { data: account } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
-    pollOptionsSlower,
+    pollOptions,
   );
   const { data: campaignsData } = useAuthQuery<{ campaigns: Campaign[] }>(
     ["campaigns"],
     () => listCampaigns(),
-    pollOptionsSlower,
+    pollOptions,
   );
 
   const depletedShownRef = useRef(false);
