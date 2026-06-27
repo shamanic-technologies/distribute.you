@@ -64,8 +64,15 @@ export function OnboardingReminders() {
   // `dismissTick` is read so the memoless component recomputes after a dismissal.
   void dismissTick;
 
+  // Off-session auto-reload is impossible for some card countries (e.g. India).
+  // Absent => supported (today's behavior); only an explicit false blocks it.
+  const autoReloadSupported = account.auto_reload_supported !== false;
+  const outOfCredit = parseFloat(account.balance_cents) <= 0;
+
   const kind = nextReminder({
     hasAutoTopup: account.has_auto_topup,
+    autoReloadSupported,
+    outOfCredit,
     activeAudienceCount,
     topupDismissed,
     audienceDismissed,
@@ -80,14 +87,19 @@ export function OnboardingReminders() {
 
   const onPrimary = () => {
     if (kind === "topup") {
-      showPaymentRequired({ balance_cents: account.balance_cents, proactive: true });
+      showPaymentRequired({ balance_cents: account.balance_cents, proactive: true, autoReloadSupported });
     } else if (orgId) {
       router.push(`/orgs/${orgId}/brands/${brandId}/audiences`);
     }
     dismiss(kind);
   };
 
-  const copy = REMINDER_COPY[kind];
+  // For an auto-reload-blocked brand the topup reminder is a one-time recharge,
+  // never an "enable auto-topup" ask (which is impossible for their card).
+  const copy =
+    kind === "topup" && !autoReloadSupported
+      ? REMINDER_COPY.topupRecharge
+      : REMINDER_COPY[kind];
 
   return (
     <div
