@@ -108,17 +108,29 @@ export function CustomerAudiencesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(initialAudienceId);
   const [aiOpen, setAiOpen] = useState(false);
 
-  const { data: activeData, isPending: activePending } = useAuthQuery(
+  const {
+    data: activeData,
+    isPending: activePending,
+    isFetching: activeFetching,
+  } = useAuthQuery(
     ["audiences", brandId, "active"],
     () => listAudiences(brandId, { status: "active" }),
     pollOptions,
   );
-  const { data: pausedData, isPending: pausedPending } = useAuthQuery(
+  const {
+    data: pausedData,
+    isPending: pausedPending,
+    isFetching: pausedFetching,
+  } = useAuthQuery(
     ["audiences", brandId, "paused"],
     () => listAudiences(brandId, { status: "paused" }),
     pollOptions,
   );
-  const { data: archivedData, isPending: archivedPending } = useAuthQuery(
+  const {
+    data: archivedData,
+    isPending: archivedPending,
+    isFetching: archivedFetching,
+  } = useAuthQuery(
     ["audiences", brandId, "archived"],
     () => listAudiences(brandId, { status: "archived" }),
     pollOptions,
@@ -184,6 +196,23 @@ export function CustomerAudiencesPage() {
     ...(pausedData?.audiences ?? []),
     ...(archivedData?.audiences ?? []),
   ];
+
+  // Per-TAB loading, not a single combined `isPending`. The Active tab shows
+  // active+paused; the Archived tab shows archived — each fetched separately and
+  // human-service (0.25 CU) cold-starts seconds apart, so one tab can be settled
+  // while the other is still loading. Skeleton a tab whose own query is pending
+  // OR fetching-while-empty (the SWR cache can legitimately restore an EMPTY
+  // archived snapshot from before anything was archived, then revalidate in the
+  // background — `isPending` is false there, so gate on `isFetching` too) — the
+  // empty-state only shows once that tab settles with zero rows.
+  const activeTabRows = audiences.filter((a) => a.status !== "archived").length;
+  const archivedTabRows = audiences.filter((a) => a.status === "archived").length;
+  const activeTabLoading =
+    activePending ||
+    pausedPending ||
+    (activeTabRows === 0 && (activeFetching || pausedFetching));
+  const archivedTabLoading =
+    archivedPending || (archivedTabRows === 0 && archivedFetching);
   const selected = selectedId ? audiences.find((a) => a.id === selectedId) ?? null : null;
 
   // Clear a stale selection only once the lists have loaded — otherwise a
@@ -278,6 +307,23 @@ export function CustomerAudiencesPage() {
         const visible = audiences.filter((a) =>
           tab === "archived" ? a.status === "archived" : a.status !== "archived",
         );
+        const tabLoading = tab === "archived" ? archivedTabLoading : activeTabLoading;
+        if (visible.length === 0 && tabLoading) {
+          // The viewed tab's own query is still loading / revalidating-while-empty
+          // — skeleton the rows instead of flashing the empty-state (which read as
+          // "table vide" while archived cold-started behind an already-loaded
+          // active list).
+          return (
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="mb-3 h-9 animate-pulse rounded bg-gray-100 last:mb-0"
+                />
+              ))}
+            </div>
+          );
+        }
         if (visible.length === 0) {
           return (
             <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
