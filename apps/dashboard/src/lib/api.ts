@@ -2899,6 +2899,52 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
 }
 
+// ── Credit grants ("gifts received") ──
+// The org's own credit-grants ledger: welcome gift, first-deposit match, staff
+// bonuses, referral credits, promo redemptions. Source: billing-service
+// GET /v1/credits/grants (scoped to x-org-id) via api-service gateway
+// GET /v1/billing/credits/grants. `reason` is the grant kind (welcome,
+// first_load_match, admin_grant, invite_*) or a promo code; `amountCents` is a
+// string (Postgres numeric). Per-field schema verified against api-registry;
+// safeParse turns wire-rot into a caught fetch-error per CLAUDE.md.
+export interface CreditGrant {
+  id: string;
+  orgId: string;
+  amountCents: string;
+  reason: string;
+  note: string | null;
+  grantedBy: string | null;
+  createdAt: string;
+}
+
+const CreditGrantSchema = z
+  .object({
+    id: z.string(),
+    orgId: z.string(),
+    amountCents: z.string(),
+    reason: z.string(),
+    note: z.string().nullable(),
+    grantedBy: z.string().nullable(),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+const ListCreditGrantsResponseSchema = z.object({ grants: z.array(CreditGrantSchema) });
+
+/** GET /billing/credits/grants — the active org's own credit-grants ledger. */
+export async function getCreditGrants(token?: string): Promise<{ grants: CreditGrant[] }> {
+  const raw = await apiCall<unknown>("/billing/credits/grants", { token });
+  const parsed = ListCreditGrantsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getCreditGrants: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getCreditGrants: invalid response shape");
+  }
+  return parsed.data as unknown as { grants: CreditGrant[] };
+}
+
 export async function createCheckoutSession(
   params:
     | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }

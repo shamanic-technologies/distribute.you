@@ -93,6 +93,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "entityRegistry",
   "platformPrices",
   "billingAccount",
+  "creditGrants",
   // Brand metadata + config + small summaries
   "brand",
   "brands",

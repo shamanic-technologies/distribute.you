@@ -5,9 +5,11 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
+  getCreditGrants,
   createCheckoutSession,
   createPortalSession,
   type BillingAccount,
+  type CreditGrant,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
@@ -15,6 +17,28 @@ import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
+
+// Friendly label for a credit grant's `reason` (pure display lookup, no metric).
+// reason ∈ welcome | first_load_match | admin_grant | invite_* | <promo code>.
+function grantLabel(reason: string): string {
+  switch (reason) {
+    case "welcome":
+      return "Welcome gift";
+    case "first_load_match":
+      return "First deposit match";
+    case "admin_grant":
+      return "Bonus credit";
+    default:
+      if (reason.startsWith("invite")) return "Referral bonus";
+      return `Promo: ${reason}`;
+  }
+}
+
+function formatGrantDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
 export default function BillingPage() {
   const params = useParams();
@@ -34,6 +58,13 @@ export default function BillingPage() {
     () => getBillingAccount(),
     pollOptions,
   );
+
+  // Credit grants ("gifts received") — the org's own free-credit ledger.
+  const { data: grantsData } = useAuthQuery<{ grants: CreditGrant[] }>(
+    ["creditGrants"],
+    () => getCreditGrants(),
+  );
+  const grants = grantsData?.grants ?? [];
 
   // Top-up state
   const [topupSelected, setTopupSelected] = useState(2500);
@@ -507,6 +538,38 @@ export default function BillingPage() {
             </button>
           </div>
         )}
+
+        {/* Gifts received — the org's own credit-grants ledger */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="mb-1 flex items-center gap-2">
+            <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+            </svg>
+            <h2 className="text-lg font-medium text-gray-900">Gifts received</h2>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">Free credits we added to your account.</p>
+
+          {grants.length === 0 ? (
+            <p className="text-sm text-gray-500">No gifts yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {grants.map((grant) => (
+                <li key={grant.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800">{grantLabel(grant.reason)}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatGrantDate(grant.createdAt)}
+                      {grant.note ? ` · ${grant.note}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                    +{formatBillingCents(grant.amountCents)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </DashboardPage>
   );
