@@ -61,6 +61,31 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(card).toContain("spend?.todaySpentCents ?? 0");
   });
 
+  it("shows COMMITTED spend (= actual + provisioned), preferring the new total* fields over legacy, with no client sum", () => {
+    const stats = read("components/revenue/outreach-stat-cards.tsx");
+    // Budget spent today prefers the committed `totalSpentTodayCents`, falls back to legacy.
+    expect(card).toContain("spend?.totalSpentTodayCents ?? spend?.todaySpentCents");
+    // CPC prefers the committed `totalCpcCents`, falls back to legacy `cpcCents`.
+    expect(stats).toContain("spend?.totalCpcCents ?? spend?.cpcCents");
+    // Total spent keeps the `totalSpentCents` name (features-service flips its value to committed).
+    expect(card).toContain("spend?.totalSpentCents");
+    // No client-side actual+provisioned arithmetic (the committed figure is server-provided).
+    expect(card).not.toContain("actualSpentCents +");
+    expect(card).not.toContain("+ spend?.provisioned");
+    expect(stats).not.toContain("provisionedCpcCents +");
+  });
+
+  it("explains why committed spend dips via (i) tooltips on Budget spent today + Total spent", () => {
+    expect(card).toContain("InfoTooltip");
+    expect(card).toContain("TODAY_SPENT_TIP");
+    expect(card).toContain("TOTAL_SPENT_TIP");
+    // The copy names the mechanism (reserved follow-ups) and the dip, no em-dash.
+    expect(card).toContain("reserved for follow-up");
+    expect(card).toContain("It can dip when a reserved follow-up sends or gets cancelled");
+    // The tooltip COPY strings (TIP constants) carry no em-dash (code comments are exempt).
+    expect(card).not.toMatch(/_TIP =\s*\n?\s*"[^"]*—/);
+  });
+
   it("Total spent only keeps cents below ten dollars", () => {
     expect(card).toContain("const fractionDigits = usd < 10 ? 2 : 0");
     expect(card).toContain("minimumFractionDigits: fractionDigits");

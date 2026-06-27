@@ -82,8 +82,12 @@ export function OutreachStatCards({
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     value: formatCount(clicks),
     costLabel: "CPC",
-    costTooltip: "Cost per click — total spent divided by link clicks.",
-    costValue: formatCostCents(spend?.cpcCents),
+    costTooltip:
+      "Cost per click: committed spend (billed plus reserved for scheduled follow-ups) divided by link clicks. It can dip when a reserved follow-up sends or gets cancelled.",
+    // Committed CPC (= actual + provisioned / clicks). Prefer the new `totalCpcCents`,
+    // fall back to the legacy `cpcCents` until features-service lands. Server-provided
+    // either way — no client division.
+    costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
   };
 
   const outcomeMetric =

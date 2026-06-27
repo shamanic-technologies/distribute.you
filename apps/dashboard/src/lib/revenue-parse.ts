@@ -79,9 +79,20 @@ const SignalSeriesSchema = z.object({
 // `z.coerce.number()`; the cost metrics are `.nullable()` (null → render "—").
 // `spend` itself is `.nullable()` (null on a lensed response) + `.optional()`
 // (absent on a cold / pre-rollout payload) so the overview parse survives both.
+// Spend figures: total = ACTUAL + PROVISIONED (committed), actual = billed only,
+// provisioned = open holds only (features-service naming convention). The `total*`
+// committed fields + their actual/provisioned siblings are additive (.optional()) so
+// the dashboard ships ahead of features-service: until that service lands the legacy
+// `todaySpentCents`/`cpcCents` carry actual-only, and the render prefers `total*` when
+// present. `totalSpentCents` keeps its name across the rollout (value flips actual→committed).
 const SpendSchema = z.object({
   totalSpentCents: z.coerce.number(),
-  todaySpentCents: z.coerce.number(),
+  actualSpentCents: z.coerce.number().optional(),
+  provisionedSpentCents: z.coerce.number().optional(),
+  totalSpentTodayCents: z.coerce.number().optional(),
+  actualSpentTodayCents: z.coerce.number().optional(),
+  provisionedSpentTodayCents: z.coerce.number().optional(),
+  todaySpentCents: z.coerce.number().optional(),
   sources: z.array(
     z.object({
       source: z.string(),
@@ -89,7 +100,10 @@ const SpendSchema = z.object({
       sharePct: z.coerce.number(),
     }),
   ),
-  cpcCents: z.coerce.number().nullable(),
+  totalCpcCents: z.coerce.number().nullable().optional(),
+  actualCpcCents: z.coerce.number().nullable().optional(),
+  provisionedCpcCents: z.coerce.number().nullable().optional(),
+  cpcCents: z.coerce.number().nullable().optional(),
   cpsCents: z.coerce.number().nullable(),
   cpsmCents: z.coerce.number().nullable(),
 });

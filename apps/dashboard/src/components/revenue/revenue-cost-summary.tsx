@@ -6,6 +6,15 @@ import type { Spend } from "@/lib/revenue-view";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Skeleton } from "@/components/skeleton";
+import { InfoTooltip } from "@/components/visibility/metric-info";
+
+// Committed-spend (= actual + provisioned) explainers. The figure can DIP when a
+// reserved follow-up sends (becomes a billed charge) or is cancelled (contact
+// replied / couldn't be reached) — the tooltip tells the user why it moves.
+const TOTAL_SPENT_TIP =
+  "What you've committed so far: money already billed plus credits reserved for follow-up emails we've scheduled. It can dip when a reserved follow-up sends or gets cancelled because a contact replied or couldn't be reached.";
+const TODAY_SPENT_TIP =
+  "Committed today: billed plus credits reserved for follow-ups scheduled today. It can dip when a reserved follow-up sends or gets cancelled because a contact replied or couldn't be reached.";
 
 /**
  * Cost summary for the feature Overview — actual spend and the top-3 cost
@@ -87,8 +96,12 @@ export function RevenueCostSummary({
 
   // All spend figures are server-computed (features-service#396) — rendered
   // verbatim, no client reduce / share-% math.
+  // Committed (= actual + provisioned). features-service keeps `totalSpentCents` (value
+  // flips to committed when it lands) and renames today's field to `totalSpentTodayCents`;
+  // read it in preference to the legacy `todaySpentCents` so the dashboard works across
+  // the rollout. Server-provided either way — no client actual+provisioned sum.
   const totalCostUsd = (spend?.totalSpentCents ?? 0) / 100;
-  const todayActualCents = spend?.todaySpentCents ?? 0;
+  const todayCommittedCents = spend?.totalSpentTodayCents ?? spend?.todaySpentCents ?? 0;
   const top3 = (spend?.sources ?? []).slice(0, 3).map((s) => ({
     name: s.source,
     pct: s.sharePct,
@@ -104,12 +117,15 @@ export function RevenueCostSummary({
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs text-gray-400">Budget spent today</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-gray-400">Budget spent today</p>
+                <InfoTooltip tip={TODAY_SPENT_TIP} />
+              </div>
               {budgetSpentPending ? (
                 <Skeleton className="mt-1 h-7 w-28" />
               ) : (
                 <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">
-                  {formatUsdWithCents(todayActualCents)}
+                  {formatUsdWithCents(todayCommittedCents)}
                   {dailyBudgetCents != null && dailyBudgetCents > 0 ? (
                     <span className="text-sm font-medium text-gray-400">/{formatBudgetCents(dailyBudgetCents)}</span>
                   ) : null}
@@ -117,7 +133,10 @@ export function RevenueCostSummary({
               )}
             </div>
             <div className="min-w-0 text-right">
-              <p className="text-xs text-gray-400">Total spent</p>
+              <div className="flex items-center justify-end gap-1">
+                <p className="text-xs text-gray-400">Total spent</p>
+                <InfoTooltip tip={TOTAL_SPENT_TIP} />
+              </div>
               {totalSpentPending ? (
                 <Skeleton className="ml-auto mt-1 h-7 w-24" />
               ) : (
