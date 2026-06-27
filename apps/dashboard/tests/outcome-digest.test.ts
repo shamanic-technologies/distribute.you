@@ -89,7 +89,7 @@ describe("daily outcome digest", () => {
           featureSlug: "sales-cold-email-outreach",
           headline: { totalPipelineUsd: 12500 },
           costEconomics: {
-            totalCostUsd: 250,
+            actualCostUsd: 250,
             costOfAcquisitionPct: 2,
             roiMultiple: 50,
           },
@@ -223,7 +223,7 @@ describe("daily outcome digest", () => {
           featureSlug: "sales-cold-email-outreach",
           headline: { totalPipelineUsd: 0 },
           costEconomics: {
-            totalCostUsd: 0,
+            actualCostUsd: 0,
             costOfAcquisitionPct: null,
             roiMultiple: null,
           },

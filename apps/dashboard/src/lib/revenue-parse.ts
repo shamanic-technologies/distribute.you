@@ -55,7 +55,11 @@ const RevenueEventSchema = z.object({
   contributionUsd: z.number(),
 });
 const CostEconomicsSchema = z.object({
-  totalCostUsd: z.number(),
+  // features-service renamed the billed run-cost `totalCostUsd` → `actualCostUsd`
+  // (ROI/CAC ride realized spend, holds excluded — features-service#402). Accept BOTH
+  // for rollout tolerance; the flatten normalizes to `actualCostUsd`.
+  actualCostUsd: z.number().optional(),
+  totalCostUsd: z.number().optional(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   // Lens-only (Signups / Booked Meetings / Sales). `.nullish()` so the un-lensed
@@ -96,7 +100,13 @@ const SpendSchema = z.object({
   sources: z.array(
     z.object({
       source: z.string(),
-      spentCents: z.coerce.number(),
+      // features-service renamed `spentCents` → the committed/actual/provisioned trio
+      // (features-service#402). The card renders only `source` + `sharePct`, so all
+      // amounts are optional for rollout tolerance.
+      totalSpentCents: z.coerce.number().optional(),
+      actualSpentCents: z.coerce.number().optional(),
+      provisionedSpentCents: z.coerce.number().optional(),
+      spentCents: z.coerce.number().optional(),
       sharePct: z.coerce.number(),
     }),
   ),
@@ -104,8 +114,11 @@ const SpendSchema = z.object({
   actualCpcCents: z.coerce.number().nullable().optional(),
   provisionedCpcCents: z.coerce.number().nullable().optional(),
   cpcCents: z.coerce.number().nullable().optional(),
-  cpsCents: z.coerce.number().nullable(),
-  cpsmCents: z.coerce.number().nullable(),
+  // cpsCents/cpsmCents (projected cost-per-signup/meeting) were removed in
+  // features-service#406. Optional so the parse survives their absence; the beta
+  // CPS/CPSM cards then render "—".
+  cpsCents: z.coerce.number().nullable().optional(),
+  cpsmCents: z.coerce.number().nullable().optional(),
 });
 
 const FeatureRevenueResponseSchema = z.object({
@@ -138,7 +151,15 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
   return {
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
-    costEconomics: d.costEconomics,
+    costEconomics: {
+      // Normalize the renamed field: prefer `actualCostUsd`, fall back to legacy
+      // `totalCostUsd` until features-service is live everywhere.
+      actualCostUsd: d.costEconomics.actualCostUsd ?? d.costEconomics.totalCostUsd ?? 0,
+      costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
+      roiMultiple: d.costEconomics.roiMultiple,
+      expectedConversions: d.costEconomics.expectedConversions,
+      costPerConversionUsd: d.costEconomics.costPerConversionUsd,
+    },
     spend: d.spend,
     outreachContacted: d.outreachContacted,
     opened: d.opened,

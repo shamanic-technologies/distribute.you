@@ -124,7 +124,9 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
   it("the /revenue parser threads costEconomics + the spend block through the view-model", () => {
     const parser = read("lib/revenue-parse.ts");
     expect(parser).toContain("costEconomics: CostEconomicsSchema");
-    expect(parser).toContain("costEconomics: d.costEconomics");
+    // costEconomics is normalized: the renamed billed run-cost prefers `actualCostUsd`,
+    // falling back to legacy `totalCostUsd` during the features-service rollout.
+    expect(parser).toContain("actualCostUsd: d.costEconomics.actualCostUsd ?? d.costEconomics.totalCostUsd");
     // The canonical spend block is parsed (nullable + optional) and flattened.
     expect(parser).toContain("spend: SpendSchema.nullable().optional()");
     expect(parser).toContain("spend: d.spend");
