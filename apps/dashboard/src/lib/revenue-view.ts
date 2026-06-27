@@ -154,14 +154,36 @@ export interface SpendSource {
  * renders "—", never a false $0. (features-service#396)
  */
 export interface Spend {
-  /** Canonical "Total spent" — Σ sources[].spentCents (excludes provisioned holds). */
+  /** Canonical "Total spent" = ACTUAL + PROVISIONED (committed). features-service keeps
+   *  this name; its value is the committed total once that service lands (until then it
+   *  is actual-only, today's behavior). Naming convention: total = actual+provisioned. */
   totalSpentCents: number;
-  /** Actual spend for runs started since 00:00 UTC today. */
-  todaySpentCents: number;
+  /** Actual (billed) spend only, USD cents. Additive — present once features-service lands. */
+  actualSpentCents?: number;
+  /** Open provisioned holds only, USD cents. Additive — present once features-service lands. */
+  provisionedSpentCents?: number;
+  /** "Budget spent today" = ACTUAL + PROVISIONED for runs since 00:00 UTC. Additive — read
+   *  in preference to the legacy `todaySpentCents` once present. */
+  totalSpentTodayCents?: number;
+  /** Actual (billed) spend today only, USD cents. Additive. */
+  actualSpentTodayCents?: number;
+  /** Provisioned holds today only, USD cents. Additive. */
+  provisionedSpentTodayCents?: number;
+  /** LEGACY actual-only today spend. Optional for rollout: features-service renames it to
+   *  `actualSpentTodayCents`; render `totalSpentTodayCents ?? todaySpentCents`. */
+  todaySpentCents?: number;
   /** Per cost-name actual spend + share-of-total, descending — the "top cost sources" list. */
   sources: SpendSource[];
-  /** Cost per click = totalSpentCents / clicks. Null (renders "—"), never a false $0. */
-  cpcCents: number | null;
+  /** CPC = (ACTUAL + PROVISIONED) / clicks (committed). Additive — read in preference to the
+   *  legacy `cpcCents` once present. Null (renders "—"), never a false $0. */
+  totalCpcCents?: number | null;
+  /** Actual-only CPC, USD cents. Additive. */
+  actualCpcCents?: number | null;
+  /** Provisioned-only CPC, USD cents. Additive. */
+  provisionedCpcCents?: number | null;
+  /** LEGACY actual-only CPC. Optional for rollout: features-service renames it to
+   *  `actualCpcCents`; render `totalCpcCents ?? cpcCents`. */
+  cpcCents?: number | null;
   /** Cost per signup, USD cents (PROJECTED). Null when no usable economics. */
   cpsCents: number | null;
   /** Cost per sales meeting booked, USD cents (PROJECTED). Null when no usable economics. */
