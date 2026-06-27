@@ -48,8 +48,13 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("topup_threshold_cents");
   });
 
-  it("should NOT reference legacy auto-reload paths or reload_*_cents body fields", () => {
-    expect(content).not.toContain("auto-reload");
+  it("should NOT reference legacy auto-reload endpoint paths, functions, or reload_*_cents body fields", () => {
+    // The current write path is /auto_topup (configureAutoTopup / disableAutoTopup).
+    // billing-service v0.40.0+ adds a READ-ONLY `auto_reload_supported` contract field
+    // (off_session unavailable for some card-issuing countries) — that underscore field
+    // is allowed; only the legacy /auto_reload endpoint family + reload_*_cents body is banned.
+    expect(content).not.toContain("/billing/accounts/auto_reload");
+    expect(content).not.toContain("/billing/accounts/auto-reload");
     expect(content).not.toContain("reload_amount_cents");
     expect(content).not.toContain("reload_threshold_cents");
     expect(content).not.toContain("configureAutoReload");
