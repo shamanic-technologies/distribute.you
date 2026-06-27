@@ -15,6 +15,7 @@ import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 
@@ -139,16 +140,36 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
-  const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
   const hasAutoTopup = account?.has_auto_topup ?? false;
   // Auto-reload (off_session auto-topup) can be impossible for the saved card's issuing
   // country. Absent/undefined => supported (older billing deploy, today's behavior);
   // only an explicit `false` blocks the auto-topup controls.
   const autoReloadSupported = account?.auto_reload_supported !== false;
-  // Depleted = actual balance (the number shown) at/below zero AND no auto-topup to cover it.
-  // Keying on balance_cents (available, net of provisioned holds) contradicted the displayed
-  // actual_balance_cents; suppress entirely when auto-topup is armed since it backstops the balance.
-  const isDepleted = account ? !hasAutoTopup && parseFloat(creditBalanceCents) <= 0 : false;
+
+  // Credit-balance breakdown — all four lines reconcile so the displayed numbers stop
+  // contradicting each other. Math in cents (full-precision decimal strings); format once.
+  //   Available           = balance_cents (spendable, net of provisioned holds) — the number to act on
+  //   Total credits       = credited_cents (lifetime credited)
+  //   Confirmed charges   = credited_cents - actual_balance_cents (actualized usage only)
+  //   Provisioned charges = actual_balance_cents - balance_cents (open holds for scheduled follow-ups)
+  // Total - Confirmed - Provisioned == Available, by construction.
+  const availableCents = account ? parseFloat(account.balance_cents) : 0;
+  const totalCreditsCents = account ? parseFloat(account.credited_cents) : 0;
+  // actual_balance_cents is absent on older billing deploys; without it the confirmed/provisioned
+  // split is unknowable, so collapse to a single "Charges" line (= total - available) rather than
+  // show a misleading $0 hold. Available + Total credits are always derivable.
+  const actualBalanceStr = account?.actual_balance_cents;
+  const hasActualBalance = actualBalanceStr !== undefined && actualBalanceStr !== null;
+  const actualBalanceCents = hasActualBalance ? parseFloat(actualBalanceStr as string) : null;
+  const confirmedChargesCents = actualBalanceCents !== null ? totalCreditsCents - actualBalanceCents : null;
+  const provisionedChargesCents = actualBalanceCents !== null ? actualBalanceCents - availableCents : null;
+  const totalChargesCents = totalCreditsCents - availableCents; // confirmed + provisioned
+
+  // Depleted = AVAILABLE (spendable, net of provisioned holds) at/below zero AND no auto-topup
+  // to cover it. Keys on balance_cents — the value spending is actually blocked on — not the
+  // gross actual balance (which hid open holds and let the warning never fire while blocked).
+  // Auto-topup armed backstops the balance, so suppress the warning then.
+  const isDepleted = account ? !hasAutoTopup && availableCents <= 0 : false;
 
   // Pre-fill auto-topup fields from existing config
   useEffect(() => {
@@ -346,13 +367,16 @@ export default function BillingPage() {
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm text-gray-500">Credit Balance</p>
-              <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(creditBalanceCents)}
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm text-gray-500">Available</p>
+                <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+              </div>
+              <p className={`text-3xl font-bold mt-1 ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
+                {formatBillingCents(account?.balance_cents ?? "0")}
               </p>
             </div>
             <div className="sm:text-right">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 sm:justify-end">
                 <div className={`w-2 h-2 rounded-full ${account?.has_payment_method ? "bg-green-500" : "bg-gray-300"}`} />
                 <span className="text-sm text-gray-500">
                   {account?.has_payment_method ? "Card connected" : "No card"}
@@ -369,6 +393,55 @@ export default function BillingPage() {
               )}
             </div>
           </div>
+
+          {/* Breakdown — reconciles to Available so the numbers stop contradicting each other.
+              Total credits - Confirmed charges - Provisioned charges == Available. */}
+          <dl className="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="flex items-center gap-1.5 text-gray-500">
+                Total credits
+                <InfoTooltip tip="Everything added to your account, including top-ups." />
+              </dt>
+              <dd className="font-medium text-gray-900">{formatBillingCents(account?.credited_cents ?? "0")}</dd>
+            </div>
+
+            {confirmedChargesCents !== null && provisionedChargesCents !== null ? (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-1.5 text-gray-500">
+                    Confirmed charges
+                    <InfoTooltip tip="Emails already sent and billed. This won't change." />
+                  </dt>
+                  <dd className="font-medium text-gray-700">&minus;{formatBillingCents(confirmedChargesCents)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-1.5 text-gray-500">
+                    Provisioned charges
+                    <InfoTooltip tip="Reserved for follow-up emails we've scheduled. It rises when we plan new follow-ups and drops when one sends (it becomes a confirmed charge) or gets cancelled because a contact replied or couldn't be reached. That's why your available amount changes over time." />
+                  </dt>
+                  <dd className="font-medium text-gray-700">&minus;{formatBillingCents(provisionedChargesCents)}</dd>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-1.5 text-gray-500">
+                  Charges
+                  <InfoTooltip tip="Emails sent and billed, plus credits reserved for follow-up emails we've scheduled." />
+                </dt>
+                <dd className="font-medium text-gray-700">&minus;{formatBillingCents(totalChargesCents)}</dd>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+              <dt className="flex items-center gap-1.5 font-medium text-gray-700">
+                Available
+                <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+              </dt>
+              <dd className={`font-semibold ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
+                {formatBillingCents(account?.balance_cents ?? "0")}
+              </dd>
+            </div>
+          </dl>
         </div>
 
         {/* Auto-Topup Settings (when already configured) */}
