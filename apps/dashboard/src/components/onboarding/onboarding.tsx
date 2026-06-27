@@ -32,6 +32,7 @@ import {
   saveBrandSalesEconomics,
   suggestAudiences,
   setAudienceStatus,
+  listAudiences,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
@@ -1094,15 +1095,25 @@ export function Onboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
-    // Activate the picked audiences as the TERMINAL launch commit. The audience step
-    // also activates on Continue, but a refresh/resume could land the user past it, and
-    // a launched campaign with zero active audiences is a hard dead end (the dashboard's
-    // "No active audience yet" blocker — outreach can't run). setAudienceStatus is
-    // idempotent, so re-activating an already-active row is a no-op. Done BEFORE avatar
-    // generation so generateActiveAudienceAvatars covers them.
+    // Activation happens ONLY here, at the TERMINAL launch commit — never at the
+    // audience step (a re-roll / Back-then-re-pick there used to activate each
+    // intermediate set additively, leaving stale `active` rows the audiences page
+    // then showed → "I picked 2 but see 5"). The picked set is made the brand's
+    // EXACT active set: any audience currently `active` for the brand that is NOT in
+    // the final picks is sent back to `suggested` (recoverable, hidden from the page),
+    // so re-doing onboarding OVERRIDES the prior selection instead of stacking on it.
+    // A launched campaign with zero active audiences is a hard dead end (the
+    // dashboard's "No active audience yet" blocker — outreach can't run), so we
+    // fail loud on an empty pick. Done BEFORE avatar generation so the server-side
+    // on-activate avatar gen covers the freshly-active rows.
     const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];
     if (launchAudienceIds.length === 0) {
       throw new Error("No audience was selected — go back and pick at least one audience before launching.");
+    }
+    const pickedSet = new Set(launchAudienceIds);
+    const { audiences: currentlyActive } = await listAudiences(pending.brandId, { status: "active" });
+    for (const a of currentlyActive) {
+      if (!pickedSet.has(a.id)) await setAudienceStatus(a.id, "suggested");
     }
     for (const audienceId of launchAudienceIds) {
       await setAudienceStatus(audienceId, "active");
@@ -1903,7 +1914,6 @@ function OnboardingAudiences({
   const icpFetchedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const selectedAudienceIdSet = new Set(selectedAudienceIds);
   const candidateCount = candidates?.length ?? 0;
@@ -2020,19 +2030,12 @@ function OnboardingAudiences({
       return;
     }
     setErr(null);
-    setSaving(true);
-    try {
-      // Each candidate is already a persisted audience row (status "suggested").
-      // Selecting = ACTIVATE it for the brand; unpicked candidates stay suggested.
-      for (const c of picks) {
-        await setAudienceStatus(c.audienceId, "active");
-      }
-      onContinue();
-    } catch (e) {
-      console.error("[dashboard] setAudienceStatus (activate) failed:", e);
-      setErr("We couldn't save your audiences. Try again.");
-      setSaving(false);
-    }
+    // NO activation here — the picks are carried forward in `selectedAudienceIds` and
+    // committed once at the post-payment terminal step (completeLaunchAfterCheckout),
+    // which makes them the brand's EXACT active set. Activating at this step made a
+    // re-roll / Back-then-re-pick stack stale `active` rows (the "picked 2, page shows
+    // 5" bug). Each candidate stays "suggested" until the launch commits.
+    onContinue();
   }
 
   return (
@@ -2098,7 +2101,7 @@ function OnboardingAudiences({
       )}
 
       <div>
-        <NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} busy={saving} label="Continue" />
+        <NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} label="Continue" />
       </div>
       </div>
     </div>
