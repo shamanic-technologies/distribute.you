@@ -93,9 +93,12 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
-  const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
   const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
   const hasAutoTopup = account?.has_auto_topup ?? false;
+  // Depleted = actual balance (the number shown) at/below zero AND no auto-topup to cover it.
+  // Keying on balance_cents (available, net of provisioned holds) contradicted the displayed
+  // actual_balance_cents; suppress entirely when auto-topup is armed since it backstops the balance.
+  const isDepleted = account ? !hasAutoTopup && parseFloat(creditBalanceCents) <= 0 : false;
 
   // Pre-fill auto-topup fields from existing config
   useEffect(() => {
