@@ -16,6 +16,21 @@ import { DashboardPage } from "@/components/dashboard-page";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 
+// ISO-3166-1 alpha-2 -> display name. Display-only mapping (billing owns the
+// blocklist via `auto_reload_supported`); we only name the country for the notice.
+const COUNTRY_NAMES: Record<string, string> = {
+  IN: "India",
+  PK: "Pakistan",
+  BD: "Bangladesh",
+  NP: "Nepal",
+  LK: "Sri Lanka",
+};
+
+function countryLabel(code: string | null | undefined): string {
+  if (!code) return "your card's country";
+  return COUNTRY_NAMES[code.toUpperCase()] ?? "your card's country";
+}
+
 export default function BillingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -95,6 +110,10 @@ export default function BillingPage() {
 
   const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
   const hasAutoTopup = account?.has_auto_topup ?? false;
+  // Auto-reload (off_session auto-topup) can be impossible for the saved card's issuing
+  // country. Absent/undefined => supported (older billing deploy, today's behavior);
+  // only an explicit `false` blocks the auto-topup controls.
+  const autoReloadSupported = account?.auto_reload_supported !== false;
   // Depleted = actual balance (the number shown) at/below zero AND no auto-topup to cover it.
   // Keying on balance_cents (available, net of provisioned holds) contradicted the displayed
   // actual_balance_cents; suppress entirely when auto-topup is armed since it backstops the balance.
@@ -109,6 +128,12 @@ export default function BillingPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.has_auto_topup, account?.topup_amount_cents, account?.topup_threshold_cents]);
+
+  // Auto-reload unavailable for this card's country: never arm the auto-topup checkbox
+  // (its controls are hidden, and handleTopup must not attempt configureAutoTopup).
+  useEffect(() => {
+    if (!autoReloadSupported) setEnableAutoTopup(false);
+  }, [autoReloadSupported]);
 
   // After successful Stripe checkout, save pending auto-topup settings
   useEffect(() => {
@@ -446,7 +471,8 @@ export default function BillingPage() {
               <p className="text-xs text-red-600 mt-1">{customAmountError}</p>
             )}
 
-            {/* Auto-topup option */}
+            {/* Auto-topup option — hidden when the card's country can't be auto-charged */}
+            {autoReloadSupported ? (
             <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
               <div className="flex items-start gap-3">
                 <input
@@ -498,6 +524,21 @@ export default function BillingPage() {
                 </div>
               )}
             </div>
+            ) : (
+              <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Auto-reload not available</p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      Cards issued in {countryLabel(account?.card_country)} can&apos;t be set up for auto-reload. Add credit any time with the Add Credit button below.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleTopup}

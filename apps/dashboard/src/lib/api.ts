@@ -2850,6 +2850,12 @@ export interface BillingAccount {
   topup_threshold_cents: number | null;
   has_payment_method: boolean;
   has_auto_topup: boolean;
+  // Additive (billing-service v0.40.0+): off_session auto-reload is impossible for cards
+  // issued in some countries (e.g. India / RBI e-mandates). Absent on older billing deploys
+  // => treat as supported (default to today's behavior); only an explicit `false` blocks it.
+  auto_reload_supported?: boolean;
+  auto_reload_unsupported_reason?: string | null;
+  card_country?: string | null;
   created_at: string;
   updated_at: string;
 }
