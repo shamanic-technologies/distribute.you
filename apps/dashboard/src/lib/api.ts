@@ -1740,12 +1740,23 @@ export async function fetchFeatureStats(
 /** GET /features/:featureSlug/audience-stats — real audience-level cost/outcome evidence. */
 export async function fetchFeatureAudienceStats(
   featureSlug: string,
-  params: { brandId: string; goal: FeatureAudienceStatsGoal; brandProfileId?: string; limit?: number },
+  params: {
+    brandId: string;
+    goal: FeatureAudienceStatsGoal;
+    brandProfileId?: string;
+    limit?: number;
+    /** Audience lifecycle statuses to include. Comma-separated subset of
+     *  `active,paused,archived`. Omitted → features-service defaults to active-only
+     *  (preserves the Top-audiences ranking card). The Audiences page passes all
+     *  three so archived audiences show their historical outreach stats. */
+    statuses?: string;
+  },
   token?: string,
 ): Promise<FeatureAudienceStatsResponse> {
   const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
+  if (params.statuses) query.set("statuses", params.statuses);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/audience-stats?${query.toString()}`, { token });
   const parsed = FeatureAudienceStatsResponseSchema.safeParse(raw);
   if (!parsed.success) {
