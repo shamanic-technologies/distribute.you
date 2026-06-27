@@ -2149,6 +2149,9 @@ export interface BillingAccount {
   credited_cents: string;
   usage_cents: string;
   balance_cents: string;
+  // credited minus ACTUALIZED usage only (provisioned holds NOT subtracted). Absent on older
+  // billing deploys; used to split Confirmed vs Provisioned in the credit breakdown.
+  actual_balance_cents?: string;
   topup_amount_cents: number | null;
   topup_threshold_cents: number | null;
   has_payment_method: boolean;
