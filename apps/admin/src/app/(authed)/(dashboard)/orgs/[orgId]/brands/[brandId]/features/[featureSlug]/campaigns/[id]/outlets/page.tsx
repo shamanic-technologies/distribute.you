@@ -418,6 +418,7 @@ export default function CampaignOutletsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const [purchasePriceRequestScope, setPurchasePriceRequestScope] = useState<"page" | string | null>(null);
+  const [purchasePriceErrors, setPurchasePriceErrors] = useState<Map<string, string>>(new Map());
   const hasAutoSelectedTab = useRef(false);
   const outletsQueryKey = ["campaignOutlets", campaignId] as const;
 
@@ -517,10 +518,32 @@ export default function CampaignOutletsPage() {
 
   const requestPurchasePricesMutation = useMutation({
     mutationFn: (outletIds: string[]) => requestOutletPurchasePrices(outletIds),
+    onMutate: (outletIds) => {
+      // Clear any prior error for the outlets we're (re)requesting.
+      setPurchasePriceErrors((prev) => {
+        const next = new Map(prev);
+        for (const id of outletIds) next.delete(id);
+        return next;
+      });
+    },
     onSuccess: (result) => {
       queryClient.setQueryData<OutletListResponse>(outletsQueryKey, (prev) =>
         markOutletPriceRequestsOngoing(prev, result.results),
       );
+      // Per-outlet failures (e.g. no valid editorial email) come back as
+      // status:"error" INSIDE a 200 response — they are not transport errors,
+      // so mutation.isError never fires. Surface them from the result instead.
+      setPurchasePriceErrors((prev) => {
+        const next = new Map(prev);
+        for (const r of result.results) {
+          if (r.status === "error") {
+            next.set(r.outletId, r.error ?? "No editorial email found, couldn't request a price.");
+          } else {
+            next.delete(r.outletId);
+          }
+        }
+        return next;
+      });
       void queryClient.invalidateQueries({ queryKey: outletsQueryKey });
     },
   });
@@ -768,6 +791,13 @@ export default function CampaignOutletsPage() {
               >
                 {requestPurchasePricesMutation.isPending ? "Requesting..." : `Ask Purchase Price (${paginatedOutlets.pageItems.length})`}
               </button>
+              {requestPurchasePricesMutation.data &&
+                requestPurchasePricesMutation.data.results.some((r) => r.status === "error") && (
+                  <p className="self-center text-xs text-red-600">
+                    {requestPurchasePricesMutation.data.results.filter((r) => r.status === "error").length} couldn&apos;t be
+                    requested (no editorial email)
+                  </p>
+                )}
             </div>
           </div>
           <div className="space-y-2">
@@ -829,9 +859,10 @@ export default function CampaignOutletsPage() {
           onFetchDomainRating={() => fetchDomainRatingMutation.mutate(normalizeDomain(selectedOutlet.outletDomain))}
           isRequestingPurchasePrice={requestPurchasePricesMutation.isPending && purchasePriceRequestScope === selectedOutlet.id}
           purchasePriceRequestError={
-            requestPurchasePricesMutation.isError && purchasePriceRequestScope === selectedOutlet.id
+            purchasePriceErrors.get(selectedOutlet.id) ??
+            (requestPurchasePricesMutation.isError && purchasePriceRequestScope === selectedOutlet.id
               ? requestPurchasePricesMutation.error.message
-              : null
+              : null)
           }
           onRequestPurchasePrice={() => {
             setPurchasePriceRequestScope(selectedOutlet.id);
