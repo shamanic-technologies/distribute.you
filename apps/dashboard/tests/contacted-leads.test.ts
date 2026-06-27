@@ -14,7 +14,7 @@ function rawRevenue(series?: Partial<Record<"outreachContacted" | "opened" | "cl
     featureSlug: "sales-cold-email-outreach",
     ...(series ?? {}),
     headline: { totalPipelineUsd: 1000 },
-    costEconomics: { totalCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
+    costEconomics: { actualCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
     timeSeries: [],
     organizations: [],
     leads: [],

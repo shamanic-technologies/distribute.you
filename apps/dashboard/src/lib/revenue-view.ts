@@ -116,14 +116,16 @@ export interface ConversionEvent {
 /**
  * Derived cost economics for the feature+brand — computed by features-service
  * (single source). Always present on a 200; the two ratios are null per the
- * documented null semantics. `totalCostUsd` is real (>= 0) even when pipeline is null.
+ * documented null semantics. `actualCostUsd` is real (>= 0) even when pipeline is null.
  */
 export interface CostEconomics {
-  /** Total run cost in $, brand (+ optional campaign), feature-scoped. */
-  totalCostUsd: number;
-  /** (totalCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
+  /** ACTUAL (billed) run cost in $, brand (+ optional campaign), feature-scoped. ROI/CAC
+   *  ride realized spend, so this EXCLUDES provisioned holds (renamed from the ambiguous
+   *  `totalCostUsd` — features-service#402). */
+  actualCostUsd: number;
+  /** (actualCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
   costOfAcquisitionPct: number | null;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  /** totalPipelineUsd / actualCostUsd. Null when cost is 0 or pipeline is null. */
   roiMultiple: number | null;
   /**
    * Lens-only: expected outcome COUNT = Σ per-lead probability across the lensed
@@ -131,17 +133,24 @@ export interface CostEconomics {
    * features-service is the single source — the dashboard never derives it.
    */
   expectedConversions?: number | null;
-  /** Lens-only: `totalCostUsd / expectedConversions`; null when expectedConversions is 0. */
+  /** Lens-only: `actualCostUsd / expectedConversions`; null when expectedConversions is 0. */
   costPerConversionUsd?: number | null;
 }
 
-/** One pre-computed cost source (descending) in the spend block. */
+/** One pre-computed cost source (descending) in the spend block. The card renders only
+ *  `source` + `sharePct`; the amounts are carried for completeness. */
 export interface SpendSource {
   /** runs-service cost name (billable line item, e.g. "apollo people-search"). */
   source: string;
-  /** Actual spend attributed to this source, USD cents. */
-  spentCents: number;
-  /** This source's share of totalSpentCents, percent (0–100). */
+  /** Committed spend (actual + provisioned) attributed to this source, USD cents. */
+  totalSpentCents?: number;
+  /** Actual (billed) spend attributed to this source, USD cents. */
+  actualSpentCents?: number;
+  /** Provisioned holds attributed to this source, USD cents. */
+  provisionedSpentCents?: number;
+  /** LEGACY actual-only spend (pre features-service#402). */
+  spentCents?: number;
+  /** This source's share of the committed total, percent (0–100). */
   sharePct: number;
 }
 
@@ -184,10 +193,12 @@ export interface Spend {
   /** LEGACY actual-only CPC. Optional for rollout: features-service renames it to
    *  `actualCpcCents`; render `totalCpcCents ?? cpcCents`. */
   cpcCents?: number | null;
-  /** Cost per signup, USD cents (PROJECTED). Null when no usable economics. */
-  cpsCents: number | null;
-  /** Cost per sales meeting booked, USD cents (PROJECTED). Null when no usable economics. */
-  cpsmCents: number | null;
+  /** Cost per signup, USD cents (PROJECTED). REMOVED in features-service#406 → optional;
+   *  absent → the beta CPS card renders "—". */
+  cpsCents?: number | null;
+  /** Cost per sales meeting booked, USD cents (PROJECTED). REMOVED in features-service#406
+   *  → optional; absent → the beta CPSM card renders "—". */
+  cpsmCents?: number | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */
