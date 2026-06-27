@@ -151,9 +151,19 @@ export function CustomerAudiencesPage() {
   // Per-audience outreach / opens / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed
   // evidence simply render "-".
+  // Request stats for ALL user-visible statuses (not just active) so ARCHIVED and
+  // paused audiences show their historical Outreach/Opens/Clicks/CPC — these
+  // audiences had real outreach (runs/email evidence attributed by audienceId).
+  // Distinct query key from the brand-overview Top-audiences card (which omits
+  // `statuses` → active-only ranking) so the two never share/clobber a cache entry.
   const { data: audienceStatsData, isPending: statsIsPending, isPlaceholderData: statsIsPlaceholder } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
-    () => fetchFeatureAudienceStats(featureSlug, { brandId, goal: audienceStatsGoal }),
+    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "all-statuses"],
+    () =>
+      fetchFeatureAudienceStats(featureSlug, {
+        brandId,
+        goal: audienceStatsGoal,
+        statuses: "active,paused,archived",
+      }),
     { enabled: Boolean(featureSlug), ...pollOptions },
   );
   // Skeleton the per-row numbers until the stats query resolves (first load or a
