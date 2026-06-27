@@ -331,6 +331,7 @@ export default function BillingPage() {
         <button
           onClick={() => showPaymentRequired({
             balance_cents: account?.balance_cents,
+            autoReloadSupported,
           })}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 sm:w-auto"
         >

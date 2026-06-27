@@ -70,6 +70,11 @@ export const REMINDER_COPY = {
     body: "Outreach pauses the moment your credits run out. Turn on auto top-up so it keeps sending and you never have to watch the balance.",
     cta: "Turn on auto top-up",
   },
+  topupRecharge: {
+    title: "Add credits to keep going",
+    body: "Your credits ran out, so outreach has paused. Auto top-up isn't available for your card's country, so add credits to start it again.",
+    cta: "Add credits",
+  },
   audience: {
     title: "Add an audience to start",
     body: "We need at least one active audience to know who to contact. Add one and we start finding leads for you right away.",
