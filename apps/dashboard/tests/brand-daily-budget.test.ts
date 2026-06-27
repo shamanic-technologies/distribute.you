@@ -42,6 +42,17 @@ describe("BrandDailyBudgetCard", () => {
     expect(content).toContain('["brandDailyBudget", brandId]');
     expect(content).toContain('queryClient.setQueryData(["brandDailyBudget", brandId]');
   });
+
+  it("blocks a sub-$1/day budget and opens the pause modal instead of saving", () => {
+    expect(content).toContain("MIN_BUDGET_CENTS = 100");
+    expect(content).toContain("if (cents < MIN_BUDGET_CENTS)");
+    expect(content).toContain("setPauseModalOpen(true)");
+  });
+
+  it("the pause modal pauses the brand via setBrandPause(brandId, true)", () => {
+    expect(content).toContain("setBrandPause(brandId, true)");
+    expect(content).toContain("Pause outreach");
+  });
 });
 
 describe("Brand Settings page", () => {
