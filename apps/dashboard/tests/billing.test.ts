@@ -248,11 +248,48 @@ describe("Billing page", () => {
     expect(content).not.toContain("disableAutoReload");
   });
 
-  it("should display credit balance via actual_balance_cents when present", () => {
+  it("should show Available (balance_cents) as the prominent spendable number", () => {
+    expect(content).toContain("availableCents");
+    expect(content).toContain("account?.balance_cents");
+    expect(content).toContain(">Available<");
+    expect(content).toContain("formatBillingCents(availableCents)");
+  });
+
+  it("should render the reconciling credit breakdown (total/confirmed/provisioned)", () => {
+    expect(content).toContain("totalCreditsCents");
+    expect(content).toContain("confirmedChargesCents");
+    expect(content).toContain("provisionedChargesCents");
+    expect(content).toContain("account?.credited_cents");
     expect(content).toContain("actual_balance_cents");
-    expect(content).toContain("creditBalanceCents");
-    expect(content).toContain("balance_cents");
-    expect(content).toContain("Credit Balance");
+    expect(content).toContain("Total credits");
+    expect(content).toContain("Confirmed charges");
+    expect(content).toContain("Provisioned charges");
+  });
+
+  it("should derive confirmed/provisioned from the locked field formulas", () => {
+    // Confirmed = credited − actual_balance; Provisioned = actual_balance − available.
+    expect(content).toContain(
+      "parseFloat(totalCreditsCents) - parseFloat(actualBalanceCents)",
+    );
+    expect(content).toContain(
+      "parseFloat(actualBalanceCents) - parseFloat(availableCents)",
+    );
+  });
+
+  it("should give each breakdown line an info tooltip", () => {
+    expect(content).toContain("function InfoTip");
+    expect(content).toContain('role="tooltip"');
+    // No em-dash (U+2014) in any user-facing string. Code comments are exempt
+    // (CLAUDE.md), so strip // line-comments and /* */ + {/* */} block-comments first.
+    const stripped = content
+      .replace(/\{?\/\*[\s\S]*?\*\/\}?/g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    expect(stripped).not.toContain("—");
+  });
+
+  it("should key depletion on AVAILABLE (balance_cents), not the gross actual balance", () => {
+    expect(content).toContain("parseFloat(availableCents) <= 0");
+    expect(content).not.toContain("parseFloat(creditBalanceCents)");
   });
 
   it("should show depleted warning", () => {
@@ -454,5 +491,46 @@ describe("Billing sidebar link", () => {
 
   it("should have a BillingIcon component", () => {
     expect(content).toContain("BillingIcon");
+  });
+});
+
+describe("Credit breakdown math (Total − Confirmed − Provisioned = Available)", () => {
+  // Mirrors the page derivation on the locked /v1/accounts fields. All math in fractional cents.
+  function breakdown(creditedCents: string, actualBalanceCents: string, balanceCents: string) {
+    const total = parseFloat(creditedCents);
+    const actual = parseFloat(actualBalanceCents);
+    const available = parseFloat(balanceCents);
+    const confirmed = total - actual;
+    const provisioned = actual - available;
+    return { total, confirmed, provisioned, available };
+  }
+
+  it("reconciles the broke-but-positive worked example (-$0.01 available)", () => {
+    // $19.00 total − $12.03 confirmed − $6.98 provisioned = -$0.01 available.
+    const { total, confirmed, provisioned, available } = breakdown("1900", "697", "-1");
+    expect(confirmed).toBeCloseTo(1203, 6);
+    expect(provisioned).toBeCloseTo(698, 6);
+    expect(available).toBeCloseTo(-1, 6);
+    expect(total - confirmed - provisioned).toBeCloseTo(available, 6);
+    // The reported contradiction: gross actual balance reads positive while available is negative.
+    expect(parseFloat("697")).toBeGreaterThan(0);
+    expect(available).toBeLessThan(0);
+  });
+
+  it("holds the identity for full-precision decimal strings", () => {
+    const { total, confirmed, provisioned, available } = breakdown(
+      "5000.4200000000",
+      "1234.5600000000",
+      "1000.0000000000",
+    );
+    expect(total - confirmed - provisioned).toBeCloseTo(available, 6);
+  });
+
+  it("reads provisioned as 0 when actual_balance is absent (actual := available)", () => {
+    // Older billing deploy: actual_balance_cents missing -> fold holds into confirmed.
+    const available = "300";
+    const { confirmed, provisioned } = breakdown("1000", available, available);
+    expect(provisioned).toBeCloseTo(0, 6);
+    expect(confirmed).toBeCloseTo(700, 6);
   });
 });

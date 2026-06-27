@@ -55,6 +55,31 @@ function countryLabel(code: string | null | undefined): string {
   return COUNTRY_NAMES[code.toUpperCase()] ?? "your card's country";
 }
 
+// Small (i) info affordance with a hover/focus tooltip. Full-perimeter 1px border + bg tint
+// (no side/top accent). `title` gives a native fallback for touch + screen readers.
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex items-center align-middle">
+      <button
+        type="button"
+        aria-label={text}
+        title={text}
+        className="flex h-4 w-4 items-center justify-center rounded-full text-gray-400 transition hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-300"
+      >
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 hidden w-60 -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-2.5 text-xs leading-relaxed text-gray-600 shadow-lg group-hover:block group-focus-within:block"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
 export default function BillingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -139,16 +164,28 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
-  const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
+  // Credit breakdown (math in fractional cents; format once at render). The three lines
+  // reconcile: total credits − confirmed charges − provisioned charges = available.
+  //   credited_cents        = lifetime credited            -> Total credits
+  //   actual_balance_cents  = credited minus ACTUALIZED usage only (holds not yet subtracted)
+  //   balance_cents         = credited minus usage INCLUDING provisioned holds -> Available (spendable)
+  // When actual_balance_cents is absent (older billing deploy) holds are unknown, so fold them
+  // into confirmed (actual := balance) and provisioned reads 0 — never a guessed hold value.
+  const totalCreditsCents = account?.credited_cents ?? "0";
+  const availableCents = account?.balance_cents ?? "0";
+  const actualBalanceCents = account?.actual_balance_cents ?? availableCents;
+  const confirmedChargesCents = parseFloat(totalCreditsCents) - parseFloat(actualBalanceCents);
+  const provisionedChargesCents = parseFloat(actualBalanceCents) - parseFloat(availableCents);
+
   const hasAutoTopup = account?.has_auto_topup ?? false;
   // Auto-reload (off_session auto-topup) can be impossible for the saved card's issuing
   // country. Absent/undefined => supported (older billing deploy, today's behavior);
   // only an explicit `false` blocks the auto-topup controls.
   const autoReloadSupported = account?.auto_reload_supported !== false;
-  // Depleted = actual balance (the number shown) at/below zero AND no auto-topup to cover it.
-  // Keying on balance_cents (available, net of provisioned holds) contradicted the displayed
-  // actual_balance_cents; suppress entirely when auto-topup is armed since it backstops the balance.
-  const isDepleted = account ? !hasAutoTopup && parseFloat(creditBalanceCents) <= 0 : false;
+  // Depleted keys on AVAILABLE (balance_cents, net of provisioned holds) — the number that
+  // actually gates spending — NOT the gross actual balance, which can read positive while
+  // available is already negative. Suppressed when auto-topup is armed (it backstops the balance).
+  const isDepleted = account ? !hasAutoTopup && parseFloat(availableCents) <= 0 : false;
 
   // Pre-fill auto-topup fields from existing config
   useEffect(() => {
@@ -346,9 +383,12 @@ export default function BillingPage() {
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm text-gray-500">Credit Balance</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm text-gray-500">Available</p>
+                <InfoTip text="What you can spend right now: total credits minus confirmed and provisioned charges." />
+              </div>
               <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(creditBalanceCents)}
+                {formatBillingCents(availableCents)}
               </p>
             </div>
             <div className="sm:text-right">
@@ -367,6 +407,32 @@ export default function BillingPage() {
                   {portalLoading ? "Opening..." : "Manage payment method"}
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Reconciling breakdown: Total credits − Confirmed − Provisioned = Available.
+              Makes the numbers stop contradicting each other and explains why Available moves. */}
+          <div className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                Total credits
+                <InfoTip text="Everything added to your account, including top-ups." />
+              </span>
+              <span className="text-sm font-medium text-gray-900">{formatBillingCents(totalCreditsCents)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                Confirmed charges
+                <InfoTip text="Emails already sent and billed. This won't change." />
+              </span>
+              <span className="text-sm font-medium text-gray-700">-{formatBillingCents(confirmedChargesCents)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                Provisioned charges
+                <InfoTip text="Reserved for follow-up emails we've scheduled. It rises when we plan new follow-ups and drops when one sends (it becomes a confirmed charge) or gets cancelled because a contact replied or couldn't be reached. That's why your available amount changes over time." />
+              </span>
+              <span className="text-sm font-medium text-gray-700">-{formatBillingCents(provisionedChargesCents)}</span>
             </div>
           </div>
         </div>
