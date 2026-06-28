@@ -7,11 +7,9 @@ import { ChevronDownIcon, InformationCircleIcon } from "@heroicons/react/24/outl
 import { EmailSignature } from "@/components/email-signature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { pollOptions } from "@/lib/query-options";
 import {
   fetchFeatureCandidates,
@@ -220,24 +218,8 @@ function Stat({
   );
 }
 
-/** Whole-page beta gate: non-beta users see this instead of the page body. The
- *  beta badge rides the sidebar nav entry; this is the in-page fallback. */
-function NotAvailable() {
-  return (
-    <DashboardPage width="narrow">
-      <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-        <h1 className="text-lg font-semibold text-gray-900">Strategy</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          This page is in beta and is not available on your account yet.
-        </p>
-      </div>
-    </DashboardPage>
-  );
-}
-
 export function StrategyPage() {
   const featureSlug = useSoleFeatureSlug();
-  const isBeta = useIsBetaUser();
   const revenueOk = isRevenueFeature(featureSlug);
 
   const params = useParams();
@@ -327,8 +309,6 @@ export function StrategyPage() {
     { ...pollOptions, enabled: examplesOpen && !!bestSlug && !!brandId },
   );
 
-  if (!isBeta) return <NotAvailable />;
-
   return (
     <DashboardPage>
       <div className="space-y-6">
@@ -336,7 +316,6 @@ export function StrategyPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-gray-900">Strategy</h1>
-            <MaturityBadge level="beta" />
           </div>
           <p className="mt-1 text-sm text-gray-500">
             How we run cold outreach for this brand, and which model performs best.

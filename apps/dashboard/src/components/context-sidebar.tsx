@@ -10,7 +10,6 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -402,7 +401,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 }) {
   const featureSlug = useSoleFeatureSlug();
   const { isLoading: featuresLoading } = useFeatures();
-  const isBeta = useIsBetaUser();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
   // The old "Database" section (raw entity rows: Leads/Emails/Outlets/…) stays
@@ -436,18 +434,17 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    // Strategy — beta (Kevin + Adam): a read-only recap of the brand's objective,
-    // conversion economics, and the best-performing model with its cost per
-    // outcome cross-org / per-brand / per-audience. Beta-gated off the email
-    // allowlist (the badge rides this nav entry). Sits directly under Overview.
-    ...(revenueOk && isBeta
+    // Strategy — a read-only recap of the brand's objective, conversion
+    // economics, and the best-performing model with its cost per outcome
+    // cross-org / per-brand / per-audience. GA (revenue features only). Sits
+    // directly under Overview.
+    ...(revenueOk
       ? [
           {
             id: "strategy",
             label: "Strategy",
             href: `${basePath}/strategy`,
             icon: <StrategyIcon />,
-            maturity: "beta",
           } satisfies SidebarItem,
         ]
       : []),
