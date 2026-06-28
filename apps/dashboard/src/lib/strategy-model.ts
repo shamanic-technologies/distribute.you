@@ -100,23 +100,79 @@ export function offerLeverValue(
 export interface BestModelEvidence {
   /** The cross-org prior row for this workflow (cost sampled across all orgs). */
   crossOrg: FeatureCandidate | null;
+  /** The audienceId-null fallback row for this workflow at whatever coarse grain it
+   *  resolved to (brand-goal when the brand has its own economics, else goal-global).
+   *  Used for audiences with no own evidence (the brand-average → cross-org rungs). */
+  fallback: FeatureCandidate | null;
   /** Per-audience rows for this workflow (cost attributed to one audience). */
   audiences: FeatureCandidate[];
 }
 
 /**
- * Group the served candidate rows for ONE workflow into its cross-org prior row
- * and its per-audience rows. Pure filter/group — picks server-provided values,
- * computes nothing.
+ * Group the served candidate rows for ONE workflow into its cross-org prior row,
+ * its coarse fallback row, and its per-audience rows. Pure filter/group — picks
+ * server-provided values, computes nothing.
  */
 export function selectBestModelEvidence(
   candidates: FeatureCandidate[],
   bestDynastySlug: string | null,
 ): BestModelEvidence {
-  if (!bestDynastySlug) return { crossOrg: null, audiences: [] };
+  if (!bestDynastySlug) return { crossOrg: null, fallback: null, audiences: [] };
   const mine = candidates.filter((c) => c.workflow.workflowDynastySlug === bestDynastySlug);
   const crossOrg =
     mine.find((c) => c.cost.grain === "goal-global" && c.audienceId == null) ?? null;
+  // The single audienceId-null fallback for this workflow — coarse grain (brand-goal
+  // or goal-global). Drives the brand-average / cross-org rungs for audiences with no
+  // own evidence.
+  const fallback = mine.find((c) => c.audienceId == null) ?? null;
   const audiences = mine.filter((c) => c.cost.grain === "audience" && c.audienceId != null);
-  return { crossOrg, audiences };
+  return { crossOrg, fallback, audiences };
+}
+
+/** Which rung of the audience → brand-average → cross-org ladder supplied a row. */
+export type AudienceMetricProvenance = "own" | "brand" | "crossOrg";
+
+/** One audience's per-metric estimate for the best workflow, all server-provided. */
+export interface AudienceMetricRow {
+  id: string;
+  name: string;
+  /** Which fallback rung the values came from (own audience data first). */
+  provenance: AudienceMetricProvenance;
+  /** CPC — cost per click (USD). */
+  clickUsd: number | null;
+  /** CPS — cost per goal-outcome (signup / meeting, USD). */
+  costPerOutcomeUsd: number | null;
+  /** ROI — lifetime return multiple. */
+  roiMultiple: number | null | undefined;
+  /** CAC — cost to win one paying client (USD). */
+  costPerCloseUsd: number | null | undefined;
+}
+
+/**
+ * Build one metric row per active audience for the best workflow, resolving each
+ * audience through the audience-own → brand-average → cross-org fallback ladder.
+ * Every value is read straight from a server candidate (no client metric math) —
+ * this only PICKS which candidate (own row else the coarse fallback) per audience.
+ */
+export function buildAudienceMetricRows(
+  activeAudiences: ReadonlyArray<{ id: string; name: string }>,
+  evidence: BestModelEvidence,
+): AudienceMetricRow[] {
+  const ownById = new Map(evidence.audiences.map((c) => [c.audienceId as string, c]));
+  const fb = evidence.fallback;
+  const fbProvenance: AudienceMetricProvenance =
+    fb?.grain === "goal-global" ? "crossOrg" : "brand";
+  return activeAudiences.map((a) => {
+    const own = ownById.get(a.id);
+    const c = own ?? fb;
+    return {
+      id: a.id,
+      name: a.name,
+      provenance: own ? "own" : fbProvenance,
+      clickUsd: c?.cost.clickUsd ?? null,
+      costPerOutcomeUsd: c?.costPerOutcomeUsd ?? null,
+      roiMultiple: c?.roiMultiple ?? null,
+      costPerCloseUsd: c?.costPerCloseUsd ?? null,
+    };
+  });
 }

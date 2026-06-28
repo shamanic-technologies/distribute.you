@@ -1789,6 +1789,12 @@ export interface FeatureCandidate {
   grain: FeatureCandidateGrain;
   /** The goal metric: cost per goal-outcome (USD). Null at cold start (no economics). */
   costPerOutcomeUsd: number | null;
+  /** Cost to win one paying client (cost per close, USD), at this candidate's grain.
+   *  `.optional()` decouples the features-service rollout — renders `-` until live. */
+  costPerCloseUsd?: number | null;
+  /** Lifetime ROI multiple (LTR ÷ costPerCloseUsd = 100 / cacPct), at this candidate's
+   *  grain. `.optional()` decouples the features-service rollout. */
+  roiMultiple?: number | null;
   conversion: {
     rate: number | null;
     grain: "brand-goal" | "goal-global" | null;
@@ -1822,6 +1828,9 @@ const FeatureCandidateSchema = z.object({
   goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
   grain: z.union([z.literal("audience"), z.literal("brand-goal"), z.literal("goal-global")]),
   costPerOutcomeUsd: z.number().nullable(),
+  // Additive — features-service rollout decoupled via .optional(). See FeatureCandidate.
+  costPerCloseUsd: z.number().nullable().optional(),
+  roiMultiple: z.number().nullable().optional(),
   conversion: z.object({
     rate: z.number().nullable(),
     grain: z.union([z.literal("brand-goal"), z.literal("goal-global")]).nullable(),
