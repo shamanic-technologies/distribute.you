@@ -425,6 +425,17 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
+    // Leads sits directly below Overview. GA (revenue features only).
+    ...(revenueOk
+      ? [
+          {
+            id: "audience-leads",
+            label: "Leads",
+            href: `${basePath}/audiences/leads`,
+            icon: <LeadsIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
     // Strategy — beta (Kevin + Adam): a read-only recap of the brand's objective,
     // conversion economics, and the best-performing model with its cost per
     // outcome cross-org / per-brand / per-audience. Beta-gated off the email
@@ -448,12 +459,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Audiences",
             href: `${basePath}/audiences`,
             icon: <AudiencesIcon />,
-          } satisfies SidebarItem,
-          {
-            id: "audience-leads",
-            label: "Leads",
-            href: `${basePath}/audiences/leads`,
-            icon: <LeadsIcon />,
           } satisfies SidebarItem,
         ]
       : []),
