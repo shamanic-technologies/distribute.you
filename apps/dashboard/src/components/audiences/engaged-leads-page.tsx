@@ -160,6 +160,54 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
+// Per-lead activity timeline: one entry per delivery event that occurred, built
+// from the email-gateway first-occurrence timestamps (forwarded by lead-service),
+// most-recent first. Email bodies + follow-ups will interleave here once
+// content-generation exposes a per-lead reader (Phase 2). Renders nothing until
+// at least one timestamp is present (additive backend rollout).
+function LeadTimeline({ lead }: { lead: Lead }) {
+  const replyColor =
+    lead.replyClassification === "positive" ? "bg-green-500"
+      : lead.replyClassification === "negative" ? "bg-red-500"
+        : "bg-violet-500";
+  const events: { label: string; at: string; dot: string }[] = [
+    { label: "Contacted", at: lead.firstContactedAt ?? "", dot: "bg-gray-400" },
+    { label: "Sent", at: lead.firstSentAt ?? "", dot: "bg-blue-400" },
+    { label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
+    { label: "Opened", at: lead.firstOpenedAt ?? "", dot: "bg-indigo-500" },
+    { label: "Clicked", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
+    {
+      label: lead.replyClassification ? `Replied (${lead.replyClassification})` : "Replied",
+      at: lead.firstRepliedAt ?? "",
+      dot: replyColor,
+    },
+    { label: "Bounced", at: lead.firstBouncedAt ?? "", dot: "bg-red-500" },
+    { label: "Unsubscribed", at: lead.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
+  ]
+    .filter((e) => !!e.at)
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+  if (events.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Activity timeline</h3>
+      <ol className="relative ml-1">
+        {events.map((e, i) => (
+          <li key={`${e.label}-${e.at}`} className="relative pl-5 pb-4 last:pb-0">
+            {i < events.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
+            <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot}`} aria-hidden />
+            <p className="text-sm font-medium text-gray-800">{e.label}</p>
+            <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
+              {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {timeAgo(e.at)}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function LeadsLoadingSkeleton() {
   return (
     <>
@@ -533,6 +581,7 @@ export function EngagedLeadsPage() {
                 </div>
               </div>
             )}
+            <LeadTimeline lead={selectedLead} />
             {selectedLead.servedAt && (
               <div className="mt-4 text-xs text-gray-400">Served: {new Date(selectedLead.servedAt).toLocaleString()}</div>
             )}

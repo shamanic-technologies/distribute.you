@@ -35,6 +35,7 @@ type PctKey =
   | "visitToSignupPct"
   | "signupToPaidClientPct";
 type RequiredFieldKey =
+  | "lifetimeRevenueUsd"
   | "replyToMeetingPct"
   | "visitToMeetingPct"
   | "visitToSignupPct";
@@ -116,6 +117,7 @@ const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]>
 };
 
 const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
+  lifetimeRevenueUsd: "Customer Lifetime Revenue",
   replyToMeetingPct: "Positive reply → meeting",
   visitToMeetingPct: "Website visit → meeting",
   visitToSignupPct: "Website visit → signup",
@@ -194,6 +196,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
 
   function handleSave() {
     const requiredFields: RequiredFieldKey[] = [
+      "lifetimeRevenueUsd",
       ...REQUIRED_FIELDS_BY_GOAL[form.optimizationGoal],
     ];
     const missing = requiredFields.filter((key) => !hasNumericValue(form[key]));
@@ -270,6 +273,29 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Customer Lifetime Revenue */}
+          <div>
+            <label
+              className="block text-xs text-gray-500 mb-1"
+              title="Average total revenue (not gross margin) one customer brings over their lifetime."
+            >
+              Customer Lifetime Revenue
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                $
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={form.lifetimeRevenueUsd}
+                onChange={(e) => update("lifetimeRevenueUsd", e.target.value)}
+                onBlur={() => normalizeNumberInput("lifetimeRevenueUsd")}
+                className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+              />
+            </div>
+          </div>
+
           {/* Conversion rates — only those relevant to the selected goal */}
           {visiblePctFields.map((f) => (
             <div key={f.key}>
