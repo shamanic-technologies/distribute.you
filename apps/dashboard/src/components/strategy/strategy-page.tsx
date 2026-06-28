@@ -403,12 +403,11 @@ export function StrategyPage() {
           action={<EditLink href={brandProfileHref} />}
         >
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-xs font-semibold text-gray-500"
-              aria-hidden
-            >
-              AH
-            </span>
+            <img
+              src="/alex-hormozi.png"
+              alt="Alex Hormozi"
+              className="h-9 w-9 shrink-0 rounded-full border border-gray-300 object-cover"
+            />
             <p className="text-xs text-gray-500">
               The stronger and clearer these are, the better each email converts. Anything
               marked not set is worth filling in.
@@ -428,7 +427,7 @@ export function StrategyPage() {
                 return (
                   <li key={lever.key} className="px-4 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                      {lever.label}
+                      <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
                     </p>
                     {lines.length === 0 ? (
                       <p className="mt-1 text-sm text-gray-400">
