@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -12,6 +13,7 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { pollOptions } from "@/lib/query-options";
 import {
   fetchFeatureCandidates,
+  getBrandProfile,
   getBrandSalesEconomics,
   getWorkflowProjection,
   listAudiences,
@@ -21,6 +23,8 @@ import {
   goalForOptimizationGoal,
   modelAvatar,
   objectiveForOptimizationGoal,
+  OFFER_LEVERS,
+  offerLeverValue,
   outcomeNoun,
   projectionCostKey,
   selectBestModelEvidence,
@@ -104,6 +108,7 @@ export function StrategyPage() {
 
   const params = useParams();
   const brandId = params.brandId as string;
+  const orgId = params.orgId as string;
 
   const [examplesOpen, setExamplesOpen] = useState(false);
 
@@ -141,6 +146,16 @@ export function StrategyPage() {
     () => listAudiences(brandId, { status: "active" }),
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
+
+  // Brand profile — the offer fields we optimise conversion against. Same data as
+  // the Brand Profile editor in settings; here it's a read view.
+  const { data: profileData, isPending: profilePending } = useAuthQuery(
+    ["brandProfile", brandId],
+    () => getBrandProfile(brandId),
+    { ...pollOptions, enabled: revenueOk && !!brandId },
+  );
+  const profileFields = profileData?.current?.fields ?? null;
+  const brandProfileHref = `/orgs/${orgId}/brands/${brandId}/brand-profile`;
 
   // Best model = the recommended workflow (lowest cost per outcome), else the
   // first ranked workflow.
@@ -190,9 +205,9 @@ export function StrategyPage() {
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-brand-700">
             We send cold sales emails to your prospects on your behalf, from our own
-            warmed sending domains. The outreach is signed in your name and we speak
-            to each prospect as your brand. You set the goal and the budget. We find
-            the prospects, write the emails, send them, and forward the warm replies.
+            warmed sending domains. The outreach is signed in our name and we speak
+            to each prospect as our marketing agency. You set the goal and the budget.
+            We find the prospects, write the emails, send them, and forward the warm replies.
           </p>
         </section>
 
@@ -233,6 +248,71 @@ export function StrategyPage() {
               brand builds its own history.
             </p>
           ) : null}
+        </Card>
+
+        {/* What we use to optimise conversion — the offer, read from Brand Profile */}
+        <Card
+          title="What we use to optimize your conversion"
+          subtitle="Your offer through the Alex Hormozi value equation. We write the emails around these. Edit them in Brand Profile."
+        >
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-xs font-semibold text-gray-500"
+              aria-hidden
+            >
+              AH
+            </span>
+            <p className="text-xs text-gray-500">
+              The stronger and clearer these are, the better each email converts. Anything
+              marked not set is worth filling in.
+            </p>
+          </div>
+
+          {profilePending ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
+              {OFFER_LEVERS.map((lever) => {
+                const lines = offerLeverValue(profileFields, lever.key);
+                return (
+                  <li key={lever.key} className="px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      {lever.label}
+                    </p>
+                    {lines.length === 0 ? (
+                      <p className="mt-1 text-sm text-gray-400">
+                        Not set yet.{" "}
+                        <Link href={brandProfileHref} className="text-brand-600 hover:underline">
+                          Add in Brand Profile
+                        </Link>
+                      </p>
+                    ) : lines.length === 1 ? (
+                      <p className="mt-1 text-sm text-gray-700">{lines[0]}</p>
+                    ) : (
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-gray-700">
+                        {lines.map((line, i) => (
+                          <li key={i}>{line}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <div className="mt-3">
+            <Link
+              href={brandProfileHref}
+              className="text-xs font-medium text-brand-600 hover:underline"
+            >
+              Edit your offer in Brand Profile
+            </Link>
+          </div>
         </Card>
 
         {/* Best model */}
