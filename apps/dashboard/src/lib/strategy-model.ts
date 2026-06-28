@@ -68,16 +68,33 @@ export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): Sales
 export interface OfferLever {
   key: string;
   label: string;
+  tip: string;
 }
 
 export const OFFER_LEVERS: OfferLever[] = [
-  { key: "services", label: "Services sold" },
-  { key: "valueProposition", label: "Dream outcome" },
-  { key: "perceivedLikelihood", label: "Perceived likelihood of success" },
-  { key: "socialProof", label: "Social proof" },
-  { key: "riskReversal", label: "Risk reversal" },
-  { key: "urgency", label: "Urgency" },
-  { key: "scarcity", label: "Scarcity" },
+  { key: "services", label: "Services sold", tip: "What you actually deliver to the client." },
+  {
+    key: "valueProposition",
+    label: "Dream outcome",
+    tip: "The result your customer wants most.",
+  },
+  {
+    key: "perceivedLikelihood",
+    label: "Perceived likelihood of success",
+    tip: "Proof it will work for them.",
+  },
+  {
+    key: "socialProof",
+    label: "Social proof",
+    tip: "Other people who got results.",
+  },
+  {
+    key: "riskReversal",
+    label: "Risk reversal",
+    tip: "A guarantee that removes their risk.",
+  },
+  { key: "urgency", label: "Urgency", tip: "A reason to act now." },
+  { key: "scarcity", label: "Scarcity", tip: "Limited availability." },
 ];
 
 /**
