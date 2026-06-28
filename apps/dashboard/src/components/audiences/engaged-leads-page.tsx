@@ -351,20 +351,21 @@ export function EngagedLeadsPage() {
 
   // Audience per lead — human-service owns the email → audience membership
   // (name); `listAudiences` supplies the avatar. Joined client-side, fetched
-  // on-demand off the engaged leads' emails (no widening of `listBrandLeads`).
-  const engagedEmails = useMemo(
+  // on-demand off the leads' emails (no widening of `listBrandLeads`). Cover
+  // EVERY lead with an email — the audience column renders on all tabs, so
+  // limiting the lookup to clicked/positive leads left Opens/Outreach blank.
+  const leadEmails = useMemo(
     () => Array.from(new Set(
       leads
-        .filter((l) => l.clicked || l.replyClassification === "positive")
         .map((l) => l.email)
         .filter((e): e is string => !!e),
     )),
     [leads],
   );
   const { data: audStatsData } = useAuthQuery(
-    ["audienceStats", brandId, engagedEmails],
-    () => getAudienceMembershipStats({ emails: engagedEmails }),
-    { enabled: engagedEmails.length > 0 },
+    ["audienceStats", brandId, leadEmails],
+    () => getAudienceMembershipStats({ emails: leadEmails }),
+    { enabled: leadEmails.length > 0 },
   );
   const { data: audiencesData } = useAuthQuery(
     ["audiences", brandId],
