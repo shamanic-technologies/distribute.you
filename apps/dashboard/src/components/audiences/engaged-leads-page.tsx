@@ -86,6 +86,27 @@ function timeAgo(date: string | Date): string {
   return `${years}y ago`;
 }
 
+// Firmographic display helpers (reassurance fields). The values come from the
+// `view=basic` org projection (widened lead-service-side); render "-" until
+// present so the page ships ahead of the producer.
+function formatEmployees(n: number | null | undefined): string {
+  if (n == null) return "-";
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  return `${n}`;
+}
+
+function formatRevenue(v: string | number | null | undefined): string {
+  if (v == null || v === "") return "-";
+  const n = typeof v === "number" ? v : Number(v);
+  // annualRevenue can arrive as a numeric string (e.g. "12000000") or an
+  // already-formatted band (e.g. "$1M-$10M"); only reformat the numeric case.
+  if (!Number.isFinite(n) || (typeof v === "string" && !/^\d+(\.\d+)?$/.test(v.trim()))) return String(v);
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
+
 // Shared logo.dev token (also used in `BrandLogo`, public
 // `components/report/leads-table.tsx`, and the landing's
 // `provider-avatar.tsx`). Replaces the old Google S2 favicons surface to
@@ -192,11 +213,13 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
   }
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full min-w-[480px] text-sm">
+      <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             <th className="px-4 py-3">Company</th>
             <th className="px-4 py-3">Contact</th>
+            <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
+            <th className="px-4 py-3 hidden lg:table-cell">Revenue</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 hidden sm:table-cell">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Date</th>
@@ -233,6 +256,8 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
                     )}
                   </div>
                 </td>
+                <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
+                <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600">{formatRevenue(org?.annualRevenue)}</span></td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
@@ -358,15 +383,26 @@ export function EngagedLeadsPage() {
     return groups;
   }, [sortedLeads]);
 
-  // Open the tab matching what the brand optimizes for (once, after leads + the
-  // goal have loaded). User manual tab switches latch the ref and are never
-  // overridden by a later poll. Honors the goal tab even when empty.
+  // Open, once (after leads + the sales-economics query have settled), the
+  // leftmost funnel tab that has leads, ordered by what the brand optimizes for:
+  // signups → Clicks first, sales_meetings → Positive replies first, otherwise
+  // Opens then Outreach. Within each order we fall through to the next non-empty
+  // tab so the user never lands on an empty tab. User manual switches latch the
+  // ref and are never overridden by a later poll. Gate on `econData` (not
+  // `optimizationGoal`, which is null both while loading AND when unset).
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
-    if (sortedLeads.length === 0 || optimizationGoal === null) return;
+    if (sortedLeads.length === 0 || econData === undefined) return;
     hasAutoSelectedTab.current = true;
-    setActiveTab(optimizationGoal === "signups" ? "clicks" : "positive-replies");
-  }, [sortedLeads.length, optimizationGoal]);
+    const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
+    const order: Tab[] =
+      optimizationGoal === "signups"
+        ? ["clicks", "opens", "outreach", "positive-replies", "all"]
+        : optimizationGoal === "sales_meetings"
+          ? ["positive-replies", "clicks", "opens", "outreach", "all"]
+          : ["opens", "outreach", "clicks", "positive-replies", "all"];
+    setActiveTab(order.find((t) => count(t) > 0) ?? "all");
+  }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
@@ -400,6 +436,8 @@ export function EngagedLeadsPage() {
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
+  const personLocation = [selectedFull?.city, selectedFull?.state, selectedFull?.country].filter(Boolean).join(", ");
+  const orgLocation = [selectedOrg?.city, selectedOrg?.state, selectedOrg?.country].filter(Boolean).join(", ");
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
@@ -471,6 +509,10 @@ export function EngagedLeadsPage() {
                   {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
+                {selectedFull?.seniority && <div><span className="text-gray-500">Seniority:</span><p className="font-medium capitalize">{selectedFull.seniority}</p></div>}
+                {personLocation && <div><span className="text-gray-500">Location:</span><p className="font-medium">{personLocation}</p></div>}
+                {selectedFull?.departments?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Departments:</span><p className="font-medium">{selectedFull.departments.join(", ")}</p></div> : null}
+                {selectedFull?.functions?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Functions:</span><p className="font-medium">{selectedFull.functions.join(", ")}</p></div> : null}
                 <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={statusOf(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
@@ -482,7 +524,12 @@ export function EngagedLeadsPage() {
                   <div><span className="text-gray-500">Company:</span><p className="font-medium">{selectedOrg.name || "-"}</p></div>
                   <div><span className="text-gray-500">Domain:</span><p className="font-medium">{selectedOrg.primaryDomain || "-"}</p></div>
                   <div><span className="text-gray-500">Industry:</span><p className="font-medium">{selectedOrg.industry || "-"}</p></div>
-                  <div><span className="text-gray-500">Size:</span><p className="font-medium">{selectedOrg.estimatedNumEmployees != null ? `${selectedOrg.estimatedNumEmployees} employees` : "-"}</p></div>
+                  <div><span className="text-gray-500">Revenue:</span><p className="font-medium">{formatRevenue(selectedOrg.annualRevenue)}</p></div>
+                  <div><span className="text-gray-500">Size:</span><p className="font-medium">{selectedOrg.estimatedNumEmployees != null ? `${selectedOrg.estimatedNumEmployees.toLocaleString("en-US")} employees` : "-"}</p></div>
+                  {selectedOrg.foundedYear != null && <div><span className="text-gray-500">Founded:</span><p className="font-medium">{selectedOrg.foundedYear}</p></div>}
+                  {orgLocation && <div><span className="text-gray-500">Location:</span><p className="font-medium">{orgLocation}</p></div>}
+                  {selectedOrg.industries?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Other industries:</span><p className="font-medium">{selectedOrg.industries.join(", ")}</p></div> : null}
+                  {selectedOrg.shortDescription && <div className="sm:col-span-2"><span className="text-gray-500">About:</span><p className="font-medium text-gray-700 font-normal">{selectedOrg.shortDescription}</p></div>}
                 </div>
               </div>
             )}
