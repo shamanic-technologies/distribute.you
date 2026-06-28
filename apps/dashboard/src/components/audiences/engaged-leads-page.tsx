@@ -11,8 +11,10 @@ import {
   getAudienceMembershipStats,
   listAudiences,
   getBrandSalesEconomics,
+  getLeadEmail,
   type Lead,
   type LeadConsolidatedStatus,
+  type LeadEmailGeneration,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { Skeleton } from "@/components/skeleton";
@@ -107,6 +109,20 @@ function formatRevenue(v: string | number | null | undefined): string {
   return `$${n}`;
 }
 
+// Plain-text preview of an email body (strip tags) when only bodyHtml exists.
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // Shared logo.dev token (also used in `BrandLogo`, public
 // `components/report/leads-table.tsx`, and the landing's
 // `provider-avatar.tsx`). Replaces the old Google S2 favicons surface to
@@ -160,47 +176,98 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
-// Per-lead activity timeline: one entry per delivery event that occurred, built
-// from the email-gateway first-occurrence timestamps (forwarded by lead-service),
-// most-recent first. Email bodies + follow-ups will interleave here once
-// content-generation exposes a per-lead reader (Phase 2). Renders nothing until
-// at least one timestamp is present (additive backend rollout).
-function LeadTimeline({ lead }: { lead: Lead }) {
+// A single merged timeline entry: a delivery EVENT (dot + label + date) or the
+// actual EMAIL we sent (subject + body, expandable), interleaved chronologically.
+type TimelineEntry =
+  | { kind: "event"; at: string; label: string; dot: string }
+  | { kind: "email"; at: string; label: string; subject: string | null; body: string };
+
+function emailBodyText(html: string | null | undefined, text: string | null | undefined): string {
+  if (text && text.trim()) return text.trim();
+  if (html && html.trim()) return htmlToText(html);
+  return "";
+}
+
+// Per-lead activity timeline: delivery events (from the email-gateway
+// first-occurrence timestamps forwarded by lead-service) interleaved with the
+// actual emails we sent — initial + each follow-up step — most-recent first.
+// The email content is fetched on-demand by leadId (content-generation). Renders
+// nothing until at least one event timestamp OR an email is present.
+function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration | null }) {
   const replyColor =
     lead.replyClassification === "positive" ? "bg-green-500"
       : lead.replyClassification === "negative" ? "bg-red-500"
         : "bg-violet-500";
-  const events: { label: string; at: string; dot: string }[] = [
-    { label: "Contacted", at: lead.firstContactedAt ?? "", dot: "bg-gray-400" },
-    { label: "Sent", at: lead.firstSentAt ?? "", dot: "bg-blue-400" },
-    { label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
-    { label: "Opened", at: lead.firstOpenedAt ?? "", dot: "bg-indigo-500" },
-    { label: "Clicked", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
+
+  const entries: TimelineEntry[] = [
+    { kind: "event", label: "Contacted", at: lead.firstContactedAt ?? "", dot: "bg-gray-400" },
+    { kind: "event", label: "Sent", at: lead.firstSentAt ?? "", dot: "bg-blue-400" },
+    { kind: "event", label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
+    { kind: "event", label: "Opened", at: lead.firstOpenedAt ?? "", dot: "bg-indigo-500" },
+    { kind: "event", label: "Clicked", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
     {
+      kind: "event",
       label: lead.replyClassification ? `Replied (${lead.replyClassification})` : "Replied",
       at: lead.firstRepliedAt ?? "",
       dot: replyColor,
     },
-    { label: "Bounced", at: lead.firstBouncedAt ?? "", dot: "bg-red-500" },
-    { label: "Unsubscribed", at: lead.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
-  ]
+    { kind: "event", label: "Bounced", at: lead.firstBouncedAt ?? "", dot: "bg-red-500" },
+    { kind: "event", label: "Unsubscribed", at: lead.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
+  ];
+
+  // Place emails at their send time. The lead's firstSentAt is when the initial
+  // email went out; follow-up steps are offset by their cumulative daysSinceLastStep.
+  // Fall back to the generation createdAt when no send timestamp exists yet.
+  if (email) {
+    const anchor = lead.firstSentAt ?? email.createdAt ?? "";
+    const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
+    const initialBody = emailBodyText(email.bodyHtml, email.bodyText);
+    if (email.subject || initialBody) {
+      entries.push({ kind: "email", label: "Email sent", at: anchor, subject: email.subject ?? null, body: initialBody });
+    }
+    let cumDays = 0;
+    for (const step of email.sequence ?? []) {
+      const body = emailBodyText(step.bodyHtml, step.bodyText);
+      if (!body) continue;
+      cumDays += step.daysSinceLastStep || 0;
+      // Skip a step that duplicates the initial body (some sequences include step 1).
+      if (cumDays === 0 && body === initialBody) continue;
+      const at = Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "";
+      entries.push({ kind: "email", label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`, at, subject: email.subject ?? null, body });
+    }
+  }
+
+  const sorted = entries
     .filter((e) => !!e.at)
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
-  if (events.length === 0) return null;
+  if (sorted.length === 0) return null;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Activity timeline</h3>
       <ol className="relative ml-1">
-        {events.map((e, i) => (
-          <li key={`${e.label}-${e.at}`} className="relative pl-5 pb-4 last:pb-0">
-            {i < events.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
-            <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot}`} aria-hidden />
-            <p className="text-sm font-medium text-gray-800">{e.label}</p>
+        {sorted.map((e, i) => (
+          <li key={`${e.kind}-${e.label}-${e.at}-${i}`} className="relative pl-5 pb-4 last:pb-0">
+            {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
+            <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.kind === "email" ? "bg-brand-500" : e.dot}`} aria-hidden />
+            <p className="text-sm font-medium text-gray-800">
+              {e.kind === "email" && (
+                <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              )}
+              {e.label}
+            </p>
             <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
               {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {timeAgo(e.at)}
             </p>
+            {e.kind === "email" && (
+              <details className="mt-1.5 group">
+                <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
+                  {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
+                </summary>
+                <pre className="mt-1.5 whitespace-pre-wrap break-words font-sans text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded p-2">{e.body}</pre>
+              </details>
+            )}
           </li>
         ))}
       </ol>
@@ -485,6 +552,15 @@ export function EngagedLeadsPage() {
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
+  // The lead's generated email (initial + follow-ups) — fetched on-demand from
+  // content-generation (via api-service) when a lead is selected, keyed off the
+  // leadId already on the row. Interleaved into the timeline. (#2095 pattern.)
+  const selectedLeadId = selectedLead?.leadId ?? null;
+  const { data: leadEmailData } = useAuthQuery(
+    ["leadEmail", selectedLeadId],
+    () => getLeadEmail(selectedLeadId as string),
+    { enabled: !!selectedLeadId },
+  );
   const personLocation = [selectedFull?.city, selectedFull?.state, selectedFull?.country].filter(Boolean).join(", ");
   const orgLocation = [selectedOrg?.city, selectedOrg?.state, selectedOrg?.country].filter(Boolean).join(", ");
 
@@ -582,7 +658,7 @@ export function EngagedLeadsPage() {
                 </div>
               </div>
             )}
-            <LeadTimeline lead={selectedLead} />
+            <LeadTimeline lead={selectedLead} email={leadEmailData?.generation ?? null} />
             {selectedLead.servedAt && (
               <div className="mt-4 text-xs text-gray-400">Served: {new Date(selectedLead.servedAt).toLocaleString()}</div>
             )}
