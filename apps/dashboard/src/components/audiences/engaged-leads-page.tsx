@@ -17,6 +17,7 @@ import {
   type LeadEmailGeneration,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
@@ -222,16 +223,29 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     const anchor = lead.firstSentAt ?? email.createdAt ?? "";
     const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
     const initialBody = emailBodyText(email.bodyHtml, email.bodyText);
-    if (email.subject || initialBody) {
+    // The initial "Email sent" entry: prefer the generation's top-level body. Some
+    // generations leave that empty and carry the initial email as sequence step 1 —
+    // so never push an empty "Email sent" row here; fall through to claim step 1 below.
+    let initialDone = false;
+    if (initialBody) {
       entries.push({ kind: "email", label: "Email sent", at: anchor, subject: email.subject ?? null, body: initialBody });
+      initialDone = true;
     }
     let cumDays = 0;
     for (const step of email.sequence ?? []) {
       const body = emailBodyText(step.bodyHtml, step.bodyText);
       if (!body) continue;
       cumDays += step.daysSinceLastStep || 0;
-      // Skip a step that duplicates the initial body (some sequences include step 1).
-      if (cumDays === 0 && body === initialBody) continue;
+      // Step 1 IS the initial email. If the top-level body was empty, this step
+      // becomes the "Email sent" entry; otherwise it duplicates the initial — skip.
+      const isInitial = step.step === 1 || (cumDays === 0 && body === initialBody);
+      if (isInitial) {
+        if (!initialDone) {
+          entries.push({ kind: "email", label: "Email sent", at: anchor, subject: email.subject ?? null, body });
+          initialDone = true;
+        }
+        continue;
+      }
       const at = Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "";
       entries.push({ kind: "email", label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`, at, subject: email.subject ?? null, body });
     }
@@ -265,7 +279,10 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                 <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
                   {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
                 </summary>
-                <pre className="mt-1.5 whitespace-pre-wrap break-words font-sans text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded p-2">{e.body}</pre>
+                <div className="mt-1.5 bg-gray-50 border border-gray-100 rounded p-2">
+                  <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
+                  <EmailSignature className="text-xs" />
+                </div>
               </details>
             )}
           </li>
