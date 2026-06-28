@@ -104,18 +104,23 @@ function leadStatusStyle(status: LeadConsolidatedStatus): string {
 function timeAgo(date: string | Date): string {
   const now = new Date();
   const then = new Date(date);
-  const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+  const diffSeconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+  // Future events (e.g. scheduled follow-up steps) read as negative — render
+  // them as "in N…" instead of collapsing to "just now".
+  const future = diffSeconds < 0;
+  const seconds = Math.abs(diffSeconds);
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  const fmt = (value: string) => (future ? `in ${value}` : `${value} ago`);
+  if (minutes < 1) return future ? "soon" : "just now";
+  if (minutes < 60) return fmt(`${minutes}m`);
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return fmt(`${hours}h`);
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return fmt(`${days}d`);
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
+  if (months < 12) return fmt(`${months}mo`);
   const years = Math.floor(months / 12);
-  return `${years}y ago`;
+  return fmt(`${years}y`);
 }
 
 // Firmographic display helpers (reassurance fields). The values come from the
