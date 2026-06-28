@@ -33,11 +33,7 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "buffered",
 ];
 
-type Tab = "positive-replies" | "website-visits" | "all";
-
-function isEngagedLead(lead: Lead): boolean {
-  return lead.clicked || lead.replyClassification === "positive";
-}
+type Tab = "positive-replies" | "clicks" | "opens" | "outreach" | "all";
 
 function leadStatusLabel(status: LeadConsolidatedStatus): string {
   switch (status) {
@@ -269,7 +265,7 @@ export function EngagedLeadsPage() {
     { refetchInterval: POLL_INTERVAL },
   );
 
-  const leads = useMemo(() => (data?.leads ?? []).filter(isEngagedLead), [data]);
+  const leads = useMemo(() => data?.leads ?? [], [data]);
 
   // Brand optimization goal drives the default tab: signups → Website visits,
   // sales_meetings (server default when unset) → Positive replies.
@@ -284,7 +280,12 @@ export function EngagedLeadsPage() {
   // (name); `listAudiences` supplies the avatar. Joined client-side, fetched
   // on-demand off the engaged leads' emails (no widening of `listBrandLeads`).
   const engagedEmails = useMemo(
-    () => Array.from(new Set(leads.map((l) => l.email).filter((e): e is string => !!e))),
+    () => Array.from(new Set(
+      leads
+        .filter((l) => l.clicked || l.replyClassification === "positive")
+        .map((l) => l.email)
+        .filter((e): e is string => !!e),
+    )),
     [leads],
   );
   const { data: audStatsData } = useAuthQuery(
@@ -344,11 +345,15 @@ export function EngagedLeadsPage() {
   const groupedByTab = useMemo(() => {
     const groups = new Map<Tab, Lead[]>();
     groups.set("positive-replies", []);
-    groups.set("website-visits", []);
+    groups.set("clicks", []);
+    groups.set("opens", []);
+    groups.set("outreach", []);
     groups.set("all", sortedLeads);
     for (const lead of sortedLeads) {
       if (lead.replyClassification === "positive") groups.get("positive-replies")?.push(lead);
-      if (lead.clicked) groups.get("website-visits")?.push(lead);
+      if (lead.clicked) groups.get("clicks")?.push(lead);
+      if (lead.opened) groups.get("opens")?.push(lead);
+      if (lead.contacted) groups.get("outreach")?.push(lead);
     }
     return groups;
   }, [sortedLeads]);
@@ -360,7 +365,7 @@ export function EngagedLeadsPage() {
     if (hasAutoSelectedTab.current) return;
     if (sortedLeads.length === 0 || optimizationGoal === null) return;
     hasAutoSelectedTab.current = true;
-    setActiveTab(optimizationGoal === "signups" ? "website-visits" : "positive-replies");
+    setActiveTab(optimizationGoal === "signups" ? "clicks" : "positive-replies");
   }, [sortedLeads.length, optimizationGoal]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
@@ -380,7 +385,9 @@ export function EngagedLeadsPage() {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "positive-replies", label: "Positive replies", count: groupedByTab.get("positive-replies")?.length ?? 0 },
-    { key: "website-visits", label: "Website visits", count: groupedByTab.get("website-visits")?.length ?? 0 },
+    { key: "clicks", label: "Clicks", count: groupedByTab.get("clicks")?.length ?? 0 },
+    { key: "opens", label: "Opens", count: groupedByTab.get("opens")?.length ?? 0 },
+    { key: "outreach", label: "Outreach", count: groupedByTab.get("outreach")?.length ?? 0 },
     { key: "all", label: "All", count: sortedLeads.length },
   ];
 
@@ -404,7 +411,7 @@ export function EngagedLeadsPage() {
             {loading ? (
               <Skeleton className="ml-2 inline-block h-4 w-56 align-middle" />
             ) : (
-              <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} with website visits or positive replies)</span>
+              <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} leads)</span>
             )}
           </h1>
         </div>
@@ -434,8 +441,8 @@ export function EngagedLeadsPage() {
 
             {leads.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No engaged leads yet</h3>
-                <p className="text-gray-600 text-sm">Leads appear here after a website visit or a positive reply.</p>
+                <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
+                <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
               <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} />
