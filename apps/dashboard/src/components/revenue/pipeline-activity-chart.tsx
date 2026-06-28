@@ -300,7 +300,7 @@ export function PipelineActivityChart({
       </div>
 
       <div ref={scrollRef} className="overflow-x-auto">
-        <div className="h-[300px]" style={{ minWidth }}>
+        <div className="h-[300px] lg:h-[200px]" style={{ minWidth }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
