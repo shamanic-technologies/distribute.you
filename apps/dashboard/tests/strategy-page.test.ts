@@ -234,12 +234,10 @@ describe("brand-profile field set carries the new levers", () => {
 describe("StrategyPage source guards", () => {
   const page = read("../src/components/strategy/strategy-page.tsx");
 
-  it("is beta-gated on the email allowlist", () => {
-    expect(page).toContain("useIsBetaUser");
-    expect(page).toContain("if (!isBeta) return <NotAvailable />");
-  });
-  it("carries a beta MaturityBadge", () => {
-    expect(page).toContain('<MaturityBadge level="beta" />');
+  it("is GA — no beta gate", () => {
+    expect(page).not.toContain("useIsBetaUser");
+    expect(page).not.toContain("if (!isBeta) return <NotAvailable />");
+    expect(page).not.toContain('<MaturityBadge level="beta" />');
   });
   it("reads the best model + 3-level cost per outcome from served endpoints", () => {
     expect(page).toContain("getWorkflowProjection");
@@ -298,10 +296,9 @@ describe("StrategyPage source guards", () => {
 
 describe("Strategy nav entry", () => {
   const sidebar = read("../src/components/context-sidebar.tsx");
-  it("is wired as a beta-gated brand-level item", () => {
+  it("is wired as a GA revenue-feature brand-level item", () => {
     expect(sidebar).toContain('id: "strategy"');
-    expect(sidebar).toContain("revenueOk && isBeta");
-    expect(sidebar).toContain('maturity: "beta"');
+    expect(sidebar).not.toContain("revenueOk && isBeta");
   });
   it("has a route page", () => {
     const route = read(
