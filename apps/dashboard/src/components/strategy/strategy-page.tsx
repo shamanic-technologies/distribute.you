@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { EmailSignature } from "@/components/email-signature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -19,6 +21,7 @@ import {
   listAudiences,
   listWorkflowExamples,
 } from "@/lib/api";
+import type { WorkflowExampleEmail } from "@/lib/api";
 import {
   goalForOptimizationGoal,
   modelAvatar,
@@ -47,18 +50,123 @@ function formatPct(pct: number | null | undefined): string {
 function Card({
   title,
   subtitle,
+  action,
   children,
 }: {
   title: string;
   subtitle?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
-      <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
-      {subtitle ? <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p> : null}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
+          {subtitle ? <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
       <div className="mt-4">{children}</div>
     </section>
+  );
+}
+
+/** Top-right "Edit" text link for a card header. */
+function EditLink({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="text-xs font-medium text-brand-600 hover:underline whitespace-nowrap"
+    >
+      Edit
+    </Link>
+  );
+}
+
+/**
+ * One example email rendered as an expandable card: collapsed shows the lead +
+ * subject + first body lines; expanded shows the full sequence (initial email +
+ * each follow-up, with its delay) plus the static outbound signature. Mirrors the
+ * admin campaigns/new "See example emails" card so the user sees the real output,
+ * follow-ups included. From line is always distribute.you (agency-domain model).
+ */
+function ExampleEmailCard({
+  email,
+  expanded,
+  onToggle,
+}: {
+  email: WorkflowExampleEmail;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const firstBody = email.sequence?.[0]?.bodyText ?? email.bodyText;
+  const steps =
+    email.sequence && email.sequence.length > 0
+      ? email.sequence
+      : firstBody
+        ? [{ step: 1, bodyText: firstBody, bodyHtml: "", daysSinceLastStep: 0 }]
+        : [];
+  const lead =
+    [email.leadFirstName, email.leadLastName].filter(Boolean).join(" ") || "Lead";
+  const otherSource = email.scope === "org" || email.scope === "global";
+  const sourceLabel =
+    email.brandName || (email.scope === "org" ? "another brand" : "another workspace");
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full cursor-pointer rounded-lg border border-gray-200 bg-white p-3 text-left transition hover:border-gray-300"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate text-xs font-medium text-gray-800">
+          {lead}
+          {email.leadCompany ? ` · ${email.leadCompany}` : ""}
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          {otherSource ? (
+            <span
+              title="Example from another brand / workspace, shown so you can preview this model"
+              className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700"
+            >
+              Example · {sourceLabel}
+            </span>
+          ) : null}
+          {steps.length > 0 ? (
+            <ChevronDownIcon
+              className={`h-3.5 w-3.5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+          ) : null}
+        </span>
+      </div>
+      {email.subject ? (
+        <div className="mt-1 truncate text-xs font-semibold text-gray-700">{email.subject}</div>
+      ) : null}
+      <p className="mt-0.5 text-[11px] text-gray-400">From: distribute.you</p>
+      {!expanded && firstBody ? (
+        <div className="mt-1 line-clamp-3 whitespace-pre-wrap text-[11px] text-gray-500">
+          {firstBody}
+        </div>
+      ) : null}
+      {expanded ? (
+        <div className="mt-2 space-y-2">
+          {steps.map((s) => (
+            <div key={s.step} className="border-t border-gray-100 pt-2">
+              {steps.length > 1 ? (
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  {s.step === 1
+                    ? "Initial email"
+                    : `Follow-up ${s.step - 1}${s.daysSinceLastStep ? ` · ${s.daysSinceLastStep} day${s.daysSinceLastStep === 1 ? "" : "s"} later` : ""}`}
+                </div>
+              ) : null}
+              <div className="mt-0.5 whitespace-pre-wrap text-[11px] text-gray-600">{s.bodyText}</div>
+              {s.bodyText ? <EmailSignature className="text-[11px] text-gray-500" /> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </button>
   );
 }
 
@@ -111,6 +219,7 @@ export function StrategyPage() {
   const orgId = params.orgId as string;
 
   const [examplesOpen, setExamplesOpen] = useState(false);
+  const [expandedExampleId, setExpandedExampleId] = useState<string | null>(null);
 
   // Objective + conversion economics for the brand (drives the goal mapping).
   const { data: econData, isPending: econPending } = useAuthQuery(
@@ -140,8 +249,10 @@ export function StrategyPage() {
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
 
-  // Active audiences — to label the per-audience evidence rows by name + avatar.
-  const { data: audiencesData } = useAuthQuery(
+  // Active audiences — the brand's full active set. Every one is shown in the best
+  // model's per-audience list (with its own cost where it has run evidence, else the
+  // cross-org cost), so the count never undercounts to "only audiences with evidence".
+  const { data: audiencesData, isPending: audiencesPending } = useAuthQuery(
     ["audiences", brandId, "active"],
     () => listAudiences(brandId, { status: "active" }),
     { ...pollOptions, enabled: revenueOk && !!brandId },
@@ -156,6 +267,7 @@ export function StrategyPage() {
   );
   const profileFields = profileData?.current?.fields ?? null;
   const brandProfileHref = `/orgs/${orgId}/brands/${brandId}/brand-profile`;
+  const settingsHref = `/orgs/${orgId}/brands/${brandId}/settings`;
 
   // Best model = the recommended workflow (lowest cost per outcome), else the
   // first ranked workflow.
@@ -171,8 +283,21 @@ export function StrategyPage() {
   const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
 
   const evidence = selectBestModelEvidence(candidatesData?.candidates ?? [], bestSlug);
-  const audienceName = (audienceId: string): string =>
-    audiencesData?.audiences.find((a) => a.id === audienceId)?.name ?? "Audience";
+
+  // Every active audience gets a row. Cost = its own per-audience number where it has
+  // run evidence, else the cross-org cost (matches the "starts from cross-org, earns
+  // its own number" copy). Pure display join — costs stay server-provided.
+  const activeAudiences = audiencesData?.audiences ?? [];
+  const audienceCostById = new Map<string, number | null | undefined>(
+    evidence.audiences.map((c) => [c.audienceId as string, c.costPerOutcomeUsd]),
+  );
+  const crossOrgCost = evidence.crossOrg?.costPerOutcomeUsd ?? null;
+  const audienceRows = activeAudiences.map((a) => ({
+    id: a.id,
+    name: a.name,
+    costPerOutcomeUsd: audienceCostById.has(a.id) ? audienceCostById.get(a.id) : crossOrgCost,
+    hasOwnCost: audienceCostById.has(a.id),
+  }));
 
   // Example emails for the best model — fetched on demand (drawer), cascade
   // brand → org → global; empty is a clean "no examples yet" state.
@@ -215,6 +340,7 @@ export function StrategyPage() {
         <Card
           title="The plan"
           subtitle="Your objective and the conversion rates we optimise against."
+          action={<EditLink href={settingsHref} />}
         >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat
@@ -254,6 +380,7 @@ export function StrategyPage() {
         <Card
           title="What we use to optimize your conversion"
           subtitle="Your offer through the Alex Hormozi value equation. We write the emails around these. Edit them in Brand Profile."
+          action={<EditLink href={brandProfileHref} />}
         >
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
             <span
@@ -304,15 +431,6 @@ export function StrategyPage() {
               })}
             </ul>
           )}
-
-          <div className="mt-3">
-            <Link
-              href={brandProfileHref}
-              className="text-xs font-medium text-brand-600 hover:underline"
-            >
-              Edit your offer in Brand Profile
-            </Link>
-          </div>
         </Card>
 
         {/* Best model */}
@@ -374,9 +492,9 @@ export function StrategyPage() {
                 />
                 <Stat
                   label="Active audiences"
-                  pending={candPending}
-                  value={String(evidence.audiences.length)}
-                  hint="With their own per-audience cost below"
+                  pending={audiencesPending}
+                  value={String(activeAudiences.length)}
+                  hint="With their per-audience cost below"
                 />
               </div>
 
@@ -385,29 +503,34 @@ export function StrategyPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Cost per {noun}, by audience
                 </p>
-                {candPending ? (
+                {candPending || audiencesPending ? (
                   <div className="mt-2 space-y-2">
                     {[0, 1].map((i) => (
                       <Skeleton key={i} className="h-10 w-full" />
                     ))}
                   </div>
-                ) : evidence.audiences.length === 0 ? (
+                ) : audienceRows.length === 0 ? (
                   <p className="mt-2 text-sm text-gray-500">
-                    No per-audience performance yet. Every audience starts from the
-                    cross-org cost above and earns its own number as we run it.
+                    No active audience yet. Once you activate an audience it appears here
+                    with its cost per {noun}.
                   </p>
                 ) : (
                   <ul className="mt-2 divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
-                    {evidence.audiences.map((c) => (
+                    {audienceRows.map((a) => (
                       <li
-                        key={`${c.audienceId}-${c.workflow.workflowDynastySlug}`}
+                        key={a.id}
                         className="flex items-center justify-between gap-3 px-4 py-2.5"
                       >
-                        <span className="min-w-0 truncate text-sm text-gray-700">
-                          {audienceName(c.audienceId as string)}
-                        </span>
-                        <span className="shrink-0 text-sm font-semibold text-gray-900">
-                          {formatUsd(c.costPerOutcomeUsd)}
+                        <span className="min-w-0 truncate text-sm text-gray-700">{a.name}</span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          {!a.hasOwnCost ? (
+                            <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                              starting estimate
+                            </span>
+                          ) : null}
+                          <span className="text-sm font-semibold text-gray-900">
+                            {formatUsd(a.costPerOutcomeUsd)}
+                          </span>
                         </span>
                       </li>
                     ))}
@@ -426,26 +549,26 @@ export function StrategyPage() {
                   {examplesOpen ? "Hide example emails" : "See example emails"}
                 </button>
                 {examplesOpen ? (
-                  <div className="mt-3 space-y-3">
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[11px] text-gray-400">
+                      Click an email to see the full message and its follow-ups.
+                    </p>
                     {examplesPending ? (
-                      [0, 1, 2].map((i) => <Skeleton key={i} className="h-24 w-full" />)
+                      [0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full" />)
                     ) : (examplesData?.examples ?? []).length === 0 ? (
                       <p className="text-sm text-gray-500">
                         No example emails for this model yet.
                       </p>
                     ) : (
                       examplesData?.examples.map((ex) => (
-                        <div key={ex.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {ex.subject ?? "(no subject)"}
-                          </p>
-                          <p className="mt-0.5 text-[11px] text-gray-400">From: distribute.you</p>
-                          {ex.bodyText ? (
-                            <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-gray-600 line-clamp-6">
-                              {ex.bodyText}
-                            </p>
-                          ) : null}
-                        </div>
+                        <ExampleEmailCard
+                          key={ex.id}
+                          email={ex}
+                          expanded={expandedExampleId === ex.id}
+                          onToggle={() =>
+                            setExpandedExampleId((cur) => (cur === ex.id ? null : ex.id))
+                          }
+                        />
                       ))
                     )}
                   </div>
