@@ -163,6 +163,8 @@ export interface AudienceMetricRow {
   roiMultiple: number | null | undefined;
   /** CAC — cost to win one paying client (USD). */
   costPerCloseUsd: number | null | undefined;
+  /** CAC% — cost to win one paying client as a share of lifetime revenue (%). */
+  cacPct: number | null | undefined;
 }
 
 /**
@@ -190,6 +192,7 @@ export function buildAudienceMetricRows(
       costPerOutcomeUsd: c?.costPerOutcomeUsd ?? null,
       roiMultiple: c?.roiMultiple ?? null,
       costPerCloseUsd: c?.costPerCloseUsd ?? null,
+      cacPct: c?.cacPct ?? null,
     };
   });
 }

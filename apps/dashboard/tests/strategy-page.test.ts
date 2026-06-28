@@ -34,6 +34,7 @@ function candidate(over: Partial<FeatureCandidate> & {
     costPerOutcomeUsd: over.costPerOutcomeUsd,
     costPerCloseUsd: over.costPerCloseUsd,
     roiMultiple: over.roiMultiple,
+    cacPct: over.cacPct,
     conversion: { rate: 0.1, grain: "brand-goal", sampleSize: null },
     cost: {
       costPerLeadUsd: 1,
@@ -121,6 +122,7 @@ describe("buildAudienceMetricRows — audience → brand-average → cross-org l
     clickUsd: 4,
     roiMultiple: 6,
     costPerCloseUsd: 200,
+    cacPct: 8,
   });
 
   it("uses an audience's OWN row + reads CPC/CPS/ROI/CAC verbatim", () => {
@@ -132,6 +134,7 @@ describe("buildAudienceMetricRows — audience → brand-average → cross-org l
       costPerOutcomeUsd: 40,
       roiMultiple: 6,
       costPerCloseUsd: 200,
+      cacPct: 8,
     });
   });
 
@@ -272,20 +275,28 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain("activeAudiences");
     expect(page).toContain("audienceRows");
   });
-  it("shows the four served projected-economics boxes for this brand", () => {
+  it("shows the five served projected-economics boxes for this brand", () => {
     expect(page).toContain("This brand cost / click");
     expect(page).toContain("bestWf.clickUsd");
+    expect(page).toContain("This brand cost / paid client");
+    expect(page).toContain("bestWf.costPerCloseUsd");
     expect(page).toContain("Projected lifetime revenue on each dollar spent");
     expect(page).toContain("Projected cost of acquisition");
     expect(page).toContain("bestWf.projection?.cacPct");
   });
-  it("renders the per-audience metric table with CPC/CPS/ROI/CAC tooltips", () => {
+  it("renders the per-audience metric table with expansion-first CPC/CPS/ROI/CAC tooltips", () => {
     expect(page).toContain("buildAudienceMetricRows");
     expect(page).toContain("MetricLabel");
     expect(page).toContain('text="CPC"');
     expect(page).toContain('text="CAC"');
     expect(page).toContain('text="ROI"');
     expect(page).toContain("formatRoi");
+    // CAC is rendered as a % (cost-to-win ÷ lifetime revenue), not a $ amount
+    expect(page).toContain("formatPct(a.cacPct)");
+    // tooltips spell out the abbreviation first
+    expect(page).toContain("Cost per click -");
+    expect(page).toContain("Customer acquisition cost -");
+    expect(page).toContain("Return on investment -");
     // the confusing single-value label is gone
     expect(page).not.toContain("starting estimate");
   });
