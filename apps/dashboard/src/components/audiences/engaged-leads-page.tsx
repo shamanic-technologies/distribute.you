@@ -252,12 +252,12 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     const anchor = lead.firstSentAt ?? email.createdAt ?? "";
     const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
     const initialBody = emailBodyText(email.bodyHtml, email.bodyText);
-    // The initial "Email sent" entry: prefer the generation's top-level body. Some
+    // The initial "Initial email" entry: prefer the generation's top-level body. Some
     // generations leave that empty and carry the initial email as sequence step 1 —
-    // so never push an empty "Email sent" row here; fall through to claim step 1 below.
+    // so never push an empty "Initial email" row here; fall through to claim step 1 below.
     let initialDone = false;
     if (initialBody) {
-      entries.push({ kind: "email", label: "Email sent", at: anchor, subject: email.subject ?? null, body: initialBody });
+      entries.push({ kind: "email", label: "Initial email", at: anchor, subject: email.subject ?? null, body: initialBody });
       initialDone = true;
     }
     let cumDays = 0;
@@ -266,11 +266,11 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
       if (!body) continue;
       cumDays += step.daysSinceLastStep || 0;
       // Step 1 IS the initial email. If the top-level body was empty, this step
-      // becomes the "Email sent" entry; otherwise it duplicates the initial — skip.
+      // becomes the "Initial email" entry; otherwise it duplicates the initial — skip.
       const isInitial = step.step === 1 || (cumDays === 0 && body === initialBody);
       if (isInitial) {
         if (!initialDone) {
-          entries.push({ kind: "email", label: "Email sent", at: anchor, subject: email.subject ?? null, body });
+          entries.push({ kind: "email", label: "Initial email", at: anchor, subject: email.subject ?? null, body });
           initialDone = true;
         }
         continue;
@@ -280,9 +280,29 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     }
   }
 
+  // Same-date tie-break: most-advanced stage on top, oldest at the bottom.
+  // (Primary sort is still timestamp desc; this only orders entries sharing the
+  // same instant — e.g. Sent / Delivered / Initial email all at firstSentAt.)
+  const stageRank = (e: TimelineEntry): number => {
+    if (e.kind === "email") return e.label === "Initial email" ? 1 : 3; // follow-ups above initial, below Sent
+    const l = e.label;
+    if (l.startsWith("Replied")) return 9;
+    if (l === "Unsubscribed") return 8;
+    if (l === "Bounced") return 8;
+    if (l === "Clicked") return 7;
+    if (l === "Opened") return 6;
+    if (l === "Delivered") return 5;
+    if (l === "Sent") return 4;
+    if (l === "Contacted") return 2;
+    return 0;
+  };
+
   const sorted = entries
     .filter((e) => !!e.at)
-    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+    .sort((a, b) => {
+      const dt = new Date(b.at).getTime() - new Date(a.at).getTime();
+      return dt !== 0 ? dt : stageRank(b) - stageRank(a);
+    });
 
   if (sorted.length === 0) return null;
 
