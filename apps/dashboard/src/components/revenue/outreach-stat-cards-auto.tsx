@@ -22,7 +22,18 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
  * `OutreachStatCards` directly (they already hold the stats); this wrapper is for
  * the entity pages that otherwise carry no stats.
  */
-export function OutreachStatCardsAuto() {
+export function OutreachStatCardsAuto({
+  outreachOverride,
+}: {
+  /**
+   * When set, the Outreach count comes from this value instead of the legacy
+   * `/stats` `leadsContacted` aggregate. The leads page passes its contacted-lead
+   * count (from the SAME `listBrandLeads` snapshot the table + tabs render) so the
+   * box and the Outreach tab move together — mirrors the brand Overview's
+   * `outreachContacted` single source (features-service #371/#372).
+   */
+  outreachOverride?: number | null;
+} = {}) {
   const params = useParams();
   const brandId = params.brandId as string;
   const campaignId = params.id as string | undefined;
@@ -62,6 +73,7 @@ export function OutreachStatCardsAuto() {
       stats={featureStats}
       pending={!statsRevealed}
       optimizationGoal={optimizationGoal}
+      outreachOverride={outreachOverride}
     />
   );
 }

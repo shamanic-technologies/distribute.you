@@ -271,7 +271,13 @@ describe("StrategyPage source guards", () => {
   it("lists every active audience (not only ones with evidence) in the best model", () => {
     expect(page).toContain("activeAudiences");
     expect(page).toContain("audienceRows");
-    expect(page).toContain("value={String(activeAudiences.length)}");
+  });
+  it("shows the four served projected-economics boxes for this brand", () => {
+    expect(page).toContain("This brand cost / click");
+    expect(page).toContain("bestWf.clickUsd");
+    expect(page).toContain("Projected lifetime revenue on each dollar spent");
+    expect(page).toContain("Projected cost of acquisition");
+    expect(page).toContain("bestWf.projection?.cacPct");
   });
   it("renders the per-audience metric table with CPC/CPS/ROI/CAC tooltips", () => {
     expect(page).toContain("buildAudienceMetricRows");
