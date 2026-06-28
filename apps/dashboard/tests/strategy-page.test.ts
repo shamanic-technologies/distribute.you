@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import {
+  buildAudienceMetricRows,
   goalForOptimizationGoal,
   modelAvatar,
   objectiveForOptimizationGoal,
@@ -11,7 +12,7 @@ import {
   projectionCostKey,
   selectBestModelEvidence,
 } from "../src/lib/strategy-model";
-import type { FeatureCandidate } from "../src/lib/api";
+import type { FeatureCandidate, FeatureCandidateGrain } from "../src/lib/api";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
@@ -20,17 +21,23 @@ function candidate(over: Partial<FeatureCandidate> & {
   audienceId: string | null;
   costGrain: "goal-global" | "audience";
   costPerOutcomeUsd: number | null;
+  grain?: FeatureCandidateGrain;
+  clickUsd?: number | null;
+  roiMultiple?: number | null;
+  costPerCloseUsd?: number | null;
 }): FeatureCandidate {
   return {
     audienceId: over.audienceId,
     workflow: { workflowDynastySlug: over.workflowDynastySlug, workflowDynastyName: "Pelican" },
     goal: "meetingBooked",
-    grain: over.costGrain === "audience" ? "audience" : "goal-global",
+    grain: over.grain ?? (over.costGrain === "audience" ? "audience" : "goal-global"),
     costPerOutcomeUsd: over.costPerOutcomeUsd,
+    costPerCloseUsd: over.costPerCloseUsd,
+    roiMultiple: over.roiMultiple,
     conversion: { rate: 0.1, grain: "brand-goal", sampleSize: null },
     cost: {
       costPerLeadUsd: 1,
-      clickUsd: 2,
+      clickUsd: over.clickUsd ?? 2,
       replyUsd: 3,
       grain: over.costGrain,
       sampleSize: { runs: 1, contacted: 1, clicks: 1, replies: 1 },
@@ -87,7 +94,97 @@ describe("selectBestModelEvidence — groups served rows, never computes", () =>
   it("is empty when there is no best pick", () => {
     const e = selectBestModelEvidence(candidates, null);
     expect(e.crossOrg).toBeNull();
+    expect(e.fallback).toBeNull();
     expect(e.audiences).toEqual([]);
+  });
+  it("returns the audienceId-null fallback row (any coarse grain)", () => {
+    const brandFallback = candidate({
+      workflowDynastySlug: "b2",
+      audienceId: null,
+      costGrain: "goal-global",
+      grain: "brand-goal",
+      costPerOutcomeUsd: 55,
+    });
+    const e = selectBestModelEvidence([brandFallback], "b2");
+    // fallback keys on audienceId-null (any coarse grain); summary grain = brand-goal
+    expect(e.fallback?.grain).toBe("brand-goal");
+  });
+});
+
+describe("buildAudienceMetricRows — audience → brand-average → cross-org ladder", () => {
+  const ownA1 = candidate({
+    workflowDynastySlug: "best",
+    audienceId: "a1",
+    costGrain: "audience",
+    grain: "audience",
+    costPerOutcomeUsd: 40,
+    clickUsd: 4,
+    roiMultiple: 6,
+    costPerCloseUsd: 200,
+  });
+
+  it("uses an audience's OWN row + reads CPC/CPS/ROI/CAC verbatim", () => {
+    const evidence = selectBestModelEvidence([ownA1], "best");
+    const rows = buildAudienceMetricRows([{ id: "a1", name: "Founders" }], evidence);
+    expect(rows[0]).toMatchObject({
+      provenance: "own",
+      clickUsd: 4,
+      costPerOutcomeUsd: 40,
+      roiMultiple: 6,
+      costPerCloseUsd: 200,
+    });
+  });
+
+  it("falls back to BRAND average (grain=brand-goal) for an audience with no own row", () => {
+    const brandFb = candidate({
+      workflowDynastySlug: "best",
+      audienceId: null,
+      costGrain: "goal-global",
+      grain: "brand-goal",
+      costPerOutcomeUsd: 55,
+      roiMultiple: 5,
+      costPerCloseUsd: 220,
+    });
+    const evidence = selectBestModelEvidence([ownA1, brandFb], "best");
+    const rows = buildAudienceMetricRows(
+      [
+        { id: "a1", name: "Founders" },
+        { id: "a2", name: "Marketers" },
+      ],
+      evidence,
+    );
+    expect(rows.find((r) => r.id === "a1")?.provenance).toBe("own");
+    expect(rows.find((r) => r.id === "a2")).toMatchObject({
+      provenance: "brand",
+      costPerOutcomeUsd: 55,
+      roiMultiple: 5,
+      costPerCloseUsd: 220,
+    });
+  });
+
+  it("falls back to CROSS-ORG (grain=goal-global) when there is no brand average", () => {
+    const crossFb = candidate({
+      workflowDynastySlug: "best",
+      audienceId: null,
+      costGrain: "goal-global",
+      grain: "goal-global",
+      costPerOutcomeUsd: 70,
+    });
+    const evidence = selectBestModelEvidence([crossFb], "best");
+    const rows = buildAudienceMetricRows([{ id: "a9", name: "New" }], evidence);
+    expect(rows[0]?.provenance).toBe("crossOrg");
+    expect(rows[0]?.costPerOutcomeUsd).toBe(70);
+  });
+
+  it("emits nulls (never a synthesized 0) when no candidate covers an audience", () => {
+    const evidence = selectBestModelEvidence([], "best");
+    const rows = buildAudienceMetricRows([{ id: "a1", name: "Founders" }], evidence);
+    expect(rows[0]).toMatchObject({
+      clickUsd: null,
+      costPerOutcomeUsd: null,
+      roiMultiple: null,
+      costPerCloseUsd: null,
+    });
   });
 });
 
@@ -175,6 +272,16 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain("activeAudiences");
     expect(page).toContain("audienceRows");
     expect(page).toContain("value={String(activeAudiences.length)}");
+  });
+  it("renders the per-audience metric table with CPC/CPS/ROI/CAC tooltips", () => {
+    expect(page).toContain("buildAudienceMetricRows");
+    expect(page).toContain("MetricLabel");
+    expect(page).toContain('text="CPC"');
+    expect(page).toContain('text="CAC"');
+    expect(page).toContain('text="ROI"');
+    expect(page).toContain("formatRoi");
+    // the confusing single-value label is gone
+    expect(page).not.toContain("starting estimate");
   });
   it("shows full example emails with follow-ups", () => {
     expect(page).toContain("ExampleEmailCard");

@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import type { WorkflowExampleEmail } from "@/lib/api";
 import {
+  buildAudienceMetricRows,
   goalForOptimizationGoal,
   modelAvatar,
   objectiveForOptimizationGoal,
@@ -32,6 +33,8 @@ import {
   projectionCostKey,
   selectBestModelEvidence,
 } from "@/lib/strategy-model";
+import type { AudienceMetricProvenance } from "@/lib/strategy-model";
+import { MetricLabel } from "@/components/visibility/metric-info";
 
 /** USD number → "$X.XX" / "—" / "<$0.01". */
 function formatUsd(usd: number | null | undefined): string {
@@ -46,6 +49,19 @@ function formatPct(pct: number | null | undefined): string {
   if (pct == null) return "-";
   return `${pct.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
 }
+
+/** A lifetime-return multiple → "X.X×" / "—". */
+function formatRoi(x: number | null | undefined): string {
+  if (x == null) return "-";
+  return `${x.toLocaleString("en-US", { maximumFractionDigits: 1 })}×`;
+}
+
+/** Human label for which fallback rung supplied an audience's metrics. */
+const PROVENANCE_LABEL: Record<AudienceMetricProvenance, string> = {
+  own: "Your data",
+  brand: "Brand average",
+  crossOrg: "Cross-org average",
+};
 
 function Card({
   title,
@@ -284,20 +300,12 @@ export function StrategyPage() {
 
   const evidence = selectBestModelEvidence(candidatesData?.candidates ?? [], bestSlug);
 
-  // Every active audience gets a row. Cost = its own per-audience number where it has
-  // run evidence, else the cross-org cost (matches the "starts from cross-org, earns
-  // its own number" copy). Pure display join — costs stay server-provided.
+  // Every active audience gets a row with its four metrics (CPC / CPS / ROI / CAC),
+  // each read from its own per-audience candidate where it has run evidence, else the
+  // brand-average → cross-org fallback. Pure display join — every value stays
+  // server-provided (no client-side metric math).
   const activeAudiences = audiencesData?.audiences ?? [];
-  const audienceCostById = new Map<string, number | null | undefined>(
-    evidence.audiences.map((c) => [c.audienceId as string, c.costPerOutcomeUsd]),
-  );
-  const crossOrgCost = evidence.crossOrg?.costPerOutcomeUsd ?? null;
-  const audienceRows = activeAudiences.map((a) => ({
-    id: a.id,
-    name: a.name,
-    costPerOutcomeUsd: audienceCostById.has(a.id) ? audienceCostById.get(a.id) : crossOrgCost,
-    hasOwnCost: audienceCostById.has(a.id),
-  }));
+  const audienceRows = buildAudienceMetricRows(activeAudiences, evidence);
 
   // Example emails for the best model — fetched on demand (drawer), cascade
   // brand → org → global; empty is a clean "no examples yet" state.
@@ -498,10 +506,10 @@ export function StrategyPage() {
                 />
               </div>
 
-              {/* Per-audience $ per outcome */}
+              {/* Per-audience metrics — CPC / CPS / ROI / CAC */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  Cost per {noun}, by audience
+                  Estimates by audience
                 </p>
                 {candPending || audiencesPending ? (
                   <div className="mt-2 space-y-2">
@@ -512,29 +520,74 @@ export function StrategyPage() {
                 ) : audienceRows.length === 0 ? (
                   <p className="mt-2 text-sm text-gray-500">
                     No active audience yet. Once you activate an audience it appears here
-                    with its cost per {noun}.
+                    with its estimates.
                   </p>
                 ) : (
-                  <ul className="mt-2 divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
-                    {audienceRows.map((a) => (
-                      <li
-                        key={a.id}
-                        className="flex items-center justify-between gap-3 px-4 py-2.5"
-                      >
-                        <span className="min-w-0 truncate text-sm text-gray-700">{a.name}</span>
-                        <span className="flex shrink-0 items-center gap-2">
-                          {!a.hasOwnCost ? (
-                            <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                              starting estimate
+                  <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="w-full min-w-[600px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          <th className="px-4 py-2.5 text-left font-semibold">Audience</th>
+                          <th className="px-4 py-2.5 text-right font-semibold">
+                            <span className="inline-flex items-center justify-end gap-1">
+                              <MetricLabel
+                                text="CPC"
+                                tip="What we pay on average for one prospect to click through to your site."
+                              />
                             </span>
-                          ) : null}
-                          <span className="text-sm font-semibold text-gray-900">
-                            {formatUsd(a.costPerOutcomeUsd)}
-                          </span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                          </th>
+                          <th className="px-4 py-2.5 text-right font-semibold">
+                            <span className="inline-flex items-center justify-end gap-1">
+                              <MetricLabel
+                                text={optimizationGoal === "signups" ? "CPS" : `Cost / ${noun}`}
+                                tip={`What we pay on average for one ${noun}.`}
+                              />
+                            </span>
+                          </th>
+                          <th className="px-4 py-2.5 text-right font-semibold">
+                            <span className="inline-flex items-center justify-end gap-1">
+                              <MetricLabel
+                                text="ROI"
+                                tip="Dollars of lifetime revenue back for every dollar spent."
+                              />
+                            </span>
+                          </th>
+                          <th className="px-4 py-2.5 text-right font-semibold">
+                            <span className="inline-flex items-center justify-end gap-1">
+                              <MetricLabel
+                                text="CAC"
+                                tip="What we pay on average to win one paying client."
+                              />
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {audienceRows.map((a) => (
+                          <tr key={a.id}>
+                            <td className="px-4 py-2.5">
+                              <span className="block truncate text-gray-700">{a.name}</span>
+                              <span className="text-[10px] text-gray-400">
+                                {PROVENANCE_LABEL[a.provenance]}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                              {formatUsd(a.clickUsd)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                              {formatUsd(a.costPerOutcomeUsd)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                              {formatRoi(a.roiMultiple)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                              {formatUsd(a.costPerCloseUsd)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
 
