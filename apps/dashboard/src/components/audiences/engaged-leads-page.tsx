@@ -35,7 +35,7 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "buffered",
 ];
 
-type Tab = "positive-replies" | "clicks" | "opens" | "outreach" | "all";
+type Tab = "positive-replies" | "clicks" | "opens" | "outreach";
 
 function leadStatusLabel(status: LeadConsolidatedStatus): string {
   switch (status) {
@@ -312,12 +312,16 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }: {
+function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf, forceContacted }: {
   leads: Lead[];
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
   statusOf: (lead: Lead) => LeadConsolidatedStatus;
   audienceOf: (lead: Lead) => LeadAudience | null;
+  // Outreach tab: every row is the flat universe we contacted, so show a single
+  // "Contacted" tag on all rows rather than each lead's most-advanced status
+  // (those leads also surface under Opens/Clicks/Replies with their real status).
+  forceContacted?: boolean;
 }) {
   if (leads.length === 0) {
     return (
@@ -374,7 +378,7 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
                 <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
                 <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600">{formatRevenue(org?.annualRevenue)}</span></td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={forceContacted ? "contacted" : statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {lead.firstClickedAt ? (
                     <span className="text-xs text-gray-500" title={new Date(lead.firstClickedAt).toLocaleString()}>{timeAgo(lead.firstClickedAt)}</span>
@@ -489,7 +493,6 @@ export function EngagedLeadsPage() {
     groups.set("clicks", []);
     groups.set("opens", []);
     groups.set("outreach", []);
-    groups.set("all", sortedLeads);
     for (const lead of sortedLeads) {
       if (lead.replyClassification === "positive") groups.get("positive-replies")?.push(lead);
       if (lead.clicked) groups.get("clicks")?.push(lead);
@@ -513,11 +516,11 @@ export function EngagedLeadsPage() {
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
     const order: Tab[] =
       optimizationGoal === "signups"
-        ? ["clicks", "opens", "outreach", "positive-replies", "all"]
+        ? ["clicks", "opens", "outreach", "positive-replies"]
         : optimizationGoal === "sales_meetings"
-          ? ["positive-replies", "clicks", "opens", "outreach", "all"]
-          : ["opens", "outreach", "clicks", "positive-replies", "all"];
-    setActiveTab(order.find((t) => count(t) > 0) ?? "all");
+          ? ["positive-replies", "clicks", "opens", "outreach"]
+          : ["opens", "outreach", "clicks", "positive-replies"];
+    setActiveTab(order.find((t) => count(t) > 0) ?? "outreach");
   }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
@@ -540,8 +543,14 @@ export function EngagedLeadsPage() {
     { key: "clicks", label: "Clicks", count: groupedByTab.get("clicks")?.length ?? 0 },
     { key: "opens", label: "Opens", count: groupedByTab.get("opens")?.length ?? 0 },
     { key: "outreach", label: "Outreach", count: groupedByTab.get("outreach")?.length ?? 0 },
-    { key: "all", label: "All", count: sortedLeads.length },
   ];
+
+  // Contacted-lead count from the SAME listBrandLeads snapshot the table renders
+  // (= the Outreach tab count). Passed to the stat box so the box reads the
+  // leads-snapshot single source (303) instead of the legacy /stats email-gateway
+  // aggregate (301) — mirrors the brand Overview's outreachContacted override
+  // (features-service #371/#372). Both surfaces now move together.
+  const contactedCount = groupedByTab.get("outreach")?.length ?? 0;
 
   // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
   // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
@@ -567,7 +576,7 @@ export function EngagedLeadsPage() {
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
-        <OutreachStatCardsAuto />
+        <OutreachStatCardsAuto outreachOverride={loading ? null : contactedCount} />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
@@ -608,7 +617,7 @@ export function EngagedLeadsPage() {
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} />
+              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} />
             )}
           </>
         )}
