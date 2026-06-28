@@ -10,6 +10,7 @@ import {
   type BrandSalesEconomicsInput,
 } from "@/lib/api";
 import {
+  formatLocaleInteger,
   formatLocaleNumberInputValue,
   parseLocaleNumberInput,
 } from "@/lib/format-number";
@@ -38,7 +39,8 @@ type RequiredFieldKey =
   | "lifetimeRevenueUsd"
   | "replyToMeetingPct"
   | "visitToMeetingPct"
-  | "visitToSignupPct";
+  | "visitToSignupPct"
+  | "signupToPaidClientPct";
 
 type FormState = {
   lifetimeRevenueUsd: string;
@@ -54,7 +56,7 @@ type SalesEconomicsQueryData = { salesEconomics: BrandSalesEconomics | null };
 
 function defaultForm(): FormState {
   return {
-    lifetimeRevenueUsd: formatLocaleNumberInputValue(Number(DEFAULTS.lifetimeRevenueUsd)),
+    lifetimeRevenueUsd: formatLocaleInteger(Number(DEFAULTS.lifetimeRevenueUsd)),
     replyToMeetingPct: formatLocaleNumberInputValue(Number(DEFAULTS.replyToMeetingPct)),
     visitToMeetingPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToMeetingPct)),
     meetingToClosePct: formatLocaleNumberInputValue(Number(DEFAULTS.meetingToClosePct)),
@@ -67,7 +69,7 @@ function defaultForm(): FormState {
 function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState {
   if (!e) return defaultForm();
   return {
-    lifetimeRevenueUsd: formatLocaleNumberInputValue(e.lifetimeRevenueUsd),
+    lifetimeRevenueUsd: formatLocaleInteger(e.lifetimeRevenueUsd),
     replyToMeetingPct: formatLocaleNumberInputValue(e.replyToMeetingPct),
     visitToMeetingPct: formatLocaleNumberInputValue(e.visitToMeetingPct),
     meetingToClosePct: formatLocaleNumberInputValue(e.meetingToClosePct),
@@ -109,10 +111,16 @@ const PCT_FIELDS: {
     tip: "Of leads who visit your website, the share that sign up.",
     goals: ["signups"],
   },
+  {
+    key: "signupToPaidClientPct",
+    label: "Signup → Paid client",
+    tip: "Of leads who sign up, the share that become paying customers.",
+    goals: ["signups"],
+  },
 ];
 
 const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]> = {
-  signups: ["visitToSignupPct"],
+  signups: ["visitToSignupPct", "signupToPaidClientPct"],
   sales_meetings: ["replyToMeetingPct", "visitToMeetingPct"],
 };
 
@@ -121,6 +129,7 @@ const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
   replyToMeetingPct: "Positive reply → meeting",
   visitToMeetingPct: "Website visit → meeting",
   visitToSignupPct: "Website visit → signup",
+  signupToPaidClientPct: "Signup → Paid client",
 };
 
 const hasNumericValue = (v: string) => parseLocaleNumberInput(v) !== null;
@@ -192,6 +201,18 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
     const parsed = parseLocaleNumberInput(form[key]);
     if (parsed === null) return;
     setForm((f) => ({ ...f, [key]: formatLocaleNumberInputValue(parsed) }));
+  }
+
+  // Customer Lifetime Revenue is whole dollars only — strip every non-digit on
+  // input so a decimal separator can never be typed, regroup on blur.
+  function updateInteger(key: "lifetimeRevenueUsd", raw: string) {
+    update(key, raw.replace(/\D/g, ""));
+  }
+
+  function normalizeIntegerInput(key: "lifetimeRevenueUsd") {
+    const parsed = parseLocaleNumberInput(form[key]);
+    if (parsed === null) return;
+    setForm((f) => ({ ...f, [key]: formatLocaleInteger(parsed) }));
   }
 
   function handleSave() {
@@ -287,10 +308,10 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
               </span>
               <input
                 type="text"
-                inputMode="decimal"
+                inputMode="numeric"
                 value={form.lifetimeRevenueUsd}
-                onChange={(e) => update("lifetimeRevenueUsd", e.target.value)}
-                onBlur={() => normalizeNumberInput("lifetimeRevenueUsd")}
+                onChange={(e) => updateInteger("lifetimeRevenueUsd", e.target.value)}
+                onBlur={() => normalizeIntegerInput("lifetimeRevenueUsd")}
                 className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </div>
