@@ -2267,10 +2267,18 @@ export interface Lead {
   workflowSlug: string | null;
   featureSlug: string | null;
   servedAt: string | null;
-  // First-click date (first-occurrence ISO timestamp from email-gateway,
-  // forwarded by lead-service). Optional: present once lead-service ships it;
-  // `.passthrough()` on LeadDeliverySchema keeps it at runtime. #audiences-leads-date
+  // Per-event first-occurrence ISO timestamps from email-gateway, forwarded by
+  // lead-service. Optional: present once lead-service ships them; `.passthrough()`
+  // on LeadDeliverySchema keeps them at runtime. Drive the lead detail-panel
+  // event timeline. #audiences-leads-date / lead-event-timeline
   firstClickedAt?: string | null;
+  firstContactedAt?: string | null;
+  firstSentAt?: string | null;
+  firstDeliveredAt?: string | null;
+  firstOpenedAt?: string | null;
+  firstRepliedAt?: string | null;
+  firstBouncedAt?: string | null;
+  firstUnsubscribedAt?: string | null;
   contacted: boolean;
   sent: boolean;
   delivered: boolean;
