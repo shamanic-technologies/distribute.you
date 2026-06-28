@@ -19,7 +19,9 @@ export default function OnboardingLayout({
             escape), OR the full breadcrumb switcher + logo + Cancel when an existing
             user enters via ?from=add / ?new=1 (escape hatch back to any org×brand). */}
         <OnboardingTopChrome />
-        <div className="flex min-h-dvh items-start justify-center bg-gray-50 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+        {/* Mobile: full-bleed, stretch — each step (StepShell) fills the viewport
+            edge-to-edge with no card chrome. sm+: the centered floating-card frame. */}
+        <div className="flex min-h-dvh items-stretch justify-center bg-gray-50 sm:items-center sm:px-4 sm:py-6">
           <div className="w-full max-w-5xl min-w-0">
             <OnboardingCreditGate>{children}</OnboardingCreditGate>
           </div>
