@@ -2227,6 +2227,12 @@ export interface FullLead {
   lastName: string;
   name: string | null;
   headline: string | null;
+  // Current employer's job title (lead-service derives it from the lead's
+  // current employment row). The LinkedIn-style `headline` above is a separate,
+  // often-null field — render `currentTitle` for the "Title" label, not headline.
+  // Optional: present on the full FullLead today; the slim `view=basic`
+  // projection populates it once lead-service ships the slim-field add.
+  currentTitle?: string | null;
   linkedinUrl: string | null;
   photoUrl: string | null;
   city: string | null;
