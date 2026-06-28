@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parseFeatureRevenue } from "./revenue-parse";
-import type { RevenueOverview } from "./revenue-view";
+import type { RevenueOverview, SignalSeries } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
 export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
@@ -64,10 +64,15 @@ export interface DigestBrandSummary {
 export interface PreparedDigestSend {
   orgId: string;
   orgName: string;
+  brandId: string;
+  brandName: string;
   userExternalId: string;
   recipientEmail: string;
   metadata: Record<string, string>;
 }
+
+/** A brand's optimization goal selects which daily signal counts as an outcome. */
+export type OutcomeGoal = "signups" | "sales_meetings";
 
 export interface OutcomeDigestCollection {
   scannedOrgs: number;
@@ -110,6 +115,22 @@ const BrandsResponseSchema = z.object({
   }).passthrough()),
 });
 
+// Brand optimization goal — selects the outcome signal: signups → website clicks,
+// sales_meetings (server default when unset) → screened positive replies. The wire
+// can carry legacy aliases (booked_meetings / sales); all non-signups → sales_meetings.
+const BrandGoalResponseSchema = z.object({
+  salesEconomics: z
+    .object({
+      optimizationGoal: z.union([
+        z.literal("signups"),
+        z.literal("sales_meetings"),
+        z.literal("booked_meetings"),
+        z.literal("sales"),
+      ]),
+    })
+    .nullable(),
+});
+
 const PostHogDecideResponseSchema = z.object({
   featureFlags: z.record(z.string(), z.unknown()),
 });
@@ -138,6 +159,9 @@ export async function collectOutcomeDigestSends(
   input: OutcomeDigestRuntimeConfig,
 ): Promise<OutcomeDigestCollection> {
   const fetchFn = input.fetchFn ?? fetch;
+  // Digest reports on the UTC calendar day that just closed (cron runs 01:00 UTC),
+  // independent of the exact run hour.
+  const targetDay = previousUtcDay();
   const orgs = await listClerkOrganizations(input, fetchFn);
   const preparedSends: PreparedDigestSend[] = [];
   let betaUsers = 0;
@@ -154,23 +178,66 @@ export async function collectOutcomeDigestSends(
     betaUsers += eligibleUsers.length;
     if (eligibleUsers.length === 0) continue;
 
-    const summaries = await collectBrandSummaries(input, fetchFn, org.id);
-    if (summaries.length === 0) continue;
+    // One email PER BRAND, sent only when that brand recorded at least one outcome
+    // (click for a signups goal, positive reply for a sales-meetings goal) on the day.
+    const brands = await listBrandsForOrg(input, fetchFn, org.id);
+    for (const brand of brands) {
+      const revenue = await fetchBrandRevenue(input, fetchFn, org.id, brand.id);
+      if (revenue.organizations.length === 0) continue;
 
-    const metadata = digestMetadata(org, summaries);
-    for (const user of eligibleUsers) {
-      if (!user.email) continue;
-      preparedSends.push({
-        orgId: org.id,
-        orgName: org.name ?? org.id,
-        userExternalId: user.externalId,
-        recipientEmail: user.email,
-        metadata,
-      });
+      const goal = await fetchBrandGoal(input, fetchFn, org.id, brand.id);
+      const outcome = outcomeOnDay(revenue, goal, targetDay);
+      if (outcome.count === 0) continue;
+
+      const summary = toDigestBrandSummary(brand, revenue);
+      const metadata = digestMetadataForBrand(summary, outcome.count, outcome.label);
+      for (const user of eligibleUsers) {
+        if (!user.email) continue;
+        preparedSends.push({
+          orgId: org.id,
+          orgName: org.name ?? org.id,
+          brandId: brand.id,
+          brandName: summary.brandName,
+          userExternalId: user.externalId,
+          recipientEmail: user.email,
+          metadata,
+        });
+      }
     }
   }
 
   return { scannedOrgs: orgs.length, betaUsers, preparedSends };
+}
+
+/** The UTC calendar day before today (YYYY-MM-DD). */
+function previousUtcDay(): string {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * The brand's outcome count + label for `day`, from the SAME `/revenue` signal series
+ * the dashboard renders. signups → `clicked`, sales_meetings → `repliedPositive`.
+ * An absent series (backend not yet serving it) reads as zero — the brand is skipped.
+ */
+function outcomeOnDay(
+  revenue: RevenueOverview,
+  goal: OutcomeGoal,
+  day: string,
+): { count: number; label: string } {
+  const series: SignalSeries | undefined =
+    goal === "signups" ? revenue.clicked : revenue.repliedPositive;
+  const label = goal === "signups" ? "clicks" : "positive replies";
+  const count = series
+    ? series.daily
+        .filter((d) => d.date === day)
+        .reduce((sum, d) => sum + d.count, 0)
+    : 0;
+  return { count, label };
 }
 
 export async function sendOutcomeDigestEmails(
@@ -235,19 +302,20 @@ function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
   }).join("\n\n");
 }
 
-function digestMetadata(
-  org: ClerkOrganization,
-  summaries: DigestBrandSummary[],
+function digestMetadataForBrand(
+  summary: DigestBrandSummary,
+  outcomeCount: number,
+  outcomeLabel: string,
 ): Record<string, string> {
-  const totalExpectedRevenue = summaries.reduce((sum, s) => sum + s.totalPipelineUsd, 0);
-  const totalOutcomeOrganizations = summaries.reduce((sum, s) => sum + s.organizations.length, 0);
   return {
-    orgName: org.name ?? org.id,
-    totalBrandsWithOutcomes: String(summaries.length),
-    totalOutcomeOrganizations: String(totalOutcomeOrganizations),
-    totalExpectedRevenueUsd: formatUsd(totalExpectedRevenue),
-    digestHtml: renderOutcomeDigestHtml(summaries),
-    digestText: renderOutcomeDigestText(summaries),
+    brandName: summary.brandName,
+    brandUrl: summary.brandUrl ?? "",
+    outcomeCount: String(outcomeCount),
+    outcomeLabel,
+    totalOutcomeOrganizations: String(summary.organizations.length),
+    totalExpectedRevenueUsd: formatUsd(summary.totalPipelineUsd),
+    digestHtml: renderOutcomeDigestHtml([summary]),
+    digestText: renderOutcomeDigestText([summary]),
   };
 }
 
@@ -314,19 +382,22 @@ async function isUserInPostHogBeta(
   return data.featureFlags[OUTCOME_DIGEST_BETA_FLAG] === true;
 }
 
-async function collectBrandSummaries(
+async function fetchBrandGoal(
   config: EnvConfig,
   fetchFn: DigestFetch,
   orgId: string,
-): Promise<DigestBrandSummary[]> {
-  const brands = await listBrandsForOrg(config, fetchFn, orgId);
-  const summaries: DigestBrandSummary[] = [];
-  for (const brand of brands) {
-    const revenue = await fetchBrandRevenue(config, fetchFn, orgId, brand.id);
-    if (revenue.organizations.length === 0) continue;
-    summaries.push(toDigestBrandSummary(brand, revenue));
-  }
-  return summaries;
+  brandId: string,
+): Promise<OutcomeGoal> {
+  const data = await fetchJson(
+    `${config.apiUrl}/v1/brands/${brandId}/sales-economics`,
+    { headers: adminHeaders(config, orgId, `outcome-digest:${orgId}`) },
+    fetchFn,
+    BrandGoalResponseSchema,
+    "fetchBrandGoal",
+  );
+  return data.salesEconomics?.optimizationGoal === "signups"
+    ? "signups"
+    : "sales_meetings";
 }
 
 async function listBrandsForOrg(
@@ -369,7 +440,8 @@ async function sendDigestEmail(
     body: JSON.stringify({
       eventType: OUTCOME_DIGEST_TEMPLATE,
       recipientEmail: item.recipientEmail,
-      productId: `${OUTCOME_DIGEST_TEMPLATE}:${new Date().toISOString().slice(0, 10)}`,
+      // Per-brand per-day dedup — a user gets one email PER BRAND per day.
+      productId: `${OUTCOME_DIGEST_TEMPLATE}:${item.brandId}:${new Date().toISOString().slice(0, 10)}`,
       metadata: item.metadata,
     }),
   }, fetchFn, EmailSendResponseSchema, "sendDigestEmail");
