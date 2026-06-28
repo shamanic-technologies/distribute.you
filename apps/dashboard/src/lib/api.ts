@@ -1769,6 +1769,112 @@ export async function fetchFeatureAudienceStats(
   return parsed.data;
 }
 
+// ── Strategy: candidate evidence set (the runtime selection grain ladder) ────
+// features-service serves the (audienceId, workflow) candidate SET, each with its
+// OWN cost-per-outcome for the goal at a grain ladder (finest→coarsest):
+//   audience (brandId×goal×audienceId) → brand-goal (brandId×goal) → goal-global
+//   (cross-org workflow evidence).
+// This is the same evidence the runtime selection policy reads. The Strategy page
+// renders it to show how the best model's $/outcome is reassessed from the cross-org
+// prior down to per-audience. Proxied via api-service /v1/features/:slug/candidates.
+export type FeatureCandidateGrain = "audience" | "brand-goal" | "goal-global";
+export type FeatureCandidateCostGrain = "goal-global" | "audience";
+
+export interface FeatureCandidate {
+  /** Non-null with cost.grain='audience' for couples with audience-attributed
+   *  evidence; null on the coarser goal-global fallback rows. */
+  audienceId: string | null;
+  workflow: { workflowDynastySlug: string; workflowDynastyName: string | null };
+  goal: FeatureAudienceStatsGoal;
+  grain: FeatureCandidateGrain;
+  /** The goal metric: cost per goal-outcome (USD). Null at cold start (no economics). */
+  costPerOutcomeUsd: number | null;
+  conversion: {
+    rate: number | null;
+    grain: "brand-goal" | "goal-global" | null;
+    /** Always null (conversion comes from saved economics, no per-grain count). */
+    sampleSize: unknown;
+  };
+  cost: {
+    costPerLeadUsd: number | null;
+    clickUsd: number | null;
+    replyUsd: number | null;
+    /** 'goal-global' = cross-org workflow unit costs; 'audience' = audience-attributed. */
+    grain: FeatureCandidateCostGrain;
+    sampleSize: { runs: number; contacted: number; clicks: number; replies: number };
+  };
+}
+
+export interface FeatureCandidatesResponse {
+  featureSlug: string;
+  brandId: string;
+  goal: FeatureAudienceStatsGoal;
+  brandProfileId: string | null;
+  candidates: FeatureCandidate[];
+}
+
+const FeatureCandidateSchema = z.object({
+  audienceId: z.string().nullable(),
+  workflow: z.object({
+    workflowDynastySlug: z.string(),
+    workflowDynastyName: z.string().nullable(),
+  }),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  grain: z.union([z.literal("audience"), z.literal("brand-goal"), z.literal("goal-global")]),
+  costPerOutcomeUsd: z.number().nullable(),
+  conversion: z.object({
+    rate: z.number().nullable(),
+    grain: z.union([z.literal("brand-goal"), z.literal("goal-global")]).nullable(),
+    sampleSize: z.unknown().nullable(),
+  }),
+  cost: z.object({
+    costPerLeadUsd: z.number().nullable(),
+    clickUsd: z.number().nullable(),
+    replyUsd: z.number().nullable(),
+    grain: z.union([z.literal("goal-global"), z.literal("audience")]),
+    sampleSize: z.object({
+      runs: z.number(),
+      contacted: z.number(),
+      clicks: z.number(),
+      replies: z.number(),
+    }),
+  }),
+});
+
+const FeatureCandidatesResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  brandProfileId: z.string().nullable(),
+  candidates: z.array(FeatureCandidateSchema),
+});
+
+/** GET /features/:slug/candidates — the (audienceId, workflow) candidate evidence
+ *  set with per-candidate cost-per-outcome at the audience/brand-goal/goal-global
+ *  grain ladder. The Strategy page's source for the best model's cross-org vs
+ *  per-audience $/outcome. */
+export async function fetchFeatureCandidates(
+  featureSlug: string,
+  params: { brandId: string; goal: FeatureAudienceStatsGoal; brandProfileId?: string },
+  token?: string,
+): Promise<FeatureCandidatesResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
+  if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/candidates?${query.toString()}`,
+    { token },
+  );
+  const parsed = FeatureCandidatesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] fetchFeatureCandidates: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] fetchFeatureCandidates: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /** GET /features/stats — global stats cross-features */
 export async function fetchGlobalStats(
   params?: { groupBy?: string; brandId?: string },
