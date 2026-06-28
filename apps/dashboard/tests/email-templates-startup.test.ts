@@ -92,6 +92,7 @@ describe("Daily outcome digest template", () => {
         brandUrl: "https://acme.test",
         outcomeCount: 3,
         outcomeLabel: "positive replies",
+        totalLeads: 5,
         totalOutcomeOrganizations: 4,
         totalExpectedRevenueUsd: "$20,000",
         digestHtml: "<section>Digest</section>",

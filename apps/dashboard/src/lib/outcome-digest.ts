@@ -11,8 +11,11 @@ export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
 export const OUTCOME_DIGEST_BETA_FLAG = "beta-campaign-activity";
 
 const PAGE_LIMIT = 100;
-const MAX_TOP_OUTCOMES_PER_BRAND = 5;
+const MAX_LEADS_PER_BRAND = 10;
 const CLERK_API_URL = "https://api.clerk.com/v1";
+// Publishable logo.dev key — same one used across the dashboard (provider-logo,
+// brand-logo, conversions-table). Renders a company logo from a domain.
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
 export type DigestFetch = typeof fetch;
 
@@ -54,11 +57,23 @@ export interface DigestOutcomeOrg {
   topPersonName: string | null;
 }
 
+/** One person row in the digest body — face + company logo. */
+export interface DigestLead {
+  name: string;
+  photoUrl: string | null;
+  companyName: string | null;
+  companyLogoUrl: string | null;
+  companyDomain: string | null;
+  tags: string[];
+  expectedRevenueUsd: number;
+}
+
 export interface DigestBrandSummary {
   brandName: string;
   brandUrl: string | null;
   totalPipelineUsd: number;
   organizations: DigestOutcomeOrg[];
+  leads: DigestLead[];
 }
 
 export interface PreparedDigestSend {
@@ -257,33 +272,60 @@ export async function sendOutcomeDigestEmails(
   return { ...collection, sent, deduplicated };
 }
 
+/** logo.dev URL for a company domain, or the backend logo when present. */
+function companyLogoSrc(logoUrl: string | null, domain: string | null): string | null {
+  if (logoUrl) return logoUrl;
+  if (domain) {
+    return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=64`;
+  }
+  return null;
+}
+
+function firstInitial(value: string): string {
+  return (value.trim().charAt(0) || "?").toUpperCase();
+}
+
 export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string {
   return summaries.map((summary) => {
     const brandLabel = escapeHtml(summary.brandName);
     const brandUrl = summary.brandUrl
       ? ` <span style="color:#64748b;font-size:13px;">${escapeHtml(summary.brandUrl)}</span>`
       : "";
-    const rows = summary.organizations.slice(0, MAX_TOP_OUTCOMES_PER_BRAND).map((org) => {
-      const person = org.topPersonName ? ` · ${escapeHtml(org.topPersonName)}` : "";
-      const tags = org.tags.length > 0
-        ? `<div style="color:#64748b;font-size:12px;margin-top:2px;">${escapeHtml(org.tags.join(", "))}${person}</div>`
-        : `<div style="color:#64748b;font-size:12px;margin-top:2px;">${person.replace(/^ · /, "")}</div>`;
+    const rows = summary.leads.slice(0, MAX_LEADS_PER_BRAND).map((lead) => {
+      // Email clients can't run an onError fallback — a null photo renders an
+      // initials circle; logo.dev returns a generated mark for unknown domains.
+      const avatar = lead.photoUrl
+        ? `<img src="${escapeHtml(lead.photoUrl)}" width="40" height="40" alt="${escapeHtml(lead.name)}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;display:block;border:1px solid #e2e8f0;" />`
+        : `<span style="display:inline-block;width:40px;height:40px;border-radius:50%;background:#e2e8f0;color:#475569;font-weight:700;font-size:15px;line-height:40px;text-align:center;">${escapeHtml(firstInitial(lead.name))}</span>`;
+      const logoSrc = companyLogoSrc(lead.companyLogoUrl, lead.companyDomain);
+      const companyLogo = logoSrc
+        ? `<img src="${escapeHtml(logoSrc)}" width="16" height="16" alt="" style="width:16px;height:16px;border-radius:3px;object-fit:contain;vertical-align:middle;margin-right:6px;background:#fff;border:1px solid #e2e8f0;" />`
+        : "";
+      const company = lead.companyName
+        ? `<div style="color:#64748b;font-size:13px;margin-top:2px;">${companyLogo}${escapeHtml(lead.companyName)}</div>`
+        : "";
+      const tags = lead.tags.length > 0
+        ? `<div style="color:#94a3b8;font-size:11px;margin-top:3px;">${escapeHtml(lead.tags.join(", "))}</div>`
+        : "";
       return `
         <tr>
-          <td style="padding:10px 0;border-top:1px solid #e2e8f0;">
-            <div style="font-weight:600;color:#0f172a;">${escapeHtml(org.orgName)}</div>
+          <td width="56" style="padding:10px 0;border-top:1px solid #e2e8f0;vertical-align:top;">${avatar}</td>
+          <td style="padding:10px 0;border-top:1px solid #e2e8f0;vertical-align:top;">
+            <div style="font-weight:600;color:#0f172a;">${escapeHtml(lead.name)}</div>
+            ${company}
             ${tags}
           </td>
-          <td style="padding:10px 0;border-top:1px solid #e2e8f0;text-align:right;font-weight:700;color:#15803d;">
-            ${formatUsd(org.expectedRevenueUsd)}
+          <td style="padding:10px 0;border-top:1px solid #e2e8f0;text-align:right;font-weight:700;color:#15803d;vertical-align:top;white-space:nowrap;">
+            ${formatUsd(lead.expectedRevenueUsd)}
           </td>
         </tr>`;
     }).join("");
+    const peopleLabel = `${summary.leads.length} ${summary.leads.length === 1 ? "person" : "people"} in your pipeline`;
     return `
       <section style="margin:24px 0;">
         <h2 style="font-size:18px;color:#0f172a;margin:0 0 4px;">${brandLabel}${brandUrl}</h2>
         <p style="font-size:14px;color:#475569;margin:0 0 12px;">
-          ${summary.organizations.length} outcome organization${summary.organizations.length === 1 ? "" : "s"} · ${formatUsd(summary.totalPipelineUsd)} expected revenue
+          ${peopleLabel} · ${formatUsd(summary.totalPipelineUsd)} expected revenue
         </p>
         <table role="presentation" style="width:100%;border-collapse:collapse;">${rows}</table>
       </section>`;
@@ -292,11 +334,12 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
 
 function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
   return summaries.map((summary) => {
-    const header = `${summary.brandName} — ${summary.organizations.length} outcome organization${summary.organizations.length === 1 ? "" : "s"} — ${formatUsd(summary.totalPipelineUsd)} expected revenue`;
-    const rows = summary.organizations.slice(0, MAX_TOP_OUTCOMES_PER_BRAND).map((org) => {
-      const tags = org.tags.length > 0 ? ` (${org.tags.join(", ")})` : "";
-      const person = org.topPersonName ? ` — ${org.topPersonName}` : "";
-      return `- ${org.orgName}: ${formatUsd(org.expectedRevenueUsd)}${tags}${person}`;
+    const peopleLabel = `${summary.leads.length} ${summary.leads.length === 1 ? "person" : "people"} in your pipeline`;
+    const header = `${summary.brandName} — ${peopleLabel} — ${formatUsd(summary.totalPipelineUsd)} expected revenue`;
+    const rows = summary.leads.slice(0, MAX_LEADS_PER_BRAND).map((lead) => {
+      const company = lead.companyName ? ` @ ${lead.companyName}` : "";
+      const tags = lead.tags.length > 0 ? ` (${lead.tags.join(", ")})` : "";
+      return `- ${lead.name}${company}: ${formatUsd(lead.expectedRevenueUsd)}${tags}`;
     });
     return [header, ...rows].join("\n");
   }).join("\n\n");
@@ -312,6 +355,7 @@ function digestMetadataForBrand(
     brandUrl: summary.brandUrl ?? "",
     outcomeCount: String(outcomeCount),
     outcomeLabel,
+    totalLeads: String(summary.leads.length),
     totalOutcomeOrganizations: String(summary.organizations.length),
     totalExpectedRevenueUsd: formatUsd(summary.totalPipelineUsd),
     digestHtml: renderOutcomeDigestHtml([summary]),
@@ -459,11 +503,27 @@ function toDigestBrandSummary(brand: BrandSummary, revenue: RevenueOverview): Di
     }))
     .sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd);
 
+  const leads = revenue.leads
+    .map((lead): DigestLead => ({
+      name:
+        [lead.firstName, lead.lastName].filter(Boolean).join(" ") ||
+        lead.orgName ||
+        "Lead",
+      photoUrl: lead.photoUrl,
+      companyName: lead.orgName,
+      companyLogoUrl: lead.orgLogoUrl,
+      companyDomain: lead.orgDomain ?? null,
+      tags: lead.tags,
+      expectedRevenueUsd: lead.expectedRevenueUsd,
+    }))
+    .sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd);
+
   return {
     brandName: brand.name ?? brand.domain ?? brand.url ?? brand.id,
     brandUrl: brand.url,
     totalPipelineUsd: revenue.totalPipelineUsd ?? 0,
     organizations,
+    leads,
   };
 }
 
