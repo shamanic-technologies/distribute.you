@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 import { EmailSignature } from "@/components/email-signature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -175,15 +175,25 @@ function Stat({
   value,
   pending,
   hint,
+  tooltip,
 }: {
   label: string;
   value: string;
   pending?: boolean;
   hint?: string;
+  tooltip?: string;
 }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+        {label}
+        {tooltip ? (
+          <InformationCircleIcon
+            className="h-3.5 w-3.5 shrink-0 cursor-help text-gray-300"
+            title={tooltip}
+          />
+        ) : null}
+      </p>
       {pending ? (
         <Skeleton className="mt-1.5 h-6 w-20" />
       ) : (
@@ -477,13 +487,12 @@ export function StrategyPage() {
                 </div>
               </div>
 
-              {/* Expected $ per outcome — three levels */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {/* This brand's projected economics — all four are served fields */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Stat
-                  label={`Cross-org cost / ${noun}`}
-                  pending={candPending}
-                  value={formatUsd(evidence.crossOrg?.costPerOutcomeUsd)}
-                  hint="Across every brand we run this model for"
+                  label="This brand cost / click"
+                  value={formatUsd(bestWf.clickUsd)}
+                  hint="Projected from this brand's own economics"
                 />
                 <Stat
                   label={`This brand cost / ${noun}`}
@@ -491,10 +500,19 @@ export function StrategyPage() {
                   hint="Projected from this brand's own economics"
                 />
                 <Stat
-                  label="Active audiences"
-                  pending={audiencesPending}
-                  value={String(activeAudiences.length)}
-                  hint="With their per-audience cost below"
+                  label="Projected lifetime revenue on each dollar spent"
+                  value={
+                    roiMultiple != null
+                      ? `${roiMultiple.toLocaleString("en-US", { maximumFractionDigits: 1 })}×`
+                      : "-"
+                  }
+                  hint="Lifetime revenue of a paid client per dollar of outreach spend"
+                />
+                <Stat
+                  label="Projected cost of acquisition"
+                  value={formatPct(bestWf.projection?.cacPct)}
+                  tooltip="Cost to acquire a paid client divided by the lifetime revenue of a paid client"
+                  hint="Share of a client's lifetime revenue spent to acquire them"
                 />
               </div>
 
