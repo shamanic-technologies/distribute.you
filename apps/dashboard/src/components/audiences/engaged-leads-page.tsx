@@ -38,6 +38,32 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
 
 type Tab = "positive-replies" | "clicks" | "opens" | "outreach" | "all";
 
+// The Date column + sort key are PER-TAB: each tab shows the first-occurrence
+// timestamp of the engagement that tab is about (Clicks → first click, Opens →
+// first open, Outreach → first contacted, Positive replies → first reply). The
+// "all" tab has no single engagement, so it uses the most-recent activity across
+// every first-occurrence timestamp.
+function leadDateForTab(lead: Lead, tab: Tab): string | null {
+  switch (tab) {
+    case "positive-replies": return lead.firstRepliedAt ?? null;
+    case "clicks": return lead.firstClickedAt ?? null;
+    case "opens": return lead.firstOpenedAt ?? null;
+    case "outreach": return lead.firstContactedAt ?? null;
+    case "all": {
+      const ats = [
+        lead.firstRepliedAt,
+        lead.firstClickedAt,
+        lead.firstOpenedAt,
+        lead.firstDeliveredAt,
+        lead.firstSentAt,
+        lead.firstContactedAt,
+      ].filter((a): a is string => !!a);
+      if (ats.length === 0) return null;
+      return ats.reduce((latest, a) => (new Date(a).getTime() > new Date(latest).getTime() ? a : latest));
+    }
+  }
+}
+
 function leadStatusLabel(status: LeadConsolidatedStatus): string {
   switch (status) {
     case "replied": return "Replied";
@@ -329,8 +355,9 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }: {
+function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf }: {
   leads: Lead[];
+  tab: Tab;
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
   statusOf: (lead: Lead) => LeadConsolidatedStatus;
@@ -393,11 +420,14 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  {lead.firstClickedAt ? (
-                    <span className="text-xs text-gray-500" title={new Date(lead.firstClickedAt).toLocaleString()}>{timeAgo(lead.firstClickedAt)}</span>
-                  ) : (
-                    <span className="text-xs text-gray-300">-</span>
-                  )}
+                  {(() => {
+                    const at = leadDateForTab(lead, tab);
+                    return at ? (
+                      <span className="text-xs text-gray-500" title={new Date(at).toLocaleString()}>{timeAgo(at)}</span>
+                    ) : (
+                      <span className="text-xs text-gray-300">-</span>
+                    );
+                  })()}
                 </td>
               </tr>
             );
@@ -474,16 +504,15 @@ export function EngagedLeadsPage() {
   const audienceOf = (lead: Lead): LeadAudience | null =>
     lead.email ? audienceByEmail.get(lead.email.toLowerCase()) ?? null : null;
 
-  // Sort by the Date column shown in the table (`firstClickedAt`), most recent
-  // first. Leads with no click date sink to the bottom (null → 0).
-  const sortedLeads = useMemo(
-    () => [...leads].sort((a, b) => {
-      const aTime = a.firstClickedAt ? new Date(a.firstClickedAt).getTime() : 0;
-      const bTime = b.firstClickedAt ? new Date(b.firstClickedAt).getTime() : 0;
-      return bTime - aTime;
-    }),
-    [leads],
-  );
+  // Base "all" ordering — most-recent activity first (the "all" Date column).
+  // Each funnel tab re-sorts by ITS OWN date field below. Null sinks to bottom.
+  const sortByTabDate = (arr: Lead[], tab: Tab): Lead[] =>
+    [...arr].sort((a, b) => {
+      const at = leadDateForTab(a, tab);
+      const bt = leadDateForTab(b, tab);
+      return (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+    });
+  const sortedLeads = useMemo(() => sortByTabDate(leads, "all"), [leads]);
 
   // Monotonic status latch: each lead's tab is derived from the email-gateway
   // delivery overlay, which can transiently drop on a poll and bounce a lead
@@ -501,20 +530,26 @@ export function EngagedLeadsPage() {
     (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
 
   const groupedByTab = useMemo(() => {
-    const groups = new Map<Tab, Lead[]>();
-    groups.set("positive-replies", []);
-    groups.set("clicks", []);
-    groups.set("opens", []);
-    groups.set("outreach", []);
-    groups.set("all", sortedLeads);
-    for (const lead of sortedLeads) {
-      if (lead.replyClassification === "positive") groups.get("positive-replies")?.push(lead);
-      if (lead.clicked) groups.get("clicks")?.push(lead);
-      if (lead.opened) groups.get("opens")?.push(lead);
-      if (lead.contacted) groups.get("outreach")?.push(lead);
+    const positive: Lead[] = [];
+    const clicks: Lead[] = [];
+    const opens: Lead[] = [];
+    const outreach: Lead[] = [];
+    for (const lead of leads) {
+      if (lead.replyClassification === "positive") positive.push(lead);
+      if (lead.clicked) clicks.push(lead);
+      if (lead.opened) opens.push(lead);
+      if (lead.contacted) outreach.push(lead);
     }
+    const groups = new Map<Tab, Lead[]>();
+    // Each tab sorted desc by its OWN date column (Clicks → first click, etc.).
+    groups.set("positive-replies", sortByTabDate(positive, "positive-replies"));
+    groups.set("clicks", sortByTabDate(clicks, "clicks"));
+    groups.set("opens", sortByTabDate(opens, "opens"));
+    groups.set("outreach", sortByTabDate(outreach, "outreach"));
+    groups.set("all", sortedLeads);
     return groups;
-  }, [sortedLeads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, sortedLeads]);
 
   // Open, once (after leads + the sales-economics query have settled), the
   // leftmost funnel tab that has leads, ordered by what the brand optimizes for:
@@ -625,7 +660,7 @@ export function EngagedLeadsPage() {
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} />
+              <LeadsTable leads={filteredLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} />
             )}
           </>
         )}
