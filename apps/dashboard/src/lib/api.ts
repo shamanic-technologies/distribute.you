@@ -2403,6 +2403,44 @@ export async function listBrandEmails(brandId: string, token?: string): Promise<
   return apiCall<{ emails: Email[] }>(`/emails?brandId=${brandId}`, { token });
 }
 
+/** The generated email for ONE lead — initial body + follow-up `sequence` steps —
+ *  read by leadId from content-generation-service via the api-service proxy.
+ *  Powers the email content interleaved into the lead detail timeline. */
+export interface LeadEmailGeneration {
+  id: string;
+  campaignId: string | null;
+  subject: string | null;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  sequence: EmailSequenceStep[] | null;
+  createdAt: string | null;
+  leadId: string | null;
+}
+
+const LeadEmailGenerationSchema = z
+  .object({
+    id: z.string(),
+    subject: z.string().nullable().optional(),
+    bodyHtml: z.string().nullable().optional(),
+    bodyText: z.string().nullable().optional(),
+    createdAt: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const GetLeadEmailResponseSchema = z.object({ generation: LeadEmailGenerationSchema.nullable() });
+
+/** GET /v1/emails/by-lead/:leadId → { generation } (null when the lead has no
+ *  generated email yet). 404 is mapped to { generation: null } by the gateway. */
+export async function getLeadEmail(leadId: string, token?: string): Promise<{ generation: LeadEmailGeneration | null }> {
+  const raw = await apiCall<unknown>(`/emails/by-lead/${leadId}`, { token });
+  const parsed = GetLeadEmailResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadEmail: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getLeadEmail: invalid response shape");
+  }
+  return parsed.data as unknown as { generation: LeadEmailGeneration | null };
+}
+
 /** A past generated email surfaced as an EXAMPLE for a workflow (campaigns/new picker).
  *  `scope` is the cascade tier it was pulled from relative to the caller:
  *  "brand" (own brand) · "org" (same org, other brand) · "global" (any org — public examples).
