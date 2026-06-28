@@ -243,29 +243,30 @@ export const EMAIL_TEMPLATES = [
   },
 
   // ── Daily outcome digest (beta-gated by dashboard cron via PostHog) ──
-  // dashboard cron sends this only to users where the PostHog beta flag resolves
-  // true, and only when their org has at least one sales-cold-email outcome
-  // organization across its brands.
+  // dashboard cron sends ONE email PER BRAND to users where the PostHog beta flag
+  // resolves true, and only when that brand recorded at least one outcome on the
+  // day — clicks (signups goal) or positive replies (sales-meetings goal). The brand
+  // name leads the subject so the user can filter in their inbox.
   // Variables:
-  //   orgName, totalBrandsWithOutcomes, totalOutcomeOrganizations,
-  //   totalExpectedRevenueUsd, digestHtml, digestText
+  //   brandName, brandUrl, outcomeCount, outcomeLabel,
+  //   totalOutcomeOrganizations, totalExpectedRevenueUsd, digestHtml, digestText
   {
     name: "daily-outcome-digest",
-    subject: "Daily outcome digest: {{totalOutcomeOrganizations}} sales outcomes",
+    subject: "{{brandName}}: {{outcomeCount}} new {{outcomeLabel}} today",
     htmlBody: emailLayout(`
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Here's the latest sales-cold-email outcome digest for {{orgName}}.
+        {{brandName}} got <strong>{{outcomeCount}} new {{outcomeLabel}}</strong> today.
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        {{totalOutcomeOrganizations}} outcome organizations across {{totalBrandsWithOutcomes}} brands, worth {{totalExpectedRevenueUsd}} in expected pipeline revenue.
+        {{totalOutcomeOrganizations}} organizations in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.
       </p>
       {{digestHtml}}
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#2563EB;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nHere's the latest sales-cold-email outcome digest for {{orgName}}.\n\n{{totalOutcomeOrganizations}} outcome organizations across {{totalBrandsWithOutcomes}} brands, worth {{totalExpectedRevenueUsd}} in expected pipeline revenue.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalOutcomeOrganizations}} organizations in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
   },
 ];
 
