@@ -126,10 +126,21 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain("Positive reply → meeting");
     expect(content).toContain("Website visit → meeting");
     expect(content).toContain("Website visit → signup");
+    expect(content).toContain("Signup → Paid client");
     expect(content).not.toContain("Meeting → close");
-    expect(content).not.toContain("Signup → paid client");
     expect(content).not.toContain("Website visit → close");
     expect(content).toContain("Save");
+  });
+
+  it("renders Signup → Paid client in the signups-goal conversion set", () => {
+    expect(content).toContain('key: "signupToPaidClientPct"');
+    expect(content).toContain('label: "Signup → Paid client"');
+  });
+
+  it("keeps Customer Lifetime Revenue integer-only (no decimal separator accepted)", () => {
+    expect(content).toContain('inputMode="numeric"');
+    expect(content).toContain('updateInteger("lifetimeRevenueUsd"');
+    expect(content).toContain('normalizeIntegerInput("lifetimeRevenueUsd")');
   });
 
   it("removes the business-model and Sales-funnel controls", () => {
