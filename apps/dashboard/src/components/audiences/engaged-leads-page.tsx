@@ -17,6 +17,7 @@ import {
   type LeadEmailGeneration,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
@@ -35,7 +36,36 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "buffered",
 ];
 
-type Tab = "positive-replies" | "clicks" | "opens" | "outreach";
+// "all" is NOT a rendered tab — it's an internal sort-mode (base "most-recent
+// activity" ordering for `sortedLeads` + `leadDateForTab`). The All UI tab was
+// removed; the funnel tabs are the four below.
+type Tab = "positive-replies" | "clicks" | "opens" | "outreach" | "all";
+
+// The Date column + sort key are PER-TAB: each tab shows the first-occurrence
+// timestamp of the engagement that tab is about (Clicks → first click, Opens →
+// first open, Outreach → first contacted, Positive replies → first reply). The
+// "all" tab has no single engagement, so it uses the most-recent activity across
+// every first-occurrence timestamp.
+function leadDateForTab(lead: Lead, tab: Tab): string | null {
+  switch (tab) {
+    case "positive-replies": return lead.firstRepliedAt ?? null;
+    case "clicks": return lead.firstClickedAt ?? null;
+    case "opens": return lead.firstOpenedAt ?? null;
+    case "outreach": return lead.firstContactedAt ?? null;
+    case "all": {
+      const ats = [
+        lead.firstRepliedAt,
+        lead.firstClickedAt,
+        lead.firstOpenedAt,
+        lead.firstDeliveredAt,
+        lead.firstSentAt,
+        lead.firstContactedAt,
+      ].filter((a): a is string => !!a);
+      if (ats.length === 0) return null;
+      return ats.reduce((latest, a) => (new Date(a).getTime() > new Date(latest).getTime() ? a : latest));
+    }
+  }
+}
 
 function leadStatusLabel(status: LeadConsolidatedStatus): string {
   switch (status) {
@@ -222,16 +252,29 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     const anchor = lead.firstSentAt ?? email.createdAt ?? "";
     const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
     const initialBody = emailBodyText(email.bodyHtml, email.bodyText);
-    if (email.subject || initialBody) {
+    // The initial "Email sent" entry: prefer the generation's top-level body. Some
+    // generations leave that empty and carry the initial email as sequence step 1 —
+    // so never push an empty "Email sent" row here; fall through to claim step 1 below.
+    let initialDone = false;
+    if (initialBody) {
       entries.push({ kind: "email", label: "Email sent", at: anchor, subject: email.subject ?? null, body: initialBody });
+      initialDone = true;
     }
     let cumDays = 0;
     for (const step of email.sequence ?? []) {
       const body = emailBodyText(step.bodyHtml, step.bodyText);
       if (!body) continue;
       cumDays += step.daysSinceLastStep || 0;
-      // Skip a step that duplicates the initial body (some sequences include step 1).
-      if (cumDays === 0 && body === initialBody) continue;
+      // Step 1 IS the initial email. If the top-level body was empty, this step
+      // becomes the "Email sent" entry; otherwise it duplicates the initial — skip.
+      const isInitial = step.step === 1 || (cumDays === 0 && body === initialBody);
+      if (isInitial) {
+        if (!initialDone) {
+          entries.push({ kind: "email", label: "Email sent", at: anchor, subject: email.subject ?? null, body });
+          initialDone = true;
+        }
+        continue;
+      }
       const at = Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "";
       entries.push({ kind: "email", label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`, at, subject: email.subject ?? null, body });
     }
@@ -265,7 +308,10 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                 <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
                   {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
                 </summary>
-                <pre className="mt-1.5 whitespace-pre-wrap break-words font-sans text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded p-2">{e.body}</pre>
+                <div className="mt-1.5 bg-gray-50 border border-gray-100 rounded p-2">
+                  <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
+                  <EmailSignature className="text-xs" />
+                </div>
               </details>
             )}
           </li>
@@ -312,8 +358,9 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf, forceContacted }: {
+function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, forceContacted }: {
   leads: Lead[];
+  tab: Tab;
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
   statusOf: (lead: Lead) => LeadConsolidatedStatus;
@@ -380,11 +427,14 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf, f
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={forceContacted ? "contacted" : statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  {lead.firstClickedAt ? (
-                    <span className="text-xs text-gray-500" title={new Date(lead.firstClickedAt).toLocaleString()}>{timeAgo(lead.firstClickedAt)}</span>
-                  ) : (
-                    <span className="text-xs text-gray-300">-</span>
-                  )}
+                  {(() => {
+                    const at = leadDateForTab(lead, tab);
+                    return at ? (
+                      <span className="text-xs text-gray-500" title={new Date(at).toLocaleString()}>{timeAgo(at)}</span>
+                    ) : (
+                      <span className="text-xs text-gray-300">-</span>
+                    );
+                  })()}
                 </td>
               </tr>
             );
@@ -461,16 +511,15 @@ export function EngagedLeadsPage() {
   const audienceOf = (lead: Lead): LeadAudience | null =>
     lead.email ? audienceByEmail.get(lead.email.toLowerCase()) ?? null : null;
 
-  // Sort by the Date column shown in the table (`firstClickedAt`), most recent
-  // first. Leads with no click date sink to the bottom (null → 0).
-  const sortedLeads = useMemo(
-    () => [...leads].sort((a, b) => {
-      const aTime = a.firstClickedAt ? new Date(a.firstClickedAt).getTime() : 0;
-      const bTime = b.firstClickedAt ? new Date(b.firstClickedAt).getTime() : 0;
-      return bTime - aTime;
-    }),
-    [leads],
-  );
+  // Base "all" ordering — most-recent activity first (the "all" Date column).
+  // Each funnel tab re-sorts by ITS OWN date field below. Null sinks to bottom.
+  const sortByTabDate = (arr: Lead[], tab: Tab): Lead[] =>
+    [...arr].sort((a, b) => {
+      const at = leadDateForTab(a, tab);
+      const bt = leadDateForTab(b, tab);
+      return (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+    });
+  const sortedLeads = useMemo(() => sortByTabDate(leads, "all"), [leads]);
 
   // Monotonic status latch: each lead's tab is derived from the email-gateway
   // delivery overlay, which can transiently drop on a poll and bounce a lead
@@ -488,19 +537,25 @@ export function EngagedLeadsPage() {
     (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
 
   const groupedByTab = useMemo(() => {
-    const groups = new Map<Tab, Lead[]>();
-    groups.set("positive-replies", []);
-    groups.set("clicks", []);
-    groups.set("opens", []);
-    groups.set("outreach", []);
-    for (const lead of sortedLeads) {
-      if (lead.replyClassification === "positive") groups.get("positive-replies")?.push(lead);
-      if (lead.clicked) groups.get("clicks")?.push(lead);
-      if (lead.opened) groups.get("opens")?.push(lead);
-      if (lead.contacted) groups.get("outreach")?.push(lead);
+    const positive: Lead[] = [];
+    const clicks: Lead[] = [];
+    const opens: Lead[] = [];
+    const outreach: Lead[] = [];
+    for (const lead of leads) {
+      if (lead.replyClassification === "positive") positive.push(lead);
+      if (lead.clicked) clicks.push(lead);
+      if (lead.opened) opens.push(lead);
+      if (lead.contacted) outreach.push(lead);
     }
+    const groups = new Map<Tab, Lead[]>();
+    // Each tab sorted desc by its OWN date column (Clicks → first click, etc.).
+    groups.set("positive-replies", sortByTabDate(positive, "positive-replies"));
+    groups.set("clicks", sortByTabDate(clicks, "clicks"));
+    groups.set("opens", sortByTabDate(opens, "opens"));
+    groups.set("outreach", sortByTabDate(outreach, "outreach"));
     return groups;
-  }, [sortedLeads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, sortedLeads]);
 
   // Open, once (after leads + the sales-economics query have settled), the
   // leftmost funnel tab that has leads, ordered by what the brand optimizes for:
@@ -617,7 +672,7 @@ export function EngagedLeadsPage() {
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} />
+              <LeadsTable leads={filteredLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} />
             )}
           </>
         )}
