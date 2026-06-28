@@ -67,7 +67,23 @@ describe("daily outcome digest", () => {
           mostAdvancedDate: null,
         },
       ],
-      leads: [],
+      leads: [
+        {
+          leadId: "lead-1",
+          firstName: "Ada",
+          lastName: "Lovelace",
+          photoUrl: "https://img.example.test/ada.jpg",
+          orgName: "Lead Co",
+          orgLogoUrl: null,
+          orgDomain: "leadco.test",
+          tags: ["replied"],
+          expectedRevenueUsd: 8000,
+          conversionProbabilityPct: null,
+          contacted: true,
+          contactedAt: null,
+          date: null,
+        },
+      ],
       events: [],
     };
   }
@@ -163,8 +179,11 @@ describe("daily outcome digest", () => {
         totalExpectedRevenueUsd: "$12,500",
       },
     });
-    expect(result.preparedSends[0].metadata.digestHtml).toContain("Lead Co");
-    expect(result.preparedSends[0].metadata.digestText).toContain("Acme");
+    // Body lists the people (face + company logo) — name, photo, logo.dev domain.
+    expect(result.preparedSends[0].metadata.digestHtml).toContain("Ada Lovelace");
+    expect(result.preparedSends[0].metadata.digestHtml).toContain("https://img.example.test/ada.jpg");
+    expect(result.preparedSends[0].metadata.digestHtml).toContain("img.logo.dev/leadco.test");
+    expect(result.preparedSends[0].metadata.digestText).toContain("Ada Lovelace @ Lead Co");
   });
 
   it("does not prepare a send when a brand has pipeline but no outcome that day", async () => {
@@ -322,7 +341,7 @@ describe("daily outcome digest", () => {
     expect(result.preparedSends).toHaveLength(0);
   });
 
-  it("renders digest HTML with brand sections and expected revenue", () => {
+  it("renders digest HTML with a people list — face photo + company logo", () => {
     const html = renderOutcomeDigestHtml([
       {
         brandName: "Acme",
@@ -336,11 +355,38 @@ describe("daily outcome digest", () => {
             topPersonName: "Ada Lovelace",
           },
         ],
+        leads: [
+          {
+            name: "Ada Lovelace",
+            photoUrl: "https://img.example.test/ada.jpg",
+            companyName: "Lead Co",
+            companyLogoUrl: null,
+            companyDomain: "leadco.test",
+            tags: ["replied", "clicked"],
+            expectedRevenueUsd: 8000,
+          },
+          {
+            name: "Grace Hopper",
+            photoUrl: null,
+            companyName: "Navy Inc",
+            companyLogoUrl: "https://cdn.example.test/navy.png",
+            companyDomain: "navy.test",
+            tags: ["clicked"],
+            expectedRevenueUsd: 4500,
+          },
+        ],
       },
     ]);
 
     expect(html).toContain("Acme");
-    expect(html).toContain("Lead Co");
+    // Person with a photo → <img>; person without → initials circle.
+    expect(html).toContain("Ada Lovelace");
+    expect(html).toContain("https://img.example.test/ada.jpg");
+    expect(html).toContain("Grace Hopper");
+    expect(html).toContain(">G</span>"); // initials fallback for the null-photo person
+    // Company logo: backend logo wins; else logo.dev from the domain.
+    expect(html).toContain("https://cdn.example.test/navy.png");
+    expect(html).toContain("img.logo.dev/leadco.test");
     expect(html).toContain("$8,000");
     expect(html).toContain("replied, clicked");
   });

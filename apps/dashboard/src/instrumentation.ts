@@ -247,8 +247,10 @@ export const EMAIL_TEMPLATES = [
   // resolves true, and only when that brand recorded at least one outcome on the
   // day — clicks (signups goal) or positive replies (sales-meetings goal). The brand
   // name leads the subject so the user can filter in their inbox.
+  // The body below the intro lists the people in the pipeline (face photo +
+  // company logo) via {{digestHtml}}.
   // Variables:
-  //   brandName, brandUrl, outcomeCount, outcomeLabel,
+  //   brandName, brandUrl, outcomeCount, outcomeLabel, totalLeads,
   //   totalOutcomeOrganizations, totalExpectedRevenueUsd, digestHtml, digestText
   {
     name: "daily-outcome-digest",
@@ -259,14 +261,14 @@ export const EMAIL_TEMPLATES = [
         {{brandName}} got <strong>{{outcomeCount}} new {{outcomeLabel}}</strong> today.
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        {{totalOutcomeOrganizations}} organizations in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.
+        {{totalLeads}} people in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.
       </p>
       {{digestHtml}}
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#2563EB;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalOutcomeOrganizations}} organizations in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
   },
 ];
 
