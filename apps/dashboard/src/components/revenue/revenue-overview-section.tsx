@@ -163,7 +163,7 @@ export function RevenueOverviewSection({
       <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
         <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
         {activityLoading ? (
-          <Skeleton className="h-[300px] w-full rounded" />
+          <Skeleton className="h-[300px] lg:h-[200px] w-full rounded" />
         ) : (
           <PipelineActivityChart
             data={pipelineActivity}
