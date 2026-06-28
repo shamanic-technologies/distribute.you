@@ -277,7 +277,10 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
         <SidebarLink
           key={item.id}
           item={item}
-          isActive={item.id === "overview" ? pathname === item.href : pathname.startsWith(item.href)}
+          // `item.href` carries the `?view=overview` query param, but
+          // usePathname() strips the query — so compare against the bare org
+          // path (mirrors the brand-level Overview active check).
+          isActive={item.id === "overview" ? pathname === `/orgs/${orgId}` : pathname.startsWith(item.href)}
         />
       ))}
       {crmEnabled && (
