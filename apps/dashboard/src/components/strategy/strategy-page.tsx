@@ -36,18 +36,18 @@ import {
 import type { AudienceMetricProvenance } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
 
-/** USD number → "$X.XX" / "—" / "<$0.01". */
+/** USD number → "$X" (whole dollars, no cents) / "—" / "<$1". */
 function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
-  if (usd <= 0) return "$0.00";
-  if (usd < 0.01) return "<$0.01";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (usd <= 0) return "$0";
+  if (usd < 1) return "<$1";
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-/** A percentage value already in % units → "X.X%" / "—". */
+/** A percentage value already in % units → "X%" (whole, no decimals) / "—". */
 function formatPct(pct: number | null | undefined): string {
   if (pct == null) return "-";
-  return `${pct.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+  return `${pct.toLocaleString("en-US", { maximumFractionDigits: 0 })}%`;
 }
 
 /** A lifetime-return multiple → "X.X×" / "—". */
@@ -264,7 +264,9 @@ export function StrategyPage() {
   // Ranked workflows + recommended pick + brand-level projected cost per outcome.
   const { data: projection, isPending: projPending } = useAuthQuery(
     ["workflowProjection", featureSlug, brandId, objective, "strategy"],
-    () => getWorkflowProjection({ featureSlug, brandId, objective }),
+    // budgetUsd:1 populates `projection` (and its budget-invariant `cacPct`) so the
+    // "Projected cost of acquisition" stat renders the CAC% instead of "-".
+    () => getWorkflowProjection({ featureSlug, brandId, objective, budgetUsd: 1 }),
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
 
