@@ -33,6 +33,12 @@ interface PaymentRequiredInfo {
    *  stopped. Tailors the modal copy from "needed for this action" to the
    *  arrival-time "all campaigns stopped" message. */
   depleted?: boolean;
+  /** Off-session auto-reload is possible for the card's country. When `false`
+   *  (e.g. India / RBI e-mandates) auto-topup can never be enabled, so the modal
+   *  drops the auto-topup config and becomes a plain one-time recharge. Passed by
+   *  the caller (it already has the account) to avoid a config→recharge flash;
+   *  falls back to the fetched account when omitted. */
+  autoReloadSupported?: boolean;
 }
 
 function toCentsNumber(v: string | number): number {
@@ -220,8 +226,12 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
+    // Skip auto-topup config when the card's country can't be auto-charged —
+    // the recharge variant only adds one-time credit.
+    const autoTopupBlocked =
+      info.autoReloadSupported === false || acct?.auto_reload_supported === false;
     try {
-      if (enableAutoTopup && topupAmount && acct?.has_payment_method) {
+      if (enableAutoTopup && topupAmount && acct?.has_payment_method && !autoTopupBlocked) {
         const topupCents = Math.round(parseFloat(topupAmount) * 100);
         const thresholdCents = topupThreshold ? Math.round(parseFloat(topupThreshold) * 100) : 500;
         await configureAutoTopup(topupCents, thresholdCents);
@@ -259,11 +269,23 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
   const isProactive = info.proactive === true;
   const isDepleted = info.depleted === true;
+  // Auto-reload impossible for this card's country (e.g. India). Prefer the
+  // caller-supplied flag (no flash), fall back to the fetched account.
+  const autoTopupBlocked =
+    info.autoReloadSupported === false || account?.auto_reload_supported === false;
+  // A proactive nudge for a blocked brand has nothing to "turn on" — render it as
+  // a one-time recharge (amount selector + Add $X, no auto-topup config).
+  const rechargeOnly = autoTopupBlocked;
   // Proactive == wallet runway protection. It's not a "you might run out" warning:
   // auto-topup keeps the org wallet funded while brand daily budgets cap allocation.
   const proactiveTitle = "Keep the wallet funded.";
   const proactiveDescription =
     "Your credits live in an org-level wallet. Auto-top-up adds credits when the balance runs low, while each brand daily budget stays the spend cap. You can pause the campaign at any time.";
+  // Recharge variant (auto-reload-blocked card): no auto-topup to offer, so frame
+  // the modal as a plain top-up.
+  const rechargeTitle = "Add credits to keep going.";
+  const rechargeDescription =
+    "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running. Each brand daily budget stays the spend cap.";
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -306,25 +328,31 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 </div>
               )}
               <h2 className="text-lg font-semibold text-gray-900">
-                {isProactive
-                  ? proactiveTitle
-                  : isDepleted
-                    ? "All campaigns stopped"
-                    : "Insufficient Credits"}
+                {isProactive && rechargeOnly
+                  ? rechargeTitle
+                  : isProactive
+                    ? proactiveTitle
+                    : isDepleted
+                      ? "All campaigns stopped"
+                      : "Insufficient Credits"}
               </h2>
             </div>
 
             <p className="text-gray-600 text-sm mb-4">
-              {isProactive
-                ? proactiveDescription
-                : isDepleted
-                  ? "You\u2019re out of credit, so your campaigns have stopped. Add credits to get them running again \u2014 or turn on auto-topup so they never stop."
-                  : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
+              {isProactive && rechargeOnly
+                ? rechargeDescription
+                : isProactive
+                  ? proactiveDescription
+                  : isDepleted
+                    ? rechargeOnly
+                      ? "You\u2019re out of credit, so your campaigns have stopped. Add credits to get them running again."
+                      : "You\u2019re out of credit, so your campaigns have stopped. Add credits to get them running again \u2014 or turn on auto-topup so they never stop."
+                    : "Your account doesn\u2019t have enough credits to complete this action. Add credits to continue."}
             </p>
 
             {/* Proactive wallet protection: show the brand daily budget cap, never
                 frame it as a campaign checkout price. */}
-            {isProactive ? (
+            {isProactive && !rechargeOnly ? (
               info.required_cents !== undefined && (
                 <div className="bg-brand-50 border border-brand-100 rounded-lg p-3 mb-4 flex justify-between items-center text-sm">
                   <span className="text-brand-700">Brand daily budget cap</span>
@@ -350,8 +378,9 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               )
             )}
 
-            {/* Top-up amount selection — hard-block (insufficient credits) only. */}
-            {!isProactive && (
+            {/* Top-up amount selection — hard-block (insufficient credits) or the
+                recharge variant (auto-reload-blocked card). */}
+            {(!isProactive || rechargeOnly) && (
               <>
                 <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -385,7 +414,8 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               </>
             )}
 
-            {/* Auto-topup option */}
+            {/* Auto-topup option — omitted when the card's country can't auto-reload */}
+            {!rechargeOnly && (
             <div className={`border-gray-100 mb-4 ${isProactive ? "" : "border-t pt-4 mt-3"}`}>
               {isProactive ? (
                 <div>
@@ -447,12 +477,13 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
+            )}
 
             {checkoutError && (
               <p className="text-sm text-red-600 mb-3">{checkoutError}</p>
             )}
 
-            {isProactive && (
+            {isProactive && !rechargeOnly && (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 text-xs text-gray-500">
                 <span className="inline-flex items-center gap-1">
                   <svg className="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
@@ -477,7 +508,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 Cancel
               </button>
 
-              {isProactive ? (
+              {isProactive && !rechargeOnly ? (
                 account?.has_payment_method ? (
                   <button
                     onClick={handleSetupAutoTopupOnly}

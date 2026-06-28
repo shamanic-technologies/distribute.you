@@ -14,8 +14,10 @@ describe("Audiences page", () => {
   );
 
   it("reads audiences from the gateway, not brand-service personas", () => {
-    expect(src).toContain("listAudiences(brandId)");
-    expect(src).toContain('["audiences", brandId]');
+    expect(src).toContain('listAudiences(brandId, { status: "active" })');
+    expect(src).toContain('listAudiences(brandId, { status: "paused" })');
+    expect(src).toContain('listAudiences(brandId, { status: "archived" })');
+    expect(src).toContain('["audiences", brandId, "active"]');
     expect(src).not.toContain("listPersonas");
     expect(src).not.toContain("createPersona");
     expect(src).not.toContain("/brands/");
@@ -60,9 +62,19 @@ describe("Audiences page", () => {
     expect(src).toContain("EditWithAIChat");
     expect(src).toContain('configKey="audience-editor"');
     expect(src).not.toContain('configKey="persona-editor"');
+    expect(src).toContain("MaturityBadge");
+    expect(src).toContain('MaturityBadge level="beta"');
   });
 
-  it("hides pre-activation suggested candidates from the list", () => {
-    expect(src).toContain('a.status !== "suggested"');
+  it("renders readable detail-panel status and targeting tags", () => {
+    expect(src).toContain("statusPillTone");
+    expect(src).toContain("bg-emerald-50 text-emerald-700 border-emerald-200");
+    expect(src).toContain("grid grid-cols-[7.5rem_minmax(0,1fr)]");
+    expect(src).not.toContain("Contact email status");
+  });
+
+  it("only lists user-visible lifecycle statuses", () => {
+    expect(src).toContain('const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const');
+    expect(src).not.toContain('a.status !== "suggested"');
   });
 });

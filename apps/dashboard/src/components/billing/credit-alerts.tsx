@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBillingAccount, listCampaigns, type BillingAccount, type Campaign } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
-import { pollOptionsSlower } from "@/lib/query-options";
+import { pollOptions } from "@/lib/query-options";
 import { computeRunway, runwaySeverity } from "@/lib/campaign-runway";
 
 const DEPLETED_MODAL_SESSION_KEY = "credit-depleted-modal-shown";
@@ -30,12 +30,12 @@ export function CreditAlerts() {
   const { data: account } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
-    pollOptionsSlower,
+    pollOptions,
   );
   const { data: campaignsData } = useAuthQuery<{ campaigns: Campaign[] }>(
     ["campaigns"],
     () => listCampaigns(),
-    pollOptionsSlower,
+    pollOptions,
   );
 
   const depletedShownRef = useRef(false);
@@ -57,7 +57,11 @@ export function CreditAlerts() {
 
     depletedShownRef.current = true;
     sessionStorage.setItem(DEPLETED_MODAL_SESSION_KEY, "1");
-    showPaymentRequired({ balance_cents: account.balance_cents, depleted: true });
+    showPaymentRequired({
+      balance_cents: account.balance_cents,
+      depleted: true,
+      autoReloadSupported: account.auto_reload_supported !== false,
+    });
   }, [account, campaignsData, showPaymentRequired]);
 
   if (!account || !campaignsData) return null;
@@ -65,6 +69,13 @@ export function CreditAlerts() {
   const status = computeRunway(campaignsData.campaigns, account);
   const severity = runwaySeverity(status, account.has_auto_topup);
   if (!severity) return null;
+
+  // Off-session auto-reload is impossible for some card countries (e.g. India).
+  // For those brands there's nothing to "turn on" to keep running, so the only
+  // useful alert is the depleted one (out of credit). Suppress the proactive
+  // runway-low warning and frame the CTA as a one-time recharge.
+  const autoReloadSupported = account.auto_reload_supported !== false;
+  if (!autoReloadSupported && !status.depleted) return null;
 
   const plural = status.activeDailyBudgetCount > 1;
   const subject = plural ? "campaigns" : "campaign";
@@ -99,14 +110,16 @@ export function CreditAlerts() {
         {message}
       </span>
       <button
-        onClick={() => showPaymentRequired({ balance_cents: account.balance_cents, proactive: true })}
+        onClick={() => showPaymentRequired({ balance_cents: account.balance_cents, proactive: true, autoReloadSupported })}
         className={
           isUrgent
             ? "underline underline-offset-2 font-semibold hover:opacity-90"
             : "underline underline-offset-2 font-semibold hover:opacity-80"
         }
       >
-        Turn on auto-topup so {plural ? "they" : "it"} never stop{plural ? "" : "s"} →
+        {autoReloadSupported
+          ? `Turn on auto-topup so ${plural ? "they" : "it"} never stop${plural ? "" : "s"} →`
+          : `Add credits so ${plural ? "they keep" : "it keeps"} running →`}
       </button>
     </div>
   );

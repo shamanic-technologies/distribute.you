@@ -22,7 +22,18 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
  * `OutreachStatCards` directly (they already hold the stats); this wrapper is for
  * the entity pages that otherwise carry no stats.
  */
-export function OutreachStatCardsAuto() {
+export function OutreachStatCardsAuto({
+  outreachOverride,
+}: {
+  /**
+   * When set, the Outreach count comes from this value instead of the legacy
+   * `/stats` `leadsContacted` aggregate. The leads page passes its contacted-lead
+   * count (from the SAME `listBrandLeads` snapshot the table + tabs render) so the
+   * box and the Outreach tab move together — mirrors the brand Overview's
+   * `outreachContacted` single source (features-service #371/#372).
+   */
+  outreachOverride?: number | null;
+} = {}) {
   const params = useParams();
   const brandId = params.brandId as string;
   const campaignId = params.id as string | undefined;
@@ -51,16 +62,18 @@ export function OutreachStatCardsAuto() {
   if (!enabled) return null;
 
   const featureStats = featureStatsData?.stats ?? {};
-  const totalCostCents = featureStatsData?.systemStats?.totalCostInUsdCents ?? 0;
   const optimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
 
+  // Entity pages carry no `/revenue` payload → no `spend` block; the cost cards
+  // (CPC / CPS / CPSM) render "—". features-service is the single source for the
+  // cost metrics, fetched only where `/revenue` is loaded (the brand Overview).
   return (
     <OutreachStatCards
       stats={featureStats}
-      totalCostCents={totalCostCents}
       pending={!statsRevealed}
       optimizationGoal={optimizationGoal}
+      outreachOverride={outreachOverride}
     />
   );
 }

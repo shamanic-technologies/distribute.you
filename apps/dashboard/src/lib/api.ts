@@ -1,10 +1,4 @@
 import { z } from "zod";
-import {
-  buildExpertQuotePitchVariables,
-  coerceExtractedToString,
-  selectPriorSubmittedPitches,
-  type QuoteOpportunityContext,
-} from "./quote-pitch-variables";
 import { ORG_DESYNC_ERROR, ORG_DESYNC_STATUS } from "./org-desync";
 import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
@@ -1010,7 +1004,7 @@ export async function getSalesEconomicsEffective(
 // brand-service persona. human-service OWNS these rows; the dashboard reaches
 // them through the api-service gateway, never brand-service.
 
-export type AudienceStatus = "suggested" | "active" | "paused" | "archived";
+export type AudienceStatus = "suggested" | "active" | "paused" | "archived" | "deprecated";
 
 export interface AudienceCandidate {
   // The PERSISTED audience row id — /suggest creates each candidate at status
@@ -1032,6 +1026,7 @@ const AudienceStatusSchema = z.union([
   z.literal("active"),
   z.literal("paused"),
   z.literal("archived"),
+  z.literal("deprecated"),
 ]);
 
 const AudienceCandidateSchema = z.object({
@@ -1179,9 +1174,14 @@ const ListAudiencesResponseSchema = z.object({
 /** GET /orgs/audiences?brandId= — saved audiences for a brand. */
 export async function listAudiences(
   brandId: string,
+  params?: { status?: AudienceStatus; limit?: number; offset?: number },
   token?: string,
 ): Promise<{ audiences: AudienceWire[]; total: number }> {
-  const raw = await apiCall<unknown>(`/orgs/audiences?brandId=${encodeURIComponent(brandId)}`, { token });
+  const query = new URLSearchParams({ brandId });
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  const raw = await apiCall<unknown>(`/orgs/audiences?${query.toString()}`, { token });
   const parsed = ListAudiencesResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] listAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
@@ -1740,12 +1740,23 @@ export async function fetchFeatureStats(
 /** GET /features/:featureSlug/audience-stats — real audience-level cost/outcome evidence. */
 export async function fetchFeatureAudienceStats(
   featureSlug: string,
-  params: { brandId: string; goal: FeatureAudienceStatsGoal; brandProfileId?: string; limit?: number },
+  params: {
+    brandId: string;
+    goal: FeatureAudienceStatsGoal;
+    brandProfileId?: string;
+    limit?: number;
+    /** Audience lifecycle statuses to include. Comma-separated subset of
+     *  `active,paused,archived`. Omitted → features-service defaults to active-only
+     *  (preserves the Top-audiences ranking card). The Audiences page passes all
+     *  three so archived audiences show their historical outreach stats. */
+    statuses?: string;
+  },
   token?: string,
 ): Promise<FeatureAudienceStatsResponse> {
   const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
+  if (params.statuses) query.set("statuses", params.statuses);
   const raw = await apiCall<unknown>(`/features/${featureSlug}/audience-stats?${query.toString()}`, { token });
   const parsed = FeatureAudienceStatsResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -1754,6 +1765,121 @@ export async function fetchFeatureAudienceStats(
       raw,
     });
     throw new Error("[dashboard] fetchFeatureAudienceStats: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ── Strategy: candidate evidence set (the runtime selection grain ladder) ────
+// features-service serves the (audienceId, workflow) candidate SET, each with its
+// OWN cost-per-outcome for the goal at a grain ladder (finest→coarsest):
+//   audience (brandId×goal×audienceId) → brand-goal (brandId×goal) → goal-global
+//   (cross-org workflow evidence).
+// This is the same evidence the runtime selection policy reads. The Strategy page
+// renders it to show how the best model's $/outcome is reassessed from the cross-org
+// prior down to per-audience. Proxied via api-service /v1/features/:slug/candidates.
+export type FeatureCandidateGrain = "audience" | "brand-goal" | "goal-global";
+export type FeatureCandidateCostGrain = "goal-global" | "audience";
+
+export interface FeatureCandidate {
+  /** Non-null with cost.grain='audience' for couples with audience-attributed
+   *  evidence; null on the coarser goal-global fallback rows. */
+  audienceId: string | null;
+  workflow: { workflowDynastySlug: string; workflowDynastyName: string | null };
+  goal: FeatureAudienceStatsGoal;
+  grain: FeatureCandidateGrain;
+  /** The goal metric: cost per goal-outcome (USD). Null at cold start (no economics). */
+  costPerOutcomeUsd: number | null;
+  /** Cost to win one paying client (cost per close, USD), at this candidate's grain.
+   *  `.optional()` decouples the features-service rollout — renders `-` until live. */
+  costPerCloseUsd?: number | null;
+  /** Lifetime ROI multiple (LTR ÷ costPerCloseUsd = 100 / cacPct), at this candidate's
+   *  grain. `.optional()` decouples the features-service rollout. */
+  roiMultiple?: number | null;
+  conversion: {
+    rate: number | null;
+    grain: "brand-goal" | "goal-global" | null;
+    /** Always null (conversion comes from saved economics, no per-grain count). */
+    sampleSize: unknown;
+  };
+  cost: {
+    costPerLeadUsd: number | null;
+    clickUsd: number | null;
+    replyUsd: number | null;
+    /** 'goal-global' = cross-org workflow unit costs; 'audience' = audience-attributed. */
+    grain: FeatureCandidateCostGrain;
+    sampleSize: { runs: number; contacted: number; clicks: number; replies: number };
+  };
+}
+
+export interface FeatureCandidatesResponse {
+  featureSlug: string;
+  brandId: string;
+  goal: FeatureAudienceStatsGoal;
+  brandProfileId: string | null;
+  candidates: FeatureCandidate[];
+}
+
+const FeatureCandidateSchema = z.object({
+  audienceId: z.string().nullable(),
+  workflow: z.object({
+    workflowDynastySlug: z.string(),
+    workflowDynastyName: z.string().nullable(),
+  }),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  grain: z.union([z.literal("audience"), z.literal("brand-goal"), z.literal("goal-global")]),
+  costPerOutcomeUsd: z.number().nullable(),
+  // Additive — features-service rollout decoupled via .optional(). See FeatureCandidate.
+  costPerCloseUsd: z.number().nullable().optional(),
+  roiMultiple: z.number().nullable().optional(),
+  conversion: z.object({
+    rate: z.number().nullable(),
+    grain: z.union([z.literal("brand-goal"), z.literal("goal-global")]).nullable(),
+    sampleSize: z.unknown().nullable(),
+  }),
+  cost: z.object({
+    costPerLeadUsd: z.number().nullable(),
+    clickUsd: z.number().nullable(),
+    replyUsd: z.number().nullable(),
+    grain: z.union([z.literal("goal-global"), z.literal("audience")]),
+    sampleSize: z.object({
+      runs: z.number(),
+      contacted: z.number(),
+      clicks: z.number(),
+      replies: z.number(),
+    }),
+  }),
+});
+
+const FeatureCandidatesResponseSchema = z.object({
+  featureSlug: z.string(),
+  brandId: z.string(),
+  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  brandProfileId: z.string().nullable(),
+  candidates: z.array(FeatureCandidateSchema),
+});
+
+/** GET /features/:slug/candidates — the (audienceId, workflow) candidate evidence
+ *  set with per-candidate cost-per-outcome at the audience/brand-goal/goal-global
+ *  grain ladder. The Strategy page's source for the best model's cross-org vs
+ *  per-audience $/outcome. */
+export async function fetchFeatureCandidates(
+  featureSlug: string,
+  params: { brandId: string; goal: FeatureAudienceStatsGoal; brandProfileId?: string },
+  token?: string,
+): Promise<FeatureCandidatesResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
+  if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/candidates?${query.toString()}`,
+    { token },
+  );
+  const parsed = FeatureCandidatesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] fetchFeatureCandidates: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] fetchFeatureCandidates: invalid response shape");
   }
   return parsed.data;
 }
@@ -1789,10 +1915,11 @@ export async function getFeatureRevenue(
 
 /**
  * `structuralSharing` merge for the `["featureRevenue", ...]` query. The
- * server-computed actual series (`outreachContacted`, `opened`, `clicked`,
- * `repliedPositive`, `meetingsBooked`, `purchased`) are `.optional()` on the wire to decouple the
- * backend rollout — but a transient degenerate refetch can drop them back to
- * `undefined` on a VALID 200, which would collapse chart actuals mid-session.
+ * server-computed `spend` block (cost card) and the actual series
+ * (`outreachContacted`, `opened`, `clicked`, `repliedPositive`, `meetingsBooked`,
+ * `purchased`) are `.optional()` on the wire to decouple the backend rollout — but
+ * a transient degenerate refetch can drop them back to `undefined`/`null` on a
+ * VALID 200, which would collapse the cost card / chart actuals mid-session.
  * Keep the last-good series across such a refetch (fail-loud console.error in
  * keep-last-good); a real persistent absence still logs. Opt-in here ONLY —
  * absence is "transient/not-ready", never "removed".
@@ -1804,7 +1931,7 @@ export function keepLastGoodFeatureRevenue(
   return keepLastGoodFields(
     prev,
     next,
-    ["outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
+    ["spend", "outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
     "featureRevenue",
   );
 }
@@ -2109,6 +2236,12 @@ export interface FullLead {
   lastName: string;
   name: string | null;
   headline: string | null;
+  // Current employer's job title (lead-service derives it from the lead's
+  // current employment row). The LinkedIn-style `headline` above is a separate,
+  // often-null field — render `currentTitle` for the "Title" label, not headline.
+  // Optional: present on the full FullLead today; the slim `view=basic`
+  // projection populates it once lead-service ships the slim-field add.
+  currentTitle?: string | null;
   linkedinUrl: string | null;
   photoUrl: string | null;
   city: string | null;
@@ -2149,10 +2282,18 @@ export interface Lead {
   workflowSlug: string | null;
   featureSlug: string | null;
   servedAt: string | null;
-  // First-click date (first-occurrence ISO timestamp from email-gateway,
-  // forwarded by lead-service). Optional: present once lead-service ships it;
-  // `.passthrough()` on LeadDeliverySchema keeps it at runtime. #audiences-leads-date
+  // Per-event first-occurrence ISO timestamps from email-gateway, forwarded by
+  // lead-service. Optional: present once lead-service ships them; `.passthrough()`
+  // on LeadDeliverySchema keeps them at runtime. Drive the lead detail-panel
+  // event timeline. #audiences-leads-date / lead-event-timeline
   firstClickedAt?: string | null;
+  firstContactedAt?: string | null;
+  firstSentAt?: string | null;
+  firstDeliveredAt?: string | null;
+  firstOpenedAt?: string | null;
+  firstRepliedAt?: string | null;
+  firstBouncedAt?: string | null;
+  firstUnsubscribedAt?: string | null;
   contacted: boolean;
   sent: boolean;
   delivered: boolean;
@@ -2275,6 +2416,44 @@ export async function listCampaignEmails(campaignId: string, token?: string): Pr
 
 export async function listBrandEmails(brandId: string, token?: string): Promise<{ emails: Email[] }> {
   return apiCall<{ emails: Email[] }>(`/emails?brandId=${brandId}`, { token });
+}
+
+/** The generated email for ONE lead — initial body + follow-up `sequence` steps —
+ *  read by leadId from content-generation-service via the api-service proxy.
+ *  Powers the email content interleaved into the lead detail timeline. */
+export interface LeadEmailGeneration {
+  id: string;
+  campaignId: string | null;
+  subject: string | null;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  sequence: EmailSequenceStep[] | null;
+  createdAt: string | null;
+  leadId: string | null;
+}
+
+const LeadEmailGenerationSchema = z
+  .object({
+    id: z.string(),
+    subject: z.string().nullable().optional(),
+    bodyHtml: z.string().nullable().optional(),
+    bodyText: z.string().nullable().optional(),
+    createdAt: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const GetLeadEmailResponseSchema = z.object({ generation: LeadEmailGenerationSchema.nullable() });
+
+/** GET /v1/emails/by-lead/:leadId → { generation } (null when the lead has no
+ *  generated email yet). 404 is mapped to { generation: null } by the gateway. */
+export async function getLeadEmail(leadId: string, token?: string): Promise<{ generation: LeadEmailGeneration | null }> {
+  const raw = await apiCall<unknown>(`/emails/by-lead/${leadId}`, { token });
+  const parsed = GetLeadEmailResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadEmail: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getLeadEmail: invalid response shape");
+  }
+  return parsed.data as unknown as { generation: LeadEmailGeneration | null };
 }
 
 /** A past generated email surfaced as an EXAMPLE for a workflow (campaigns/new picker).
@@ -2658,6 +2837,10 @@ const WorkflowProjectionItemSchema = z.object({
   costPerSignupUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable().optional(),
+  // Lifetime ROI multiple = LTR / costPerCloseUsd (= 100 / cacPct), budget-
+  // independent — rendered VERBATIM instead of inverting cacPct client-side
+  // (features-service#396). `.optional()` decouples the backend rollout.
+  roiMultiple: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowFunnelProjectionSchema.nullable(),
 });
@@ -2845,6 +3028,12 @@ export interface BillingAccount {
   topup_threshold_cents: number | null;
   has_payment_method: boolean;
   has_auto_topup: boolean;
+  // Additive (billing-service v0.40.0+): off_session auto-reload is impossible for cards
+  // issued in some countries (e.g. India / RBI e-mandates). Absent on older billing deploys
+  // => treat as supported (default to today's behavior); only an explicit `false` blocks it.
+  auto_reload_supported?: boolean;
+  auto_reload_unsupported_reason?: string | null;
+  card_country?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -2892,6 +3081,52 @@ export async function configureAutoTopup(
 
 export async function disableAutoTopup(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts/auto_topup", { token, method: "DELETE" });
+}
+
+// ── Credit grants ("gifts received") ──
+// The org's own credit-grants ledger: welcome gift, first-deposit match, staff
+// bonuses, referral credits, promo redemptions. Source: billing-service
+// GET /v1/credits/grants (scoped to x-org-id) via api-service gateway
+// GET /v1/billing/credits/grants. `reason` is the grant kind (welcome,
+// first_load_match, admin_grant, invite_*) or a promo code; `amountCents` is a
+// string (Postgres numeric). Per-field schema verified against api-registry;
+// safeParse turns wire-rot into a caught fetch-error per CLAUDE.md.
+export interface CreditGrant {
+  id: string;
+  orgId: string;
+  amountCents: string;
+  reason: string;
+  note: string | null;
+  grantedBy: string | null;
+  createdAt: string;
+}
+
+const CreditGrantSchema = z
+  .object({
+    id: z.string(),
+    orgId: z.string(),
+    amountCents: z.string(),
+    reason: z.string(),
+    note: z.string().nullable(),
+    grantedBy: z.string().nullable(),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+const ListCreditGrantsResponseSchema = z.object({ grants: z.array(CreditGrantSchema) });
+
+/** GET /billing/credits/grants — the active org's own credit-grants ledger. */
+export async function getCreditGrants(token?: string): Promise<{ grants: CreditGrant[] }> {
+  const raw = await apiCall<unknown>("/billing/credits/grants", { token });
+  const parsed = ListCreditGrantsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getCreditGrants: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getCreditGrants: invalid response shape");
+  }
+  return parsed.data as unknown as { grants: CreditGrant[] };
 }
 
 export async function createCheckoutSession(
@@ -3582,111 +3817,6 @@ export async function checkPressKitOrgsExist(
   );
 }
 
-// ─── Expert Quote Outreach (journalists-quotes-service) ──────────────────────
-
-export type QuoteRequestStatus =
-  | "fetched"
-  | "scored"
-  | "skipped"
-  | "pitched"
-  | "selected"
-  | "published"
-  | "not_selected"
-  | "error";
-
-// Backend openapi: journalists-quotes-service GET /orgs/quote-pitches.
-// Verified 2026-05-28 via mcp__api-registry. Do NOT add fields not on the wire.
-export type QuotePitchStatus =
-  | "drafted"
-  | "submitted"
-  | "selected"
-  | "published"
-  | "not_selected"
-  | "error"
-  | "length_violation"
-  | "template_missing"
-  | "brand_missing_fields"
-  | "insufficient_credits";
-
-export type QuotePitchDeliveryMethod = "featured_api" | "email_reply";
-
-export interface QuoteRequest {
-  id: string;
-  provider: string;
-  ingestionChannel: string;
-  externalId: string;
-  featuredQuestionId: number | null;
-  mediaOutlet: string | null;
-  journalistName: string | null;
-  journalistEmail: string | null;
-  pitchEmail: string | null;
-  category: string | null;
-  opportunityText: string;
-  pitchUrl: string | null;
-  deadline: string | null;
-  fetchedAt: string;
-  orgId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface QuotePitch {
-  id: string;
-  quoteRequestId: string;
-  quoteOpportunityId: string | null;
-  featuredQuestionId: number | null;
-  featuredProfileId: number | null;
-  campaignId: string | null;
-  brandIds: string[];
-  draft: string | null;
-  pitchCharCount: number | null;
-  pitchAttempts: number | null;
-  contentGenRunId: string | null;
-  submittedAt: string | null;
-  status: QuotePitchStatus;
-  deliveryMethod: QuotePitchDeliveryMethod;
-  deliveryTarget: string | null;
-  outboundMessageId: string | null;
-  replyInThreadMessageId: string | null;
-  bounceStatus: string | null;
-  featuredArticleUrl: string | null;
-  error: string | null;
-  errorDetails: unknown;
-  parentRunId: string | null;
-  runId: string | null;
-  orgId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface QuoteRequestStats {
-  fetched: number;
-  scored: number;
-  skipped: number;
-  pitched: number;
-  selected: number;
-  published: number;
-  notSelected: number;
-  errored: number;
-}
-
-export interface ListQuoteRequestsParams {
-  campaign_id?: string;
-  provider?: string;
-  ingestion_channel?: string;
-  limit?: number;
-  offset?: number;
-}
-
-// Wire query params (snake_case). Backend openapi: only campaign_id/status/
-// limit/offset are accepted; brand filtering is done client-side via brandIds[].
-export interface ListQuotePitchesParams {
-  campaign_id?: string;
-  status?: QuotePitchStatus;
-  limit?: number;
-  offset?: number;
-}
-
 function buildQuery(params: object): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -3696,583 +3826,6 @@ function buildQuery(params: object): string {
   }
   const out = qs.toString();
   return out ? `?${out}` : "";
-}
-
-const QuoteRequestSchema = z.object({
-  id: z.string(),
-  provider: z.string(),
-  ingestionChannel: z.string(),
-  externalId: z.string(),
-  featuredQuestionId: z.number().nullable(),
-  mediaOutlet: z.string().nullable(),
-  journalistName: z.string().nullable(),
-  journalistEmail: z.string().nullable(),
-  pitchEmail: z.string().nullable(),
-  category: z.string().nullable(),
-  opportunityText: z.string(),
-  pitchUrl: z.string().nullable(),
-  deadline: z.string().nullable(),
-  fetchedAt: z.string(),
-  orgId: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-const ListQuoteRequestsResponseSchema = z.object({
-  providerQuoteRequests: z.array(QuoteRequestSchema),
-});
-
-export async function listQuoteRequests(
-  params?: ListQuoteRequestsParams,
-  token?: string,
-): Promise<{ providerQuoteRequests: QuoteRequest[] }> {
-  const raw = await apiCall<unknown>(
-    `/orgs/quote-requests${buildQuery(params ?? {})}`,
-    { token },
-  );
-  const parsed = ListQuoteRequestsResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(
-      "[dashboard] listQuoteRequests: response shape mismatch",
-      { issues: parsed.error.issues, raw },
-    );
-    throw new Error("[dashboard] listQuoteRequests: invalid response shape");
-  }
-  return parsed.data;
-}
-
-export async function getQuoteRequest(
-  id: string,
-  token?: string,
-): Promise<{ request: QuoteRequest }> {
-  return apiCall<{ request: QuoteRequest }>(`/orgs/quote-requests/${id}`, { token });
-}
-
-export async function getQuoteRequestStats(
-  params?: { brandId?: string; campaignId?: string },
-  token?: string,
-): Promise<{ stats: QuoteRequestStats }> {
-  return apiCall<{ stats: QuoteRequestStats }>(
-    `/orgs/quote-requests/stats${buildQuery(params ?? {})}`,
-    { token },
-  );
-}
-
-// journalists-quotes-service GET /orgs/quote-pitches openapi (verified via
-// mcp__api-registry 2026-06-02). safeParse on every list/get wrapper per the
-// DIS-74 rule — a wire-shape drift surfaces as a caught fetch error, not a
-// blank page.
-const QuotePitchStatusSchema = z.enum([
-  "drafted",
-  "submitted",
-  "selected",
-  "published",
-  "not_selected",
-  "error",
-  "length_violation",
-  "template_missing",
-  "brand_missing_fields",
-  "insufficient_credits",
-]);
-
-const QuotePitchSchema = z.object({
-  id: z.string(),
-  quoteRequestId: z.string(),
-  quoteOpportunityId: z.string().nullable(),
-  featuredQuestionId: z.number().nullable(),
-  featuredProfileId: z.number().nullable(),
-  campaignId: z.string().nullable(),
-  brandIds: z.array(z.string()),
-  draft: z.string().nullable(),
-  pitchCharCount: z.number().nullable(),
-  pitchAttempts: z.number().nullable(),
-  contentGenRunId: z.string().nullable(),
-  submittedAt: z.string().nullable(),
-  status: QuotePitchStatusSchema,
-  deliveryMethod: z.enum(["featured_api", "email_reply"]),
-  deliveryTarget: z.string().nullable(),
-  outboundMessageId: z.string().nullable(),
-  replyInThreadMessageId: z.string().nullable(),
-  bounceStatus: z.string().nullable(),
-  featuredArticleUrl: z.string().nullable(),
-  error: z.string().nullable(),
-  errorDetails: z.unknown(),
-  parentRunId: z.string().nullable(),
-  runId: z.string().nullable(),
-  orgId: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-const ListQuotePitchesResponseSchema = z.object({
-  quotePitches: z.array(QuotePitchSchema),
-});
-
-const GetQuotePitchResponseSchema = z.object({
-  quotePitch: QuotePitchSchema,
-});
-
-export async function listQuotePitches(
-  params?: ListQuotePitchesParams,
-  token?: string,
-): Promise<{ quotePitches: QuotePitch[] }> {
-  const raw = await apiCall<unknown>(
-    `/orgs/quote-pitches${buildQuery(params ?? {})}`,
-    { token },
-  );
-  const parsed = ListQuotePitchesResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] listQuotePitches: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] listQuotePitches: invalid response shape");
-  }
-  return parsed.data as { quotePitches: QuotePitch[] };
-}
-
-/** Fetches EVERY quote-pitch matching the filter by paging through
- *  `GET /orgs/quote-pitches` until exhausted (never a single capped page) —
- *  the pitches analog of `listAllRankedOpportunities`. The sidebar badge + the
- *  Pitches page show the complete set, so a hardcoded `limit` silently hid the
- *  tail (badge stuck at 100). Pages of 200; the response carries NO `total`, so
- *  a short page (`< PAGE`) is the only exhaustion signal. The 10k-offset guard
- *  is a runaway backstop, not a product cap. */
-export async function listAllQuotePitches(
-  params?: { campaign_id?: string; status?: QuotePitchStatus },
-  token?: string,
-): Promise<{ quotePitches: QuotePitch[] }> {
-  const PAGE = 200;
-  const all: QuotePitch[] = [];
-  for (let offset = 0; offset <= 10_000; offset += PAGE) {
-    const res = await listQuotePitches(
-      { ...params, limit: PAGE, offset },
-      token,
-    );
-    all.push(...res.quotePitches);
-    if (res.quotePitches.length < PAGE) break;
-  }
-  return { quotePitches: all };
-}
-
-export async function getQuotePitch(
-  id: string,
-  token?: string,
-): Promise<{ quotePitch: QuotePitch }> {
-  const raw = await apiCall<unknown>(`/orgs/quote-pitches/${id}`, { token });
-  const parsed = GetQuotePitchResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getQuotePitch: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getQuotePitch: invalid response shape");
-  }
-  return parsed.data as { quotePitch: QuotePitch };
-}
-
-// ─── Ranked HITL opportunities (pr-expert-quote-opportunities) ──────────────
-
-export interface RankedOpportunity {
-  opportunityId: string;
-  provider: string;
-  ingestionChannel: string;
-  featuredQuestionId: number | null;
-  mediaOutlet: string | null;
-  journalistName: string | null;
-  opportunityText: string;
-  deadline: string | null;
-  pitchUrl: string | null;
-  pitchEmail: string | null;
-  category: string | null;
-  score: number;
-  whyRelevant: string | null;
-  // Pitch status annotated by GET /orgs/opportunities for the brand-set (or the
-  // campaign when campaignId is passed). null = no pitch yet. Drives hiding
-  // already-pitched opportunities from the queue (lib/quote-pitch-status.ts).
-  pitchStatus: QuotePitchStatus | null;
-}
-
-const RankedOpportunitySchema = z.object({
-  opportunityId: z.string(),
-  provider: z.string(),
-  ingestionChannel: z.string(),
-  featuredQuestionId: z.number().nullable(),
-  mediaOutlet: z.string().nullable(),
-  journalistName: z.string().nullable(),
-  opportunityText: z.string(),
-  deadline: z.string().nullable(),
-  pitchUrl: z.string().nullable(),
-  pitchEmail: z.string().nullable(),
-  category: z.string().nullable(),
-  score: z.number(),
-  whyRelevant: z.string().nullable(),
-  // Declared so Zod's .object() keeps it — undeclared keys are stripped from
-  // the parsed result even when present on the wire.
-  pitchStatus: QuotePitchStatusSchema.nullable(),
-});
-
-const ListRankedOpportunitiesResponseSchema = z.object({
-  status: z.string(),
-  opportunities: z.array(RankedOpportunitySchema),
-  total: z.number(),
-});
-
-export interface ListRankedOpportunitiesParams {
-  brandId: string;
-  limit?: number;
-  offset?: number;
-}
-
-/** Lists scored Gold opportunities for the given brand.
- *  Canonical read surface (DIS-102): GET /orgs/opportunities with
- *  `limit` / `offset` in the query string. Brand identity via the
- *  `x-brand-id` header (multi-brand CSV allowed). */
-export async function listRankedOpportunities(
-  params: ListRankedOpportunitiesParams,
-  token?: string,
-): Promise<{ status: string; opportunities: RankedOpportunity[]; total: number }> {
-  const { brandId, limit, offset } = params;
-  const query = new URLSearchParams();
-  if (typeof limit === "number") query.set("limit", String(limit));
-  if (typeof offset === "number") query.set("offset", String(offset));
-  const qs = query.toString();
-  const path = qs ? `/orgs/opportunities?${qs}` : "/orgs/opportunities";
-  const raw = await apiCall<unknown>(path, {
-    token,
-    method: "GET",
-    headers: { "x-brand-id": brandId },
-  });
-  const parsed = ListRankedOpportunitiesResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(
-      "[dashboard] listRankedOpportunities: response shape mismatch",
-      { issues: parsed.error.issues, raw },
-    );
-    throw new Error("[dashboard] listRankedOpportunities: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** Fetches EVERY scored Gold opportunity for a brand by paging through
- *  `GET /orgs/opportunities` until the catalog is exhausted (never a single
- *  capped page). The HITL queue + sidebar badges show the complete set — the
- *  operator reviews every opportunity, so a 50-row cap silently hid the tail.
- *  Pages of 200; stops when a short page returns or `total` is reached. The
- *  10k-offset guard is a runaway backstop, not a product cap. */
-export async function listAllRankedOpportunities(
-  params: { brandId: string },
-  token?: string,
-): Promise<{ status: string; opportunities: RankedOpportunity[]; total: number }> {
-  const PAGE = 200;
-  const all: RankedOpportunity[] = [];
-  let status = "ok";
-  let total = 0;
-  for (let offset = 0; offset <= 10_000; offset += PAGE) {
-    const res = await listRankedOpportunities(
-      { brandId: params.brandId, limit: PAGE, offset },
-      token,
-    );
-    status = res.status;
-    total = res.total;
-    all.push(...res.opportunities);
-    if (res.opportunities.length < PAGE || all.length >= res.total) break;
-  }
-  return { status, opportunities: all, total };
-}
-
-/** Body for `generateQuoteDraft`. v0.8.1 contract: variables are caller-
- *  decided shape (matching the `expert-quote-pitch` platform-prompt
- *  template); `brandId` is the brand the pitch is for and is sent both as
- *  the `x-brand-id` header AND as `brandIds: [brandId]` in the body for
- *  content-generation-service tracking. */
-export interface GenerateQuoteDraftBody {
-  brandId: string;
-  variables: Record<string, unknown>;
-  featureSlug?: string;
-}
-
-export interface GenerateQuoteDraftResponse {
-  pitch: string;
-  charCount: number;
-  attempts: number;
-  tokensInput: number;
-  tokensOutput: number;
-}
-
-/** Generates a pitch via content-generation-service `/generate-expert-quote-
- *  pitch`, proxied by api-service `POST /v1/content/generate-expert-quote-
- *  pitch`. The legacy `/orgs/quote-requests/:id/draft` endpoint was removed
- *  from journalists-quotes-service in v0.8.1 — composition now lives in the
- *  caller (see `apps/dashboard/src/app/api/report/.../draft/route.ts` for
- *  the public-report variant). */
-export async function generateQuoteDraft(
-  body: GenerateQuoteDraftBody,
-  token?: string,
-): Promise<GenerateQuoteDraftResponse> {
-  const { brandId, variables, featureSlug } = body;
-  const upstreamBody: Record<string, unknown> = {
-    variables,
-    brandIds: [brandId],
-  };
-  if (featureSlug) upstreamBody.featureSlug = featureSlug;
-  return apiCall<GenerateQuoteDraftResponse>(
-    `/content/generate-expert-quote-pitch`,
-    {
-      token,
-      method: "POST",
-      body: upstreamBody,
-      headers: { "x-brand-id": brandId },
-    },
-  );
-}
-
-/** Brand + expert fields the expert-quote-pitch contract requires but campaign
- *  inputs don't carry. Sourced via brand-service `extract-fields`; descriptions
- *  seed the extraction prompt (quality matters — these ground the pitch). */
-const EXPERT_QUOTE_EXTRACT_FIELDS: ExtractFieldDef[] = [
-  {
-    key: "brandDescription",
-    description: "One-line description of what the company does and who it serves.",
-  },
-  {
-    key: "brandHeadquartersLocation",
-    description: "City and country/region of the company's headquarters.",
-  },
-  {
-    key: "expertBio",
-    description:
-      "Short professional bio of the company's spokesperson/expert — role, experience, and credentials that make them a credible source.",
-  },
-];
-
-/** Expert attribution carried by the campaign `featureInputs` (DIS-136). */
-export interface ExpertQuotePitchExpertInputs {
-  expertName: string;
-  expertTitle: string;
-  expertPhotoUrl: string;
-  expertLinkedIn: string;
-}
-
-export interface GenerateExpertQuotePitchArgs {
-  brandId: string;
-  expert: ExpertQuotePitchExpertInputs;
-  opportunity: QuoteOpportunityContext;
-  /** Free-text revision instructions from the "Edit with AI" modal. Null on a
-   *  first/plain (re)generation. Threaded into `expertAnswerContext`. */
-  revisionInstructions?: string | null;
-  featureSlug?: string;
-}
-
-/** Authed-side orchestration for the all-required expert-quote-pitch contract
- *  (content-generation-service PR #124 / v0.21.0). Fetches brand identity +
- *  extracts the brand/expert fields campaign inputs don't carry, assembles the
- *  byte-equal `variables` body, and generates. `buildExpertQuotePitchVariables`
- *  throws (fail-loud) before any generate call if a required field is empty —
- *  the dashboard never sends a partial body (the upstream validator 400s on
- *  empties) and never falls back to the legacy contract. */
-export async function generateExpertQuotePitch(
-  args: GenerateExpertQuotePitchArgs,
-  token?: string,
-): Promise<GenerateQuoteDraftResponse> {
-  const { brandId, expert, opportunity, revisionInstructions, featureSlug } = args;
-  // Question-driven brand evidence: seed an extract-fields entry with the
-  // journalist's question so brand-service mines the brand for facts that
-  // answer THIS question. brand-service keys its cache on a hash of the
-  // description, so each distinct question gets its own slot (no collision
-  // across opportunities) and re-generating the same opportunity reuses it.
-  const extractFields: ExtractFieldDef[] = [
-    ...EXPERT_QUOTE_EXTRACT_FIELDS,
-    { key: "expertAnswerContext", description: opportunity.opportunityText.trim() },
-  ];
-  const [brandResult, extractRes, priorPitchesRes] = await Promise.all([
-    getBrand(brandId, token),
-    extractBrandFields([brandId], extractFields, { token }),
-    listQuotePitches({}, token),
-  ]);
-  const brand = brandResult?.brand ?? null;
-  const evidence = extractRes.fields.expertAnswerContext;
-
-  const variables = buildExpertQuotePitchVariables({
-    identity: {
-      brandName: brand?.name ?? null,
-      brandUrl: brand?.url ?? null,
-      brandLogoUrl: brand?.logoUrl ?? null,
-    },
-    extracted: {
-      brandDescription: coerceExtractedToString(extractRes.fields.brandDescription?.value),
-      brandHeadquartersLocation: coerceExtractedToString(
-        extractRes.fields.brandHeadquartersLocation?.value,
-      ),
-      expertBio: coerceExtractedToString(extractRes.fields.expertBio?.value),
-    },
-    expert: {
-      expertName: expert.expertName,
-      expertTitle: expert.expertTitle,
-      expertPhotoUrl: expert.expertPhotoUrl,
-      expertLinkedIn: expert.expertLinkedIn,
-    },
-    opportunity,
-    answerContext: {
-      brandEvidence: coerceExtractedToString(evidence?.value),
-      evidenceSourceUrls: evidence?.sourceUrls ?? [],
-      revisionInstructions: revisionInstructions ?? null,
-      priorSubmittedPitches: selectPriorSubmittedPitches(
-        priorPitchesRes.quotePitches,
-        brandId,
-      ),
-    },
-  });
-
-  return generateQuoteDraft({ brandId, variables, featureSlug }, token);
-}
-
-// ───────── Prompt assignment (per-feature generation prompt) ────────────────
-// The prompt the GENERATE button renders for a feature is resolved by
-// content-generation-service: feature assignment ▸ platform default. The editor
-// reads the resolved prompt, lets the operator fork-edit it, and the fork
-// becomes the feature's prompt going forward. Scope is feature-level (global),
-// the prompt is brand-agnostic.
-
-export interface PromptVariable {
-  name: string;
-  description: string;
-}
-
-export interface PromptAssignment {
-  featureSlug: string;
-  /** The resolved prompt-template type/slug, e.g. `expert-quote-pitch-v2`. */
-  promptType: string;
-  prompt: string;
-  variables: PromptVariable[];
-  /** True when no override exists and this is the platform default. */
-  isDefault: boolean;
-}
-
-const PromptVariableSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-});
-
-const PromptAssignmentSchema = z.object({
-  featureSlug: z.string(),
-  promptType: z.string(),
-  prompt: z.string(),
-  variables: z.array(PromptVariableSchema),
-  isDefault: z.boolean(),
-});
-
-// The deployed content-generation-service PUT /prompt-assignments 200 response
-// OMITS isDefault (GET returns it, PUT does not — confirmed against prod +
-// staging api-registry). Parse the PUT response with its own schema rather than
-// the GET one, then set isDefault explicitly below.
-const SavePromptAssignmentResponseSchema = PromptAssignmentSchema.omit({
-  isDefault: true,
-});
-
-/** Reads the resolved generation prompt for a feature (default or fork). */
-export async function getPromptAssignment(
-  featureSlug: string,
-  token?: string,
-): Promise<PromptAssignment> {
-  const raw = await apiCall<unknown>(
-    `/content/prompt-assignments${buildQuery({ featureSlug })}`,
-    { token },
-  );
-  const parsed = PromptAssignmentSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getPromptAssignment: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getPromptAssignment: invalid response shape");
-  }
-  return parsed.data;
-}
-
-export interface SavePromptAssignmentBody {
-  featureSlug: string;
-  prompt: string;
-  variables: PromptVariable[];
-}
-
-/**
- * Forks the feature's current prompt with the edited text + variables and
- * reassigns the feature to the fork. Backend rejects with 400 if the edited
- * prompt drops/renames/adds a template variable.
- */
-export async function savePromptAssignment(
-  body: SavePromptAssignmentBody,
-  token?: string,
-): Promise<PromptAssignment> {
-  const requestBody: Record<string, unknown> = {
-    featureSlug: body.featureSlug,
-    prompt: body.prompt,
-    variables: body.variables,
-  };
-  const raw = await apiCall<unknown>(`/content/prompt-assignments`, {
-    token,
-    method: "PUT",
-    body: requestBody,
-  });
-  const parsed = SavePromptAssignmentResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] savePromptAssignment: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] savePromptAssignment: invalid response shape");
-  }
-  // A fork+reassign just created an override, so the feature is definitionally
-  // no longer on the platform default — isDefault is false by construction
-  // (the PUT response does not carry it). Not a masking fallback: it's the
-  // documented post-fork invariant.
-  return { ...parsed.data, isDefault: false };
-}
-
-export type SubmitQuotePitchStatus =
-  | "submitted"
-  | "already_submitted"
-  | "rate_limited"
-  | "error";
-
-export interface SubmitQuotePitchBody {
-  pitchContent: string;
-  subject?: string;
-  // Associates the created quote_pitch with the campaign so it surfaces on the
-  // campaign-scoped pitches page (which filters by campaign_id). Omitted on
-  // brand-scoped surfaces (feature page, public report) → campaign-less pitch.
-  campaignId?: string;
-}
-
-export interface SubmitQuotePitchResponse {
-  status: SubmitQuotePitchStatus;
-  pitchId?: string;
-  deliveryMethod?: "featured_api" | "email_reply";
-  outboundMessageId?: string | null;
-  featuredQuestionId?: number | null;
-  retryAfter?: number;
-  error?: string;
-}
-
-/** Submits a HITL pitch for the given Gold opportunity. v0.8.1 contract:
- *  brand identity flows via `x-brand-id` header; body carries pitchContent
- *  (+ optional subject) only. */
-export async function submitQuoteOpportunityReply(
-  opportunityId: string,
-  body: SubmitQuotePitchBody,
-  brandId: string,
-  token?: string,
-): Promise<SubmitQuotePitchResponse> {
-  return apiCall<SubmitQuotePitchResponse>(
-    `/orgs/opportunities/${opportunityId}/reply`,
-    {
-      token,
-      method: "POST",
-      body: { ...body },
-      headers: { "x-brand-id": brandId },
-    },
-  );
 }
 
 // ─── Ahref domain metrics (ahref-service via api-service proxy) ─────────────
@@ -4646,156 +4199,6 @@ export async function computeDomainAiVisibility(
     throw new Error("[dashboard] computeDomainAiVisibility: invalid response shape");
   }
   return parsed.data;
-}
-
-// ─── AI Visibility Score (ai-visibility-score-service) ──────────────────────
-
-export interface VisibilityRunWeights {
-  brandMentionRate: number;
-  citationRate: number;
-  positionScore: number;
-  shareOfVoice: number;
-  sentiment: number;
-  brandAndUrlRate: number;
-}
-
-export interface VisibilityRun {
-  id: string;
-  orgId: string;
-  brandId: string;
-  parentRunId: string | null;
-  runId: string | null;
-  domain: string;
-  brandName: string;
-  llmProvider: string;
-  llmModel: string;
-  promptGenModel: string;
-  extractionProvider: string;
-  extractionModel: string;
-  nPrompts: number;
-  weights: VisibilityRunWeights;
-  visibilityScore: string | null;
-  brandMentionRate: string | null;
-  shareOfVoice: string | null;
-  netSentiment: string | null;
-  citationRate: string | null;
-  avgPosition: string | null;
-  status: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  createdAt: string;
-  judgeKind: "aggregate" | "per_provider";
-  aggregateRunId: string | null;
-  // ai-visibility-score-service v0.5.2 debug fields: exact strings sent to
-  // the prompt-generation LLM call. Null on runs created before v0.5.2.
-  // TODO: switch to generated SDK types once api-service hotfix lands.
-  promptGenSystemPrompt: string | null;
-  promptGenUserMessage: string | null;
-}
-
-export interface VisibilityRunWithDelta extends VisibilityRun {
-  visibility_score_delta: string | null;
-  share_of_voice_delta: string | null;
-  net_sentiment_delta: string | null;
-  position_delta: string | null;
-}
-
-export interface VisibilityRunPrompt {
-  id: string;
-  promptIndex: number;
-  promptText: string;
-  responseText: string;
-  responseLengthChars: number | null;
-  brandFound: boolean | null;
-  brandCount: number | null;
-  brandPosition: number | null;
-  urlFound: boolean | null;
-  urlCount: number | null;
-  brandAndUrlCoOccurrence: boolean | null;
-  maxBrandsInResponse: number | null;
-  sentiment: string | null;
-  sentimentScore: string | null;
-  citationUrls: string[] | null;
-  latencyMs: number | null;
-  tokensInput: number | null;
-  tokensOutput: number | null;
-  // ai-visibility-score-service v0.5.2 debug fields: exact strings sent to
-  // the judge + extractor LLM calls per prompt. Null on rows created
-  // before v0.5.2. TODO: switch to generated SDK types once api-service
-  // hotfix lands.
-  judgeSystemPrompt: string | null;
-  judgeUserMessage: string | null;
-  extractorSystemPrompt: string | null;
-  extractorUserMessage: string | null;
-}
-
-export interface VisibilityRunCompetitor {
-  id: string;
-  promptIdFk: string;
-  competitorName: string;
-  competitorUrl: string | null;
-  position: number | null;
-  sentiment: string | null;
-  sentimentScore: string | null;
-  citationUrl: string | null;
-}
-
-export interface VisibilityRunTopCompetitor {
-  name: string;
-  url: string | null;
-  mention_count: number;
-  avg_position: number | null;
-  share_of_voice: number;
-  net_sentiment: number;
-}
-
-export interface VisibilityRunCitationOpportunity {
-  domain: string;
-  count: number;
-}
-
-export interface VisibilityRunByProvider {
-  provider: string;
-  model: string;
-  run: VisibilityRun;
-  prompts: VisibilityRunPrompt[];
-  competitors: VisibilityRunCompetitor[];
-  top_competitors: VisibilityRunTopCompetitor[];
-  citation_opportunities: VisibilityRunCitationOpportunity[];
-}
-
-export interface VisibilityRunDetail {
-  run: VisibilityRun;
-  by_provider: VisibilityRunByProvider[];
-  top_competitors: VisibilityRunTopCompetitor[];
-  citation_opportunities: VisibilityRunCitationOpportunity[];
-}
-
-export interface ListVisibilityRunsParams {
-  brandId?: string;
-  domain?: string;
-  campaignId?: string;
-  from?: string;
-  to?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export async function listVisibilityRuns(
-  params?: ListVisibilityRunsParams,
-  token?: string,
-): Promise<{ runs: VisibilityRunWithDelta[]; limit: number; offset: number }> {
-  return apiCall<{ runs: VisibilityRunWithDelta[]; limit: number; offset: number }>(
-    `/orgs/visibility-score-runs${buildQuery(params ?? {})}`,
-    { token },
-  );
-}
-
-export async function getVisibilityRun(
-  id: string,
-  token?: string,
-): Promise<VisibilityRunDetail> {
-  return apiCall<VisibilityRunDetail>(`/orgs/visibility-score-runs/${id}`, { token });
 }
 
 /**

@@ -54,6 +54,43 @@ describe("nextReminder", () => {
     // auto-topup on + 1 active audience → nothing, regardless of dismiss flags
     expect(nextReminder({ ...base, topupDismissed: false, audienceDismissed: false })).toBeNull();
   });
+
+  describe("auto-reload-blocked card (e.g. India)", () => {
+    // For a blocked brand auto-topup can never turn on (hasAutoTopup always false),
+    // so the funding reminder is a recharge gated on being OUT OF CREDIT, never a
+    // proactive nudge.
+    const blocked = {
+      ...base,
+      hasAutoTopup: false,
+      autoReloadSupported: false,
+      activeAudienceCount: 1,
+    };
+
+    it("does NOT nudge while the wallet still has credit", () => {
+      expect(nextReminder({ ...blocked, outOfCredit: false })).toBeNull();
+    });
+
+    it("shows the recharge reminder once the wallet is out of credit", () => {
+      expect(nextReminder({ ...blocked, outOfCredit: true })).toBe("topup");
+    });
+
+    it("stays quiet about funding when dismissed this session, even out of credit", () => {
+      expect(
+        nextReminder({ ...blocked, outOfCredit: true, topupDismissed: true }),
+      ).toBeNull();
+    });
+
+    it("still surfaces the audience blocker when out of credit reminder is dismissed", () => {
+      expect(
+        nextReminder({
+          ...blocked,
+          outOfCredit: true,
+          topupDismissed: true,
+          activeAudienceCount: 0,
+        }),
+      ).toBe("audience");
+    });
+  });
 });
 
 describe("shouldShowNoAudienceBanner", () => {

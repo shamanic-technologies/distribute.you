@@ -45,8 +45,14 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("saveBrandSalesEconomics");
     expect(src).toContain("saveBrandProfileVersion");
     expect(src).toContain("createCampaign");
-    // Audiences are NOT persisted at launch (activated at the audience step via
-    // setAudienceStatus); no brand-service persona create at launch.
+    // Activation is committed ONCE at the terminal launch: the picked set becomes the
+    // brand's EXACT active set (list current active, demote non-picked back to
+    // "suggested", then activate the picks) — so a re-roll / re-onboarding OVERRIDES
+    // the prior selection instead of stacking stale `active` rows.
+    expect(src).toContain('listAudiences(pending.brandId, { status: "active" })');
+    expect(src).toContain('setAudienceStatus(a.id, "suggested")');
+    expect(src).toContain('setAudienceStatus(audienceId, "active")');
+    // No brand-service persona create at launch.
     expect(src).not.toContain("createPersona");
     expect(src).not.toContain("persistPersonaDraftsForLaunch");
   });
@@ -54,10 +60,10 @@ describe("Beta onboarding guided flow", () => {
   it("replaces the persona step with a natural-language audience step (human-service /suggest)", () => {
     // The audience step calls human-service `/suggest` (via the gateway) and shows
     // ONE candidate per audience; each candidate is already persisted at status
-    // "suggested", so selecting a pick ACTIVATES it via setAudienceStatus — NOT a
-    // re-save via createAudience.
+    // "suggested". Selecting a pick only records it in `selectedAudienceIds` — the
+    // audience step does NOT activate (that would stack stale `active` rows on a
+    // re-roll). Activation happens once at the terminal launch (see the next test).
     expect(src).toContain("suggestAudiences");
-    expect(src).toContain('setAudienceStatus(c.audienceId, "active")');
     expect(src).not.toContain("createAudience");
     expect(src).toContain('step === "audiences"');
     expect(src).toContain("Who do you want to reach?");
@@ -190,10 +196,6 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("const checkoutAmountCents = Math.round(budget * 100)");
     expect(src).toContain("topupAmountCents: checkoutAmountCents");
     expect(src).toContain("topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS");
-    // Brand daily budget note preserved
-    expect(src).toContain("brand daily budget cap");
-    expect(src).toContain("Checkout loads credits first");
-    expect(src).toContain("auto-topup reloads the same daily amount whenever the balance drops below $5");
     expect(src).not.toContain("Set up your org wallet.");
   });
 

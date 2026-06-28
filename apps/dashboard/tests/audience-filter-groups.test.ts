@@ -14,6 +14,9 @@ describe("audienceFilterGroups — faithful Apollo field names", () => {
     expect(labelFor("qOrganizationIndustryTagIds", ["saas"])).toBe("Industry");
     expect(labelFor("personSeniorities", ["vp"])).toBe("Seniority");
     expect(labelFor("organizationNumEmployeesRanges", ["11,50"])).toBe("Employee range");
+    expect(labelFor("q_organization_industry_tag_ids", ["saas"])).toBe("Industry");
+    expect(labelFor("person_seniorities", ["vp"])).toBe("Seniority");
+    expect(labelFor("organization_num_employees_ranges", ["1,200"])).toBe("Employee range");
   });
 
   it("maps Apollo location keys to Location", () => {
@@ -24,12 +27,48 @@ describe("audienceFilterGroups — faithful Apollo field names", () => {
   it("maps Apollo technology + keyword keys to their categories", () => {
     expect(labelFor("currentlyUsingAnyOfTechnologyUids", ["stripe"])).toBe("Technology");
     expect(labelFor("qKeywords", ["fintech"])).toBe("Keywords");
+    expect(labelFor("q_keywords", ["fintech"])).toBe("Search terms");
     expect(labelFor("qOrganizationKeywordTags", ["payments"])).toBe("Keywords");
   });
 
-  it("keeps already-supported faithful keys (personTitles, revenueRange) on their groups", () => {
+  it("formats Apollo values for the detail panel — and hides only contact_email_status", () => {
+    const groups = audienceFilterGroups({
+      q_keywords: "marketing agency OR advertising agency",
+      person_seniorities: ["owner", "founder", "c_suite"],
+      organization_num_employees_ranges: ["1,200"],
+      contact_email_status: ["verified"], // internal deliverability flag — hidden
+    });
+
+    expect(groups).toEqual([
+      {
+        label: "Search terms",
+        tone: "bg-lime-50 text-lime-700 border-lime-200",
+        values: ["marketing agency OR advertising agency"],
+      },
+      {
+        label: "Seniority",
+        tone: "bg-purple-50 text-purple-700 border-purple-200",
+        values: ["Owner", "Founder", "C-suite"],
+      },
+      {
+        label: "Employee range",
+        tone: "bg-sky-50 text-sky-700 border-sky-200",
+        values: ["1-200 employees"],
+      },
+    ]);
+  });
+
+  it("renders range objects ({min,max}) instead of dropping them", () => {
     expect(labelFor("personTitles", ["Founder"])).toBe("Job titles");
-    expect(labelFor("revenueRange", { min: 1000000 })).toBeUndefined(); // object value → no scalar pill
+    // revenue_range / revenueRange object → Revenue group, formatted currency range.
+    const rev = audienceFilterGroups({ revenue_range: { min: 10000000, max: 50000000 } }).at(0);
+    expect(rev?.label).toBe("Revenue");
+    expect(rev?.values).toEqual(["$10M-$50M"]);
+    // hiring signal → Open roles group.
+    const jobs = audienceFilterGroups({ organization_num_jobs_range: { min: 5 } }).at(0);
+    expect(jobs?.label).toBe("Open roles");
+    expect(jobs?.values).toEqual(["5+ open roles"]);
+    // scalar revenue string still works.
     expect(labelFor("revenueRange", "1M-10M")).toBe("Revenue");
   });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -11,6 +11,7 @@ import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
@@ -25,6 +26,8 @@ import {
   type AudienceWire,
   type FeatureAudienceStatsRow,
 } from "@/lib/api";
+
+const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 
 /** Cents → "$X.XX" / "-" / "<$0.01". Mirrors top-audiences-card. */
 function formatCents(cents: number | null): string {
@@ -93,13 +96,45 @@ export function CustomerAudiencesPage() {
 
   const params = useParams();
   const brandId = params.brandId as string;
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
+  // Deep-link seed: `?audienceId=` (e.g. from the brand-overview Top 3 audiences
+  // card) opens that audience's detail panel on first paint. Selection is local
+  // state thereafter — the param only seeds the initial open.
+  const initialAudienceId = searchParams.get("audienceId");
+
   const [tab, setTab] = useState<"active" | "archived">("active");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialAudienceId);
   const [aiOpen, setAiOpen] = useState(false);
 
-  const { data, isPending } = useAuthQuery(["audiences", brandId], () => listAudiences(brandId));
+  const {
+    data: activeData,
+    isPending: activePending,
+    isFetching: activeFetching,
+  } = useAuthQuery(
+    ["audiences", brandId, "active"],
+    () => listAudiences(brandId, { status: "active" }),
+    pollOptions,
+  );
+  const {
+    data: pausedData,
+    isPending: pausedPending,
+    isFetching: pausedFetching,
+  } = useAuthQuery(
+    ["audiences", brandId, "paused"],
+    () => listAudiences(brandId, { status: "paused" }),
+    pollOptions,
+  );
+  const {
+    data: archivedData,
+    isPending: archivedPending,
+    isFetching: archivedFetching,
+  } = useAuthQuery(
+    ["audiences", brandId, "archived"],
+    () => listAudiences(brandId, { status: "archived" }),
+    pollOptions,
+  );
 
   // Brand optimization goal → audience-stats goal (sorts by CPC for signup, CPPR
   // otherwise). Same resolution as the brand Overview.
@@ -116,9 +151,19 @@ export function CustomerAudiencesPage() {
   // Per-audience outreach / opens / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed
   // evidence simply render "-".
+  // Request stats for ALL user-visible statuses (not just active) so ARCHIVED and
+  // paused audiences show their historical Outreach/Opens/Clicks/CPC — these
+  // audiences had real outreach (runs/email evidence attributed by audienceId).
+  // Distinct query key from the brand-overview Top-audiences card (which omits
+  // `statuses` → active-only ranking) so the two never share/clobber a cache entry.
   const { data: audienceStatsData, isPending: statsIsPending, isPlaceholderData: statsIsPlaceholder } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
-    () => fetchFeatureAudienceStats(featureSlug, { brandId, goal: audienceStatsGoal }),
+    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "all-statuses"],
+    () =>
+      fetchFeatureAudienceStats(featureSlug, {
+        brandId,
+        goal: audienceStatsGoal,
+        statuses: "active,paused,archived",
+      }),
     { enabled: Boolean(featureSlug), ...pollOptions },
   );
   // Skeleton the per-row numbers until the stats query resolves (first load or a
@@ -140,25 +185,52 @@ export function CustomerAudiencesPage() {
   const avatarMut = useMutation({
     mutationFn: (id: string) => generateAudienceAvatar(id),
     onSuccess: (res) => {
-      queryClient.setQueryData<{ audiences: AudienceWire[]; total: number }>(
-        ["audiences", brandId],
-        (old) =>
-          old
-            ? { ...old, audiences: old.audiences.map((a) => (a.id === res.audience.id ? res.audience : a)) }
-            : old,
-      );
+      for (const status of VISIBLE_AUDIENCE_STATUSES) {
+        queryClient.setQueryData<{ audiences: AudienceWire[]; total: number }>(
+          ["audiences", brandId, status],
+          (old) =>
+            old
+              ? { ...old, audiences: old.audiences.map((a) => (a.id === res.audience.id ? res.audience : a)) }
+              : old,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["audiences", brandId] });
     },
   });
 
-  // "suggested" candidates are inactive pre-activation rows — not shown on the
-  // page (they belong to the onboarding/AI suggest flow until activated).
-  const audiences: AudienceWire[] = (data?.audiences ?? []).filter((a) => a.status !== "suggested");
+  const isPending = activePending || pausedPending || archivedPending;
+  // Read only user-visible lifecycle states. human-service keeps suggested and
+  // deprecated rows out of these status-specific reads.
+  const audiences: AudienceWire[] = [
+    ...(activeData?.audiences ?? []),
+    ...(pausedData?.audiences ?? []),
+    ...(archivedData?.audiences ?? []),
+  ];
+
+  // Per-TAB loading, not a single combined `isPending`. The Active tab shows
+  // active+paused; the Archived tab shows archived — each fetched separately and
+  // human-service (0.25 CU) cold-starts seconds apart, so one tab can be settled
+  // while the other is still loading. Skeleton a tab whose own query is pending
+  // OR fetching-while-empty (the SWR cache can legitimately restore an EMPTY
+  // archived snapshot from before anything was archived, then revalidate in the
+  // background — `isPending` is false there, so gate on `isFetching` too) — the
+  // empty-state only shows once that tab settles with zero rows.
+  const activeTabRows = audiences.filter((a) => a.status !== "archived").length;
+  const archivedTabRows = audiences.filter((a) => a.status === "archived").length;
+  const activeTabLoading =
+    activePending ||
+    pausedPending ||
+    (activeTabRows === 0 && (activeFetching || pausedFetching));
+  const archivedTabLoading =
+    archivedPending || (archivedTabRows === 0 && archivedFetching);
   const selected = selectedId ? audiences.find((a) => a.id === selectedId) ?? null : null;
 
+  // Clear a stale selection only once the lists have loaded — otherwise a
+  // deep-linked `?audienceId=` seed would be wiped during the initial fetch
+  // (selected is null until the audience row arrives).
   useEffect(() => {
-    if (selectedId && !selected) setSelectedId(null);
-  }, [selectedId, selected]);
+    if (!isPending && selectedId && !selected) setSelectedId(null);
+  }, [isPending, selectedId, selected]);
 
   const setStatus = (id: string, status: AudienceStatus) => statusMut.mutate({ id, status });
 
@@ -171,7 +243,7 @@ export function CustomerAudiencesPage() {
     setAiOpen(false);
   };
 
-  if (!isBeta || !revenueOk) {
+  if (!revenueOk) {
     return (
       <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
@@ -245,6 +317,23 @@ export function CustomerAudiencesPage() {
         const visible = audiences.filter((a) =>
           tab === "archived" ? a.status === "archived" : a.status !== "archived",
         );
+        const tabLoading = tab === "archived" ? archivedTabLoading : activeTabLoading;
+        if (visible.length === 0 && tabLoading) {
+          // The viewed tab's own query is still loading / revalidating-while-empty
+          // — skeleton the rows instead of flashing the empty-state (which read as
+          // "table vide" while archived cold-started behind an already-loaded
+          // active list).
+          return (
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="mb-3 h-9 animate-pulse rounded bg-gray-100 last:mb-0"
+                />
+              ))}
+            </div>
+          );
+        }
         if (visible.length === 0) {
           return (
             <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
@@ -352,6 +441,7 @@ export function CustomerAudiencesPage() {
         shiftRight={aiDocked}
         onClose={closeInspector}
         onEditWithAI={() => setAiOpen(true)}
+        isBeta={isBeta}
         onRegenerateAvatar={() => {
           if (selected) avatarMut.mutate(selected.id);
         }}
@@ -428,11 +518,19 @@ function StatusButton({
   );
 }
 
+function statusPillTone(status: AudienceStatus): string {
+  if (status === "active") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (status === "paused") return "bg-amber-50 text-amber-700 border-amber-200";
+  if (status === "archived") return "bg-gray-100 text-gray-600 border-gray-200";
+  return "bg-sky-50 text-sky-700 border-sky-200";
+}
+
 function AudienceDetailPanel({
   audience,
   shiftRight,
   onClose,
   onEditWithAI,
+  isBeta,
   onRegenerateAvatar,
   avatarPending,
   onSetStatus,
@@ -443,6 +541,7 @@ function AudienceDetailPanel({
   shiftRight?: boolean;
   onClose: () => void;
   onEditWithAI: () => void;
+  isBeta?: boolean;
   onRegenerateAvatar: () => void;
   avatarPending?: boolean;
   onSetStatus: (status: AudienceStatus) => void;
@@ -494,15 +593,19 @@ function AudienceDetailPanel({
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
-          {/* Edit with AI */}
-          <button
-            type="button"
-            onClick={onEditWithAI}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            Edit with AI
-          </button>
+          {/* Edit with AI — stays beta-gated (AI editing), even though the
+              Audiences view itself is GA. */}
+          {isBeta && (
+            <button
+              type="button"
+              onClick={onEditWithAI}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            >
+              <SparklesIcon className="w-4 h-4" />
+              Edit with AI
+              <MaturityBadge level="beta" />
+            </button>
+          )}
 
           {/* Avatar — AI-generated image, (re)generate */}
           <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
@@ -525,18 +628,20 @@ function AudienceDetailPanel({
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-400">Targeting</p>
               <div className="flex flex-col gap-2">
                 {groups.map((g) => (
-                  <div key={g.label} className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  <div key={g.label} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-start gap-2">
+                    <span className="pt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                       {g.label}
                     </span>
-                    {g.values.map((v, j) => (
-                      <span
-                        key={j}
-                        className={`inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${g.tone}`}
-                      >
-                        <span className="min-w-0 truncate">{v}</span>
-                      </span>
-                    ))}
+                    <div className="flex min-w-0 flex-wrap gap-1.5">
+                      {g.values.map((v, j) => (
+                        <span
+                          key={j}
+                          className={`inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-medium leading-5 ${g.tone}`}
+                        >
+                          <span className="min-w-0 whitespace-normal break-words">{v}</span>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -545,7 +650,16 @@ function AudienceDetailPanel({
 
           {/* Metadata */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-sm">
-            <DetailRow label="Status" value={<span className="capitalize">{audience.status}</span>} />
+            <DetailRow
+              label="Status"
+              value={
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusPillTone(audience.status)}`}
+                >
+                  {audience.status}
+                </span>
+              }
+            />
             {audience.description && <DetailRow label="Described as" value={audience.description} />}
             {audience.provider && (
               <DetailRow

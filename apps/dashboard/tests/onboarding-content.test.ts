@@ -44,4 +44,10 @@ describe("onboarding copy", () => {
     expect(REMINDER_COPY.topup.cta).toMatch(/auto top-up/i);
     expect(REMINDER_COPY.audience.cta).toMatch(/audience/i);
   });
+
+  it("recharge reminder (auto-reload-blocked card) asks for credits, not auto-topup", () => {
+    expect(REMINDER_COPY.topupRecharge.cta).toMatch(/add credits/i);
+    expect(REMINDER_COPY.topupRecharge.cta).not.toMatch(/auto top-up/i);
+    expect(REMINDER_COPY.topupRecharge.body).toMatch(/isn't available/i);
+  });
 });

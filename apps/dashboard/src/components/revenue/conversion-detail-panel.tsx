@@ -109,7 +109,7 @@ function LeadWhyRelevant({ leadId, fallbackName }: {
     return (audiencesData?.audiences ?? []).filter((a) => ids.has(a.id));
   }, [statsData, audiencesData]);
 
-  const jobTitle = profile?.headline ?? null;
+  const jobTitle = profile?.currentTitle ?? null;
   const industry = profile?.organization?.industry ?? null;
   const location = [profile?.city, profile?.country].filter(Boolean).join(", ") || null;
 

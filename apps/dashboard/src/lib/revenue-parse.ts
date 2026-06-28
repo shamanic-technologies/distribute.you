@@ -55,7 +55,11 @@ const RevenueEventSchema = z.object({
   contributionUsd: z.number(),
 });
 const CostEconomicsSchema = z.object({
-  totalCostUsd: z.number(),
+  // features-service renamed the billed run-cost `totalCostUsd` → `actualCostUsd`
+  // (ROI/CAC ride realized spend, holds excluded — features-service#402). Accept BOTH
+  // for rollout tolerance; the flatten normalizes to `actualCostUsd`.
+  actualCostUsd: z.number().optional(),
+  totalCostUsd: z.number().optional(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   // Lens-only (Signups / Booked Meetings / Sales). `.nullish()` so the un-lensed
@@ -74,8 +78,52 @@ const SignalSeriesSchema = z.object({
   undatedCount: z.coerce.number(),
 });
 
+// Canonical spend block (features-service#396). `*Cents` tolerate string OR
+// number on the wire (Postgres numeric/bigint can serialize as a string) via
+// `z.coerce.number()`; the cost metrics are `.nullable()` (null → render "—").
+// `spend` itself is `.nullable()` (null on a lensed response) + `.optional()`
+// (absent on a cold / pre-rollout payload) so the overview parse survives both.
+// Spend figures: total = ACTUAL + PROVISIONED (committed), actual = billed only,
+// provisioned = open holds only (features-service naming convention). The `total*`
+// committed fields + their actual/provisioned siblings are additive (.optional()) so
+// the dashboard ships ahead of features-service: until that service lands the legacy
+// `todaySpentCents`/`cpcCents` carry actual-only, and the render prefers `total*` when
+// present. `totalSpentCents` keeps its name across the rollout (value flips actual→committed).
+const SpendSchema = z.object({
+  totalSpentCents: z.coerce.number(),
+  actualSpentCents: z.coerce.number().optional(),
+  provisionedSpentCents: z.coerce.number().optional(),
+  totalSpentTodayCents: z.coerce.number().optional(),
+  actualSpentTodayCents: z.coerce.number().optional(),
+  provisionedSpentTodayCents: z.coerce.number().optional(),
+  todaySpentCents: z.coerce.number().optional(),
+  sources: z.array(
+    z.object({
+      source: z.string(),
+      // features-service renamed `spentCents` → the committed/actual/provisioned trio
+      // (features-service#402). The card renders only `source` + `sharePct`, so all
+      // amounts are optional for rollout tolerance.
+      totalSpentCents: z.coerce.number().optional(),
+      actualSpentCents: z.coerce.number().optional(),
+      provisionedSpentCents: z.coerce.number().optional(),
+      spentCents: z.coerce.number().optional(),
+      sharePct: z.coerce.number(),
+    }),
+  ),
+  totalCpcCents: z.coerce.number().nullable().optional(),
+  actualCpcCents: z.coerce.number().nullable().optional(),
+  provisionedCpcCents: z.coerce.number().nullable().optional(),
+  cpcCents: z.coerce.number().nullable().optional(),
+  // cpsCents/cpsmCents (projected cost-per-signup/meeting) were removed in
+  // features-service#406. Optional so the parse survives their absence; the beta
+  // CPS/CPSM cards then render "—".
+  cpsCents: z.coerce.number().nullable().optional(),
+  cpsmCents: z.coerce.number().nullable().optional(),
+});
+
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
+  spend: SpendSchema.nullable().optional(),
   outreachContacted: SignalSeriesSchema.optional(),
   opened: SignalSeriesSchema.optional(),
   clicked: SignalSeriesSchema.optional(),
@@ -103,7 +151,16 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
   return {
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
-    costEconomics: d.costEconomics,
+    costEconomics: {
+      // Normalize the renamed field: prefer `actualCostUsd`, fall back to legacy
+      // `totalCostUsd` until features-service is live everywhere.
+      actualCostUsd: d.costEconomics.actualCostUsd ?? d.costEconomics.totalCostUsd ?? 0,
+      costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
+      roiMultiple: d.costEconomics.roiMultiple,
+      expectedConversions: d.costEconomics.expectedConversions,
+      costPerConversionUsd: d.costEconomics.costPerConversionUsd,
+    },
+    spend: d.spend,
     outreachContacted: d.outreachContacted,
     opened: d.opened,
     clicked: d.clicked,

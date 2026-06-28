@@ -152,6 +152,14 @@ export default function BillingPage() {
   const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
   const hasAutoTopup = account?.has_auto_topup ?? false;
 
+  // Credit breakdown (math in fractional cents): total − confirmed − provisioned = available.
+  // actual_balance_cents absent (older billing deploy) => fold holds into confirmed (provisioned 0).
+  const totalCreditsCents = account?.credited_cents ?? "0";
+  const availableCents = account?.balance_cents ?? "0";
+  const actualBalanceCents = account?.actual_balance_cents ?? availableCents;
+  const confirmedChargesCents = parseFloat(totalCreditsCents) - parseFloat(actualBalanceCents);
+  const provisionedChargesCents = parseFloat(actualBalanceCents) - parseFloat(availableCents);
+
   // Pre-fill auto-topup fields from existing config
   useEffect(() => {
     if (account?.has_auto_topup) {
@@ -397,6 +405,22 @@ export default function BillingPage() {
                   {portalLoading ? "Opening..." : "Manage payment method"}
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Reconciling breakdown: Total credits − Confirmed − Provisioned = Credit Balance (available). */}
+          <div className="mt-4 space-y-2 border-t border-gray-100 pt-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-gray-500">Total credits</span>
+              <span className="text-sm font-medium text-gray-900">{formatBillingCents(totalCreditsCents)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-gray-500">Confirmed charges</span>
+              <span className="text-sm font-medium text-gray-700">-{formatBillingCents(confirmedChargesCents)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-gray-500">Provisioned charges (reserved for scheduled follow-ups)</span>
+              <span className="text-sm font-medium text-gray-700">-{formatBillingCents(provisionedChargesCents)}</span>
             </div>
           </div>
         </div>

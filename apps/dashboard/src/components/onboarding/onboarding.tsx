@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useOrganization,
@@ -33,7 +33,6 @@ import {
   suggestAudiences,
   setAudienceStatus,
   listAudiences,
-  generateAudienceAvatar,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
@@ -374,9 +373,20 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   return { ...parsed, onboardingState } as PendingCheckoutLaunch;
 }
 
+// Opportunistic recovery read: callers fall back to current state when this
+// returns null, so a stale blob from a prior onboarding attempt on an older
+// schema must NOT block a fresh checkout. Log loud + purge the poison key +
+// return null. The strict readPendingCheckoutLaunch stays fail-loud for the
+// resume/cancel-return paths where the blob is the sole source of truth.
 function readPendingCheckoutLaunchOrNull(): PendingCheckoutLaunch | null {
   if (!window.sessionStorage.getItem(CHECKOUT_PENDING_KEY)) return null;
-  return readPendingCheckoutLaunch();
+  try {
+    return readPendingCheckoutLaunch();
+  } catch (err) {
+    console.error("[dashboard] discarding stale/invalid pending checkout launch state:", err);
+    window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
+    return null;
+  }
 }
 
 // Coerce a stored profile field (string | string[]) to a string[] of trimmed items.
@@ -525,7 +535,17 @@ export function Onboarding() {
   const restored = restoreRef.current;
 
   const [step, setStep] = useState<Step>(() =>
-    restored ? resolveResumeStep(restored.step, restored.brandId) : fromAdd ? "url" : "welcome",
+    restored
+      ? // A Stripe checkout SUCCESS return is owned by the dedicated checkout effect
+        // (resumeCheckoutLaunch → "launching"); land there on the first paint so the
+        // budget step never flashes before that effect runs. A cancelled return still
+        // resolves to its snapshot step (pricing).
+        searchParams.get("launch_checkout") === "success"
+        ? "launching"
+        : resolveResumeStep(restored.step, restored.brandId)
+      : fromAdd
+        ? "url"
+        : "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -620,8 +640,16 @@ export function Onboarding() {
   // Where a post-URL refresh should land once its backing data is re-hydrated. Computed
   // once from the snapshot; null when there's nothing to replay (fresh start, or a
   // welcome/url snapshot that needs no backing data — those restore directly above).
+  // A Stripe checkout return (?launch_checkout=success|cancelled) is owned end-to-end
+  // by the dedicated checkout effect (resumeCheckoutLaunch / the cancel branch below).
+  // The generic resume MUST NOT also fire for it — otherwise both run on mount and
+  // race: the generic one re-hydrates the brand and lands on "pricing", flashing the
+  // budget modal over the real "launching" flow. Null here = the generic resume effect
+  // no-ops on any checkout return.
   const resumeTargetRef = useRef<Step | null>(
-    restored && !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId))
+    !searchParams.get("launch_checkout") &&
+    restored &&
+    !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId))
       ? resolveResumeStep(restored.step, restored.brandId)
       : null,
   );
@@ -1067,18 +1095,37 @@ export function Onboarding() {
         agencyConsentAt: new Date().toISOString(),
       });
     }
-    // Audiences are activated at the audience step (setAudienceStatus → "active");
-    // nothing to persist here at launch.
+    // Activation happens ONLY here, at the TERMINAL launch commit — never at the
+    // audience step (a re-roll / Back-then-re-pick there used to activate each
+    // intermediate set additively, leaving stale `active` rows the audiences page
+    // then showed → "I picked 2 but see 5"). The picked set is made the brand's
+    // EXACT active set: any audience currently `active` for the brand that is NOT in
+    // the final picks is sent back to `suggested` (recoverable, hidden from the page),
+    // so re-doing onboarding OVERRIDES the prior selection instead of stacking on it.
+    // A launched campaign with zero active audiences is a hard dead end (the
+    // dashboard's "No active audience yet" blocker — outreach can't run), so we
+    // fail loud on an empty pick. Done BEFORE avatar generation so the server-side
+    // on-activate avatar gen covers the freshly-active rows.
+    const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];
+    if (launchAudienceIds.length === 0) {
+      throw new Error("No audience was selected — go back and pick at least one audience before launching.");
+    }
+    const pickedSet = new Set(launchAudienceIds);
+    const { audiences: currentlyActive } = await listAudiences(pending.brandId, { status: "active" });
+    for (const a of currentlyActive) {
+      if (!pickedSet.has(a.id)) await setAudienceStatus(a.id, "suggested");
+    }
+    for (const audienceId of launchAudienceIds) {
+      await setAudienceStatus(audienceId, "active");
+    }
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
     await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
     setLaunchStep(2);
-    // Generate a profile picture for each audience the user activated. Runs only now
-    // (post-checkout, card on file) because image generation costs LLM credits
-    // (chat-service owns the cost; may 402). Best-effort + parallel: a failed/absent
-    // avatar must NOT abort the launch — the campaign + onboarding-complete are the
-    // critical path. Idempotent (skips audiences that already carry an avatar).
-    await generateActiveAudienceAvatars(pending.brandId);
+    // Audience avatars are generated server-side by human-service the moment an
+    // audience flips to `active` (org-billed, fire-and-forget, idempotent), so the
+    // onboarding no longer generates them here — that would race the server gen and
+    // double-bill. See human-service #144.
     setLaunchStep(3);
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
     const { campaign } = await createCampaignWithoutBrandEnrichment({
@@ -1117,28 +1164,6 @@ export function Onboarding() {
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
   }
 
-  /**
-   * Generate an AI profile picture for every audience the user activated at the
-   * audiences step. Best-effort: per-audience failures are logged, never thrown, so
-   * a 402/error on one image can't block the campaign launch. Parallel across
-   * audiences; idempotent — only the active audiences missing an avatar are generated.
-   */
-  async function generateActiveAudienceAvatars(brandId: string) {
-    try {
-      const { audiences } = await listAudiences(brandId);
-      const targets = audiences.filter((a) => a.status === "active" && !a.avatarUrl);
-      await Promise.allSettled(
-        targets.map((a) =>
-          generateAudienceAvatar(a.id).catch((e) => {
-            console.error(`[dashboard] generateAudienceAvatar failed for ${a.id}:`, e);
-          }),
-        ),
-      );
-    } catch (e) {
-      console.error("[dashboard] generateActiveAudienceAvatars: listAudiences failed:", e);
-    }
-  }
-
   async function beginCheckoutAndLaunch() {
     setBusy(true);
     setError(null);
@@ -1147,7 +1172,12 @@ export function Onboarding() {
       const storedPending = readPendingCheckoutLaunchOrNull();
       const id = brandIdRef.current ?? storedPending?.brandId ?? null;
       const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
-      const budget = checkoutBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();
+      // Live selection wins, matching the display precedence (derivedBudget() ??
+      // checkoutBudgetUsd at the bonus/pricing steps). checkoutBudgetUsd is only ever
+      // written from a restored/resumed snapshot, so after a checkout cancel it holds
+      // the PRIOR budget — putting it first would charge the stale amount even though
+      // the user re-picked a different tier.
+      const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
       const trimmed = url.trim();
       const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
       const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
@@ -1155,6 +1185,15 @@ export function Onboarding() {
       const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
       if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
         throw new Error("Checkout state is missing. Go back to pricing and try again.");
+      }
+      // Block payment when no audience is picked — outreach can't run without one, so
+      // a campaign launched audience-less is a paid-for dead end. Live selection wins,
+      // falling back to the resumed snapshot (same precedence as budget above).
+      const launchAudienceIds = selectedAudienceIds.length
+        ? selectedAudienceIds
+        : storedPending?.onboardingState.selectedAudienceIds ?? [];
+      if (launchAudienceIds.length === 0) {
+        throw new Error("Pick at least one audience before launching — go back to the audience step.");
       }
       const checkoutAmountCents = Math.round(budget * 100);
       const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
@@ -1353,9 +1392,6 @@ export function Onboarding() {
     return rec && rec > 0 ? Math.round(rec) : null;
   }
 
-  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
-  const cardWide = "min-w-0 w-full rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
-  const cardNarrow = "mx-auto w-full max-w-md min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-6 md:p-8";
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
   // ── Service-tag editor helpers ────────────────────────────────────
@@ -1378,7 +1414,14 @@ export function Onboarding() {
   // ── Step renders ─────────────────────────────────────────────────
   if (step === "welcome") {
     return (
-      <div className={cardWide}>
+      <StepShell
+        maxWidth="sm:max-w-5xl"
+        footer={
+          <button onClick={() => setStep("url")} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-700">
+            Get started <ArrowRightIcon className="h-4 w-4" />
+          </button>
+        }
+      >
         <h1 className="font-display text-4xl font-bold leading-tight text-gray-950">Pay per outcome, like Google Ads.</h1>
         <p className="mt-3 text-base leading-7 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
         <div className="mt-7 grid gap-4 sm:grid-cols-3">
@@ -1408,16 +1451,21 @@ export function Onboarding() {
             </div>
           ))}
         </div>
-        <button onClick={() => setStep("url")} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-700">
-          Get started <ArrowRightIcon className="h-4 w-4" />
-        </button>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "url") {
     return (
-      <div className={cardNarrow}>
+      <StepShell
+        maxWidth="sm:max-w-md"
+        pad="p-5 sm:p-6 md:p-8"
+        footer={
+          <button onClick={startAnalyze} disabled={!domain} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+            Analyze my product <ArrowRightIcon className="h-4 w-4" />
+          </button>
+        }
+      >
         <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
         <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -1427,19 +1475,18 @@ export function Onboarding() {
           className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
         {url.trim() && !domain && <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>}
-        <button onClick={startAnalyze} disabled={!domain} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-          Analyze my product <ArrowRightIcon className="h-4 w-4" />
-        </button>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "loading") {
     const loadingComplete = fetchDoneRef.current || loadStep >= LOADING_STEPS.length;
     return (
-      <div className="mx-auto w-full max-w-md min-w-0 flex flex-col gap-3">
-        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={cardNarrow}>
+      <StepShell
+        maxWidth="sm:max-w-md"
+        pad="p-5 sm:p-6 md:p-8"
+        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+      >
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
           <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
           <div className="space-y-2">
@@ -1459,16 +1506,16 @@ export function Onboarding() {
             })}
           </div>
           {!loadingComplete && <p className="mt-5 text-center text-xs text-gray-400">This may take a few minutes.</p>}
-        </div>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "services") {
     return (
-      <div className="min-w-0 w-full flex flex-col gap-3">
-        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={cardWide}>
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        footer={<NextButton onClick={() => { addService(serviceDraft); setStep("destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+      >
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
         <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-3 sm:p-4">
@@ -1493,18 +1540,17 @@ export function Onboarding() {
           />
         </div>
         {services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
-        <NextButton onClick={() => { addService(serviceDraft); setStep("destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />
-        </div>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "destination") {
     const usingDefault = clickDestinationUrl.trim() === "";
     return (
-      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={card}>
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        footer={<NextButton onClick={saveDestinationAndContinue} busy={busy} disabled={busy} />}
+      >
           <BackButton onClick={() => setStep("services")} />
           <h2 className="font-display text-2xl font-bold text-gray-900">Where should clicks go?</h2>
           <p className="mt-2 mb-6 text-gray-500">When a prospect clicks the link in your email, this is the page they land on. We use your homepage by default.</p>
@@ -1532,17 +1578,16 @@ export function Onboarding() {
             />
           </div>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-          <NextButton onClick={saveDestinationAndContinue} busy={busy} disabled={busy} />
-        </div>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "objective") {
     return (
-      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={card}>
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        footer={<NextButton onClick={() => setStep("rates")} />}
+      >
           <BackButton onClick={() => setStep("destination")} />
           <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
           <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
@@ -1551,18 +1596,17 @@ export function Onboarding() {
               <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
             ))}
           </div>
-          <NextButton onClick={() => setStep("rates")} />
-        </div>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "rates") {
     const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
     return (
-      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={card}>
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        footer={<NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />}
+      >
         <BackButton onClick={() => setStep("objective")} />
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
@@ -1631,9 +1675,7 @@ export function Onboarding() {
             ))}
           </div>
         )}
-        <NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />
-        </div>
-      </div>
+      </StepShell>
     );
   }
 
@@ -1660,9 +1702,10 @@ export function Onboarding() {
 
   if (step === "consent") {
     return (
-      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={card}>
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
+      >
           <BackButton onClick={() => setStep("audiences")} />
           <div className="mb-4 flex items-start gap-2">
             <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
@@ -1675,18 +1718,14 @@ export function Onboarding() {
             ))}
           </ul>
           <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
-          <NextButton onClick={() => setStep("pricing")} label="Continue" />
-        </div>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "launching") {
     const brand = launchingBrand ?? { domain, hostname };
     return (
-      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-        <BrandStepHeader domain={brand.domain} hostname={brand.hostname} />
-        <div className={card}>
+      <StepShell header={<BrandStepHeader domain={brand.domain} hostname={brand.hostname} />}>
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">Launching your campaign...</div>
           <p className="mb-6 text-center text-sm text-gray-500">Keep this tab open while we finish setup.</p>
           <div className="space-y-2">
@@ -1705,28 +1744,16 @@ export function Onboarding() {
               );
             })}
           </div>
-        </div>
-      </div>
+      </StepShell>
     );
   }
 
   if (step === "bonus") {
     const amount = derivedBudget() ?? checkoutBudgetUsd;
     return (
-      <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-        <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-        <div className={card}>
-          <BackButton onClick={() => setStep("pricing")} />
-          {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-center">
-            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
-              <GiftIcon className="h-7 w-7 text-brand-600" />
-            </span>
-            <h2 className="font-display text-2xl font-bold text-gray-900">Your first $25 is on us.</h2>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
-              Spend $25 and we match it, $1 for $1. The credits unlock the moment your spend reaches $25.
-            </p>
-          </div>
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        footer={
           <button onClick={beginCheckoutAndLaunch} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
             {busy ? (
               <>
@@ -1739,8 +1766,20 @@ export function Onboarding() {
               </>
             )}
           </button>
-        </div>
-      </div>
+        }
+      >
+          <BackButton onClick={() => setStep("pricing")} />
+          {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          <div className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-center">
+            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+              <GiftIcon className="h-7 w-7 text-brand-600" />
+            </span>
+            <h2 className="font-display text-2xl font-bold text-gray-900">Your first $25 is on us.</h2>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
+              Spend $25 and we match it, $1 for $1. The credits unlock the moment your spend reaches $25.
+            </p>
+          </div>
+      </StepShell>
     );
   }
 
@@ -1748,9 +1787,14 @@ export function Onboarding() {
   const unitCost = outcomeUnitCost();
   const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
   return (
-    <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-      <BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />
-      <div className={card}>
+    <StepShell
+      header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+      footer={
+        <button onClick={() => setStep("bonus")} disabled={selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+          Continue <ArrowRightIcon className="h-4 w-4" />
+        </button>
+      }
+    >
       <BackButton onClick={() => setStep("consent")} />
       <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
       <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
@@ -1824,11 +1868,7 @@ export function Onboarding() {
         </div>
       )}
 
-      <button onClick={() => setStep("bonus")} disabled={selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-        Continue <ArrowRightIcon className="h-4 w-4" />
-      </button>
-      </div>
-    </div>
+    </StepShell>
   );
 }
 
@@ -1868,7 +1908,6 @@ function OnboardingAudiences({
   onContinue: () => void;
   onEdit?: () => void;
 }) {
-  const card = "mx-auto w-full max-w-xl min-w-0 rounded-2xl border border-gray-200 bg-white shadow-sm p-5 sm:p-8 md:p-12";
   const fallbackPrompt = services.length
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
@@ -1876,9 +1915,15 @@ function OnboardingAudiences({
   const icpFetchedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const selectedAudienceIdSet = new Set(selectedAudienceIds);
+  const candidateCount = candidates?.length ?? 0;
+  const audienceMaxWidth =
+    candidateCount >= 3 ? "sm:max-w-5xl" : candidateCount === 2 ? "sm:max-w-3xl" : "sm:max-w-xl";
+  // Columns follow the CARD COUNT, not the breakpoint — so a single card spans the
+  // full shell (grid-cols-1) instead of getting a 1/3-wide column at desktop width.
+  const audienceGridCols =
+    candidateCount >= 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : candidateCount === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1";
 
   // Seed the step from the parent's pre-warm (ICP prompt + candidates drafted in
   // the background during the loading screen) when present — zero wait, zero click.
@@ -1985,84 +2030,78 @@ function OnboardingAudiences({
       return;
     }
     setErr(null);
-    setSaving(true);
-    try {
-      // Each candidate is already a persisted audience row (status "suggested").
-      // Selecting = ACTIVATE it for the brand; unpicked candidates stay suggested.
-      for (const c of picks) {
-        await setAudienceStatus(c.audienceId, "active");
-      }
-      onContinue();
-    } catch (e) {
-      console.error("[dashboard] setAudienceStatus (activate) failed:", e);
-      setErr("We couldn't save your audiences. Try again.");
-      setSaving(false);
-    }
+    // NO activation here — the picks are carried forward in `selectedAudienceIds` and
+    // committed once at the post-payment terminal step (completeLaunchAfterCheckout),
+    // which makes them the brand's EXACT active set. Activating at this step made a
+    // re-roll / Back-then-re-pick stack stale `active` rows (the "picked 2, page shows
+    // 5" bug). Each candidate stays "suggested" until the launch commits.
+    onContinue();
   }
 
   return (
-    <div className="mx-auto w-full max-w-xl min-w-0 flex flex-col gap-3">
-      <BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />
-      <div className={card}>
-      <BackButton onClick={onBack} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
-      <p className="mt-2 text-gray-500">
-        Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
-      </p>
+    <StepShell
+      maxWidth={audienceMaxWidth}
+      header={<BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />}
+      footer={<NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} label="Continue" />}
+    >
+      <div>
+        <BackButton onClick={onBack} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Who do you want to reach?</h2>
+        <p className="mt-2 text-gray-500">
+          Describe your ideal customers in plain words. We&apos;ll turn it into targeted audiences you can pick from.
+        </p>
 
-      <div className="relative mt-5">
-        <textarea
-          ref={textareaRef}
-          value={prompt}
-          onChange={(e) => onPromptChange(e.target.value)}
-          disabled={icpLoading}
-          placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
-          style={{ minHeight: "80px", overflow: "hidden" }}
-          className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
-        />
-        {icpLoading && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-500">
-            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
-            Drafting your ideal customer profile…
-          </div>
+        <div className="relative mt-5">
+          <textarea
+            ref={textareaRef}
+            value={prompt}
+            onChange={(e) => onPromptChange(e.target.value)}
+            disabled={icpLoading}
+            placeholder="e.g. Heads of marketing at Series A–B B2B SaaS companies in the US, 50–500 employees."
+            style={{ minHeight: "80px", overflow: "hidden" }}
+            className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50"
+          />
+          {icpLoading && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/70 text-sm text-gray-500">
+              <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+              Drafting your ideal customer profile…
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => runSuggest()}
+          disabled={loading || icpLoading || !prompt.trim()}
+          className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
+            </>
+          ) : (
+            <>
+              <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
+            </>
+          )}
+        </button>
+
+        {err && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
         )}
       </div>
-      <button
-        onClick={() => runSuggest()}
-        disabled={loading || icpLoading || !prompt.trim()}
-        className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? (
-          <>
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
-          </>
-        ) : (
-          <>
-            <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
-          </>
-        )}
-      </button>
-
-      {err && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>
-      )}
 
       {candidates && candidates.length > 0 && (
         <>
           <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
             {candidates.filter((c) => selectedAudienceIdSet.has(c.audienceId)).length} of {candidates.length} selected
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className={`grid gap-3 ${audienceGridCols}`}>
             {candidates.map((c, i) => (
               <AudienceCandidateCard key={c.audienceId || i} candidate={c} selected={selectedAudienceIdSet.has(c.audienceId)} onToggle={() => toggle(c)} />
             ))}
           </div>
         </>
       )}
-
-      <NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} busy={saving} label="Continue" />
-      </div>
-    </div>
+    </StepShell>
   );
 }
 
@@ -2090,9 +2129,6 @@ function AudienceCandidateCard({
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-gray-900">{candidate.name}</span>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-            {candidate.provider}
-          </span>
           {!invalid && (
             <span className="text-[11px] font-medium text-gray-400">~{candidate.count.toLocaleString()} matches</span>
           )}
@@ -2153,6 +2189,38 @@ function BrandStepHeader({ domain, hostname, onEdit }: { domain: string | null; 
           <PencilSquareIcon className="h-4 w-4" />
         </button>
       )}
+    </div>
+  );
+}
+
+// Full-screen step shell. On MOBILE every step fills the viewport edge-to-edge
+// (`min-h-[100dvh]`, no side gutters, no card chrome): the optional brand header is
+// pinned at the top, the forward CTA is pinned to the bottom (always reachable, never
+// scroll to find it), and ONLY the middle content scrolls — and only on the few steps
+// too tall to fit. On `sm+` it reverts byte-for-byte to the prior floating card:
+// centered, max-width-capped, rounded border + shadow, content + CTA in natural flow.
+function StepShell({
+  header,
+  footer,
+  maxWidth = "sm:max-w-xl",
+  pad = "p-5 sm:p-8 md:p-12",
+  children,
+}: {
+  header?: ReactNode;
+  footer?: ReactNode;
+  maxWidth?: string;
+  pad?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`flex min-h-[100dvh] w-full min-w-0 flex-col sm:mx-auto sm:min-h-0 sm:gap-3 ${maxWidth}`}>
+      {header && <div className="shrink-0 px-3 pt-3 sm:px-0 sm:pt-0">{header}</div>}
+      <div
+        className={`flex min-h-0 flex-1 flex-col bg-white ${pad} sm:flex-none sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm`}
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto sm:flex-none sm:overflow-visible">{children}</div>
+        {footer && <div className="shrink-0">{footer}</div>}
+      </div>
     </div>
   );
 }

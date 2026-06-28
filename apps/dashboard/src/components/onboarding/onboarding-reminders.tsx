@@ -12,7 +12,7 @@ import {
 
 type AudiencesResponse = { audiences: AudienceWire[]; total: number };
 import { useBillingGuard } from "@/lib/billing-guard";
-import { pollOptionsSlower } from "@/lib/query-options";
+import { pollOptions } from "@/lib/query-options";
 import { REMINDER_COPY } from "@/lib/onboarding-content";
 import {
   nextReminder,
@@ -40,12 +40,12 @@ export function OnboardingReminders() {
   const { data: account } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
-    pollOptionsSlower,
+    pollOptions,
   );
   const { data: audiencesData } = useAuthQuery<AudiencesResponse>(
     ["audiences", brandId],
     () => listAudiences(brandId!),
-    { enabled: brandId !== null, ...pollOptionsSlower },
+    { enabled: brandId !== null, ...pollOptions },
   );
 
   if (!brandId || !account || !audiencesData) return null;
@@ -64,8 +64,15 @@ export function OnboardingReminders() {
   // `dismissTick` is read so the memoless component recomputes after a dismissal.
   void dismissTick;
 
+  // Off-session auto-reload is impossible for some card countries (e.g. India).
+  // Absent => supported (today's behavior); only an explicit false blocks it.
+  const autoReloadSupported = account.auto_reload_supported !== false;
+  const outOfCredit = parseFloat(account.balance_cents) <= 0;
+
   const kind = nextReminder({
     hasAutoTopup: account.has_auto_topup,
+    autoReloadSupported,
+    outOfCredit,
     activeAudienceCount,
     topupDismissed,
     audienceDismissed,
@@ -80,51 +87,68 @@ export function OnboardingReminders() {
 
   const onPrimary = () => {
     if (kind === "topup") {
-      showPaymentRequired({ balance_cents: account.balance_cents, proactive: true });
+      showPaymentRequired({ balance_cents: account.balance_cents, proactive: true, autoReloadSupported });
     } else if (orgId) {
       router.push(`/orgs/${orgId}/brands/${brandId}/audiences`);
     }
     dismiss(kind);
   };
 
-  const copy = REMINDER_COPY[kind];
+  // For an auto-reload-blocked brand the topup reminder is a one-time recharge,
+  // never an "enable auto-topup" ask (which is impossible for their card).
+  const copy =
+    kind === "topup" && !autoReloadSupported
+      ? REMINDER_COPY.topupRecharge
+      : REMINDER_COPY[kind];
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-brand-100 text-brand-600">
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d={
-                kind === "topup"
-                  ? "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                  : "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5a4 4 0 11-8 0 4 4 0 018 0zm6 0a4 4 0 11-8 0 4 4 0 018 0z"
-              }
-            />
-          </svg>
-        </div>
-        <h2 className="text-lg font-semibold text-gray-900">{copy.title}</h2>
-        <p className="mt-2 text-sm leading-6 text-gray-600">{copy.body}</p>
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            onClick={() => dismiss(kind)}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
-          >
-            Later
-          </button>
-          <button
-            onClick={onPrimary}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
-          >
-            {copy.cta}
-          </button>
+      <button
+        aria-label="Close"
+        onClick={() => dismiss(kind)}
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+      />
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 gradient-bg opacity-60" />
+        <div className="relative p-7">
+          <span className="dy-eyebrow mb-4">
+            <span className="dy-dot" />
+            {kind === "topup" ? "Keep it running" : "One last thing"}
+          </span>
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={
+                  kind === "topup"
+                    ? "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    : "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5a4 4 0 11-8 0 4 4 0 018 0zm6 0a4 4 0 11-8 0 4 4 0 018 0z"
+                }
+              />
+            </svg>
+          </div>
+          <h2 className="font-display text-xl tracking-tight text-gray-900">{copy.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-600">{copy.body}</p>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <button
+              onClick={() => dismiss(kind)}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-800"
+            >
+              Later
+            </button>
+            <button
+              onClick={onPrimary}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+            >
+              {copy.cta}
+            </button>
+          </div>
         </div>
       </div>
     </div>

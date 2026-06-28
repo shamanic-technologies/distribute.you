@@ -88,8 +88,11 @@ describe("Daily outcome digest template", () => {
     expect(tpl, "template missing from EMAIL_TEMPLATES").toBeDefined();
     const rendered = [tpl!.subject, tpl!.htmlBody, tpl!.textBody]
       .map((s) => render(s, {
-        orgName: "Beta Org",
-        totalBrandsWithOutcomes: 2,
+        brandName: "Acme",
+        brandUrl: "https://acme.test",
+        outcomeCount: 3,
+        outcomeLabel: "positive replies",
+        totalLeads: 5,
         totalOutcomeOrganizations: 4,
         totalExpectedRevenueUsd: "$20,000",
         digestHtml: "<section>Digest</section>",

@@ -100,7 +100,8 @@ export default function FeatureWorkflowsPage() {
 
   // Per-workflow PROJECTED ROI (no realized per-workflow revenue stat exists):
   // features-service workflow-projection × the brand's saved sales-economics.
-  // ROI = 100 / cacPct, budget-invariant (budgetUsd:1 just populates `projection`).
+  // ROI = the server-computed `roiMultiple` (= LTR / costPerCloseUsd = 100 / cacPct,
+  // budget-independent), rendered verbatim — the dashboard no longer inverts cacPct.
   // This is the cold Neon chain, so it is NOT gated into the table barrier below —
   // the table reveals on workflows+ranked and each ROI cell shows its own skeleton
   // while pending. keep-last-good guards a degenerate cold-chain refocus refetch.
@@ -121,8 +122,8 @@ export default function FeatureWorkflowsPage() {
   const roiByDynasty = useMemo(() => {
     const map = new Map<string, number>();
     for (const w of projection?.workflows ?? []) {
-      const cacPct = w.projection?.cacPct;
-      if (cacPct != null && cacPct > 0) map.set(w.workflowDynastySlug, 100 / cacPct);
+      const roi = w.roiMultiple;
+      if (roi != null && roi > 0) map.set(w.workflowDynastySlug, roi);
     }
     return map;
   }, [projection]);

@@ -72,6 +72,63 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain("clearOnboardingState();");
   });
 
+  it("checkout amount prefers the LIVE selection over a stale restored budget", () => {
+    // After a checkout cancel, checkoutBudgetUsd holds the PRIOR tier; re-picking a
+    // different tier updates derivedBudget() (selectedCount), so the charge must read
+    // derivedBudget() FIRST — same precedence as the bonus/pricing display.
+    expect(src).toContain("const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;");
+    expect(src).not.toContain("const budget = checkoutBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();");
+    // display precedence the charge now matches
+    expect(src).toContain("const amount = derivedBudget() ?? checkoutBudgetUsd;");
+  });
+
+  it("opportunistic checkout read tolerates a stale/invalid blob (purge + null, no throw)", () => {
+    // readPendingCheckoutLaunchOrNull is a fallback source; a leftover blob from a
+    // prior schema must not block a fresh checkout. It must swallow + purge, while
+    // the strict readPendingCheckoutLaunch keeps throwing for resume/cancel paths.
+    const orNull = src.slice(
+      src.indexOf("function readPendingCheckoutLaunchOrNull"),
+      src.indexOf("function toStringList"),
+    );
+    expect(orNull).toContain("try {");
+    expect(orNull).toContain("return readPendingCheckoutLaunch();");
+    expect(orNull).toContain("window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);");
+    expect(orNull).toContain("return null;");
+    // strict reader still fail-loud
+    expect(src).toContain('throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");');
+  });
+
+  it("does not double-resume on a Stripe checkout return (generic resume no-ops)", () => {
+    // The dedicated checkout effect owns ?launch_checkout=success|cancelled. The
+    // generic resume must NOT also fire (it would re-hydrate the brand and land on
+    // "pricing", flashing the budget modal over the real "launching" flow).
+    expect(src).toContain('!searchParams.get("launch_checkout") &&');
+    // success first-paint goes straight to "launching", never the budget step.
+    expect(src).toContain('searchParams.get("launch_checkout") === "success"\n        ? "launching"');
+  });
+
+  it("activates the picked audiences as the terminal launch commit", () => {
+    // A launched campaign with zero active audiences is a hard dead end (the
+    // "No active audience yet" blocker). completeLaunchAfterCheckout activates the
+    // selected audiences idempotently before campaign create; fail-loud if none.
+    const launch = src.slice(
+      src.indexOf("async function completeLaunchAfterCheckout"),
+      src.indexOf("async function generateActiveAudienceAvatars"),
+    );
+    expect(launch).toContain("const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];");
+    expect(launch).toContain('await setAudienceStatus(audienceId, "active");');
+    expect(launch).toContain("if (launchAudienceIds.length === 0) {");
+  });
+
+  it("blocks checkout when no audience is selected (no paid audience-less launch)", () => {
+    const begin = src.slice(
+      src.indexOf("async function beginCheckoutAndLaunch"),
+      src.indexOf("async function resumeCheckoutLaunch"),
+    );
+    expect(begin).toContain("const launchAudienceIds = selectedAudienceIds.length");
+    expect(begin).toContain("if (launchAudienceIds.length === 0) {");
+  });
+
   it("persists pricing and audience display state, not only launch state", () => {
     expect(src).toContain("workflowProjection: projectionRef.current");
     expect(src).toContain("salesInputs: salesInputsRef.current");

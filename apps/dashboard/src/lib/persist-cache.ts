@@ -93,6 +93,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "entityRegistry",
   "platformPrices",
   "billingAccount",
+  "creditGrants",
   // Brand metadata + config + small summaries
   "brand",
   "brands",
@@ -119,10 +120,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "featurePipelineActivity",
   "featureAudienceStats",
   "featureWorkflows",
-  "featureQuotePitches",
-  // Opportunities / pitches
-  "rankedOpportunities",
-  "quotePitches",
   // Audiences
   "audiences",
   // Workflow defs / projections / summaries
@@ -139,9 +136,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "campaigns",
   "campaignLeads",
   "campaignActivity",
-  // Visibility runs
-  "visibilityRuns",
-  "visibilityRun",
   // Per-domain metric objects
   "domainTrafficHistory",
   "domainDrStatus",

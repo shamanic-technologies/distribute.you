@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { getBrandDailyBudget, saveBrandDailyBudget } from "@/lib/api";
+import { PauseIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { getBrandDailyBudget, saveBrandDailyBudget, setBrandPause } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 
 // Wire value is cents; the input edits whole dollars. Empty input = "never set".
@@ -10,6 +11,10 @@ const centsToDollars = (cents: number | null): string =>
   cents === null ? "" : String(cents / 100);
 const dollarsToCents = (dollars: string): number =>
   Math.round((parseFloat(dollars) || 0) * 100);
+
+// A budget below $1/day means "spend nothing", which does NOT pause the campaign —
+// it just starves outreach silently. Block it; the real lever is pausing the brand.
+const MIN_BUDGET_CENTS = 100;
 
 type BrandDailyBudgetCardProps = {
   brandId: string;
@@ -29,6 +34,7 @@ export function BrandDailyBudgetCard({ brandId, variant = "card" }: BrandDailyBu
   const [dollars, setDollars] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [pauseModalOpen, setPauseModalOpen] = useState(false);
   const hydrated = useRef(false);
 
   // Seed once from the saved value (or "" when unset). Mark hydrated even when unset
@@ -54,6 +60,17 @@ export function BrandDailyBudgetCard({ brandId, variant = "card" }: BrandDailyBu
     },
   });
 
+  const { mutate: pauseBrand, isPending: pausing, error: pauseError } = useMutation({
+    mutationFn: () => setBrandPause(brandId, true),
+    onSuccess: (res) => {
+      queryClient.setQueryData(["brandPause", brandId], res);
+      // Revert the input to the last saved budget — we did NOT save the sub-$1 value.
+      setDollars(centsToDollars(data?.dailyBudgetCents ?? null));
+      setDirty(false);
+      setPauseModalOpen(false);
+    },
+  });
+
   function update(value: string) {
     setDollars(value);
     setDirty(true);
@@ -62,7 +79,13 @@ export function BrandDailyBudgetCard({ brandId, variant = "card" }: BrandDailyBu
 
   function handleSave() {
     if (dollars === null) return;
-    mutate(dollarsToCents(dollars));
+    const cents = dollarsToCents(dollars);
+    // $0 / empty / negative / sub-$1 doesn't pause anything — surface the real lever.
+    if (cents < MIN_BUDGET_CENTS) {
+      setPauseModalOpen(true);
+      return;
+    }
+    mutate(cents);
   }
 
   if (isPending || dollars === null) {
@@ -92,7 +115,7 @@ export function BrandDailyBudgetCard({ brandId, variant = "card" }: BrandDailyBu
             </span>
             <input
               type="number"
-              min="0"
+              min="1"
               step="1"
               value={dollars}
               placeholder="e.g. 50"
@@ -122,6 +145,61 @@ export function BrandDailyBudgetCard({ brandId, variant = "card" }: BrandDailyBu
           {saved && !dirty && <span className="text-sm text-green-600">Saved ✓</span>}
         </div>
       </div>
+
+      {pauseModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          onClick={() => !pausing && setPauseModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-xl shadow-xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-base font-semibold text-gray-900">
+                Set a budget of at least $1/day
+              </h3>
+              <button
+                onClick={() => !pausing && setPauseModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              A budget of $0 doesn&apos;t stop outreach — it just starves it without
+              actually pausing your campaigns. To stop spending, pause outreach for this
+              brand instead. You can restart it anytime.
+            </p>
+
+            {pauseError && (
+              <p className="mt-4 text-sm text-red-600">
+                Could not pause:{" "}
+                {pauseError instanceof Error ? pauseError.message : "unknown error"}
+              </p>
+            )}
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setPauseModalOpen(false)}
+                disabled={pausing}
+                className="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => pauseBrand()}
+                disabled={pausing}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                <PauseIcon className="h-4 w-4" />
+                {pausing ? "Pausing..." : "Pause outreach"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

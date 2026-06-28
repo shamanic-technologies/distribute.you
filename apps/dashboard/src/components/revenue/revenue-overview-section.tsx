@@ -6,7 +6,7 @@ import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
-import type { BrandOptimizationGoal, CostByName, PipelineActivityResponse } from "@/lib/api";
+import type { BrandOptimizationGoal, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 
 /**
@@ -18,8 +18,6 @@ import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
  */
 export function RevenueOverviewSection({
   data,
-  costBreakdown,
-  todayCostBreakdown,
   dailyBudgetCents,
   brandId,
   featureSlug,
@@ -53,8 +51,6 @@ export function RevenueOverviewSection({
   optimizationGoal: BrandOptimizationGoal;
   visitToMeetingPct: number | null | undefined;
   visitToSignupPct: number | null | undefined;
-  costBreakdown: CostByName[];
-  todayCostBreakdown?: CostByName[];
   dailyBudgetCents?: number | null;
   brandId: string;
   featureSlug: string;
@@ -74,9 +70,11 @@ export function RevenueOverviewSection({
   expectedOutcome?: {
     value: number | null;
   };
-  /** runs-service cost-breakdown reveal — the Total-spent figure only. */
+  /** Reveal gate for the Total-spent figure. The spend block now rides the
+   *  features-service `/revenue` payload, so the Overview passes the revenue
+   *  reveal here. */
   costPending?: boolean;
-  /** runs-service same-day actual spend reveal — the Budget spent today figure. */
+  /** Reveal gate for the Budget-spent-today figure (same `/revenue` source). */
   todayCostPending?: boolean;
   /** Hide the "Outreach & Conversions" header (the Signups page provides its own
    *  header + Run Campaign action). */
@@ -144,13 +142,13 @@ export function RevenueOverviewSection({
           pending={activityLoading}
         />
 
-        {/* Cost summary — actual spend and source breakdown.
+        {/* Cost summary — server-computed spend block (Total spent / today / top
+            sources), rendered verbatim from features-service `/revenue`.
             Bottom card defaults to the brand-wide Top-3 cost-source list (the old
             Top-campaigns-by-ROI card was dropped with the campaign concept — there's
             no per-campaign detail page to link to anymore). */}
         <RevenueCostSummary
-          costBreakdown={costBreakdown}
-          todayCostBreakdown={todayCostBreakdown}
+          spend={data?.spend}
           dailyBudgetCents={dailyBudgetCents}
           pending={revenueLoading}
           costPending={costPending}
@@ -165,7 +163,7 @@ export function RevenueOverviewSection({
       <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
         <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
         {activityLoading ? (
-          <Skeleton className="h-[300px] w-full rounded" />
+          <Skeleton className="h-[300px] lg:h-[200px] w-full rounded" />
         ) : (
           <PipelineActivityChart
             data={pipelineActivity}

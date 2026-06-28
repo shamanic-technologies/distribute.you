@@ -1,14 +1,28 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
-import { getPlatformPrices, type CostByName } from "@/lib/api";
+import { getPlatformPrices } from "@/lib/api";
+import type { Spend } from "@/lib/revenue-view";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { ProviderLogo } from "@/components/provider-logo";
 import { Skeleton } from "@/components/skeleton";
+import { InfoTooltip } from "@/components/visibility/metric-info";
+
+// Committed-spend (= actual + provisioned) explainers. The figure can DIP when a
+// reserved follow-up sends (becomes a billed charge) or is cancelled (contact
+// replied / couldn't be reached) — the tooltip tells the user why it moves.
+const TOTAL_SPENT_TIP =
+  "What you've committed so far: money already billed plus credits reserved for follow-up emails we've scheduled. It can dip when a reserved follow-up sends or gets cancelled because a contact replied or couldn't be reached.";
+const TODAY_SPENT_TIP =
+  "Committed today: billed plus credits reserved for follow-ups scheduled today. It can dip when a reserved follow-up sends or gets cancelled because a contact replied or couldn't be reached.";
 
 /**
  * Cost summary for the feature Overview — actual spend and the top-3 cost
- * sources (provider logo + share, no $ amounts).
+ * sources (provider logo + share, no $ amounts). Every figure (Total spent,
+ * Budget spent today, the top-3 sources + their share %) is read VERBATIM from
+ * the features-service `/revenue` `spend` block — the dashboard no longer sums
+ * the runs breakdown or computes provider shares in the browser (that diverged
+ * from the displayed Total spent).
  */
 
 function formatCostName(name: string): string {
@@ -32,32 +46,29 @@ function formatUsdWithCents(cents: number): string {
   })}`;
 }
 
-function actualCents(costs: CostByName[]): number {
-  return costs.reduce((sum, c) => sum + (parseFloat(c.actualCostInUsdCents) || 0), 0);
-}
-
 function formatBudgetCents(cents: number): string {
   if (cents % 100 === 0) return formatUsd(cents / 100);
   return formatUsdWithCents(cents);
 }
 
 export function RevenueCostSummary({
-  costBreakdown = [],
-  todayCostBreakdown = [],
+  spend = null,
   dailyBudgetCents = null,
   pending = false,
   costPending,
   todayCostPending,
   bottomCard,
 }: {
-  costBreakdown?: CostByName[];
-  todayCostBreakdown?: CostByName[];
+  /** features-service `/revenue` spend block — the single source for Total spent,
+   *  Budget spent today, and the top-3 cost sources (+ share %). Null on a cold /
+   *  pre-rollout payload → the figures render $0 / no sources. */
+  spend?: Spend | null;
   dailyBudgetCents?: number | null;
   pending?: boolean;
-  /** Reveal gate for the Total-spent figure (runs-service cost breakdown) when it
-   *  resolves on a DIFFERENT chain than the revenue data (features-service). The
-   *  feature Overview passes this so Total-spent never waits on the slower revenue
-   *  call; other consumers omit it → falls back to `pending` (single reveal). */
+  /** Reveal gate for the Total-spent figure when it resolves on a DIFFERENT chain
+   *  than the revenue data. The feature Overview now sources spend from `/revenue`
+   *  itself, so it passes the revenue reveal here; other consumers omit it →
+   *  falls back to `pending` (single reveal). */
   costPending?: boolean;
   /** Reveal gate for today's actual spend window. */
   todayCostPending?: boolean;
@@ -68,15 +79,10 @@ export function RevenueCostSummary({
   // Total-spent reveals on its own source where given; otherwise tracks `pending`.
   const totalSpentPending = costPending ?? pending;
   const budgetSpentPending = todayCostPending ?? totalSpentPending;
-  const { entries, totalCents } = useMemo(() => {
-    const e = costBreakdown
-      .map((c) => ({ name: c.costName ?? "Unknown", cents: parseFloat(c.actualCostInUsdCents) || 0 }))
-      .filter((x) => x.cents > 0)
-      .sort((a, b) => b.cents - a.cents);
-    return { entries: e, totalCents: e.reduce((s, x) => s + x.cents, 0) };
-  }, [costBreakdown]);
 
-  // Static catalog → costName -> providerDomain for the provider logos.
+  // Static catalog → costName -> providerDomain for the provider logos (the only
+  // client-side join: the provider-domain decomposition lives in the price
+  // catalog, not features-service; the spend amounts/shares come from the server).
   const { data: platformPrices } = useAuthQuery(
     ["platformPrices"],
     () => getPlatformPrices(),
@@ -88,14 +94,18 @@ export function RevenueCostSummary({
     return m;
   }, [platformPrices]);
 
-  // Total spent + top-3 provider sources stay client-side (provider-domain
-  // decomposition lives in the cost breakdown, not features-service).
-  const totalCostUsd = totalCents / 100;
-  const todayActualCents = useMemo(() => actualCents(todayCostBreakdown), [todayCostBreakdown]);
-  const top3 = entries.slice(0, 3).map((e) => ({
-    ...e,
-    pct: totalCents > 0 ? (e.cents / totalCents) * 100 : 0,
-    domain: domainByCost.get(e.name) ?? null,
+  // All spend figures are server-computed (features-service#396) — rendered
+  // verbatim, no client reduce / share-% math.
+  // Committed (= actual + provisioned). features-service keeps `totalSpentCents` (value
+  // flips to committed when it lands) and renames today's field to `totalSpentTodayCents`;
+  // read it in preference to the legacy `todaySpentCents` so the dashboard works across
+  // the rollout. Server-provided either way — no client actual+provisioned sum.
+  const totalCostUsd = (spend?.totalSpentCents ?? 0) / 100;
+  const todayCommittedCents = spend?.totalSpentTodayCents ?? spend?.todaySpentCents ?? 0;
+  const top3 = (spend?.sources ?? []).slice(0, 3).map((s) => ({
+    name: s.source,
+    pct: s.sharePct,
+    domain: domainByCost.get(s.source) ?? null,
   }));
 
   // Right-of-chart column on the Overview: Total spent plus a compact top-3
@@ -107,12 +117,15 @@ export function RevenueCostSummary({
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs text-gray-400">Budget spent today</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-gray-400">Budget spent today</p>
+                <InfoTooltip tip={TODAY_SPENT_TIP} />
+              </div>
               {budgetSpentPending ? (
                 <Skeleton className="mt-1 h-7 w-28" />
               ) : (
                 <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">
-                  {formatUsdWithCents(todayActualCents)}
+                  {formatUsdWithCents(todayCommittedCents)}
                   {dailyBudgetCents != null && dailyBudgetCents > 0 ? (
                     <span className="text-sm font-medium text-gray-400">/{formatBudgetCents(dailyBudgetCents)}</span>
                   ) : null}
@@ -120,7 +133,10 @@ export function RevenueCostSummary({
               )}
             </div>
             <div className="min-w-0 text-right">
-              <p className="text-xs text-gray-400">Total spent</p>
+              <div className="flex items-center justify-end gap-1">
+                <p className="text-xs text-gray-400">Total spent</p>
+                <InfoTooltip tip={TOTAL_SPENT_TIP} />
+              </div>
               {totalSpentPending ? (
                 <Skeleton className="ml-auto mt-1 h-7 w-24" />
               ) : (

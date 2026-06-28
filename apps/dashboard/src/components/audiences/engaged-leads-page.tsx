@@ -11,10 +11,13 @@ import {
   getAudienceMembershipStats,
   listAudiences,
   getBrandSalesEconomics,
+  getLeadEmail,
   type Lead,
   type LeadConsolidatedStatus,
+  type LeadEmailGeneration,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
+import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
@@ -33,10 +36,35 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "buffered",
 ];
 
-type Tab = "positive-replies" | "website-visits" | "all";
+// "all" is NOT a rendered tab — it's an internal sort-mode (base "most-recent
+// activity" ordering for `sortedLeads` + `leadDateForTab`). The All UI tab was
+// removed; the funnel tabs are the four below.
+type Tab = "positive-replies" | "clicks" | "opens" | "outreach" | "all";
 
-function isEngagedLead(lead: Lead): boolean {
-  return lead.clicked || lead.replyClassification === "positive";
+// The Date column + sort key are PER-TAB: each tab shows the first-occurrence
+// timestamp of the engagement that tab is about (Clicks → first click, Opens →
+// first open, Outreach → first contacted, Positive replies → first reply). The
+// "all" tab has no single engagement, so it uses the most-recent activity across
+// every first-occurrence timestamp.
+function leadDateForTab(lead: Lead, tab: Tab): string | null {
+  switch (tab) {
+    case "positive-replies": return lead.firstRepliedAt ?? null;
+    case "clicks": return lead.firstClickedAt ?? null;
+    case "opens": return lead.firstOpenedAt ?? null;
+    case "outreach": return lead.firstContactedAt ?? null;
+    case "all": {
+      const ats = [
+        lead.firstRepliedAt,
+        lead.firstClickedAt,
+        lead.firstOpenedAt,
+        lead.firstDeliveredAt,
+        lead.firstSentAt,
+        lead.firstContactedAt,
+      ].filter((a): a is string => !!a);
+      if (ats.length === 0) return null;
+      return ats.reduce((latest, a) => (new Date(a).getTime() > new Date(latest).getTime() ? a : latest));
+    }
+  }
 }
 
 function leadStatusLabel(status: LeadConsolidatedStatus): string {
@@ -88,6 +116,41 @@ function timeAgo(date: string | Date): string {
   if (months < 12) return `${months}mo ago`;
   const years = Math.floor(months / 12);
   return `${years}y ago`;
+}
+
+// Firmographic display helpers (reassurance fields). The values come from the
+// `view=basic` org projection (widened lead-service-side); render "-" until
+// present so the page ships ahead of the producer.
+function formatEmployees(n: number | null | undefined): string {
+  if (n == null) return "-";
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
+  return `${n}`;
+}
+
+function formatRevenue(v: string | number | null | undefined): string {
+  if (v == null || v === "") return "-";
+  const n = typeof v === "number" ? v : Number(v);
+  // annualRevenue can arrive as a numeric string (e.g. "12000000") or an
+  // already-formatted band (e.g. "$1M-$10M"); only reformat the numeric case.
+  if (!Number.isFinite(n) || (typeof v === "string" && !/^\d+(\.\d+)?$/.test(v.trim()))) return String(v);
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
+
+// Plain-text preview of an email body (strip tags) when only bodyHtml exists.
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 // Shared logo.dev token (also used in `BrandLogo`, public
@@ -143,6 +206,141 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
+// A single merged timeline entry: a delivery EVENT (dot + label + date) or the
+// actual EMAIL we sent (subject + body, expandable), interleaved chronologically.
+type TimelineEntry =
+  | { kind: "event"; at: string; label: string; dot: string }
+  | { kind: "email"; at: string; label: string; subject: string | null; body: string };
+
+function emailBodyText(html: string | null | undefined, text: string | null | undefined): string {
+  if (text && text.trim()) return text.trim();
+  if (html && html.trim()) return htmlToText(html);
+  return "";
+}
+
+// Per-lead activity timeline: delivery events (from the email-gateway
+// first-occurrence timestamps forwarded by lead-service) interleaved with the
+// actual emails we sent — initial + each follow-up step — most-recent first.
+// The email content is fetched on-demand by leadId (content-generation). Renders
+// nothing until at least one event timestamp OR an email is present.
+function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration | null }) {
+  const replyColor =
+    lead.replyClassification === "positive" ? "bg-green-500"
+      : lead.replyClassification === "negative" ? "bg-red-500"
+        : "bg-violet-500";
+
+  const entries: TimelineEntry[] = [
+    { kind: "event", label: "Contacted", at: lead.firstContactedAt ?? "", dot: "bg-gray-400" },
+    { kind: "event", label: "Sent", at: lead.firstSentAt ?? "", dot: "bg-blue-400" },
+    { kind: "event", label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
+    { kind: "event", label: "Opened", at: lead.firstOpenedAt ?? "", dot: "bg-indigo-500" },
+    { kind: "event", label: "Clicked", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
+    {
+      kind: "event",
+      label: lead.replyClassification ? `Replied (${lead.replyClassification})` : "Replied",
+      at: lead.firstRepliedAt ?? "",
+      dot: replyColor,
+    },
+    { kind: "event", label: "Bounced", at: lead.firstBouncedAt ?? "", dot: "bg-red-500" },
+    { kind: "event", label: "Unsubscribed", at: lead.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
+  ];
+
+  // Place emails at their send time. The lead's firstSentAt is when the initial
+  // email went out; follow-up steps are offset by their cumulative daysSinceLastStep.
+  // Fall back to the generation createdAt when no send timestamp exists yet.
+  if (email) {
+    const anchor = lead.firstSentAt ?? email.createdAt ?? "";
+    const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
+    const initialBody = emailBodyText(email.bodyHtml, email.bodyText);
+    // The initial "Initial email" entry: prefer the generation's top-level body. Some
+    // generations leave that empty and carry the initial email as sequence step 1 —
+    // so never push an empty "Initial email" row here; fall through to claim step 1 below.
+    let initialDone = false;
+    if (initialBody) {
+      entries.push({ kind: "email", label: "Initial email", at: anchor, subject: email.subject ?? null, body: initialBody });
+      initialDone = true;
+    }
+    let cumDays = 0;
+    for (const step of email.sequence ?? []) {
+      const body = emailBodyText(step.bodyHtml, step.bodyText);
+      if (!body) continue;
+      cumDays += step.daysSinceLastStep || 0;
+      // Step 1 IS the initial email. If the top-level body was empty, this step
+      // becomes the "Initial email" entry; otherwise it duplicates the initial — skip.
+      const isInitial = step.step === 1 || (cumDays === 0 && body === initialBody);
+      if (isInitial) {
+        if (!initialDone) {
+          entries.push({ kind: "email", label: "Initial email", at: anchor, subject: email.subject ?? null, body });
+          initialDone = true;
+        }
+        continue;
+      }
+      const at = Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "";
+      entries.push({ kind: "email", label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`, at, subject: email.subject ?? null, body });
+    }
+  }
+
+  // Same-date tie-break: most-advanced stage on top, oldest at the bottom.
+  // (Primary sort is still timestamp desc; this only orders entries sharing the
+  // same instant — e.g. Sent / Delivered / Initial email all at firstSentAt.)
+  const stageRank = (e: TimelineEntry): number => {
+    if (e.kind === "email") return e.label === "Initial email" ? 1 : 3; // follow-ups above initial, below Sent
+    const l = e.label;
+    if (l.startsWith("Replied")) return 9;
+    if (l === "Unsubscribed") return 8;
+    if (l === "Bounced") return 8;
+    if (l === "Clicked") return 7;
+    if (l === "Opened") return 6;
+    if (l === "Delivered") return 5;
+    if (l === "Sent") return 4;
+    if (l === "Contacted") return 2;
+    return 0;
+  };
+
+  const sorted = entries
+    .filter((e) => !!e.at)
+    .sort((a, b) => {
+      const dt = new Date(b.at).getTime() - new Date(a.at).getTime();
+      return dt !== 0 ? dt : stageRank(b) - stageRank(a);
+    });
+
+  if (sorted.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Activity timeline</h3>
+      <ol className="relative ml-1">
+        {sorted.map((e, i) => (
+          <li key={`${e.kind}-${e.label}-${e.at}-${i}`} className="relative pl-5 pb-4 last:pb-0">
+            {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
+            <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.kind === "email" ? "bg-brand-500" : e.dot}`} aria-hidden />
+            <p className="text-sm font-medium text-gray-800">
+              {e.kind === "email" && (
+                <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              )}
+              {e.label}
+            </p>
+            <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
+              {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {timeAgo(e.at)}
+            </p>
+            {e.kind === "email" && (
+              <details className="mt-1.5 group">
+                <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
+                  {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
+                </summary>
+                <div className="mt-1.5 bg-gray-50 border border-gray-100 rounded p-2">
+                  <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
+                  <EmailSignature className="text-xs" />
+                </div>
+              </details>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function LeadsLoadingSkeleton() {
   return (
     <>
@@ -180,12 +378,17 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }: {
+function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, forceContacted }: {
   leads: Lead[];
+  tab: Tab;
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
   statusOf: (lead: Lead) => LeadConsolidatedStatus;
   audienceOf: (lead: Lead) => LeadAudience | null;
+  // Outreach tab: every row is the flat universe we contacted, so show a single
+  // "Contacted" tag on all rows rather than each lead's most-advanced status
+  // (those leads also surface under Opens/Clicks/Replies with their real status).
+  forceContacted?: boolean;
 }) {
   if (leads.length === 0) {
     return (
@@ -196,11 +399,13 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
   }
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full min-w-[480px] text-sm">
+      <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             <th className="px-4 py-3">Company</th>
             <th className="px-4 py-3">Contact</th>
+            <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
+            <th className="px-4 py-3 hidden lg:table-cell">Revenue</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 hidden sm:table-cell">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Date</th>
@@ -237,14 +442,19 @@ function LeadsTable({ leads, selectedLead, onSelectLead, statusOf, audienceOf }:
                     )}
                   </div>
                 </td>
+                <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
+                <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600">{formatRevenue(org?.annualRevenue)}</span></td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={forceContacted ? "contacted" : statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
-                  {lead.firstClickedAt ? (
-                    <span className="text-xs text-gray-500" title={new Date(lead.firstClickedAt).toLocaleString()}>{timeAgo(lead.firstClickedAt)}</span>
-                  ) : (
-                    <span className="text-xs text-gray-300">-</span>
-                  )}
+                  {(() => {
+                    const at = leadDateForTab(lead, tab);
+                    return at ? (
+                      <span className="text-xs text-gray-500" title={new Date(at).toLocaleString()}>{timeAgo(at)}</span>
+                    ) : (
+                      <span className="text-xs text-gray-300">-</span>
+                    );
+                  })()}
                 </td>
               </tr>
             );
@@ -269,7 +479,7 @@ export function EngagedLeadsPage() {
     { refetchInterval: POLL_INTERVAL },
   );
 
-  const leads = useMemo(() => (data?.leads ?? []).filter(isEngagedLead), [data]);
+  const leads = useMemo(() => data?.leads ?? [], [data]);
 
   // Brand optimization goal drives the default tab: signups → Website visits,
   // sales_meetings (server default when unset) → Positive replies.
@@ -282,15 +492,21 @@ export function EngagedLeadsPage() {
 
   // Audience per lead — human-service owns the email → audience membership
   // (name); `listAudiences` supplies the avatar. Joined client-side, fetched
-  // on-demand off the engaged leads' emails (no widening of `listBrandLeads`).
-  const engagedEmails = useMemo(
-    () => Array.from(new Set(leads.map((l) => l.email).filter((e): e is string => !!e))),
+  // on-demand off the leads' emails (no widening of `listBrandLeads`). Cover
+  // EVERY lead with an email — the audience column renders on all tabs, so
+  // limiting the lookup to clicked/positive leads left Opens/Outreach blank.
+  const leadEmails = useMemo(
+    () => Array.from(new Set(
+      leads
+        .map((l) => l.email)
+        .filter((e): e is string => !!e),
+    )),
     [leads],
   );
   const { data: audStatsData } = useAuthQuery(
-    ["audienceStats", brandId, engagedEmails],
-    () => getAudienceMembershipStats({ emails: engagedEmails }),
-    { enabled: engagedEmails.length > 0 },
+    ["audienceStats", brandId, leadEmails],
+    () => getAudienceMembershipStats({ emails: leadEmails }),
+    { enabled: leadEmails.length > 0 },
   );
   const { data: audiencesData } = useAuthQuery(
     ["audiences", brandId],
@@ -315,14 +531,15 @@ export function EngagedLeadsPage() {
   const audienceOf = (lead: Lead): LeadAudience | null =>
     lead.email ? audienceByEmail.get(lead.email.toLowerCase()) ?? null : null;
 
-  const sortedLeads = useMemo(
-    () => [...leads].sort((a, b) => {
-      const aTime = a.servedAt ? new Date(a.servedAt).getTime() : 0;
-      const bTime = b.servedAt ? new Date(b.servedAt).getTime() : 0;
-      return bTime - aTime;
-    }),
-    [leads],
-  );
+  // Base "all" ordering — most-recent activity first (the "all" Date column).
+  // Each funnel tab re-sorts by ITS OWN date field below. Null sinks to bottom.
+  const sortByTabDate = (arr: Lead[], tab: Tab): Lead[] =>
+    [...arr].sort((a, b) => {
+      const at = leadDateForTab(a, tab);
+      const bt = leadDateForTab(b, tab);
+      return (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+    });
+  const sortedLeads = useMemo(() => sortByTabDate(leads, "all"), [leads]);
 
   // Monotonic status latch: each lead's tab is derived from the email-gateway
   // delivery overlay, which can transiently drop on a poll and bounce a lead
@@ -340,26 +557,46 @@ export function EngagedLeadsPage() {
     (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
 
   const groupedByTab = useMemo(() => {
-    const groups = new Map<Tab, Lead[]>();
-    groups.set("positive-replies", []);
-    groups.set("website-visits", []);
-    groups.set("all", sortedLeads);
-    for (const lead of sortedLeads) {
-      if (lead.replyClassification === "positive") groups.get("positive-replies")?.push(lead);
-      if (lead.clicked) groups.get("website-visits")?.push(lead);
+    const positive: Lead[] = [];
+    const clicks: Lead[] = [];
+    const opens: Lead[] = [];
+    const outreach: Lead[] = [];
+    for (const lead of leads) {
+      if (lead.replyClassification === "positive") positive.push(lead);
+      if (lead.clicked) clicks.push(lead);
+      if (lead.opened) opens.push(lead);
+      if (lead.contacted) outreach.push(lead);
     }
+    const groups = new Map<Tab, Lead[]>();
+    // Each tab sorted desc by its OWN date column (Clicks → first click, etc.).
+    groups.set("positive-replies", sortByTabDate(positive, "positive-replies"));
+    groups.set("clicks", sortByTabDate(clicks, "clicks"));
+    groups.set("opens", sortByTabDate(opens, "opens"));
+    groups.set("outreach", sortByTabDate(outreach, "outreach"));
     return groups;
-  }, [sortedLeads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, sortedLeads]);
 
-  // Open the tab matching what the brand optimizes for (once, after leads + the
-  // goal have loaded). User manual tab switches latch the ref and are never
-  // overridden by a later poll. Honors the goal tab even when empty.
+  // Open, once (after leads + the sales-economics query have settled), the
+  // leftmost funnel tab that has leads, ordered by what the brand optimizes for:
+  // signups → Clicks first, sales_meetings → Positive replies first, otherwise
+  // Opens then Outreach. Within each order we fall through to the next non-empty
+  // tab so the user never lands on an empty tab. User manual switches latch the
+  // ref and are never overridden by a later poll. Gate on `econData` (not
+  // `optimizationGoal`, which is null both while loading AND when unset).
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
-    if (sortedLeads.length === 0 || optimizationGoal === null) return;
+    if (sortedLeads.length === 0 || econData === undefined) return;
     hasAutoSelectedTab.current = true;
-    setActiveTab(optimizationGoal === "signups" ? "website-visits" : "positive-replies");
-  }, [sortedLeads.length, optimizationGoal]);
+    const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
+    const order: Tab[] =
+      optimizationGoal === "signups"
+        ? ["clicks", "opens", "outreach", "positive-replies"]
+        : optimizationGoal === "sales_meetings"
+          ? ["positive-replies", "clicks", "opens", "outreach"]
+          : ["opens", "outreach", "clicks", "positive-replies"];
+    setActiveTab(order.find((t) => count(t) > 0) ?? "outreach");
+  }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
@@ -378,9 +615,17 @@ export function EngagedLeadsPage() {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "positive-replies", label: "Positive replies", count: groupedByTab.get("positive-replies")?.length ?? 0 },
-    { key: "website-visits", label: "Website visits", count: groupedByTab.get("website-visits")?.length ?? 0 },
-    { key: "all", label: "All", count: sortedLeads.length },
+    { key: "clicks", label: "Clicks", count: groupedByTab.get("clicks")?.length ?? 0 },
+    { key: "opens", label: "Opens", count: groupedByTab.get("opens")?.length ?? 0 },
+    { key: "outreach", label: "Outreach", count: groupedByTab.get("outreach")?.length ?? 0 },
   ];
+
+  // Contacted-lead count from the SAME listBrandLeads snapshot the table renders
+  // (= the Outreach tab count). Passed to the stat box so the box reads the
+  // leads-snapshot single source (303) instead of the legacy /stats email-gateway
+  // aggregate (301) — mirrors the brand Overview's outreachContacted override
+  // (features-service #371/#372). Both surfaces now move together.
+  const contactedCount = groupedByTab.get("outreach")?.length ?? 0;
 
   // Static-shell-first (CLAUDE.md "Page composition: shell+nav+header render
   // instantly; each card owns its skeleton"). The shell (stat cards, h1, tabs,
@@ -391,18 +636,29 @@ export function EngagedLeadsPage() {
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
+  // The lead's generated email (initial + follow-ups) — fetched on-demand from
+  // content-generation (via api-service) when a lead is selected, keyed off the
+  // leadId already on the row. Interleaved into the timeline. (#2095 pattern.)
+  const selectedLeadId = selectedLead?.leadId ?? null;
+  const { data: leadEmailData } = useAuthQuery(
+    ["leadEmail", selectedLeadId],
+    () => getLeadEmail(selectedLeadId as string),
+    { enabled: !!selectedLeadId },
+  );
+  const personLocation = [selectedFull?.city, selectedFull?.state, selectedFull?.country].filter(Boolean).join(", ");
+  const orgLocation = [selectedOrg?.city, selectedOrg?.state, selectedOrg?.country].filter(Boolean).join(", ");
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
-        <OutreachStatCardsAuto />
+        <OutreachStatCardsAuto outreachOverride={loading ? null : contactedCount} />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads
             {loading ? (
               <Skeleton className="ml-2 inline-block h-4 w-56 align-middle" />
             ) : (
-              <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} with website visits or positive replies)</span>
+              <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} leads)</span>
             )}
           </h1>
         </div>
@@ -432,11 +688,11 @@ export function EngagedLeadsPage() {
 
             {leads.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No engaged leads yet</h3>
-                <p className="text-gray-600 text-sm">Leads appear here after a website visit or a positive reply.</p>
+                <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
+                <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} />
+              <LeadsTable leads={filteredLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} />
             )}
           </>
         )}
@@ -461,7 +717,11 @@ export function EngagedLeadsPage() {
                 <div><span className="text-gray-500">Email:</span><p className="font-medium">{selectedLead.email}</p>
                   {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
-                <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.headline || "-"}</p></div>
+                <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.currentTitle || "-"}</p></div>
+                {selectedFull?.seniority && <div><span className="text-gray-500">Seniority:</span><p className="font-medium capitalize">{selectedFull.seniority}</p></div>}
+                {personLocation && <div><span className="text-gray-500">Location:</span><p className="font-medium">{personLocation}</p></div>}
+                {selectedFull?.departments?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Departments:</span><p className="font-medium">{selectedFull.departments.join(", ")}</p></div> : null}
+                {selectedFull?.functions?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Functions:</span><p className="font-medium">{selectedFull.functions.join(", ")}</p></div> : null}
                 <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={statusOf(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
@@ -473,10 +733,16 @@ export function EngagedLeadsPage() {
                   <div><span className="text-gray-500">Company:</span><p className="font-medium">{selectedOrg.name || "-"}</p></div>
                   <div><span className="text-gray-500">Domain:</span><p className="font-medium">{selectedOrg.primaryDomain || "-"}</p></div>
                   <div><span className="text-gray-500">Industry:</span><p className="font-medium">{selectedOrg.industry || "-"}</p></div>
-                  <div><span className="text-gray-500">Size:</span><p className="font-medium">{selectedOrg.estimatedNumEmployees != null ? `${selectedOrg.estimatedNumEmployees} employees` : "-"}</p></div>
+                  <div><span className="text-gray-500">Revenue:</span><p className="font-medium">{formatRevenue(selectedOrg.annualRevenue)}</p></div>
+                  <div><span className="text-gray-500">Size:</span><p className="font-medium">{selectedOrg.estimatedNumEmployees != null ? `${selectedOrg.estimatedNumEmployees.toLocaleString("en-US")} employees` : "-"}</p></div>
+                  {selectedOrg.foundedYear != null && <div><span className="text-gray-500">Founded:</span><p className="font-medium">{selectedOrg.foundedYear}</p></div>}
+                  {orgLocation && <div><span className="text-gray-500">Location:</span><p className="font-medium">{orgLocation}</p></div>}
+                  {selectedOrg.industries?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Other industries:</span><p className="font-medium">{selectedOrg.industries.join(", ")}</p></div> : null}
+                  {selectedOrg.shortDescription && <div className="sm:col-span-2"><span className="text-gray-500">About:</span><p className="font-medium text-gray-700 font-normal">{selectedOrg.shortDescription}</p></div>}
                 </div>
               </div>
             )}
+            <LeadTimeline lead={selectedLead} email={leadEmailData?.generation ?? null} />
             {selectedLead.servedAt && (
               <div className="mt-4 text-xs text-gray-400">Served: {new Date(selectedLead.servedAt).toLocaleString()}</div>
             )}

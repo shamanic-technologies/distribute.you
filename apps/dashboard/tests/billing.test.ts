@@ -48,8 +48,13 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("topup_threshold_cents");
   });
 
-  it("should NOT reference legacy auto-reload paths or reload_*_cents body fields", () => {
-    expect(content).not.toContain("auto-reload");
+  it("should NOT reference legacy auto-reload endpoint paths, functions, or reload_*_cents body fields", () => {
+    // The current write path is /auto_topup (configureAutoTopup / disableAutoTopup).
+    // billing-service v0.40.0+ adds a READ-ONLY `auto_reload_supported` contract field
+    // (off_session unavailable for some card-issuing countries) — that underscore field
+    // is allowed; only the legacy /auto_reload endpoint family + reload_*_cents body is banned.
+    expect(content).not.toContain("/billing/accounts/auto_reload");
+    expect(content).not.toContain("/billing/accounts/auto-reload");
     expect(content).not.toContain("reload_amount_cents");
     expect(content).not.toContain("reload_threshold_cents");
     expect(content).not.toContain("configureAutoReload");
@@ -243,16 +248,43 @@ describe("Billing page", () => {
     expect(content).not.toContain("disableAutoReload");
   });
 
-  it("should display credit balance via actual_balance_cents when present", () => {
-    expect(content).toContain("actual_balance_cents");
-    expect(content).toContain("creditBalanceCents");
+  it("should render a reconciling credit-balance breakdown (Available + Total/Confirmed/Provisioned)", () => {
+    // The single gross "Credit Balance" number was replaced by a breakdown whose
+    // lines reconcile (Total - Confirmed - Provisioned == Available).
+    expect(content).toContain("availableCents");
+    expect(content).toContain("totalCreditsCents");
+    expect(content).toContain("confirmedChargesCents");
+    expect(content).toContain("provisionedChargesCents");
+    // Derived from all three locked billing fields.
     expect(content).toContain("balance_cents");
-    expect(content).toContain("Credit Balance");
+    expect(content).toContain("credited_cents");
+    expect(content).toContain("actual_balance_cents");
+    // Visible labels.
+    expect(content).toContain("Available");
+    expect(content).toContain("Total credits");
+    expect(content).toContain("Confirmed charges");
+    expect(content).toContain("Provisioned charges");
+    // The prominent number is the spendable balance, not the gross actual balance.
+    expect(content).not.toContain("Credit Balance</p>");
   });
 
-  it("should show depleted warning", () => {
+  it("should show depleted warning keyed on AVAILABLE balance (balance_cents), not the gross actual balance", () => {
     expect(content).toContain("isDepleted");
     expect(content).toContain("Credits depleted");
+    // isDepleted now keys on availableCents (= balance_cents), so the warning fires
+    // when spending is actually blocked even with a positive gross total.
+    expect(content).toMatch(/isDepleted\s*=\s*account\s*\?\s*!hasAutoTopup\s*&&\s*availableCents\s*<=\s*0/);
+  });
+
+  it("should give each breakdown line an info tooltip with no em-dash", () => {
+    expect(content).toContain("InfoTooltip");
+    // Tooltip copy present (humanizer-clean, plain language).
+    expect(content).toContain("Everything added to your account, including top-ups.");
+    expect(content).toContain("Emails already sent and billed. This won't change.");
+    expect(content).toContain("Reserved for follow-up emails we've scheduled.");
+    // The user-facing breakdown copy uses a real minus glyph (&minus;) for charges,
+    // never an em-dash. (Code comments are exempt from the em-dash rule.)
+    expect(content).toContain("&minus;");
   });
 
   it("should show top-up flow when auto-topup is not configured", () => {
@@ -438,6 +470,49 @@ describe("Billing guard auto-topup in modal", () => {
 
 // The org-scoped launch proactive-credit-check block was removed with the manual
 // launch/create flow.
+
+// Pure invariant test for the breakdown math the billing page derives inline.
+// Mirrors the page formulas (cents, full-precision decimal strings):
+//   Available           = balance_cents
+//   Total credits       = credited_cents
+//   Confirmed charges   = credited_cents - actual_balance_cents
+//   Provisioned charges = actual_balance_cents - balance_cents
+// Invariant: Total - Confirmed - Provisioned == Available.
+function breakdown(creditedCents: string, actualBalanceCents: string, balanceCents: string) {
+  const total = parseFloat(creditedCents);
+  const actual = parseFloat(actualBalanceCents);
+  const available = parseFloat(balanceCents);
+  return {
+    total,
+    available,
+    confirmed: total - actual,
+    provisioned: actual - available,
+  };
+}
+
+describe("Credit-balance breakdown math", () => {
+  it("reconciles: Total - Confirmed - Provisioned == Available (worked example: $19 - $12.03 - $6.98 = -$0.01)", () => {
+    // credited=$19.00, actual_balance=$6.97, balance(available)=-$0.01
+    const b = breakdown("1900", "697", "-1");
+    expect(b.total).toBe(1900);
+    expect(b.confirmed).toBe(1203); // $12.03
+    expect(b.provisioned).toBe(698); // $6.98
+    expect(b.available).toBe(-1); // -$0.01
+    expect(b.total - b.confirmed - b.provisioned).toBeCloseTo(b.available, 6);
+  });
+
+  it("holds for an arbitrary positive-available case", () => {
+    const b = breakdown("5000", "4200", "3500");
+    expect(b.confirmed).toBe(800);
+    expect(b.provisioned).toBe(700);
+    expect(b.total - b.confirmed - b.provisioned).toBeCloseTo(b.available, 6);
+  });
+
+  it("holds with full-precision decimal-string inputs", () => {
+    const b = breakdown("1900.0000000000", "697.4200000000", "-0.5800000000");
+    expect(b.total - b.confirmed - b.provisioned).toBeCloseTo(b.available, 6);
+  });
+});
 
 describe("Billing sidebar link", () => {
   const content = fs.readFileSync(sidebarPath, "utf-8");

@@ -116,14 +116,16 @@ export interface ConversionEvent {
 /**
  * Derived cost economics for the feature+brand — computed by features-service
  * (single source). Always present on a 200; the two ratios are null per the
- * documented null semantics. `totalCostUsd` is real (>= 0) even when pipeline is null.
+ * documented null semantics. `actualCostUsd` is real (>= 0) even when pipeline is null.
  */
 export interface CostEconomics {
-  /** Total run cost in $, brand (+ optional campaign), feature-scoped. */
-  totalCostUsd: number;
-  /** (totalCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
+  /** ACTUAL (billed) run cost in $, brand (+ optional campaign), feature-scoped. ROI/CAC
+   *  ride realized spend, so this EXCLUDES provisioned holds (renamed from the ambiguous
+   *  `totalCostUsd` — features-service#402). */
+  actualCostUsd: number;
+  /** (actualCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
   costOfAcquisitionPct: number | null;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  /** totalPipelineUsd / actualCostUsd. Null when cost is 0 or pipeline is null. */
   roiMultiple: number | null;
   /**
    * Lens-only: expected outcome COUNT = Σ per-lead probability across the lensed
@@ -131,8 +133,72 @@ export interface CostEconomics {
    * features-service is the single source — the dashboard never derives it.
    */
   expectedConversions?: number | null;
-  /** Lens-only: `totalCostUsd / expectedConversions`; null when expectedConversions is 0. */
+  /** Lens-only: `actualCostUsd / expectedConversions`; null when expectedConversions is 0. */
   costPerConversionUsd?: number | null;
+}
+
+/** One pre-computed cost source (descending) in the spend block. The card renders only
+ *  `source` + `sharePct`; the amounts are carried for completeness. */
+export interface SpendSource {
+  /** runs-service cost name (billable line item, e.g. "apollo people-search"). */
+  source: string;
+  /** Committed spend (actual + provisioned) attributed to this source, USD cents. */
+  totalSpentCents?: number;
+  /** Actual (billed) spend attributed to this source, USD cents. */
+  actualSpentCents?: number;
+  /** Provisioned holds attributed to this source, USD cents. */
+  provisionedSpentCents?: number;
+  /** LEGACY actual-only spend (pre features-service#402). */
+  spentCents?: number;
+  /** This source's share of the committed total, percent (0–100). */
+  sharePct: number;
+}
+
+/**
+ * Canonical spend block for the Overview cost card — server-computed by
+ * features-service, reconciled to runs ACTUAL spend (single source, the
+ * dashboard renders verbatim instead of summing the runs breakdown client-side).
+ * Present on the un-lensed OVERVIEW response; null on a lensed (`?lens=`) response.
+ * `*Cents` values are USD cents → divide by 100 for display; a null cost metric
+ * renders "—", never a false $0. (features-service#396)
+ */
+export interface Spend {
+  /** Canonical "Total spent" = ACTUAL + PROVISIONED (committed). features-service keeps
+   *  this name; its value is the committed total once that service lands (until then it
+   *  is actual-only, today's behavior). Naming convention: total = actual+provisioned. */
+  totalSpentCents: number;
+  /** Actual (billed) spend only, USD cents. Additive — present once features-service lands. */
+  actualSpentCents?: number;
+  /** Open provisioned holds only, USD cents. Additive — present once features-service lands. */
+  provisionedSpentCents?: number;
+  /** "Budget spent today" = ACTUAL + PROVISIONED for runs since 00:00 UTC. Additive — read
+   *  in preference to the legacy `todaySpentCents` once present. */
+  totalSpentTodayCents?: number;
+  /** Actual (billed) spend today only, USD cents. Additive. */
+  actualSpentTodayCents?: number;
+  /** Provisioned holds today only, USD cents. Additive. */
+  provisionedSpentTodayCents?: number;
+  /** LEGACY actual-only today spend. Optional for rollout: features-service renames it to
+   *  `actualSpentTodayCents`; render `totalSpentTodayCents ?? todaySpentCents`. */
+  todaySpentCents?: number;
+  /** Per cost-name actual spend + share-of-total, descending — the "top cost sources" list. */
+  sources: SpendSource[];
+  /** CPC = (ACTUAL + PROVISIONED) / clicks (committed). Additive — read in preference to the
+   *  legacy `cpcCents` once present. Null (renders "—"), never a false $0. */
+  totalCpcCents?: number | null;
+  /** Actual-only CPC, USD cents. Additive. */
+  actualCpcCents?: number | null;
+  /** Provisioned-only CPC, USD cents. Additive. */
+  provisionedCpcCents?: number | null;
+  /** LEGACY actual-only CPC. Optional for rollout: features-service renames it to
+   *  `actualCpcCents`; render `totalCpcCents ?? cpcCents`. */
+  cpcCents?: number | null;
+  /** Cost per signup, USD cents (PROJECTED). REMOVED in features-service#406 → optional;
+   *  absent → the beta CPS card renders "—". */
+  cpsCents?: number | null;
+  /** Cost per sales meeting booked, USD cents (PROJECTED). REMOVED in features-service#406
+   *  → optional; absent → the beta CPSM card renders "—". */
+  cpsmCents?: number | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */
@@ -142,6 +208,13 @@ export interface RevenueOverview {
   totalPipelineUsd: number | null;
   /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */
   costEconomics: CostEconomics;
+  /**
+   * Canonical spend block (Total spent / today / top sources / CPC / CPS / CPSM),
+   * server-computed + reconciled to runs ACTUAL spend. Present on the un-lensed
+   * overview; null on a lensed response. Optional in the view-model so a cold /
+   * pre-rollout payload (absent block) degrades the cost card gracefully.
+   */
+  spend?: Spend | null;
   /**
    * Server-computed contacted aggregate — the single source for the Outreach stat
    * card + the 7-day graph actual. Optional: absent on a cold / pre-rollout payload

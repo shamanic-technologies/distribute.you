@@ -5,16 +5,56 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
+  getCreditGrants,
   createCheckoutSession,
   createPortalSession,
   type BillingAccount,
+  type CreditGrant,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 
 const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
+
+// Friendly label for a credit grant's `reason` (pure display lookup, no metric).
+// reason ∈ welcome | first_load_match | admin_grant | invite_* | <promo code>.
+function grantLabel(reason: string): string {
+  switch (reason) {
+    case "welcome":
+      return "Welcome gift";
+    case "first_load_match":
+      return "First deposit match";
+    case "admin_grant":
+      return "Bonus credit";
+    default:
+      if (reason.startsWith("invite")) return "Referral bonus";
+      return `Promo: ${reason}`;
+  }
+}
+
+function formatGrantDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ISO-3166-1 alpha-2 -> display name. Display-only mapping (billing owns the
+// blocklist via `auto_reload_supported`); we only name the country for the notice.
+const COUNTRY_NAMES: Record<string, string> = {
+  IN: "India",
+  PK: "Pakistan",
+  BD: "Bangladesh",
+  NP: "Nepal",
+  LK: "Sri Lanka",
+};
+
+function countryLabel(code: string | null | undefined): string {
+  if (!code) return "your card's country";
+  return COUNTRY_NAMES[code.toUpperCase()] ?? "your card's country";
+}
 
 export default function BillingPage() {
   const params = useParams();
@@ -34,6 +74,13 @@ export default function BillingPage() {
     () => getBillingAccount(),
     pollOptions,
   );
+
+  // Credit grants ("gifts received") — the org's own free-credit ledger.
+  const { data: grantsData } = useAuthQuery<{ grants: CreditGrant[] }>(
+    ["creditGrants"],
+    () => getCreditGrants(),
+  );
+  const grants = grantsData?.grants ?? [];
 
   // Top-up state
   const [topupSelected, setTopupSelected] = useState(2500);
@@ -93,9 +140,36 @@ export default function BillingPage() {
 
   const hasValidationError = !!(thresholdError || customAmountError || topupAmountError);
 
-  const isDepleted = account ? parseFloat(account.balance_cents) <= 0 : false;
-  const creditBalanceCents = account?.actual_balance_cents ?? account?.balance_cents ?? "0";
   const hasAutoTopup = account?.has_auto_topup ?? false;
+  // Auto-reload (off_session auto-topup) can be impossible for the saved card's issuing
+  // country. Absent/undefined => supported (older billing deploy, today's behavior);
+  // only an explicit `false` blocks the auto-topup controls.
+  const autoReloadSupported = account?.auto_reload_supported !== false;
+
+  // Credit-balance breakdown — all four lines reconcile so the displayed numbers stop
+  // contradicting each other. Math in cents (full-precision decimal strings); format once.
+  //   Available           = balance_cents (spendable, net of provisioned holds) — the number to act on
+  //   Total credits       = credited_cents (lifetime credited)
+  //   Confirmed charges   = credited_cents - actual_balance_cents (actualized usage only)
+  //   Provisioned charges = actual_balance_cents - balance_cents (open holds for scheduled follow-ups)
+  // Total - Confirmed - Provisioned == Available, by construction.
+  const availableCents = account ? parseFloat(account.balance_cents) : 0;
+  const totalCreditsCents = account ? parseFloat(account.credited_cents) : 0;
+  // actual_balance_cents is absent on older billing deploys; without it the confirmed/provisioned
+  // split is unknowable, so collapse to a single "Charges" line (= total - available) rather than
+  // show a misleading $0 hold. Available + Total credits are always derivable.
+  const actualBalanceStr = account?.actual_balance_cents;
+  const hasActualBalance = actualBalanceStr !== undefined && actualBalanceStr !== null;
+  const actualBalanceCents = hasActualBalance ? parseFloat(actualBalanceStr as string) : null;
+  const confirmedChargesCents = actualBalanceCents !== null ? totalCreditsCents - actualBalanceCents : null;
+  const provisionedChargesCents = actualBalanceCents !== null ? actualBalanceCents - availableCents : null;
+  const totalChargesCents = totalCreditsCents - availableCents; // confirmed + provisioned
+
+  // Depleted = AVAILABLE (spendable, net of provisioned holds) at/below zero AND no auto-topup
+  // to cover it. Keys on balance_cents — the value spending is actually blocked on — not the
+  // gross actual balance (which hid open holds and let the warning never fire while blocked).
+  // Auto-topup armed backstops the balance, so suppress the warning then.
+  const isDepleted = account ? !hasAutoTopup && availableCents <= 0 : false;
 
   // Pre-fill auto-topup fields from existing config
   useEffect(() => {
@@ -106,6 +180,12 @@ export default function BillingPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.has_auto_topup, account?.topup_amount_cents, account?.topup_threshold_cents]);
+
+  // Auto-reload unavailable for this card's country: never arm the auto-topup checkbox
+  // (its controls are hidden, and handleTopup must not attempt configureAutoTopup).
+  useEffect(() => {
+    if (!autoReloadSupported) setEnableAutoTopup(false);
+  }, [autoReloadSupported]);
 
   // After successful Stripe checkout, save pending auto-topup settings
   useEffect(() => {
@@ -251,6 +331,7 @@ export default function BillingPage() {
         <button
           onClick={() => showPaymentRequired({
             balance_cents: account?.balance_cents,
+            autoReloadSupported,
           })}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 sm:w-auto"
         >
@@ -287,21 +368,16 @@ export default function BillingPage() {
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm text-gray-500">Credit Balance</p>
-              <p className={`text-3xl font-bold mt-1 ${isDepleted ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(creditBalanceCents)}
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm text-gray-500">Available</p>
+                <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+              </div>
+              <p className={`text-3xl font-bold mt-1 ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
+                {formatBillingCents(account?.balance_cents ?? "0")}
               </p>
-              {hasAutoTopup && (
-                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Auto-topup active
-                </p>
-              )}
             </div>
             <div className="sm:text-right">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 sm:justify-end">
                 <div className={`w-2 h-2 rounded-full ${account?.has_payment_method ? "bg-green-500" : "bg-gray-300"}`} />
                 <span className="text-sm text-gray-500">
                   {account?.has_payment_method ? "Card connected" : "No card"}
@@ -318,6 +394,55 @@ export default function BillingPage() {
               )}
             </div>
           </div>
+
+          {/* Breakdown — reconciles to Available so the numbers stop contradicting each other.
+              Total credits - Confirmed charges - Provisioned charges == Available. */}
+          <dl className="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="flex items-center gap-1.5 text-gray-500">
+                Total credits
+                <InfoTooltip tip="Everything added to your account, including top-ups." />
+              </dt>
+              <dd className="font-medium text-gray-900">{formatBillingCents(account?.credited_cents ?? "0")}</dd>
+            </div>
+
+            {confirmedChargesCents !== null && provisionedChargesCents !== null ? (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-1.5 text-gray-500">
+                    Confirmed charges
+                    <InfoTooltip tip="Emails already sent and billed. This won't change." />
+                  </dt>
+                  <dd className="font-medium text-gray-700">&minus;{formatBillingCents(confirmedChargesCents)}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-1.5 text-gray-500">
+                    Provisioned charges
+                    <InfoTooltip tip="Reserved for follow-up emails we've scheduled. It rises when we plan new follow-ups and drops when one sends (it becomes a confirmed charge) or gets cancelled because a contact replied or couldn't be reached. That's why your available amount changes over time." />
+                  </dt>
+                  <dd className="font-medium text-gray-700">&minus;{formatBillingCents(provisionedChargesCents)}</dd>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-1.5 text-gray-500">
+                  Charges
+                  <InfoTooltip tip="Emails sent and billed, plus credits reserved for follow-up emails we've scheduled." />
+                </dt>
+                <dd className="font-medium text-gray-700">&minus;{formatBillingCents(totalChargesCents)}</dd>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
+              <dt className="flex items-center gap-1.5 font-medium text-gray-700">
+                Available
+                <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+              </dt>
+              <dd className={`font-semibold ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
+                {formatBillingCents(account?.balance_cents ?? "0")}
+              </dd>
+            </div>
+          </dl>
         </div>
 
         {/* Auto-Topup Settings (when already configured) */}
@@ -327,6 +452,12 @@ export default function BillingPage() {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />
                 <h2 className="text-lg font-medium text-gray-900">Auto-Topup</h2>
+                <span className="text-xs text-green-600 flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Auto-topup active
+                </span>
               </div>
               {!editingTopup && (
                 <button
@@ -445,7 +576,8 @@ export default function BillingPage() {
               <p className="text-xs text-red-600 mt-1">{customAmountError}</p>
             )}
 
-            {/* Auto-topup option */}
+            {/* Auto-topup option — hidden when the card's country can't be auto-charged */}
+            {autoReloadSupported ? (
             <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
               <div className="flex items-start gap-3">
                 <input
@@ -497,6 +629,21 @@ export default function BillingPage() {
                 </div>
               )}
             </div>
+            ) : (
+              <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Auto-reload not available</p>
+                    <p className="text-xs text-blue-700 mt-0.5">
+                      Cards issued in {countryLabel(account?.card_country)}&nbsp;can&apos;t be set up for auto-reload. Add credit any time with the Add Credit button below.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleTopup}
@@ -507,6 +654,38 @@ export default function BillingPage() {
             </button>
           </div>
         )}
+
+        {/* Gifts received — the org's own credit-grants ledger */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="mb-1 flex items-center gap-2">
+            <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+            </svg>
+            <h2 className="text-lg font-medium text-gray-900">Gifts received</h2>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">Free credits we added to your account.</p>
+
+          {grants.length === 0 ? (
+            <p className="text-sm text-gray-500">No gifts yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {grants.map((grant) => (
+                <li key={grant.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800">{grantLabel(grant.reason)}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatGrantDate(grant.createdAt)}
+                      {grant.note ? ` · ${grant.note}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                    +{formatBillingCents(grant.amountCents)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </DashboardPage>
   );
