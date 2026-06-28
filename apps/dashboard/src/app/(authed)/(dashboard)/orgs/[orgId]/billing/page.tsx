@@ -638,7 +638,7 @@ export default function BillingPage() {
                   <div>
                     <p className="text-sm font-medium text-blue-800">Auto-reload not available</p>
                     <p className="text-xs text-blue-700 mt-0.5">
-                      Cards issued in {countryLabel(account?.card_country)} can&apos;t be set up for auto-reload. Add credit any time with the Add Credit button below.
+                      Cards issued in {countryLabel(account?.card_country)}&nbsp;can&apos;t be set up for auto-reload. Add credit any time with the Add Credit button below.
                     </p>
                   </div>
                 </div>
