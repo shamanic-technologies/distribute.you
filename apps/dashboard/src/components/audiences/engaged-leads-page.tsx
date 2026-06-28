@@ -410,7 +410,6 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             <th className="px-4 py-3">Company</th>
             <th className="px-4 py-3">Contact</th>
             <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
-            <th className="px-4 py-3 hidden lg:table-cell">Revenue</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 hidden sm:table-cell">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Date</th>
@@ -448,7 +447,6 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                   </div>
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
-                <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600">{formatRevenue(org?.annualRevenue)}</span></td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={forceContacted ? "contacted" : statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
