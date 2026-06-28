@@ -475,16 +475,24 @@ export function StrategyPage() {
                 </div>
               </div>
 
-              {/* This brand's projected economics — all four are served fields */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {/* This brand's projected economics — all five are served fields */}
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                 <Stat
                   label="This brand cost / click"
                   value={formatUsd(bestWf.clickUsd)}
+                  tooltip="Cost per click - what we pay on average for one prospect to click through to your site."
                   hint="Projected from this brand's own economics"
                 />
                 <Stat
                   label={`This brand cost / ${noun}`}
                   value={formatUsd(brandCostPerOutcome)}
+                  tooltip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
+                  hint="Projected from this brand's own economics"
+                />
+                <Stat
+                  label="This brand cost / paid client"
+                  value={formatUsd(bestWf.costPerCloseUsd)}
+                  tooltip="Cost per paid client - what we pay on average to win one paying client."
                   hint="Projected from this brand's own economics"
                 />
                 <Stat
@@ -530,7 +538,7 @@ export function StrategyPage() {
                             <span className="inline-flex items-center justify-end gap-1">
                               <MetricLabel
                                 text="CPC"
-                                tip="What we pay on average for one prospect to click through to your site."
+                                tip="Cost per click - what we pay on average for one prospect to click through to your site."
                               />
                             </span>
                           </th>
@@ -538,7 +546,7 @@ export function StrategyPage() {
                             <span className="inline-flex items-center justify-end gap-1">
                               <MetricLabel
                                 text={optimizationGoal === "signups" ? "CPS" : `Cost / ${noun}`}
-                                tip={`What we pay on average for one ${noun}.`}
+                                tip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
                               />
                             </span>
                           </th>
@@ -546,7 +554,7 @@ export function StrategyPage() {
                             <span className="inline-flex items-center justify-end gap-1">
                               <MetricLabel
                                 text="ROI"
-                                tip="Dollars of lifetime revenue back for every dollar spent."
+                                tip="Return on investment - dollars of lifetime revenue back for every dollar spent."
                               />
                             </span>
                           </th>
@@ -554,7 +562,7 @@ export function StrategyPage() {
                             <span className="inline-flex items-center justify-end gap-1">
                               <MetricLabel
                                 text="CAC"
-                                tip="What we pay on average to win one paying client."
+                                tip="Customer acquisition cost - share of a paying client's lifetime revenue we spend to win them."
                               />
                             </span>
                           </th>
@@ -579,7 +587,7 @@ export function StrategyPage() {
                               {formatRoi(a.roiMultiple)}
                             </td>
                             <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                              {formatUsd(a.costPerCloseUsd)}
+                              {formatPct(a.cacPct)}
                             </td>
                           </tr>
                         ))}

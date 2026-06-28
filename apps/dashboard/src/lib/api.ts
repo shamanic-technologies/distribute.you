@@ -1795,6 +1795,10 @@ export interface FeatureCandidate {
   /** Lifetime ROI multiple (LTR ÷ costPerCloseUsd = 100 / cacPct), at this candidate's
    *  grain. `.optional()` decouples the features-service rollout. */
   roiMultiple?: number | null;
+  /** CAC as a share of lifetime revenue (% = costPerCloseUsd ÷ LTR × 100 = 100 / roiMultiple),
+   *  at this candidate's grain. Server-provided so the Strategy per-audience CAC% is never
+   *  inverted client-side. `.optional()` decouples the features-service rollout. */
+  cacPct?: number | null;
   conversion: {
     rate: number | null;
     grain: "brand-goal" | "goal-global" | null;
@@ -1831,6 +1835,7 @@ const FeatureCandidateSchema = z.object({
   // Additive — features-service rollout decoupled via .optional(). See FeatureCandidate.
   costPerCloseUsd: z.number().nullable().optional(),
   roiMultiple: z.number().nullable().optional(),
+  cacPct: z.number().nullable().optional(),
   conversion: z.object({
     rate: z.number().nullable(),
     grain: z.union([z.literal("brand-goal"), z.literal("goal-global")]).nullable(),
