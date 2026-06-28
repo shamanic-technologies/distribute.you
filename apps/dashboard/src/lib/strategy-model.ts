@@ -60,6 +60,43 @@ export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): Sales
   return goal === "signups" ? "self-serve" : "meeting-booked";
 }
 
+/**
+ * The offer levers we optimise conversion against (Alex Hormozi value equation),
+ * each mapped to the brand-profile field key that stores it. Same data as the
+ * Brand Profile editor — the Strategy page just reads it.
+ */
+export interface OfferLever {
+  key: string;
+  label: string;
+}
+
+export const OFFER_LEVERS: OfferLever[] = [
+  { key: "services", label: "Services sold" },
+  { key: "valueProposition", label: "Dream outcome" },
+  { key: "perceivedLikelihood", label: "Perceived likelihood of success" },
+  { key: "socialProof", label: "Social proof" },
+  { key: "riskReversal", label: "Risk reversal" },
+  { key: "urgency", label: "Urgency" },
+  { key: "scarcity", label: "Scarcity" },
+];
+
+/**
+ * Display lines for one offer lever from a brand-profile fields bag. Normalises a
+ * string or string[] to a string[], and treats empty / "Unknown" (the extractor's
+ * placeholder for "not found") as NOT SET (empty array) so the UI can prompt to
+ * fill it in rather than printing "Unknown". Pure display normalisation, no metric.
+ */
+export function offerLeverValue(
+  fields: Record<string, string | string[]> | undefined | null,
+  key: string,
+): string[] {
+  const raw = fields?.[key];
+  const list = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+  return list
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0 && v.toLowerCase() !== "unknown");
+}
+
 export interface BestModelEvidence {
   /** The cross-org prior row for this workflow (cost sampled across all orgs). */
   crossOrg: FeatureCandidate | null;

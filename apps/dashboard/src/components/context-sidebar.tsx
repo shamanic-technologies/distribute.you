@@ -425,6 +425,21 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
+    // Strategy — beta (Kevin + Adam): a read-only recap of the brand's objective,
+    // conversion economics, and the best-performing model with its cost per
+    // outcome cross-org / per-brand / per-audience. Beta-gated off the email
+    // allowlist (the badge rides this nav entry). Sits directly under Overview.
+    ...(revenueOk && isBeta
+      ? [
+          {
+            id: "strategy",
+            label: "Strategy",
+            href: `${basePath}/strategy`,
+            icon: <StrategyIcon />,
+            maturity: "beta",
+          } satisfies SidebarItem,
+        ]
+      : []),
     // Audiences — Apollo-style targeting cards. GA (revenue features only).
     ...(revenueOk
       ? [
@@ -439,21 +454,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Leads",
             href: `${basePath}/audiences/leads`,
             icon: <LeadsIcon />,
-          } satisfies SidebarItem,
-        ]
-      : []),
-    // Strategy — beta (Kevin + Adam): a read-only recap of the brand's objective,
-    // conversion economics, and the best-performing model with its cost per
-    // outcome cross-org / per-brand / per-audience. Beta-gated off the email
-    // allowlist (the badge rides this nav entry).
-    ...(revenueOk && isBeta
-      ? [
-          {
-            id: "strategy",
-            label: "Strategy",
-            href: `${basePath}/strategy`,
-            icon: <StrategyIcon />,
-            maturity: "beta",
           } satisfies SidebarItem,
         ]
       : []),

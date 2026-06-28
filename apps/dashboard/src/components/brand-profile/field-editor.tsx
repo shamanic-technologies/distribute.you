@@ -28,7 +28,8 @@ export const SECTIONS: FieldSection[] = [
     title: "Positioning",
     fields: [
       { key: "companyOverview", label: "Company overview", kind: "text", placeholder: "What the company does, in a sentence or two." },
-      { key: "valueProposition", label: "Value proposition", kind: "text", placeholder: "The core promise to customers." },
+      { key: "services", label: "Services sold", kind: "list", placeholder: "Add a service / product you sell…" },
+      { key: "valueProposition", label: "Value proposition", kind: "text", placeholder: "The core promise to customers (the dream outcome)." },
     ],
   },
   {
@@ -58,6 +59,7 @@ export const SECTIONS: FieldSection[] = [
     title: "Conversion levers",
     fields: [
       { key: "callToAction", label: "Call to action", kind: "text", placeholder: "Primary CTA." },
+      { key: "perceivedLikelihood", label: "Perceived likelihood of success", kind: "text", placeholder: "Proof it works: track record, data, guarantees, named results." },
       { key: "urgency", label: "Urgency", kind: "text", placeholder: "Time-pressure elements." },
       { key: "scarcity", label: "Scarcity", kind: "text", placeholder: "Limited-availability elements." },
       { key: "riskReversal", label: "Risk reversal", kind: "text", placeholder: "Trials, guarantees, refund policy." },

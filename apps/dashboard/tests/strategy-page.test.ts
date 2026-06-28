@@ -5,6 +5,8 @@ import {
   goalForOptimizationGoal,
   modelAvatar,
   objectiveForOptimizationGoal,
+  OFFER_LEVERS,
+  offerLeverValue,
   outcomeNoun,
   projectionCostKey,
   selectBestModelEvidence,
@@ -89,6 +91,49 @@ describe("selectBestModelEvidence — groups served rows, never computes", () =>
   });
 });
 
+describe("offerLeverValue — normalises brand-profile fields, drops Unknown", () => {
+  const fields = {
+    services: ["A", "B"],
+    valueProposition: "Get a strategy in 8 minutes",
+    socialProof: ["Unknown"],
+    urgency: "  ",
+  };
+  it("returns a string as a one-line list", () => {
+    expect(offerLeverValue(fields, "valueProposition")).toEqual(["Get a strategy in 8 minutes"]);
+  });
+  it("returns an array as multiple lines", () => {
+    expect(offerLeverValue(fields, "services")).toEqual(["A", "B"]);
+  });
+  it("treats Unknown / blank / missing as not set", () => {
+    expect(offerLeverValue(fields, "socialProof")).toEqual([]);
+    expect(offerLeverValue(fields, "urgency")).toEqual([]);
+    expect(offerLeverValue(fields, "scarcity")).toEqual([]);
+    expect(offerLeverValue(null, "services")).toEqual([]);
+  });
+});
+
+describe("OFFER_LEVERS — the seven value-equation levers", () => {
+  it("covers the Hormozi levers in order", () => {
+    expect(OFFER_LEVERS.map((l) => l.key)).toEqual([
+      "services",
+      "valueProposition",
+      "perceivedLikelihood",
+      "socialProof",
+      "riskReversal",
+      "urgency",
+      "scarcity",
+    ]);
+  });
+});
+
+describe("brand-profile field set carries the new levers", () => {
+  const fieldEditor = read("../src/components/brand-profile/field-editor.tsx");
+  it("adds services + perceivedLikelihood (linked to Brand Profile)", () => {
+    expect(fieldEditor).toContain('key: "services"');
+    expect(fieldEditor).toContain('key: "perceivedLikelihood"');
+  });
+});
+
 describe("StrategyPage source guards", () => {
   const page = read("../src/components/strategy/strategy-page.tsx");
 
@@ -112,6 +157,13 @@ describe("StrategyPage source guards", () => {
   it("offers example emails + the reassessment explainer", () => {
     expect(page).toContain("listWorkflowExamples");
     expect(page).toContain("How we pick the best model");
+  });
+  it("shows the offer (Hormozi) section read from Brand Profile", () => {
+    expect(page).toContain("getBrandProfile");
+    expect(page).toContain("OFFER_LEVERS");
+    expect(page).toContain("What we use to optimize your conversion");
+    expect(page).toContain("Alex Hormozi value equation");
+    expect(page).toContain("Edit your offer in Brand Profile");
   });
 });
 
