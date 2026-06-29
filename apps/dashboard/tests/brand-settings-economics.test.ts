@@ -115,10 +115,10 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).not.toContain("if (isPending || !form)");
   });
 
-  it("writes the saved row to cache and invalidates goal-driven overview data on success", () => {
+  it("writes the saved row to cache and invalidates all econ-derived data on success", () => {
     expect(content).toContain('queryClient.setQueryData(["brandSalesEconomics", brandId], res)');
-    expect(content).toContain('invalidateQueries({ queryKey: ["featureRevenue"] })');
-    expect(content).toContain('invalidateQueries({ queryKey: ["featurePipelineActivity"] })');
+    // Economics drive every server-computed metric — blanket invalidate on save.
+    expect(content).toContain("queryClient.invalidateQueries();");
   });
 
   it("renders the goal-driven economics fields + Save", () => {

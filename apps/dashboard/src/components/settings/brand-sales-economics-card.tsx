@@ -176,9 +176,10 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       // Write the fresh row to the shared cache so the campaign form + revenue
       // overview read the new values without waiting on a refetch.
       queryClient.setQueryData(["brandSalesEconomics", brandId], res);
-      // Economics drive the server-computed revenue overview — nudge it to refetch.
-      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
-      queryClient.invalidateQueries({ queryKey: ["featurePipelineActivity"] });
+      // Economics drive every server-computed metric (revenue overview, pipeline
+      // activity, workflow/strategy projections). Invalidate the whole cache so no
+      // econ-derived number stays stale anywhere — one-time burst on a user save.
+      queryClient.invalidateQueries();
       dirtyRef.current = false;
       setDirty(false);
       setSaved(true);
