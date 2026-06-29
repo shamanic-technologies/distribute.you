@@ -61,3 +61,27 @@ export function brandRunwaySeverity(
   if (runwayDays <= WARNING_RUNWAY_DAYS) return "warning";
   return null;
 }
+
+/**
+ * Day tiers the top-up amount presets map to. Each preset = daily budget × tier,
+ * so the buttons offer "N days of runway" expressed as a dollar amount.
+ */
+export const TOPUP_DAY_TIERS = [5, 15, 45, 135];
+
+/** Flat fallback presets (cents) when no daily budget is set → can't size by days. */
+export const FALLBACK_TOPUP_CENTS = [1000, 2500, 5000, 10000];
+
+/**
+ * Top-up preset amounts (cents) sized to {@link TOPUP_DAY_TIERS} days of the given
+ * daily budget — rounded to whole dollars, floored at the $10 minimum, deduped so
+ * a tiny budget can't collapse two tiers onto the same value. Returns the flat
+ * {@link FALLBACK_TOPUP_CENTS} when no daily budget is set (0/null).
+ */
+export function topupPresetsForDailyBudget(dailyBudgetCents: number | null): number[] {
+  if (dailyBudgetCents === null || dailyBudgetCents <= 0) return FALLBACK_TOPUP_CENTS;
+  const amounts = TOPUP_DAY_TIERS.map((days) => {
+    const roundedToDollar = Math.round((dailyBudgetCents * days) / 100) * 100;
+    return Math.max(1000, roundedToDollar);
+  });
+  return Array.from(new Set(amounts));
+}

@@ -17,12 +17,11 @@ import {
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
-import { brandRunwayDays } from "@/lib/credit-runway";
+import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
-const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 
 // Friendly label for a credit grant's `reason` (pure display lookup, no metric).
 // reason ∈ welcome | first_load_match | admin_grant | invite_* | <promo code>.
@@ -110,16 +109,25 @@ export default function BillingPage() {
     (sum, q) => sum + (q.data?.dailyBudgetCents ?? 0),
     0,
   );
-  function daysForCents(amountCents: number): string | null {
-    const days = brandRunwayDays(amountCents, orgDailyBurnCents);
-    if (days === null) return null;
-    return days < 1 ? "< 1 day" : `~${days} day${days === 1 ? "" : "s"}`;
-  }
+  // Presets sized to N days of the org's combined daily burn (5/15/45/135 days);
+  // flat fallback when no brand has a budget set.
+  const presetAmounts = topupPresetsForDailyBudget(orgDailyBurnCents);
+  const presetKey = presetAmounts.join(",");
 
   // Top-up state
   const [topupSelected, setTopupSelected] = useState(2500);
   const [customAmount, setCustomAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
+
+  // Keep the selected amount on a real preset once the day-sized amounts resolve
+  // (the initial $25 default isn't one of them). Skip when the user typed a custom
+  // amount; the includes-guard prevents a re-render loop.
+  useEffect(() => {
+    if (customAmount) return;
+    if (presetAmounts.includes(topupSelected)) return;
+    setTopupSelected(presetAmounts[1] ?? presetAmounts[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetKey, customAmount]);
 
   // Auto-topup toggle (integrated into top-up flow) — pre-selected by default
   const [enableAutoTopup, setEnableAutoTopup] = useState(true);
@@ -582,25 +590,19 @@ export default function BillingPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Add Credits</h2>
             <div className="flex flex-wrap gap-2 mb-4">
-              {TOPUP_AMOUNTS.map((amount) => {
-                const days = daysForCents(amount);
-                return (
-                  <button
-                    key={amount}
-                    onClick={() => handleSelectTopup(amount)}
-                    className={`px-4 py-2 rounded-lg border transition ${
-                      topupSelected === amount && !customAmount
-                        ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    <span className="block text-sm">{formatBillingCents(amount)}</span>
-                    {days && (
-                      <span className="block text-[11px] leading-tight text-gray-400">{days}</span>
-                    )}
-                  </button>
-                );
-              })}
+              {presetAmounts.map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => handleSelectTopup(amount)}
+                  className={`px-4 py-2 text-sm rounded-lg border transition ${
+                    topupSelected === amount && !customAmount
+                      ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {formatBillingCents(amount)}
+                </button>
+              ))}
               <input
                 type="number"
                 placeholder="Custom $"
@@ -614,11 +616,6 @@ export default function BillingPage() {
             </div>
             {customAmountError && (
               <p className="text-xs text-red-600 mt-1">{customAmountError}</p>
-            )}
-            {customAmount && !customAmountError && daysForCents(Math.round(parseFloat(customAmount) * 100) || 0) && (
-              <p className="text-[11px] text-gray-400 mt-1">
-                {daysForCents(Math.round(parseFloat(customAmount) * 100) || 0)} across your active brands’ daily budgets
-              </p>
             )}
 
             {/* Auto-topup option — hidden when the card's country can't be auto-charged */}
@@ -695,13 +692,7 @@ export default function BillingPage() {
               disabled={topupLoading || (enableAutoTopup && !topupAmount) || hasValidationError}
               className="w-full rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 sm:w-auto"
             >
-              {topupLoading
-                ? "Redirecting to Stripe..."
-                : (() => {
-                    const cents = customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupSelected;
-                    const days = daysForCents(cents);
-                    return `Add ${formatBillingCents(cents)}${days ? ` · ${days}` : ""}`;
-                  })()}
+              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatBillingCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupSelected)}`}
             </button>
           </div>
         )}
