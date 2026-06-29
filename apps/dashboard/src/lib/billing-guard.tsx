@@ -11,7 +11,7 @@ import {
 } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
 import { formatBillingCents } from "@/lib/format-number";
-import { brandRunwayDays } from "@/lib/credit-runway";
+import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
 // budgets are still integer cents — accept both shapes everywhere they cross.
@@ -74,7 +74,6 @@ export function useBillingGuard() {
   return useContext(BillingGuardContext);
 }
 
-const TOPUP_AMOUNTS = [1000, 2500, 5000, 10000]; // cents
 
 export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const [visible, setVisible] = useState(false);
@@ -141,16 +140,20 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
 
   const showPaymentRequired = useCallback((paymentInfo: PaymentRequiredInfo) => {
     setInfo(paymentInfo);
-    // Pre-select the smallest amount that covers the deficit, or default to $25
+    // Presets are sized to N days of the in-scope brand's daily budget (flat
+    // fallback when none). Pre-select the smallest that covers the deficit, else
+    // default to the middle (15-day) tier — mirrors the old "$25 default" slot.
+    const presets = topupPresetsForDailyBudget(paymentInfo.brandDailyBudgetCents ?? null);
     if (paymentInfo.required_cents !== undefined && paymentInfo.balance_cents !== undefined) {
       const deficit = toCentsNumber(paymentInfo.required_cents) - toCentsNumber(paymentInfo.balance_cents);
-      const match = TOPUP_AMOUNTS.find((a) => a >= deficit);
-      const picked = match ?? TOPUP_AMOUNTS[TOPUP_AMOUNTS.length - 1];
+      const match = presets.find((a) => a >= deficit);
+      const picked = match ?? presets[presets.length - 1];
       setSelectedAmount(picked);
       setTopupAmount((picked / 100).toString());
     } else {
-      setSelectedAmount(2500);
-      setTopupAmount("25");
+      const picked = presets[1] ?? presets[0];
+      setSelectedAmount(picked);
+      setTopupAmount((picked / 100).toString());
     }
     // Proactive (campaign-launch) flow: default the auto-topup reload to the campaign's
     // daily price × 10 (passed as suggestedTopupCents), overriding the chip-derived amount.
@@ -292,15 +295,11 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const rechargeTitle = "Add credits to keep going.";
   const rechargeDescription =
     "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running. Each brand daily budget stays the spend cap.";
-  // Day-equivalent of a top-up amount at the in-scope brand's daily budget
-  // (amount ÷ dailyBudget). null when no brand budget was passed (org-level
-  // caller) or the budget is 0/unset → the amount renders without a day label.
+  // Top-up presets sized to N days of the in-scope brand's daily budget (5/15/45/
+  // 135 days). Falls back to flat dollar presets when no brand budget was passed
+  // (org-level caller) or it's 0/unset.
   const brandDailyBudgetCents = info.brandDailyBudgetCents ?? null;
-  function daysForCents(amountCents: number): string | null {
-    const days = brandRunwayDays(amountCents, brandDailyBudgetCents);
-    if (days === null) return null;
-    return days < 1 ? "< 1 day" : `~${days} day${days === 1 ? "" : "s"}`;
-  }
+  const presetAmounts = topupPresetsForDailyBudget(brandDailyBudgetCents);
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -399,25 +398,19 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               <>
                 <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {TOPUP_AMOUNTS.map((amount) => {
-                    const days = daysForCents(amount);
-                    return (
-                      <button
-                        key={amount}
-                        onClick={() => handleSelectTopup(amount)}
-                        className={`flex-1 min-w-[70px] px-3 py-2 rounded-lg border transition ${
-                          selectedAmount === amount && !customAmount
-                            ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
-                            : "border-gray-200 text-gray-700 hover:border-gray-300"
-                        }`}
-                      >
-                        <span className="block text-sm">{formatBillingCents(amount)}</span>
-                        {days && (
-                          <span className="block text-[11px] leading-tight text-gray-400">{days}</span>
-                        )}
-                      </button>
-                    );
-                  })}
+                  {presetAmounts.map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => handleSelectTopup(amount)}
+                      className={`flex-1 min-w-[70px] px-3 py-2 text-sm rounded-lg border transition ${
+                        selectedAmount === amount && !customAmount
+                          ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
+                          : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      }`}
+                    >
+                      {formatBillingCents(amount)}
+                    </button>
+                  ))}
                 </div>
                 <input
                   type="number"
@@ -431,9 +424,6 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 />
                 {customAmountError && (
                   <p className="text-xs text-red-600 mb-2">{customAmountError}</p>
-                )}
-                {customAmount && !customAmountError && daysForCents(effectiveAmountCents) && (
-                  <p className="text-[11px] text-gray-400 mb-2">{daysForCents(effectiveAmountCents)} at this brand’s daily budget</p>
                 )}
               </>
             )}
@@ -558,11 +548,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   disabled={checkoutLoading || hasValidationError}
                   className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
                 >
-                  {checkoutLoading
-                    ? "Loading\u2026"
-                    : `Add ${formatBillingCents(effectiveAmountCents || 0)}${
-                        daysForCents(effectiveAmountCents || 0) ? ` \u00b7 ${daysForCents(effectiveAmountCents || 0)}` : ""
-                      } \u2192`}
+                  {checkoutLoading ? "Loading\u2026" : `Add ${formatBillingCents(effectiveAmountCents || 0)} \u2192`}
                 </button>
               )}
             </div>

@@ -180,7 +180,9 @@ describe("Billing guard provider", () => {
   });
 
   it("should offer quick top-up amount buttons in the modal", () => {
-    expect(content).toContain("TOPUP_AMOUNTS");
+    // Presets are sized to N days of the in-scope brand's daily budget.
+    expect(content).toContain("topupPresetsForDailyBudget");
+    expect(content).toContain("presetAmounts");
     expect(content).toContain("selectedAmount");
   });
 
@@ -288,7 +290,9 @@ describe("Billing page", () => {
   });
 
   it("should show top-up flow when auto-topup is not configured", () => {
-    expect(content).toContain("TOPUP_AMOUNTS");
+    // Presets are sized to N days of the org's combined daily burn.
+    expect(content).toContain("topupPresetsForDailyBudget");
+    expect(content).toContain("presetAmounts");
     expect(content).toContain("Add Credits");
     expect(content).toContain("handleTopup");
   });
