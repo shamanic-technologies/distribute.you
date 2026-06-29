@@ -140,13 +140,16 @@ export const fetchInvestorMetrics = unstable_cache(
     monthlyMap.set(month, entry);
   }
 
-  // Only show completed periods — exclude the current (in-progress) month and week
+  // Months: INCLUDE the current (in-progress) month so the charts reach the
+  // current date (a ~4-week-in June reads as real traction, not noise). Weeks:
+  // still exclude the in-progress week below — a 1-day-old week is a misleading
+  // near-zero bar, and the weekly series already reaches the latest full week.
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const sortedMonthsDesc = [...monthlyMap.keys()]
     .sort()
     .reverse()
-    .filter((m) => m < currentMonth);
+    .filter((m) => m <= currentMonth);
 
   // Merge weekly data from billing (credited + revenue) and runs (consumed) into a unified row
   const weeklyMap = new Map<string, WeeklyRow>();
