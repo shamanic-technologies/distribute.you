@@ -6,6 +6,7 @@ const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 if (posthogToken) {
   posthog.init(posthogToken, {
     api_host: posthogHost,
+    ui_host: "https://eu.posthog.com",
     defaults: "2026-01-30",
   });
 }
