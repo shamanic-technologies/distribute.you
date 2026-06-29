@@ -1,98 +1,105 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBillingAccount, listCampaigns, type BillingAccount, type Campaign } from "@/lib/api";
+import {
+  getBillingAccount,
+  getBrandDailyBudget,
+  type BillingAccount,
+  type BrandDailyBudget,
+} from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { pollOptions } from "@/lib/query-options";
-import { computeRunway, runwaySeverity } from "@/lib/campaign-runway";
-
-const DEPLETED_MODAL_SESSION_KEY = "credit-depleted-modal-shown";
+import {
+  availableCreditCents,
+  brandRunwayDays,
+  brandRunwaySeverity,
+} from "@/lib/credit-runway";
 
 /**
- * App-shell credit guard. Two reassurance-vs-nag surfaces over data already on
- * the wire (billing account + org campaigns), no backend dependency:
+ * Brand credit guard. Two reassurance-vs-nag surfaces over data already on the
+ * wire (billing account + the brand's saved daily budget), no backend dependency:
  *
- *  1. A persistent top banner when an active daily-budget campaign is about to run
- *     out of credit AND auto-topup is off — amber ≤3 days, red ≤1 day. CTA pushes
- *     auto-topup (the friction-free "never stops again" fix). Suppressed once
- *     auto-topup is on or no active daily-budget campaign is running.
- *  2. A one-per-session modal on arrival when the balance is already exhausted
- *     and the org has campaigns — "all campaigns stopped, add credit / set up
- *     auto-topup".
+ *  1. A persistent top BANNER while the brand's available credit covers under 3
+ *     days at its daily budget AND auto-topup is off (deactivated OR unsupported,
+ *     e.g. India) — amber <3 days, red ≤1 day. CTA pushes auto-topup when the
+ *     card supports it, "add credits" otherwise.
+ *  2. A once-per-day MODAL on arrival (brand overview) under the same condition,
+ *     re-arming the next calendar day while the issue persists, reusing the
+ *     billing-guard payment modal.
  *
- * The email side of this (instant + +3d/+10d dunning) is backend-owned and
- * tracked separately; this component is the dashboard half only.
+ * "Available" = the billing page's Available = balance_cents (total credited −
+ * confirmed − provisioned). Runway = available ÷ the brand's daily budget.
+ * Brand-scoped: renders nothing off a brand route or before a daily budget is set.
  */
+
+// localStorage so the once-per-day cadence survives a reload / new session.
+function creditModalShownKey(brandId: string) {
+  return `credit-modal-shown:${brandId}`;
+}
+
+function todayStamp() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (calendar day)
+}
+
 export function CreditAlerts() {
   const { showPaymentRequired } = useBillingGuard();
+  const params = useParams();
+  const brandId = (params?.brandId as string | undefined) ?? null;
 
   const { data: account } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
     pollOptions,
   );
-  const { data: campaignsData } = useAuthQuery<{ campaigns: Campaign[] }>(
-    ["campaigns"],
-    () => listCampaigns(),
-    pollOptions,
+  const { data: budget } = useAuthQuery<BrandDailyBudget>(
+    ["brandDailyBudget", brandId],
+    () => getBrandDailyBudget(brandId!),
+    { enabled: brandId !== null, ...pollOptions },
   );
 
-  const depletedShownRef = useRef(false);
+  const available = account ? availableCreditCents(account) : null;
+  const runwayDays =
+    budget && available !== null
+      ? brandRunwayDays(available, budget.dailyBudgetCents)
+      : null;
+  const severity =
+    account && budget
+      ? brandRunwaySeverity(runwayDays, account.has_auto_topup)
+      : null;
+  const autoReloadSupported = account?.auto_reload_supported !== false;
 
-  // One-per-session depleted modal on arrival. Cleared when the balance recovers
-  // so a later depletion re-arms it.
+  // Once-per-day modal on arrival while the condition holds. The localStorage
+  // day-stamp guard means at most one popup per calendar day per brand; it
+  // re-arms the next day if the issue is still unresolved.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!account || !campaignsData) return;
-    const status = computeRunway(campaignsData.campaigns, account);
-
-    if (!status.depleted) {
-      sessionStorage.removeItem(DEPLETED_MODAL_SESSION_KEY);
-      depletedShownRef.current = false;
-      return;
-    }
-    if (campaignsData.campaigns.length === 0) return;
-    if (depletedShownRef.current || sessionStorage.getItem(DEPLETED_MODAL_SESSION_KEY)) return;
-
-    depletedShownRef.current = true;
-    sessionStorage.setItem(DEPLETED_MODAL_SESSION_KEY, "1");
+    if (!brandId || !account || !severity) return;
+    const key = creditModalShownKey(brandId);
+    if (localStorage.getItem(key) === todayStamp()) return;
+    localStorage.setItem(key, todayStamp());
     showPaymentRequired({
       balance_cents: account.balance_cents,
-      depleted: true,
-      autoReloadSupported: account.auto_reload_supported !== false,
+      proactive: true,
+      autoReloadSupported,
     });
-  }, [account, campaignsData, showPaymentRequired]);
+  }, [brandId, account, severity, autoReloadSupported, showPaymentRequired]);
 
-  if (!account || !campaignsData) return null;
-
-  const status = computeRunway(campaignsData.campaigns, account);
-  const severity = runwaySeverity(status, account.has_auto_topup);
-  if (!severity) return null;
-
-  // Off-session auto-reload is impossible for some card countries (e.g. India).
-  // For those brands there's nothing to "turn on" to keep running, so the only
-  // useful alert is the depleted one (out of credit). Suppress the proactive
-  // runway-low warning and frame the CTA as a one-time recharge.
-  const autoReloadSupported = account.auto_reload_supported !== false;
-  if (!autoReloadSupported && !status.depleted) return null;
-
-  const plural = status.activeDailyBudgetCount > 1;
-  const subject = plural ? "campaigns" : "campaign";
-  const verbHave = plural ? "have" : "has";
-
-  // Only `depleted` (balance ≤ 0) means the campaigns actually stopped. A
-  // runwayDays of 0 still has POSITIVE credit (less than one day of burn) — the
-  // campaigns keep running until the balance truly hits zero, so don't claim
-  // "stopped". Auto-topup being off is a nudge condition, NOT proof of depletion.
-  const message =
-    status.depleted
-      ? `Out of credit — your ${subject} ${plural ? "have" : "has"} stopped.`
-      : status.runwayDays !== null && status.runwayDays <= 1
-        ? `Your ${subject} will stop within a day — you’re almost out of credit.`
-        : `Your ${subject} ${verbHave} about ${status.runwayDays} days of credit left.`;
+  if (!brandId || !account || !budget || !severity) return null;
 
   const isUrgent = severity === "urgent";
+
+  const message =
+    runwayDays !== null && runwayDays <= 0
+      ? "You’re out of credit. Outreach will stop."
+      : isUrgent
+        ? "Less than a day of credit left. Top up to keep running."
+        : `About ${runwayDays} days of credit left at your daily budget.`;
+
+  const cta = autoReloadSupported
+    ? "Turn on auto-topup so it never stops →"
+    : "Add credits to keep running →";
 
   return (
     <div
@@ -110,16 +117,20 @@ export function CreditAlerts() {
         {message}
       </span>
       <button
-        onClick={() => showPaymentRequired({ balance_cents: account.balance_cents, proactive: true, autoReloadSupported })}
+        onClick={() =>
+          showPaymentRequired({
+            balance_cents: account.balance_cents,
+            proactive: true,
+            autoReloadSupported,
+          })
+        }
         className={
           isUrgent
             ? "underline underline-offset-2 font-semibold hover:opacity-90"
             : "underline underline-offset-2 font-semibold hover:opacity-80"
         }
       >
-        {autoReloadSupported
-          ? `Turn on auto-topup so ${plural ? "they" : "it"} never stop${plural ? "" : "s"} →`
-          : `Add credits so ${plural ? "they keep" : "it keeps"} running →`}
+        {cta}
       </button>
     </div>
   );
