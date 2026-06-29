@@ -106,8 +106,8 @@ export default function InvestorsPage() {
               />
               <h1 className="font-display text-4xl font-bold">distribute</h1>
             </div>
-            <p className="text-xl text-gray-400 mb-2">Investor Information</p>
-            <p className="text-sm text-gray-600">
+            <p className="text-xl text-[var(--dy-sub)] mb-2">Investor Information</p>
+            <p className="text-sm text-[var(--dy-muted)]">
               Live data — updated on every page load
             </p>
           </div>
@@ -116,7 +116,7 @@ export default function InvestorsPage() {
         {/* Company Overview */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-6 text-[var(--dy-text)]">
               Company Overview
             </h2>
             <CompanyOverviewSection />
@@ -126,10 +126,10 @@ export default function InvestorsPage() {
         {/* Product — AI Cold Email */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-2 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-2 text-[var(--dy-text)]">
               Product — AI Cold Email, Done For You
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-[var(--dy-muted)] mb-6">
               One priced outbound surface: cold email. A builder drops a URL and sets a
               daily budget. We find the prospects, write a personalized email for each,
               send, qualify every reply, and forward only the buyers worth their time.
@@ -154,10 +154,10 @@ export default function InvestorsPage() {
               ].map((step) => (
                 <div
                   key={step.label}
-                  className="bg-gray-800/40 border border-gray-700/50 rounded-xl p-4"
+                  className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-4"
                 >
-                  <h3 className="font-semibold text-white text-sm mb-2">{step.label}</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed">{step.body}</p>
+                  <h3 className="font-semibold text-[var(--dy-text)] text-sm mb-2">{step.label}</h3>
+                  <p className="text-xs text-[var(--dy-sub)] leading-relaxed">{step.body}</p>
                 </div>
               ))}
             </div>
@@ -167,15 +167,15 @@ export default function InvestorsPage() {
         {/* Who We Serve — ICP #1 */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-2 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-2 text-[var(--dy-text)]">
               Who We Serve — ICP #1
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-[var(--dy-muted)] mb-6">
               The Serial Builder. The single user persona we optimize the product, pricing, and roadmap for.
             </p>
 
-            <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 text-sm leading-relaxed space-y-6">
-              <blockquote className="border-l-2 border-brand-500/60 pl-4 italic text-gray-300">
+            <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-6 text-[var(--dy-sub)] text-sm leading-relaxed space-y-6">
+              <blockquote className="border-l-2 border-brand-500/60 pl-4 italic text-[var(--dy-sub)]">
                 &quot;16-40 years old. CEO-founder, mostly solo. I always have several SaaS in bench.
                 I have no time between newsletter, content, distribute.you campaigns, meetings,
                 monitoring, replies, and refining the ICP of my own campaigns. I want someone close
@@ -186,7 +186,7 @@ export default function InvestorsPage() {
                 <p className="text-[10px] uppercase tracking-wider text-brand-300 font-semibold mb-2">
                   The dream
                 </p>
-                <p className="text-gray-200 italic">
+                <p className="text-[var(--dy-text)] italic">
                   &quot;One of my products is going to take off. I need to monitor closely the
                   CAC because I am looking for my marketing channel to scale. distribute.you is
                   the lever that makes that math actionable — whether I stay 1 person or grow
@@ -196,27 +196,27 @@ export default function InvestorsPage() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Age</p>
-                  <p className="text-white">16-40</p>
+                  <p className="text-[var(--dy-muted)] text-xs mb-1">Age</p>
+                  <p className="text-[var(--dy-text)]">16-40</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Status</p>
-                  <p className="text-white">Solo CEO-founder, 1-3 ppl max</p>
+                  <p className="text-[var(--dy-muted)] text-xs mb-1">Status</p>
+                  <p className="text-[var(--dy-text)]">Solo CEO-founder, 1-3 ppl max</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Portfolio</p>
-                  <p className="text-white">3-10 products active</p>
+                  <p className="text-[var(--dy-muted)] text-xs mb-1">Portfolio</p>
+                  <p className="text-[var(--dy-text)]">3-10 products active</p>
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs mb-1">Monthly budget</p>
-                  <p className="text-white">$50-$500 across products</p>
+                  <p className="text-[var(--dy-muted)] text-xs mb-1">Monthly budget</p>
+                  <p className="text-[var(--dy-text)]">$50-$500 across products</p>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-white font-semibold text-base mb-3">Time poverty</h3>
-                <p className="text-gray-400 mb-2">No time between:</p>
-                <ul className="list-disc list-inside space-y-1 text-gray-300 marker:text-gray-600">
+                <h3 className="text-[var(--dy-text)] font-semibold text-base mb-3">Time poverty</h3>
+                <p className="text-[var(--dy-sub)] mb-2">No time between:</p>
+                <ul className="list-disc list-inside space-y-1 text-[var(--dy-sub)] marker:text-[var(--dy-muted)]">
                   <li>Writing the newsletter</li>
                   <li>Producing content</li>
                   <li>Launching distribute.you campaigns across multiple products</li>
@@ -224,16 +224,16 @@ export default function InvestorsPage() {
                   <li>Monitoring + qualified replies</li>
                   <li>Refining own workflows / templates / ICPs</li>
                 </ul>
-                <p className="text-gray-400 mt-3">
-                  Buys <span className="text-white font-medium">time</span> and{" "}
-                  <span className="text-white font-medium">leverage</span>, not a tool.
+                <p className="text-[var(--dy-sub)] mt-3">
+                  Buys <span className="text-[var(--dy-text)] font-medium">time</span> and{" "}
+                  <span className="text-[var(--dy-text)] font-medium">leverage</span>, not a tool.
                 </p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-white font-semibold text-base mb-3">Refuses</h3>
-                  <ul className="list-disc list-inside space-y-1 text-gray-400 marker:text-red-500/60">
+                  <h3 className="text-[var(--dy-text)] font-semibold text-base mb-3">Refuses</h3>
+                  <ul className="list-disc list-inside space-y-1 text-[var(--dy-sub)] marker:text-red-500/60">
                     <li>Buying a sending domain</li>
                     <li>SPF / DKIM / DMARC setup</li>
                     <li>Warming mailboxes for 6 weeks</li>
@@ -243,8 +243,8 @@ export default function InvestorsPage() {
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold text-base mb-3">Accepts</h3>
-                  <ul className="list-disc list-inside space-y-1 text-gray-400 marker:text-emerald-500/60">
+                  <h3 className="text-[var(--dy-text)] font-semibold text-base mb-3">Accepts</h3>
+                  <ul className="list-disc list-inside space-y-1 text-[var(--dy-sub)] marker:text-emerald-500/60">
                     <li>Agency-style sender on his behalf</li>
                     <li>AI-qualified replies forwarded to Gmail</li>
                     <li>Public unit prices + 2x margin baked in</li>
@@ -256,17 +256,17 @@ export default function InvestorsPage() {
               </div>
 
               <div>
-                <h3 className="text-white font-semibold text-base mb-3">North-star metric</h3>
-                <p className="text-gray-300">
-                  Real <span className="text-white font-medium">CAC</span> ($/qualified reply, $/paid conversion)
+                <h3 className="text-[var(--dy-text)] font-semibold text-base mb-3">North-star metric</h3>
+                <p className="text-[var(--dy-sub)]">
+                  Real <span className="text-[var(--dy-text)] font-medium">CAC</span> ($/qualified reply, $/paid conversion)
                   per product × per workflow. Kills losers under 4 weeks.
                   Scales winners 10x when CAC &lt; LTV/3.
                 </p>
               </div>
 
               <div>
-                <h3 className="text-white font-semibold text-base mb-3">Founder proximity</h3>
-                <p className="text-gray-300">
+                <h3 className="text-[var(--dy-text)] font-semibold text-base mb-3">Founder proximity</h3>
+                <p className="text-[var(--dy-sub)]">
                   Wants the founder reachable. Twitter DM, GitHub issue, direct email —
                   all acceptable. Bug fixed fast, feature shipped fast, roadmap public.
                   No enterprise support, no ticketing system.
@@ -274,11 +274,11 @@ export default function InvestorsPage() {
               </div>
 
               <div>
-                <h3 className="text-white font-semibold text-base mb-3">Roadmap expectation</h3>
-                <p className="text-gray-300">
-                  Cold email, compounding. <span className="text-white font-medium">Public roadmap:</span>{" "}
+                <h3 className="text-[var(--dy-text)] font-semibold text-base mb-3">Roadmap expectation</h3>
+                <p className="text-[var(--dy-sub)]">
+                  Cold email, compounding. <span className="text-[var(--dy-text)] font-medium">Public roadmap:</span>{" "}
                   every reply-rate and cost-per-reply gain ships continuously and is
-                  visible live on the <span className="text-white font-medium">Performance</span>{" "}
+                  visible live on the <span className="text-[var(--dy-text)] font-medium">Performance</span>{" "}
                   page. Prices published, no lock-in.
                 </p>
               </div>
@@ -289,7 +289,7 @@ export default function InvestorsPage() {
         {/* Platform Metrics */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-6 text-[var(--dy-text)]">
               Platform Metrics
             </h2>
             <PlatformMetricsSection />
@@ -299,7 +299,7 @@ export default function InvestorsPage() {
         {/* Revenue & Credits */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-6 text-[var(--dy-text)]">
               Revenue & Credits
             </h2>
             <RevenueCreditsSection />
@@ -309,7 +309,7 @@ export default function InvestorsPage() {
         {/* Monthly Growth */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-6 text-[var(--dy-text)]">
               Monthly Growth
             </h2>
             <MonthlyGrowthSection />
@@ -319,7 +319,7 @@ export default function InvestorsPage() {
         {/* Weekly Growth */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-6 text-[var(--dy-text)]">
               Weekly Growth
             </h2>
             <WeeklyGrowthSection />
@@ -329,12 +329,12 @@ export default function InvestorsPage() {
         {/* What We Need */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-6 text-[var(--dy-text)]">
               What We Need From Investors in May 2026
             </h2>
-            <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 text-sm leading-relaxed space-y-6">
+            <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-6 text-[var(--dy-sub)] text-sm leading-relaxed space-y-6">
               <div>
-                <h3 className="text-white font-semibold text-base mb-2">
+                <h3 className="text-[var(--dy-text)] font-semibold text-base mb-2">
                   $20K SAFE - $15K to cover 2026 fixed costs & $5K to accelerate sales growth
                 </h3>
                 <p>
@@ -343,7 +343,7 @@ export default function InvestorsPage() {
                     href="https://www.ycombinator.com/documents"
                     target="_blank"
                     rel="noreferrer"
-                    className="text-white underline decoration-gray-500 underline-offset-4 hover:decoration-white"
+                    className="text-[var(--dy-text)] underline decoration-[var(--dy-border-hi)] underline-offset-4 hover:decoration-[var(--dy-text)]"
                   >
                     SAFE (Simple Agreement for Future Equity)
                   </a>, the standard Y Combinator investment instrument. No valuation cap
@@ -352,7 +352,7 @@ export default function InvestorsPage() {
                 </p>
               </div>
               <div>
-                <h3 className="text-white font-semibold text-base mb-2">
+                <h3 className="text-[var(--dy-text)] font-semibold text-base mb-2">
                   $500K - to convince a risk-averse tech co-founder to join
                 </h3>
                 <p>
@@ -362,7 +362,7 @@ export default function InvestorsPage() {
                 </p>
               </div>
               <div>
-                <h3 className="text-white font-semibold text-base mb-2">
+                <h3 className="text-[var(--dy-text)] font-semibold text-base mb-2">
                   Technical Co-Founder Introduction
                 </h3>
                 <p>
@@ -378,34 +378,34 @@ export default function InvestorsPage() {
         {/* Infrastructure */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold mb-6 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-6 text-[var(--dy-text)]">
               Infrastructure
             </h2>
-            <div className="bg-gray-800/30 border border-gray-700/50 rounded-xl p-6 text-gray-300 text-sm leading-relaxed space-y-3">
+            <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-6 text-[var(--dy-sub)] text-sm leading-relaxed space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-gray-400 mb-1">Hosting</p>
-                  <p className="text-white">Railway (backend), Vercel (frontend)</p>
+                  <p className="text-[var(--dy-sub)] mb-1">Hosting</p>
+                  <p className="text-[var(--dy-text)]">Railway (backend), Vercel (frontend)</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 mb-1">Database</p>
-                  <p className="text-white">Neon Postgres (27 databases)</p>
+                  <p className="text-[var(--dy-sub)] mb-1">Database</p>
+                  <p className="text-[var(--dy-text)]">Neon Postgres (27 databases)</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 mb-1">Architecture</p>
-                  <p className="text-white">27 microservices, DAG workflow orchestration</p>
+                  <p className="text-[var(--dy-sub)] mb-1">Architecture</p>
+                  <p className="text-[var(--dy-text)]">27 microservices, DAG workflow orchestration</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 mb-1">Payments</p>
-                  <p className="text-white">Stripe (usage-based credit top-ups, auto-replenished)</p>
+                  <p className="text-[var(--dy-sub)] mb-1">Payments</p>
+                  <p className="text-[var(--dy-text)]">Stripe (usage-based credit top-ups, auto-replenished)</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 mb-1">Auth</p>
-                  <p className="text-white">Clerk</p>
+                  <p className="text-[var(--dy-sub)] mb-1">Auth</p>
+                  <p className="text-[var(--dy-text)]">Clerk</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 mb-1">AI Models</p>
-                  <p className="text-white">Multi-provider (Anthropic, OpenAI, Google)</p>
+                  <p className="text-[var(--dy-sub)] mb-1">AI Models</p>
+                  <p className="text-[var(--dy-text)]">Multi-provider (Anthropic, OpenAI, Google)</p>
                 </div>
               </div>
             </div>
@@ -415,10 +415,10 @@ export default function InvestorsPage() {
         {/* Contact */}
         <section className="pb-24">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="font-display text-2xl font-bold mb-4 text-gray-200">
+            <h2 className="font-display text-2xl font-bold mb-4 text-[var(--dy-text)]">
               Contact
             </h2>
-            <p className="text-gray-400 text-sm mb-6">
+            <p className="text-[var(--dy-sub)] text-sm mb-6">
               For investor inquiries, please reach out to:
             </p>
             <a
