@@ -28,8 +28,20 @@ export function formatNumber(n: number): string {
  * Compound growth rate from oldest period with spend > 0 to newest.
  * Values are in DESCENDING chronological order (newest first).
  * Inputs may be decimal strings or numbers.
+ *
+ * `periodsFromWindowStart`: count the periods from the FIRST ROW of the window
+ * (the oldest period overall, e.g. 2026-03-02) instead of from the oldest
+ * NON-ZERO period. The base VALUE is still the oldest non-zero (you can't divide
+ * by a $0 start), but the rate is amortized over the whole window. This makes
+ * two series that start spending on different weeks report growth "since the
+ * same date" — e.g. revenue ($0 until 03-16) and credits ($0.0099 on 03-02)
+ * both measured per-week since 03-02. Default false keeps the legacy behavior
+ * (periods between the two non-zero anchors).
  */
-export function computeCAGR(values: Array<string | number>): string | null {
+export function computeCAGR(
+  values: Array<string | number>,
+  opts: { periodsFromWindowStart?: boolean } = {},
+): string | null {
   const nums = values.map(toNumber);
   let newestIdx = -1;
   let oldestIdx = -1;
@@ -40,7 +52,9 @@ export function computeCAGR(values: Array<string | number>): string | null {
     }
   }
   if (newestIdx === -1 || oldestIdx === -1 || newestIdx === oldestIdx) return null;
-  const periods = oldestIdx - newestIdx;
+  const lastIdx = opts.periodsFromWindowStart ? nums.length - 1 : oldestIdx;
+  const periods = lastIdx - newestIdx;
+  if (periods <= 0) return null;
   const cagr = (Math.pow(nums[newestIdx] / nums[oldestIdx], 1 / periods) - 1) * 100;
   return cagr.toFixed(0);
 }

@@ -319,8 +319,18 @@ export async function WeeklyGrowthSection() {
   const cagrRows = metrics.weeklyGrowth.filter(
     (r) => r.period >= WEEKLY_CAGR_START
   );
-  const weeklyCreditsCAGR = computeCAGR(cagrRows.map((r) => r.consumedCents));
-  const weeklyRevenueCAGR = computeCAGR(cagrRows.map((r) => r.revenueCents));
+  // Both weekly rates are measured per-week from the WINDOW START
+  // (WEEKLY_CAGR_START, 2026-03-02), so credits and revenue report growth
+  // "since March 2" even though revenue is $0 until 03-16 (the base value is the
+  // first non-zero, amortized over the full window). Keeps the two comparable.
+  const weeklyCreditsCAGR = computeCAGR(
+    cagrRows.map((r) => r.consumedCents),
+    { periodsFromWindowStart: true },
+  );
+  const weeklyRevenueCAGR = computeCAGR(
+    cagrRows.map((r) => r.revenueCents),
+    { periodsFromWindowStart: true },
+  );
 
   // Per-metric CGR computation anchor: each chart computes compound growth
   // against the first non-zero week for THAT specific metric within the
