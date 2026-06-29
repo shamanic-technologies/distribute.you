@@ -33,7 +33,7 @@ export function Navbar() {
             priority
           />
           <span>distribute</span>
-          <span className="dy-chip">BETA</span>
+          <span className="dy-nav-chip">BETA</span>
         </a>
 
         <div className="dy-nav-links">
@@ -48,18 +48,18 @@ export function Navbar() {
           ))}
         </div>
 
-        <div className="dy-nav-actions">
-          <a href={urls.signIn} className="dy-button-ghost">
+        <div className="dy-nav-right">
+          <a href={urls.signIn} className="dy-btn dy-btn-g">
             Sign in
           </a>
-          <LinkButton href={urls.signUp} className="dy-button-primary">
+          <LinkButton href={urls.signUp} className="dy-btn dy-btn-p">
             Start free
           </LinkButton>
         </div>
 
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="dy-nav-menu md:hidden"
+          className="dy-nav-toggle md:hidden"
           aria-label="Toggle menu"
           aria-expanded={menuOpen}
         >
@@ -76,25 +76,25 @@ export function Navbar() {
       </div>
 
       {menuOpen && (
-        <div className="dy-nav-mobile md:hidden">
-          <div className="dy-shell space-y-1 py-3">
+        <div className="md:hidden border-t border-[var(--dy-border)] bg-[var(--dy-bg)]">
+          <div className="max-w-7xl mx-auto px-4 space-y-1 py-3">
             {links.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                className="block rounded-lg px-3 py-2 text-sm"
+                className="block rounded-lg px-3 py-2 text-sm text-[var(--dy-sub)] hover:text-[var(--dy-text)]"
                 aria-current={isCurrent(link.href) ? "page" : undefined}
               >
                 {link.label}
               </a>
             ))}
-            <a href={urls.signIn} className="block rounded-lg px-3 py-2 text-sm">
+            <a href={urls.signIn} className="block rounded-lg px-3 py-2 text-sm text-[var(--dy-sub)] hover:text-[var(--dy-text)]">
               Sign in
             </a>
             <div className="border-t border-[var(--dy-border-hi)] pt-3">
               <LinkButton
                 href={urls.signUp}
-                className="dy-button-primary w-full"
+                className="dy-btn dy-btn-p w-full"
               >
                 Start free
               </LinkButton>
