@@ -68,6 +68,18 @@ describe("computeCAGR — fractional decimal-string inputs", () => {
   it("accepts plain numbers (back-compat)", () => {
     expect(computeCAGR([400, 100])).toBe("300");
   });
+
+  it("periodsFromWindowStart amortizes from the oldest ROW, not the oldest non-zero", () => {
+    // DESC series: newest=240, base (oldest non-zero)=15, two trailing $0 weeks.
+    // legacy: periods between non-zero anchors = 4 → (240/15)^(1/4)-1 = +100%
+    expect(computeCAGR(["240", "120", "60", "30", "15", "0", "0"])).toBe("100");
+    // fromWindowStart: periods to the oldest row (idx 6) = 6 → (240/15)^(1/6)-1 ≈ +59%
+    expect(
+      computeCAGR(["240", "120", "60", "30", "15", "0", "0"], {
+        periodsFromWindowStart: true,
+      }),
+    ).toBe("59");
+  });
 });
 
 describe("computeCGRSeries — compound growth rate per period (ASC input)", () => {
