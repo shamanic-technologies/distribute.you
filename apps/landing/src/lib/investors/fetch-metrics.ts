@@ -140,10 +140,9 @@ export const fetchInvestorMetrics = unstable_cache(
     monthlyMap.set(month, entry);
   }
 
-  // Months: INCLUDE the current (in-progress) month so the charts reach the
-  // current date (a ~4-week-in June reads as real traction, not noise). Weeks:
-  // still exclude the in-progress week below — a 1-day-old week is a misleading
-  // near-zero bar, and the weekly series already reaches the latest full week.
+  // INCLUDE the current (in-progress) month AND week so every chart reaches the
+  // current date (the partial period reads as live traction, not noise). Both
+  // filters below are inclusive of the current period.
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const sortedMonthsDesc = [...monthlyMap.keys()]
@@ -178,10 +177,13 @@ export const fetchInvestorMetrics = unstable_cache(
   const currentWeekStart = new Date(now);
   currentWeekStart.setUTCDate(now.getUTCDate() - mondayOffset);
   const currentWeekStr = currentWeekStart.toISOString().slice(0, 10);
+  // Include the current (in-progress) week too, so the weekly charts reach the
+  // current date — same intent as the monthly include above. currentWeekStr is
+  // kept (computed) for clarity but the series now runs through it inclusive.
   const sortedWeeklyDesc = [...weeklyMap.keys()]
     .sort()
     .reverse()
-    .filter((p) => p < currentWeekStr)
+    .filter((p) => p <= currentWeekStr)
     .map((p) => weeklyMap.get(p)!);
 
   return {
