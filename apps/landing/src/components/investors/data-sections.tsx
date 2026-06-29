@@ -50,10 +50,10 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-6">
-      <p className="text-sm text-[var(--dy-sub)] mb-1">{label}</p>
-      <p className="text-2xl font-display font-bold text-[var(--dy-text)]">{value}</p>
-      {sub && <p className="text-xs text-[var(--dy-muted)] mt-1">{sub}</p>}
+    <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+      <p className="text-sm text-gray-600 mb-1">{label}</p>
+      <p className="text-2xl font-display font-bold text-gray-900">{value}</p>
+      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -64,28 +64,28 @@ export async function CompanyOverviewSection() {
   const totalRuns =
     metrics.runs.completed + metrics.runs.failed + metrics.runs.running;
   return (
-    <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-6 text-[var(--dy-sub)] space-y-4 text-sm leading-relaxed">
+    <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 space-y-4 text-sm leading-relaxed">
       <p>
-        <strong className="text-[var(--dy-text)]">distribute</strong> is a pay-as-you-go
+        <strong className="text-gray-900">distribute</strong> is a pay-as-you-go
         cloud platform for AI cold email outreach. Builders provide a URL and a
         daily budget; AI workflows handle prospecting, email generation, sending,
         reply qualification, and reporting — ranked by real cost-per-positive-reply.
       </p>
       <p>
         The business model is{" "}
-        <strong className="text-[var(--dy-text)]">credit-based</strong> with no
+        <strong className="text-gray-900">credit-based</strong> with no
         subscriptions. Users top up their account balance and pay per workflow
         execution. Revenue scales linearly with usage.
       </p>
       <p>
         The platform runs{" "}
-        <strong className="text-[var(--dy-text)]">
+        <strong className="text-gray-900">
           {formatNumber(totalRuns)}+ workflow executions
         </strong>{" "}
         to date across{" "}
-        <strong className="text-[var(--dy-text)]">{metrics.users.orgs}</strong>{" "}
+        <strong className="text-gray-900">{metrics.users.orgs}</strong>{" "}
         organizations and{" "}
-        <strong className="text-[var(--dy-text)]">{metrics.users.total}</strong>{" "}
+        <strong className="text-gray-900">{metrics.users.total}</strong>{" "}
         users.
       </p>
     </div>
@@ -168,19 +168,19 @@ function GrowthCard({
   const numeric = value === null ? null : Number(value);
   const colorClass =
     numeric === null
-      ? "text-[var(--dy-muted)]"
+      ? "text-gray-500"
       : numeric >= 0
-        ? "text-emerald-400"
-        : "text-red-400";
+        ? "text-emerald-600"
+        : "text-red-600";
   const display =
     numeric === null
       ? "n/a"
       : `${numeric >= 0 ? "+" : ""}${value}%`;
   return (
-    <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-6">
-      <p className="text-sm text-[var(--dy-sub)] mb-1">{label}</p>
+    <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+      <p className="text-sm text-gray-600 mb-1">{label}</p>
       <p className={`text-2xl font-display font-bold ${colorClass}`}>{display}</p>
-      {sub && <p className="text-xs text-[var(--dy-muted)] mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -218,7 +218,7 @@ export async function MonthlyGrowthSection() {
         <div className="lg:col-span-2 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[var(--dy-border-hi)] text-[var(--dy-sub)]">
+              <tr className="border-b border-gray-300 text-gray-600">
                 <th className="text-left py-3 px-4 font-medium">Month</th>
                 <th className="text-right py-3 px-4 font-medium">Completed Runs</th>
                 <th className="text-right py-3 px-4 font-medium">Credits Spent</th>
@@ -241,19 +241,19 @@ export async function MonthlyGrowthSection() {
                 return (
                   <tr
                     key={row.month}
-                    className="border-b border-[var(--dy-border)] text-[var(--dy-sub)]"
+                    className="border-b border-gray-200 text-gray-600"
                   >
-                    <td className="py-3 px-4 font-medium text-[var(--dy-text)]">{row.month}</td>
+                    <td className="py-3 px-4 font-medium text-gray-900">{row.month}</td>
                     <td className="py-3 px-4 text-right">{formatNumber(row.completedRuns)}</td>
                     <td className="py-3 px-4 text-right">{formatCents(row.consumedCents)}</td>
                     <td className="py-3 px-4 text-right">{formatCents(row.revenueCents)}</td>
                     <td className="py-3 px-4 text-right">
                       {growth ? (
-                        <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                        <span className={Number(growth) >= 0 ? "text-emerald-600" : "text-red-600"}>
                           {Number(growth) >= 0 ? "+" : ""}{growth}%
                         </span>
                       ) : (
-                        <span className="text-[var(--dy-muted)]">--</span>
+                        <span className="text-gray-500">--</span>
                       )}
                     </td>
                   </tr>
@@ -355,7 +355,7 @@ export async function WeeklyGrowthSection() {
         <div className="lg:col-span-2 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[var(--dy-border-hi)] text-[var(--dy-sub)]">
+              <tr className="border-b border-gray-300 text-gray-600">
                 <th className="text-left py-3 px-4 font-medium">Week</th>
                 <th className="text-right py-3 px-4 font-medium">Credits Spent</th>
                 <th className="text-right py-3 px-4 font-medium">Revenue</th>
@@ -377,18 +377,18 @@ export async function WeeklyGrowthSection() {
                 return (
                   <tr
                     key={row.period}
-                    className="border-b border-[var(--dy-border)] text-[var(--dy-sub)]"
+                    className="border-b border-gray-200 text-gray-600"
                   >
-                    <td className="py-3 px-4 font-medium text-[var(--dy-text)]">{row.period}</td>
+                    <td className="py-3 px-4 font-medium text-gray-900">{row.period}</td>
                     <td className="py-3 px-4 text-right">{formatCents(row.consumedCents)}</td>
                     <td className="py-3 px-4 text-right">{formatCents(row.revenueCents)}</td>
                     <td className="py-3 px-4 text-right">
                       {growth ? (
-                        <span className={Number(growth) >= 0 ? "text-emerald-400" : "text-red-400"}>
+                        <span className={Number(growth) >= 0 ? "text-emerald-600" : "text-red-600"}>
                           {Number(growth) >= 0 ? "+" : ""}{growth}%
                         </span>
                       ) : (
-                        <span className="text-[var(--dy-muted)]">--</span>
+                        <span className="text-gray-500">--</span>
                       )}
                     </td>
                   </tr>

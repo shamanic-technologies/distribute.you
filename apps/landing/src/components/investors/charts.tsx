@@ -40,11 +40,11 @@ export function BarChart({
   const rawMax = Math.max(...numericValues, 0);
   const { max, ticks: gridSteps } = niceTicks(0, rawMax);
   return (
-    <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-4 overflow-hidden">
-      <p className="text-sm text-[var(--dy-sub)] mb-3 font-medium">{title}</p>
+    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 overflow-hidden">
+      <p className="text-sm text-gray-600 mb-3 font-medium">{title}</p>
       <div className="flex">
         <div
-          className="flex flex-col justify-between text-[10px] text-[var(--dy-muted)] pr-2 text-right"
+          className="flex flex-col justify-between text-[10px] text-gray-500 pr-2 text-right"
           style={{ height: `${CHART_HEIGHT_PX}px`, width: `${Y_AXIS_WIDTH_PX}px` }}
         >
           {gridSteps.map((step, i) => (
@@ -55,7 +55,7 @@ export function BarChart({
           {gridSteps.map((_, i) => (
             <div
               key={i}
-              className="absolute left-0 right-0 border-t border-[var(--dy-border)]"
+              className="absolute left-0 right-0 border-t border-gray-200"
               style={{ top: `${(i / (gridSteps.length - 1)) * 100}%` }}
             />
           ))}
@@ -84,13 +84,13 @@ export function BarChart({
             <div key={d.label} className="flex-1 min-w-0 flex justify-center">
               {rotateLabels ? (
                 <span
-                  className="text-[10px] text-[var(--dy-muted)] whitespace-nowrap origin-top-left"
+                  className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
                   style={{ writingMode: "vertical-rl", height: "50px" }}
                 >
                   {shortenLabel(d.label)}
                 </span>
               ) : (
-                <span className="text-[10px] text-[var(--dy-muted)] truncate w-full text-center">
+                <span className="text-[10px] text-gray-500 truncate w-full text-center">
                   {shortenLabel(d.label)}
                 </span>
               )}
@@ -145,11 +145,11 @@ export function CGRLineChart({
     .filter((s): s is string => s !== null);
   const polylinePts = linePoints.join(" ");
   return (
-    <div className="bg-[var(--dy-surface)] border border-[var(--dy-border)] rounded-xl p-4 overflow-hidden">
-      <p className="text-sm text-[var(--dy-sub)] mb-3 font-medium">{title}</p>
+    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 overflow-hidden">
+      <p className="text-sm text-gray-600 mb-3 font-medium">{title}</p>
       <div className="flex">
         <div
-          className="flex flex-col justify-between text-[10px] text-[var(--dy-muted)] pr-2 text-right"
+          className="flex flex-col justify-between text-[10px] text-gray-500 pr-2 text-right"
           style={{ height: `${CHART_HEIGHT_PX}px`, width: `${Y_AXIS_WIDTH_PX}px` }}
         >
           {gridSteps.map((step, i) => (
@@ -162,8 +162,8 @@ export function CGRLineChart({
               key={i}
               className={`absolute left-0 right-0 ${
                 step === 0
-                  ? "border-t border-[var(--dy-muted)]"
-                  : "border-t border-[var(--dy-border)]"
+                  ? "border-t border-gray-400"
+                  : "border-t border-gray-200"
               }`}
               style={{ top: `${(i / (gridSteps.length - 1)) * 100}%` }}
             />
@@ -206,13 +206,13 @@ export function CGRLineChart({
             <div key={p.label} className="flex-1 min-w-0 flex justify-center">
               {rotateLabels ? (
                 <span
-                  className="text-[10px] text-[var(--dy-muted)] whitespace-nowrap origin-top-left"
+                  className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
                   style={{ writingMode: "vertical-rl", height: "50px" }}
                 >
                   {shortenLabel(p.label)}
                 </span>
               ) : (
-                <span className="text-[10px] text-[var(--dy-muted)] truncate w-full text-center">
+                <span className="text-[10px] text-gray-500 truncate w-full text-center">
                   {shortenLabel(p.label)}
                 </span>
               )}
