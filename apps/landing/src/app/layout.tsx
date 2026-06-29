@@ -169,9 +169,13 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
+        {/* React landing pages have a hardcoded-white body and no theme
+            toggle, so dark is always broken here. Force light regardless of
+            any `dt` pref set by the static landing's toggle (was washing out
+            the navbar/logo for users who toggled dark on the static site). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('dt');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}})()`,
+            __html: `document.documentElement.setAttribute('data-theme','light')`,
           }}
         />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-YJHNGLEJPP" />

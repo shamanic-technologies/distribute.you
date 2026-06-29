@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { LinkButton } from "./link-button";
+import { DyNavScroll } from "./dy-nav-scroll";
 import { PROD_URLS } from "@/lib/env-urls";
 
 export function Navbar() {
@@ -22,7 +23,8 @@ export function Navbar() {
   }
 
   return (
-    <nav className="dy-nav">
+    <nav id="dy-nav" className="dy-nav scrolled">
+      <DyNavScroll />
       <div className="dy-nav-inner">
         <a href="/" className="dy-nav-logo">
           <Image
