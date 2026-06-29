@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
 import { formatBillingCents } from "@/lib/format-number";
+import { brandRunwayDays } from "@/lib/credit-runway";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
 // budgets are still integer cents — accept both shapes everywhere they cross.
@@ -39,6 +40,11 @@ interface PaymentRequiredInfo {
    *  the caller (it already has the account) to avoid a config→recharge flash;
    *  falls back to the fetched account when omitted. */
   autoReloadSupported?: boolean;
+  /** The in-scope brand's saved daily budget (cents). When present, the top-up
+   *  amount buttons annotate each preset with how many days it buys at this
+   *  brand's daily budget (amount ÷ dailyBudget). Omitted (org-level callers
+   *  with no single brand) → amounts render without a day-equivalent. */
+  brandDailyBudgetCents?: number | null;
 }
 
 function toCentsNumber(v: string | number): number {
@@ -286,6 +292,15 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
   const rechargeTitle = "Add credits to keep going.";
   const rechargeDescription =
     "Auto-top-up isn't available for your card's country, so add credits to keep your campaigns running. Each brand daily budget stays the spend cap.";
+  // Day-equivalent of a top-up amount at the in-scope brand's daily budget
+  // (amount ÷ dailyBudget). null when no brand budget was passed (org-level
+  // caller) or the budget is 0/unset → the amount renders without a day label.
+  const brandDailyBudgetCents = info.brandDailyBudgetCents ?? null;
+  function daysForCents(amountCents: number): string | null {
+    const days = brandRunwayDays(amountCents, brandDailyBudgetCents);
+    if (days === null) return null;
+    return days < 1 ? "< 1 day" : `~${days} day${days === 1 ? "" : "s"}`;
+  }
 
   return (
     <BillingGuardContext.Provider value={{ showPaymentRequired, dismissPaymentRequired }}>
@@ -384,19 +399,25 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               <>
                 <h3 className="text-sm font-medium text-gray-800 mb-2">Add Credits</h3>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {TOPUP_AMOUNTS.map((amount) => (
-                    <button
-                      key={amount}
-                      onClick={() => handleSelectTopup(amount)}
-                      className={`flex-1 min-w-[70px] px-3 py-2 text-sm rounded-lg border transition ${
-                        selectedAmount === amount && !customAmount
-                          ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
-                          : "border-gray-200 text-gray-700 hover:border-gray-300"
-                      }`}
-                    >
-                      {formatBillingCents(amount)}
-                    </button>
-                  ))}
+                  {TOPUP_AMOUNTS.map((amount) => {
+                    const days = daysForCents(amount);
+                    return (
+                      <button
+                        key={amount}
+                        onClick={() => handleSelectTopup(amount)}
+                        className={`flex-1 min-w-[70px] px-3 py-2 rounded-lg border transition ${
+                          selectedAmount === amount && !customAmount
+                            ? "border-brand-300 bg-brand-50 text-brand-700 font-medium"
+                            : "border-gray-200 text-gray-700 hover:border-gray-300"
+                        }`}
+                      >
+                        <span className="block text-sm">{formatBillingCents(amount)}</span>
+                        {days && (
+                          <span className="block text-[11px] leading-tight text-gray-400">{days}</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
                 <input
                   type="number"
@@ -410,6 +431,9 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                 />
                 {customAmountError && (
                   <p className="text-xs text-red-600 mb-2">{customAmountError}</p>
+                )}
+                {customAmount && !customAmountError && daysForCents(effectiveAmountCents) && (
+                  <p className="text-[11px] text-gray-400 mb-2">{daysForCents(effectiveAmountCents)} at this brand’s daily budget</p>
                 )}
               </>
             )}
@@ -534,7 +558,11 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   disabled={checkoutLoading || hasValidationError}
                   className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
                 >
-                  {checkoutLoading ? "Loading\u2026" : `Add ${formatBillingCents(effectiveAmountCents || 0)} \u2192`}
+                  {checkoutLoading
+                    ? "Loading\u2026"
+                    : `Add ${formatBillingCents(effectiveAmountCents || 0)}${
+                        daysForCents(effectiveAmountCents || 0) ? ` \u00b7 ${daysForCents(effectiveAmountCents || 0)}` : ""
+                      } \u2192`}
                 </button>
               )}
             </div>

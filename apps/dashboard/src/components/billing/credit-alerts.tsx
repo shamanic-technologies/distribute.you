@@ -85,8 +85,9 @@ export function CreditAlerts() {
       balance_cents: account.balance_cents,
       proactive: true,
       autoReloadSupported,
+      brandDailyBudgetCents: budget?.dailyBudgetCents ?? null,
     });
-  }, [brandId, account, severity, autoReloadSupported, showPaymentRequired]);
+  }, [brandId, account, budget, severity, autoReloadSupported, showPaymentRequired]);
 
   if (!orgId || !brandId || !account || !budget || !severity) return null;
 
