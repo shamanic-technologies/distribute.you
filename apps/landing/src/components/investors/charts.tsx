@@ -27,6 +27,19 @@ function shortenLabel(label: string): string {
 const CHART_HEIGHT_PX = 90;
 const Y_AXIS_WIDTH_PX = 56;
 
+// Max x-axis labels to RENDER. The bars/points always span the full range, but
+// in a narrow column ~18 weekly labels can't shrink (vertical text has a fixed
+// width) so they overflow the card and the later ones get clipped — making the
+// chart look like it ends weeks before the data does. Keep one slot per data
+// point (so labels stay aligned with their bar) but only render text on an
+// evenly-spaced subset + always the LAST point, so the axis reads end-to-end.
+const MAX_X_LABELS = 8;
+function showLabelAt(i: number, n: number): boolean {
+  if (n <= MAX_X_LABELS) return true;
+  const step = Math.ceil(n / MAX_X_LABELS);
+  return i % step === 0 || i === n - 1;
+}
+
 export function BarChart({
   data,
   rotateLabels,
@@ -80,20 +93,21 @@ export function BarChart({
       </div>
       <div className="flex pt-2" style={{ paddingLeft: `${Y_AXIS_WIDTH_PX}px` }}>
         <div className="flex-1 flex gap-1 px-1">
-          {data.map((d) => (
+          {data.map((d, i) => (
             <div key={d.label} className="flex-1 min-w-0 flex justify-center">
-              {rotateLabels ? (
-                <span
-                  className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
-                  style={{ writingMode: "vertical-rl", height: "50px" }}
-                >
-                  {shortenLabel(d.label)}
-                </span>
-              ) : (
-                <span className="text-[10px] text-gray-500 truncate w-full text-center">
-                  {shortenLabel(d.label)}
-                </span>
-              )}
+              {showLabelAt(i, data.length) &&
+                (rotateLabels ? (
+                  <span
+                    className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
+                    style={{ writingMode: "vertical-rl", height: "50px" }}
+                  >
+                    {shortenLabel(d.label)}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-gray-500 truncate w-full text-center">
+                    {shortenLabel(d.label)}
+                  </span>
+                ))}
             </div>
           ))}
         </div>
@@ -202,20 +216,21 @@ export function CGRLineChart({
       </div>
       <div className="flex pt-2" style={{ paddingLeft: `${Y_AXIS_WIDTH_PX}px` }}>
         <div className="flex-1 flex gap-1 px-1">
-          {points.map((p) => (
+          {points.map((p, i) => (
             <div key={p.label} className="flex-1 min-w-0 flex justify-center">
-              {rotateLabels ? (
-                <span
-                  className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
-                  style={{ writingMode: "vertical-rl", height: "50px" }}
-                >
-                  {shortenLabel(p.label)}
-                </span>
-              ) : (
-                <span className="text-[10px] text-gray-500 truncate w-full text-center">
-                  {shortenLabel(p.label)}
-                </span>
-              )}
+              {showLabelAt(i, points.length) &&
+                (rotateLabels ? (
+                  <span
+                    className="text-[10px] text-gray-500 whitespace-nowrap origin-top-left"
+                    style={{ writingMode: "vertical-rl", height: "50px" }}
+                  >
+                    {shortenLabel(p.label)}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-gray-500 truncate w-full text-center">
+                    {shortenLabel(p.label)}
+                  </span>
+                ))}
             </div>
           ))}
         </div>
