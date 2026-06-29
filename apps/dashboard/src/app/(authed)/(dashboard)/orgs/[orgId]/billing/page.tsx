@@ -16,7 +16,7 @@ import {
   type Brand,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
-import { formatBillingCents } from "@/lib/format-number";
+import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
@@ -600,7 +600,7 @@ export default function BillingPage() {
                       : "border-gray-200 text-gray-700 hover:border-gray-300"
                   }`}
                 >
-                  {formatBillingCents(amount)}
+                  {formatCentsAsUsd(amount, 0)}
                 </button>
               ))}
               <input
@@ -692,7 +692,7 @@ export default function BillingPage() {
               disabled={topupLoading || (enableAutoTopup && !topupAmount) || hasValidationError}
               className="w-full rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50 sm:w-auto"
             >
-              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatBillingCents(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupSelected)}`}
+              {topupLoading ? "Redirecting to Stripe..." : `Add ${formatCentsAsUsd(customAmount ? Math.round(parseFloat(customAmount) * 100) || 0 : topupSelected, 0)}`}
             </button>
           </div>
         )}

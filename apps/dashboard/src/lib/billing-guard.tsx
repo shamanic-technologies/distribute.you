@@ -10,7 +10,7 @@ import {
   type BillingAccount,
 } from "@/lib/api";
 import { getStripe } from "@/lib/stripe";
-import { formatBillingCents } from "@/lib/format-number";
+import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 
 // API responses now ship cents as decimal strings (billing-service v2). FE-computed
@@ -408,7 +408,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                           : "border-gray-200 text-gray-700 hover:border-gray-300"
                       }`}
                     >
-                      {formatBillingCents(amount)}
+                      {formatCentsAsUsd(amount, 0)}
                     </button>
                   ))}
                 </div>
@@ -539,7 +539,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                     className={`flex-[2] inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition ${checkoutLoading ? "cursor-wait" : "disabled:opacity-50 disabled:cursor-not-allowed"}`}
                   >
                     {checkoutLoading && <Spinner />}
-                    {checkoutLoading ? "Loading…" : `Load ${formatBillingCents(effectiveAmountCents || 0)} & turn on auto-top-up →`}
+                    {checkoutLoading ? "Loading…" : `Load ${formatCentsAsUsd(effectiveAmountCents || 0, 0)} & turn on auto-top-up →`}
                   </button>
                 )
               ) : (
@@ -548,7 +548,7 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
                   disabled={checkoutLoading || hasValidationError}
                   className="flex-[2] px-4 py-2.5 text-sm font-medium text-white bg-brand-600 rounded-lg hover:bg-brand-700 transition disabled:opacity-50"
                 >
-                  {checkoutLoading ? "Loading\u2026" : `Add ${formatBillingCents(effectiveAmountCents || 0)} \u2192`}
+                  {checkoutLoading ? "Loading\u2026" : `Add ${formatCentsAsUsd(effectiveAmountCents || 0, 0)} \u2192`}
                 </button>
               )}
             </div>
