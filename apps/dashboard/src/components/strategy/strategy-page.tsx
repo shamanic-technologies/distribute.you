@@ -42,10 +42,10 @@ function formatUsd(usd: number | null | undefined): string {
   return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-/** A percentage value already in % units → "X%" (whole, no decimals) / "—". */
+/** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */
 function formatPct(pct: number | null | undefined): string {
   if (pct == null) return "-";
-  return `${pct.toLocaleString("en-US", { maximumFractionDigits: 0 })}%`;
+  return `${pct.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
 }
 
 /** A lifetime-return multiple → "X.X×" / "—". */
