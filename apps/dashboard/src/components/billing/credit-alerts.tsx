@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
@@ -46,6 +47,7 @@ function todayStamp() {
 export function CreditAlerts() {
   const { showPaymentRequired } = useBillingGuard();
   const params = useParams();
+  const orgId = (params?.orgId as string | undefined) ?? null;
   const brandId = (params?.brandId as string | undefined) ?? null;
 
   const { data: account } = useAuthQuery<BillingAccount>(
@@ -86,7 +88,7 @@ export function CreditAlerts() {
     });
   }, [brandId, account, severity, autoReloadSupported, showPaymentRequired]);
 
-  if (!brandId || !account || !budget || !severity) return null;
+  if (!orgId || !brandId || !account || !budget || !severity) return null;
 
   const isUrgent = severity === "urgent";
 
@@ -116,14 +118,8 @@ export function CreditAlerts() {
         </svg>
         {message}
       </span>
-      <button
-        onClick={() =>
-          showPaymentRequired({
-            balance_cents: account.balance_cents,
-            proactive: true,
-            autoReloadSupported,
-          })
-        }
+      <Link
+        href={`/orgs/${orgId}/billing`}
         className={
           isUrgent
             ? "underline underline-offset-2 font-semibold hover:opacity-90"
@@ -131,7 +127,7 @@ export function CreditAlerts() {
         }
       >
         {cta}
-      </button>
+      </Link>
     </div>
   );
 }
