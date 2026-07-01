@@ -4216,3 +4216,49 @@ export async function getInstantlyReconcile(
 ): Promise<InstantlyReconcile> {
   return apiCall<InstantlyReconcile>("/instantly/audit/reconcile", { token });
 }
+
+// ---------------------------------------------------------------------------
+// Global fleet SEND forecast — cross-org, fleet-wide projection of how many
+// outreach emails will be SENT per calendar day over a past + future window.
+// Stacks three EMAIL-grain series: actualSent (past real sends, follow-ups
+// included), inFlightSent (already-scheduled follow-ups for sequences launched
+// before today), forecastNew (emails NEW budget-driven sequences launch from
+// today onward on the D0/D3/D10 cadence). Every value is computed server-side
+// by features-service; the dashboard renders only, never derives a metric.
+// null (not 0) means the input is absent for that day → render "-".
+// ---------------------------------------------------------------------------
+export interface SendForecastDay {
+  date: string; // UTC calendar day (YYYY-MM-DD)
+  isToday: boolean;
+  actualSent: number | null; // past real emails sent that day; null on future days
+  inFlightSent: number | null; // scheduled follow-ups (pre-today cohorts); null on past days
+  forecastNew: number | null; // projected new-sequence emails (today onward); null on past days
+  total: number | null; // predictive total: past = actualSent, today/future = sum of present parts
+}
+
+export interface SendForecastSummary {
+  totalDailyBudgetUsd: number; // sum of daily budget over active brands (USD)
+  remainingTodayUsd: number; // sum of remaining budget today over active brands (USD)
+  followupModel: string; // send cadence model, e.g. "D0/D3/D10"
+  activeBrandCount: number;
+  totalNewSequencesPerDay: number; // fleet new sequences/day at full budget
+}
+
+export interface SendForecast {
+  days: SendForecastDay[]; // past tail + future horizon, chronological
+  summary: SendForecastSummary;
+}
+
+/**
+ * Global fleet-wide email SEND forecast: per-day stacked actual + in-flight +
+ * projected-new volume plus the fleet budget summary. Public endpoint (no org
+ * context), rendered on the staff-gated audit console. Default 14-day future
+ * horizon (max 90), always with a 7-day past tail.
+ */
+export async function getSendForecast(
+  days?: number,
+  token?: string,
+): Promise<SendForecast> {
+  const qs = days ? `?days=${days}` : "";
+  return apiCall<SendForecast>(`/public/features/send-forecast${qs}`, { token });
+}

@@ -4,12 +4,15 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getInstantlySendingForecast,
   getInstantlyReconcile,
+  getSendForecast,
   type InstantlySendingForecast,
   type InstantlyReconcile,
+  type SendForecast,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { InstantlyForecastChart } from "@/components/audit/instantly-forecast-chart";
+import { SendForecastChart } from "@/components/audit/send-forecast-chart";
 
 function StatCard({
   label,
@@ -141,6 +144,162 @@ function ReconcileSection() {
   );
 }
 
+function SendForecastSection() {
+  const { data, isPending, isError, error } = useAuthQuery<SendForecast>(
+    ["sendForecast"],
+    () => getSendForecast(),
+    pollOptionsSlower,
+  );
+
+  const num = (n: number) => n.toLocaleString("en-US");
+  const usd = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const cell = (n: number | null) => (n === null ? "—" : num(n));
+  const dateLabel = (iso: string) =>
+    new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Global send forecast</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Fleet-wide, across every active brand: how many outreach emails go out each day.
+          Past real sends, follow-ups already scheduled, and the new sends the active daily
+          budgets will launch on the D0/D3/D10 cadence, stacked into one predictive total.
+        </p>
+      </div>
+
+      {isError ? (
+        <div className="bg-white rounded-xl border border-red-200 p-6">
+          <p className="text-sm font-medium text-red-700">Couldn&apos;t load the send forecast.</p>
+          <p className="mt-1 text-xs text-red-500">{error?.message ?? "Unknown error"}</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <StatCard
+              label="Total daily budget"
+              value={data ? usd(data.summary.totalDailyBudgetUsd) : "—"}
+              sub="across active brands"
+              pending={isPending}
+            />
+            <StatCard
+              label="Remaining today"
+              value={data ? usd(data.summary.remainingTodayUsd) : "—"}
+              sub="budget left to spend"
+              pending={isPending}
+            />
+            <StatCard
+              label="Active brands"
+              value={data ? num(data.summary.activeBrandCount) : "—"}
+              sub="driving the forecast"
+              pending={isPending}
+            />
+            <StatCard
+              label="New sequences / day"
+              value={data ? num(data.summary.totalNewSequencesPerDay) : "—"}
+              sub="fleet, at full budget"
+              pending={isPending}
+            />
+            <StatCard
+              label="Follow-up model"
+              value={data ? data.summary.followupModel : "—"}
+              sub="send cadence"
+              pending={isPending}
+            />
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-gray-900">Emails sent per day</h3>
+              <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-indigo-500" /> Sent (actual)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-sky-500" /> Scheduled follow-ups
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" /> New (projected)
+                </span>
+              </div>
+            </div>
+            <div className="mt-4">
+              {isPending ? (
+                <Skeleton className="h-[300px] w-full rounded" />
+              ) : (
+                <SendForecastChart days={data.days} />
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900">Day by day</h3>
+            <div className="mt-4">
+              {isPending ? (
+                <Skeleton className="h-64 w-full rounded" />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-[560px] w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+                        <th className="py-2 pr-4 font-medium">Day</th>
+                        <th className="py-2 px-4 text-right font-medium">Sent (actual)</th>
+                        <th className="py-2 px-4 text-right font-medium">Scheduled follow-ups</th>
+                        <th className="py-2 px-4 text-right font-medium">New (projected)</th>
+                        <th className="py-2 pl-4 text-right font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.days.map((d) => (
+                        <tr
+                          key={d.date}
+                          className={`border-b border-gray-100 last:border-0 ${
+                            d.isToday ? "bg-indigo-50" : ""
+                          }`}
+                        >
+                          <td className="py-2.5 pr-4 font-medium text-gray-900">
+                            {dateLabel(d.date)}
+                            {d.isToday && (
+                              <span className="ml-2 rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                                Today
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                            {cell(d.actualSent)}
+                          </td>
+                          <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                            {cell(d.inFlightSent)}
+                          </td>
+                          <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                            {cell(d.forecastNew)}
+                          </td>
+                          <td className="py-2.5 pl-4 text-right tabular-nums font-semibold text-gray-900">
+                            {cell(d.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-3 text-xs text-gray-400">
+                    A dash means the series doesn&apos;t apply that day: past days carry no
+                    forecast, future days carry no actual sends yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AuditInstantlyPage() {
   const { data, isPending, isError, error } = useAuthQuery<InstantlySendingForecast>(
     ["instantlySendingForecast"],
@@ -217,6 +376,8 @@ export default function AuditInstantlyPage() {
           </div>
         </>
       )}
+
+      <SendForecastSection />
 
       <ReconcileSection />
     </div>
