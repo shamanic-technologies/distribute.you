@@ -133,6 +133,11 @@ export function BreadcrumbNav() {
   // App-level feature path: /features/[featureId] or /features/[featureId]/new
   const appFeatureId = !orgId && pathParts[0] === "features" && pathParts[1] ? pathParts[1] : null;
   const appFeatureSubpage = appFeatureId && pathParts[2] ? pathParts[2] : null;
+  // Root granularity (cross-org): /metrics, /audit, /features/*, /orgs list.
+  // No org is "active" at this level — show a neutral "Organizations" root
+  // instead of asserting a specific org. The org crumb only appears once the
+  // path scopes into one (/orgs/[orgId]/...).
+  const atAppLevel = !orgId;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -346,12 +351,21 @@ export function BreadcrumbNav() {
 
   return (
     <nav className="flex items-center text-sm min-w-0" ref={dropdownRef}>
-      {/* ORG — always shown as root */}
+      {/* ROOT — "Organizations" at cross-org level, the active org once scoped in */}
       <div className="relative flex items-center">
-        <Link href={organization ? explicitHierarchyHref(`/orgs/${organization.id}`) : explicitHierarchyHref("/")} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
-          <OrgAvatar name={organization?.name || "Dashboard"} imageUrl={organization?.imageUrl} hasImage={organization?.hasImage} sizeClass="w-5 h-5" />
-          <span className="font-medium text-gray-800 max-w-[140px] truncate">{organization?.name || "Dashboard"}</span>
-        </Link>
+        {atAppLevel ? (
+          <Link href="/orgs" className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
+            <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span className="font-medium text-gray-800">Organizations</span>
+          </Link>
+        ) : (
+          <Link href={organization ? explicitHierarchyHref(`/orgs/${organization.id}`) : "/orgs"} className="px-2 py-1 rounded-md hover:bg-gray-100 transition flex items-center gap-1.5">
+            <OrgAvatar name={organization?.name || "Dashboard"} imageUrl={organization?.imageUrl} hasImage={organization?.hasImage} sizeClass="w-5 h-5" />
+            <span className="font-medium text-gray-800 max-w-[140px] truncate">{organization?.name || "Dashboard"}</span>
+          </Link>
+        )}
         <button onClick={() => toggleDropdown("org")} className="p-1 hover:bg-gray-100 rounded transition">
           <Chevron open={openDropdown === "org"} />
         </button>

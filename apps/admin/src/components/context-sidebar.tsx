@@ -343,14 +343,21 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
   const normalizedView = activeView === "signups" || activeView === "cards" ? activeView : "landing";
 
   return (
-    <SidebarSection title="Dashboard">
-      {analyticsItems.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname === "/metrics" && normalizedView === item.id}
-        />
-      ))}
+    <SidebarSection title="Platform">
+      <SidebarLink
+        item={{ id: "organizations", label: "Organizations", href: "/orgs", icon: <OrgIcon /> }}
+        isActive={pathname === "/orgs"}
+      />
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Dashboard</h4>
+        {analyticsItems.map((item) => (
+          <SidebarLink
+            key={item.id}
+            item={item}
+            isActive={pathname === "/metrics" && normalizedView === item.id}
+          />
+        ))}
+      </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Audit</h4>
         <SidebarLink
