@@ -120,12 +120,16 @@ export default function BillingPage() {
   const [topupLoading, setTopupLoading] = useState(false);
 
   // Keep the selected amount on a real preset once the day-sized amounts resolve
-  // (the initial $25 default isn't one of them). Skip when the user typed a custom
-  // amount; the includes-guard prevents a re-render loop.
+  // (the initial $25 default isn't one of them). Also align the auto-topup "Top-up
+  // amount" field with that default selection so both read the same $ (e.g. $450).
+  // Skip when the user typed a custom amount; the includes-guard prevents a
+  // re-render loop and only fires during the initial resolve (no clobber of edits).
   useEffect(() => {
     if (customAmount) return;
     if (presetAmounts.includes(topupSelected)) return;
-    setTopupSelected(presetAmounts[1] ?? presetAmounts[0]);
+    const selected = presetAmounts[1] ?? presetAmounts[0];
+    setTopupSelected(selected);
+    setTopupAmount((selected / 100).toString());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetKey, customAmount]);
 
@@ -374,6 +378,9 @@ export default function BillingPage() {
           onClick={() => showPaymentRequired({
             balance_cents: account?.balance_cents,
             autoReloadSupported,
+            // Size the modal presets to the same org daily burn the page uses, so
+            // the modal shows the same amounts ($150/$450/…) + $450 default.
+            brandDailyBudgetCents: orgDailyBurnCents || null,
           })}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 sm:w-auto"
         >
