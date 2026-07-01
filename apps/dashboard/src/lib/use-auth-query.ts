@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { useOrganization } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
+import { useRef } from "react";
 
 /**
  * React Query hook for authenticated API calls.
@@ -30,6 +31,23 @@ export function useAuthQuery<T>(
 
   const urlOrgId = pathname?.match(/\/orgs\/([^/]+)/)?.[1] ?? null;
   const activeOrgId = organization?.id ?? null;
+
+  // MONOTONIC null-blink latch. Clerk's `useOrganization()` blinks `organization:
+  // null` transiently during background JWT rotation (~1/min) and on tab
+  // focus/reconnect (CLAUDE.md "Readiness gates MUST be monotonic"). A raw
+  // `urlOrgId === activeOrgId` gate then flips to FALSE on every blink → the query
+  // goes `enabled:false` → a v5 disabled query reports `isPending:true` → any
+  // skeleton gated on `isPending` (e.g. the leads page) re-shows and, if the
+  // IndexedDB cache was evicted, STAYS forever (the infinite-skeleton report). Latch
+  // the last RESOLVED (non-null) active org and compare against that when the live
+  // value is a transient null, so a blink can't re-disable an already-consistent
+  // query. We ONLY fill a null — a genuinely DIFFERENT non-null active org (real
+  // switch / cross-tab) still closes the gate, preserving DIS-143 cross-org
+  // isolation (never fire a URL-org read under another org's token → proxy 409).
+  const lastResolvedActiveOrgId = useRef<string | null>(null);
+  if (activeOrgId) lastResolvedActiveOrgId.current = activeOrgId;
+  const effectiveActiveOrgId = activeOrgId ?? lastResolvedActiveOrgId.current;
+
   // Gate org-owned reads on URL-org === active-org. Critically we must NOT fire
   // while the active org is still unresolved (Clerk session loading / rotating):
   // a request fired then runs under an UNKNOWN org and its response lands under a
@@ -38,7 +56,7 @@ export function useAuthQuery<T>(
   // org-scoped page we require a resolved active org that matches the URL; the
   // earlier escape that let reads fire under no active org has been removed.
   // Non-org pages (no /orgs/<id> in the path) have nothing to gate.
-  const orgConsistent = !urlOrgId || urlOrgId === activeOrgId;
+  const orgConsistent = !urlOrgId || urlOrgId === effectiveActiveOrgId;
 
   return useQuery<T, Error>({
     queryKey,
