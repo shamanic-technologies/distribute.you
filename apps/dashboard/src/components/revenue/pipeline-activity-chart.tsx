@@ -18,14 +18,14 @@ import type {
 import type { SignalSeries } from "@/lib/revenue-view";
 
 /**
- * Outreach activity — per-day BARS of the three outreach signals (outreach, opens,
- * and the goal's engagement: clicks for signups / positive replies for meetings),
+ * Outreach activity — per-day BARS of the outreach signals (outreach and the
+ * goal's engagement: clicks for signups / positive replies for meetings),
  * across the past (actuals from the /revenue snapshot) + today + forecast days
  * (expected from pipeline-activity). 7/30/90-day window toggle. Each metric stacks
  * actual + remaining-expected so a single day reads as one bar per metric.
  */
 
-type ChartMetricKey = "outreach" | "opens" | "clicks" | "repliedPositive";
+type ChartMetricKey = "outreach" | "clicks" | "repliedPositive";
 
 const RANGES = [7, 30, 90] as const;
 
@@ -37,7 +37,6 @@ type MetricDef = {
 };
 
 const OUTREACH: MetricDef = { key: "outreach", label: "Outreach", actual: "#334155", expected: "#cbd5e1" };
-const OPENS: MetricDef = { key: "opens", label: "Opens", actual: "#4f46e5", expected: "#c7d2fe" };
 const CLICKS: MetricDef = { key: "clicks", label: "Clicks", actual: "#0891b2", expected: "#bae6fd" };
 const POSITIVE_REPLIES: MetricDef = {
   key: "repliedPositive",
@@ -47,7 +46,7 @@ const POSITIVE_REPLIES: MetricDef = {
 };
 
 /** Bars with NO pipeline-activity forecast (no projection rate) get expected = 0. */
-const FORECASTABLE: ReadonlySet<ChartMetricKey> = new Set(["outreach", "opens", "clicks"]);
+const FORECASTABLE: ReadonlySet<ChartMetricKey> = new Set(["outreach", "clicks"]);
 
 type PipelineActualSeries = Partial<Record<string, SignalSeries | undefined>>;
 
@@ -116,8 +115,8 @@ function buildDailyCountMap(series: SignalSeries | undefined): Map<string, numbe
 
 function activeMetrics(optimizationGoal: BrandOptimizationGoal): MetricDef[] {
   return optimizationGoal === "signups"
-    ? [OUTREACH, OPENS, CLICKS]
-    : [OUTREACH, OPENS, POSITIVE_REPLIES];
+    ? [OUTREACH, CLICKS]
+    : [OUTREACH, POSITIVE_REPLIES];
 }
 
 function forecastExpected(

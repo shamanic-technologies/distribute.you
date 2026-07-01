@@ -20,13 +20,13 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain(deprecatedStageField);
   });
 
-  it("renames the always-visible acquisition cards to Outreach and Opens", () => {
+  it("renames the always-visible acquisition card to Outreach (opens removed)", () => {
     expect(cards).toContain('label="Outreach"');
     expect(cards).toContain(
       "stats.leadsContacted ?? stats.recipientsContacted ?? 0",
     );
-    expect(cards).toContain('label="Opens"');
-    expect(cards).toContain("stats.recipientsOpened ?? 0");
+    expect(cards).not.toContain('label="Opens"');
+    expect(cards).not.toContain("recipientsOpened");
     expect(cards).not.toContain('label="Impressions"');
   });
 

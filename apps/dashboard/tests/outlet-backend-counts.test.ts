@@ -42,27 +42,27 @@ describe("deriveDisplayStatusFromCounts handles cumulative counts correctly", ()
   it("picks highest watermark when all counts are non-zero (cumulative)", () => {
     const counts: OutletStatusCounts = {
       open: 5, served: 5, skipped: 0,
-      contacted: 3, sent: 3, delivered: 2, opened: 1,
+      contacted: 3, sent: 3, delivered: 2,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
     };
-    expect(deriveDisplayStatusFromCounts(counts)).toBe("opened");
+    expect(deriveDisplayStatusFromCounts(counts)).toBe("delivered");
   });
 
   it("returns 'open' when only open is non-zero", () => {
     const counts: OutletStatusCounts = {
       open: 3, served: 0, skipped: 0,
-      contacted: 0, sent: 0, delivered: 0, opened: 0,
+      contacted: 0, sent: 0, delivered: 0,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
     };
     expect(deriveDisplayStatusFromCounts(counts)).toBe("open");
   });
 
-  it("returns 'sent' when sent > 0 but delivered/opened are 0", () => {
+  it("returns 'sent' when sent > 0 but delivered is 0", () => {
     const counts: OutletStatusCounts = {
       open: 2, served: 2, skipped: 0,
-      contacted: 1, sent: 1, delivered: 0, opened: 0,
+      contacted: 1, sent: 1, delivered: 0,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
     };
@@ -76,7 +76,7 @@ describe("deriveDisplayStatusFromCounts handles cumulative counts correctly", ()
   it("returns 'open' when all counts are zero", () => {
     const counts: OutletStatusCounts = {
       open: 0, served: 0, skipped: 0,
-      contacted: 0, sent: 0, delivered: 0, opened: 0,
+      contacted: 0, sent: 0, delivered: 0,
       clicked: 0, replied: 0, repliesPositive: 0, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
     };
@@ -86,7 +86,7 @@ describe("deriveDisplayStatusFromCounts handles cumulative counts correctly", ()
   it("returns 'replied-positive' when repliesPositive > 0", () => {
     const counts: OutletStatusCounts = {
       open: 1, served: 1, skipped: 0,
-      contacted: 1, sent: 1, delivered: 1, opened: 1,
+      contacted: 1, sent: 1, delivered: 1,
       clicked: 0, replied: 1, repliesPositive: 1, repliesNegative: 0,
       repliesNeutral: 0, bounced: 0, unsubscribed: 0,
     };

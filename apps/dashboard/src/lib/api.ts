@@ -352,7 +352,6 @@ export interface RecipientStats {
   contacted: number;
   sent: number;
   delivered: number;
-  opened: number;
   bounced: number;
   clicked: number;
   unsubscribed: number;
@@ -366,7 +365,6 @@ export interface RecipientStats {
 export interface EmailStats {
   sent: number;
   delivered: number;
-  opened: number;
   clicked: number;
   bounced: number;
   unsubscribed: number;
@@ -1581,7 +1579,7 @@ export interface GlobalStatsResponse {
   groups?: StatsGroup[];
 }
 
-export type PipelineActivityMetricKey = "outreach" | "opens" | "clicks" | "signups";
+export type PipelineActivityMetricKey = "outreach" | "clicks" | "signups";
 
 export interface PipelineActivityMetric {
   actual: number | null;
@@ -1597,7 +1595,6 @@ export interface PipelineActivityDay {
 
 export interface PipelineActivitySummary {
   dailyBudgetUsd: number | null;
-  openRatePct: number | null;
   clickToSignupPct: number | null;
 }
 
@@ -1629,8 +1626,6 @@ export interface FeatureAudienceStatsRow {
     firstRunAt: string | null;
     lastRunAt: string | null;
     contacted: number;
-    /** Opened-recipient count. Optional until features-service `opened` is live in prod. */
-    opened?: number;
     websiteClicks: number;
     positiveReplies: number;
   };
@@ -1665,7 +1660,6 @@ const FeatureAudienceStatsRowSchema = z.object({
     firstRunAt: z.string().nullable(),
     lastRunAt: z.string().nullable(),
     contacted: z.number(),
-    opened: z.number().optional(),
     websiteClicks: z.number(),
     positiveReplies: z.number(),
   }),
@@ -1921,7 +1915,7 @@ export async function getFeatureRevenue(
 /**
  * `structuralSharing` merge for the `["featureRevenue", ...]` query. The
  * server-computed `spend` block (cost card) and the actual series
- * (`outreachContacted`, `opened`, `clicked`, `repliedPositive`, `meetingsBooked`,
+ * (`outreachContacted`, `clicked`, `repliedPositive`, `meetingsBooked`,
  * `purchased`) are `.optional()` on the wire to decouple the backend rollout — but
  * a transient degenerate refetch can drop them back to `undefined`/`null` on a
  * VALID 200, which would collapse the cost card / chart actuals mid-session.
@@ -1936,7 +1930,7 @@ export function keepLastGoodFeatureRevenue(
   return keepLastGoodFields(
     prev,
     next,
-    ["spend", "outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
+    ["spend", "outreachContacted", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
     "featureRevenue",
   );
 }
@@ -1958,7 +1952,6 @@ const PipelineActivityResponseSchema = z.object({
       isToday: z.boolean(),
       metrics: z.object({
         outreach: PipelineActivityMetricSchema,
-        opens: PipelineActivityMetricSchema,
         clicks: PipelineActivityMetricSchema,
         signups: PipelineActivityMetricSchema,
       }),
@@ -1966,7 +1959,6 @@ const PipelineActivityResponseSchema = z.object({
   ),
   summary: z.object({
     dailyBudgetUsd: z.number().nullable(),
-    openRatePct: z.number().nullable(),
     clickToSignupPct: z.number().nullable(),
   }),
 });
@@ -2295,14 +2287,12 @@ export interface Lead {
   firstContactedAt?: string | null;
   firstSentAt?: string | null;
   firstDeliveredAt?: string | null;
-  firstOpenedAt?: string | null;
   firstRepliedAt?: string | null;
   firstBouncedAt?: string | null;
   firstUnsubscribedAt?: string | null;
   contacted: boolean;
   sent: boolean;
   delivered: boolean;
-  opened: boolean;
   clicked: boolean;
   bounced: boolean;
   unsubscribed: boolean;
@@ -2313,13 +2303,12 @@ export interface Lead {
   lead: FullLead | null;
 }
 
-export type LeadConsolidatedStatus = "replied" | "clicked" | "opened" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served" | "skipped" | "claimed" | "buffered";
+export type LeadConsolidatedStatus = "replied" | "clicked" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served" | "skipped" | "claimed" | "buffered";
 
 /** Derive consolidated status from email-gateway booleans + local status, matching journalists page pattern */
 export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
   if (lead.replied) return "replied";
   if (lead.clicked) return "clicked";
-  if (lead.opened) return "opened";
   if (lead.delivered) return "delivered";
   if (lead.sent) return "sent";
   if (lead.bounced) return "bounced";
@@ -2329,7 +2318,7 @@ export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
 }
 
 // Validate the leads envelope + the fields the consolidated-status logic
-// dereferences (id/email/status + the 8 delivery booleans — always present from
+// dereferences (id/email/status + the 7 delivery booleans — always present from
 // lead-service). `.passthrough()` keeps every other field (the nested FullLead,
 // `global`, `servedAt`, `campaignId`, …) untouched so we never strip data.
 // Per #1213/#1221: a 200 with a non-leads body (proxy redirect, shape rot, a
@@ -2343,7 +2332,6 @@ const LeadDeliverySchema = z
     contacted: z.boolean(),
     sent: z.boolean(),
     delivered: z.boolean(),
-    opened: z.boolean(),
     clicked: z.boolean(),
     bounced: z.boolean(),
     unsubscribed: z.boolean(),
@@ -3366,7 +3354,6 @@ export interface OutletStatusCounts {
   contacted: number;
   sent: number;
   delivered: number;
-  opened: number;
   clicked: number;
   replied: number;
   repliesPositive: number;
@@ -3533,7 +3520,6 @@ export interface BrandJournalist {
 export interface EmailDeliveryScopeStatus {
   contacted: boolean;
   delivered: boolean;
-  opened: boolean;
   replied: boolean;
   replyClassification: "positive" | "negative" | "neutral" | null;
   bounced: boolean;
@@ -3590,7 +3576,6 @@ export interface JournalistStatusBooleans {
   contacted: boolean;
   sent: boolean;
   delivered: boolean;
-  opened: boolean;
   clicked: boolean;
   replied: boolean;
   replyClassification: "positive" | "negative" | "neutral" | null;

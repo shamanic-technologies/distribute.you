@@ -23,11 +23,12 @@ describe("Audiences page", () => {
     expect(src).not.toContain("/brands/");
   });
 
-  it("renders an audiences table with real outreach / opens / clicks columns", () => {
+  it("renders an audiences table with real outreach / clicks columns", () => {
     expect(src).toContain("<table");
-    for (const header of ["Outreach", "Opens", "Clicks", "Cost per click"]) {
+    for (const header of ["Outreach", "Clicks", "Cost per click"]) {
       expect(src).toContain(header);
     }
+    expect(src).not.toContain(">Opens<");
     // Signups / cost-per-signup have no audience-stats source — dropped.
     expect(src).not.toContain("Cost per signup");
     expect(src).toContain('audience.status === "paused"');
@@ -38,7 +39,6 @@ describe("Audiences page", () => {
     expect(src).toContain("fetchFeatureAudienceStats");
     expect(src).toContain("statsByAudienceId");
     expect(src).toContain("stats.evidence.contacted");
-    expect(src).toContain("stats.evidence.opened");
     expect(src).toContain("stats.evidence.websiteClicks");
     expect(src).toContain("stats.metrics.cpcCents");
   });

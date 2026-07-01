@@ -138,10 +138,9 @@ export default function BrandOverviewPage() {
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
     const contactedByDay = countByDay(data?.outreachContacted);
-    const openedByDay = countByDay(data?.opened);
     const clickedByDay = countByDay(data?.clicked);
     const meetingsByDay = countByDay(data?.meetingsBooked);
-    if (!contactedByDay && !openedByDay && !clickedByDay && !meetingsByDay) {
+    if (!contactedByDay && !clickedByDay && !meetingsByDay) {
       return pipelineActivity;
     }
     return {
@@ -153,10 +152,6 @@ export default function BrandOverviewPage() {
           outreach: withActual(
             day.metrics.outreach,
             actualFrom(contactedByDay, day.date, day.metrics.outreach.actual),
-          ),
-          opens: withActual(
-            day.metrics.opens,
-            actualFrom(openedByDay, day.date, day.metrics.opens.actual),
           ),
           clicks: withActual(
             day.metrics.clicks,
@@ -176,7 +171,6 @@ export default function BrandOverviewPage() {
   }, [pipelineActivity, data]);
   const pipelineActualSeries = useMemo(() => ({
     outreach: data?.outreachContacted,
-    opens: data?.opened,
     clicks: data?.clicked,
     signups: data?.clicked,
     repliedPositive: data?.repliedPositive,
