@@ -4154,3 +4154,33 @@ export async function triggerFeatureRun(
     body: { inputs: { brandId: params.brandId, campaignId: params.campaignId } },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Audit — Instantly sending forecast (staff-only, platform-scoped, no org).
+// Every field is computed server-side by instantly-service (proxied via the
+// gateway staff route); the dashboard renders only, never derives a metric.
+// ---------------------------------------------------------------------------
+export interface InstantlyForecastDay {
+  date: string; // YYYY-MM-DD
+  scheduledCount: number;
+}
+
+export interface InstantlySendingForecast {
+  asOf: string; // ISO8601
+  dailyCapacity: number; // emails/day the healthy fleet can send
+  healthyAccountCount: number; // accounts passing filterHealthyAccounts
+  totalAccountCount: number; // all accounts before filtering
+  blockedDomainCount: number; // accounts excluded via BLOCKED_DOMAINS
+  days: InstantlyForecastDay[]; // from today forward, chronological
+}
+
+/**
+ * Fleet-wide cold-email sending forecast: per-day future scheduled volume vs
+ * the current available daily capacity (only healthy, non-blacklisted, warmed
+ * accounts). Staff-only platform view — no org context.
+ */
+export async function getInstantlySendingForecast(
+  token?: string,
+): Promise<InstantlySendingForecast> {
+  return apiCall<InstantlySendingForecast>("/instantly/audit/sending-forecast", { token });
+}

@@ -147,6 +147,12 @@ const KeyIcon = () => (
   </svg>
 );
 
+const AuditIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6m3 6v-2m3 2v-4M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+  </svg>
+);
+
 const ProviderKeyIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -345,6 +351,13 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
           isActive={pathname === "/metrics" && normalizedView === item.id}
         />
       ))}
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Audit</h4>
+        <SidebarLink
+          item={{ id: "audit-instantly", label: "Instantly", href: "/audit/instantly", icon: <AuditIcon /> }}
+          isActive={pathname.startsWith("/audit/instantly")}
+        />
+      </div>
     </SidebarSection>
   );
 }
