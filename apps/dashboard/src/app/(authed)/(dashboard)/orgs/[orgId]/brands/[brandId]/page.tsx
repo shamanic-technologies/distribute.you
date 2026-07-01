@@ -134,13 +134,21 @@ export default function BrandOverviewPage() {
   // `/revenue` snapshot aggregates. Forecast/expected values stay from
   // pipeline-activity. Each server series is optional during backend rollout:
   // absent series keep the legacy pipeline-activity actual for that metric.
-  const contactedTotal = data?.outreachContacted?.total ?? null;
+  // The Outreach stat card + graph "Outreach" bars = total email SEQUENCES sent
+  // (per-day volume, UNDEDUPED by lead — features-service#416 `sequences`), which
+  // matches "budget spent today". This is NOT the deduped distinct-lead
+  // `outreachContacted`. Fallback chain renders correctly on BOTH current prod
+  // features (no `sequences` → `outreachContacted`, itself already normalized to
+  // prefer `recipientsContacted`) and post-#416; `sequences.total >=
+  // outreachContacted.total` is expected (different grain, not reconciled).
+  const outreachSeries = data?.sequences ?? data?.outreachContacted;
+  const outreachTotal = outreachSeries?.total ?? null;
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
-    const contactedByDay = countByDay(data?.outreachContacted);
+    const outreachByDay = countByDay(data?.sequences ?? data?.outreachContacted);
     const clickedByDay = countByDay(data?.clicked);
     const meetingsByDay = countByDay(data?.meetingsBooked);
-    if (!contactedByDay && !clickedByDay && !meetingsByDay) {
+    if (!outreachByDay && !clickedByDay && !meetingsByDay) {
       return pipelineActivity;
     }
     return {
@@ -151,7 +159,7 @@ export default function BrandOverviewPage() {
           ...day.metrics,
           outreach: withActual(
             day.metrics.outreach,
-            actualFrom(contactedByDay, day.date, day.metrics.outreach.actual),
+            actualFrom(outreachByDay, day.date, day.metrics.outreach.actual),
           ),
           clicks: withActual(
             day.metrics.clicks,
@@ -170,7 +178,7 @@ export default function BrandOverviewPage() {
     };
   }, [pipelineActivity, data]);
   const pipelineActualSeries = useMemo(() => ({
-    outreach: data?.outreachContacted,
+    outreach: data?.sequences ?? data?.outreachContacted,
     clicks: data?.clicked,
     signups: data?.clicked,
     repliedPositive: data?.repliedPositive,
@@ -419,7 +427,7 @@ export default function BrandOverviewPage() {
             spend={revenueRevealed ? data?.spend : null}
             pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
-            outreachOverride={contactedTotal}
+            outreachOverride={outreachTotal}
           />
         }
         conversions={null}
