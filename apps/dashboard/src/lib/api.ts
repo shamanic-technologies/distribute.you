@@ -1930,7 +1930,7 @@ export function keepLastGoodFeatureRevenue(
   return keepLastGoodFields(
     prev,
     next,
-    ["spend", "outreachContacted", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
+    ["spend", "sequences", "outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
     "featureRevenue",
   );
 }

@@ -110,7 +110,8 @@ describe("Brand overview outcome + outreach-activity charts", () => {
   it("wires the repliedPositive series through view-model, parser, and page", () => {
     expect(revenueView).toContain("repliedPositive?: SignalSeries");
     expect(revenueParse).toContain("repliedPositive: SignalSeriesSchema.optional()");
-    expect(revenueParse).toContain("repliedPositive: d.repliedPositive");
+    // features-service#416 rename: flatten prefers the new name, falls back to legacy.
+    expect(revenueParse).toContain("repliedPositive: d.recipientsRepliesPositive ?? d.repliedPositive");
     expect(page).toContain("repliedPositive: data?.repliedPositive");
     expect(api).toContain('"repliedPositive"');
   });

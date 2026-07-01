@@ -124,7 +124,17 @@ const SpendSchema = z.object({
 const FeatureRevenueResponseSchema = z.object({
   featureSlug: z.string(),
   spend: SpendSchema.nullable().optional(),
+  // features-service#416 renamed the Overview count-series (shape unchanged) and
+  // added `sequences`. BOTH the new (`recipients*`) and legacy names are `.optional()`
+  // so the parse succeeds on current prod features (old names) AND post-#416 (new
+  // names); the flatten below prefers the new name, falls back to the legacy one.
+  sequences: SignalSeriesSchema.optional(),
+  recipientsContacted: SignalSeriesSchema.optional(),
+  recipientsOpened: SignalSeriesSchema.optional(),
+  recipientsClicked: SignalSeriesSchema.optional(),
+  recipientsRepliesPositive: SignalSeriesSchema.optional(),
   outreachContacted: SignalSeriesSchema.optional(),
+  opened: SignalSeriesSchema.optional(),
   clicked: SignalSeriesSchema.optional(),
   repliedPositive: SignalSeriesSchema.optional(),
   meetingsBooked: SignalSeriesSchema.optional(),
@@ -160,9 +170,18 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
     },
     spend: d.spend,
-    outreachContacted: d.outreachContacted,
-    clicked: d.clicked,
-    repliedPositive: d.repliedPositive,
+    // Normalize the features-service#416 count-series renames at this single parser
+    // boundary: prefer the new `recipients*` name, fall back to the legacy one, so
+    // every consumer of `outreachContacted`/`opened`/`clicked`/`repliedPositive`
+    // renders correctly on BOTH old-prod and post-#416 payloads with no per-consumer
+    // change. `sequences` (new per-day outreach VOLUME, undeduped) is a distinct
+    // series — the Outreach card + graph bars prefer it; grain differs from
+    // `outreachContacted` (distinct leads reached) BY DESIGN.
+    sequences: d.sequences,
+    outreachContacted: d.recipientsContacted ?? d.outreachContacted,
+    opened: d.recipientsOpened ?? d.opened,
+    clicked: d.recipientsClicked ?? d.clicked,
+    repliedPositive: d.recipientsRepliesPositive ?? d.repliedPositive,
     meetingsBooked: d.meetingsBooked,
     purchased: d.purchased,
     timeSeries: d.timeSeries,

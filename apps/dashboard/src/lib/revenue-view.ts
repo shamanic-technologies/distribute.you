@@ -223,6 +223,23 @@ export interface RevenueOverview {
    */
   outreachContacted?: OutreachContacted;
   /**
+   * Per-day outreach VOLUME — email sequences launched per day, UNDEDUPED by lead
+   * (instantly campaigns-created, features-service#416). The single source for the
+   * Overview "Outreach" stat card (`total`) AND the 7-day graph's ACTUAL outreach
+   * bars. Distinct from `outreachContacted` (distinct leads reached): re-contacts
+   * count here but not there, so `sequences.total >= outreachContacted.total` BY
+   * DESIGN — the two grains are not reconciled. Optional: absent on a pre-#416
+   * payload, where the card + graph fall back to `outreachContacted`. Overview
+   * response only (null on a lensed response, absent on a grouped one).
+   */
+  sequences?: SignalSeries;
+  /**
+   * Positive/negative-agnostic OPEN actual series (features-service#416
+   * `recipientsOpened`, normalized from the legacy `opened`). Optional during
+   * rollout; no per-day-opens consumer wired yet, carried for completeness.
+   */
+  opened?: SignalSeries;
+  /**
    * Server-computed actual series from the SAME `/revenue` `leads[]` snapshot as
    * `outreachContacted`: Clicks and observed goal outcomes. Optional
    * during backend rollout; when absent the chart keeps legacy pipeline-activity
