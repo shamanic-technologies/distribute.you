@@ -7,8 +7,8 @@ export default function Loading() {
         <Skeleton className="h-8 w-48 rounded" />
         <Skeleton className="mt-2 h-4 w-96 rounded" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {[0, 1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
             <Skeleton className="h-3 w-24 rounded" />
             <Skeleton className="mt-2 h-8 w-24 rounded" />

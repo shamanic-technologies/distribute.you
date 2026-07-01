@@ -78,6 +78,17 @@ function StatusCell({ row }: { row: AuditAccountRow }) {
       </span>
     );
   }
+  if (row.status === "paused") {
+    // Paused keeps a budget but isn't spending — show the held amount for context.
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+        Paused
+        {row.dailyBudgetUsd != null && row.dailyBudgetUsd > 0 && (
+          <span className="font-medium tabular-nums text-amber-600">· {usd2(row.dailyBudgetUsd)}/day</span>
+        )}
+      </span>
+    );
+  }
   return (
     <span className="inline-block rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
       Inactive
@@ -94,12 +105,14 @@ export default function AuditAccountsPage() {
 
   const names = useOrgNames(data?.rows);
 
-  // Active rows first, then by daily budget desc — the money-carrying accounts
-  // lead; inactive accounts sink to the bottom.
+  // Rank active → paused → inactive; within a bucket by daily budget desc — the
+  // money-carrying accounts lead, paused (held budget) next, inactive last.
   const rows = useMemo(() => {
+    const rank = (s: AuditAccountRow["status"]) => (s === "active" ? 0 : s === "paused" ? 1 : 2);
     const list = [...(data?.rows ?? [])];
     list.sort((a, b) => {
-      if (a.status !== b.status) return a.status === "active" ? -1 : 1;
+      const r = rank(a.status) - rank(b.status);
+      if (r !== 0) return r;
       return (b.dailyBudgetUsd ?? 0) - (a.dailyBudgetUsd ?? 0);
     });
     return list;
@@ -112,10 +125,11 @@ export default function AuditAccountsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Every customer account across the fleet, cross-org. Active means the brand has a
-          daily budget and the org holds enough credit to fund at least one more day; anything
-          paused, unbudgeted, or short on credit shows as inactive. Total daily budget, MRR, and
-          ARR count active accounts only.
+          Every customer account across the fleet, cross-org. Active means the brand isn&apos;t
+          paused, has a daily budget, and the org holds enough credit to fund at least one more
+          day. Paused is a brand explicitly held (keeps its budget, not spending). Unbudgeted or
+          short on credit shows as inactive. Total daily budget, MRR, and ARR count active
+          accounts only.
         </p>
       </div>
 
@@ -126,7 +140,7 @@ export default function AuditAccountsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatCard
               label="Total daily budget"
               value={s ? usd0(s.totalDailyBudgetUsd) : "—"}
@@ -148,13 +162,19 @@ export default function AuditAccountsPage() {
             <StatCard
               label="Active accounts"
               value={s ? num(s.activeCount) : "—"}
-              sub={s ? `${num(s.inactiveCount)} inactive` : undefined}
+              sub="sending now"
+              pending={isPending}
+            />
+            <StatCard
+              label="Paused"
+              value={s?.pausedCount != null ? num(s.pausedCount) : "—"}
+              sub="held, not spending"
               pending={isPending}
             />
             <StatCard
               label="Total accounts"
               value={s ? num(s.totalCount) : "—"}
-              sub="active + inactive"
+              sub={s ? `${num(s.inactiveCount)} inactive` : undefined}
               pending={isPending}
             />
           </div>
