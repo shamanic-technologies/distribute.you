@@ -4287,14 +4287,18 @@ export interface AuditAccountRow {
   brandDomain: string | null;
   dailyBudgetUsd: number | null;
   orgBalanceUsd: number; // org available credit balance (USD)
-  status: "active" | "inactive";
+  // "paused" = brand explicitly paused in campaign-service (brand_pause) — keeps its
+  // budget but campaigns are HELD, so it's not spending (wins over active/inactive).
+  // "active" = not paused, budget > 0, org can fund the next day. Else "inactive".
+  status: "active" | "paused" | "inactive";
 }
 
 export interface AuditAccountsStats {
-  totalDailyBudgetUsd: number; // sum over ACTIVE rows only
+  totalDailyBudgetUsd: number; // sum over ACTIVE rows only (paused excluded — not spending)
   mrrUsd: number; // totalDailyBudgetUsd × 30
   arrUsd: number; // totalDailyBudgetUsd × 365
   activeCount: number;
+  pausedCount: number;
   inactiveCount: number;
   totalCount: number;
 }
