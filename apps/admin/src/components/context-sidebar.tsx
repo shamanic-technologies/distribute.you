@@ -361,6 +361,10 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
       <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Audit</h4>
         <SidebarLink
+          item={{ id: "audit-accounts", label: "Accounts", href: "/audit/accounts", icon: <AuditIcon /> }}
+          isActive={pathname.startsWith("/audit/accounts")}
+        />
+        <SidebarLink
           item={{ id: "audit-instantly", label: "Instantly", href: "/audit/instantly", icon: <AuditIcon /> }}
           isActive={pathname.startsWith("/audit/instantly")}
         />

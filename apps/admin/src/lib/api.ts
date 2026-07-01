@@ -4265,3 +4265,53 @@ export async function getSendForecast(
   const qs = days ? `?days=${days}` : "";
   return apiCall<SendForecast>(`/features/audit/send-forecast${qs}`, { token });
 }
+
+// ---------------------------------------------------------------------------
+// Audit → Accounts: one row per customer account across the fleet, with the
+// per-brand daily budget + a true active/inactive verdict, plus fleet financial
+// stats (total daily budget over ACTIVE brands + its MRR/ARR equivalent). Every
+// number is computed server-side by features-service (a displayed stat is never
+// derived in the browser); the admin only renders + resolves the Clerk org name
+// client-side from `orgExternalId`. Staff-gated platform view (no org context) —
+// same auth path as the other /features/audit/* calls.
+// A row is "active" iff dailyBudgetUsd > 0 AND orgBalanceUsd > dailyBudgetUsd
+// (the org can afford at least one more day); everything else is "inactive"
+// (paused / $0 / null budget, or an org whose credits can't cover the budget).
+// ---------------------------------------------------------------------------
+export interface AuditAccountRow {
+  orgId: string; // internal org UUID
+  orgExternalId: string | null; // Clerk org id (org_...), resolves the org name client-side
+  ownerEmail: string | null;
+  brandId: string;
+  brandName: string | null;
+  brandDomain: string | null;
+  dailyBudgetUsd: number | null;
+  orgBalanceUsd: number; // org available credit balance (USD)
+  status: "active" | "inactive";
+}
+
+export interface AuditAccountsStats {
+  totalDailyBudgetUsd: number; // sum over ACTIVE rows only
+  mrrUsd: number; // totalDailyBudgetUsd × 30
+  arrUsd: number; // totalDailyBudgetUsd × 365
+  activeCount: number;
+  inactiveCount: number;
+  totalCount: number;
+}
+
+export interface AuditAccounts {
+  rows: AuditAccountRow[];
+  stats: AuditAccountsStats;
+  asOf: string; // ISO timestamp
+}
+
+/**
+ * Fleet-wide, cross-org customer accounts audit: per-brand daily budget + true
+ * active/inactive verdict + fleet financial stats (total daily budget, MRR, ARR).
+ * Staff-gated platform view — served only behind the staff audit route, never a
+ * public endpoint. Same auth path as getSendForecast. Transparent proxy to
+ * features-service GET /internal/stats/accounts.
+ */
+export async function getAuditAccounts(token?: string): Promise<AuditAccounts> {
+  return apiCall<AuditAccounts>(`/features/audit/accounts`, { token });
+}
