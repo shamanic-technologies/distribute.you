@@ -157,11 +157,25 @@ describe("Org switch cross-org isolation framework", () => {
   });
 
   it("useAuthQuery does NOT fire org reads while the active org is unresolved (null-tenant window)", () => {
-    // The gate must be the strict `urlOrg === activeOrg`. The earlier permissive
-    // form fired requests when the active org was still null (Clerk loading),
-    // running them under an unknown org → cross-org bleed (DIS-143 / TanStack #3743).
+    // The gate compares URL-org to the active org. A genuinely-null active org
+    // (first load, never resolved) still fails the gate (no `effectiveActiveOrgId`
+    // to fall back to) → no request under an unknown org → no cross-org bleed
+    // (DIS-143 / TanStack #3743). The latch below only fills a TRANSIENT null once a
+    // resolved org exists; it never lets a null-from-cold fire a read.
     const content = read(useAuthQueryPath);
-    expect(content).toContain("const orgConsistent = !urlOrgId || urlOrgId === activeOrgId;");
+    expect(content).toContain("const orgConsistent = !urlOrgId || urlOrgId === effectiveActiveOrgId;");
+  });
+
+  it("useAuthQuery latches the last resolved active org so a null blink can't re-disable a consistent query", () => {
+    // Clerk blinks `organization: null` on JWT rotation / tab focus. Without a latch
+    // the gate flips false → disabled query → `isPending` → infinite skeleton when
+    // the IndexedDB cache was evicted. The latch fills ONLY a null (never overrides a
+    // different non-null org → cross-org isolation intact).
+    const content = read(useAuthQueryPath);
+    expect(content).toContain("lastResolvedActiveOrgId");
+    expect(content).toContain("const effectiveActiveOrgId = activeOrgId ?? lastResolvedActiveOrgId.current;");
+    // Latch only fills a null — a different non-null active org still closes the gate.
+    expect(content).toContain("if (activeOrgId) lastResolvedActiveOrgId.current = activeOrgId;");
   });
 
   // --- Source: close the race ----------------------------------------------

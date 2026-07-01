@@ -26,6 +26,28 @@ import {
 import { installIdleFocusManager } from "@/lib/idle-focus-manager";
 
 /**
+ * Ask the browser to make the origin's storage PERSISTENT (best-effort → durable).
+ * Without this grant, IndexedDB is "best-effort" and the browser evicts the WHOLE
+ * store under disk pressure or after prolonged non-use — silently wiping the
+ * local-first query cache after a few idle days, so a returning visitor hits the
+ * cold path (empty cache + the org-consistency gate disabling reads) and sees an
+ * infinite skeleton. `maxAge: Infinity` on the persister is meaningless while the
+ * store itself is evictable; this grant is what actually makes "instant across
+ * days" true. Idempotent + guarded (feature-detected, no-op if already persisted
+ * or unsupported); never throws into the render path.
+ */
+async function requestPersistentStorage(): Promise<void> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.storage?.persist) return;
+    if (await navigator.storage.persisted()) return;
+    await navigator.storage.persist();
+  } catch {
+    // Storage API can throw in private-mode / locked-down contexts — non-fatal,
+    // the cache just stays evictable (the pre-existing behavior).
+  }
+}
+
+/**
  * IndexedDB-backed storage adapter for the per-query persister. The persister only
  * needs the AsyncStorage `getItem / setItem / removeItem` triple; idb-keyval gives
  * us exactly that against IndexedDB — which has NO ~5MB per-origin Web-Storage cap,
@@ -157,6 +179,15 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   // remounts of the inner provider. Stops the continuous DOM churn that feeds
   // PostHog's rrweb recorder and OOMs long-lived tabs. See idle-focus-manager.ts.
   useEffect(() => installIdleFocusManager(), []);
+
+  // Make the cache survive idle days: request persistent storage once at boot so
+  // the browser stops evicting the IndexedDB store the local-first cache lives in.
+  // The single biggest lever against "instant right after a deploy, then infinite
+  // skeleton a few days later" — an evicted store drops the returning visitor onto
+  // the cold path. Fire-and-forget, guarded, never blocks render.
+  useEffect(() => {
+    void requestPersistentStorage();
+  }, []);
 
   // Atomically reset the ENTIRE in-memory React Query cache on org switch by
   // remounting under a new `key` (TanStack canonical multi-tenant pattern). New
