@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Dashboard home page shows public global metrics", () => {
-  it("should keep / as the build-in-public root and link into orgs", () => {
+describe("Cross-org metrics page shows public global metrics", () => {
+  it("lives at /metrics as the build-in-public page and links into orgs", () => {
     const pagePath = path.join(
       __dirname,
-      "../src/app/(authed)/(dashboard)/page.tsx"
+      "../src/app/(authed)/(dashboard)/metrics/page.tsx"
     );
     const content = fs.readFileSync(pagePath, "utf-8");
     expect(content).toContain("distribute public metrics");

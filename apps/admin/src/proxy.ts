@@ -29,6 +29,10 @@ const isAuthRoute = createRouteMatcher([
 // those to an HTML page would break the fetch).
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isApiRoute = createRouteMatcher(["/api(.*)"]);
+// Cross-org "build in public" metrics page (reached via the header logo). It's a
+// platform view, not tied to the viewer's own org, so it must stay reachable for
+// any staff member regardless of their org's onboarding state.
+const isMetricsRoute = createRouteMatcher(["/metrics(.*)"]);
 
 export default clerkMiddleware(
   async (auth, req) => {
@@ -82,6 +86,7 @@ export default clerkMiddleware(
       !isPublicRoute(req) &&
       !isOnboardingRoute(req) &&
       !isApiRoute(req) &&
+      !isMetricsRoute(req) &&
       !req.nextUrl.searchParams.has("autoCreate") &&
       sessionClaims?.orgMeta?.onboardingComplete !== true
     ) {
