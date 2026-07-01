@@ -100,7 +100,7 @@ export interface OutreachContacted {
   undatedCount: number;
 }
 
-/** Same shape as `outreachContacted`, for opened / clicked / goal-outcome actuals. */
+/** Same shape as `outreachContacted`, for clicked / goal-outcome actuals. */
 export type SignalSeries = OutreachContacted;
 
 /** One raw event row (Events tab), single channel. */
@@ -224,11 +224,10 @@ export interface RevenueOverview {
   outreachContacted?: OutreachContacted;
   /**
    * Server-computed actual series from the SAME `/revenue` `leads[]` snapshot as
-   * `outreachContacted`: Opens, Clicks, and observed goal outcomes. Optional
+   * `outreachContacted`: Clicks and observed goal outcomes. Optional
    * during backend rollout; when absent the chart keeps legacy pipeline-activity
    * actuals for that series.
    */
-  opened?: SignalSeries;
   clicked?: SignalSeries;
   /**
    * Positive-reply ACTUAL series — the meeting-goal engagement signal (a screened

@@ -568,7 +568,6 @@ function StatusBooleansCard({ booleans }: { booleans: JournalistStatusBooleans |
     { label: "Contacted", value: booleans.contacted === true },
     { label: "Sent", value: booleans.sent === true },
     { label: "Delivered", value: booleans.delivered === true },
-    { label: "Opened", value: booleans.opened === true },
     { label: "Replied", value: booleans.replied === true },
     { label: "Bounced", value: booleans.bounced === true },
   ];

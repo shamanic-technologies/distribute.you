@@ -18,7 +18,7 @@ function rankOf(status: string, priority: readonly string[]): number {
  * Returns the MORE-ADVANCED of `prev` and `next` per the page's own status
  * priority. When `next` is LESS advanced than a status already seen, it is a
  * regression — by domain definition email/outreach engagement is append-only
- * (`contacted → sent → delivered → opened → clicked → replied` never reverses),
+ * (`contacted → sent → delivered → clicked → replied` never reverses),
  * so a lower status on a later poll is a stale/partial overlay read, not a real
  * event. We KEEP the higher status (kills the tab-flap) and `console.error` the
  * suppressed downgrade so the upstream inconsistency stays visible (fail-loud,

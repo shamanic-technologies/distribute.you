@@ -491,12 +491,17 @@ async function sendDigestEmail(
   }, fetchFn, EmailSendResponseSchema, "sendDigestEmail");
 }
 
+// Opens are no longer tracked — drop any "opened" tag the backend still emits so
+// the digest never surfaces the deprecated notion (display filter over the wire).
+const stripOpened = (tags: string[]): string[] =>
+  tags.filter((t) => t.toLowerCase() !== "opened");
+
 function toDigestBrandSummary(brand: BrandSummary, revenue: RevenueOverview): DigestBrandSummary {
   const organizations = revenue.organizations
     .map((org): DigestOutcomeOrg => ({
       orgName: org.orgName ?? org.orgDomain ?? org.orgId ?? "Unknown organization",
       expectedRevenueUsd: org.expectedRevenueUsd,
-      tags: org.tags,
+      tags: stripOpened(org.tags),
       topPersonName: org.topPerson
         ? [org.topPerson.firstName, org.topPerson.lastName].filter(Boolean).join(" ") || null
         : null,
@@ -513,7 +518,7 @@ function toDigestBrandSummary(brand: BrandSummary, revenue: RevenueOverview): Di
       companyName: lead.orgName,
       companyLogoUrl: lead.orgLogoUrl,
       companyDomain: lead.orgDomain ?? null,
-      tags: lead.tags,
+      tags: stripOpened(lead.tags),
       expectedRevenueUsd: lead.expectedRevenueUsd,
     }))
     .sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd);

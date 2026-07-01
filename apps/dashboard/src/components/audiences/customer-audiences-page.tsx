@@ -148,11 +148,11 @@ export function CustomerAudiencesPage() {
       ? "signup"
       : "meetingBooked";
 
-  // Per-audience outreach / opens / clicks evidence (features-service). Joined to
+  // Per-audience outreach / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed
   // evidence simply render "-".
   // Request stats for ALL user-visible statuses (not just active) so ARCHIVED and
-  // paused audiences show their historical Outreach/Opens/Clicks/CPC — these
+  // paused audiences show their historical Outreach/Clicks/CPC — these
   // audiences had real outreach (runs/email evidence attributed by audienceId).
   // Distinct query key from the brand-overview Top-audiences card (which omits
   // `statuses` → active-only ranking) so the two never share/clobber a cache entry.
@@ -350,7 +350,6 @@ export function CustomerAudiencesPage() {
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <th className="px-4 py-3 font-medium">Audience</th>
                   <th className="px-4 py-3 text-right font-medium">Outreach</th>
-                  <th className="px-4 py-3 text-right font-medium">Opens</th>
                   <th className="px-4 py-3 text-right font-medium">Clicks</th>
                   <th className="px-4 py-3 text-right font-medium">Cost per click</th>
                 </tr>
@@ -396,15 +395,6 @@ export function CustomerAudiencesPage() {
                           <Skeleton className="ml-auto h-4 w-10" />
                         ) : stats ? (
                           stats.evidence.contacted.toLocaleString("en-US")
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                        {statsLoading ? (
-                          <Skeleton className="ml-auto h-4 w-10" />
-                        ) : stats?.evidence.opened != null ? (
-                          stats.evidence.opened.toLocaleString("en-US")
                         ) : (
                           "-"
                         )}

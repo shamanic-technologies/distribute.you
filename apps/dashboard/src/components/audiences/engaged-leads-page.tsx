@@ -24,7 +24,6 @@ import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
   "clicked",
-  "opened",
   "delivered",
   "sent",
   "bounced",
@@ -39,24 +38,22 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
 // "all" is NOT a rendered tab — it's an internal sort-mode (base "most-recent
 // activity" ordering for `sortedLeads` + `leadDateForTab`). The All UI tab was
 // removed; the funnel tabs are the four below.
-type Tab = "positive-replies" | "clicks" | "opens" | "outreach" | "all";
+type Tab = "positive-replies" | "clicks" | "outreach" | "all";
 
 // The Date column + sort key are PER-TAB: each tab shows the first-occurrence
-// timestamp of the engagement that tab is about (Clicks → first click, Opens →
-// first open, Outreach → first contacted, Positive replies → first reply). The
+// timestamp of the engagement that tab is about (Clicks → first click,
+// Outreach → first contacted, Positive replies → first reply). The
 // "all" tab has no single engagement, so it uses the most-recent activity across
 // every first-occurrence timestamp.
 function leadDateForTab(lead: Lead, tab: Tab): string | null {
   switch (tab) {
     case "positive-replies": return lead.firstRepliedAt ?? null;
     case "clicks": return lead.firstClickedAt ?? null;
-    case "opens": return lead.firstOpenedAt ?? null;
     case "outreach": return lead.firstContactedAt ?? null;
     case "all": {
       const ats = [
         lead.firstRepliedAt,
         lead.firstClickedAt,
-        lead.firstOpenedAt,
         lead.firstDeliveredAt,
         lead.firstSentAt,
         lead.firstContactedAt,
@@ -71,7 +68,6 @@ function leadStatusLabel(status: LeadConsolidatedStatus): string {
   switch (status) {
     case "replied": return "Replied";
     case "clicked": return "Clicked";
-    case "opened": return "Opened";
     case "delivered": return "Delivered";
     case "sent": return "Sent";
     case "bounced": return "Bounced";
@@ -88,7 +84,6 @@ function leadStatusStyle(status: LeadConsolidatedStatus): string {
   switch (status) {
     case "replied": return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "clicked": return "bg-violet-100 text-violet-700 border-violet-200";
-    case "opened": return "bg-indigo-100 text-indigo-700 border-indigo-200";
     case "delivered": return "bg-green-100 text-green-700 border-green-200";
     case "sent": return "bg-cyan-100 text-cyan-700 border-cyan-200";
     case "bounced": return "bg-red-100 text-red-600 border-red-200";
@@ -238,7 +233,6 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     { kind: "event", label: "Contacted", at: lead.firstContactedAt ?? "", dot: "bg-gray-400" },
     { kind: "event", label: "Sent", at: lead.firstSentAt ?? "", dot: "bg-blue-400" },
     { kind: "event", label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
-    { kind: "event", label: "Opened", at: lead.firstOpenedAt ?? "", dot: "bg-indigo-500" },
     { kind: "event", label: "Clicked", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
     {
       kind: "event",
@@ -295,7 +289,6 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     if (l === "Unsubscribed") return 8;
     if (l === "Bounced") return 8;
     if (l === "Clicked") return 7;
-    if (l === "Opened") return 6;
     if (l === "Delivered") return 5;
     if (l === "Sent") return 4;
     if (l === "Contacted") return 2;
@@ -392,7 +385,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   audienceOf: (lead: Lead) => LeadAudience | null;
   // Outreach tab: every row is the flat universe we contacted, so show a single
   // "Contacted" tag on all rows rather than each lead's most-advanced status
-  // (those leads also surface under Opens/Clicks/Replies with their real status).
+  // (those leads also surface under Clicks/Replies with their real status).
   forceContacted?: boolean;
 }) {
   if (leads.length === 0) {
@@ -497,7 +490,7 @@ export function EngagedLeadsPage() {
   // (name); `listAudiences` supplies the avatar. Joined client-side, fetched
   // on-demand off the leads' emails (no widening of `listBrandLeads`). Cover
   // EVERY lead with an email — the audience column renders on all tabs, so
-  // limiting the lookup to clicked/positive leads left Opens/Outreach blank.
+  // limiting the lookup to clicked/positive leads left Outreach blank.
   const leadEmails = useMemo(
     () => Array.from(new Set(
       leads
@@ -562,19 +555,16 @@ export function EngagedLeadsPage() {
   const groupedByTab = useMemo(() => {
     const positive: Lead[] = [];
     const clicks: Lead[] = [];
-    const opens: Lead[] = [];
     const outreach: Lead[] = [];
     for (const lead of leads) {
       if (lead.replyClassification === "positive") positive.push(lead);
       if (lead.clicked) clicks.push(lead);
-      if (lead.opened) opens.push(lead);
       if (lead.contacted) outreach.push(lead);
     }
     const groups = new Map<Tab, Lead[]>();
     // Each tab sorted desc by its OWN date column (Clicks → first click, etc.).
     groups.set("positive-replies", sortByTabDate(positive, "positive-replies"));
     groups.set("clicks", sortByTabDate(clicks, "clicks"));
-    groups.set("opens", sortByTabDate(opens, "opens"));
     groups.set("outreach", sortByTabDate(outreach, "outreach"));
     return groups;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -583,7 +573,7 @@ export function EngagedLeadsPage() {
   // Open, once (after leads + the sales-economics query have settled), the
   // leftmost funnel tab that has leads, ordered by what the brand optimizes for:
   // signups → Clicks first, sales_meetings → Positive replies first, otherwise
-  // Opens then Outreach. Within each order we fall through to the next non-empty
+  // Outreach first. Within each order we fall through to the next non-empty
   // tab so the user never lands on an empty tab. User manual switches latch the
   // ref and are never overridden by a later poll. Gate on `econData` (not
   // `optimizationGoal`, which is null both while loading AND when unset).
@@ -594,10 +584,10 @@ export function EngagedLeadsPage() {
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
     const order: Tab[] =
       optimizationGoal === "signups"
-        ? ["clicks", "opens", "outreach", "positive-replies"]
+        ? ["clicks", "outreach", "positive-replies"]
         : optimizationGoal === "sales_meetings"
-          ? ["positive-replies", "clicks", "opens", "outreach"]
-          : ["opens", "outreach", "clicks", "positive-replies"];
+          ? ["positive-replies", "clicks", "outreach"]
+          : ["outreach", "clicks", "positive-replies"];
     setActiveTab(order.find((t) => count(t) > 0) ?? "outreach");
   }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
 
@@ -619,7 +609,6 @@ export function EngagedLeadsPage() {
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "positive-replies", label: "Positive replies", count: groupedByTab.get("positive-replies")?.length ?? 0 },
     { key: "clicks", label: "Clicks", count: groupedByTab.get("clicks")?.length ?? 0 },
-    { key: "opens", label: "Opens", count: groupedByTab.get("opens")?.length ?? 0 },
     { key: "outreach", label: "Outreach", count: groupedByTab.get("outreach")?.length ?? 0 },
   ];
 

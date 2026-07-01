@@ -331,11 +331,12 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
 // App Level Sidebar
 function AppLevelSidebar({ pathname }: { pathname: string }) {
   const searchParams = useSearchParams();
-  const publicMetricsOk = useFeatureFlag(FEATURE_GATES["public-metrics"].flag);
+  // Cross-org metrics nav. The admin app is fully staff-gated at the edge, so
+  // no per-viewer feature flag — every signed-in staff sees it.
   const analyticsItems: SidebarItem[] = [
-    { id: "landing", label: "Unique visitors", href: "/?view=landing", icon: <OverviewIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
-    { id: "signups", label: "Signup conversions", href: "/?view=signups", icon: <ConversionsIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
-    { id: "cards", label: "Cards added", href: "/?view=cards", icon: <BillingIcon />, maturity: FEATURE_GATES["public-metrics"].maturity },
+    { id: "landing", label: "Unique visitors", href: "/metrics?view=landing", icon: <OverviewIcon /> },
+    { id: "signups", label: "Signup conversions", href: "/metrics?view=signups", icon: <ConversionsIcon /> },
+    { id: "cards", label: "Cards added", href: "/metrics?view=cards", icon: <BillingIcon /> },
   ];
 
   const activeView = searchParams.get("view");
@@ -343,15 +344,14 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
 
   return (
     <SidebarSection title="Dashboard">
-      {publicMetricsOk &&
-        analyticsItems.map((item) => (
-          <SidebarLink
-            key={item.id}
-            item={item}
-            isActive={pathname === "/" && normalizedView === item.id}
-          />
-        ))}
-      <div className={publicMetricsOk ? "pt-2 mt-2 border-t border-gray-100" : ""}>
+      {analyticsItems.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          isActive={pathname === "/metrics" && normalizedView === item.id}
+        />
+      ))}
+      <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Audit</h4>
         <SidebarLink
           item={{ id: "audit-instantly", label: "Instantly", href: "/audit/instantly", icon: <AuditIcon /> }}

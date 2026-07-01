@@ -135,7 +135,6 @@ describe("api.ts type definitions match per-entity status sets", () => {
     expect(body).toContain("contacted: boolean");
     expect(body).toContain("sent: boolean");
     expect(body).toContain("delivered: boolean");
-    expect(body).toContain("opened: boolean");
     expect(body).toContain("replied: boolean");
   });
 

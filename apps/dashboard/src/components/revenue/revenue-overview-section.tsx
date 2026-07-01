@@ -42,7 +42,6 @@ export function RevenueOverviewSection({
   pipelineActivity?: PipelineActivityResponse;
   pipelineActualSeries?: {
     outreach?: SignalSeries;
-    opens?: SignalSeries;
     clicks?: SignalSeries;
     signups?: SignalSeries;
     repliedPositive?: SignalSeries;
@@ -80,7 +79,7 @@ export function RevenueOverviewSection({
    *  header + Run Campaign action). */
   hideHeader?: boolean;
   /** Replace the default Organizations/Leads conversion tabs (the Signups page
-   *  supplies its own engaged-leads table: opened / clicked / signed up). */
+   *  supplies its own engaged-leads table: clicked / signed up). */
   conversions?: ReactNode;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
@@ -157,7 +156,7 @@ export function RevenueOverviewSection({
         />
       </div>
 
-      {/* Outreach activity — full-width per-day BARS: outreach / opens / the goal
+      {/* Outreach activity — full-width per-day BARS: outreach / the goal
           engagement (clicks for signups, positive replies for meetings) across the
           past (actuals) + today + forecast, with the 7/30/90-day window toggle. */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
@@ -177,7 +176,7 @@ export function RevenueOverviewSection({
 
       {/* Conversions — the default Organizations / Leads tabs, OR a caller-
           supplied replacement (the Signups page passes its own engaged-leads
-          table: opened / clicked / signed up). */}
+          table: clicked / signed up). */}
       {conversions === undefined ? <ConversionsTabs data={data} pending={revenueLoading} /> : conversions}
     </div>
   );
