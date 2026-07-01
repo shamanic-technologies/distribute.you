@@ -4184,3 +4184,35 @@ export async function getInstantlySendingForecast(
 ): Promise<InstantlySendingForecast> {
   return apiCall<InstantlySendingForecast>("/instantly/audit/sending-forecast", { token });
 }
+
+// ---------------------------------------------------------------------------
+// Instantly reconciliation — our LOCAL count vs INSTANTLY's count per fact,
+// with the delta (local minus instantly). A non-zero delta is the drift signal
+// staff act on (lost webhook, lagging reconcile, missed pause). Every value is
+// computed server-side; the dashboard renders exactly what the endpoint returns
+// and never derives or fabricates a number.
+// ---------------------------------------------------------------------------
+export interface InstantlyReconcileMetric {
+  key: string; // stable id, e.g. "activeCampaigns"
+  label: string; // row title, e.g. "Active campaigns"
+  local: number; // our stored count
+  instantly: number; // Instantly's reported count
+  delta: number; // local minus instantly (0 = in sync)
+  sourceOfTruth: "instantly";
+}
+
+export interface InstantlyReconcile {
+  asOf: string; // ISO8601
+  metrics: InstantlyReconcileMetric[]; // ordered, one row per countable fact
+}
+
+/**
+ * Fleet-wide Instantly reconciliation: for each countable fact, our local
+ * number vs Instantly's number plus the delta, so staff can spot data drift.
+ * Staff-only platform view. no org context.
+ */
+export async function getInstantlyReconcile(
+  token?: string,
+): Promise<InstantlyReconcile> {
+  return apiCall<InstantlyReconcile>("/instantly/audit/reconcile", { token });
+}
