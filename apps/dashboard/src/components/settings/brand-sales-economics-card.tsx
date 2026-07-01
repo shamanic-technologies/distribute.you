@@ -39,6 +39,7 @@ type RequiredFieldKey =
   | "lifetimeRevenueUsd"
   | "replyToMeetingPct"
   | "visitToMeetingPct"
+  | "meetingToClosePct"
   | "visitToSignupPct"
   | "signupToPaidClientPct";
 
@@ -106,6 +107,12 @@ const PCT_FIELDS: {
     goals: ["sales_meetings"],
   },
   {
+    key: "meetingToClosePct",
+    label: "Meeting → Paid client",
+    tip: "Of leads who book a meeting, the share that become paying customers.",
+    goals: ["sales_meetings"],
+  },
+  {
     key: "visitToSignupPct",
     label: "Website visit → signup",
     tip: "Of leads who visit your website, the share that sign up.",
@@ -121,13 +128,14 @@ const PCT_FIELDS: {
 
 const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]> = {
   signups: ["visitToSignupPct", "signupToPaidClientPct"],
-  sales_meetings: ["replyToMeetingPct", "visitToMeetingPct"],
+  sales_meetings: ["replyToMeetingPct", "visitToMeetingPct", "meetingToClosePct"],
 };
 
 const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
   lifetimeRevenueUsd: "Customer Lifetime Revenue",
   replyToMeetingPct: "Positive reply → meeting",
   visitToMeetingPct: "Website visit → meeting",
+  meetingToClosePct: "Meeting → Paid client",
   visitToSignupPct: "Website visit → signup",
   signupToPaidClientPct: "Signup → Paid client",
 };
