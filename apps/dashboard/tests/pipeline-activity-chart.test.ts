@@ -66,8 +66,8 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(chart).not.toContain("cumulativeActuals");
   });
 
-  it("activity bars carry the three goal-specific metrics with positive replies for meetings", () => {
-    for (const key of ["outreach", "opens", "clicks"]) {
+  it("activity bars carry the goal-specific metrics with positive replies for meetings", () => {
+    for (const key of ["outreach", "clicks"]) {
       expect(chart).toContain(`key: "${key}"`);
     }
     expect(chart).toContain('key: "repliedPositive"');

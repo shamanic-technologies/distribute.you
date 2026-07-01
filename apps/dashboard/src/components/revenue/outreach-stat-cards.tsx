@@ -32,7 +32,7 @@ function Cell({ children }: { children: ReactNode }) {
  * Top-of-page outreach stat cards, shared across every brand- and campaign-scoped
  * surface (one source → no drift, CLAUDE.md "keep surfaces in lockstep").
  *
- * GA cards (everyone): Outreach / Opens / Clicks / CPC, regardless of the
+ * GA cards (everyone): Outreach / Clicks / CPC, regardless of the
  * brand's optimization goal.
  * Beta cards (allowlist only — `useIsBetaUser`): the goal outcome pair
  * (Signups/CPS or Sales Meetings/CPSM), each badged `beta`.
@@ -72,7 +72,6 @@ export function OutreachStatCards({
   const goal = optimizationGoal ?? "sales_meetings";
   const outreach =
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
-  const opens = stats.recipientsOpened ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
   const beta = <MaturityBadge level="beta" />;
 
@@ -113,9 +112,6 @@ export function OutreachStatCards({
           value={formatCount(outreach)}
           pending={pending}
         />
-      </Cell>
-      <Cell>
-        <ScoreCard label="Opens" value={formatCount(opens)} pending={pending} />
       </Cell>
       <Cell>
         <ScoreCard

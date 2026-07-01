@@ -24,7 +24,6 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     contacted: false,
     sent: false,
     delivered: false,
-    opened: false,
     clicked: false,
     bounced: false,
     unsubscribed: false,

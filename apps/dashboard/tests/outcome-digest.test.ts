@@ -62,7 +62,7 @@ describe("daily outcome digest", () => {
           orgLogoUrl: null,
           orgDomain: "pipeline.test",
           topPerson: null,
-          tags: ["opened"],
+          tags: ["delivered"],
           expectedRevenueUsd: 4500,
           mostAdvancedDate: null,
         },
