@@ -4251,14 +4251,17 @@ export interface SendForecast {
 
 /**
  * Global fleet-wide email SEND forecast: per-day stacked actual + in-flight +
- * projected-new volume plus the fleet budget summary. Public endpoint (no org
- * context), rendered on the staff-gated audit console. Default 14-day future
- * horizon (max 90), always with a 7-day past tail.
+ * projected-new volume plus the fleet budget summary. Staff-gated platform view
+ * (no org context) — the summary carries cross-org fleet financials (total daily
+ * budget, remaining today, active brand count), so it is served only behind the
+ * staff audit route, never the public endpoint. Same staff auth path as the
+ * other /instantly/audit/* calls on this page. Default 14-day future horizon
+ * (max 90), always with a 7-day past tail.
  */
 export async function getSendForecast(
   days?: number,
   token?: string,
 ): Promise<SendForecast> {
   const qs = days ? `?days=${days}` : "";
-  return apiCall<SendForecast>(`/public/features/send-forecast${qs}`, { token });
+  return apiCall<SendForecast>(`/features/audit/send-forecast${qs}`, { token });
 }
