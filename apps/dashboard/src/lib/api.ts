@@ -2300,6 +2300,14 @@ export interface Lead {
   replyClassification: "positive" | "negative" | "neutral" | null;
   lastDeliveredAt: string | null;
   global: { bounced: boolean; unsubscribed: boolean };
+  // Audience attribution stored on the leads_campaigns row by lead-service —
+  // `audienceId` = human-service audience.id (null = unattributed), `audience`
+  // the resolved {id,name,avatarUrl} for direct render. The Audience column
+  // reads `lead.audience` straight from the wire (no client-side membership
+  // join). Optional: `.passthrough()` on LeadDeliverySchema keeps them at
+  // runtime; typed optional so a not-yet-attributed lead renders "-".
+  audienceId?: string | null;
+  audience?: { id: string; name: string; avatarUrl: string | null } | null;
   lead: FullLead | null;
 }
 
