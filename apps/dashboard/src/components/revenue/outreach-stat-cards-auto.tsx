@@ -2,12 +2,18 @@
 
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { fetchFeatureStats, getBrandSalesEconomics } from "@/lib/api";
+import {
+  fetchFeatureStats,
+  getBrandSalesEconomics,
+  getFeatureRevenue,
+  keepLastGoodFeatureRevenue,
+} from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import type { RevenueOverview } from "@/lib/revenue-view";
 
 /**
  * Self-contained outreach stat-card row for every brand- and campaign-scoped
@@ -57,6 +63,26 @@ export function OutreachStatCardsAuto({
     { enabled, ...pollOptions },
   );
 
+  // `/revenue` carries the `spend` block that feeds the cost cards (CPC / CPS /
+  // CPSM). Byte-identical query key + keep-last-good to the brand Overview
+  // (`brands/[brandId]/page.tsx`), so React Query dedupes to one poll when both
+  // are cached and a transient degenerate 200 can't blank a $ card mid-session.
+  const { data: revenueData } = useAuthQuery(
+    campaignId
+      ? ["featureRevenue", brandId, featureSlug, "campaign", campaignId]
+      : ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId, campaignId),
+    {
+      enabled,
+      ...pollOptions,
+      structuralSharing: (prev, next) =>
+        keepLastGoodFeatureRevenue(
+          prev as RevenueOverview | undefined,
+          next as RevenueOverview,
+        ),
+    },
+  );
+
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
   if (!enabled) return null;
@@ -65,12 +91,14 @@ export function OutreachStatCardsAuto({
   const optimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
 
-  // Entity pages carry no `/revenue` payload → no `spend` block; the cost cards
-  // (CPC / CPS / CPSM) render "—". features-service is the single source for the
-  // cost metrics, fetched only where `/revenue` is loaded (the brand Overview).
+  // `spend` (server-computed CPC / CPS / CPSM) comes from the `/revenue` payload,
+  // read verbatim by `OutreachStatCards`. Absent/cold → the cost cards render
+  // "—", never a false $0. features-service stays the single source (no client
+  // division).
   return (
     <OutreachStatCards
       stats={featureStats}
+      spend={revenueData?.spend}
       pending={!statsRevealed}
       optimizationGoal={optimizationGoal}
       outreachOverride={outreachOverride}
