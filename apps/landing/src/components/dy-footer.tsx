@@ -47,7 +47,6 @@ export function DyFooter() {
           <div className="dy-ft-links">
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
-            <a href="https://status.distribute.you">Status</a>
           </div>
         </div>
       </div>
