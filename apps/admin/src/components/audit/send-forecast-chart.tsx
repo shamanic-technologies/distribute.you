@@ -21,7 +21,8 @@ function formatDateShort(iso: string): string {
 }
 
 function num(n: number | null | undefined): string {
-  return (n ?? 0).toLocaleString("en-US");
+  // Projected email counts arrive fractional; display as whole emails.
+  return Math.round(n ?? 0).toLocaleString("en-US");
 }
 
 const SERIES = [
@@ -97,7 +98,7 @@ export function SendForecastChart({ days }: { days: SendForecastDay[] }) {
             minTickGap={16}
           />
           <YAxis
-            tickFormatter={(value) => Number(value).toLocaleString("en-US")}
+            tickFormatter={(value) => Math.round(Number(value)).toLocaleString("en-US")}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickLine={false}
             axisLine={false}
