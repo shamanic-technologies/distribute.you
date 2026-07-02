@@ -11,7 +11,6 @@ import {
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
-import { InstantlyForecastChart } from "@/components/audit/instantly-forecast-chart";
 import { SendForecastChart } from "@/components/audit/send-forecast-chart";
 
 function StatCard({
@@ -39,7 +38,7 @@ function StatCard({
 }
 
 function fmtDelta(delta: number): string {
-  const abs = Math.abs(delta).toLocaleString("en-US");
+  const abs = String(Math.round(Math.abs(delta)));
   if (delta > 0) return `+${abs}`;
   if (delta < 0) return `-${abs}`;
   return "0";
@@ -52,7 +51,7 @@ function ReconcileSection() {
     pollOptionsSlower,
   );
 
-  const num = (n: number) => n.toLocaleString("en-US");
+  const num = (n: number) => String(Math.round(n));
   const driftCount = data?.metrics.filter((m) => m.delta !== 0).length ?? 0;
 
   return (
@@ -144,15 +143,25 @@ function ReconcileSection() {
   );
 }
 
-function SendForecastSection() {
-  const { data, isPending, isError, error } = useAuthQuery<SendForecast>(
+export default function AuditInstantlyPage() {
+  const { data: iData, isPending: iPending } = useAuthQuery<InstantlySendingForecast>(
+    ["instantlySendingForecast"],
+    () => getInstantlySendingForecast(),
+    pollOptionsSlower,
+  );
+  const {
+    data: fData,
+    isPending: fPending,
+    isError: fError,
+    error: fErrorObj,
+  } = useAuthQuery<SendForecast>(
     ["sendForecast"],
     () => getSendForecast(),
     pollOptionsSlower,
   );
 
-  // Email counts arrive fractional (projected new sends), display as whole emails.
-  const num = (n: number) => Math.round(n).toLocaleString("en-US");
+  // Email counts arrive fractional (projected new sends); display as whole emails, no separator.
+  const num = (n?: number) => String(Math.round(n ?? 0));
   const usd = (n: number) =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
   const cell = (n: number | null) => (n === null ? "—" : num(n));
@@ -163,57 +172,77 @@ function SendForecastSection() {
       timeZone: "UTC",
     });
 
+  const totalScheduled = iData?.days.reduce((sum, d) => sum + d.scheduledCount, 0) ?? 0;
+
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">Global send forecast</h2>
+        <h1 className="text-2xl font-semibold text-gray-900">Instantly — sending forecast</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Fleet-wide, across every active brand: how many outreach emails go out each day.
-          Past real sends, follow-ups already scheduled, and the new sends the active daily
-          budgets will launch on the D0/D3/D10 cadence, stacked into one predictive total.
+          Future email volume scheduled by the cold-email fleet, day by day, against the
+          current available daily capacity (healthy, warmed, non-blacklisted accounts only).
         </p>
       </div>
 
-      {isError ? (
+      {/* Merged stat cards: fleet capacity + global send forecast summary. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Available capacity"
+          value={`${num(iData?.dailyCapacity)}/day`}
+          sub={`${num(iData?.healthyAccountCount)} of ${num(iData?.totalAccountCount)} accounts healthy`}
+          pending={iPending}
+        />
+        <StatCard
+          label="Total daily budget"
+          value={fData ? usd(fData.summary.totalDailyBudgetUsd) : "—"}
+          sub="across active brands"
+          pending={fPending}
+        />
+        <StatCard
+          label="Remaining today"
+          value={fData ? usd(fData.summary.remainingTodayUsd) : "—"}
+          sub="budget left to spend"
+          pending={fPending}
+        />
+        <StatCard
+          label="Active brands"
+          value={fData ? num(fData.summary.activeBrandCount) : "—"}
+          sub="driving the forecast"
+          pending={fPending}
+        />
+        <StatCard
+          label="New sequences / day"
+          value={fData ? num(fData.summary.totalNewSequencesPerDay) : "—"}
+          sub="fleet, at full budget"
+          pending={fPending}
+        />
+        <StatCard
+          label="Follow-up model"
+          value={fData ? fData.summary.followupModel : "—"}
+          sub="send cadence"
+          pending={fPending}
+        />
+        <StatCard
+          label="Blocked accounts"
+          value={num(iData?.blockedDomainCount)}
+          sub="excluded via blacklist / warmup"
+          pending={iPending}
+        />
+        <StatCard
+          label="Scheduled ahead"
+          value={num(totalScheduled)}
+          sub={`over ${num(iData?.days.length)} day${iData?.days.length === 1 ? "" : "s"}`}
+          pending={iPending}
+        />
+      </div>
+
+      {fError ? (
         <div className="bg-white rounded-xl border border-red-200 p-6">
           <p className="text-sm font-medium text-red-700">Couldn&apos;t load the send forecast.</p>
-          <p className="mt-1 text-xs text-red-500">{error?.message ?? "Unknown error"}</p>
+          <p className="mt-1 text-xs text-red-500">{fErrorObj?.message ?? "Unknown error"}</p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <StatCard
-              label="Total daily budget"
-              value={data ? usd(data.summary.totalDailyBudgetUsd) : "—"}
-              sub="across active brands"
-              pending={isPending}
-            />
-            <StatCard
-              label="Remaining today"
-              value={data ? usd(data.summary.remainingTodayUsd) : "—"}
-              sub="budget left to spend"
-              pending={isPending}
-            />
-            <StatCard
-              label="Active brands"
-              value={data ? num(data.summary.activeBrandCount) : "—"}
-              sub="driving the forecast"
-              pending={isPending}
-            />
-            <StatCard
-              label="New sequences / day"
-              value={data ? num(data.summary.totalNewSequencesPerDay) : "—"}
-              sub="fleet, at full budget"
-              pending={isPending}
-            />
-            <StatCard
-              label="Follow-up model"
-              value={data ? data.summary.followupModel : "—"}
-              sub="send cadence"
-              pending={isPending}
-            />
-          </div>
-
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-gray-900">Emails sent per day</h3>
@@ -227,13 +256,16 @@ function SendForecastSection() {
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" /> New (projected)
                 </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-0.5 w-4 rounded-sm bg-sky-500" /> Daily capacity
+                </span>
               </div>
             </div>
             <div className="mt-4">
-              {isPending ? (
+              {fPending ? (
                 <Skeleton className="h-[300px] w-full rounded" />
               ) : (
-                <SendForecastChart days={data.days} />
+                <SendForecastChart days={fData.days} dailyCapacity={iData?.dailyCapacity} />
               )}
             </div>
           </div>
@@ -241,7 +273,7 @@ function SendForecastSection() {
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-900">Day by day</h3>
             <div className="mt-4">
-              {isPending ? (
+              {fPending ? (
                 <Skeleton className="h-64 w-full rounded" />
               ) : (
                 <div className="overflow-x-auto">
@@ -256,7 +288,7 @@ function SendForecastSection() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.days.map((d) => (
+                      {fData.days.map((d) => (
                         <tr
                           key={d.date}
                           className={`border-b border-gray-100 last:border-0 ${
@@ -297,88 +329,6 @@ function SendForecastSection() {
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-export default function AuditInstantlyPage() {
-  const { data, isPending, isError, error } = useAuthQuery<InstantlySendingForecast>(
-    ["instantlySendingForecast"],
-    () => getInstantlySendingForecast(),
-    pollOptionsSlower,
-  );
-
-  const num = (n?: number) => (n ?? 0).toLocaleString("en-US");
-  const totalScheduled = data?.days.reduce((sum, d) => sum + d.scheduledCount, 0) ?? 0;
-
-  return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Instantly — sending forecast</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Future email volume scheduled by the cold-email fleet, day by day, against the
-          current available daily capacity (healthy, warmed, non-blacklisted accounts only).
-        </p>
-      </div>
-
-      {isError ? (
-        <div className="bg-white rounded-xl border border-red-200 p-6">
-          <p className="text-sm font-medium text-red-700">Couldn&apos;t load the forecast.</p>
-          <p className="mt-1 text-xs text-red-500">{error?.message ?? "Unknown error"}</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              label="Available capacity"
-              value={`${num(data?.dailyCapacity)}/day`}
-              sub={`${num(data?.healthyAccountCount)} of ${num(data?.totalAccountCount)} accounts healthy`}
-              pending={isPending}
-            />
-            <StatCard
-              label="Blocked accounts"
-              value={num(data?.blockedDomainCount)}
-              sub="excluded via blacklist / warmup"
-              pending={isPending}
-            />
-            <StatCard
-              label="Scheduled ahead"
-              value={num(totalScheduled)}
-              sub={`over ${num(data?.days.length)} day${data?.days.length === 1 ? "" : "s"}`}
-              pending={isPending}
-            />
-            <StatCard
-              label="As of"
-              value={data ? new Date(data.asOf).toLocaleString("en-US", { timeZone: "UTC" }) : "—"}
-              sub="UTC"
-              pending={isPending}
-            />
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">Scheduled volume vs capacity</h2>
-              <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-indigo-500" /> Within capacity
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" /> Over capacity
-                </span>
-              </div>
-            </div>
-            <div className="mt-4">
-              {isPending ? (
-                <Skeleton className="h-[300px] w-full rounded" />
-              ) : (
-                <InstantlyForecastChart days={data.days} dailyCapacity={data.dailyCapacity} />
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      <SendForecastSection />
 
       <ReconcileSection />
     </div>
