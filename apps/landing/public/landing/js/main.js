@@ -235,7 +235,7 @@ if (postProgress) {
   ];
 
   var grid = document.querySelector('.post-related-grid');
-  if (!grid) return;
+  if (!grid || grid.children.length) return;
 
   var currentPath = window.location.pathname.replace(/\/$/, '');
   var pool = ARTICLES.filter(function (a) { return a.url !== currentPath; });
