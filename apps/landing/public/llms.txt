@@ -19,9 +19,7 @@
 
 - [Home](https://distribute.you/): hero, how it works, pricing summary, expert quotes mosaic, sourced industry stats
 - [Pricing](https://distribute.you/pricing): live unit-cost catalog grouped by provider, 3-layer pricing stack (primitives / workflows / outcomes)
-- [Performance](https://distribute.you/performance): public leaderboard of workflow performance by cost per positive reply
-- [Performance · Brands](https://distribute.you/performance/brands): per-brand campaign performance leaderboard
-- [Performance · Workflows](https://distribute.you/performance/models): per-workflow comparison leaderboard
+- [Performance](https://distribute.you/performance): public leaderboard of workflow performance by cost per positive reply, with per-brand and per-workflow breakdowns
 - [Investors](https://distribute.you/investors): live platform metrics, growth data, infrastructure, SAFE round details, ICP definition
 - [Blog](https://distribute.you/blog): playbooks, benchmarks, field notes for solo builders
 

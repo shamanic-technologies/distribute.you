@@ -71,8 +71,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/how-it-works", priority: 0.8 },
     { path: "/use-cases", priority: 0.8 },
     { path: "/privacy", priority: 0.3 },
-    { path: "/performance/brands", priority: 0.7 },
-    { path: "/performance/models", priority: 0.7 },
+    // NOTE: /performance/brands + /performance/models are 308-redirected to
+    // /performance (next.config.ts). Redirecting URLs must NOT be in the sitemap
+    // (Ahrefs "3XX redirect in sitemap") — only the canonical /performance (above).
     // Cold-email SEO cluster (3 pillars + 12 supporting pages)
     { path: "/cold-email-cost-guide", priority: 0.7 },
     { path: "/cold-email-cost-guide/cold-email-cost-per-contact", priority: 0.6 },
