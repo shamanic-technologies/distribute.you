@@ -8,8 +8,6 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import {
   listBrandLeads,
   getLeadConsolidatedStatus,
-  getAudienceMembershipStats,
-  listAudiences,
   getBrandSalesEconomics,
   getLeadEmail,
   type Lead,
@@ -177,8 +175,9 @@ function CompanyLogo({ domain, name }: { domain: string | null; name: string | n
   );
 }
 
-// Per-lead audience (name from human-service membership stats, avatar joined
-// from `listAudiences`). Null when the lead's email matches no active audience.
+// Per-lead audience — served ready-made on the lead row by lead-service
+// (`lead.audience` = {id,name,avatarUrl} from the leads_campaigns attribution).
+// Null when the lead was never attributed to an audience.
 type LeadAudience = { name: string; avatarUrl: string | null };
 
 function AudienceCell({ audience }: { audience: LeadAudience | null }) {
@@ -486,46 +485,11 @@ export function EngagedLeadsPage() {
   );
   const optimizationGoal = econData?.salesEconomics?.optimizationGoal ?? null;
 
-  // Audience per lead — human-service owns the email → audience membership
-  // (name); `listAudiences` supplies the avatar. Joined client-side, fetched
-  // on-demand off the leads' emails (no widening of `listBrandLeads`). Cover
-  // EVERY lead with an email — the audience column renders on all tabs, so
-  // limiting the lookup to clicked/positive leads left Outreach blank.
-  const leadEmails = useMemo(
-    () => Array.from(new Set(
-      leads
-        .map((l) => l.email)
-        .filter((e): e is string => !!e),
-    )),
-    [leads],
-  );
-  const { data: audStatsData } = useAuthQuery(
-    ["audienceStats", brandId, leadEmails],
-    () => getAudienceMembershipStats({ emails: leadEmails }),
-    { enabled: leadEmails.length > 0 },
-  );
-  const { data: audiencesData } = useAuthQuery(
-    ["audiences", brandId],
-    () => listAudiences(brandId),
-    {},
-  );
-  const audienceByEmail = useMemo(() => {
-    const avatarById = new Map(
-      (audiencesData?.audiences ?? []).map((a) => [a.id, a.avatarUrl] as const),
-    );
-    const map = new Map<string, LeadAudience>();
-    for (const m of audStatsData?.matched ?? []) {
-      const first = m.audiences[0];
-      if (!m.emailNorm || !first) continue;
-      map.set(m.emailNorm.toLowerCase(), {
-        name: first.name,
-        avatarUrl: avatarById.get(first.audienceId) ?? null,
-      });
-    }
-    return map;
-  }, [audStatsData, audiencesData]);
+  // Audience per lead — read straight off the lead row. lead-service serves
+  // `lead.audience` ({id,name,avatarUrl}) from the leads_campaigns attribution,
+  // so the column renders on every tab with no client-side membership join.
   const audienceOf = (lead: Lead): LeadAudience | null =>
-    lead.email ? audienceByEmail.get(lead.email.toLowerCase()) ?? null : null;
+    lead.audience ? { name: lead.audience.name, avatarUrl: lead.audience.avatarUrl } : null;
 
   // Base "all" ordering — most-recent activity first (the "all" Date column).
   // Each funnel tab re-sorts by ITS OWN date field below. Null sinks to bottom.
