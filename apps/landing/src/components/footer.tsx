@@ -60,16 +60,8 @@ const COLUMNS: FooterColumn[] = [
 
 const SUB_BRANDS = [
   {
-    label: "PressBeat.io - Organic press on demand",
-    href: "https://pressbeat.io",
-  },
-  {
     label: "GrowthAgency.dev - Growth agency for humans",
     href: "https://growthagency.dev",
-  },
-  {
-    label: "GrowthService.org - Increase AI search ranking",
-    href: "https://growthservice.org",
   },
 ];
 
