@@ -113,6 +113,16 @@ export function BreadcrumbNav() {
   const orgDisplayCacheRef = useRef<
     Record<string, { name?: string; imageUrl?: string; hasImage?: boolean }>
   >({});
+  // Per-URL-brand display cache (keep-last-good) — the twin of orgDisplayCacheRef.
+  // The brand crumb reads `brands.find(...)`, which returns undefined when a
+  // transient/degenerate `/api/v1/brands` response (cold Neon 200 with an empty
+  // or partial list, or a stale 60s cache missing the current brand) drops the
+  // current brand from state — blanking the name to the "Brand" placeholder while
+  // the org crumb stays put. Cache each brand's label the moment it resolves so
+  // the name survives the transient; "Brand" only shows on a genuine cold first load.
+  const brandDisplayCacheRef = useRef<
+    Record<string, { name?: string; domain?: string | null }>
+  >({});
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
@@ -284,6 +294,17 @@ export function BreadcrumbNav() {
   };
 
   const currentBrand = brands.find((b) => b.id === brandId);
+  // Keep-last-good: cache the label when the brand resolves, read from cache when a
+  // transient fetch drops it, so the crumb never flips to the "Brand" placeholder.
+  if (brandId && currentBrand) {
+    brandDisplayCacheRef.current[brandId] = {
+      name: currentBrand.name,
+      domain: currentBrand.domain,
+    };
+  }
+  const displayBrand = brandId
+    ? currentBrand ?? brandDisplayCacheRef.current[brandId]
+    : undefined;
 
   const Chevron = ({ open }: { open: boolean }) => (
     <svg className={`w-3 h-3 text-gray-400 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,8 +419,8 @@ export function BreadcrumbNav() {
           <Sep />
           <div className="relative flex items-center">
             <Link href={explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)} className="px-2 py-1 rounded-md hover:bg-gray-100 transition font-medium text-gray-800 flex items-center gap-1.5">
-              {currentBrand?.domain && <BrandLogo domain={currentBrand.domain} size={16} className="rounded-sm flex-shrink-0" fallbackClassName="w-4 h-4 text-gray-400 flex-shrink-0" />}
-              {currentBrand?.name || currentBrand?.domain || "Brand"}
+              {displayBrand?.domain && <BrandLogo domain={displayBrand.domain} size={16} className="rounded-sm flex-shrink-0" fallbackClassName="w-4 h-4 text-gray-400 flex-shrink-0" />}
+              {displayBrand?.name || displayBrand?.domain || "Brand"}
             </Link>
             <button onClick={() => toggleDropdown("brand")} className="p-1 hover:bg-gray-100 rounded transition">
               <Chevron open={openDropdown === "brand"} />
