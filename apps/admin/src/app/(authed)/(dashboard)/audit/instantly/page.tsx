@@ -151,7 +151,8 @@ function SendForecastSection() {
     pollOptionsSlower,
   );
 
-  const num = (n: number) => n.toLocaleString("en-US");
+  // Email counts arrive fractional (projected new sends), display as whole emails.
+  const num = (n: number) => Math.round(n).toLocaleString("en-US");
   const usd = (n: number) =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
   const cell = (n: number | null) => (n === null ? "—" : num(n));
