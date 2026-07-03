@@ -74,6 +74,14 @@ export interface ConversionLead {
   /** ISO timestamp of first positive reply (email-gateway firstRepliedAt); null
    *  when none / unknown. The sales_meetings-goal digest's "time ago" source. */
   repliedPositiveAt?: string | null;
+  /** Firmographics (features-service#441), null when upstream enrichment had no
+   *  value. `orgEmployeeCount` is a RAW headcount — the consumer bands it. */
+  title?: string | null;
+  seniority?: string | null;
+  orgIndustry?: string | null;
+  orgEmployeeCount?: number | null;
+  orgCity?: string | null;
+  orgCountry?: string | null;
   /** Most-advanced event date; null until per-event timestamps exist. */
   date: string | null;
 }

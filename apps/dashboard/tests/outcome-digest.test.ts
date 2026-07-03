@@ -85,6 +85,12 @@ describe("daily outcome digest", () => {
           contactedAt: null,
           clickedAt: null,
           repliedPositiveAt: repliedThreeHoursAgo,
+          title: "Head of Growth",
+          seniority: "director",
+          orgIndustry: "Marketing",
+          orgEmployeeCount: 120,
+          orgCity: "Austin",
+          orgCountry: "United States",
           date: null,
         },
       ],
@@ -187,8 +193,15 @@ describe("daily outcome digest", () => {
     expect(send.metadata.digestHtml).toContain("https://img.example.test/ada.jpg");
     expect(send.metadata.digestHtml).toContain("img.logo.dev/leadco.test");
     expect(send.metadata.digestHtml).toContain("3h ago");
-    expect(send.metadata.digestText).toContain("Ada Lovelace @ Lead Co");
+    expect(send.metadata.digestText).toContain("Ada Lovelace");
     expect(send.metadata.digestText).toContain("3h ago");
+    // Firmographics for reassurance — title, industry, banded headcount, location.
+    expect(send.metadata.digestHtml).toContain("Head of Growth");
+    expect(send.metadata.digestHtml).toContain("Marketing");
+    expect(send.metadata.digestHtml).toContain("51-200 employees");
+    expect(send.metadata.digestHtml).toContain("Austin, United States");
+    expect(send.metadata.digestText).toContain("Head of Growth");
+    expect(send.metadata.digestText).toContain("51-200 employees");
   });
 
   it("blind-copies the staff allowlist (minus a staff recipient) on each send", async () => {
@@ -393,6 +406,10 @@ describe("daily outcome digest", () => {
             companyDomain: "leadco.test",
             tags: ["replied", "clicked"],
             outcomeAt: clickedTwoDaysAgo,
+            title: "Head of Growth",
+            orgIndustry: "Marketing",
+            orgEmployeeCount: 120,
+            location: "Austin, United States",
           },
           {
             name: "Grace Hopper",
@@ -402,6 +419,11 @@ describe("daily outcome digest", () => {
             companyDomain: "navy.test",
             tags: ["clicked"],
             outcomeAt: null,
+            // All firmographics unknown → the row omits them (no synthesis).
+            title: null,
+            orgIndustry: null,
+            orgEmployeeCount: null,
+            location: null,
           },
         ],
       },
@@ -421,5 +443,10 @@ describe("daily outcome digest", () => {
     expect(html).not.toContain("$");
     expect(html).not.toContain("expected revenue");
     expect(html).toContain("replied, clicked");
+    // Firmographics render for the enriched person, banded headcount + location.
+    expect(html).toContain("Head of Growth");
+    expect(html).toContain("Marketing");
+    expect(html).toContain("51-200 employees");
+    expect(html).toContain("Austin, United States");
   });
 });
