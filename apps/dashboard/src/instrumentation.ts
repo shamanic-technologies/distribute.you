@@ -662,6 +662,7 @@ const PLATFORM_CHAT_CONFIGS = [
     allowedTools: WORKFLOW_ALLOWED_TOOLS,
     provider: "google",
     model: "pro",
+    thinkingLevel: "medium",
   },
   {
     key: "press-kit",
@@ -669,6 +670,7 @@ const PLATFORM_CHAT_CONFIGS = [
     allowedTools: PRESS_KIT_ALLOWED_TOOLS,
     provider: "google",
     model: "pro",
+    thinkingLevel: "medium",
   },
   {
     key: "feature",
@@ -676,6 +678,7 @@ const PLATFORM_CHAT_CONFIGS = [
     allowedTools: FEATURE_ALLOWED_TOOLS,
     provider: "google",
     model: "pro",
+    thinkingLevel: "medium",
   },
   {
     key: "campaign-prefill",
@@ -683,6 +686,7 @@ const PLATFORM_CHAT_CONFIGS = [
     allowedTools: CAMPAIGN_PREFILL_ALLOWED_TOOLS,
     provider: "google",
     model: "pro",
+    thinkingLevel: "medium",
   },
 ];
 
