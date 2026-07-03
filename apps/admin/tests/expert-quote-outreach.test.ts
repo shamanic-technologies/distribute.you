@@ -316,8 +316,11 @@ describe("Authed HITL quote-requests page — handleGenerate sends the all-requi
     expect(handleGenerateBlock).not.toContain("spokesperson:");
     expect(handleGenerateBlock).not.toContain("expertiseTopics:");
   });
-  it("no longer passes campaignId into the generate mutation body", () => {
-    expect(handleGenerateBlock).not.toMatch(/campaignId\s*[:,]/);
+  it("threads campaignId into the generate mutation body (campaign-level cost attribution)", () => {
+    // content-gen (f59c704) reads campaignId from the body → the generate LLM
+    // spend is attributed to the campaign, not just brand+feature. (#1209 had
+    // dropped it as scope when the contract only took { variables, brandIds }.)
+    expect(handleGenerateBlock).toMatch(/campaignId\s*[,}]/);
   });
   it("threads revisionInstructions (Edit-with-AI modal) into the generate body", () => {
     expect(handleGenerateBlock).toContain("revisionInstructions");

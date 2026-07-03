@@ -3322,6 +3322,10 @@ export interface GenerateQuoteDraftBody {
   brandId: string;
   variables: Record<string, unknown>;
   featureSlug?: string;
+  /** Campaign the pitch is generated under. Threaded so content-gen tags its
+   *  run/cost (and the downstream chat-service LLM spend) to the campaign, not
+   *  just brand + feature. */
+  campaignId?: string;
 }
 
 export interface GenerateQuoteDraftResponse {
@@ -3342,19 +3346,25 @@ export async function generateQuoteDraft(
   body: GenerateQuoteDraftBody,
   token?: string,
 ): Promise<GenerateQuoteDraftResponse> {
-  const { brandId, variables, featureSlug } = body;
+  const { brandId, variables, featureSlug, campaignId } = body;
   const upstreamBody: Record<string, unknown> = {
     variables,
     brandIds: [brandId],
   };
   if (featureSlug) upstreamBody.featureSlug = featureSlug;
+  // content-gen reads `bodyCampaignId || req.campaignId` → the body value is the
+  // reliable path (api-service forwards `req.body` verbatim). x-campaign-id is a
+  // belt-and-suspenders mirror of the x-brand-id header pattern.
+  if (campaignId) upstreamBody.campaignId = campaignId;
+  const headers: Record<string, string> = { "x-brand-id": brandId };
+  if (campaignId) headers["x-campaign-id"] = campaignId;
   return apiCall<GenerateQuoteDraftResponse>(
     `/content/generate-expert-quote-pitch`,
     {
       token,
       method: "POST",
       body: upstreamBody,
-      headers: { "x-brand-id": brandId },
+      headers,
     },
   );
 }
@@ -3391,9 +3401,12 @@ export interface GenerateExpertQuotePitchArgs {
   expert: ExpertQuotePitchExpertInputs;
   opportunity: QuoteOpportunityContext;
   /** Free-text revision instructions from the "Edit with AI" modal. Null on a
-   *  first/plain (re)generation. Threaded into `expertAnswerContext`. */
+   *  first/plain (re)generation. Threaded into `expert.answerContext`. */
   revisionInstructions?: string | null;
   featureSlug?: string;
+  /** Campaign in scope on the calling page (`params.id`). Threaded so the
+   *  content-gen run/cost is attributed to the campaign, not just brand+feature. */
+  campaignId?: string;
 }
 
 /** Authed-side orchestration for the all-required expert-quote-pitch contract
@@ -3407,7 +3420,7 @@ export async function generateExpertQuotePitch(
   args: GenerateExpertQuotePitchArgs,
   token?: string,
 ): Promise<GenerateQuoteDraftResponse> {
-  const { brandId, expert, opportunity, revisionInstructions, featureSlug } = args;
+  const { brandId, expert, opportunity, revisionInstructions, featureSlug, campaignId } = args;
   // Question-driven brand evidence: seed an extract-fields entry with the
   // journalist's question so brand-service mines the brand for facts that
   // answer THIS question. brand-service keys its cache on a hash of the
@@ -3456,7 +3469,7 @@ export async function generateExpertQuotePitch(
     },
   });
 
-  return generateQuoteDraft({ brandId, variables, featureSlug }, token);
+  return generateQuoteDraft({ brandId, variables, featureSlug, campaignId }, token);
 }
 
 // ───────── Prompt assignment (per-feature generation prompt) ────────────────
