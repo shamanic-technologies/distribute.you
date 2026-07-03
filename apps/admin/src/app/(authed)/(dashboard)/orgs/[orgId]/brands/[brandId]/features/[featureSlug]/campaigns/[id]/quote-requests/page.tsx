@@ -112,6 +112,7 @@ function HitlQueuePage() {
           opportunity: o,
           revisionInstructions: null,
           featureSlug,
+          campaignId,
         });
         return res.pitch;
       },
@@ -325,12 +326,12 @@ function DetailPanel({
   const handleGenerate = (revisionInstructions: string | null) => {
     if (!featureInputs) return;
     setSubmitResult(null);
-    // All-required expert-quote-pitch contract (content-gen PR #124 / v0.21.0):
-    // brands[] + single expert attribution + journalistRequest + expertAnswerContext.
-    // Expert name/title/photo/LinkedIn come from the operator's campaign
-    // `featureInputs` (DIS-136); brand identity + description/HQ + expertBio are
-    // fetched/extracted inside generateExpertQuotePitch, which fails loud if any
-    // required field is empty (never sends a partial body / legacy fallback).
+    // expert-quote-pitch contract (content-gen f59c704): three generic-JSON
+    // blobs — expert (name/title/photo/linkedin + bio + answerContext) / brands[]
+    // / journalistRequest. Expert name/title/photo/LinkedIn come from the
+    // operator's campaign `featureInputs` (DIS-136); brand identity +
+    // description/HQ + expertBio are fetched/extracted inside
+    // generateExpertQuotePitch, which fails loud if any required field is empty.
     generateMutation.mutate(
       {
         brandId,
@@ -343,6 +344,7 @@ function DetailPanel({
         opportunity,
         revisionInstructions,
         featureSlug,
+        campaignId,
       },
       {
         onSuccess: (res) => {

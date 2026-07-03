@@ -2,30 +2,26 @@
 // `expert-quote-pitch` template (proxied via api-service
 // `POST /v1/content/generate-expert-quote-pitch`).
 //
-// CONTRACT (content-generation-service PR #124 / v0.21.0 — EXPLICIT, ALL-REQUIRED):
-// the template no longer takes the opaque `{brand, request, additionalContext}`
-// set. Every declared variable must be present + non-empty or the route 400s
-// (`assertExpertQuotePitchVariables`, fail-loud before any LLM spend). The set:
+// CONTRACT (content-generation-service f59c704 — THREE generic-JSON blobs):
+// the template takes exactly three variables, each just checked for presence +
+// non-empty upstream (`assertExpertQuotePitchVariables`, fail-loud before any
+// LLM spend). The old granular `expert*` / `expertAnswerContext` top-level vars
+// were folded into the `expert` blob:
 //
-//   brands                 — ALWAYS an array (even for one brand). Each element
-//                            MUST carry brandName, brandUrl, brandDescription,
-//                            brandHeadquartersLocation, brandLogoUrl (all non-empty).
-//   expertName             — single expert attribution …
-//   expertTitle
-//   expertBio
-//   expertPhotoUrl
-//   expertLinkedIn
-//   journalistRequest      — { question, mediaOutlet, source, deadline }
-//   expertAnswerContext    — brand evidence grounded on the journalist's
-//                            question (replaces the old whyRelevant/category
-//                            pair), plus the operator's revision instructions
-//                            and the brand's recent submitted pitches (voice
-//                            anchor / anti-repetition). Inner shape is the
-//                            caller's choice per the upstream contract.
+//   expert            — { name, title, bio, photoUrl, linkedIn, answerContext }.
+//                       Folds the DIS-136 attribution (name/title/photo/linkedin)
+//                       + bio + answerContext (brand evidence grounded on the
+//                       journalist's question, the operator's revision
+//                       instructions, and the brand's recent submitted pitches —
+//                       voice anchor / anti-repetition).
+//   brands            — ALWAYS an array (even for one brand). Each element carries
+//                       brandName, brandUrl, brandDescription,
+//                       brandHeadquartersLocation, brandLogoUrl.
+//   journalistRequest — { question, mediaOutlet, source, deadline }.
 //
-// Field names are byte-equal to the upstream contract + mirror the DIS-136
-// campaign-input names (`expertName`/`expertTitle`/`expertPhotoUrl`/
-// `expertLinkedIn`) so the authed page passes them straight through.
+// The dashboard keeps the fail-loud non-empty guard on every attribution field
+// (quality — an empty expert renders a hollow pitch) even though the upstream
+// contract now only checks the three blobs for presence.
 //
 // `brandDescription`, `brandHeadquartersLocation`, `expertBio` are NOT carried by
 // campaign inputs — callers source them via brand-service `extract-fields`. The
@@ -231,10 +227,35 @@ export function buildExpertAnswerContextVariable(input: ExpertAnswerContextInput
 }
 
 /**
- * Assemble the all-required `variables` body for the content-generation-service
- * `expert-quote-pitch` template (PR #124 / v0.21.0 contract). Throws
+ * `expert` — the single generic-JSON blob describing the person whose quote gets
+ * published. Folds the granular attribution (name/title/bio/photo/linkedin) +
+ * the answer angle/context (brand evidence, prior pitches, revision instructions)
+ * that the old contract sent as separate `expert*` / `expertAnswerContext` vars.
+ * The dashboard still requires every attribution field non-empty (fail-loud,
+ * quality guard) even though the upstream contract only checks the blob's
+ * presence — an empty expert produces a hollow pitch.
+ */
+export function buildExpertVariable(args: {
+  expert: ExpertAttribution;
+  bio: string | null;
+  answerContext: ExpertAnswerContextInputs;
+}) {
+  return {
+    name: requireNonEmpty(args.expert.expertName, "expertName"),
+    title: requireNonEmpty(args.expert.expertTitle, "expertTitle"),
+    bio: requireNonEmpty(args.bio, "expertBio"),
+    photoUrl: requireNonEmpty(args.expert.expertPhotoUrl, "expertPhotoUrl"),
+    linkedIn: requireNonEmpty(args.expert.expertLinkedIn, "expertLinkedIn"),
+    answerContext: buildExpertAnswerContextVariable(args.answerContext),
+  };
+}
+
+/**
+ * Assemble the `variables` body for the content-generation-service
+ * `expert-quote-pitch` template (three generic-JSON blobs contract:
+ * `expert` / `brands` / `journalistRequest` — content-gen f59c704). Throws
  * `ExpertQuotePitchInputError` naming the first missing/empty required field —
- * NEVER emits an empty/placeholder value (the upstream validator 400s on empties).
+ * NEVER emits an empty/placeholder value (an empty blob renders a hollow pitch).
  */
 export function buildExpertQuotePitchVariables(args: {
   identity: BrandIdentity;
@@ -257,13 +278,8 @@ export function buildExpertQuotePitchVariables(args: {
   };
 
   return {
+    expert: buildExpertVariable({ expert, bio: extracted.expertBio, answerContext }),
     brands: [brand],
-    expertName: requireNonEmpty(expert.expertName, "expertName"),
-    expertTitle: requireNonEmpty(expert.expertTitle, "expertTitle"),
-    expertBio: requireNonEmpty(extracted.expertBio, "expertBio"),
-    expertPhotoUrl: requireNonEmpty(expert.expertPhotoUrl, "expertPhotoUrl"),
-    expertLinkedIn: requireNonEmpty(expert.expertLinkedIn, "expertLinkedIn"),
     journalistRequest: buildJournalistRequestVariable(opportunity),
-    expertAnswerContext: buildExpertAnswerContextVariable(answerContext),
   };
 }

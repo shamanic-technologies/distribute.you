@@ -104,7 +104,7 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
     );
   });
 
-  it("buildExpertQuotePitchVariables emits the byte-equal all-required contract", () => {
+  it("buildExpertQuotePitchVariables emits the three generic-JSON blobs (expert/brands/journalistRequest)", () => {
     const out = buildExpertQuotePitchVariables({
       identity: FULL_IDENTITY,
       extracted: FULL_EXTRACTED,
@@ -113,16 +113,7 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
       answerContext: FULL_ANSWER_CTX,
     });
     expect(Object.keys(out).sort()).toEqual(
-      [
-        "brands",
-        "expertAnswerContext",
-        "expertBio",
-        "expertLinkedIn",
-        "expertName",
-        "expertPhotoUrl",
-        "expertTitle",
-        "journalistRequest",
-      ].sort(),
+      ["brands", "expert", "journalistRequest"].sort(),
     );
     expect(out.brands).toEqual([
       {
@@ -133,15 +124,24 @@ describe("expert-quote-pitch variable assembly (content-gen PR #124 all-required
         brandLogoUrl: "https://acme.example/logo.png",
       },
     ]);
-    expect(out.expertName).toBe("Jordan Avery");
-    expect(out.expertBio).toBe("Ex-Stripe; scaled three eng orgs.");
-    expect(out.expertPhotoUrl).toBe(FULL_EXPERT.expertPhotoUrl);
-    expect(out.expertAnswerContext).toEqual({
-      brandEvidence: FULL_ANSWER_CTX.brandEvidence,
-      evidenceSourceUrls: FULL_ANSWER_CTX.evidenceSourceUrls,
-      revisionInstructions: FULL_ANSWER_CTX.revisionInstructions,
-      priorSubmittedPitches: FULL_ANSWER_CTX.priorSubmittedPitches,
+    // The `expert` blob folds every attribution field + the answer context.
+    expect(out.expert).toEqual({
+      name: "Jordan Avery",
+      title: "CEO & Co-founder",
+      bio: "Ex-Stripe; scaled three eng orgs.",
+      photoUrl: FULL_EXPERT.expertPhotoUrl,
+      linkedIn: FULL_EXPERT.expertLinkedIn,
+      answerContext: {
+        brandEvidence: FULL_ANSWER_CTX.brandEvidence,
+        evidenceSourceUrls: FULL_ANSWER_CTX.evidenceSourceUrls,
+        revisionInstructions: FULL_ANSWER_CTX.revisionInstructions,
+        priorSubmittedPitches: FULL_ANSWER_CTX.priorSubmittedPitches,
+      },
     });
+    // The old flat top-level attribution vars are gone (folded into `expert`).
+    expect(out).not.toHaveProperty("expertName");
+    expect(out).not.toHaveProperty("expertBio");
+    expect(out).not.toHaveProperty("expertAnswerContext");
   });
 
   it("brands is ALWAYS an array even for a single brand", () => {
@@ -317,6 +317,17 @@ describe("expert-quote-pitch consumers send the new all-required contract", () =
     expect(block).toContain("getBrand");
     // Legacy assembly must be gone from the codebase.
     expect(apiLib).not.toContain("buildBrandVariableFromInputs");
+    // Campaign attribution: the generate spend is threaded to the campaign.
+    expect(block).toContain("campaignId");
+  });
+
+  it("generateQuoteDraft threads campaignId into the upstream body (campaign-level cost attribution)", () => {
+    const block =
+      apiLib.split("export async function generateQuoteDraft(")[1]?.split(
+        "\nexport ",
+      )[0] ?? "";
+    expect(block).toContain("upstreamBody.campaignId = campaignId");
+    expect(block).toContain('"x-campaign-id"');
   });
 
   it("public-report draft route extracts the brand+expert fields and builds the new contract", () => {
