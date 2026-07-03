@@ -68,6 +68,12 @@ export interface ConversionLead {
    * outreach series by its local calendar day.
    */
   contactedAt?: string | null;
+  /** ISO timestamp of first website click (email-gateway firstClickedAt); null
+   *  when not clicked / unknown. The signups-goal digest's "time ago" source. */
+  clickedAt?: string | null;
+  /** ISO timestamp of first positive reply (email-gateway firstRepliedAt); null
+   *  when none / unknown. The sales_meetings-goal digest's "time ago" source. */
+  repliedPositiveAt?: string | null;
   /** Most-advanced event date; null until per-event timestamps exist. */
   date: string | null;
 }
