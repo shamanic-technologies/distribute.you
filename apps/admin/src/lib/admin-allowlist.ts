@@ -10,8 +10,6 @@
 export const ADMIN_ALLOWED_EMAILS = [
   "kevin.lourd@gmail.com",
   "kevin@distribute.you",
-  "adam@distribute.you",
-  "adam2d3d@gmail.com",
 ];
 
 export function isAdminEmail(email?: string | null): boolean {

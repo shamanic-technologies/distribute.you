@@ -5,7 +5,7 @@ import type { RevenueOverview } from "./revenue-view";
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
 export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
 // PostHog beta-cohort gate for the daily digest send. Reuses the existing
-// `beta-campaign-activity` cohort (Kevin + Adam) — the live-activity UI that
+// `beta-campaign-activity` cohort (Kevin) — the live-activity UI that
 // originally owned this flag was removed, but the cohort lives on as the
 // digest's audience selector.
 export const OUTCOME_DIGEST_BETA_FLAG = "beta-campaign-activity";
