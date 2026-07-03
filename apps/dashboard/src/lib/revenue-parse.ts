@@ -49,6 +49,17 @@ const RevenueLeadSchema = z.object({
   // the goal's signal (signups → clickedAt, sales_meetings → repliedPositiveAt).
   clickedAt: z.string().nullish(),
   repliedPositiveAt: z.string().nullish(),
+  // Per-lead firmographics (features-service#441). Additive `.nullish()` so the
+  // parse succeeds before + after that producer reaches prod; each is null when the
+  // upstream enrichment never resolved a value (no synthesis). `orgEmployeeCount` is
+  // a RAW headcount (`z.coerce.number()` — the wire may serialize it as a string) —
+  // the consumer bands it for display.
+  title: z.string().nullish(),
+  seniority: z.string().nullish(),
+  orgIndustry: z.string().nullish(),
+  orgEmployeeCount: z.coerce.number().nullish(),
+  orgCity: z.string().nullish(),
+  orgCountry: z.string().nullish(),
   date: z.string().nullable(),
 });
 const RevenueEventSchema = z.object({

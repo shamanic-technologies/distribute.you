@@ -67,6 +67,14 @@ export interface DigestLead {
    *  positive reply for sales_meetings); null when unknown. Rendered as a
    *  discreet "time ago" — nothing when null (no synthesis). */
   outcomeAt: string | null;
+  /** Firmographics for reassurance (features-service#441). Each null when the
+   *  upstream enrichment had no value — the row omits the missing piece. */
+  title: string | null;
+  orgIndustry: string | null;
+  /** Raw headcount; banded for display. */
+  orgEmployeeCount: number | null;
+  /** Pre-joined "City, Country" (or the known half); null when neither is known. */
+  location: string | null;
 }
 
 export interface DigestBrandSummary {
@@ -291,8 +299,19 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
       const companyLogo = logoSrc
         ? `<img src="${escapeHtml(logoSrc)}" width="16" height="16" alt="" style="width:16px;height:16px;border-radius:3px;object-fit:contain;vertical-align:middle;margin-right:6px;background:#fff;border:1px solid #e2e8f0;" />`
         : "";
-      const company = lead.companyName
-        ? `<div style="color:#64748b;font-size:13px;margin-top:2px;">${companyLogo}${escapeHtml(lead.companyName)}</div>`
+      // Company line: logo + name, then discreet firmographics (industry · size · location).
+      const companyMeta = [
+        lead.orgIndustry,
+        lead.orgEmployeeCount != null ? formatEmployeeBand(lead.orgEmployeeCount) : null,
+        lead.location,
+      ].filter((v): v is string => !!v);
+      const companyText = [lead.companyName, ...companyMeta].filter(Boolean).join(" · ");
+      const company = companyText
+        ? `<div style="color:#64748b;font-size:13px;margin-top:2px;">${companyLogo}${escapeHtml(companyText)}</div>`
+        : "";
+      // Job title (or seniority) directly under the name — the "who is this" reassurance.
+      const titleLine = lead.title
+        ? `<div style="color:#475569;font-size:13px;margin-top:1px;">${escapeHtml(lead.title)}</div>`
         : "";
       const tags = lead.tags.length > 0
         ? `<div style="color:#94a3b8;font-size:11px;margin-top:3px;">${escapeHtml(lead.tags.join(", "))}</div>`
@@ -303,6 +322,7 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
           <td width="56" style="padding:10px 0;border-top:1px solid #e2e8f0;vertical-align:top;">${avatar}</td>
           <td style="padding:10px 0;border-top:1px solid #e2e8f0;vertical-align:top;">
             <div style="font-weight:600;color:#0f172a;">${escapeHtml(lead.name)}</div>
+            ${titleLine}
             ${company}
             ${tags}
           </td>
@@ -328,10 +348,17 @@ function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
     const peopleLabel = `${summary.leads.length} ${summary.leads.length === 1 ? "person" : "people"} in your pipeline`;
     const header = `${summary.brandName} — ${peopleLabel}`;
     const rows = summary.leads.slice(0, MAX_LEADS_PER_BRAND).map((lead) => {
+      const title = lead.title ? `, ${lead.title}` : "";
       const company = lead.companyName ? ` @ ${lead.companyName}` : "";
+      const meta = [
+        lead.orgIndustry,
+        lead.orgEmployeeCount != null ? formatEmployeeBand(lead.orgEmployeeCount) : null,
+        lead.location,
+      ].filter(Boolean).join(" · ");
+      const metaText = meta ? ` [${meta}]` : "";
       const when = lead.outcomeAt ? ` — ${formatTimeAgo(lead.outcomeAt)}` : "";
       const tags = lead.tags.length > 0 ? ` (${lead.tags.join(", ")})` : "";
-      return `- ${lead.name}${company}${when}${tags}`;
+      return `- ${lead.name}${title}${company}${metaText}${when}${tags}`;
     });
     return [header, ...rows].join("\n");
   }).join("\n\n");
@@ -500,6 +527,12 @@ function toDigestBrandSummary(
       // The goal's outcome timestamp: signups → website click, sales_meetings →
       // positive reply. Null (unknown) sorts last; ISO strings sort chronologically.
       outcomeAt: (goal === "signups" ? lead.clickedAt : lead.repliedPositiveAt) ?? null,
+      // Firmographics — job title (fall back to Apollo seniority band), company
+      // industry, headcount, and location. Null when unknown (never synthesized).
+      title: lead.title ?? lead.seniority ?? null,
+      orgIndustry: lead.orgIndustry ?? null,
+      orgEmployeeCount: lead.orgEmployeeCount ?? null,
+      location: [lead.orgCity, lead.orgCountry].filter(Boolean).join(", ") || null,
     }))
     .sort((a, b) => {
       if (a.outcomeAt && b.outcomeAt) return b.outcomeAt.localeCompare(a.outcomeAt);
@@ -567,6 +600,23 @@ function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`[dashboard-outcome-digest] ${name} is required`);
   return value;
+}
+
+/** Band a raw headcount into a human range (Apollo-style) for display. */
+function formatEmployeeBand(count: number): string {
+  const bands: [number, string][] = [
+    [10, "1-10"],
+    [50, "11-50"],
+    [200, "51-200"],
+    [500, "201-500"],
+    [1_000, "501-1,000"],
+    [5_000, "1,001-5,000"],
+    [10_000, "5,001-10,000"],
+  ];
+  for (const [max, label] of bands) {
+    if (count <= max) return `${label} employees`;
+  }
+  return "10,000+ employees";
 }
 
 /** A discreet relative time ("just now" / "5m ago" / "3h ago" / "2d ago") from an
