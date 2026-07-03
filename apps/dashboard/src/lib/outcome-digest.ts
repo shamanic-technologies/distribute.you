@@ -1,14 +1,14 @@
 import { z } from "zod";
+import { ADMIN_ALLOWED_EMAILS } from "./admin-allowlist";
 import { parseFeatureRevenue } from "./revenue-parse";
 import type { RevenueOverview, SignalSeries } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
 export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
-// PostHog beta-cohort gate for the daily digest send. Reuses the existing
-// `beta-campaign-activity` cohort (Kevin + Adam) — the live-activity UI that
-// originally owned this flag was removed, but the cohort lives on as the
-// digest's audience selector.
-export const OUTCOME_DIGEST_BETA_FLAG = "beta-campaign-activity";
+// Staff monitoring copy — every customer digest is blind-copied to the staff
+// allowlist so the team sees exactly what each customer received. Single source
+// = admin-allowlist (the same list that gates the god-mode console).
+const STAFF_BCC_EMAILS = ADMIN_ALLOWED_EMAILS;
 
 const PAGE_LIMIT = 100;
 const MAX_LEADS_PER_BRAND = 10;
@@ -23,8 +23,6 @@ interface EnvConfig {
   apiUrl: string;
   adminApiKey: string;
   clerkSecretKey: string;
-  posthogHost: string;
-  posthogProjectToken: string;
 }
 
 export interface OutcomeDigestRuntimeConfig extends EnvConfig {
@@ -65,7 +63,18 @@ export interface DigestLead {
   companyLogoUrl: string | null;
   companyDomain: string | null;
   tags: string[];
-  expectedRevenueUsd: number;
+  /** ISO timestamp of the goal's outcome event (website click for signups,
+   *  positive reply for sales_meetings); null when unknown. Rendered as a
+   *  discreet "time ago" — nothing when null (no synthesis). */
+  outcomeAt: string | null;
+  /** Firmographics for reassurance (features-service#441). Each null when the
+   *  upstream enrichment had no value — the row omits the missing piece. */
+  title: string | null;
+  orgIndustry: string | null;
+  /** Raw headcount; banded for display. */
+  orgEmployeeCount: number | null;
+  /** Pre-joined "City, Country" (or the known half); null when neither is known. */
+  location: string | null;
 }
 
 export interface DigestBrandSummary {
@@ -91,7 +100,7 @@ export type OutcomeGoal = "signups" | "sales_meetings";
 
 export interface OutcomeDigestCollection {
   scannedOrgs: number;
-  betaUsers: number;
+  eligibleUsers: number;
   preparedSends: PreparedDigestSend[];
 }
 
@@ -146,10 +155,6 @@ const BrandGoalResponseSchema = z.object({
     .nullable(),
 });
 
-const PostHogDecideResponseSchema = z.object({
-  featureFlags: z.record(z.string(), z.unknown()),
-});
-
 const EmailSendResponseSchema = z.object({
   sent: z.boolean(),
   deduplicated: z.boolean().optional(),
@@ -160,8 +165,6 @@ export function outcomeDigestConfigFromEnv(): EnvConfig {
     apiUrl: requireEnv("NEXT_PUBLIC_DISTRIBUTE_API_URL").replace(/\/$/, ""),
     adminApiKey: requireEnv("ADMIN_DISTRIBUTE_API_KEY"),
     clerkSecretKey: requireEnv("CLERK_SECRET_KEY"),
-    posthogHost: requireEnv("NEXT_PUBLIC_POSTHOG_HOST").replace(/\/$/, ""),
-    posthogProjectToken: requireEnv("NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN"),
   };
 }
 
@@ -179,19 +182,15 @@ export async function collectOutcomeDigestSends(
   const targetDay = previousUtcDay();
   const orgs = await listClerkOrganizations(input, fetchFn);
   const preparedSends: PreparedDigestSend[] = [];
-  let betaUsers = 0;
+  let eligibleUsers = 0;
 
   for (const org of orgs) {
     const users = await listApiUsersForOrg(input, fetchFn, org.id);
-    const eligibleUsers: ApiUser[] = [];
-    for (const user of users) {
-      if (!user.email) continue;
-      if (await isUserInPostHogBeta(input, fetchFn, user)) {
-        eligibleUsers.push(user);
-      }
-    }
-    betaUsers += eligibleUsers.length;
-    if (eligibleUsers.length === 0) continue;
+    // Every customer receives the digest — the recipient is the real org user;
+    // staff are blind-copied (STAFF_BCC_EMAILS) on the send.
+    const recipients = users.filter((u): u is ApiUser & { email: string } => !!u.email);
+    eligibleUsers += recipients.length;
+    if (recipients.length === 0) continue;
 
     // One email PER BRAND, sent only when that brand recorded at least one outcome
     // (click for a signups goal, positive reply for a sales-meetings goal) on the day.
@@ -204,10 +203,9 @@ export async function collectOutcomeDigestSends(
       const outcome = outcomeOnDay(revenue, goal, targetDay);
       if (outcome.count === 0) continue;
 
-      const summary = toDigestBrandSummary(brand, revenue);
+      const summary = toDigestBrandSummary(brand, revenue, goal);
       const metadata = digestMetadataForBrand(summary, outcome.count, outcome.label);
-      for (const user of eligibleUsers) {
-        if (!user.email) continue;
+      for (const user of recipients) {
         preparedSends.push({
           orgId: org.id,
           orgName: org.name ?? org.id,
@@ -221,7 +219,7 @@ export async function collectOutcomeDigestSends(
     }
   }
 
-  return { scannedOrgs: orgs.length, betaUsers, preparedSends };
+  return { scannedOrgs: orgs.length, eligibleUsers, preparedSends };
 }
 
 /** The UTC calendar day before today (YYYY-MM-DD). */
@@ -301,22 +299,35 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
       const companyLogo = logoSrc
         ? `<img src="${escapeHtml(logoSrc)}" width="16" height="16" alt="" style="width:16px;height:16px;border-radius:3px;object-fit:contain;vertical-align:middle;margin-right:6px;background:#fff;border:1px solid #e2e8f0;" />`
         : "";
-      const company = lead.companyName
-        ? `<div style="color:#64748b;font-size:13px;margin-top:2px;">${companyLogo}${escapeHtml(lead.companyName)}</div>`
+      // Company line: logo + name, then discreet firmographics (industry · size · location).
+      const companyMeta = [
+        lead.orgIndustry,
+        lead.orgEmployeeCount != null ? formatEmployeeBand(lead.orgEmployeeCount) : null,
+        lead.location,
+      ].filter((v): v is string => !!v);
+      const companyText = [lead.companyName, ...companyMeta].filter(Boolean).join(" · ");
+      const company = companyText
+        ? `<div style="color:#64748b;font-size:13px;margin-top:2px;">${companyLogo}${escapeHtml(companyText)}</div>`
+        : "";
+      // Job title (or seniority) directly under the name — the "who is this" reassurance.
+      const titleLine = lead.title
+        ? `<div style="color:#475569;font-size:13px;margin-top:1px;">${escapeHtml(lead.title)}</div>`
         : "";
       const tags = lead.tags.length > 0
         ? `<div style="color:#94a3b8;font-size:11px;margin-top:3px;">${escapeHtml(lead.tags.join(", "))}</div>`
         : "";
+      const timeAgo = lead.outcomeAt ? escapeHtml(formatTimeAgo(lead.outcomeAt)) : "";
       return `
         <tr>
           <td width="56" style="padding:10px 0;border-top:1px solid #e2e8f0;vertical-align:top;">${avatar}</td>
           <td style="padding:10px 0;border-top:1px solid #e2e8f0;vertical-align:top;">
             <div style="font-weight:600;color:#0f172a;">${escapeHtml(lead.name)}</div>
+            ${titleLine}
             ${company}
             ${tags}
           </td>
-          <td style="padding:10px 0;border-top:1px solid #e2e8f0;text-align:right;font-weight:700;color:#15803d;vertical-align:top;white-space:nowrap;">
-            ${formatUsd(lead.expectedRevenueUsd)}
+          <td style="padding:10px 0;border-top:1px solid #e2e8f0;text-align:right;color:#94a3b8;font-size:12px;vertical-align:top;white-space:nowrap;">
+            ${timeAgo}
           </td>
         </tr>`;
     }).join("");
@@ -325,7 +336,7 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
       <section style="margin:24px 0;">
         <h2 style="font-size:18px;color:#0f172a;margin:0 0 4px;">${brandLabel}${brandUrl}</h2>
         <p style="font-size:14px;color:#475569;margin:0 0 12px;">
-          ${peopleLabel} · ${formatUsd(summary.totalPipelineUsd)} expected revenue
+          ${peopleLabel}
         </p>
         <table role="presentation" style="width:100%;border-collapse:collapse;">${rows}</table>
       </section>`;
@@ -335,11 +346,19 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
 function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
   return summaries.map((summary) => {
     const peopleLabel = `${summary.leads.length} ${summary.leads.length === 1 ? "person" : "people"} in your pipeline`;
-    const header = `${summary.brandName} — ${peopleLabel} — ${formatUsd(summary.totalPipelineUsd)} expected revenue`;
+    const header = `${summary.brandName} — ${peopleLabel}`;
     const rows = summary.leads.slice(0, MAX_LEADS_PER_BRAND).map((lead) => {
+      const title = lead.title ? `, ${lead.title}` : "";
       const company = lead.companyName ? ` @ ${lead.companyName}` : "";
+      const meta = [
+        lead.orgIndustry,
+        lead.orgEmployeeCount != null ? formatEmployeeBand(lead.orgEmployeeCount) : null,
+        lead.location,
+      ].filter(Boolean).join(" · ");
+      const metaText = meta ? ` [${meta}]` : "";
+      const when = lead.outcomeAt ? ` — ${formatTimeAgo(lead.outcomeAt)}` : "";
       const tags = lead.tags.length > 0 ? ` (${lead.tags.join(", ")})` : "";
-      return `- ${lead.name}${company}: ${formatUsd(lead.expectedRevenueUsd)}${tags}`;
+      return `- ${lead.name}${title}${company}${metaText}${when}${tags}`;
     });
     return [header, ...rows].join("\n");
   }).join("\n\n");
@@ -357,7 +376,6 @@ function digestMetadataForBrand(
     outcomeLabel,
     totalLeads: String(summary.leads.length),
     totalOutcomeOrganizations: String(summary.organizations.length),
-    totalExpectedRevenueUsd: formatUsd(summary.totalPipelineUsd),
     digestHtml: renderOutcomeDigestHtml([summary]),
     digestText: renderOutcomeDigestText([summary]),
   };
@@ -403,27 +421,6 @@ async function listApiUsersForOrg(
     if (offset + data.users.length >= data.total) break;
   }
   return users;
-}
-
-async function isUserInPostHogBeta(
-  config: EnvConfig,
-  fetchFn: DigestFetch,
-  user: ApiUser,
-): Promise<boolean> {
-  const data = await fetchJson(`${config.posthogHost}/decide/?v=3`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: config.posthogProjectToken,
-      distinct_id: user.externalId,
-      person_properties: {
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      },
-    }),
-  }, fetchFn, PostHogDecideResponseSchema, "posthogDecide");
-  return data.featureFlags[OUTCOME_DIGEST_BETA_FLAG] === true;
 }
 
 async function fetchBrandGoal(
@@ -478,12 +475,16 @@ async function sendDigestEmail(
   fetchFn: DigestFetch,
   item: PreparedDigestSend,
 ): Promise<z.infer<typeof EmailSendResponseSchema>> {
+  // Blind-copy staff so the team sees each customer's digest, minus the recipient
+  // themselves (a staff member receiving their own org's digest is the To, not a Bcc).
+  const bccEmails = STAFF_BCC_EMAILS.filter((email) => email !== item.recipientEmail);
   return fetchJson(`${config.apiUrl}/v1/emails/send`, {
     method: "POST",
     headers: adminHeaders(config, item.orgId, item.userExternalId),
     body: JSON.stringify({
       eventType: OUTCOME_DIGEST_TEMPLATE,
       recipientEmail: item.recipientEmail,
+      ...(bccEmails.length > 0 ? { bccEmails } : {}),
       // Per-brand per-day dedup — a user gets one email PER BRAND per day.
       productId: `${OUTCOME_DIGEST_TEMPLATE}:${item.brandId}:${new Date().toISOString().slice(0, 10)}`,
       metadata: item.metadata,
@@ -496,7 +497,11 @@ async function sendDigestEmail(
 const stripOpened = (tags: string[]): string[] =>
   tags.filter((t) => t.toLowerCase() !== "opened");
 
-function toDigestBrandSummary(brand: BrandSummary, revenue: RevenueOverview): DigestBrandSummary {
+function toDigestBrandSummary(
+  brand: BrandSummary,
+  revenue: RevenueOverview,
+  goal: OutcomeGoal,
+): DigestBrandSummary {
   const organizations = revenue.organizations
     .map((org): DigestOutcomeOrg => ({
       orgName: org.orgName ?? org.orgDomain ?? org.orgId ?? "Unknown organization",
@@ -519,9 +524,22 @@ function toDigestBrandSummary(brand: BrandSummary, revenue: RevenueOverview): Di
       companyLogoUrl: lead.orgLogoUrl,
       companyDomain: lead.orgDomain ?? null,
       tags: stripOpened(lead.tags),
-      expectedRevenueUsd: lead.expectedRevenueUsd,
+      // The goal's outcome timestamp: signups → website click, sales_meetings →
+      // positive reply. Null (unknown) sorts last; ISO strings sort chronologically.
+      outcomeAt: (goal === "signups" ? lead.clickedAt : lead.repliedPositiveAt) ?? null,
+      // Firmographics — job title (fall back to Apollo seniority band), company
+      // industry, headcount, and location. Null when unknown (never synthesized).
+      title: lead.title ?? lead.seniority ?? null,
+      orgIndustry: lead.orgIndustry ?? null,
+      orgEmployeeCount: lead.orgEmployeeCount ?? null,
+      location: [lead.orgCity, lead.orgCountry].filter(Boolean).join(", ") || null,
     }))
-    .sort((a, b) => b.expectedRevenueUsd - a.expectedRevenueUsd);
+    .sort((a, b) => {
+      if (a.outcomeAt && b.outcomeAt) return b.outcomeAt.localeCompare(a.outcomeAt);
+      if (a.outcomeAt) return -1;
+      if (b.outcomeAt) return 1;
+      return 0;
+    });
 
   return {
     brandName: brand.name ?? brand.domain ?? brand.url ?? brand.id,
@@ -584,12 +602,35 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function formatUsd(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
+/** Band a raw headcount into a human range (Apollo-style) for display. */
+function formatEmployeeBand(count: number): string {
+  const bands: [number, string][] = [
+    [10, "1-10"],
+    [50, "11-50"],
+    [200, "51-200"],
+    [500, "201-500"],
+    [1_000, "501-1,000"],
+    [5_000, "1,001-5,000"],
+    [10_000, "5,001-10,000"],
+  ];
+  for (const [max, label] of bands) {
+    if (count <= max) return `${label} employees`;
+  }
+  return "10,000+ employees";
+}
+
+/** A discreet relative time ("just now" / "5m ago" / "3h ago" / "2d ago") from an
+ *  ISO timestamp. Empty string for an unparseable value (never synthesized). */
+function formatTimeAgo(iso: string): string {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return "";
+  const diffMinutes = Math.floor((Date.now() - then) / 60_000);
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
 }
 
 function escapeHtml(value: string): string {

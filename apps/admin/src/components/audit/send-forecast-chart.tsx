@@ -22,7 +22,7 @@ function formatDateShort(iso: string): string {
 
 function num(n: number | null | undefined): string {
   // Projected email counts arrive fractional; display as whole emails.
-  return Math.round(n ?? 0).toLocaleString("en-US");
+  return String(Math.round(n ?? 0));
 }
 
 const SERIES = [
@@ -73,7 +73,13 @@ function ForecastTooltip({
  * the days they don't apply (past has no forecast, future has no actual), so the
  * stacks read as: past = actual only, future = in-flight + projected-new.
  */
-export function SendForecastChart({ days }: { days: SendForecastDay[] }) {
+export function SendForecastChart({
+  days,
+  dailyCapacity,
+}: {
+  days: SendForecastDay[];
+  dailyCapacity?: number;
+}) {
   if (days.length === 0) {
     return (
       <div className="flex h-[300px] items-center justify-center text-sm text-gray-400">
@@ -98,13 +104,27 @@ export function SendForecastChart({ days }: { days: SendForecastDay[] }) {
             minTickGap={16}
           />
           <YAxis
-            tickFormatter={(value) => Math.round(Number(value)).toLocaleString("en-US")}
+            tickFormatter={(value) => String(Math.round(Number(value)))}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickLine={false}
             axisLine={false}
             width={54}
           />
           <Tooltip cursor={{ fill: "#f8fafc" }} content={<ForecastTooltip />} />
+          {dailyCapacity !== undefined && dailyCapacity > 0 && (
+            <ReferenceLine
+              y={dailyCapacity}
+              stroke="#0ea5e9"
+              strokeDasharray="5 4"
+              strokeWidth={2}
+              label={{
+                value: `Capacity ${Math.round(dailyCapacity)}/day`,
+                position: "insideTopRight",
+                fill: "#0284c7",
+                fontSize: 11,
+              }}
+            />
+          )}
           {todayDate && (
             <ReferenceLine
               x={todayDate}

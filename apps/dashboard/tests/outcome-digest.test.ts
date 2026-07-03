@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { ADMIN_ALLOWED_EMAILS } from "../src/lib/admin-allowlist";
 import {
   collectOutcomeDigestSends,
-  OUTCOME_DIGEST_BETA_FLAG,
   renderOutcomeDigestHtml,
+  sendOutcomeDigestEmails,
   type DigestFetch,
 } from "../src/lib/outcome-digest";
 
@@ -18,8 +19,6 @@ describe("daily outcome digest", () => {
     apiUrl: "https://api.example.test",
     adminApiKey: "adminkey",
     clerkSecretKey: "clerkkey",
-    posthogHost: "https://eu.posthog.com",
-    posthogProjectToken: "ph_project",
   };
 
   // The digest reports on the UTC calendar day that just closed.
@@ -31,6 +30,9 @@ describe("daily outcome digest", () => {
       .toISOString()
       .slice(0, 10);
   }
+
+  // A recent positive-reply timestamp → drives the "time ago" row (sales_meetings goal).
+  const repliedThreeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
   // Brand revenue fixture: 2 pipeline orgs + a positive-reply series whose count
   // for `day` is controllable (drives the sales_meetings outcome gate).
@@ -81,6 +83,14 @@ describe("daily outcome digest", () => {
           conversionProbabilityPct: null,
           contacted: true,
           contactedAt: null,
+          clickedAt: null,
+          repliedPositiveAt: repliedThreeHoursAgo,
+          title: "Head of Growth",
+          seniority: "director",
+          orgIndustry: "Marketing",
+          orgEmployeeCount: 120,
+          orgCity: "Austin",
+          orgCountry: "United States",
           date: null,
         },
       ],
@@ -88,36 +98,36 @@ describe("daily outcome digest", () => {
     };
   }
 
-  it("prepares one per-brand send for a beta user when the brand had an outcome that day", async () => {
+  it("prepares a per-brand send for EVERY customer user (no beta gate)", async () => {
     const day = previousUtcDay();
     const fetchMock: DigestFetch = async (input, init) => {
       const url = String(input);
       if (url.startsWith("https://api.clerk.com/v1/organizations")) {
         return jsonResponse({
-          data: [{ id: "org_beta", name: "Beta Org" }],
+          data: [{ id: "org_1", name: "Customer Org" }],
           total_count: 1,
         });
       }
       if (url === "https://api.example.test/v1/users?limit=100&offset=0") {
-        expect(init?.headers).toMatchObject({ "x-external-org-id": "org_beta" });
+        expect(init?.headers).toMatchObject({ "x-external-org-id": "org_1" });
         return jsonResponse({
           users: [
             {
-              id: "internal-kevin",
-              externalId: "user_kevin",
-              email: "kevin@example.com",
-              firstName: "Kevin",
-              lastName: "Lourd",
+              id: "internal-owner",
+              externalId: "user_owner",
+              email: "owner@customer.com",
+              firstName: "Casey",
+              lastName: "Owner",
               imageUrl: null,
               phone: null,
               createdAt: "2026-06-09T00:00:00.000Z",
             },
             {
-              id: "internal-nonbeta",
-              externalId: "user_nonbeta",
-              email: "nonbeta@example.com",
-              firstName: "No",
-              lastName: "Beta",
+              id: "internal-mate",
+              externalId: "user_mate",
+              email: "teammate@customer.com",
+              firstName: "Sam",
+              lastName: "Mate",
               imageUrl: null,
               phone: null,
               createdAt: "2026-06-09T00:00:00.000Z",
@@ -126,14 +136,6 @@ describe("daily outcome digest", () => {
           total: 2,
           limit: 100,
           offset: 0,
-        });
-      }
-      if (url.startsWith("https://eu.posthog.com/decide/?v=3")) {
-        const body = JSON.parse(String(init?.body));
-        return jsonResponse({
-          featureFlags: {
-            [OUTCOME_DIGEST_BETA_FLAG]: body.distinct_id === "user_kevin",
-          },
         });
       }
       if (url === "https://api.example.test/v1/brands") {
@@ -163,42 +165,61 @@ describe("daily outcome digest", () => {
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: fetchMock });
 
     expect(result.scannedOrgs).toBe(1);
-    expect(result.betaUsers).toBe(1);
-    expect(result.preparedSends).toHaveLength(1);
-    expect(result.preparedSends[0]).toMatchObject({
-      orgId: "org_beta",
+    // No beta gate — both org users are eligible recipients.
+    expect(result.eligibleUsers).toBe(2);
+    expect(result.preparedSends).toHaveLength(2);
+    expect(result.preparedSends.map((s) => s.recipientEmail).sort()).toEqual([
+      "owner@customer.com",
+      "teammate@customer.com",
+    ]);
+    const send = result.preparedSends[0];
+    expect(send).toMatchObject({
+      orgId: "org_1",
       brandId: "brand_1",
       brandName: "Acme",
-      userExternalId: "user_kevin",
-      recipientEmail: "kevin@example.com",
       metadata: {
         brandName: "Acme",
         outcomeCount: "3",
         outcomeLabel: "positive replies",
         totalOutcomeOrganizations: "2",
-        totalExpectedRevenueUsd: "$12,500",
       },
     });
-    // Body lists the people (face + company logo) — name, photo, logo.dev domain.
-    expect(result.preparedSends[0].metadata.digestHtml).toContain("Ada Lovelace");
-    expect(result.preparedSends[0].metadata.digestHtml).toContain("https://img.example.test/ada.jpg");
-    expect(result.preparedSends[0].metadata.digestHtml).toContain("img.logo.dev/leadco.test");
-    expect(result.preparedSends[0].metadata.digestText).toContain("Ada Lovelace @ Lead Co");
+    // Revenue is no longer mentioned anywhere in the digest.
+    expect(send.metadata.totalExpectedRevenueUsd).toBeUndefined();
+    expect(send.metadata.digestHtml).not.toContain("expected revenue");
+    expect(send.metadata.digestHtml).not.toContain("$");
+    // Body lists the people (face + company logo) + a discreet time-ago (not a $ amount).
+    expect(send.metadata.digestHtml).toContain("Ada Lovelace");
+    expect(send.metadata.digestHtml).toContain("https://img.example.test/ada.jpg");
+    expect(send.metadata.digestHtml).toContain("img.logo.dev/leadco.test");
+    expect(send.metadata.digestHtml).toContain("3h ago");
+    expect(send.metadata.digestText).toContain("Ada Lovelace");
+    expect(send.metadata.digestText).toContain("3h ago");
+    // Firmographics for reassurance — title, industry, banded headcount, location.
+    expect(send.metadata.digestHtml).toContain("Head of Growth");
+    expect(send.metadata.digestHtml).toContain("Marketing");
+    expect(send.metadata.digestHtml).toContain("51-200 employees");
+    expect(send.metadata.digestHtml).toContain("Austin, United States");
+    expect(send.metadata.digestText).toContain("Head of Growth");
+    expect(send.metadata.digestText).toContain("51-200 employees");
   });
 
-  it("does not prepare a send when a brand has pipeline but no outcome that day", async () => {
+  it("blind-copies the staff allowlist (minus a staff recipient) on each send", async () => {
     const day = previousUtcDay();
-    const fetchMock: DigestFetch = async (input) => {
+    const sendBodies: Array<Record<string, unknown>> = [];
+    // Recipient is a staff member → they must be excluded from their own BCC.
+    const staffRecipient = ADMIN_ALLOWED_EMAILS[0];
+    const fetchMock: DigestFetch = async (input, init) => {
       const url = String(input);
       if (url.startsWith("https://api.clerk.com/v1/organizations")) {
-        return jsonResponse({ data: [{ id: "org_beta", name: "Beta Org" }], total_count: 1 });
+        return jsonResponse({ data: [{ id: "org_1", name: "Org" }], total_count: 1 });
       }
       if (url === "https://api.example.test/v1/users?limit=100&offset=0") {
         return jsonResponse({
           users: [{
-            id: "internal-kevin",
-            externalId: "user_kevin",
-            email: "kevin@example.com",
+            id: "internal-staff",
+            externalId: "user_staff",
+            email: staffRecipient,
             firstName: "Kevin",
             lastName: "Lourd",
             imageUrl: null,
@@ -210,8 +231,67 @@ describe("daily outcome digest", () => {
           offset: 0,
         });
       }
-      if (url.startsWith("https://eu.posthog.com/decide/?v=3")) {
-        return jsonResponse({ featureFlags: { [OUTCOME_DIGEST_BETA_FLAG]: true } });
+      if (url === "https://api.example.test/v1/brands") {
+        return jsonResponse({
+          brands: [{
+            id: "brand_1",
+            domain: "acme.test",
+            name: "Acme",
+            brandUrl: "https://acme.test",
+            createdAt: null,
+            updatedAt: null,
+            logoUrl: null,
+          }],
+        });
+      }
+      if (url === "https://api.example.test/v1/brands/brand_1/sales-economics") {
+        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
+      }
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+        return jsonResponse(brandRevenue(3, day));
+      }
+      if (url === "https://api.example.test/v1/emails/send") {
+        sendBodies.push(JSON.parse(String(init?.body)));
+        return jsonResponse({ sent: true });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    };
+
+    const result = await sendOutcomeDigestEmails({ ...env, fetchFn: fetchMock });
+
+    expect(result.sent).toBe(1);
+    expect(sendBodies).toHaveLength(1);
+    expect(sendBodies[0].recipientEmail).toBe(staffRecipient);
+    // Staff blind-copied, recipient (a staff member) filtered out of their own BCC.
+    expect(sendBodies[0].bccEmails).toEqual(
+      ADMIN_ALLOWED_EMAILS.filter((e) => e !== staffRecipient),
+    );
+    expect(sendBodies[0].bccEmails).not.toContain(staffRecipient);
+  });
+
+  it("does not prepare a send when a brand has pipeline but no outcome that day", async () => {
+    const day = previousUtcDay();
+    const fetchMock: DigestFetch = async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://api.clerk.com/v1/organizations")) {
+        return jsonResponse({ data: [{ id: "org_1", name: "Org" }], total_count: 1 });
+      }
+      if (url === "https://api.example.test/v1/users?limit=100&offset=0") {
+        return jsonResponse({
+          users: [{
+            id: "internal-user",
+            externalId: "user_1",
+            email: "owner@customer.com",
+            firstName: "Casey",
+            lastName: "Owner",
+            imageUrl: null,
+            phone: null,
+            createdAt: "2026-06-09T00:00:00.000Z",
+          }],
+          total: 1,
+          limit: 100,
+          offset: 0,
+        });
       }
       if (url === "https://api.example.test/v1/brands") {
         return jsonResponse({
@@ -238,47 +318,11 @@ describe("daily outcome digest", () => {
 
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: fetchMock });
 
-    expect(result.betaUsers).toBe(1);
+    expect(result.eligibleUsers).toBe(1);
     expect(result.preparedSends).toHaveLength(0);
   });
 
-  it("does not prepare sends for users outside the PostHog beta flag", async () => {
-    const fetchMock: DigestFetch = async (input, init) => {
-      const url = String(input);
-      if (url.startsWith("https://api.clerk.com/v1/organizations")) {
-        return jsonResponse({ data: [{ id: "org_1", name: "Org" }], total_count: 1 });
-      }
-      if (url === "https://api.example.test/v1/users?limit=100&offset=0") {
-        return jsonResponse({
-          users: [{
-            id: "internal-user",
-            externalId: "user_no",
-            email: "no@example.com",
-            firstName: null,
-            lastName: null,
-            imageUrl: null,
-            phone: null,
-            createdAt: "2026-06-09T00:00:00.000Z",
-          }],
-          total: 1,
-          limit: 100,
-          offset: 0,
-        });
-      }
-      if (url.startsWith("https://eu.posthog.com/decide/?v=3")) {
-        expect(JSON.parse(String(init?.body)).person_properties.email).toBe("no@example.com");
-        return jsonResponse({ featureFlags: { [OUTCOME_DIGEST_BETA_FLAG]: false } });
-      }
-      throw new Error(`Unexpected fetch ${url}`);
-    };
-
-    const result = await collectOutcomeDigestSends({ ...env, fetchFn: fetchMock });
-
-    expect(result.betaUsers).toBe(0);
-    expect(result.preparedSends).toHaveLength(0);
-  });
-
-  it("does not prepare sends when beta users have no outcome organizations", async () => {
+  it("does not prepare sends when a brand has no outcome organizations", async () => {
     const fetchMock: DigestFetch = async (input) => {
       const url = String(input);
       if (url.startsWith("https://api.clerk.com/v1/organizations")) {
@@ -288,8 +332,8 @@ describe("daily outcome digest", () => {
         return jsonResponse({
           users: [{
             id: "internal-user",
-            externalId: "user_beta",
-            email: "beta@example.com",
+            externalId: "user_1",
+            email: "owner@customer.com",
             firstName: null,
             lastName: null,
             imageUrl: null,
@@ -300,9 +344,6 @@ describe("daily outcome digest", () => {
           limit: 100,
           offset: 0,
         });
-      }
-      if (url.startsWith("https://eu.posthog.com/decide/?v=3")) {
-        return jsonResponse({ featureFlags: { [OUTCOME_DIGEST_BETA_FLAG]: true } });
       }
       if (url === "https://api.example.test/v1/brands") {
         return jsonResponse({
@@ -337,11 +378,12 @@ describe("daily outcome digest", () => {
 
     const result = await collectOutcomeDigestSends({ ...env, fetchFn: fetchMock });
 
-    expect(result.betaUsers).toBe(1);
+    expect(result.eligibleUsers).toBe(1);
     expect(result.preparedSends).toHaveLength(0);
   });
 
-  it("renders digest HTML with a people list — face photo + company logo", () => {
+  it("renders digest HTML with a people list + discreet time-ago, no revenue", () => {
+    const clickedTwoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     const html = renderOutcomeDigestHtml([
       {
         brandName: "Acme",
@@ -363,7 +405,11 @@ describe("daily outcome digest", () => {
             companyLogoUrl: null,
             companyDomain: "leadco.test",
             tags: ["replied", "clicked"],
-            expectedRevenueUsd: 8000,
+            outcomeAt: clickedTwoDaysAgo,
+            title: "Head of Growth",
+            orgIndustry: "Marketing",
+            orgEmployeeCount: 120,
+            location: "Austin, United States",
           },
           {
             name: "Grace Hopper",
@@ -372,7 +418,12 @@ describe("daily outcome digest", () => {
             companyLogoUrl: "https://cdn.example.test/navy.png",
             companyDomain: "navy.test",
             tags: ["clicked"],
-            expectedRevenueUsd: 4500,
+            outcomeAt: null,
+            // All firmographics unknown → the row omits them (no synthesis).
+            title: null,
+            orgIndustry: null,
+            orgEmployeeCount: null,
+            location: null,
           },
         ],
       },
@@ -387,7 +438,15 @@ describe("daily outcome digest", () => {
     // Company logo: backend logo wins; else logo.dev from the domain.
     expect(html).toContain("https://cdn.example.test/navy.png");
     expect(html).toContain("img.logo.dev/leadco.test");
-    expect(html).toContain("$8,000");
+    // Discreet time-ago replaces the old $ amount; a null outcomeAt renders nothing.
+    expect(html).toContain("2d ago");
+    expect(html).not.toContain("$");
+    expect(html).not.toContain("expected revenue");
     expect(html).toContain("replied, clicked");
+    // Firmographics render for the enriched person, banded headcount + location.
+    expect(html).toContain("Head of Growth");
+    expect(html).toContain("Marketing");
+    expect(html).toContain("51-200 employees");
+    expect(html).toContain("Austin, United States");
   });
 });

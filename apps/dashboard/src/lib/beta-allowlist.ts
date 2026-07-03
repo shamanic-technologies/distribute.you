@@ -13,8 +13,6 @@
 export const BETA_ALLOWED_EMAILS = [
   "kevin.lourd@gmail.com",
   "kevin@distribute.you",
-  "adam@distribute.you",
-  "adam2d3d@gmail.com",
   "kevin@pressbeat.io",
 ];
 

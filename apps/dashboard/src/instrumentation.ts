@@ -251,7 +251,7 @@ export const EMAIL_TEMPLATES = [
   // company logo) via {{digestHtml}}.
   // Variables:
   //   brandName, brandUrl, outcomeCount, outcomeLabel, totalLeads,
-  //   totalOutcomeOrganizations, totalExpectedRevenueUsd, digestHtml, digestText
+  //   totalOutcomeOrganizations, digestHtml, digestText
   {
     name: "daily-outcome-digest",
     subject: "{{brandName}}: {{outcomeCount}} new {{outcomeLabel}} today",
@@ -261,14 +261,14 @@ export const EMAIL_TEMPLATES = [
         {{brandName}} got <strong>{{outcomeCount}} new {{outcomeLabel}}</strong> today.
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        {{totalLeads}} people in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.
+        {{totalLeads}} people in your pipeline.
       </p>
       {{digestHtml}}
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#2563EB;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline, worth {{totalExpectedRevenueUsd}} in expected revenue.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
   },
 ];
 
