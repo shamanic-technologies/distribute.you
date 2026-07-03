@@ -4,9 +4,12 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getInstantlySendingForecast,
   getInstantlyReconcile,
+  getInstantlyAccountHealth,
   getSendForecast,
   type InstantlySendingForecast,
   type InstantlyReconcile,
+  type InstantlyAccountHealth,
+  type InstantlyAccountHealthRow,
   type SendForecast,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
@@ -42,6 +45,153 @@ function fmtDelta(delta: number): string {
   if (delta > 0) return `+${abs}`;
   if (delta < 0) return `-${abs}`;
   return "0";
+}
+
+const BLOCK_REASON_LABEL: Record<string, string> = {
+  inactive: "Inactive",
+  "under-warmed": "Under-warmed",
+  "blacklisted-domain": "Blacklisted domain",
+};
+
+function AllowedBadge({ row }: { row: InstantlyAccountHealthRow }) {
+  if (!row.blocked) {
+    return (
+      <span className="inline-block rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+        Allowed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-block rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+      {row.blockReason ? BLOCK_REASON_LABEL[row.blockReason] ?? row.blockReason : "Blocked"}
+    </span>
+  );
+}
+
+function ScoreBadge({ score }: { score: number | null }) {
+  if (score === null) return <span className="text-gray-400">—</span>;
+  const cls =
+    score >= 90
+      ? "bg-emerald-100 text-emerald-800"
+      : score >= 70
+        ? "bg-amber-100 text-amber-800"
+        : "bg-red-100 text-red-800";
+  return (
+    <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>
+      {score}
+    </span>
+  );
+}
+
+function AccountHealthSection() {
+  const { data, isPending, isError, error } = useAuthQuery<InstantlyAccountHealth>(
+    ["instantlyAccountHealth"],
+    () => getInstantlyAccountHealth(),
+    pollOptionsSlower,
+  );
+
+  const num = (n: number) => n.toLocaleString("en-US");
+  // Blocked accounts float to the top (the ones staff act on), then by email.
+  const rows = data
+    ? [...data.accounts].sort(
+        (a, b) =>
+          Number(b.blocked) - Number(a.blocked) || a.email.localeCompare(b.email),
+      )
+    : [];
+  const blockedCount = rows.filter((r) => r.blocked).length;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Sending accounts</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            Every account in the shared Instantly workspace with its Health Score, daily
+            send limit, and send-eligibility (from the same gate the live send path uses).
+            Blocked accounts are listed first.
+          </p>
+        </div>
+        {!isPending && !isError && (
+          <span
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium ${
+              blockedCount > 0
+                ? "border-amber-200 bg-amber-50 text-amber-700"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {num(rows.length)} account{rows.length === 1 ? "" : "s"}
+            {blockedCount > 0 ? ` · ${num(blockedCount)} blocked` : " · all sendable"}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-4">
+        {isError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm font-medium text-red-700">Couldn&apos;t load sending accounts.</p>
+            <p className="mt-1 text-xs text-red-500">{error?.message ?? "Unknown error"}</p>
+          </div>
+        ) : isPending ? (
+          <Skeleton className="h-64 w-full rounded" />
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-gray-500">No sending accounts found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[720px] w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+                  <th className="py-2 pr-4 font-medium">Account</th>
+                  <th className="py-2 px-4 font-medium">Domain</th>
+                  <th className="py-2 px-4 font-medium">Status</th>
+                  <th className="py-2 px-4 text-right font-medium">Health score</th>
+                  <th className="py-2 px-4 text-right font-medium">Daily max send</th>
+                  <th className="py-2 pl-4 font-medium">Allowed to send</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.email}
+                    className={`border-b border-gray-100 last:border-0 ${
+                      r.blocked ? "bg-red-50/40" : ""
+                    }`}
+                  >
+                    <td className="py-2.5 pr-4 font-medium text-gray-900">{r.email}</td>
+                    <td className="py-2.5 px-4 text-gray-700">{r.domain ?? "—"}</td>
+                    <td className="py-2.5 px-4">
+                      <span
+                        className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${
+                          r.status === "active"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-gray-100 text-gray-400"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      <ScoreBadge score={r.warmupScore} />
+                    </td>
+                    <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                      {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
+                    </td>
+                    <td className="py-2.5 pl-4">
+                      <AllowedBadge row={r} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-3 text-xs text-gray-400">
+              As of {new Date(data.asOf).toLocaleString("en-US", { timeZone: "UTC" })} UTC.
+              Sent-today, queue size, and account type aren&apos;t shown — Instantly&apos;s API
+              exposes no per-account property for them yet (backend request pending).
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function ReconcileSection() {
@@ -329,6 +479,8 @@ export default function AuditInstantlyPage() {
           </div>
         </>
       )}
+
+      <AccountHealthSection />
 
       <ReconcileSection />
     </div>

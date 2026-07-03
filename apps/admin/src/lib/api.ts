@@ -4218,6 +4218,91 @@ export async function getInstantlyReconcile(
 }
 
 // ---------------------------------------------------------------------------
+// Per-account deliverability health (staff-only, platform-scoped, no org).
+// One row per sending account across the shared Instantly workspace: identity
+// (email/domain), sending config (status, Health Score, daily send limit), and
+// blocked state (blocked + reason, from the SAME gate the live send path uses).
+// Every field is computed server-side by instantly-service; the dashboard
+// renders only, never derives a metric or fabricates an absent field.
+//
+// NOTE — three requested columns are NOT served yet because Instantly's V2 API
+// exposes no such per-account property: "sent today" (per-account daily sent
+// count), "queue size" (emails queued), and "account type" (pre-warmed, etc).
+// They are tracked as backend requests, not synthesized client-side.
+// ---------------------------------------------------------------------------
+export type InstantlyAccountBlockReason =
+  | "inactive"
+  | "under-warmed"
+  | "blacklisted-domain";
+
+export interface InstantlyAccountInboxPlacement {
+  inboxPct: number;
+  spamPct: number;
+  missingPct: number;
+  testedAt: string; // ISO8601
+}
+
+export interface InstantlyAccountHealthRow {
+  email: string;
+  domain: string | null; // part after @, null if malformed
+  status: string; // "active" when Instantly status > 0, else "inactive"
+  warmupScore: number | null; // Instantly Health Score (0-100), null if unknown
+  dailyLimit: number | null; // per-account daily send limit, null if unknown
+  blocked: boolean; // true when NOT send-eligible per the live send gate
+  blockReason: InstantlyAccountBlockReason | null; // first failing gate; null when sendable
+  inboxPlacement: InstantlyAccountInboxPlacement | null; // BSG history; always null in v1
+}
+
+export interface InstantlyAccountHealth {
+  asOf: string; // ISO8601
+  accounts: InstantlyAccountHealthRow[];
+}
+
+const InstantlyAccountHealthRowSchema = z.object({
+  email: z.string(),
+  domain: z.string().nullable(),
+  status: z.string(),
+  warmupScore: z.number().nullable(),
+  dailyLimit: z.number().nullable(),
+  blocked: z.boolean(),
+  blockReason: z
+    .enum(["inactive", "under-warmed", "blacklisted-domain"])
+    .nullable(),
+  inboxPlacement: z
+    .object({
+      inboxPct: z.number(),
+      spamPct: z.number(),
+      missingPct: z.number(),
+      testedAt: z.string(),
+    })
+    .nullable(),
+});
+const InstantlyAccountHealthSchema = z.object({
+  asOf: z.string(),
+  accounts: z.array(InstantlyAccountHealthRowSchema),
+});
+
+/**
+ * Per-account deliverability health across the shared Instantly workspace.
+ * Staff-only platform view (no org context). safeParse converts wire-rot into a
+ * caught fetch error instead of a render crash.
+ */
+export async function getInstantlyAccountHealth(
+  token?: string,
+): Promise<InstantlyAccountHealth> {
+  const raw = await apiCall<unknown>("/instantly/audit/account-health", { token });
+  const parsed = InstantlyAccountHealthSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getInstantlyAccountHealth: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] getInstantlyAccountHealth: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ---------------------------------------------------------------------------
 // Global fleet SEND forecast — cross-org, fleet-wide projection of how many
 // outreach emails will be SENT per calendar day over a past + future window.
 // Stacks three EMAIL-grain series: actualSent (past real sends, follow-ups
