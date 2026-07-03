@@ -16,12 +16,12 @@ export async function GET(req: Request) {
 
     const result = await sendOutcomeDigestEmails(outcomeDigestConfigFromEnv());
     console.log(
-      `[dashboard-outcome-digest] scanned=${result.scannedOrgs} betaUsers=${result.betaUsers} prepared=${result.preparedSends.length} sent=${result.sent} deduped=${result.deduplicated}`,
+      `[dashboard-outcome-digest] scanned=${result.scannedOrgs} eligibleUsers=${result.eligibleUsers} prepared=${result.preparedSends.length} sent=${result.sent} deduped=${result.deduplicated}`,
     );
     return NextResponse.json({
       ok: true,
       scannedOrgs: result.scannedOrgs,
-      betaUsers: result.betaUsers,
+      eligibleUsers: result.eligibleUsers,
       prepared: result.preparedSends.length,
       sent: result.sent,
       deduplicated: result.deduplicated,

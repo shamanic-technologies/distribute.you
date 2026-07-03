@@ -44,6 +44,11 @@ const RevenueLeadSchema = z.object({
   // Outreach card + graph-actual read straight off this payload.
   contacted: z.boolean().optional(),
   contactedAt: z.string().nullish(),
+  // Per-lead outcome timestamps (email-gateway firstClickedAt / firstRepliedAt).
+  // `.nullish()` decouples rollout; the digest renders a discreet "time ago" off
+  // the goal's signal (signups → clickedAt, sales_meetings → repliedPositiveAt).
+  clickedAt: z.string().nullish(),
+  repliedPositiveAt: z.string().nullish(),
   date: z.string().nullable(),
 });
 const RevenueEventSchema = z.object({
