@@ -70,8 +70,10 @@ export default function FeatureWorkflowsPage() {
     ?? "desc";
   const revenueEnabled = isRevenueFeature(featureSlug);
 
-  const [metric, setMetric] = useState(defaultSortKey);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">(defaultSortDir);
+  // Default sort by ROI desc when the ROI column is shown (revenue feature);
+  // otherwise fall back to the feature's declared default output sort.
+  const [metric, setMetric] = useState(revenueEnabled ? "roi" : defaultSortKey);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(revenueEnabled ? "desc" : defaultSortDir);
 
   const handleCreateWorkflow = useCallback(() => {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
