@@ -22,6 +22,7 @@ const STATUS_STYLES: Record<QuotePitchStatus, string> = {
   template_missing: "bg-red-100 text-red-600 border-red-200",
   brand_missing_fields: "bg-red-100 text-red-600 border-red-200",
   insufficient_credits: "bg-red-100 text-red-600 border-red-200",
+  question_not_found: "bg-red-100 text-red-600 border-red-200",
 };
 
 const STATUSES: QuotePitchStatus[] = [
@@ -35,6 +36,7 @@ const STATUSES: QuotePitchStatus[] = [
   "template_missing",
   "brand_missing_fields",
   "insufficient_credits",
+  "question_not_found",
 ];
 
 function formatDate(iso: string | null): string {
