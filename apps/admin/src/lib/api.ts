@@ -2938,7 +2938,8 @@ export type QuotePitchStatus =
   | "length_violation"
   | "template_missing"
   | "brand_missing_fields"
-  | "insufficient_credits";
+  | "insufficient_credits"
+  | "question_not_found";
 
 export type QuotePitchDeliveryMethod = "featured_api" | "email_reply";
 
@@ -3105,6 +3106,7 @@ const QuotePitchStatusSchema = z.enum([
   "template_missing",
   "brand_missing_fields",
   "insufficient_credits",
+  "question_not_found",
 ]);
 
 const QuotePitchSchema = z.object({
