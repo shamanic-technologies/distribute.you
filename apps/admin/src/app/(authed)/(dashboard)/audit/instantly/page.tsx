@@ -137,7 +137,7 @@ function AccountHealthSection() {
           <p className="text-sm text-gray-500">No sending accounts found.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[720px] w-full text-sm">
+            <table className="min-w-[960px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                   <th className="py-2 pr-4 font-medium">Account</th>
@@ -145,6 +145,9 @@ function AccountHealthSection() {
                   <th className="py-2 px-4 font-medium">Status</th>
                   <th className="py-2 px-4 text-right font-medium">Health score</th>
                   <th className="py-2 px-4 text-right font-medium">Daily max send</th>
+                  <th className="py-2 px-4 text-right font-medium">Sent today</th>
+                  <th className="py-2 px-4 text-right font-medium">Queued</th>
+                  <th className="py-2 px-4 font-medium">Type</th>
                   <th className="py-2 pl-4 font-medium">Allowed to send</th>
                 </tr>
               </thead>
@@ -175,6 +178,13 @@ function AccountHealthSection() {
                     <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
                       {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
                     </td>
+                    <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                      {num(r.sentToday)}
+                    </td>
+                    <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
+                      {num(r.queueSize)}
+                    </td>
+                    <td className="py-2.5 px-4 text-gray-700">{r.accountType ?? "—"}</td>
                     <td className="py-2.5 pl-4">
                       <AllowedBadge row={r} />
                     </td>
@@ -184,8 +194,6 @@ function AccountHealthSection() {
             </table>
             <p className="mt-3 text-xs text-gray-400">
               As of {new Date(data.asOf).toLocaleString("en-US", { timeZone: "UTC" })} UTC.
-              Sent-today, queue size, and account type aren&apos;t shown — Instantly&apos;s API
-              exposes no per-account property for them yet (backend request pending).
             </p>
           </div>
         )}

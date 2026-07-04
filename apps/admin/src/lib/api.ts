@@ -4266,6 +4266,9 @@ export interface InstantlyAccountHealthRow {
   blocked: boolean; // true when NOT send-eligible per the live send gate
   blockReason: InstantlyAccountBlockReason | null; // first failing gate; null when sendable
   inboxPlacement: InstantlyAccountInboxPlacement | null; // BSG history; always null in v1
+  sentToday: number; // real emails sent today (UTC); honest 0, never null
+  queueSize: number; // emails queued to Instantly but not yet sent; honest 0, never null
+  accountType: string | null; // "google" | "microsoft" | "imap"; null when unknown
 }
 
 export interface InstantlyAccountHealth {
@@ -4291,6 +4294,9 @@ const InstantlyAccountHealthRowSchema = z.object({
       testedAt: z.string(),
     })
     .nullable(),
+  sentToday: z.number(),
+  queueSize: z.number(),
+  accountType: z.string().nullable(),
 });
 const InstantlyAccountHealthSchema = z.object({
   asOf: z.string(),
