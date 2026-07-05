@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getInstantlySendingForecast,
@@ -15,6 +16,10 @@ import {
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { SendForecastChart } from "@/components/audit/send-forecast-chart";
+import {
+  QueueDistributionChart,
+  type QueueDistributionBin,
+} from "@/components/audit/queue-distribution-chart";
 
 function StatCard({
   label,
@@ -53,20 +58,61 @@ const BLOCK_REASON_LABEL: Record<string, string> = {
   "blacklisted-domain": "Blacklisted domain",
 };
 
-function AllowedBadge({ row }: { row: InstantlyAccountHealthRow }) {
-  if (!row.blocked) {
-    return (
-      <span className="inline-block rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-        Allowed
-      </span>
-    );
-  }
-  return (
-    <span className="inline-block rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-      {row.blockReason ? BLOCK_REASON_LABEL[row.blockReason] ?? row.blockReason : "Blocked"}
-    </span>
-  );
+function statusKey(row: InstantlyAccountHealthRow): string {
+  if (!row.blocked) return "allowed";
+  return row.blockReason ?? "blocked";
 }
+
+function statusLabel(key: string): string {
+  if (key === "allowed") return "Allowed";
+  if (key === "blocked") return "Blocked";
+  return BLOCK_REASON_LABEL[key] ?? key;
+}
+
+// Sortable columns. `queueSize`/`sentToday`/`dailyLimit`/`warmupScore` are numeric
+// (nulls sort last regardless of direction); the rest are string.
+const COLUMNS = [
+  { key: "email", label: "Account", numeric: false, align: "left" },
+  { key: "domain", label: "Domain", numeric: false, align: "left" },
+  { key: "status", label: "Status", numeric: false, align: "left" },
+  { key: "warmupScore", label: "Health score", numeric: true, align: "right" },
+  { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
+  { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
+  { key: "queueSize", label: "Queued", numeric: true, align: "right" },
+  { key: "accountType", label: "Type", numeric: false, align: "left" },
+] as const;
+
+type SortKey = (typeof COLUMNS)[number]["key"];
+
+function compareRows(
+  a: InstantlyAccountHealthRow,
+  b: InstantlyAccountHealthRow,
+  key: SortKey,
+  dir: "asc" | "desc",
+): number {
+  const av = a[key];
+  const bv = b[key];
+  const aNull = av === null || av === undefined || av === "";
+  const bNull = bv === null || bv === undefined || bv === "";
+  if (aNull && bNull) return 0;
+  if (aNull) return 1; // nulls always last
+  if (bNull) return -1;
+  let r: number;
+  if (typeof av === "number" && typeof bv === "number") r = av - bv;
+  else r = String(av).localeCompare(String(bv));
+  return dir === "asc" ? r : -r;
+}
+
+// Queue-size histogram bins for the Allowed distribution. `0` is standalone so
+// an empty queue reads distinctly from a small one.
+const QUEUE_BINS: { label: string; lo: number; hi: number }[] = [
+  { label: "0", lo: 0, hi: 0 },
+  { label: "1–5", lo: 1, hi: 5 },
+  { label: "6–10", lo: 6, hi: 10 },
+  { label: "11–20", lo: 11, hi: 20 },
+  { label: "21–50", lo: 21, hi: 50 },
+  { label: "51+", lo: 51, hi: Infinity },
+];
 
 function ScoreBadge({ score }: { score: number | null }) {
   if (score === null) return <span className="text-gray-400">—</span>;
@@ -91,14 +137,68 @@ function AccountHealthSection() {
   );
 
   const num = (n: number) => n.toLocaleString("en-US");
-  // Blocked accounts float to the top (the ones staff act on), then by email.
-  const rows = data
-    ? [...data.accounts].sort(
-        (a, b) =>
-          Number(b.blocked) - Number(a.blocked) || a.email.localeCompare(b.email),
-      )
-    : [];
-  const blockedCount = rows.filter((r) => r.blocked).length;
+  const accounts = data?.accounts ?? [];
+
+  const tabs = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of accounts) {
+      const k = statusKey(r);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const reasons = [...counts.keys()]
+      .filter((k) => k !== "allowed")
+      .sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0));
+    const ordered = counts.has("allowed") ? ["allowed", ...reasons] : reasons;
+    return ordered.map((k) => ({ key: k, label: statusLabel(k), count: counts.get(k) ?? 0 }));
+  }, [accounts]);
+
+  const [tab, setTab] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("warmupScore");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [query, setQuery] = useState("");
+
+  const activeTab = tab && tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key ?? null;
+
+  // Allowed-only queue stats — computed over the whole allowed set, independent
+  // of which tab is active.
+  const allowed = useMemo(() => accounts.filter((r) => !r.blocked), [accounts]);
+  const pctWithQueue = allowed.length
+    ? (allowed.filter((r) => r.queueSize > 0).length / allowed.length) * 100
+    : 0;
+  const avgQueue = allowed.length
+    ? allowed.reduce((s, r) => s + r.queueSize, 0) / allowed.length
+    : 0;
+  const queueBins: QueueDistributionBin[] = QUEUE_BINS.map((b) => {
+    const count = allowed.filter((r) => r.queueSize >= b.lo && r.queueSize <= b.hi).length;
+    return {
+      label: b.label,
+      count,
+      pct: allowed.length ? (count / allowed.length) * 100 : 0,
+    };
+  });
+
+  // Rows for the active tab: filter by tab → search → sort.
+  const q = query.trim().toLowerCase();
+  const rows = accounts
+    .filter((r) => statusKey(r) === activeTab)
+    .filter(
+      (r) =>
+        !q ||
+        r.email.toLowerCase().includes(q) ||
+        (r.domain ?? "").toLowerCase().includes(q),
+    )
+    .sort((a, b) => compareRows(a, b, sortKey, sortDir));
+
+  function onSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
+
+  const blockedCount = accounts.filter((r) => r.blocked).length;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -108,7 +208,7 @@ function AccountHealthSection() {
           <p className="mt-1 text-xs text-gray-500">
             Every account in the shared Instantly workspace with its Health Score, daily
             send limit, and send-eligibility (from the same gate the live send path uses).
-            Blocked accounts are listed first.
+            Tabbed by send-eligibility; sort any column, filter by email or domain.
           </p>
         </div>
         {!isPending && !isError && (
@@ -119,7 +219,7 @@ function AccountHealthSection() {
                 : "border-emerald-200 bg-emerald-50 text-emerald-700"
             }`}
           >
-            {num(rows.length)} account{rows.length === 1 ? "" : "s"}
+            {num(accounts.length)} account{accounts.length === 1 ? "" : "s"}
             {blockedCount > 0 ? ` · ${num(blockedCount)} blocked` : " · all sendable"}
           </span>
         )}
@@ -133,69 +233,163 @@ function AccountHealthSection() {
           </div>
         ) : isPending ? (
           <Skeleton className="h-64 w-full rounded" />
-        ) : rows.length === 0 ? (
+        ) : accounts.length === 0 ? (
           <p className="text-sm text-gray-500">No sending accounts found.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[960px] w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
-                  <th className="py-2 pr-4 font-medium">Account</th>
-                  <th className="py-2 px-4 font-medium">Domain</th>
-                  <th className="py-2 px-4 font-medium">Status</th>
-                  <th className="py-2 px-4 text-right font-medium">Health score</th>
-                  <th className="py-2 px-4 text-right font-medium">Daily max send</th>
-                  <th className="py-2 px-4 text-right font-medium">Sent today</th>
-                  <th className="py-2 px-4 text-right font-medium">Queued</th>
-                  <th className="py-2 px-4 font-medium">Type</th>
-                  <th className="py-2 pl-4 font-medium">Allowed to send</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr
-                    key={r.email}
-                    className={`border-b border-gray-100 last:border-0 ${
-                      r.blocked ? "bg-red-50/40" : ""
+          <>
+            {/* Allowed-only queue health: % with a queue, avg queue, distribution. */}
+            <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Allowed accounts — queue health
+                </h3>
+                <span className="text-xs text-gray-400">{num(allowed.length)} allowed</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500">With a queue</p>
+                  <p className="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">
+                    {pctWithQueue.toFixed(0)}%
+                  </p>
+                  <p className="text-xs text-gray-400">have queue &gt; 0</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Avg in queue</p>
+                  <p className="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">
+                    {avgQueue.toFixed(1)}
+                  </p>
+                  <p className="text-xs text-gray-400">emails per allowed account</p>
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-xs font-medium text-gray-500">
+                  Queue-size distribution (% of allowed accounts)
+                </p>
+                <div className="mt-2">
+                  {allowed.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-gray-400">No allowed accounts.</p>
+                  ) : (
+                    <QueueDistributionChart data={queueBins} />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Status tabs (Allowed first, then block reasons by count). */}
+            <div className="mt-5 flex flex-wrap gap-1 border-b border-gray-200">
+              {tabs.map((t) => {
+                const active = t.key === activeTab;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => {
+                      setTab(t.key);
+                      setQuery("");
+                    }}
+                    className={`-mb-px rounded-t-md border-b-2 px-3 py-2 text-sm font-medium ${
+                      active
+                        ? "border-indigo-500 text-indigo-700"
+                        : "border-transparent text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    <td className="py-2.5 pr-4 font-medium text-gray-900">{r.email}</td>
-                    <td className="py-2.5 px-4 text-gray-700">{r.domain ?? "—"}</td>
-                    <td className="py-2.5 px-4">
-                      <span
-                        className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${
-                          r.status === "active"
-                            ? "bg-gray-100 text-gray-700"
-                            : "bg-gray-100 text-gray-400"
-                        }`}
+                    {t.label}
+                    <span
+                      className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${
+                        active ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {num(t.count)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Filter */}
+            <div className="mt-3">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filter by email or domain…"
+                className="w-full max-w-xs rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 placeholder:text-gray-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            {/* Table */}
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-[860px] w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+                    {COLUMNS.map((c) => (
+                      <th
+                        key={c.key}
+                        className={`py-2 px-3 font-medium ${c.align === "right" ? "text-right" : ""}`}
                       >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-right">
-                      <ScoreBadge score={r.warmupScore} />
-                    </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
-                      {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
-                    </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
-                      {num(r.sentToday)}
-                    </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
-                      {num(r.queueSize)}
-                    </td>
-                    <td className="py-2.5 px-4 text-gray-700">{r.accountType ?? "—"}</td>
-                    <td className="py-2.5 pl-4">
-                      <AllowedBadge row={r} />
-                    </td>
+                        <button
+                          type="button"
+                          onClick={() => onSort(c.key)}
+                          className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-700"
+                        >
+                          {c.label}
+                          <span className="text-[10px] text-gray-400">
+                            {sortKey === c.key ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                          </span>
+                        </button>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-3 text-xs text-gray-400">
-              As of {new Date(data.asOf).toLocaleString("en-US", { timeZone: "UTC" })} UTC.
-            </p>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={COLUMNS.length}
+                        className="py-6 text-center text-sm text-gray-400"
+                      >
+                        No accounts match.
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((r) => (
+                      <tr key={r.email} className="border-b border-gray-100 last:border-0">
+                        <td className="py-2.5 px-3 font-medium text-gray-900">{r.email}</td>
+                        <td className="py-2.5 px-3 text-gray-700">{r.domain ?? "—"}</td>
+                        <td className="py-2.5 px-3">
+                          <span
+                            className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${
+                              r.status === "active"
+                                ? "bg-gray-100 text-gray-700"
+                                : "bg-gray-100 text-gray-400"
+                            }`}
+                          >
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <ScoreBadge score={r.warmupScore} />
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {num(r.sentToday)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {num(r.queueSize)}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-700">{r.accountType ?? "—"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <p className="mt-3 text-xs text-gray-400">
+                As of {new Date(data.asOf).toLocaleString("en-US", { timeZone: "UTC" })} UTC.
+              </p>
+            </div>
+          </>
         )}
       </div>
     </div>
