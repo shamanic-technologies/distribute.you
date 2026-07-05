@@ -164,7 +164,7 @@ export function BrandProfilePage() {
   };
 
   return (
-    <DashboardPage width="narrow">
+    <DashboardPage width="wide">
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-gray-200 pb-6 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
