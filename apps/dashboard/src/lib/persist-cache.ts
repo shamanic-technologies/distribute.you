@@ -104,6 +104,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandPause",
   "brandCostBreakdown",
   "brandCostBreakdownToday",
+  "brandConversionToken",
   // Brand entity sub-lists (big — persisted so their pages skip the reload skeleton)
   "brandLeads",
   "brandEmails",
