@@ -4479,6 +4479,14 @@ export interface GoogleMessageRow {
   payload?: unknown;
 }
 
+/** Per-contact links to platform orgs/brands/features (+ reserved lifecycle status). */
+export interface GoogleContactLinks {
+  orgIds: string[];
+  brandIds: string[];
+  featureSlugs: string[];
+  status: string | null;
+}
+
 export interface GoogleContactRow {
   id?: string;
   resourceName?: string;
@@ -4492,6 +4500,8 @@ export interface GoogleContactRow {
   photoUrl?: string | null;
   updatedAt?: string | null;
   deleted?: boolean;
+  // Contact → platform org/brand/feature links (additive; absent until deployed).
+  links?: GoogleContactLinks;
   // Raw People API payload — still on the wire (pre-rollout render fallback).
   payload?: unknown;
 }
@@ -4529,6 +4539,14 @@ const GoogleContactRowSchema = z
     photoUrl: z.string().nullish(),
     updatedAt: z.string().nullish(),
     deleted: z.boolean().optional(),
+    links: z
+      .object({
+        orgIds: z.array(z.string()),
+        brandIds: z.array(z.string()),
+        featureSlugs: z.array(z.string()),
+        status: z.string().nullable(),
+      })
+      .nullish(),
   })
   .passthrough();
 
@@ -4550,9 +4568,13 @@ export async function listGoogleMessages(
   cursor?: string | null,
   limit = 50,
   token?: string,
+  opts?: { participant?: string },
 ): Promise<GoogleMessagesPage> {
   const qs = new URLSearchParams({ limit: String(limit) });
   if (cursor) qs.set("cursor", cursor);
+  // Filter the thread to one contact's email (from/to/cc); google-service orders
+  // by email date desc when participant is set. Ignored by the pre-rollout backend.
+  if (opts?.participant) qs.set("participant", opts.participant);
   const raw = await apiCall<unknown>(`/orgs/google/messages?${qs.toString()}`, { token });
   const parsed = GoogleMessagesPageSchema.safeParse(raw);
   if (!parsed.success) {
@@ -4571,9 +4593,11 @@ export async function listGoogleContacts(
   cursor?: string | null,
   limit = 50,
   token?: string,
+  opts?: { query?: string },
 ): Promise<GoogleContactsPage> {
   const qs = new URLSearchParams({ limit: String(limit) });
   if (cursor) qs.set("cursor", cursor);
+  if (opts?.query) qs.set("query", opts.query);
   const raw = await apiCall<unknown>(`/orgs/google/contacts?${qs.toString()}`, { token });
   const parsed = GoogleContactsPageSchema.safeParse(raw);
   if (!parsed.success) {
@@ -4597,4 +4621,30 @@ export async function listGoogleAccounts(token?: string): Promise<GoogleAccount[
     throw new Error("[admin] listGoogleAccounts: invalid response shape");
   }
   return parsed.data.accounts as GoogleAccount[];
+}
+
+/** Upsert a contact's org/brand/feature links (+ status). Returns the saved set. */
+export async function saveContactLinks(body: {
+  resourceName: string;
+  orgIds: string[];
+  brandIds: string[];
+  featureSlugs: string[];
+  status?: string | null;
+}): Promise<GoogleContactLinks & { resourceName: string }> {
+  return apiCall<GoogleContactLinks & { resourceName: string }>(`/orgs/google/contact-links`, {
+    method: "PUT",
+    body,
+  });
+}
+
+/** All platform brands with their owning orgId (staff view) — for the brand picker. */
+export interface AdminBrand {
+  id: string;
+  name: string;
+  domain: string | null;
+  orgId: string;
+}
+
+export async function listAdminBrands(): Promise<{ brands: AdminBrand[] }> {
+  return apiCall<{ brands: AdminBrand[] }>(`/admin/brands`);
 }
