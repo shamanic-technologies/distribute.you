@@ -150,6 +150,8 @@ const BrandGoalResponseSchema = z.object({
         z.literal("sales_meetings"),
         z.literal("booked_meetings"),
         z.literal("sales"),
+        z.literal("website_visits"),
+        z.literal("positive_replies"),
       ]),
     })
     .nullable(),
@@ -436,7 +438,10 @@ async function fetchBrandGoal(
     BrandGoalResponseSchema,
     "fetchBrandGoal",
   );
-  return data.salesEconomics?.optimizationGoal === "signups"
+  // Visit-driven goals (signups, website_visits) track website clicks; reply-driven
+  // (sales_meetings/booked_meetings/sales, positive_replies) track positive replies.
+  const goal = data.salesEconomics?.optimizationGoal;
+  return goal === "signups" || goal === "website_visits"
     ? "signups"
     : "sales_meetings";
 }

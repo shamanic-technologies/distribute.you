@@ -45,8 +45,8 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(outcome).not.toContain("BarChart");
   });
 
-  it("selects the cumulative outcome series by goal (clicks for signups, replies for meetings)", () => {
-    expect(section).toContain('optimizationGoal === "signups"');
+  it("selects the cumulative outcome series by goal (clicks for visit-driven, replies for reply-driven)", () => {
+    expect(section).toContain("isVisitDrivenGoal(optimizationGoal)");
     expect(section).toContain("pipelineActualSeries?.clicks");
     expect(section).toContain("pipelineActualSeries?.repliedPositive");
     expect(section).toContain('"Website clicks"');
@@ -72,7 +72,7 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     }
     expect(chart).toContain('key: "repliedPositive"');
     expect(chart).toContain('label: "Positive replies"');
-    expect(chart).toContain('optimizationGoal === "signups"');
+    expect(chart).toContain("isVisitDrivenGoal(optimizationGoal)");
     expect(chart).toContain("POSITIVE_REPLIES");
     // No client-side salesMeetings projection anymore — the series is server-computed.
     expect(chart).not.toContain('label: "Sales meetings"');

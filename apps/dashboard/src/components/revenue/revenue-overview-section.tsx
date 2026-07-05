@@ -6,6 +6,7 @@ import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
 import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
+import { isVisitDrivenGoal } from "@/lib/api";
 import type { BrandOptimizationGoal, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 
@@ -91,12 +92,12 @@ export function RevenueOverviewSection({
   const activityLoading = activityPending || !pipelineActivity;
   // The "Outcome" card's single cumulative line tracks the brand's goal signal:
   // website clicks for a signups brand, positive replies for a meetings brand.
-  const isSignups = optimizationGoal === "signups";
-  const outcomeSeries = isSignups
+  const isVisitDriven = isVisitDrivenGoal(optimizationGoal);
+  const outcomeSeries = isVisitDriven
     ? pipelineActualSeries?.clicks
     : pipelineActualSeries?.repliedPositive;
-  const outcomeLabel = isSignups ? "Website clicks" : "Positive replies";
-  const outcomeColor = isSignups ? "#0891b2" : "#dc2626";
+  const outcomeLabel = isVisitDriven ? "Website clicks" : "Positive replies";
+  const outcomeColor = isVisitDriven ? "#0891b2" : "#dc2626";
 
   // Forward projection for the Outcome line — the expected daily increments past
   // today (today + forecast horizon). Signups read the per-day clicks forecast;
@@ -109,7 +110,7 @@ export function RevenueOverviewSection({
     (d) => todayIso != null && d.date > todayIso,
   );
   const monthlyExpected = finitePos(expectedOutcome?.value);
-  const outcomeFuture = isSignups
+  const outcomeFuture = isVisitDriven
     ? futureDays.map((d) => ({ date: d.date, value: finitePos(d.metrics.clicks?.expected) }))
     : monthlyExpected > 0 && futureDays.length > 0
       ? futureDays.map((d) => ({ date: d.date, value: monthlyExpected / 30 }))

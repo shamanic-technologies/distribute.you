@@ -648,7 +648,13 @@ export type BrandBusinessModel = "b2c" | "b2b";
 
 // The single metric the brand wants to optimise for. Server default
 // "sales_meetings" when never set; GET/PUT responses always include a non-null value.
-export type BrandOptimizationGoal = "signups" | "sales_meetings";
+// website_visits / positive_replies are the two beta single-step goals (visit→paid,
+// reply→paid) — their wire values match the local names 1:1 (no rename).
+export type BrandOptimizationGoal =
+  | "signups"
+  | "sales_meetings"
+  | "website_visits"
+  | "positive_replies";
 type BrandOptimizationGoalWire =
   | BrandOptimizationGoal
   | "booked_meetings"
@@ -657,13 +663,28 @@ type BrandOptimizationGoalWire =
 function normalizeBrandOptimizationGoal(
   goal: BrandOptimizationGoalWire,
 ): BrandOptimizationGoal {
-  return goal === "signups" ? "signups" : "sales_meetings";
+  if (goal === "signups") return "signups";
+  if (goal === "website_visits") return "website_visits";
+  if (goal === "positive_replies") return "positive_replies";
+  // booked_meetings / sales / sales_meetings all collapse to sales_meetings.
+  return "sales_meetings";
 }
 
 function serializeBrandOptimizationGoal(
   goal: BrandOptimizationGoal,
-): "signups" | "booked_meetings" {
-  return goal === "signups" ? "signups" : "booked_meetings";
+): "signups" | "booked_meetings" | "website_visits" | "positive_replies" {
+  if (goal === "signups") return "signups";
+  if (goal === "website_visits") return "website_visits";
+  if (goal === "positive_replies") return "positive_replies";
+  return "booked_meetings";
+}
+
+// Most surfaces only distinguish VISIT-driven (website click → outcome) from
+// REPLY-driven (positive reply → outcome) behaviour. signups + website_visits are
+// visit-driven; sales_meetings + positive_replies are reply-driven. Use this instead
+// of `goal === "signups"` so the two beta goals route to the right family everywhere.
+export function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
+  return goal === "signups" || goal === "website_visits";
 }
 
 export interface BrandSalesEconomics {
@@ -677,6 +698,9 @@ export interface BrandSalesEconomics {
   visitToSignupPct: number;
   signupToPaidClientPct: number;
   visitToClosePct: number;
+  // Single-step conversions for the beta website_visits / positive_replies goals.
+  visitToPaidClientPct: number;
+  replyToPaidClientPct: number;
   businessModel: BrandBusinessModel | null;
   optimizationGoal: BrandOptimizationGoal;
   updatedAt: string;
@@ -688,15 +712,21 @@ export interface BrandSalesEconomics {
 // businessModel / optimizationGoal are partial-update fields on PUT:
 // omit = leave unchanged. Hence optional in the input.
 // visitToClosePct is derived server-side, never sent — omit it from the input.
+// visitToPaidClientPct / replyToPaidClientPct are partial-update too: omit = leave
+// unchanged (brand-service defaults 5 / 25). Only the beta settings card sends them.
 export type BrandSalesEconomicsInput = Omit<
   BrandSalesEconomics,
   | "updatedAt"
   | "businessModel"
   | "optimizationGoal"
   | "visitToClosePct"
+  | "visitToPaidClientPct"
+  | "replyToPaidClientPct"
 > & {
   businessModel?: BrandBusinessModel | null;
   optimizationGoal?: BrandOptimizationGoal;
+  visitToPaidClientPct?: number;
+  replyToPaidClientPct?: number;
 };
 
 const BrandSalesEconomicsSchema = z.object({
@@ -707,12 +737,16 @@ const BrandSalesEconomicsSchema = z.object({
   visitToSignupPct: z.number(),
   signupToPaidClientPct: z.number(),
   visitToClosePct: z.number(),
+  visitToPaidClientPct: z.number(),
+  replyToPaidClientPct: z.number(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
   optimizationGoal: z.union([
     z.literal("signups"),
     z.literal("sales_meetings"),
     z.literal("booked_meetings"),
     z.literal("sales"),
+    z.literal("website_visits"),
+    z.literal("positive_replies"),
   ]).transform(normalizeBrandOptimizationGoal),
   updatedAt: z.string(),
 });
@@ -762,6 +796,13 @@ export async function saveBrandSalesEconomics(
       // Self-serve close as two steps; brand-service derives visitToClosePct.
       visitToSignupPct: input.visitToSignupPct,
       signupToPaidClientPct: input.signupToPaidClientPct,
+      // Single-step conversions (partial-update): send only when the caller set them.
+      ...(input.visitToPaidClientPct !== undefined
+        ? { visitToPaidClientPct: input.visitToPaidClientPct }
+        : {}),
+      ...(input.replyToPaidClientPct !== undefined
+        ? { replyToPaidClientPct: input.replyToPaidClientPct }
+        : {}),
       // Partial-update: send businessModel only when the caller set it (settings
       // editor). Omitting it leaves the stored value unchanged; null clears it.
       ...(input.businessModel !== undefined
@@ -2811,7 +2852,9 @@ export type SalesObjective = "meeting-booked" | "self-serve";
 export function salesObjectiveForOptimizationGoal(
   goal: BrandOptimizationGoal,
 ): SalesObjective {
-  return goal === "signups" ? "self-serve" : "meeting-booked";
+  // website_visits borrows self-serve (visit-driven); positive_replies borrows
+  // meeting-booked (reply-driven) — the objective enum has no single-step variant.
+  return isVisitDrivenGoal(goal) ? "self-serve" : "meeting-booked";
 }
 
 /** Per-workflow funnel projection at the requested budget. All fields null where the route

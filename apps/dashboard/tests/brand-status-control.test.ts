@@ -54,7 +54,7 @@ describe("brand overview status control", () => {
     expect(control).toContain("goalDialogOpen");
     expect(control).toContain("openGoalDialog");
     expect(control).toContain("Optimization goal");
-    expect(control).toContain("GOAL_OPTIONS.map");
+    expect(control).toContain("GOAL_OPTIONS.filter");
     expect(control).toContain("saveGoal(selectedGoal)");
   });
 

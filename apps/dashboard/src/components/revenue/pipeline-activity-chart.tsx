@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { isVisitDrivenGoal } from "@/lib/api";
 import type {
   BrandOptimizationGoal,
   PipelineActivityMetric,
@@ -114,7 +115,7 @@ function buildDailyCountMap(series: SignalSeries | undefined): Map<string, numbe
 }
 
 function activeMetrics(optimizationGoal: BrandOptimizationGoal): MetricDef[] {
-  return optimizationGoal === "signups"
+  return isVisitDrivenGoal(optimizationGoal)
     ? [OUTREACH, CLICKS]
     : [OUTREACH, POSITIVE_REPLIES];
 }

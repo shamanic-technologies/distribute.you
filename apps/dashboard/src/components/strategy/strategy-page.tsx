@@ -345,7 +345,15 @@ export function StrategyPage() {
             <Stat
               label="Objective"
               pending={econPending}
-              value={optimizationGoal === "signups" ? "Signups" : "Sales meetings"}
+              value={
+                optimizationGoal === "signups"
+                  ? "Signups"
+                  : optimizationGoal === "website_visits"
+                    ? "Website visits"
+                    : optimizationGoal === "positive_replies"
+                      ? "Positive replies"
+                      : "Sales meetings"
+              }
             />
             <Stat
               label="Lifetime revenue / client"
@@ -353,19 +361,39 @@ export function StrategyPage() {
               value={econ ? formatUsd(econ.lifetimeRevenueUsd) : "-"}
             />
             <Stat
-              label={optimizationGoal === "signups" ? "Visit → signup" : "Reply → meeting"}
+              label={
+                optimizationGoal === "signups"
+                  ? "Visit → signup"
+                  : optimizationGoal === "website_visits"
+                    ? "Website visit → paid"
+                    : optimizationGoal === "positive_replies"
+                      ? "Positive reply → paid"
+                      : "Reply → meeting"
+              }
               pending={econPending}
               value={formatPct(
-                optimizationGoal === "signups" ? econ?.visitToSignupPct : econ?.replyToMeetingPct,
+                optimizationGoal === "signups"
+                  ? econ?.visitToSignupPct
+                  : optimizationGoal === "website_visits"
+                    ? econ?.visitToPaidClientPct
+                    : optimizationGoal === "positive_replies"
+                      ? econ?.replyToPaidClientPct
+                      : econ?.replyToMeetingPct,
               )}
             />
-            <Stat
-              label={optimizationGoal === "signups" ? "Signup → paid" : "Meeting → close"}
-              pending={econPending}
-              value={formatPct(
-                optimizationGoal === "signups" ? econ?.signupToPaidClientPct : econ?.meetingToClosePct,
-              )}
-            />
+            {/* The two-step goals show a second conversion; the single-step beta goals
+                (website_visits / positive_replies) go straight to paid, so no row 2. */}
+            {(optimizationGoal === "signups" || optimizationGoal === "sales_meetings") && (
+              <Stat
+                label={optimizationGoal === "signups" ? "Signup → paid" : "Meeting → close"}
+                pending={econPending}
+                value={formatPct(
+                  optimizationGoal === "signups"
+                    ? econ?.signupToPaidClientPct
+                    : econ?.meetingToClosePct,
+                )}
+              />
+            )}
           </div>
           {!econPending && !econ ? (
             <p className="mt-3 text-xs text-gray-400">
