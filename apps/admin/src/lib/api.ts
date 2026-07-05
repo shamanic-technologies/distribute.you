@@ -4442,3 +4442,159 @@ export interface AuditAccounts {
 export async function getAuditAccounts(token?: string): Promise<AuditAccounts> {
   return apiCall<AuditAccounts>(`/features/audit/accounts`, { token });
 }
+
+// ── Google CRM (staff console) ───────────────────────────────────────────────
+// Typed rows from google-service via the api-service gateway. The clean typed
+// fields (fromEmail/subject/…, displayName/primaryEmail/…) are an ADDITIVE
+// google-service rollout: they are declared OPTIONAL here and populate once
+// google-service ships them to prod — until then they read undefined and the UI
+// renders empty. safeParse per the CLAUDE.md wire-shape rule turns shape-rot into
+// a caught fetch-error; `.passthrough()` preserves the raw Gmail `payload` (still
+// on the wire — the email detail panel parses the message BODY from it, which has
+// no typed replacement in the contract).
+
+export interface GoogleAccount {
+  email?: string;
+  status?: string;
+  scopes?: string[];
+  connectedAt?: string;
+}
+
+export interface GoogleMessageRow {
+  id?: string;
+  googleAccountId?: string;
+  gmailMessageId?: string;
+  threadId?: string;
+  historyId?: string;
+  fetchedAt?: string;
+  // Typed fields (optional — additive google-service rollout)
+  fromEmail?: string | null;
+  fromName?: string | null;
+  to?: string[];
+  subject?: string | null;
+  snippet?: string | null;
+  sentAt?: string | null;
+  labels?: string[];
+  // Raw Gmail payload — still on the wire; detail panel parses body from it.
+  payload?: unknown;
+}
+
+export interface GoogleContactRow {
+  id?: string;
+  resourceName?: string;
+  // Typed fields (optional — additive google-service rollout)
+  displayName?: string | null;
+  primaryEmail?: string | null;
+  emails?: string[];
+  phones?: string[];
+  organization?: string | null;
+  jobTitle?: string | null;
+  photoUrl?: string | null;
+  updatedAt?: string | null;
+  deleted?: boolean;
+  // Raw People API payload — still on the wire (pre-rollout render fallback).
+  payload?: unknown;
+}
+
+export interface GoogleMessagesPage {
+  items: GoogleMessageRow[];
+  nextCursor: string | null;
+}
+
+export interface GoogleContactsPage {
+  items: GoogleContactRow[];
+  nextCursor: string | null;
+}
+
+const GoogleMessageRowSchema = z
+  .object({
+    fromEmail: z.string().nullish(),
+    fromName: z.string().nullish(),
+    to: z.array(z.string()).optional(),
+    subject: z.string().nullish(),
+    snippet: z.string().nullish(),
+    sentAt: z.string().nullish(),
+    labels: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+const GoogleContactRowSchema = z
+  .object({
+    displayName: z.string().nullish(),
+    primaryEmail: z.string().nullish(),
+    emails: z.array(z.string()).optional(),
+    phones: z.array(z.string()).optional(),
+    organization: z.string().nullish(),
+    jobTitle: z.string().nullish(),
+    photoUrl: z.string().nullish(),
+    updatedAt: z.string().nullish(),
+    deleted: z.boolean().optional(),
+  })
+  .passthrough();
+
+const GoogleMessagesPageSchema = z.object({
+  items: z.array(GoogleMessageRowSchema),
+  nextCursor: z.string().nullable(),
+});
+
+const GoogleContactsPageSchema = z.object({
+  items: z.array(GoogleContactRowSchema),
+  nextCursor: z.string().nullable(),
+});
+
+const GoogleAccountsResponseSchema = z.object({
+  accounts: z.array(z.object({}).passthrough()),
+});
+
+export async function listGoogleMessages(
+  cursor?: string | null,
+  limit = 50,
+  token?: string,
+): Promise<GoogleMessagesPage> {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  if (cursor) qs.set("cursor", cursor);
+  const raw = await apiCall<unknown>(`/orgs/google/messages?${qs.toString()}`, { token });
+  const parsed = GoogleMessagesPageSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listGoogleMessages: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] listGoogleMessages: invalid response shape");
+  }
+  // `.passthrough()` keeps the raw `payload` + id fields at runtime; the validated
+  // subset does not structurally overlap the full row type, so cast via unknown.
+  return parsed.data as unknown as GoogleMessagesPage;
+}
+
+export async function listGoogleContacts(
+  cursor?: string | null,
+  limit = 50,
+  token?: string,
+): Promise<GoogleContactsPage> {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  if (cursor) qs.set("cursor", cursor);
+  const raw = await apiCall<unknown>(`/orgs/google/contacts?${qs.toString()}`, { token });
+  const parsed = GoogleContactsPageSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listGoogleContacts: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] listGoogleContacts: invalid response shape");
+  }
+  return parsed.data as unknown as GoogleContactsPage;
+}
+
+export async function listGoogleAccounts(token?: string): Promise<GoogleAccount[]> {
+  const raw = await apiCall<unknown>(`/orgs/google/accounts`, { token });
+  const parsed = GoogleAccountsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listGoogleAccounts: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] listGoogleAccounts: invalid response shape");
+  }
+  return parsed.data.accounts as GoogleAccount[];
+}

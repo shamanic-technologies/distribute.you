@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import type { GoogleMessage } from "./messages-list";
-import { parseGmailPayload } from "./parse-gmail-payload";
+import { parseGmailPayload, type GmailMessageShape } from "./parse-gmail-payload";
 import { parseGmailBody } from "./parse-gmail-body";
 import { sanitizeEmailHtml } from "./sanitize-email-html";
 
@@ -44,11 +44,37 @@ export function EmailDetailPanel({
 
   const envelope = message.payload;
   const innerPayload = envelope?.payload;
-  const labelIds = envelope?.labelIds;
 
-  const parsed = parseGmailPayload(message);
+  const parsed = parseGmailPayload(message as unknown as GmailMessageShape);
   const headers = innerPayload?.headers;
-  const toAddrs = findAllHeaders(headers, "To");
+
+  // Prefer the typed google-service fields; fall back to the raw payload while
+  // the additive typed rollout is not yet live (payload is real wire data). Body,
+  // Cc/Bcc/Reply-To have no typed replacement in the contract → payload only.
+  const subject =
+    typeof message.subject === "string" && message.subject.length > 0
+      ? message.subject
+      : parsed.subject;
+  const fromLine =
+    (typeof message.fromName === "string" && message.fromName.length > 0
+      ? message.fromName
+      : null) ??
+    (typeof message.fromEmail === "string" && message.fromEmail.length > 0
+      ? message.fromEmail
+      : null) ??
+    parsed.from;
+  const toAddrs =
+    Array.isArray(message.to) && message.to.length > 0
+      ? message.to
+      : findAllHeaders(headers, "To");
+  const dateLine =
+    typeof message.sentAt === "string" && message.sentAt.length > 0
+      ? new Date(message.sentAt).toLocaleString()
+      : parsed.date;
+  const labelIds =
+    Array.isArray(message.labels) && message.labels.length > 0
+      ? message.labels
+      : envelope?.labelIds;
   const ccAddrs = findAllHeaders(headers, "Cc");
   const bccAddrs = findAllHeaders(headers, "Bcc");
   const replyTo = findAllHeaders(headers, "Reply-To");
@@ -78,12 +104,12 @@ export function EmailDetailPanel({
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="font-display font-bold text-xl text-gray-800 leading-tight break-words">
-                {parsed.subject ?? <span className="text-gray-400 italic">(no subject)</span>}
+                {subject ?? <span className="text-gray-400 italic">(no subject)</span>}
               </h2>
-              {parsed.from !== null && (
+              {fromLine !== null && (
                 <p className="text-sm text-gray-600 mt-2 break-words">
                   <span className="text-gray-400">From: </span>
-                  {parsed.from}
+                  {fromLine}
                 </p>
               )}
               {toAddrs.length > 0 && (
@@ -110,8 +136,8 @@ export function EmailDetailPanel({
                   {replyTo.join(", ")}
                 </p>
               )}
-              {parsed.date !== null && (
-                <p className="text-xs text-gray-400 mt-2">{parsed.date}</p>
+              {dateLine !== null && (
+                <p className="text-xs text-gray-400 mt-2">{dateLine}</p>
               )}
             </div>
             <button

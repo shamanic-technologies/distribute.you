@@ -11,6 +11,10 @@ const syncBtnPath = path.join(crmDir, "_components/sync-now-button.tsx");
 const pollHelperPath = path.join(crmDir, "_components/poll-sync-job.ts");
 const messagesListPath = path.join(crmDir, "_components/messages-list.tsx");
 const parsePath = path.join(crmDir, "_components/parse-gmail-payload.ts");
+const clientPath = path.join(crmDir, "_components/google-crm-client.tsx");
+const hookPath = path.join(crmDir, "_components/use-google-sync.ts");
+const apiPath = path.join(root, "../lib/api.ts");
+const persistCachePath = path.join(root, "../lib/persist-cache.ts");
 
 describe("Google CRM page files", () => {
   it("page exists", () => {
@@ -56,21 +60,29 @@ describe("Connect Google button", () => {
   });
 });
 
-describe("Sync now button (async job + poll)", () => {
+describe("Sync flow (shared hook: async job + poll)", () => {
   const btn = fs.readFileSync(syncBtnPath, "utf-8");
+  const hook = fs.readFileSync(hookPath, "utf-8");
   const helper = fs.readFileSync(pollHelperPath, "utf-8");
 
-  it("posts to /api/v1/orgs/google/sync", () => {
-    expect(btn).toContain("/api/v1/orgs/google/sync");
-    expect(btn).toContain('method: "POST"');
+  it("hook posts to /api/v1/orgs/google/sync", () => {
+    expect(hook).toContain("/api/v1/orgs/google/sync");
+    expect(hook).toContain('method: "POST"');
   });
 
-  it("captures jobId from 202 response", () => {
-    expect(btn).toContain("jobId");
+  it("hook captures jobId from 202 response", () => {
+    expect(hook).toContain("jobId");
   });
 
-  it("polls GET /api/v1/orgs/google/sync/{jobId}", () => {
-    expect(btn).toMatch(/\/api\/v1\/orgs\/google\/sync\/\$\{[^}]*jobId[^}]*\}/);
+  it("hook polls GET /api/v1/orgs/google/sync/{jobId}", () => {
+    expect(hook).toMatch(/\/api\/v1\/orgs\/google\/sync\/\$\{[^}]*jobId[^}]*\}/);
+  });
+
+  it("hook invalidates the CRM React Query roots after a sync (revalidate)", () => {
+    expect(hook).toContain("invalidateQueries");
+    expect(hook).toContain('"googleMessages"');
+    expect(hook).toContain('"googleContacts"');
+    expect(hook).toContain('"googleAccounts"');
   });
 
   it("helper handles running, succeeded, failed status values", () => {
@@ -79,7 +91,7 @@ describe("Sync now button (async job + poll)", () => {
     expect(helper).toContain('"failed"');
   });
 
-  it("renders summary fields from poll response", () => {
+  it("button renders summary fields from poll response", () => {
     expect(btn).toContain("summary");
     expect(btn).toContain("accounts");
     expect(btn).toContain("gmail");
@@ -88,14 +100,14 @@ describe("Sync now button (async job + poll)", () => {
     expect(btn).toContain("updated");
   });
 
-  it("cleans up polling on unmount via AbortController", () => {
-    expect(btn).toContain("AbortController");
-    expect(btn).toContain("useEffect");
-    expect(btn).toContain(".abort()");
+  it("hook cleans up polling on unmount via AbortController", () => {
+    expect(hook).toContain("AbortController");
+    expect(hook).toContain("useEffect");
+    expect(hook).toContain(".abort()");
   });
 
-  it("caps polling duration via MAX_POLL_MS (10 min)", () => {
-    expect(btn).toContain("MAX_POLL_MS");
+  it("hook caps polling duration via MAX_POLL_MS (10 min)", () => {
+    expect(hook).toContain("MAX_POLL_MS");
     expect(helper).toMatch(/10\s*\*\s*60\s*\*\s*1000/);
   });
 });
@@ -103,10 +115,9 @@ describe("Sync now button (async job + poll)", () => {
 describe("Messages list", () => {
   const content = fs.readFileSync(messagesListPath, "utf-8");
 
-  it("paginates with nextCursor", () => {
+  it("paginates via nextCursor + onLoadMore (parent-driven)", () => {
     expect(content).toContain("nextCursor");
-    expect(content).toContain("/api/v1/orgs/google/messages");
-    expect(content).toContain("cursor=");
+    expect(content).toContain("onLoadMore");
   });
 
   it("renders subject, from, date, snippet", () => {
@@ -119,30 +130,94 @@ describe("Messages list", () => {
   it("Load more button hides when nextCursor is null", () => {
     expect(content).toMatch(/nextCursor\s*&&/);
   });
+
+  it("prefers typed google-service fields (fromEmail/subject/snippet/sentAt)", () => {
+    expect(content).toContain("fromEmail");
+    expect(content).toContain("sentAt");
+  });
 });
 
-describe("CRM page server fetch", () => {
+describe("CRM page is a server shell over a client React Query surface", () => {
   const content = fs.readFileSync(pagePath, "utf-8");
 
-  it("does not have 'use client' directive", () => {
+  it("page.tsx does not have 'use client' directive", () => {
     expect(content).not.toMatch(/^["']use client["']/m);
   });
 
-  it("fetches /v1/orgs/google/messages with limit=50", () => {
-    expect(content).toContain("/v1/orgs/google/messages");
-    expect(content).toContain("limit=50");
+  it("page.tsx no longer one-shot fetches the lists server-side", () => {
+    expect(content).not.toContain("Promise.all");
+    expect(content).not.toContain("/v1/orgs/google/messages");
   });
 
-  it("reads connected and error from searchParams", () => {
+  it("page.tsx reads connected and error from searchParams", () => {
     expect(content).toContain("searchParams");
     expect(content).toContain("connected");
     expect(content).toContain("error");
   });
 
-  it("imports ConnectGoogleButton, SyncNowButton, MessagesList", () => {
-    expect(content).toContain("ConnectGoogleButton");
+  it("page.tsx renders the client GoogleCrmClient", () => {
+    expect(content).toContain("GoogleCrmClient");
+  });
+});
+
+describe("GoogleCrmClient — local-first React Query surface", () => {
+  const content = fs.readFileSync(clientPath, "utf-8");
+
+  it("is a client component", () => {
+    expect(content).toMatch(/^["']use client["']/m);
+  });
+
+  it("reads via useAuthQuery (local-first SWR), not a server fetch", () => {
+    expect(content).toContain("useAuthQuery");
+    expect(content).toContain('["googleAccounts"]');
+    expect(content).toContain('["googleMessages"]');
+    expect(content).toContain('["googleContacts"]');
+  });
+
+  it("fires a background sync on open + keeps the manual Sync now button", () => {
+    expect(content).toContain("useGoogleSync");
+    expect(content).toContain("silent: true");
     expect(content).toContain("SyncNowButton");
-    expect(content).toContain("MessagesList");
+  });
+
+  it("gates the two lists behind a coordinated reveal (skeleton until ready)", () => {
+    expect(content).toContain("listsReady");
+    expect(content).toContain("Skeleton");
+  });
+});
+
+describe("Typed google-service readers (additive/optional + safeParse)", () => {
+  const content = fs.readFileSync(apiPath, "utf-8");
+
+  it("declares typed message + contact readers hitting the locked paths", () => {
+    expect(content).toContain("listGoogleMessages");
+    expect(content).toContain("listGoogleContacts");
+    expect(content).toContain("listGoogleAccounts");
+    expect(content).toContain("/orgs/google/messages");
+    expect(content).toContain("/orgs/google/contacts");
+  });
+
+  it("safeParses list responses (wire-shape rot → caught error)", () => {
+    expect(content).toContain("GoogleMessagesPageSchema.safeParse");
+    expect(content).toContain("GoogleContactsPageSchema.safeParse");
+  });
+
+  it("typed fields are optional (additive rollout) — nullish, not required", () => {
+    expect(content).toContain("fromEmail: z.string().nullish()");
+    expect(content).toContain("displayName: z.string().nullish()");
+  });
+});
+
+describe("Persist allowlist", () => {
+  const content = fs.readFileSync(persistCachePath, "utf-8");
+
+  it("persists the tiny googleAccounts root (connect-state)", () => {
+    expect(content).toContain('"googleAccounts"');
+  });
+
+  it("does NOT persist the message/contact entity lists (invariant)", () => {
+    expect(content).not.toContain('"googleMessages"');
+    expect(content).not.toContain('"googleContacts"');
   });
 });
 

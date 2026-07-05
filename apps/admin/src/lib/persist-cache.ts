@@ -73,6 +73,12 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Small stat counters (plain numbers — cheap to serialize even when polled)
   "featureStats",
   "campaignStats",
+  // Google CRM connect-state — a tiny {email,status} list, config-like (high
+  // instant-return value: paints "connected" without a cold round-trip). The
+  // CRM MESSAGE + CONTACT lists are deliberately NOT persisted — they are entity
+  // lists (messages carry full email bodies) and the invariant above forbids
+  // persisting lists; they get in-memory SWR + revalidate-on-open instead.
+  "googleAccounts",
 ]);
 
 export interface PersistableQuery {
