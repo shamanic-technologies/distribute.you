@@ -116,10 +116,13 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(brandSettings).toMatch(/FEATURE_GATES\["brand-info"\]/);
   });
 
-  it("Brand Profile moved out of BrandLevelSidebar into BrandSettingsLevelSidebar", () => {
+  it("Brand Profile surfaced flat in BrandLevelSidebar footer (next to Brand Settings)", () => {
     expect(brand.length).toBeGreaterThan(0);
     expect(brandSettings.length).toBeGreaterThan(0);
-    expect(brand).not.toMatch(/id:\s*"brand-profile"/);
+    // Now flat at brand level, replacing the old intermediate Settings button.
+    expect(brand).toMatch(/id:\s*"brand-profile"/);
+    expect(brand).toMatch(/`\$\{basePath\}\/brand-profile`/);
+    // Still also listed under Brand Settings (the /settings sub-sidebar).
     expect(brandSettings).toMatch(/id:\s*"brand-profile"/);
     expect(brandSettings).toMatch(/`\$\{brandBase\}\/brand-profile`/);
   });

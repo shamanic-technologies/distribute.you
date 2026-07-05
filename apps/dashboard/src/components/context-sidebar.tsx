@@ -402,6 +402,10 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const featureSlug = useSoleFeatureSlug();
   const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
+  // Brand Profile is GA (scoped to revenue features) — surfaced flat at the
+  // sidebar bottom next to Brand Settings, replacing the old intermediate
+  // Settings button.
+  const brandProfileOk = isRevenueFeature(featureSlug);
 
   // The old "Database" section (raw entity rows: Leads/Emails/Outlets/…) stays
   // removed. Engaged leads are now surfaced under Audiences; the per-entity count
@@ -467,10 +471,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
       backHref={`/orgs/${orgId}`}
       backLabel="Overview"
       footer={
-        // Anchored to the bottom (outside the scrollable nav): Brand Settings,
+        // Anchored to the bottom (outside the scrollable nav): Brand Settings +
+        // Brand Profile (flat, replacing the old intermediate Settings button),
         // then the referral card.
         <div className="border-t border-gray-100">
-          <div className="p-2">
+          <div className="p-2 space-y-0.5">
             <SidebarLink
               item={{
                 id: "settings",
@@ -478,8 +483,19 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
                 href: `${basePath}/settings`,
                 icon: <SettingsIcon />,
               }}
-              isActive={pathname.startsWith(`${basePath}/settings`)}
+              isActive={pathname === `${basePath}/settings`}
             />
+            {brandProfileOk && (
+              <SidebarLink
+                item={{
+                  id: "brand-profile",
+                  label: "Brand Profile",
+                  href: `${basePath}/brand-profile`,
+                  icon: <BrandProfileIcon />,
+                }}
+                isActive={pathname.startsWith(`${basePath}/brand-profile`)}
+              />
+            )}
           </div>
           <ReferralCard />
         </div>
