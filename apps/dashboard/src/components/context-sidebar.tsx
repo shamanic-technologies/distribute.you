@@ -393,6 +393,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 }) {
   const featureSlug = useSoleFeatureSlug();
   const { isLoading: featuresLoading } = useFeatures();
+  const { organization } = useOrganization();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   // Brand Profile is GA (scoped to revenue features) — surfaced flat at the
   // sidebar bottom next to Brand Settings, replacing the old intermediate
@@ -466,7 +467,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
     <SidebarSection
       title="Brand"
       backHref={`/orgs/${orgId}`}
-      backLabel="Overview"
+      backLabel={organization?.name || "Overview"}
       footer={
         // Anchored to the bottom (outside the scrollable nav): Brand Settings +
         // Brand Profile (flat, replacing the old intermediate Settings button),

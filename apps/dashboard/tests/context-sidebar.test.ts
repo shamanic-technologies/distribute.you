@@ -100,9 +100,9 @@ describe("Context sidebar", () => {
     expect(content).not.toContain("/tools/press-kits");
   });
 
-  it("should have brand back link point to the org overview", () => {
+  it("should have brand back link point to the org overview, labelled by org name", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('backLabel="Overview"');
+    expect(content).toContain('backLabel={organization?.name || "Overview"}');
     expect(content).toContain('backHref={`/orgs/${orgId}`}');
   });
 
