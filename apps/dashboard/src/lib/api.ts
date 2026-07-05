@@ -813,6 +813,55 @@ export async function saveBrandClickDestination(
   return parsed.data;
 }
 
+// ── Conversion tracking token (per-brand publishable write-key) ──
+// A per-brand token the client embeds in a snippet on their own site to fire
+// "Signup" / "Meeting Booked" events back to us; lead-service ingests them and
+// attributes each to a lead we emailed for the brand. The token is a PUBLISHABLE
+// write-key (it lives in a client-side JS pixel, so it is not a secret): it can
+// ONLY POST conversion events for its one brand, never read. Rotate is the abuse
+// remedy. `ingestUrl` is the full public URL the client's site POSTs to.
+// Reached via api-service GET/POST /v1/brands/:brandId/conversion-token[/rotate].
+const BrandConversionTokenSchema = z.object({
+  token: z.string(),
+  ingestUrl: z.string(),
+});
+export type BrandConversionToken = z.infer<typeof BrandConversionTokenSchema>;
+
+export async function getBrandConversionToken(
+  brandId: string,
+  token?: string,
+): Promise<BrandConversionToken> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/conversion-token`, { token });
+  const parsed = BrandConversionTokenSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandConversionToken: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandConversionToken: invalid response shape");
+  }
+  return parsed.data;
+}
+
+export async function rotateBrandConversionToken(
+  brandId: string,
+  token?: string,
+): Promise<BrandConversionToken> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/conversion-token/rotate`, {
+    token,
+    method: "POST",
+  });
+  const parsed = BrandConversionTokenSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] rotateBrandConversionToken: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] rotateBrandConversionToken: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ── Daily budget (per-brand spend pacing) ──
 // A per-day spend ceiling campaign-service uses to pace a brand's work. Separate
 // from org credit balance / top-up (that's affordability; this is allocation).
