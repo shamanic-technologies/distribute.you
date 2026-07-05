@@ -49,10 +49,12 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain("signupToPaidClientPct: z.number()");
   });
 
-  it("exposes a BrandOptimizationGoal type (signups | sales_meetings)", () => {
-    expect(content).toContain(
-      'export type BrandOptimizationGoal = "signups" | "sales_meetings"',
-    );
+  it("exposes a BrandOptimizationGoal type (signups | sales_meetings + beta goals)", () => {
+    expect(content).toContain("export type BrandOptimizationGoal =");
+    expect(content).toContain('"signups"');
+    expect(content).toContain('"sales_meetings"');
+    expect(content).toContain('"website_visits"');
+    expect(content).toContain('"positive_replies"');
   });
 
   it("BrandSalesEconomics carries optimizationGoal without the deprecated stage field", () => {
@@ -75,7 +77,10 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain("type BrandOptimizationGoalWire");
     expect(content).toContain('z.literal("booked_meetings")');
     expect(content).toContain('z.literal("sales")');
-    expect(content).toContain("return goal === \"signups\" ? \"signups\" : \"sales_meetings\"");
+    // The beta goals normalize/serialize 1:1 (no rename); legacy goals collapse to sales_meetings.
+    expect(content).toContain('if (goal === "website_visits") return "website_visits"');
+    expect(content).toContain('if (goal === "positive_replies") return "positive_replies"');
+    expect(content).toContain('return "sales_meetings"');
   });
 
   it("PUT body sends the decomposed self-serve steps + omits derived visitToClosePct", () => {
@@ -151,12 +156,28 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).not.toContain("Website Signup");
   });
 
-  it("always renders the Optimization-goal single-choice (# Signups / # Sales Meetings)", () => {
+  it("always renders the Optimization-goal single-choice (# Signups / # Sales Meetings + beta goals)", () => {
     expect(content).toContain("Optimization goal");
     expect(content).toContain("# Signups");
     expect(content).toContain("# Sales Meetings");
     expect(content).not.toContain("$ Sales");
-    expect(content).toContain("OPTIMIZATION_GOALS.map");
+    // Beta goals render only for beta users; the picker maps over the gated list.
+    expect(content).toContain("# Website visits");
+    expect(content).toContain("# Positive Replies");
+    expect(content).toContain("visibleGoals.map");
+  });
+
+  it("gates the two beta goals behind the beta allowlist + a beta badge", () => {
+    expect(content).toContain("useIsBetaUser");
+    expect(content).toContain("MaturityBadge");
+    expect(content).toContain("visibleGoals");
+  });
+
+  it("carries the single-step paid-client conversions for the beta goals", () => {
+    expect(content).toContain('label: "Website visit → Paid client"');
+    expect(content).toContain('label: "Positive reply → Paid client"');
+    expect(content).toContain('key: "visitToPaidClientPct"');
+    expect(content).toContain('key: "replyToPaidClientPct"');
   });
 
   it("keeps fractional conversion percentages instead of rounding them before save", () => {

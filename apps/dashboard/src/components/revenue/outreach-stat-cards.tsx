@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { isVisitDrivenGoal } from "@/lib/api";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { Spend } from "@/lib/revenue-view";
 
@@ -90,7 +91,7 @@ export function OutreachStatCards({
   };
 
   const outcomeMetric =
-    goal === "sales_meetings"
+    !isVisitDrivenGoal(goal)
       ? {
           label: "Sales Meetings",
           costLabel: "CPSM",

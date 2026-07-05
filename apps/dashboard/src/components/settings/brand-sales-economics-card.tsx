@@ -15,6 +15,8 @@ import {
   parseLocaleNumberInput,
 } from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { MaturityBadge } from "@/components/maturity-badge";
 
 // Seed values when a brand has never saved economics — mirrors the campaign-creation
 // form's SALES_ECON_DEFAULTS so both surfaces start from the same numbers.
@@ -27,6 +29,9 @@ const DEFAULTS = {
   // visit→close (25 × 20% = 5%, matching the prior default).
   visitToSignupPct: "25",
   signupToPaidClientPct: "20",
+  // Single-step conversions for the beta website_visits / positive_replies goals.
+  visitToPaidClientPct: "5",
+  replyToPaidClientPct: "25",
 } as const;
 
 type PctKey =
@@ -34,14 +39,18 @@ type PctKey =
   | "visitToMeetingPct"
   | "meetingToClosePct"
   | "visitToSignupPct"
-  | "signupToPaidClientPct";
+  | "signupToPaidClientPct"
+  | "visitToPaidClientPct"
+  | "replyToPaidClientPct";
 type RequiredFieldKey =
   | "lifetimeRevenueUsd"
   | "replyToMeetingPct"
   | "visitToMeetingPct"
   | "meetingToClosePct"
   | "visitToSignupPct"
-  | "signupToPaidClientPct";
+  | "signupToPaidClientPct"
+  | "visitToPaidClientPct"
+  | "replyToPaidClientPct";
 
 type FormState = {
   lifetimeRevenueUsd: string;
@@ -50,6 +59,8 @@ type FormState = {
   meetingToClosePct: string;
   visitToSignupPct: string;
   signupToPaidClientPct: string;
+  visitToPaidClientPct: string;
+  replyToPaidClientPct: string;
   optimizationGoal: BrandOptimizationGoal;
 };
 
@@ -63,6 +74,8 @@ function defaultForm(): FormState {
     meetingToClosePct: formatLocaleNumberInputValue(Number(DEFAULTS.meetingToClosePct)),
     visitToSignupPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToSignupPct)),
     signupToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.signupToPaidClientPct)),
+    visitToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToPaidClientPct)),
+    replyToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.replyToPaidClientPct)),
     optimizationGoal: "sales_meetings",
   };
 }
@@ -76,6 +89,8 @@ function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState
     meetingToClosePct: formatLocaleNumberInputValue(e.meetingToClosePct),
     visitToSignupPct: formatLocaleNumberInputValue(e.visitToSignupPct),
     signupToPaidClientPct: formatLocaleNumberInputValue(e.signupToPaidClientPct),
+    visitToPaidClientPct: formatLocaleNumberInputValue(e.visitToPaidClientPct),
+    replyToPaidClientPct: formatLocaleNumberInputValue(e.replyToPaidClientPct),
     optimizationGoal: e.optimizationGoal,
   };
 }
@@ -83,9 +98,12 @@ function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState
 const OPTIMIZATION_GOALS: {
   value: BrandOptimizationGoal;
   label: string;
+  beta?: boolean;
 }[] = [
   { value: "signups", label: "# Signups" },
   { value: "sales_meetings", label: "# Sales Meetings" },
+  { value: "website_visits", label: "# Website visits", beta: true },
+  { value: "positive_replies", label: "# Positive Replies", beta: true },
 ];
 
 const PCT_FIELDS: {
@@ -124,11 +142,25 @@ const PCT_FIELDS: {
     tip: "Of leads who sign up, the share that become paying customers.",
     goals: ["signups"],
   },
+  {
+    key: "visitToPaidClientPct",
+    label: "Website visit → Paid client",
+    tip: "Of leads who click through to your website, the share that become paying customers.",
+    goals: ["website_visits"],
+  },
+  {
+    key: "replyToPaidClientPct",
+    label: "Positive reply → Paid client",
+    tip: "Of leads who reply positively, the share that become paying customers.",
+    goals: ["positive_replies"],
+  },
 ];
 
 const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]> = {
   signups: ["visitToSignupPct", "signupToPaidClientPct"],
   sales_meetings: ["replyToMeetingPct", "visitToMeetingPct", "meetingToClosePct"],
+  website_visits: ["visitToPaidClientPct"],
+  positive_replies: ["replyToPaidClientPct"],
 };
 
 const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
@@ -138,6 +170,8 @@ const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
   meetingToClosePct: "Meeting → Paid client",
   visitToSignupPct: "Website visit → signup",
   signupToPaidClientPct: "Signup → Paid client",
+  visitToPaidClientPct: "Website visit → Paid client",
+  replyToPaidClientPct: "Positive reply → Paid client",
 };
 
 const hasNumericValue = (v: string) => parseLocaleNumberInput(v) !== null;
@@ -149,6 +183,7 @@ const toPctOrDefault = (v: string, fallback: string) =>
   parseNumberOrDefault(v, fallback);
 
 export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
+  const isBeta = useIsBetaUser();
   const queryClient = useQueryClient();
   const initialData = queryClient.getQueryData<SalesEconomicsQueryData>([
     "brandSalesEconomics",
@@ -262,12 +297,26 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
         form.signupToPaidClientPct,
         DEFAULTS.signupToPaidClientPct,
       ),
+      visitToPaidClientPct: toPctOrDefault(
+        form.visitToPaidClientPct,
+        DEFAULTS.visitToPaidClientPct,
+      ),
+      replyToPaidClientPct: toPctOrDefault(
+        form.replyToPaidClientPct,
+        DEFAULTS.replyToPaidClientPct,
+      ),
       optimizationGoal: form.optimizationGoal,
     });
   }
 
   const visiblePctFields = PCT_FIELDS.filter((f) =>
     f.goals.includes(form.optimizationGoal),
+  );
+
+  // Beta goals show only for beta users — but never hide the currently-active goal
+  // (a goal a beta teammate already saved must still render its button for everyone).
+  const visibleGoals = OPTIMIZATION_GOALS.filter(
+    (g) => !g.beta || isBeta || g.value === form.optimizationGoal,
   );
 
   return (
@@ -281,21 +330,22 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
         {/* Optimization goal (single-choice) */}
         <div className="mb-5">
           <label className="block text-xs text-gray-500 mb-1.5">Optimization goal</label>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-            {OPTIMIZATION_GOALS.map((g) => {
+          <div className="inline-flex flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+            {visibleGoals.map((g) => {
               const active = form.optimizationGoal === g.value;
               return (
                 <button
                   key={g.value}
                   type="button"
                   onClick={() => update("optimizationGoal", g.value)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${
+                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition ${
                     active
                       ? "bg-white shadow-sm text-brand-700 ring-1 ring-brand-200"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   {g.label}
+                  {g.beta && <MaturityBadge level="beta" />}
                 </button>
               );
             })}

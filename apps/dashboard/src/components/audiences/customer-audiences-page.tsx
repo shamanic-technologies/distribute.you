@@ -20,6 +20,7 @@ import {
   fetchFeatureAudienceStats,
   generateAudienceAvatar,
   getBrandSalesEconomics,
+  isVisitDrivenGoal,
   listAudiences,
   setAudienceStatus,
   type AudienceStatus,
@@ -143,10 +144,11 @@ export function CustomerAudiencesPage() {
     () => getBrandSalesEconomics(brandId),
     pollOptions,
   );
-  const audienceStatsGoal =
-    (economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings") === "signups"
-      ? "signup"
-      : "meetingBooked";
+  const audienceStatsGoal = isVisitDrivenGoal(
+    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings",
+  )
+    ? "signup"
+    : "meetingBooked";
 
   // Per-audience outreach / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed

@@ -16,6 +16,8 @@ import {
   fetchFeatureAudienceStats,
   listAudiences,
   getWorkflowProjection,
+  isVisitDrivenGoal,
+  salesObjectiveForOptimizationGoal,
   keepLastGoodWorkflowProjection,
   keepLastGoodFeatureRevenue,
   type PipelineActivityMetric,
@@ -211,7 +213,7 @@ export default function BrandOverviewPage() {
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =
     economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
-  const audienceStatsGoal = optimizationGoal === "signups" ? "signup" : "meetingBooked";
+  const audienceStatsGoal = isVisitDrivenGoal(optimizationGoal) ? "signup" : "meetingBooked";
   const audienceStatsMetric = audienceStatsGoal === "signup" ? "cpc" : "cppr";
 
   const { data: budgetData } = useAuthQuery(
@@ -248,7 +250,7 @@ export default function BrandOverviewPage() {
       getWorkflowProjection({
         featureSlug,
         brandId,
-        objective: optimizationGoal === "signups" ? "self-serve" : "meeting-booked",
+        objective: salesObjectiveForOptimizationGoal(optimizationGoal),
         budgetUsd: monthlyBudgetUsd ?? undefined,
       }),
     {

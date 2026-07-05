@@ -9,6 +9,7 @@ import {
   listBrandLeads,
   getLeadConsolidatedStatus,
   getBrandSalesEconomics,
+  isVisitDrivenGoal,
   getLeadEmail,
   type Lead,
   type LeadConsolidatedStatus,
@@ -546,12 +547,9 @@ export function EngagedLeadsPage() {
     if (sortedLeads.length === 0 || econData === undefined) return;
     hasAutoSelectedTab.current = true;
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
-    const order: Tab[] =
-      optimizationGoal === "signups"
-        ? ["clicks", "outreach", "positive-replies"]
-        : optimizationGoal === "sales_meetings"
-          ? ["positive-replies", "clicks", "outreach"]
-          : ["outreach", "clicks", "positive-replies"];
+    const order: Tab[] = isVisitDrivenGoal(optimizationGoal ?? "sales_meetings")
+      ? ["clicks", "outreach", "positive-replies"]
+      : ["positive-replies", "clicks", "outreach"];
     setActiveTab(order.find((t) => count(t) > 0) ?? "outreach");
   }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
 

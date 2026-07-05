@@ -13,15 +13,23 @@ type WorkflowOutcomeUnitCostOptions = {
   projectionBudgetUsd?: number | null;
 };
 
+function positiveOrNull(v: number | null | undefined): number | null {
+  return v != null && v > 0 ? v : null;
+}
+
 function serverOutcomeUnitCost(
   workflow: WorkflowProjectionItem,
   goal: BrandOptimizationGoal,
 ): number | null {
+  // The beta goals count the RAW outcome (a website visit / a positive reply), so
+  // their per-outcome cost is the click / reply cost directly — no conversion step.
+  if (goal === "website_visits") return positiveOrNull(workflow.clickUsd);
+  if (goal === "positive_replies") return positiveOrNull(workflow.replyUsd);
   const cost =
     goal === "signups"
       ? workflow.costPerSignupUsd
       : workflow.costPerMeetingBookedUsd;
-  return cost != null && cost > 0 ? cost : null;
+  return positiveOrNull(cost);
 }
 
 function workflowOutcomeUnitCostFromRates(
@@ -31,6 +39,24 @@ function workflowOutcomeUnitCostFromRates(
 ): number | null {
   const projectionBudgetUsd = options.projectionBudgetUsd ?? PROJECTION_REF_BUDGET;
   if (projectionBudgetUsd <= 0) return null;
+
+  // Beta goals: raw-outcome cost = click / reply cost, else budget ÷ projected count.
+  if (goal === "website_visits") {
+    return (
+      positiveOrNull(workflow.clickUsd) ??
+      (workflow.projection?.visits != null && workflow.projection.visits > 0
+        ? projectionBudgetUsd / workflow.projection.visits
+        : null)
+    );
+  }
+  if (goal === "positive_replies") {
+    return (
+      positiveOrNull(workflow.replyUsd) ??
+      (workflow.projection?.replies != null && workflow.projection.replies > 0
+        ? projectionBudgetUsd / workflow.projection.replies
+        : null)
+    );
+  }
 
   if (goal === "signups") {
     const visitToSignupPct = options.visitToSignupPct;

@@ -1,5 +1,12 @@
 import type { BrandOptimizationGoal, FeatureAudienceStatsGoal, FeatureCandidate, SalesObjective } from "@/lib/api";
 
+// Local copy of api.ts's isVisitDrivenGoal — this module is imported+executed by
+// vitest (which has no "@/" alias), so a value import of "@/lib/api" fails to resolve.
+// Keep in lockstep with the exported api.ts helper.
+function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
+  return goal === "signups" || goal === "website_visits";
+}
+
 /**
  * Pure (no-React) helpers for the brand Strategy page.
  *
@@ -38,26 +45,38 @@ export function modelAvatar(dynastySlug: string): { emoji: string; color: string
   return MODEL_FACES[h % MODEL_FACES.length];
 }
 
-/** The brand's saved objective → the candidates / audience-stats goal enum. */
+/** The brand's saved objective → the candidates / audience-stats goal enum.
+ *  The two beta goals borrow the nearest family (visit → signup, reply → meetingBooked);
+ *  the enum has no single-step variant. */
 export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAudienceStatsGoal {
-  return goal === "signups" ? "signup" : "meetingBooked";
+  return isVisitDrivenGoal(goal) ? "signup" : "meetingBooked";
 }
 
 /** Human noun for one outcome of the brand's objective. */
 export function outcomeNoun(goal: BrandOptimizationGoal): string {
-  return goal === "signups" ? "signup" : "meeting";
+  switch (goal) {
+    case "signups":
+      return "signup";
+    case "website_visits":
+      return "website visit";
+    case "positive_replies":
+      return "positive reply";
+    default:
+      return "meeting";
+  }
 }
 
-/** The projection field carrying the brand-level cost per outcome for the objective. */
+/** The projection field carrying the brand-level cost per outcome for the objective.
+ *  Beta goals borrow the nearest family field (no single-step projection field exists). */
 export function projectionCostKey(
   goal: BrandOptimizationGoal,
 ): "costPerSignupUsd" | "costPerMeetingBookedUsd" {
-  return goal === "signups" ? "costPerSignupUsd" : "costPerMeetingBookedUsd";
+  return isVisitDrivenGoal(goal) ? "costPerSignupUsd" : "costPerMeetingBookedUsd";
 }
 
 /** The workflow-projection objective for the brand's saved goal. */
 export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): SalesObjective {
-  return goal === "signups" ? "self-serve" : "meeting-booked";
+  return isVisitDrivenGoal(goal) ? "self-serve" : "meeting-booked";
 }
 
 /**

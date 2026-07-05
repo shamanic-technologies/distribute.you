@@ -19,6 +19,7 @@ import {
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
   salesObjectiveForOptimizationGoal,
+  isVisitDrivenGoal,
   type BrandOptimizationGoal,
   type BrandSalesEconomics,
   type BrandSalesEconomicsInput,
@@ -31,6 +32,8 @@ import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { MaturityBadge } from "@/components/maturity-badge";
 
 const PROJECTION_REF_BUDGET = 100;
 const COUNT_TIERS = [5, 25, 125] as const;
@@ -48,12 +51,15 @@ const DEFAULT_SALES_ECONOMICS = {
 const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   signups: "Maximising signups conversions",
   sales_meetings: "Maximising sales meetings",
+  website_visits: "Maximising website visits",
+  positive_replies: "Maximising positive replies",
 };
 
 const GOAL_OPTIONS: {
   value: BrandOptimizationGoal;
   label: string;
   description: string;
+  beta?: boolean;
 }[] = [
   {
     value: "signups",
@@ -64,6 +70,18 @@ const GOAL_OPTIONS: {
     value: "sales_meetings",
     label: "# Sales Meetings",
     description: "Optimize outreach toward booked sales conversations.",
+  },
+  {
+    value: "website_visits",
+    label: "# Website visits",
+    description: "Optimize outreach toward website visits that convert to paid clients.",
+    beta: true,
+  },
+  {
+    value: "positive_replies",
+    label: "# Positive Replies",
+    description: "Optimize outreach toward positive replies that convert to paid clients.",
+    beta: true,
   },
 ];
 
@@ -114,6 +132,7 @@ function salesEconomicsInputForGoal(
  * so they dedupe with the page's own fetches.
  */
 export function BrandStatusControl({ brandId }: { brandId: string }) {
+  const isBeta = useIsBetaUser();
   const queryClient = useQueryClient();
   const featureSlug = useSoleFeatureSlug();
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
@@ -240,7 +259,14 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     replyToMeetingPct,
     visitToMeetingPct,
   });
-  const outcomeUnit = goalForBudget === "signups" ? "signups" : "meetings";
+  const outcomeUnit =
+    goalForBudget === "signups"
+      ? "signups"
+      : goalForBudget === "website_visits"
+        ? "website visits"
+        : goalForBudget === "positive_replies"
+          ? "positive replies"
+          : "meetings";
   const unitCost = activeWorkflow
     ? workflowOutcomeUnitCost(activeWorkflow, goalForBudget, {
         visitToSignupPct,
@@ -374,7 +400,9 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
             </div>
 
             <div className="space-y-2">
-              {GOAL_OPTIONS.map((option) => {
+              {GOAL_OPTIONS.filter(
+                (option) => !option.beta || isBeta || option.value === selectedGoal,
+              ).map((option) => {
                 const active = selectedGoal === option.value;
                 return (
                   <button
@@ -387,8 +415,9 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                         : "border-gray-200 bg-white hover:border-gray-300"
                     }`}
                   >
-                    <div className="text-sm font-semibold text-gray-900">
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
                       {option.label}
+                      {option.beta && <MaturityBadge level="beta" />}
                     </div>
                     <div className="mt-0.5 text-xs leading-5 text-gray-500">
                       {option.description}
