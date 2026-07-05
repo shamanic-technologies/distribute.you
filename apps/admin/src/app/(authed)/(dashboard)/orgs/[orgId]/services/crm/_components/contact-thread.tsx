@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listGoogleMessages, type GoogleMessageRow } from "@/lib/api";
+import { EmailDetailPanel } from "./email-detail-panel";
+import type { GoogleMessage } from "./messages-list";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -26,6 +28,7 @@ export function ContactThread({ email }: { email: string | null | undefined }) {
   const [extra, setExtra] = useState<GoogleMessageRow[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [openMsg, setOpenMsg] = useState<GoogleMessageRow | null>(null);
 
   const query = useAuthQuery(
     ["googleMessages", email ?? ""],
@@ -71,9 +74,11 @@ export function ContactThread({ email }: { email: string | null | undefined }) {
   return (
     <div className="space-y-2">
       {messages.map((m) => (
-        <div
+        <button
+          type="button"
           key={m.id ?? m.gmailMessageId}
-          className="rounded-lg border border-gray-200 bg-white p-3"
+          onClick={() => setOpenMsg(m)}
+          className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left transition hover:border-brand-300 hover:bg-brand-50/40"
         >
           <div className="flex items-start justify-between gap-3">
             <span className="min-w-0 truncate text-sm font-medium text-gray-800">
@@ -85,7 +90,7 @@ export function ContactThread({ email }: { email: string | null | undefined }) {
             {m.fromName || m.fromEmail || ""}
           </div>
           {m.snippet && <p className="mt-1 line-clamp-2 text-sm text-gray-600">{m.snippet}</p>}
-        </div>
+        </button>
       ))}
 
       {nextCursor && (
@@ -97,6 +102,15 @@ export function ContactThread({ email }: { email: string | null | undefined }) {
         >
           {loadingMore ? "Loading…" : "Load more"}
         </button>
+      )}
+
+      {openMsg && (
+        // The row carries the raw Gmail `payload` (kept via `.passthrough()`), from
+        // which EmailDetailPanel parses + sanitizes the full body.
+        <EmailDetailPanel
+          message={openMsg as GoogleMessage}
+          onClose={() => setOpenMsg(null)}
+        />
       )}
     </div>
   );

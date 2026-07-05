@@ -32,22 +32,34 @@ export async function GET(req: NextRequest) {
 
   const client = await clerkClient();
   const entries = await Promise.all(
-    ids.map(async (id): Promise<[string, string] | null> => {
-      try {
-        const org = await client.organizations.getOrganization({ organizationId: id });
-        return org.name ? [id, org.name] : null;
-      } catch {
-        // Unknown / deleted org id → drop from the map; caller labels it by
-        // brand domain / owner email instead. Not a hard failure of the batch.
-        return null;
-      }
-    }),
+    ids.map(
+      async (
+        id,
+      ): Promise<[string, { name: string; imageUrl: string; hasImage: boolean }] | null> => {
+        try {
+          const org = await client.organizations.getOrganization({ organizationId: id });
+          if (!org.name) return null;
+          return [id, { name: org.name, imageUrl: org.imageUrl, hasImage: org.hasImage }];
+        } catch {
+          // Unknown / deleted org id → drop from the map; caller labels it by
+          // brand domain / owner email instead. Not a hard failure of the batch.
+          return null;
+        }
+      },
+    ),
   );
 
+  // `names` (id → display name) is kept for the Audit → Accounts consumer; `orgs`
+  // adds the Clerk avatar (imageUrl + hasImage) so the CRM Org column can render a
+  // logo. Both maps carry the same key set.
   const names: Record<string, string> = {};
+  const orgs: Record<string, { name: string; imageUrl: string; hasImage: boolean }> = {};
   for (const entry of entries) {
-    if (entry) names[entry[0]] = entry[1];
+    if (entry) {
+      names[entry[0]] = entry[1].name;
+      orgs[entry[0]] = entry[1];
+    }
   }
 
-  return NextResponse.json({ names });
+  return NextResponse.json({ names, orgs });
 }

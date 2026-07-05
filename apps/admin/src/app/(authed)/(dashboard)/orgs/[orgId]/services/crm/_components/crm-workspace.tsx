@@ -1,36 +1,94 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptionsSlower } from "@/lib/query-options";
 import {
   listGoogleContacts,
+  listAdminBrands,
+  listFeatures,
   type GoogleContactRow,
   type GoogleContactLinks,
+  type AdminBrand,
 } from "@/lib/api";
+import { BrandLogo } from "@/components/brand-logo";
 import { ContactLinksEditor } from "./contact-links-editor";
 import { ContactThread } from "./contact-thread";
 
 const PAGE_LIMIT = 50;
 
+interface OrgInfo {
+  name: string;
+  imageUrl: string;
+  hasImage: boolean;
+}
+
 function contactKey(c: GoogleContactRow): string {
   return c.resourceName ?? c.id ?? "";
 }
 
-function initials(c: GoogleContactRow): string {
-  const src = c.displayName || c.primaryEmail || "?";
-  return src.slice(0, 2).toUpperCase();
+function initials(src: string): string {
+  return (src || "?").slice(0, 2).toUpperCase();
 }
 
-function linkCount(links: GoogleContactLinks | undefined): number {
-  if (!links) return 0;
-  return links.orgIds.length + links.brandIds.length + links.featureSlugs.length;
+function contactInitials(c: GoogleContactRow): string {
+  return initials(c.displayName || c.primaryEmail || "?");
+}
+
+/** Clerk org avatar — real logo only when hasImage, else an initials badge. */
+function OrgAvatar({ info }: { info: OrgInfo }) {
+  if (info.hasImage && info.imageUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={info.imageUrl}
+        alt=""
+        className="h-5 w-5 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[9px] font-medium text-gray-500">
+      {initials(info.name)}
+    </span>
+  );
+}
+
+/** A wrapped row of avatar+label chips (orgs / brands), collapsing overflow to +N. */
+function ChipRow({
+  items,
+  max = 2,
+}: {
+  items: { key: string; avatar: React.ReactNode; label: string }[];
+  max?: number;
+}) {
+  if (items.length === 0) return <span className="text-xs text-gray-300">—</span>;
+  const shown = items.slice(0, max);
+  const overflow = items.length - shown.length;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {shown.map((it) => (
+        <span
+          key={it.key}
+          title={it.label}
+          className="inline-flex max-w-[10rem] items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-1.5 py-0.5"
+        >
+          {it.avatar}
+          <span className="truncate text-xs text-gray-700">{it.label}</span>
+        </span>
+      ))}
+      {overflow > 0 && <span className="text-xs text-gray-400">+{overflow}</span>}
+    </div>
+  );
 }
 
 /**
- * Contacts CRM: a filterable, paginated contacts table (left) + a detail panel
- * (right) showing the contact's org/brand/feature links editor and the Gmail
- * thread with that contact. Replaces the old two-stacked-lists layout.
+ * Contacts CRM: a filterable, paginated contacts table (left) with Org / Brand /
+ * Feature columns resolved from each contact's platform links (orgs + brands show
+ * logos), plus a detail panel (right) with the org/brand/feature status editor and
+ * the Gmail thread. Org names/logos come from Clerk (/api/admin/orgs/names), brands
+ * from the staff brands list, features from the feature registry — all batched.
  */
 export function CrmWorkspace() {
   const [rawFilter, setRawFilter] = useState("");
@@ -67,6 +125,46 @@ export function CrmWorkspace() {
       return override ? { ...c, links: override } : c;
     });
   }, [query.data, extra, linkOverrides]);
+
+  // ── Resolvers for the Org / Brand / Feature columns (all batched) ──
+  const brandsQuery = useAuthQuery(["adminBrands"], () => listAdminBrands(), {
+    staleTime: 5 * 60_000,
+  });
+  const brandMap = useMemo(() => {
+    const m = new Map<string, AdminBrand>();
+    for (const b of brandsQuery.data?.brands ?? []) m.set(b.id, b);
+    return m;
+  }, [brandsQuery.data]);
+
+  const featuresQuery = useAuthQuery(["features", "all"], () => listFeatures(), {
+    staleTime: 5 * 60_000,
+  });
+  const featureNameBySlug = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of featuresQuery.data?.features ?? []) m.set(f.slug, f.name || f.slug);
+    return m;
+  }, [featuresQuery.data]);
+
+  // Every distinct linked org id across the visible rows → one names+logos fetch.
+  const orgIdsAll = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of contacts) for (const id of c.links?.orgIds ?? []) s.add(id);
+    return [...s].sort();
+  }, [contacts]);
+
+  const orgQuery = useQuery({
+    queryKey: ["crmOrgInfo", orgIdsAll.join(",")],
+    enabled: orgIdsAll.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/orgs/names?ids=${encodeURIComponent(orgIdsAll.join(","))}`,
+      );
+      if (!res.ok) throw new Error("[admin] CRM org info fetch failed");
+      return (await res.json()) as { orgs: Record<string, OrgInfo> };
+    },
+  });
+  const orgMap = orgQuery.data?.orgs ?? {};
 
   const nextCursor = extra.length > 0 ? cursor : (query.data?.nextCursor ?? null);
   const selected = contacts.find((c) => contactKey(c) === selectedKey) ?? null;
@@ -114,19 +212,41 @@ export function CrmWorkspace() {
               {filter ? "No contacts match your filter." : "No Google contacts synced yet."}
             </p>
           ) : (
-            <table className="w-full min-w-[520px] border-collapse text-sm">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead className="sticky top-0 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
                 <tr>
                   <th className="px-4 py-2">Contact</th>
-                  <th className="px-4 py-2 hidden sm:table-cell">Organization</th>
-                  <th className="px-4 py-2">Status</th>
+                  <th className="px-4 py-2">Org</th>
+                  <th className="px-4 py-2">Brand</th>
+                  <th className="px-4 py-2">Feature</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {contacts.map((c) => {
                   const key = contactKey(c);
-                  const n = linkCount(c.links);
                   const isSel = key === selectedKey;
+                  const links = c.links;
+                  const orgItems = (links?.orgIds ?? []).map((id) => {
+                    const info = orgMap[id];
+                    return {
+                      key: id,
+                      avatar: (
+                        <OrgAvatar info={info ?? { name: id, imageUrl: "", hasImage: false }} />
+                      ),
+                      label: info?.name || id,
+                    };
+                  });
+                  const brandItems = (links?.brandIds ?? []).map((id) => {
+                    const b = brandMap.get(id);
+                    return {
+                      key: id,
+                      avatar: <BrandLogo domain={b?.domain ?? null} size={20} className="rounded" />,
+                      label: b?.name || b?.domain || id,
+                    };
+                  });
+                  const featureLabels = (links?.featureSlugs ?? []).map(
+                    (slug) => featureNameBySlug.get(slug) || slug,
+                  );
                   return (
                     <tr
                       key={key}
@@ -136,7 +256,7 @@ export function CrmWorkspace() {
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-500">
-                            {initials(c)}
+                            {contactInitials(c)}
                           </span>
                           <span className="min-w-0">
                             <span className="block truncate font-medium text-gray-800">
@@ -150,21 +270,32 @@ export function CrmWorkspace() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-2 hidden sm:table-cell">
-                        <span className="block truncate text-gray-600">
-                          {c.organization || "—"}
-                        </span>
-                        {c.jobTitle && (
-                          <span className="block truncate text-xs text-gray-400">{c.jobTitle}</span>
-                        )}
+                      <td className="px-4 py-2 align-top">
+                        <ChipRow items={orgItems} />
                       </td>
-                      <td className="px-4 py-2">
-                        {n > 0 ? (
-                          <span className="inline-flex items-center rounded-full bg-brand-50 border border-brand-200 px-2 py-0.5 text-xs text-brand-700">
-                            {n} linked
-                          </span>
+                      <td className="px-4 py-2 align-top">
+                        <ChipRow items={brandItems} />
+                      </td>
+                      <td className="px-4 py-2 align-top">
+                        {featureLabels.length === 0 ? (
+                          <span className="text-xs text-gray-300">—</span>
                         ) : (
-                          <span className="text-xs text-gray-300">Unlinked</span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {featureLabels.slice(0, 2).map((label, i) => (
+                              <span
+                                key={`${label}-${i}`}
+                                title={label}
+                                className="inline-flex max-w-[10rem] items-center rounded-full bg-gray-50 border border-gray-200 px-1.5 py-0.5 text-xs text-gray-700"
+                              >
+                                <span className="truncate">{label}</span>
+                              </span>
+                            ))}
+                            {featureLabels.length > 2 && (
+                              <span className="text-xs text-gray-400">
+                                +{featureLabels.length - 2}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -203,7 +334,7 @@ export function CrmWorkspace() {
                 />
               ) : (
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-medium text-gray-500">
-                  {initials(selected)}
+                  {contactInitials(selected)}
                 </span>
               )}
               <div className="min-w-0">
