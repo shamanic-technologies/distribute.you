@@ -1,124 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { extractErrorDetail } from "./error-detail";
-import {
-  MAX_POLL_MS,
-  POLL_INTERVAL_MS,
-  pollSyncJob,
-  type JobStatusResponse,
-  type SyncSummary,
-} from "./poll-sync-job";
+import { useGoogleSync } from "./use-google-sync";
 
-interface StartSyncResponse {
-  jobId: string;
-  status: "running";
-}
-
+/**
+ * Manual "Sync now" trigger. Runs the shared Google-sync flow (POST + poll) and,
+ * on success, invalidates the React Query CRM roots so the messages / contacts /
+ * accounts lists silently revalidate — no full-page `router.refresh` (the lists
+ * are client-side React Query now, not a server render).
+ */
 export function SyncNowButton() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<SyncSummary | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
-
-  async function handleClick() {
-    setLoading(true);
-    setError(null);
-    setSummary(null);
-
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-
-    const startRes = await fetch("/api/v1/orgs/google/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: ac.signal,
-    });
-    if (!startRes.ok) {
-      const body = await startRes.text();
-      console.error(
-        "[dashboard] POST /orgs/google/sync failed",
-        startRes.status,
-        body
-      );
-      const detail = extractErrorDetail(
-        body,
-        startRes.headers.get("Content-Type")
-      );
-      setError(
-        detail
-          ? `Sync failed (${startRes.status}): ${detail}`
-          : `Sync failed: ${startRes.status}`
-      );
-      setLoading(false);
-      return;
-    }
-    const startBody = (await startRes.json()) as StartSyncResponse;
-    if (!startBody.jobId) {
-      console.error(
-        "[dashboard] POST /orgs/google/sync missing jobId in 202 response",
-        startBody
-      );
-      setError("Sync start response missing jobId");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const result = await pollSyncJob({
-        jobId: startBody.jobId,
-        fetchStatus: async (jobId) => {
-          const res = await fetch(
-            `/api/v1/orgs/google/sync/${encodeURIComponent(jobId)}`,
-            { signal: ac.signal }
-          );
-          if (!res.ok) {
-            const body = await res.text();
-            const detail = extractErrorDetail(
-              body,
-              res.headers.get("Content-Type")
-            );
-            throw new Error(
-              detail
-                ? `Sync status check failed (${res.status}): ${detail}`
-                : `Sync status check failed: ${res.status}`
-            );
-          }
-          return (await res.json()) as JobStatusResponse;
-        },
-        signal: ac.signal,
-        intervalMs: POLL_INTERVAL_MS,
-        maxMs: MAX_POLL_MS,
-      });
-      setSummary(result);
-      router.refresh();
-    } catch (err) {
-      if ((err as Error).name === "AbortError") {
-        return;
-      }
-      console.error("[dashboard] sync poll failed", err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      if (abortRef.current === ac) {
-        abortRef.current = null;
-      }
-      setLoading(false);
-    }
-  }
+  const { loading, error, summary, runSync } = useGoogleSync();
 
   return (
     <div>
       <button
-        onClick={handleClick}
+        onClick={() => void runSync()}
         disabled={loading}
         className="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium inline-flex items-center gap-2"
       >

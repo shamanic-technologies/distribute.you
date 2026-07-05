@@ -8,58 +8,70 @@ import {
 } from "./parse-gmail-payload";
 import type { GmailPayloadFull } from "./parse-gmail-body";
 import { EmailDetailPanel } from "./email-detail-panel";
-import { extractErrorDetail } from "./error-detail";
+import type { GoogleMessageRow } from "@/lib/api";
 
 export interface GoogleMessageEnvelope extends GmailEnvelopeShape {
   payload?: GmailPayloadFull;
 }
 
-export interface GoogleMessage extends GmailMessageShape {
-  id?: string;
-  googleAccountId?: string;
-  gmailMessageId?: string;
-  threadId?: string;
-  historyId?: string;
-  fetchedAt?: string;
+// The row on the wire (typed google-service fields + the raw Gmail `payload`,
+// which the detail panel parses the body from). Mirrors `GoogleMessageRow` in
+// lib/api.ts with `payload` narrowed to the envelope shape for detail rendering.
+export interface GoogleMessage extends GoogleMessageRow {
   payload?: GoogleMessageEnvelope;
 }
 
-export interface MessagesPage {
-  items: GoogleMessage[];
-  nextCursor: string | null;
+function formatSentAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
 }
 
-export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
-  const [items, setItems] = useState<GoogleMessage[]>(initialPage.items);
-  const [nextCursor, setNextCursor] = useState<string | null>(initialPage.nextCursor);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+interface MessageDisplay {
+  from: string | null;
+  subject: string | null;
+  snippet: string | null;
+  date: string | null;
+}
 
-  async function loadMore() {
-    if (!nextCursor) return;
-    setLoading(true);
-    setError(null);
-    const res = await fetch(
-      `/api/v1/orgs/google/messages?limit=50&cursor=${encodeURIComponent(nextCursor)}`,
-    );
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("[dashboard] /orgs/google/messages load more failed", res.status, body);
-      const detail = extractErrorDetail(body, res.headers.get("Content-Type"));
-      setError(
-        detail
-          ? `Failed to load more (${res.status}): ${detail}`
-          : `Failed to load more: ${res.status}`,
-      );
-      setLoading(false);
-      return;
-    }
-    const data = (await res.json()) as MessagesPage;
-    setItems((prev) => [...prev, ...data.items]);
-    setNextCursor(data.nextCursor);
-    setLoading(false);
-  }
+/**
+ * Prefer the typed google-service fields; fall back to parsing the raw Gmail
+ * `payload` while the additive typed rollout is not yet live (the payload is real
+ * present data on the wire — not a fabricated default — so this is a graceful
+ * source fallback, not a No-Fallbacks violation). Once google-service ships the
+ * typed fields they win and the payload parse is never reached.
+ */
+export function messageDisplay(msg: GoogleMessage): MessageDisplay {
+  const parsed = parseGmailPayload(msg as unknown as GmailMessageShape);
+  const from =
+    (typeof msg.fromName === "string" && msg.fromName.length > 0 ? msg.fromName : null) ??
+    (typeof msg.fromEmail === "string" && msg.fromEmail.length > 0 ? msg.fromEmail : null) ??
+    parsed.from;
+  const subject =
+    typeof msg.subject === "string" && msg.subject.length > 0 ? msg.subject : parsed.subject;
+  const snippet =
+    typeof msg.snippet === "string" && msg.snippet.length > 0 ? msg.snippet : parsed.snippet;
+  const date =
+    typeof msg.sentAt === "string" && msg.sentAt.length > 0
+      ? formatSentAt(msg.sentAt)
+      : parsed.date;
+  return { from, subject, snippet, date };
+}
+
+export function MessagesList({
+  items,
+  nextCursor,
+  onLoadMore,
+  loadingMore,
+  loadMoreError,
+}: {
+  items: GoogleMessage[];
+  nextCursor: string | null;
+  onLoadMore: () => void;
+  loadingMore: boolean;
+  loadMoreError: string | null;
+}) {
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   if (items.length === 0) {
     return (
@@ -77,7 +89,7 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
     <div>
       <ul className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
         {items.map((msg, idx) => {
-          const parsed = parseGmailPayload(msg);
+          const d = messageDisplay(msg);
           const key = msg.gmailMessageId ?? msg.id ?? `row-${idx}`;
           return (
             <li key={key}>
@@ -88,26 +100,22 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    {parsed.from !== null && (
+                    {d.from !== null && (
                       <p className="text-sm font-medium text-gray-800 truncate flex-shrink-0 max-w-[40%]">
-                        {parsed.from}
+                        {d.from}
                       </p>
                     )}
-                    {parsed.subject !== null && (
-                      <p className="text-sm text-gray-700 truncate flex-1">
-                        {parsed.subject}
-                      </p>
+                    {d.subject !== null && (
+                      <p className="text-sm text-gray-700 truncate flex-1">{d.subject}</p>
                     )}
                   </div>
-                  {parsed.snippet !== null && (
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
-                      {parsed.snippet}
-                    </p>
+                  {d.snippet !== null && (
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{d.snippet}</p>
                   )}
                 </div>
-                {parsed.date !== null && (
+                {d.date !== null && (
                   <time className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
-                    {parsed.date}
+                    {d.date}
                   </time>
                 )}
               </button>
@@ -116,29 +124,26 @@ export function MessagesList({ initialPage }: { initialPage: MessagesPage }) {
         })}
       </ul>
 
-      {error && (
+      {loadMoreError && (
         <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
-          {error}
+          {loadMoreError}
         </div>
       )}
 
       {nextCursor && (
         <div className="mt-4 flex justify-center">
           <button
-            onClick={loadMore}
-            disabled={loading}
+            onClick={onLoadMore}
+            disabled={loadingMore}
             className="bg-white border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm font-medium text-gray-700"
           >
-            {loading ? "Loading..." : "Load more"}
+            {loadingMore ? "Loading..." : "Load more"}
           </button>
         </div>
       )}
 
       {selectedMessage !== null && (
-        <EmailDetailPanel
-          message={selectedMessage}
-          onClose={() => setSelectedIdx(null)}
-        />
+        <EmailDetailPanel message={selectedMessage} onClose={() => setSelectedIdx(null)} />
       )}
     </div>
   );

@@ -1,48 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { extractErrorDetail } from "./error-detail";
-import { parseGoogleContact, type GoogleContactRow } from "./parse-google-contact";
+import type { GoogleContactRow } from "@/lib/api";
+import { contactDisplay } from "./contact-display";
 import { groupContactsByOrg } from "./group-contacts-by-org";
-
-export interface ContactsPage {
-  items: GoogleContactRow[];
-  nextCursor: string | null;
-}
 
 type Tab = "humans" | "organizations";
 
-export function ContactsList({ initialPage }: { initialPage: ContactsPage }) {
-  const [items, setItems] = useState<GoogleContactRow[]>(initialPage.items);
-  const [nextCursor, setNextCursor] = useState<string | null>(initialPage.nextCursor);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function ContactsList({
+  items,
+  nextCursor,
+  onLoadMore,
+  loadingMore,
+  loadMoreError,
+}: {
+  items: GoogleContactRow[];
+  nextCursor: string | null;
+  onLoadMore: () => void;
+  loadingMore: boolean;
+  loadMoreError: string | null;
+}) {
   const [tab, setTab] = useState<Tab>("humans");
-
-  async function loadMore() {
-    if (!nextCursor) return;
-    setLoading(true);
-    setError(null);
-    const res = await fetch(
-      `/api/v1/orgs/google/contacts?limit=50&cursor=${encodeURIComponent(nextCursor)}`,
-    );
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("[dashboard] /orgs/google/contacts load more failed", res.status, body);
-      const detail = extractErrorDetail(body, res.headers.get("Content-Type"));
-      setError(
-        detail
-          ? `Failed to load more (${res.status}): ${detail}`
-          : `Failed to load more: ${res.status}`,
-      );
-      setLoading(false);
-      return;
-    }
-    const data = (await res.json()) as ContactsPage;
-    setItems((prev) => [...prev, ...data.items]);
-    setNextCursor(data.nextCursor);
-    setLoading(false);
-  }
 
   if (items.length === 0) {
     return (
@@ -86,7 +64,7 @@ export function ContactsList({ initialPage }: { initialPage: ContactsPage }) {
       {tab === "humans" ? (
         <ul className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
           {items.map((row, idx) => {
-            const c = parseGoogleContact(row);
+            const c = contactDisplay(row);
             const key = row.id ?? row.resourceName ?? `contact-${idx}`;
             return (
               <li key={key} className="px-4 py-3">
@@ -141,7 +119,7 @@ export function ContactsList({ initialPage }: { initialPage: ContactsPage }) {
               </div>
               <ul className="space-y-1 pl-3 border-l-2 border-gray-100">
                 {g.contacts.map((row, idx) => {
-                  const c = parseGoogleContact(row);
+                  const c = contactDisplay(row);
                   return (
                     <li
                       key={row.id ?? row.resourceName ?? `${g.orgName ?? "noorg"}-${idx}`}
@@ -167,20 +145,20 @@ export function ContactsList({ initialPage }: { initialPage: ContactsPage }) {
         </ul>
       )}
 
-      {error && (
+      {loadMoreError && (
         <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
-          {error}
+          {loadMoreError}
         </div>
       )}
 
       {nextCursor && (
         <div className="mt-4 flex justify-center">
           <button
-            onClick={loadMore}
-            disabled={loading}
+            onClick={onLoadMore}
+            disabled={loadingMore}
             className="bg-white border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm font-medium text-gray-700"
           >
-            {loading ? "Loading..." : "Load more"}
+            {loadingMore ? "Loading..." : "Load more"}
           </button>
         </div>
       )}

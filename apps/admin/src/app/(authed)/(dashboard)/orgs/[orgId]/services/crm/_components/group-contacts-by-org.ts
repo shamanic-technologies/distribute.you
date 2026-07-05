@@ -1,5 +1,5 @@
-import type { GoogleContactRow } from "./parse-google-contact";
-import { parseGoogleContact } from "./parse-google-contact";
+import type { GoogleContactRow } from "@/lib/api";
+import { contactDisplay } from "./contact-display";
 
 export interface OrgGroup {
   orgName: string | null;
@@ -9,7 +9,7 @@ export interface OrgGroup {
 export function groupContactsByOrg(rows: GoogleContactRow[]): OrgGroup[] {
   const map = new Map<string | null, GoogleContactRow[]>();
   for (const row of rows) {
-    const { organizationName } = parseGoogleContact(row);
+    const { organizationName } = contactDisplay(row);
     const key = organizationName;
     const bucket = map.get(key);
     if (bucket) {
