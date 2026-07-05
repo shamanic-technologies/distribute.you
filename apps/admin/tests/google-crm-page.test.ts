@@ -167,11 +167,9 @@ describe("GoogleCrmClient — local-first React Query surface", () => {
     expect(content).toMatch(/^["']use client["']/m);
   });
 
-  it("reads via useAuthQuery (local-first SWR), not a server fetch", () => {
+  it("reads accounts via useAuthQuery (local-first SWR), not a server fetch", () => {
     expect(content).toContain("useAuthQuery");
     expect(content).toContain('["googleAccounts"]');
-    expect(content).toContain('["googleMessages"]');
-    expect(content).toContain('["googleContacts"]');
   });
 
   it("fires a background sync on open + keeps the manual Sync now button", () => {
@@ -180,9 +178,38 @@ describe("GoogleCrmClient — local-first React Query surface", () => {
     expect(content).toContain("SyncNowButton");
   });
 
-  it("gates the two lists behind a coordinated reveal (skeleton until ready)", () => {
-    expect(content).toContain("listsReady");
-    expect(content).toContain("Skeleton");
+  it("renders the CrmWorkspace contacts surface (table + detail panel)", () => {
+    expect(content).toContain("CrmWorkspace");
+  });
+});
+
+describe("CrmWorkspace — contacts table + detail panel", () => {
+  const wsPath = path.join(crmDir, "_components/crm-workspace.tsx");
+  const editorPath = path.join(crmDir, "_components/contact-links-editor.tsx");
+  const threadPath = path.join(crmDir, "_components/contact-thread.tsx");
+  const ws = fs.readFileSync(wsPath, "utf-8");
+  const editor = fs.readFileSync(editorPath, "utf-8");
+  const thread = fs.readFileSync(threadPath, "utf-8");
+
+  it("filters + paginates contacts via listGoogleContacts", () => {
+    expect(ws).toContain("listGoogleContacts");
+    expect(ws).toContain('["googleContacts"');
+    expect(ws).toContain("Load more");
+  });
+
+  it("links a contact to orgs/brands/features and saves via saveContactLinks", () => {
+    expect(editor).toContain("saveContactLinks");
+    expect(editor).toContain("Organizations");
+    expect(editor).toContain("Brands");
+    expect(editor).toContain("Features");
+    expect(editor).toContain("/api/admin/orgs");
+    expect(editor).toContain("listAdminBrands");
+  });
+
+  it("shows the per-contact Gmail thread filtered by participant, newest first", () => {
+    expect(thread).toContain("listGoogleMessages");
+    expect(thread).toContain("participant");
+    expect(thread).toContain('["googleMessages"');
   });
 });
 

@@ -231,7 +231,7 @@ const SettingsIcon = () => (
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "org" | "brand" | "brandSettings";
+  type: "app" | "org" | "brand";
   orgId?: string;
   brandId?: string;
 }
@@ -242,19 +242,11 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      const section = segments[4];
-      // Brand Settings group: settings / brand-profile / brand-info / workflows(list+new).
-      if (
-        section === "settings" ||
-        section === "brand-profile" ||
-        section === "brand-info" ||
-        section === "workflows"
-      ) {
-        return { type: "brandSettings", orgId, brandId };
-      }
-      // Everything else → brand sidebar: root overview and every entity page
-      // (leads / emails / outlets / journalists / articles / competitors /
-      // prompts / quote-pitches / quote-requests / visibility-runs).
+      // Every brand section — root overview, entity pages, AND settings /
+      // brand-profile / brand-info / workflows — renders the SAME brand sidebar.
+      // Settings + Profile + Info + Workflows are flat links in that sidebar's
+      // footer, so the sidebar stays mounted and the clicked link goes blue
+      // instead of swapping to a separate Settings sidebar level.
       return { type: "brand", orgId, brandId };
     }
     return { type: "org", orgId };
@@ -406,6 +398,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   // sidebar bottom next to Brand Settings, replacing the old intermediate
   // Settings button.
   const brandProfileOk = isRevenueFeature(featureSlug);
+  // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog
+  // resolves. Folded flat into this footer so the brand sidebar stays mounted on
+  // /brand-info + /workflows (no separate Settings sidebar level).
+  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
+  const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
 
   // The old "Database" section (raw entity rows: Leads/Emails/Outlets/…) stays
   // removed. Engaged leads are now surfaced under Audiences; the per-entity count
@@ -496,6 +493,30 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
                 isActive={pathname.startsWith(`${basePath}/brand-profile`)}
               />
             )}
+            {brandInfoOk && (
+              <SidebarLink
+                item={{
+                  id: "brand-info",
+                  label: "Brand Info",
+                  href: `${basePath}/brand-info`,
+                  icon: <InfoIcon />,
+                  maturity: FEATURE_GATES["brand-info"].maturity,
+                }}
+                isActive={pathname.startsWith(`${basePath}/brand-info`)}
+              />
+            )}
+            {workflowsOk && (
+              <SidebarLink
+                item={{
+                  id: "workflows",
+                  label: "Workflows",
+                  href: `${basePath}/workflows`,
+                  icon: <WorkflowIcon />,
+                  maturity: FEATURE_GATES["workflows"].maturity,
+                }}
+                isActive={pathname === `${basePath}/workflows` || pathname.startsWith(`${basePath}/workflows/`)}
+              />
+            )}
           </div>
           <ReferralCard />
         </div>
@@ -530,66 +551,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   );
 }
 
-// Brand Settings Level Sidebar — Brand Settings + Brand Profile + Brand Info,
-// plus the Workflows list folded in from the old Feature Settings level.
-function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
-  orgId: string;
-  brandId: string;
-  pathname: string;
-}) {
-  const featureSlug = useSoleFeatureSlug();
-  const brandBase = `/orgs/${orgId}/brands/${brandId}`;
-  const basePath = `${brandBase}/settings`;
-  // Brand Profile is GA (scoped to revenue features) — only the "Edit with AI"
-  // button inside it stays beta-gated.
-  const brandProfileOk = isRevenueFeature(featureSlug);
-  // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog resolves.
-  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
-  const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
-
-  const items: SidebarItem[] = [
-    { id: "settings", label: "Brand Settings", href: basePath, icon: <SettingsIcon /> },
-  ];
-  if (brandProfileOk) {
-    items.push({
-      id: "brand-profile",
-      label: "Brand Profile",
-      href: `${brandBase}/brand-profile`,
-      icon: <BrandProfileIcon />,
-    });
-  }
-  if (brandInfoOk) {
-    items.push({
-      id: "brand-info",
-      label: "Brand Info",
-      href: `${brandBase}/brand-info`,
-      icon: <InfoIcon />,
-      maturity: FEATURE_GATES["brand-info"].maturity,
-    });
-  }
-  if (workflowsOk) {
-    items.push({
-      id: "workflows",
-      label: "Workflows",
-      href: `${brandBase}/workflows`,
-      icon: <WorkflowIcon />,
-      maturity: FEATURE_GATES["workflows"].maturity,
-    });
-  }
-
-  return (
-    <SidebarSection title="Settings" backHref={brandBase} backLabel="Brand">
-      {items.map((item) => (
-        <SidebarLink
-          key={item.id}
-          item={item}
-          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
-        />
-      ))}
-    </SidebarSection>
-  );
-}
-
 export function ContextSidebar() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -602,8 +563,6 @@ export function ContextSidebar() {
       return <OrgLevelSidebar orgId={level.orgId!} pathname={pathname} />;
     case "brand":
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
-    case "brandSettings":
-      return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     default:
       return <AppLevelSidebar />;
   }

@@ -96,35 +96,25 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(org).toMatch(/label:\s*"Billing"/);
   });
 
-  // Scope to the BrandLevelSidebar function body only.
+  // Scope to the BrandLevelSidebar function body only. The Brand Settings level
+  // was flattened into this sidebar, so its body now runs to ContextSidebar.
   const brand = sidebar.slice(
     sidebar.indexOf("function BrandLevelSidebar"),
-    sidebar.indexOf("function BrandSettingsLevelSidebar"),
-  );
-  // Scope to the BrandSettingsLevelSidebar function body only.
-  const brandSettings = sidebar.slice(
-    sidebar.indexOf("function BrandSettingsLevelSidebar"),
     sidebar.indexOf("export function ContextSidebar"),
   );
 
-  it("Brand Info moved out of BrandLevelSidebar into BrandSettingsLevelSidebar (alpha-gated)", () => {
+  it("Brand Info is a flat footer link in BrandLevelSidebar (alpha-gated)", () => {
     expect(brand.length).toBeGreaterThan(0);
-    expect(brandSettings.length).toBeGreaterThan(0);
-    // No longer at brand level…
-    expect(brand).not.toMatch(/FEATURE_GATES\["brand-info"\]/);
-    // …now gated under Brand Settings.
-    expect(brandSettings).toMatch(/FEATURE_GATES\["brand-info"\]/);
+    // Brand Info folded into the brand sidebar footer, still alpha-gated.
+    expect(brand).toMatch(/FEATURE_GATES\["brand-info"\]/);
+    expect(brand).toMatch(/`\$\{basePath\}\/brand-info`/);
   });
 
   it("Brand Profile surfaced flat in BrandLevelSidebar footer (next to Brand Settings)", () => {
     expect(brand.length).toBeGreaterThan(0);
-    expect(brandSettings.length).toBeGreaterThan(0);
-    // Now flat at brand level, replacing the old intermediate Settings button.
+    // Flat at brand level, replacing the old intermediate Settings button.
     expect(brand).toMatch(/id:\s*"brand-profile"/);
     expect(brand).toMatch(/`\$\{basePath\}\/brand-profile`/);
-    // Still also listed under Brand Settings (the /settings sub-sidebar).
-    expect(brandSettings).toMatch(/id:\s*"brand-profile"/);
-    expect(brandSettings).toMatch(/`\$\{brandBase\}\/brand-profile`/);
   });
 
   it("BrandLevelSidebar no longer renders a Database section header", () => {
