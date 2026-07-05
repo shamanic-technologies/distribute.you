@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useMutation } from "@tanstack/react-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getInstantlySendingForecast,
   getInstantlyReconcile,
   getInstantlyAccountHealth,
+  setInstantlyAccountBlacklist,
   getSendForecast,
   type InstantlySendingForecast,
   type InstantlyReconcile,
@@ -57,6 +59,7 @@ const BLOCK_REASON_LABEL: Record<string, string> = {
   inactive: "Inactive",
   "under-warmed": "Under-warmed",
   "blacklisted-domain": "Blacklisted domain",
+  manual: "Resting",
 };
 
 function statusKey(row: InstantlyAccountHealthRow): string {
@@ -125,6 +128,50 @@ const QUEUE_BINS: { label: string; lo: number; hi: number }[] = [
   { label: "51+", lo: 51, hi: Infinity },
 ];
 
+// Per-row staff toggle: rest an account (manual blacklist) or lift the rest.
+// `blockReason === "manual"` ⟺ the account is manually blacklisted (highest-precedence
+// reason), so the button flips between "Blacklist" and "Allow" off that single signal.
+// Blacklisting keeps the Instantly daily max-send intact (queue drains) and raises
+// warmup to 50/day; allowing resumes sends and drops warmup to 10/day (both handled
+// server-side by instantly-service).
+function BlacklistToggle({
+  row,
+  mutation,
+}: {
+  row: InstantlyAccountHealthRow;
+  mutation: ReturnType<
+    typeof useMutation<
+      Awaited<ReturnType<typeof setInstantlyAccountBlacklist>>,
+      Error,
+      { email: string; blacklisted: boolean }
+    >
+  >;
+}) {
+  const manual = row.blockReason === "manual";
+  const pending = mutation.isPending && mutation.variables?.email === row.email;
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => mutation.mutate({ email: row.email, blacklisted: !manual })}
+      title={
+        manual
+          ? "Lift the manual rest — resume sending and drop warmup to 10/day"
+          : "Rest this account — stop new sends (queue still drains) and raise warmup to 50/day"
+      }
+      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+        pending ? "cursor-wait opacity-60" : "cursor-pointer"
+      } ${
+        manual
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+          : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+      }`}
+    >
+      {pending ? "Saving…" : manual ? "Allow" : "Blacklist"}
+    </button>
+  );
+}
+
 function ScoreBadge({ score }: { score: number | null }) {
   if (score === null) return <span className="text-gray-400">—</span>;
   const cls =
@@ -179,6 +226,20 @@ function AccountHealthSection() {
     () => getInstantlyAccountHealth(),
     pollOptionsSlower,
   );
+
+  const queryClient = useQueryClient();
+  const blacklist = useMutation<
+    Awaited<ReturnType<typeof setInstantlyAccountBlacklist>>,
+    Error,
+    { email: string; blacklisted: boolean }
+  >({
+    mutationFn: (input) => setInstantlyAccountBlacklist(input),
+    // The reason (manual) + warmup limit are recomputed server-side; refetch the
+    // health list so the row, its tab, and the toggle flip in one paint.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["instantlyAccountHealth"] });
+    },
+  });
 
   const num = (n: number) => n.toLocaleString("en-US");
   const accounts = data?.accounts ?? [];
@@ -363,7 +424,7 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[1000px] w-full text-sm">
+              <table className="min-w-[1120px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
@@ -383,13 +444,14 @@ function AccountHealthSection() {
                         </button>
                       </th>
                     ))}
+                    <th className="py-2 px-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={COLUMNS.length}
+                        colSpan={COLUMNS.length + 1}
                         className="py-6 text-center text-sm text-gray-400"
                       >
                         No accounts match.
@@ -427,6 +489,9 @@ function AccountHealthSection() {
                           {num(r.queueSize)}
                         </td>
                         <td className="py-2.5 px-3 text-gray-700">{r.accountType ?? "—"}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <BlacklistToggle row={r} mutation={blacklist} />
+                        </td>
                       </tr>
                     ))
                   )}

@@ -4248,7 +4248,10 @@ export async function getInstantlyReconcile(
 export type InstantlyAccountBlockReason =
   | "inactive"
   | "under-warmed"
-  | "blacklisted-domain";
+  | "blacklisted-domain"
+  // Staff manually rested this account (highest-precedence reason). Set/cleared
+  // via setInstantlyAccountBlacklist; blockReason === "manual" ⟺ manually blacklisted.
+  | "manual";
 
 export interface InstantlyAccountInboxPlacement {
   inboxPct: number;
@@ -4284,7 +4287,7 @@ const InstantlyAccountHealthRowSchema = z.object({
   dailyLimit: z.number().nullable(),
   blocked: z.boolean(),
   blockReason: z
-    .enum(["inactive", "under-warmed", "blacklisted-domain"])
+    .enum(["inactive", "under-warmed", "blacklisted-domain", "manual"])
     .nullable(),
   inboxPlacement: z
     .object({
@@ -4319,6 +4322,42 @@ export async function getInstantlyAccountHealth(
       raw,
     });
     throw new Error("[admin] getInstantlyAccountHealth: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// Manually blacklist ("rest") a sending account or lift the blacklist. Staff-only
+// (proxied via api-service requireStaff). Blacklisting stops NEW sends from the
+// account but leaves its Instantly daily send limit intact so its queue drains,
+// and raises its warmup daily send volume to 50; allowing resumes sends and drops
+// warmup back to 10. instantly-service owns both the persisted flag and the
+// Instantly-side warmup change; the dashboard renders the returned state only.
+export interface SetInstantlyAccountBlacklistResponse {
+  email: string;
+  manuallyBlacklisted: boolean;
+  warmupDailyLimit: number;
+}
+const SetInstantlyAccountBlacklistResponseSchema = z.object({
+  email: z.string(),
+  manuallyBlacklisted: z.boolean(),
+  warmupDailyLimit: z.number(),
+});
+export async function setInstantlyAccountBlacklist(
+  input: { email: string; blacklisted: boolean },
+  token?: string,
+): Promise<SetInstantlyAccountBlacklistResponse> {
+  const raw = await apiCall<unknown>("/instantly/audit/account-blacklist", {
+    token,
+    method: "POST",
+    body: input,
+  });
+  const parsed = SetInstantlyAccountBlacklistResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] setInstantlyAccountBlacklist: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] setInstantlyAccountBlacklist: invalid response shape");
   }
   return parsed.data;
 }
