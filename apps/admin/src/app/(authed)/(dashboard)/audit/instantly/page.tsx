@@ -1,19 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getInstantlySendingForecast,
   getInstantlyReconcile,
   getInstantlyAccountHealth,
-  setInstantlyAccountBlacklist,
   getSendForecast,
   type InstantlySendingForecast,
   type InstantlyReconcile,
   type InstantlyAccountHealth,
   type InstantlyAccountHealthRow,
   type InstantlyAccountInboxPlacement,
+  type InstantlyAccountLifecycleStatus,
   type SendForecast,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
@@ -55,22 +54,48 @@ function fmtDelta(delta: number): string {
   return "0";
 }
 
-const BLOCK_REASON_LABEL: Record<string, string> = {
-  inactive: "Inactive",
-  "under-warmed": "Under-warmed",
-  "blacklisted-domain": "Blacklisted domain",
-  manual: "Resting",
+// Human labels for the auto-derived lifecycle states. Sending eligibility is
+// 100% auto now — no manual override exists.
+const LIFECYCLE_LABEL: Record<string, string> = {
+  in_production: "In production",
+  in_recovery: "In recovery",
+  deactivated_by_instantly: "Deactivated by Instantly",
+  deactivated_by_user: "Deactivated by user",
+  unclassified: "Unclassified",
 };
 
+// Only `in_production` accounts send; every other lifecycle state is held out.
+const LIFECYCLE_BADGE: Record<string, string> = {
+  in_production: "bg-emerald-100 text-emerald-800",
+  in_recovery: "bg-amber-100 text-amber-800",
+  deactivated_by_instantly: "bg-red-100 text-red-800",
+  deactivated_by_user: "bg-gray-200 text-gray-700",
+  unclassified: "bg-gray-100 text-gray-500",
+};
+
+// Tab / grouping key = the account's lifecycle state (which IS the send gate).
+// Falls back to `blockReason` (which the backend sets to the lifecycle_status
+// when blocked, or "unclassified") when lifecycleStatus is absent.
 function statusKey(row: InstantlyAccountHealthRow): string {
-  if (!row.blocked) return "allowed";
-  return row.blockReason ?? "blocked";
+  if (row.lifecycleStatus) return row.lifecycleStatus;
+  if (!row.blocked) return "in_production";
+  return row.blockReason ?? "unclassified";
 }
 
 function statusLabel(key: string): string {
-  if (key === "allowed") return "Allowed";
-  if (key === "blocked") return "Blocked";
-  return BLOCK_REASON_LABEL[key] ?? key;
+  return LIFECYCLE_LABEL[key] ?? key;
+}
+
+function LifecycleBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${
+        LIFECYCLE_BADGE[status] ?? "bg-gray-100 text-gray-500"
+      }`}
+    >
+      {statusLabel(status)}
+    </span>
+  );
 }
 
 // Sortable columns. `queueSize`/`sentToday`/`dailyLimit`/`warmupScore` are numeric
@@ -79,6 +104,7 @@ const COLUMNS = [
   { key: "email", label: "Account", numeric: false, align: "left" },
   { key: "domain", label: "Domain", numeric: false, align: "left" },
   { key: "status", label: "Status", numeric: false, align: "left" },
+  { key: "lifecycleStatus", label: "Lifecycle", numeric: false, align: "left" },
   { key: "warmupScore", label: "Health score", numeric: true, align: "right" },
   { key: "inboxPlacement", label: "Inbox placement", numeric: true, align: "right" },
   { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
@@ -127,50 +153,6 @@ const QUEUE_BINS: { label: string; lo: number; hi: number }[] = [
   { label: "21–50", lo: 21, hi: 50 },
   { label: "51+", lo: 51, hi: Infinity },
 ];
-
-// Per-row staff toggle: rest an account (manual blacklist) or lift the rest.
-// `blockReason === "manual"` ⟺ the account is manually blacklisted (highest-precedence
-// reason), so the button flips between "Blacklist" and "Allow" off that single signal.
-// Blacklisting keeps the Instantly daily max-send intact (queue drains) and raises
-// warmup to 50/day; allowing resumes sends and drops warmup to 10/day (both handled
-// server-side by instantly-service).
-function BlacklistToggle({
-  row,
-  mutation,
-}: {
-  row: InstantlyAccountHealthRow;
-  mutation: ReturnType<
-    typeof useMutation<
-      Awaited<ReturnType<typeof setInstantlyAccountBlacklist>>,
-      Error,
-      { email: string; blacklisted: boolean }
-    >
-  >;
-}) {
-  const manual = row.blockReason === "manual";
-  const pending = mutation.isPending && mutation.variables?.email === row.email;
-  return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => mutation.mutate({ email: row.email, blacklisted: !manual })}
-      title={
-        manual
-          ? "Lift the manual rest — resume sending and drop warmup to 10/day"
-          : "Rest this account — stop new sends (queue still drains) and raise warmup to 50/day"
-      }
-      className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-        pending ? "cursor-wait opacity-60" : "cursor-pointer"
-      } ${
-        manual
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-          : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-      }`}
-    >
-      {pending ? "Saving…" : manual ? "Allow" : "Blacklist"}
-    </button>
-  );
-}
 
 function ScoreBadge({ score }: { score: number | null }) {
   if (score === null) return <span className="text-gray-400">—</span>;
@@ -227,20 +209,6 @@ function AccountHealthSection() {
     pollOptionsSlower,
   );
 
-  const queryClient = useQueryClient();
-  const blacklist = useMutation<
-    Awaited<ReturnType<typeof setInstantlyAccountBlacklist>>,
-    Error,
-    { email: string; blacklisted: boolean }
-  >({
-    mutationFn: (input) => setInstantlyAccountBlacklist(input),
-    // The reason (manual) + warmup limit are recomputed server-side; refetch the
-    // health list so the row, its tab, and the toggle flip in one paint.
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["instantlyAccountHealth"] });
-    },
-  });
-
   const num = (n: number) => n.toLocaleString("en-US");
   const accounts = data?.accounts ?? [];
 
@@ -250,10 +218,12 @@ function AccountHealthSection() {
       const k = statusKey(r);
       counts.set(k, (counts.get(k) ?? 0) + 1);
     }
-    const reasons = [...counts.keys()]
-      .filter((k) => k !== "allowed")
+    const rest = [...counts.keys()]
+      .filter((k) => k !== "in_production")
       .sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0));
-    const ordered = counts.has("allowed") ? ["allowed", ...reasons] : reasons;
+    const ordered = counts.has("in_production")
+      ? ["in_production", ...rest]
+      : rest;
     return ordered.map((k) => ({ key: k, label: statusLabel(k), count: counts.get(k) ?? 0 }));
   }, [accounts]);
 
@@ -264,8 +234,8 @@ function AccountHealthSection() {
 
   const activeTab = tab && tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key ?? null;
 
-  // Allowed-only queue stats — computed over the whole allowed set, independent
-  // of which tab is active.
+  // Sending-pool queue stats — computed over the whole in-production set
+  // (send-eligible), independent of which tab is active.
   const allowed = useMemo(() => accounts.filter((r) => !r.blocked), [accounts]);
   const pctWithQueue = allowed.length
     ? (allowed.filter((r) => r.queueSize > 0).length / allowed.length) * 100
@@ -312,8 +282,8 @@ function AccountHealthSection() {
           <h2 className="text-sm font-semibold text-gray-900">Sending accounts</h2>
           <p className="mt-1 text-xs text-gray-500">
             Every account in the shared Instantly workspace with its Health Score, daily
-            send limit, and send-eligibility (from the same gate the live send path uses).
-            Tabbed by send-eligibility; sort any column, filter by email or domain.
+            send limit, and auto-derived lifecycle (only in-production accounts send).
+            Tabbed by lifecycle; sort any column, filter by email or domain.
           </p>
         </div>
         {!isPending && !isError && (
@@ -342,13 +312,15 @@ function AccountHealthSection() {
           <p className="text-sm text-gray-500">No sending accounts found.</p>
         ) : (
           <>
-            {/* Allowed-only queue health: % with a queue, avg queue, distribution. */}
+            {/* In-production queue health: % with a queue, avg queue, distribution. */}
             <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Allowed accounts — queue health
+                  In-production accounts — queue health
                 </h3>
-                <span className="text-xs text-gray-400">{num(allowed.length)} allowed</span>
+                <span className="text-xs text-gray-400">
+                  {num(allowed.length)} in production
+                </span>
               </div>
               <div className="mt-3 grid grid-cols-2 sm:grid-cols-2 gap-4">
                 <div>
@@ -368,11 +340,13 @@ function AccountHealthSection() {
               </div>
               <div className="mt-4">
                 <p className="text-xs font-medium text-gray-500">
-                  Queue-size distribution (% of allowed accounts)
+                  Queue-size distribution (% of in-production accounts)
                 </p>
                 <div className="mt-2">
                   {allowed.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-gray-400">No allowed accounts.</p>
+                    <p className="py-8 text-center text-sm text-gray-400">
+                      No in-production accounts.
+                    </p>
                   ) : (
                     <QueueDistributionChart data={queueBins} />
                   )}
@@ -380,7 +354,7 @@ function AccountHealthSection() {
               </div>
             </div>
 
-            {/* Status tabs (Allowed first, then block reasons by count). */}
+            {/* Lifecycle tabs (In production first, then other states by count). */}
             <div className="mt-5 flex flex-wrap gap-1 border-b border-gray-200">
               {tabs.map((t) => {
                 const active = t.key === activeTab;
@@ -444,14 +418,13 @@ function AccountHealthSection() {
                         </button>
                       </th>
                     ))}
-                    <th className="py-2 px-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={COLUMNS.length + 1}
+                        colSpan={COLUMNS.length}
                         className="py-6 text-center text-sm text-gray-400"
                       >
                         No accounts match.
@@ -473,6 +446,14 @@ function AccountHealthSection() {
                             {r.status}
                           </span>
                         </td>
+                        <td className="py-2.5 px-3">
+                          <LifecycleBadge status={statusKey(r)} />
+                          {r.lifecycleReason && (
+                            <span className="mt-0.5 block text-[10px] text-gray-400">
+                              {r.lifecycleReason}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-2.5 px-3 text-right">
                           <ScoreBadge score={r.warmupScore} />
                         </td>
@@ -489,9 +470,6 @@ function AccountHealthSection() {
                           {num(r.queueSize)}
                         </td>
                         <td className="py-2.5 px-3 text-gray-700">{r.accountType ?? "—"}</td>
-                        <td className="py-2.5 px-3 text-right">
-                          <BlacklistToggle row={r} mutation={blacklist} />
-                        </td>
                       </tr>
                     ))
                   )}
@@ -644,7 +622,7 @@ export default function AuditInstantlyPage() {
         <h1 className="text-2xl font-semibold text-gray-900">Instantly — sending forecast</h1>
         <p className="mt-1 text-sm text-gray-500">
           Future email volume scheduled by the cold-email fleet, day by day, against the
-          current available daily capacity (healthy, warmed, non-blacklisted accounts only).
+          current available daily capacity (in-production accounts only).
         </p>
       </div>
 
@@ -689,7 +667,7 @@ export default function AuditInstantlyPage() {
         <StatCard
           label="Blocked accounts"
           value={num(iData?.blockedDomainCount)}
-          sub="excluded via blacklist / warmup"
+          sub="brand / product domains held out of cold"
           pending={iPending}
         />
         <StatCard

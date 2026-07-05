@@ -4245,13 +4245,14 @@ export async function getInstantlyReconcile(
 // count), "queue size" (emails queued), and "account type" (pre-warmed, etc).
 // They are tracked as backend requests, not synthesized client-side.
 // ---------------------------------------------------------------------------
-export type InstantlyAccountBlockReason =
-  | "inactive"
-  | "under-warmed"
-  | "blacklisted-domain"
-  // Staff manually rested this account (highest-precedence reason). Set/cleared
-  // via setInstantlyAccountBlacklist; blockReason === "manual" ⟺ manually blacklisted.
-  | "manual";
+// Per-account lifecycle state (auto-derived by instantly-service; no manual
+// override exists). Send-eligible ⟺ 'in_production'; every other state is held
+// out of new sends. 'unclassified' = an account the backend never classified.
+export type InstantlyAccountLifecycleStatus =
+  | "in_production"
+  | "in_recovery"
+  | "deactivated_by_instantly"
+  | "deactivated_by_user";
 
 export interface InstantlyAccountInboxPlacement {
   inboxPct: number;
@@ -4266,8 +4267,13 @@ export interface InstantlyAccountHealthRow {
   status: string; // "active" when Instantly status > 0, else "inactive"
   warmupScore: number | null; // Instantly Health Score (0-100), null if unknown
   dailyLimit: number | null; // per-account daily send limit, null if unknown
-  blocked: boolean; // true when NOT send-eligible per the live send gate
-  blockReason: InstantlyAccountBlockReason | null; // first failing gate; null when sendable
+  blocked: boolean; // true when NOT send-eligible (lifecycleStatus !== 'in_production')
+  // When blocked, the lifecycle_status behind it, or "unclassified" if never
+  // classified. null when in_production. The old manual/warmup/domain reasons are gone.
+  blockReason: string | null;
+  lifecycleStatus: InstantlyAccountLifecycleStatus | null; // auto-derived send state
+  lifecycleReason: string | null; // machine reason for the current lifecycle state
+  lifecycleUpdatedAt: string | null; // ISO8601 of the last lifecycle transition
   inboxPlacement: InstantlyAccountInboxPlacement | null; // BSG history; always null in v1
   sentToday: number; // real emails sent today (UTC); honest 0, never null
   queueSize: number; // emails queued to Instantly but not yet sent; honest 0, never null
@@ -4286,9 +4292,17 @@ const InstantlyAccountHealthRowSchema = z.object({
   warmupScore: z.number().nullable(),
   dailyLimit: z.number().nullable(),
   blocked: z.boolean(),
-  blockReason: z
-    .enum(["inactive", "under-warmed", "blacklisted-domain", "manual"])
+  blockReason: z.string().nullable(),
+  lifecycleStatus: z
+    .enum([
+      "in_production",
+      "in_recovery",
+      "deactivated_by_instantly",
+      "deactivated_by_user",
+    ])
     .nullable(),
+  lifecycleReason: z.string().nullable(),
+  lifecycleUpdatedAt: z.string().nullable(),
   inboxPlacement: z
     .object({
       inboxPct: z.number(),
@@ -4322,42 +4336,6 @@ export async function getInstantlyAccountHealth(
       raw,
     });
     throw new Error("[admin] getInstantlyAccountHealth: invalid response shape");
-  }
-  return parsed.data;
-}
-
-// Manually blacklist ("rest") a sending account or lift the blacklist. Staff-only
-// (proxied via api-service requireStaff). Blacklisting stops NEW sends from the
-// account but leaves its Instantly daily send limit intact so its queue drains,
-// and raises its warmup daily send volume to 50; allowing resumes sends and drops
-// warmup back to 10. instantly-service owns both the persisted flag and the
-// Instantly-side warmup change; the dashboard renders the returned state only.
-export interface SetInstantlyAccountBlacklistResponse {
-  email: string;
-  manuallyBlacklisted: boolean;
-  warmupDailyLimit: number;
-}
-const SetInstantlyAccountBlacklistResponseSchema = z.object({
-  email: z.string(),
-  manuallyBlacklisted: z.boolean(),
-  warmupDailyLimit: z.number(),
-});
-export async function setInstantlyAccountBlacklist(
-  input: { email: string; blacklisted: boolean },
-  token?: string,
-): Promise<SetInstantlyAccountBlacklistResponse> {
-  const raw = await apiCall<unknown>("/instantly/audit/account-blacklist", {
-    token,
-    method: "POST",
-    body: input,
-  });
-  const parsed = SetInstantlyAccountBlacklistResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[admin] setInstantlyAccountBlacklist: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[admin] setInstantlyAccountBlacklist: invalid response shape");
   }
   return parsed.data;
 }
