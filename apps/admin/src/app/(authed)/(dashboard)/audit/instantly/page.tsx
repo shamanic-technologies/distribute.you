@@ -10,6 +10,7 @@ import {
   type InstantlyReconcile,
   type InstantlyAccountHealth,
   type InstantlyAccountHealthRow,
+  type InstantlyAccountInboxPlacement,
   type SendForecast,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
@@ -83,6 +84,39 @@ function ScoreBadge({ score }: { score: number | null }) {
   );
 }
 
+function InboxPlacementCell({
+  placement,
+}: {
+  placement: InstantlyAccountInboxPlacement | null;
+}) {
+  if (placement === null) return <span className="text-gray-400">—</span>;
+  const inbox = Math.round(placement.inboxPct);
+  const cls =
+    inbox >= 80
+      ? "bg-emerald-100 text-emerald-800"
+      : inbox >= 50
+        ? "bg-amber-100 text-amber-800"
+        : "bg-red-100 text-red-800";
+  const tested = new Date(placement.testedAt).toLocaleString("en-US", {
+    timeZone: "UTC",
+  });
+  return (
+    <span
+      className="inline-flex flex-col items-end gap-0.5"
+      title={`Inbox placement test as of ${tested} UTC`}
+    >
+      <span
+        className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}
+      >
+        {inbox}% inbox
+      </span>
+      <span className="text-[10px] tabular-nums text-gray-400">
+        {Math.round(placement.spamPct)}% spam · {Math.round(placement.missingPct)}% missing
+      </span>
+    </span>
+  );
+}
+
 function AccountHealthSection() {
   const { data, isPending, isError, error } = useAuthQuery<InstantlyAccountHealth>(
     ["instantlyAccountHealth"],
@@ -137,13 +171,14 @@ function AccountHealthSection() {
           <p className="text-sm text-gray-500">No sending accounts found.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-[960px] w-full text-sm">
+            <table className="min-w-[1120px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                   <th className="py-2 pr-4 font-medium">Account</th>
                   <th className="py-2 px-4 font-medium">Domain</th>
                   <th className="py-2 px-4 font-medium">Status</th>
                   <th className="py-2 px-4 text-right font-medium">Health score</th>
+                  <th className="py-2 px-4 text-right font-medium">Inbox placement</th>
                   <th className="py-2 px-4 text-right font-medium">Daily max send</th>
                   <th className="py-2 px-4 text-right font-medium">Sent today</th>
                   <th className="py-2 px-4 text-right font-medium">Queued</th>
@@ -174,6 +209,9 @@ function AccountHealthSection() {
                     </td>
                     <td className="py-2.5 px-4 text-right">
                       <ScoreBadge score={r.warmupScore} />
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      <InboxPlacementCell placement={r.inboxPlacement} />
                     </td>
                     <td className="py-2.5 px-4 text-right tabular-nums text-gray-700">
                       {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
