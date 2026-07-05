@@ -11,6 +11,7 @@ import {
   type InstantlyReconcile,
   type InstantlyAccountHealth,
   type InstantlyAccountHealthRow,
+  type InstantlyAccountInboxPlacement,
   type SendForecast,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
@@ -76,6 +77,7 @@ const COLUMNS = [
   { key: "domain", label: "Domain", numeric: false, align: "left" },
   { key: "status", label: "Status", numeric: false, align: "left" },
   { key: "warmupScore", label: "Health score", numeric: true, align: "right" },
+  { key: "inboxPlacement", label: "Inbox placement", numeric: true, align: "right" },
   { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
   { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
   { key: "queueSize", label: "Queued", numeric: true, align: "right" },
@@ -90,6 +92,15 @@ function compareRows(
   key: SortKey,
   dir: "asc" | "desc",
 ): number {
+  // Inbox placement is an object; rank it by inbox %, nulls (untested) last.
+  if (key === "inboxPlacement") {
+    const ap = a.inboxPlacement?.inboxPct ?? null;
+    const bp = b.inboxPlacement?.inboxPct ?? null;
+    if (ap === null && bp === null) return 0;
+    if (ap === null) return 1;
+    if (bp === null) return -1;
+    return dir === "asc" ? ap - bp : bp - ap;
+  }
   const av = a[key];
   const bv = b[key];
   const aNull = av === null || av === undefined || av === "";
@@ -125,6 +136,39 @@ function ScoreBadge({ score }: { score: number | null }) {
   return (
     <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>
       {score}
+    </span>
+  );
+}
+
+function InboxPlacementCell({
+  placement,
+}: {
+  placement: InstantlyAccountInboxPlacement | null;
+}) {
+  if (placement === null) return <span className="text-gray-400">—</span>;
+  const inbox = Math.round(placement.inboxPct);
+  const cls =
+    inbox >= 80
+      ? "bg-emerald-100 text-emerald-800"
+      : inbox >= 50
+        ? "bg-amber-100 text-amber-800"
+        : "bg-red-100 text-red-800";
+  const tested = new Date(placement.testedAt).toLocaleString("en-US", {
+    timeZone: "UTC",
+  });
+  return (
+    <span
+      className="inline-flex flex-col items-end gap-0.5"
+      title={`Inbox placement test as of ${tested} UTC`}
+    >
+      <span
+        className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}
+      >
+        {inbox}% inbox
+      </span>
+      <span className="text-[10px] tabular-nums text-gray-400">
+        {Math.round(placement.spamPct)}% spam · {Math.round(placement.missingPct)}% missing
+      </span>
     </span>
   );
 }
@@ -319,7 +363,7 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[860px] w-full text-sm">
+              <table className="min-w-[1000px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
@@ -369,6 +413,9 @@ function AccountHealthSection() {
                         </td>
                         <td className="py-2.5 px-3 text-right">
                           <ScoreBadge score={r.warmupScore} />
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <InboxPlacementCell placement={r.inboxPlacement} />
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
