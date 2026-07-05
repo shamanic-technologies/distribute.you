@@ -24,17 +24,16 @@ const EMPTY_LINKS: GoogleContactLinks = {
   status: null,
 };
 
-function sameSet(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const s = new Set(a);
-  return b.every((x) => s.has(x));
-}
-
 /**
  * Right-panel "status" section: link a Google contact to platform orgs / brands /
- * features. Brands are constrained to the selected orgs. All three can be empty.
- * Orgs are searched live against Clerk (/api/admin/orgs); brands + features are
- * cached lists filtered client-side.
+ * features. Every toggle instant-saves (no Save button) and reports the saved set
+ * up so the contacts table updates immediately. Orgs are searched live against
+ * Clerk (/api/admin/orgs); brands + features are cached lists filtered client-side.
+ *
+ * Brands are NOT constrained to the selected orgs: `org_brands.org_id` is an
+ * internal UUID while the org picker deals in Clerk `org_...` ids, so the two id
+ * spaces never intersect (brand-service holds no Clerk↔internal mapping). The
+ * whole brand catalog is searchable instead.
  */
 export function ContactLinksEditor({
   contact,
@@ -108,27 +107,15 @@ export function ContactLinksEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Brands (all, cached) filtered by selected orgs ──
+  // ── Brands (all, cached) — full catalog, searchable ──
   const brandsQuery = useAuthQuery(["adminBrands"], () => listAdminBrands(), {
     staleTime: 5 * 60_000,
   });
   const allBrands = brandsQuery.data?.brands ?? [];
-  const brandOptions: MultiSelectOption[] = useMemo(() => {
-    const orgSet = new Set(orgIds);
-    const selSet = new Set(brandIds);
-    return allBrands
-      .filter((b) => orgSet.has(b.orgId) || selSet.has(b.id))
-      .map((b) => ({ id: b.id, label: b.name || b.domain || b.id, sublabel: b.domain }));
-  }, [allBrands, orgIds, brandIds]);
-
-  // Drop brand selections whose org is no longer selected.
-  useEffect(() => {
-    if (orgIds.length === 0) return;
-    const orgSet = new Set(orgIds);
-    const brandOrg = new Map(allBrands.map((b) => [b.id, b.orgId]));
-    setBrandIds((prev) => prev.filter((id) => !brandOrg.has(id) || orgSet.has(brandOrg.get(id)!)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgIds, allBrands]);
+  const brandOptions: MultiSelectOption[] = useMemo(
+    () => allBrands.map((b) => ({ id: b.id, label: b.name || b.domain || b.id, sublabel: b.domain })),
+    [allBrands],
+  );
 
   // ── Features (cached) ──
   const featuresQuery = useAuthQuery(["features", "all"], () => listFeatures(), {
@@ -140,23 +127,10 @@ export function ContactLinksEditor({
     sublabel: f.slug,
   }));
 
-  const toggle = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (id: string) =>
-    setter((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-
-  const dirty =
-    !sameSet(orgIds, initial.orgIds) ||
-    !sameSet(brandIds, initial.brandIds) ||
-    !sameSet(featureSlugs, initial.featureSlugs);
-
+  // ── Instant save: every toggle persists the full set and reports it up ──
   const mutation = useMutation({
-    mutationFn: () =>
-      saveContactLinks({
-        resourceName,
-        orgIds,
-        brandIds,
-        featureSlugs,
-        status: initial.status ?? null,
-      }),
+    mutationFn: (links: { orgIds: string[]; brandIds: string[]; featureSlugs: string[] }) =>
+      saveContactLinks({ resourceName, ...links, status: initial.status ?? null }),
     onSuccess: (saved) => {
       onSaved({
         orgIds: saved.orgIds,
@@ -167,7 +141,13 @@ export function ContactLinksEditor({
     },
   });
 
-  const brandDisabled = orgIds.length === 0 && brandIds.length === 0;
+  const toggleField =
+    (current: string[], setter: React.Dispatch<React.SetStateAction<string[]>>, field: "orgIds" | "brandIds" | "featureSlugs") =>
+    (id: string) => {
+      const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+      setter(next);
+      mutation.mutate({ orgIds, brandIds, featureSlugs, [field]: next });
+    };
 
   if (!resourceName) {
     return <p className="text-sm text-gray-400">This contact can’t be linked (no resource id).</p>;
@@ -179,7 +159,7 @@ export function ContactLinksEditor({
         label="Organizations"
         options={orgOptions.map((o) => ({ id: o.id, label: o.name || o.id }))}
         selectedIds={orgIds}
-        onToggle={toggle(setOrgIds)}
+        onToggle={toggleField(orgIds, setOrgIds, "orgIds")}
         onSearchChange={searchOrgs}
         loading={orgLoading}
         placeholder="Search organizations…"
@@ -190,40 +170,30 @@ export function ContactLinksEditor({
         label="Brands"
         options={brandOptions}
         selectedIds={brandIds}
-        onToggle={toggle(setBrandIds)}
-        placeholder={brandDisabled ? "Select an organization first" : "Filter brands…"}
-        emptyHint={brandDisabled ? "Select an organization first" : "No brands for selected orgs"}
+        onToggle={toggleField(brandIds, setBrandIds, "brandIds")}
+        placeholder="Filter brands…"
+        emptyHint="No brands"
         loading={brandsQuery.isPending}
-        disabled={brandDisabled}
       />
 
       <MultiSelect
         label="Features"
         options={featureOptions}
         selectedIds={featureSlugs}
-        onToggle={toggle(setFeatureSlugs)}
+        onToggle={toggleField(featureSlugs, setFeatureSlugs, "featureSlugs")}
         placeholder="Filter features…"
         loading={featuresQuery.isPending}
       />
 
-      <div className="flex items-center gap-3 pt-1">
-        <button
-          type="button"
-          disabled={!dirty || mutation.isPending}
-          onClick={() => mutation.mutate()}
-          className={`rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white ${
-            mutation.isPending
-              ? "cursor-wait"
-              : "disabled:opacity-40 disabled:cursor-not-allowed hover:bg-brand-600"
-          }`}
-        >
-          {mutation.isPending ? "Saving…" : "Save status"}
-        </button>
-        {mutation.isError && (
-          <span className="text-sm text-red-600">Save failed — try again.</span>
-        )}
-        {!dirty && !mutation.isPending && mutation.isSuccess && (
-          <span className="text-sm text-green-600">Saved.</span>
+      <div className="flex items-center gap-2 pt-1 text-xs">
+        {mutation.isPending ? (
+          <span className="text-gray-400">Saving…</span>
+        ) : mutation.isError ? (
+          <span className="text-red-600">Save failed — try again.</span>
+        ) : mutation.isSuccess ? (
+          <span className="text-green-600">Saved.</span>
+        ) : (
+          <span className="text-gray-300">Changes save automatically.</span>
         )}
       </div>
     </div>
