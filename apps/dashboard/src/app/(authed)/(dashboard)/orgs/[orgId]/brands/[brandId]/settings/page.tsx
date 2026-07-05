@@ -12,7 +12,7 @@ export default function BrandSettingsPage() {
   const brandId = params.brandId as string;
 
   return (
-    <DashboardPage width="narrow">
+    <DashboardPage width="wide">
       <h1 className="mb-8 text-2xl font-semibold text-gray-900">Brand Settings</h1>
 
       <section className="mb-10">

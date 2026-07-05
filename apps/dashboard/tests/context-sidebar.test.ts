@@ -24,12 +24,13 @@ describe("Context sidebar", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     // The feature/featureSettings, campaign AND app-level feature ("Campaigns"
     // island) levels were removed (single-feature product at the brand level per
-    // brand — everything flattens to the brand). Nav is now app → org → brand →
-    // brandSettings only.
+    // brand — everything flattens to the brand). The Brand Settings level was
+    // also flattened into the brand sidebar (settings / profile / info /
+    // workflows are flat footer links), so nav is now app → org → brand only.
     expect(content).toContain('"app"');
     expect(content).toContain('"org"');
     expect(content).toContain('"brand"');
-    expect(content).toContain('"brandSettings"');
+    expect(content).not.toContain('"brandSettings"');
     expect(content).not.toContain('"campaign"');
     expect(content).not.toContain('"appFeature"');
   });
@@ -111,18 +112,17 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 
-  it("keeps the Workflows route (folded into Brand Settings, staff-only alpha)", () => {
+  it("keeps the Workflows route (flat footer link in the brand sidebar, staff-only alpha)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain('"Workflows"');
-    expect(content).toContain('`${brandBase}/workflows`');
+    expect(content).toContain('`${basePath}/workflows`');
     expect(content).toContain('FEATURE_GATES["workflows"]');
   });
 
-  it("keeps Brand Profile inside the Brand Settings sidebar group", () => {
+  it("keeps Brand Profile as a flat footer link in the brand sidebar", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('section === "brand-profile"');
     expect(content).toContain('label: "Brand Profile"');
-    expect(content).toContain('`${brandBase}/brand-profile`');
+    expect(content).toContain('`${basePath}/brand-profile`');
   });
 });
 
