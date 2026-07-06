@@ -7,6 +7,12 @@ import posthog from "posthog-js";
 const INTENT_KEY = "distribute_auth_intent";
 const POSTHOG_AUTH_KEY_PREFIX = "distribute_posthog_auth";
 
+// distribute conversion tracking — reports distribute.you's own signups back to
+// the conversion system so the Signups metric reflects real outcomes. The token
+// is brand-scoped (distribute's own brand) and safe to embed. Fired on the same
+// once-per-user signup signal as the PostHog + Google Ads events below.
+const DISTRIBUTE_CONVERSION_TOKEN = "pk_conv_pxG5a-aAsFd5D5bEtxbvHNBQqA7p-m8y";
+
 export function PostHogAuthTracker() {
   const { isSignedIn, orgId, userId } = useAuth();
   const { user } = useUser();
@@ -43,6 +49,25 @@ export function PostHogAuthTracker() {
     if (authType === "signup") {
       const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
       gtag?.("event", "manual_event_SIGNUP");
+
+      // distribute conversion tracking — reports the signup back to
+      // api.distribute.you keyed on the real Clerk email (strongest match).
+      // Fire-and-forget: a failed report must never block the signup flow.
+      if (email) {
+        void fetch("https://api.distribute.you/public/conversions", {
+          method: "POST",
+          headers: {
+            "x-conversion-token": DISTRIBUTE_CONVERSION_TOKEN,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            event: "signup",
+            email,
+            firstName: user?.firstName ?? "",
+            lastName: user?.lastName ?? "",
+          }),
+        }).catch(() => {});
+      }
     }
   }, [isSignedIn, orgId, user, userId]);
 
