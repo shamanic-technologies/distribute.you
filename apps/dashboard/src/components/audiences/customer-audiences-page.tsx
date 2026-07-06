@@ -5,13 +5,11 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
@@ -92,7 +90,6 @@ function AudienceAvatar({
 
 export function CustomerAudiencesPage() {
   const featureSlug = useSoleFeatureSlug();
-  const isBeta = useIsBetaUser();
   const revenueOk = isRevenueFeature(featureSlug);
 
   const params = useParams();
@@ -460,7 +457,6 @@ export function CustomerAudiencesPage() {
           }
           setAiOpen(true);
         }}
-        isBeta={isBeta}
         onRegenerateAvatar={() => {
           if (selected) avatarMut.mutate(selected.id);
         }}
@@ -551,7 +547,6 @@ function AudienceDetailPanel({
   shiftRight,
   onClose,
   onEditWithAI,
-  isBeta,
   onRegenerateAvatar,
   avatarPending,
   onSetStatus,
@@ -562,7 +557,6 @@ function AudienceDetailPanel({
   shiftRight?: boolean;
   onClose: () => void;
   onEditWithAI: () => void;
-  isBeta?: boolean;
   onRegenerateAvatar: () => void;
   avatarPending?: boolean;
   onSetStatus: (status: AudienceStatus) => void;
@@ -614,20 +608,16 @@ function AudienceDetailPanel({
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
-          {/* Find similar audiences — opens the AI chat and auto-sends a prompt to
-              generate audiences like this one. Stays beta-gated (AI editing), even
-              though the Audiences view itself is GA. */}
-          {isBeta && (
-            <button
-              type="button"
-              onClick={onEditWithAI}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
-            >
-              <SparklesIcon className="w-4 h-4" />
-              Find similar audiences
-              <MaturityBadge level="beta" />
-            </button>
-          )}
+          {/* Expand and split with similar audience — opens the AI chat and
+              auto-sends a prompt to generate audiences like this one. */}
+          <button
+            type="button"
+            onClick={onEditWithAI}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          >
+            <SparklesIcon className="w-4 h-4" />
+            Expand and split with similar audience
+          </button>
 
           {/* Avatar — AI-generated image, (re)generate */}
           <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">

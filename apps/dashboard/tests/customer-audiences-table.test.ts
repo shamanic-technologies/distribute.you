@@ -62,8 +62,9 @@ describe("Audiences page", () => {
     expect(src).toContain("EditWithAIChat");
     expect(src).toContain('configKey="audience-editor"');
     expect(src).not.toContain('configKey="persona-editor"');
-    expect(src).toContain("MaturityBadge");
-    expect(src).toContain('MaturityBadge level="beta"');
+    // "Expand and split with similar audience" shortcut is GA (no beta gate/badge).
+    expect(src).toContain("Expand and split with similar audience");
+    expect(src).not.toContain('MaturityBadge level="beta"');
   });
 
   it("renders readable detail-panel status and targeting tags", () => {
