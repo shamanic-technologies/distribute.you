@@ -351,12 +351,12 @@ export function CustomerAudiencesPage() {
             <table className="min-w-[900px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
-                  <th className="px-4 py-3 text-right font-medium">Size</th>
                   <th className="px-4 py-3 font-medium">Audience</th>
-                  <th className="px-4 py-3 text-right font-medium">Outreach</th>
-                  <th className="px-4 py-3 text-right font-medium">Clicks</th>
                   <th className="px-4 py-3 text-right font-medium">Cost per click</th>
+                  <th className="px-4 py-3 text-right font-medium">Clicks</th>
+                  <th className="px-4 py-3 text-right font-medium">Outreach</th>
                   <th className="px-4 py-3 text-right font-medium">Remaining</th>
+                  <th className="px-4 py-3 text-right font-medium">Size</th>
                 </tr>
               </thead>
               <tbody>
@@ -380,9 +380,6 @@ export function CustomerAudiencesPage() {
                         isSelected ? "bg-brand-50/60" : ""
                       }`}
                     >
-                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                        {audience.sizeCount != null ? audience.sizeCount.toLocaleString("en-US") : "—"}
-                      </td>
                       <td className="px-4 py-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <AudienceAvatar name={audience.name} avatarUrl={audience.avatarUrl} />
@@ -398,11 +395,11 @@ export function CustomerAudiencesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                      <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                         {statsLoading ? (
-                          <Skeleton className="ml-auto h-4 w-10" />
+                          <Skeleton className="ml-auto h-4 w-12" />
                         ) : stats ? (
-                          stats.evidence.contacted.toLocaleString("en-US")
+                          formatCents(stats.metrics.cpcCents)
                         ) : (
                           "-"
                         )}
@@ -416,11 +413,11 @@ export function CustomerAudiencesPage() {
                           "-"
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
                         {statsLoading ? (
-                          <Skeleton className="ml-auto h-4 w-12" />
+                          <Skeleton className="ml-auto h-4 w-10" />
                         ) : stats ? (
-                          formatCents(stats.metrics.cpcCents)
+                          stats.evidence.contacted.toLocaleString("en-US")
                         ) : (
                           "-"
                         )}
@@ -438,6 +435,9 @@ export function CustomerAudiencesPage() {
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                        {audience.sizeCount != null ? audience.sizeCount.toLocaleString("en-US") : "—"}
                       </td>
                     </tr>
                   );
