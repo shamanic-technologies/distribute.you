@@ -28,14 +28,16 @@ interface OrgOption {
   hasImage?: boolean;
 }
 
-// Caches
-const brandListCache: { data: Brand[] | null; timestamp: number } = { data: null, timestamp: 0 };
+// Caches — the brand LIST is keyed by org id. `/api/v1/brands` is org-scoped, so a
+// single global cache bled one org's brands into another org's dropdown on a
+// god-mode / cross-tab / direct-URL nav (any path that skips handleOrgSwitch, the
+// only place the cache cleared) → the current brand missing from the list.
+const brandListCache: Record<string, { data: Brand[]; timestamp: number }> = {};
 const CACHE_TTL = 60000;
 
 /** Clear module-level breadcrumb caches (called on org switch) */
 export function clearBreadcrumbCaches() {
-  brandListCache.data = null;
-  brandListCache.timestamp = 0;
+  for (const key of Object.keys(brandListCache)) delete brandListCache[key];
 }
 
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
@@ -124,6 +126,14 @@ export function BreadcrumbNav() {
     Record<string, { name?: string; domain?: string | null }>
   >({});
   const [brands, setBrands] = useState<Brand[]>([]);
+  // Authoritative per-URL-brand label — fetched by id, exactly like the overview
+  // page (`getBrand(brandId)`). The dropdown `brands` LIST is org-scoped + cached
+  // and can legitimately not contain the URL brand (god-mode / cross-tab / a stale
+  // 60s cache), which left the crumb stuck on the "Brand" placeholder forever
+  // (the keep-last-good cache never got a first value to keep). This by-id fetch
+  // resolves the name regardless of the list, under the same active org the page
+  // already renders the brand with.
+  const [byIdBrand, setByIdBrand] = useState<Brand | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
   const [allOrgs, setAllOrgs] = useState<OrgOption[]>([]);
@@ -200,8 +210,10 @@ export function BreadcrumbNav() {
   }, [isStaff, openDropdown, orgSearch, fetchOrgs]);
 
   const fetchBrands = useCallback(async () => {
-    if (brandListCache.data && Date.now() - brandListCache.timestamp < CACHE_TTL) {
-      setBrands(brandListCache.data);
+    if (!orgId) return;
+    const cached = brandListCache[orgId];
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      setBrands(cached.data);
       return;
     }
     setLoading((l) => ({ ...l, brands: true }));
@@ -210,8 +222,7 @@ export function BreadcrumbNav() {
       if (res.ok) {
         const data = await res.json();
         const list = data.brands || [];
-        brandListCache.data = list;
-        brandListCache.timestamp = Date.now();
+        brandListCache[orgId] = { data: list, timestamp: Date.now() };
         setBrands(list);
       }
     } catch (err) {
@@ -219,11 +230,24 @@ export function BreadcrumbNav() {
     } finally {
       setLoading((l) => ({ ...l, brands: false }));
     }
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
     if (brandId) fetchBrands();
   }, [brandId, fetchBrands]);
+
+  useEffect(() => {
+    if (!brandId) { setByIdBrand(null); return; }
+    let cancelled = false;
+    fetch(`/api/v1/brands/${brandId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.brand) return;
+        setByIdBrand({ id: brandId, name: data.brand.name, domain: data.brand.domain });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [brandId]);
 
   useEffect(() => {
     if (!workflowId) { setWorkflowName(null); return; }
@@ -293,7 +317,11 @@ export function BreadcrumbNav() {
     }
   };
 
-  const currentBrand = brands.find((b) => b.id === brandId);
+  // Resolve the brand from the dropdown list first, then the authoritative by-id
+  // fetch (which resolves even when the list doesn't contain the URL brand).
+  const currentBrand =
+    brands.find((b) => b.id === brandId) ??
+    (byIdBrand && byIdBrand.id === brandId ? byIdBrand : undefined);
   // Keep-last-good: cache the label when the brand resolves, read from cache when a
   // transient fetch drops it, so the crumb never flips to the "Brand" placeholder.
   if (brandId && currentBrand) {
