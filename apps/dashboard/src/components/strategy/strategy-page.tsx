@@ -12,26 +12,25 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { pollOptions } from "@/lib/query-options";
 import {
-  fetchFeatureCandidates,
   getBrandProfile,
   getBrandSalesEconomics,
-  getWorkflowProjection,
+  getWorkflowProjectionLadder,
   listAudiences,
   listWorkflowExamples,
 } from "@/lib/api";
 import type { WorkflowExampleEmail } from "@/lib/api";
 import {
-  buildAudienceMetricRows,
   goalForOptimizationGoal,
+  isRowFloored,
   modelAvatar,
   objectiveForOptimizationGoal,
   OFFER_LEVERS,
   offerLeverValue,
   outcomeNoun,
-  projectionCostKey,
-  selectBestModelEvidence,
+  pickAudienceRow,
+  pickBrandRow,
+  WORKFLOW_GRAIN_LABEL,
 } from "@/lib/strategy-model";
-import type { AudienceMetricProvenance } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
 
 /** USD number → "$X.XX" (two decimals) / "—". */
@@ -39,6 +38,17 @@ function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
   if (usd <= 0) return "$0.00";
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * USD, but prefixed ">" when `floored` — the cost's grain observed zero clicks, so the
+ * number is a floor (spentUsd / max(1)) and the true cost is at least this much. Honest
+ * rendering of the "$X per click with 0 clicks" case (never a fake exact figure).
+ */
+function formatUsdFloor(usd: number | null | undefined, floored: boolean): string {
+  const s = formatUsd(usd);
+  if (floored && usd != null && s !== "-") return `>${s}`;
+  return s;
 }
 
 /** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */
@@ -53,12 +63,20 @@ function formatRoi(x: number | null | undefined): string {
   return `${x.toLocaleString("en-US", { maximumFractionDigits: 1 })}×`;
 }
 
-/** Human label for which fallback rung supplied an audience's metrics. */
-const PROVENANCE_LABEL: Record<AudienceMetricProvenance, string> = {
-  own: "Your data",
-  brand: "Brand average",
-  crossOrg: "Cross-org average",
-};
+/** Which population produced a resolved number → a short "based on …" hint that
+ *  labels the number honestly (fleet benchmark vs this brand vs this audience). */
+function grainHint(grain: "crossOrg" | "brand" | "audience" | null | undefined): string {
+  switch (grain) {
+    case "brand":
+      return "From this brand's own results";
+    case "audience":
+      return "From this audience's own results";
+    case "crossOrg":
+      return "Fleet benchmark across every brand we run this for";
+    default:
+      return "";
+  }
+}
 
 function Card({
   title,
@@ -239,22 +257,16 @@ export function StrategyPage() {
   const optimizationGoal = econ?.optimizationGoal ?? "sales_meetings";
   const goal = goalForOptimizationGoal(optimizationGoal);
   const objective = objectiveForOptimizationGoal(optimizationGoal);
-  const costKey = projectionCostKey(optimizationGoal);
   const noun = outcomeNoun(optimizationGoal);
 
-  // Ranked workflows + recommended pick + brand-level projected cost per outcome.
+  // The 3-grain workflow-projection ladder: one row per (audienceId, workflow) with
+  // its cost at each grain + the server-`resolved` grain (brand-real when the brand
+  // has run enough, else the fleet benchmark). This ONE call feeds both the best-model
+  // headline (brand-level row) and the per-audience table (per-audience rows). Every
+  // cost is read verbatim from `resolved` — no client-side CPC/CPS/projection math.
   const { data: projection, isPending: projPending } = useAuthQuery(
-    ["workflowProjection", featureSlug, brandId, objective, "strategy"],
-    // budgetUsd:1 populates `projection` (and its budget-invariant `cacPct`) so the
-    // "Projected cost of acquisition" stat renders the CAC% instead of "-".
-    () => getWorkflowProjection({ featureSlug, brandId, objective, budgetUsd: 1 }),
-    { ...pollOptions, enabled: revenueOk && !!brandId },
-  );
-
-  // Candidate evidence set (cross-org / brand-goal / per-audience grain ladder).
-  const { data: candidatesData, isPending: candPending } = useAuthQuery(
-    ["featureCandidates", featureSlug, brandId, goal],
-    () => fetchFeatureCandidates(featureSlug, { brandId, goal }),
+    ["workflowProjection", featureSlug, brandId, goal, "strategy-ladder"],
+    () => getWorkflowProjectionLadder({ featureSlug, brandId, goal, objective }),
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
 
@@ -278,27 +290,26 @@ export function StrategyPage() {
   const brandProfileHref = `/orgs/${orgId}/brands/${brandId}/brand-profile`;
   const settingsHref = `/orgs/${orgId}/brands/${brandId}/settings`;
 
-  // Best model = the recommended workflow (lowest cost per outcome), else the
-  // first ranked workflow.
-  const workflows = projection?.workflows ?? [];
+  // Best model = the recommended workflow, else the first row's workflow. Its headline
+  // economics come from that workflow's BRAND-LEVEL row (audienceId null) `resolved`.
+  const rows = projection?.rows ?? [];
   const bestSlug =
     projection?.recommendedWorkflowDynastySlug ??
-    workflows[0]?.workflowDynastySlug ??
+    rows[0]?.workflow.workflowDynastySlug ??
     null;
-  const bestWf = workflows.find((w) => w.workflowDynastySlug === bestSlug) ?? null;
-  const bestName = bestWf?.workflowDynastyName ?? bestSlug ?? "-";
-  const brandCostPerOutcome = bestWf ? (bestWf[costKey] ?? null) : null;
-  const roiMultiple = bestWf?.roiMultiple ?? null;
+  const brandRow = pickBrandRow(rows, bestSlug);
+  const bestName = brandRow?.workflow.workflowDynastyName ?? bestSlug ?? "-";
+  // Everything below is read straight from the server-resolved grain (never rescaled).
+  const resolved = brandRow?.resolved ?? null;
+  const brandGrain = resolved?.grain ?? null;
+  const brandFloored = isRowFloored(brandRow);
+  const roiMultiple = resolved?.roiMultiple ?? null;
   const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
 
-  const evidence = selectBestModelEvidence(candidatesData?.candidates ?? [], bestSlug);
-
-  // Every active audience gets a row with its four metrics (CPC / CPS / ROI / CAC),
-  // each read from its own per-audience candidate where it has run evidence, else the
-  // brand-average → cross-org fallback. Pure display join — every value stays
-  // server-provided (no client-side metric math).
+  // Every active audience gets a row = that audience's projection row (its own `resolved`
+  // grain, already picked audience→brand→crossOrg server-side). Pure display pick — every
+  // value stays server-provided (no client-side metric math, no rescale).
   const activeAudiences = audiencesData?.audiences ?? [];
-  const audienceRows = buildAudienceMetricRows(activeAudiences, evidence);
 
   // Example emails for the best model — fetched on demand (drawer), cascade
   // brand → org → global; empty is a clean "no examples yet" state.
@@ -472,7 +483,7 @@ export function StrategyPage() {
                 ))}
               </div>
             </div>
-          ) : !bestWf ? (
+          ) : !resolved ? (
             <p className="text-sm text-gray-500">
               No model has enough data yet. Once outreach runs, the best model appears here.
             </p>
@@ -488,11 +499,19 @@ export function StrategyPage() {
                   {avatar.emoji}
                 </span>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate text-lg font-semibold text-gray-900">{bestName}</p>
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                       Best
                     </span>
+                    {brandGrain ? (
+                      <span
+                        className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
+                        title="Which population these numbers are based on — the finest grain with real data (this audience → this brand → fleet benchmark)."
+                      >
+                        Based on {WORKFLOW_GRAIN_LABEL[brandGrain]}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-xs text-gray-500">
                     {roiMultiple != null
@@ -502,28 +521,31 @@ export function StrategyPage() {
                 </div>
               </div>
 
-              {/* This brand's projected economics — all five are served fields */}
+              {/* Projected economics — all five read VERBATIM from the resolved grain.
+                  Labelled by grain (hint) so a fleet-benchmark or per-audience number is
+                  never mislabelled "this brand"; costs render ">$X" when the grain saw 0
+                  clicks (a floor, not an exact figure). */}
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                 <Stat
-                  label="This brand cost / click"
-                  value={formatUsd(bestWf.clickUsd)}
+                  label="Cost / click"
+                  value={formatUsdFloor(resolved.costPerClickUsd, brandFloored)}
                   tooltip="Cost per click - what we pay on average for one prospect to click through to your site."
-                  hint="Projected from this brand's own economics"
+                  hint={grainHint(brandGrain)}
                 />
                 <Stat
-                  label={`This brand cost / ${noun}`}
-                  value={formatUsd(brandCostPerOutcome)}
+                  label={`Cost / ${noun}`}
+                  value={formatUsdFloor(resolved.costPerOutcomeUsd, brandFloored)}
                   tooltip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
-                  hint="Projected from this brand's own economics"
+                  hint={grainHint(brandGrain)}
                 />
                 <Stat
-                  label="This brand cost / paid client"
-                  value={formatUsd(bestWf.costPerCloseUsd)}
+                  label="Cost / paid client"
+                  value={formatUsdFloor(resolved.costPerPaidClientUsd, brandFloored)}
                   tooltip="Cost per paid client - what we pay on average to win one paying client."
-                  hint="Projected from this brand's own economics"
+                  hint={grainHint(brandGrain)}
                 />
                 <Stat
-                  label="Projected lifetime revenue on each dollar spent"
+                  label="Lifetime revenue on each dollar spent"
                   value={
                     roiMultiple != null
                       ? `${roiMultiple.toLocaleString("en-US", { maximumFractionDigits: 1 })}×`
@@ -532,8 +554,8 @@ export function StrategyPage() {
                   hint="Lifetime revenue of a paid client per dollar of outreach spend"
                 />
                 <Stat
-                  label="Projected cost of acquisition"
-                  value={formatPct(bestWf.projection?.cacPct)}
+                  label="Cost of acquisition"
+                  value={formatPct(resolved.cacPct)}
                   tooltip="Cost to acquire a paid client divided by the lifetime revenue of a paid client"
                   hint="Share of a client's lifetime revenue spent to acquire them"
                 />
@@ -544,13 +566,13 @@ export function StrategyPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Estimates by audience
                 </p>
-                {candPending || audiencesPending ? (
+                {projPending || audiencesPending ? (
                   <div className="mt-2 space-y-2">
                     {[0, 1].map((i) => (
                       <Skeleton key={i} className="h-10 w-full" />
                     ))}
                   </div>
-                ) : audienceRows.length === 0 ? (
+                ) : activeAudiences.length === 0 ? (
                   <p className="mt-2 text-sm text-gray-500">
                     No active audience yet. Once you activate an audience it appears here
                     with its estimates.
@@ -596,28 +618,36 @@ export function StrategyPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {audienceRows.map((a) => (
-                          <tr key={a.id}>
-                            <td className="px-4 py-2.5">
-                              <span className="block truncate text-gray-700">{a.name}</span>
-                              <span className="text-[10px] text-gray-400">
-                                {PROVENANCE_LABEL[a.provenance]}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                              {formatUsd(a.clickUsd)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                              {formatUsd(a.costPerOutcomeUsd)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                              {formatRoi(a.roiMultiple)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                              {formatPct(a.cacPct)}
-                            </td>
-                          </tr>
-                        ))}
+                        {activeAudiences.map((a) => {
+                          // The audience's own projection row; its `resolved` grain was
+                          // already picked audience→brand→crossOrg server-side. Read
+                          // verbatim — floor to ">$X" when that grain saw 0 clicks.
+                          const row = pickAudienceRow(rows, bestSlug, a.id);
+                          const r = row?.resolved ?? null;
+                          const floored = isRowFloored(row);
+                          return (
+                            <tr key={a.id}>
+                              <td className="px-4 py-2.5">
+                                <span className="block truncate text-gray-700">{a.name}</span>
+                                <span className="text-[10px] text-gray-400">
+                                  {r ? WORKFLOW_GRAIN_LABEL[r.grain] : "No data yet"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                                {formatUsdFloor(r?.costPerClickUsd, floored)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                                {formatUsdFloor(r?.costPerOutcomeUsd, floored)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                                {formatRoi(r?.roiMultiple)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                                {formatPct(r?.cacPct)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
