@@ -89,6 +89,19 @@ export function OutreachStatCards({
   const clicks = stats.recipientsClicked ?? 0;
   const beta = <MaturityBadge level="beta" />;
 
+  // The outcome count ("—" until the client's site fires the conversion snippet)
+  // carries the setup CTA in its own card — so it sits next to the metric it
+  // unblocks, not as a detached link under the whole row.
+  const setupCta = setupHref ? (
+    <Link
+      href={setupHref}
+      className="inline-flex items-center gap-1 font-medium text-brand-600 transition hover:text-brand-700"
+    >
+      Set up conversion tracker
+      <span aria-hidden="true">→</span>
+    </Link>
+  ) : null;
+
   const clickMetric = {
     label: "Clicks",
     tooltip:
@@ -152,6 +165,7 @@ export function OutreachStatCards({
               label={outcomeMetric.label}
               badge={beta}
               value="—"
+              subtitle={setupCta}
               pending={pending}
             />
           </Cell>
@@ -167,15 +181,6 @@ export function OutreachStatCards({
         </>
       )}
     </div>
-      {isBeta && setupHref && (
-        <Link
-          href={setupHref}
-          className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 transition hover:text-brand-700"
-        >
-          Set up conversion tracker
-          <span aria-hidden="true">→</span>
-        </Link>
-      )}
     </div>
   );
 }
