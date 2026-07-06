@@ -865,6 +865,19 @@ export async function saveBrandClickDestination(
 const BrandConversionTokenSchema = z.object({
   token: z.string(),
   ingestUrl: z.string(),
+  // Liveness/status — ADDED by lead-service (additive). Declared OPTIONAL so the
+  // dashboard ships ahead of the producer and auto-populates once it lands (a
+  // required field would strip via safeParse before the backend deploys). `status`
+  // is server-computed; the timestamps + `eventTypesSeen` are the raw signals
+  // behind it. `.nullish()` tolerates the server's `null` for "never seen".
+  //   not_set_up   — no ping and no real conversion ever received
+  //   live_waiting — a tag-loaded ping seen (tracker alive) but no conversion yet
+  //   live         — at least one real conversion received
+  status: z.enum(["not_set_up", "live_waiting", "live"]).optional(),
+  lastEventAt: z.string().nullish(),
+  lastPingAt: z.string().nullish(),
+  // Distinct REAL conversion events actually received (excludes "ping").
+  eventTypesSeen: z.array(z.string()).optional(),
 });
 export type BrandConversionToken = z.infer<typeof BrandConversionTokenSchema>;
 
