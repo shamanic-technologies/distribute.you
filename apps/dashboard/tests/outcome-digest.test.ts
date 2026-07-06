@@ -382,6 +382,109 @@ describe("daily outcome digest", () => {
     expect(result.preparedSends).toHaveLength(0);
   });
 
+  it("isolates a failing brand — one brand's fetch error does not skip the rest", async () => {
+    const day = previousUtcDay();
+    const fetchMock: DigestFetch = async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://api.clerk.com/v1/organizations")) {
+        return jsonResponse({ data: [{ id: "org_1", name: "Org" }], total_count: 1 });
+      }
+      if (url === "https://api.example.test/v1/users?limit=100&offset=0") {
+        return jsonResponse({
+          users: [{
+            id: "internal-user",
+            externalId: "user_1",
+            email: "owner@customer.com",
+            firstName: "Casey",
+            lastName: "Owner",
+            imageUrl: null,
+            phone: null,
+            createdAt: "2026-06-09T00:00:00.000Z",
+          }],
+          total: 1,
+          limit: 100,
+          offset: 0,
+        });
+      }
+      if (url === "https://api.example.test/v1/brands") {
+        return jsonResponse({
+          brands: [
+            { id: "brand_bad", domain: "bad.test", name: "Bad", brandUrl: "https://bad.test", createdAt: null, updatedAt: null, logoUrl: null },
+            { id: "brand_good", domain: "good.test", name: "Good", brandUrl: "https://good.test", createdAt: null, updatedAt: null, logoUrl: null },
+          ],
+        });
+      }
+      if (url.endsWith("/brands/brand_good/sales-economics") || url.endsWith("/brands/brand_bad/sales-economics")) {
+        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
+      }
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_bad") {
+        // brand_bad's revenue keeps timing out — must NOT abort the whole run.
+        throw Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" });
+      }
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_good") {
+        return jsonResponse(brandRevenue(3, day));
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    };
+
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: fetchMock });
+
+    // brand_bad is skipped after its retries exhaust; brand_good still sends.
+    expect(result.scannedOrgs).toBe(1);
+    expect(result.preparedSends).toHaveLength(1);
+    expect(result.preparedSends[0].brandId).toBe("brand_good");
+  });
+
+  it("retries a transient fetch timeout and recovers", async () => {
+    const day = previousUtcDay();
+    let revenueAttempts = 0;
+    const fetchMock: DigestFetch = async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://api.clerk.com/v1/organizations")) {
+        return jsonResponse({ data: [{ id: "org_1", name: "Org" }], total_count: 1 });
+      }
+      if (url === "https://api.example.test/v1/users?limit=100&offset=0") {
+        return jsonResponse({
+          users: [{
+            id: "internal-user",
+            externalId: "user_1",
+            email: "owner@customer.com",
+            firstName: "Casey",
+            lastName: "Owner",
+            imageUrl: null,
+            phone: null,
+            createdAt: "2026-06-09T00:00:00.000Z",
+          }],
+          total: 1,
+          limit: 100,
+          offset: 0,
+        });
+      }
+      if (url === "https://api.example.test/v1/brands") {
+        return jsonResponse({
+          brands: [{ id: "brand_1", domain: "acme.test", name: "Acme", brandUrl: "https://acme.test", createdAt: null, updatedAt: null, logoUrl: null }],
+        });
+      }
+      if (url.endsWith("/brands/brand_1/sales-economics")) {
+        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
+      }
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+        revenueAttempts += 1;
+        if (revenueAttempts === 1) {
+          throw Object.assign(new Error("timeout"), { name: "TimeoutError" });
+        }
+        return jsonResponse(brandRevenue(3, day));
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    };
+
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: fetchMock });
+
+    expect(revenueAttempts).toBe(2); // first timed out, second (retry) succeeded
+    expect(result.preparedSends).toHaveLength(1);
+    expect(result.preparedSends[0].brandId).toBe("brand_1");
+  });
+
   it("renders digest HTML with a people list + discreet time-ago, no revenue", () => {
     const clickedTwoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
     const html = renderOutcomeDigestHtml([
