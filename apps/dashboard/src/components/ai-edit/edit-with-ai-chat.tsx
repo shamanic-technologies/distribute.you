@@ -73,6 +73,8 @@ export function EditWithAIChat({
   invalidateKeys,
   showBackdrop = true,
   panelClassName,
+  autoSendMessage,
+  onAutoSendComplete,
 }: {
   open: boolean;
   onClose: () => void;
@@ -86,6 +88,10 @@ export function EditWithAIChat({
   sessionVersion?: string;
   /** React Query keys to invalidate after each turn (so the cards reflect AI edits). */
   invalidateKeys: unknown[][];
+  /** When the chat opens, auto-send this prompt once (e.g. a "Find similar audiences" shortcut). */
+  autoSendMessage?: string;
+  /** Fired right after `autoSendMessage` is dispatched so the parent can clear it. */
+  onAutoSendComplete?: () => void;
   /** Dim the rest of the page behind the chat. Default true. Pass false when docked
    *  beside another panel so that panel stays visible/interactive (live-edit view). */
   showBackdrop?: boolean;
@@ -295,6 +301,22 @@ export function EditWithAIChat({
     e.preventDefault();
     submit(draft);
   };
+
+  // Auto-send a prompt injected by the parent (e.g. the "Find similar audiences"
+  // shortcut). Fires once per distinct message while open; the ref resets on close
+  // so re-opening can send again.
+  const autoSentRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      autoSentRef.current = null;
+      return;
+    }
+    if (!autoSendMessage || isStreaming) return;
+    if (autoSentRef.current === autoSendMessage) return;
+    autoSentRef.current = autoSendMessage;
+    submit(autoSendMessage);
+    onAutoSendComplete?.();
+  }, [open, autoSendMessage, isStreaming, submit, onAutoSendComplete]);
 
   const retryLastMessage = useCallback(() => {
     setLastErrorInfo(null);

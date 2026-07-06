@@ -108,6 +108,7 @@ export function CustomerAudiencesPage() {
   const [tab, setTab] = useState<"active" | "archived">("active");
   const [selectedId, setSelectedId] = useState<string | null>(initialAudienceId);
   const [aiOpen, setAiOpen] = useState(false);
+  const [autoPrompt, setAutoPrompt] = useState<string | null>(null);
 
   const {
     data: activeData,
@@ -432,7 +433,14 @@ export function CustomerAudiencesPage() {
         audience={selected}
         shiftRight={aiDocked}
         onClose={closeInspector}
-        onEditWithAI={() => setAiOpen(true)}
+        onEditWithAI={() => {
+          if (selected) {
+            setAutoPrompt(
+              `Find audiences similar to "${selected.name || "this audience"}" and create them.`,
+            );
+          }
+          setAiOpen(true);
+        }}
         isBeta={isBeta}
         onRegenerateAvatar={() => {
           if (selected) avatarMut.mutate(selected.id);
@@ -469,6 +477,8 @@ export function CustomerAudiencesPage() {
         context={selected ? { audienceId: selected.id } : undefined}
         sessionVersion={selected?.id}
         invalidateKeys={[["audiences", brandId]]}
+        autoSendMessage={autoPrompt ?? undefined}
+        onAutoSendComplete={() => setAutoPrompt(null)}
         showBackdrop={!aiDocked}
         panelClassName={
           aiDocked
@@ -585,8 +595,9 @@ function AudienceDetailPanel({
         </div>
 
         <div className="space-y-4 p-4 md:p-5">
-          {/* Edit with AI — stays beta-gated (AI editing), even though the
-              Audiences view itself is GA. */}
+          {/* Find similar audiences — opens the AI chat and auto-sends a prompt to
+              generate audiences like this one. Stays beta-gated (AI editing), even
+              though the Audiences view itself is GA. */}
           {isBeta && (
             <button
               type="button"
@@ -594,7 +605,7 @@ function AudienceDetailPanel({
               className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
             >
               <SparklesIcon className="w-4 h-4" />
-              Edit with AI
+              Find similar audiences
               <MaturityBadge level="beta" />
             </button>
           )}
