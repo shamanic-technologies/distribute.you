@@ -1176,6 +1176,16 @@ export interface AudienceWire {
   avatarUrl: string | null;
   apolloCount: number | null;
   apifyCount: number | null;
+  /** Total contactable audience pool (the "Size" column). Backend-computed;
+   *  the denominator `availableToContactPct` divides by. Optional until
+   *  human-service serves it in prod (decoupled rollout). */
+  sizeCount?: number;
+  /** Pool members currently contactable (not suppressed within the 3-month
+   *  re-contact window). Backend-owned; never computed client-side. */
+  availableToContactCount?: number;
+  /** availableToContactCount / sizeCount * 100, integer 0–100 (the "Remaining"
+   *  column). Backend-computed so Size and this % stay coherent. */
+  availableToContactPct?: number;
   countedAt: string | null;
   createdByUserId: string | null;
   createdAt: string;
@@ -1196,6 +1206,11 @@ const AudienceSchema = z.object({
   avatarUrl: z.string().nullable(),
   apolloCount: z.number().nullable(),
   apifyCount: z.number().nullable(),
+  // Postgres count columns can serialize as string → coerce. Optional until
+  // human-service ships the fields (decoupled rollout); absent renders "—".
+  sizeCount: z.coerce.number().optional(),
+  availableToContactCount: z.coerce.number().optional(),
+  availableToContactPct: z.coerce.number().optional(),
   countedAt: z.string().nullable(),
   createdByUserId: z.string().nullable(),
   createdAt: z.string(),
