@@ -348,13 +348,15 @@ export function CustomerAudiencesPage() {
         }
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="min-w-[760px] w-full text-sm">
+            <table className="min-w-[900px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                  <th className="px-4 py-3 text-right font-medium">Size</th>
                   <th className="px-4 py-3 font-medium">Audience</th>
                   <th className="px-4 py-3 text-right font-medium">Outreach</th>
                   <th className="px-4 py-3 text-right font-medium">Clicks</th>
                   <th className="px-4 py-3 text-right font-medium">Cost per click</th>
+                  <th className="px-4 py-3 text-right font-medium">Remaining</th>
                 </tr>
               </thead>
               <tbody>
@@ -378,6 +380,9 @@ export function CustomerAudiencesPage() {
                         isSelected ? "bg-brand-50/60" : ""
                       }`}
                     >
+                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                        {audience.sizeCount != null ? audience.sizeCount.toLocaleString("en-US") : "—"}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <AudienceAvatar name={audience.name} avatarUrl={audience.avatarUrl} />
@@ -418,6 +423,20 @@ export function CustomerAudiencesPage() {
                           formatCents(stats.metrics.cpcCents)
                         ) : (
                           "-"
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums">
+                        {audience.availableToContactPct != null ? (
+                          <span className={audience.availableToContactPct < 5 ? "text-red-600" : "text-green-600"}>
+                            {audience.availableToContactPct}%
+                            {audience.availableToContactCount != null && (
+                              <span className="ml-1 text-gray-400">
+                                ({audience.availableToContactCount.toLocaleString("en-US")})
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
                         )}
                       </td>
                     </tr>
