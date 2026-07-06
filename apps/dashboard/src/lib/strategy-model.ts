@@ -1,4 +1,10 @@
-import type { BrandOptimizationGoal, FeatureAudienceStatsGoal, FeatureCandidate, SalesObjective } from "@/lib/api";
+import type {
+  BrandOptimizationGoal,
+  FeatureAudienceStatsGoal,
+  SalesObjective,
+  WorkflowProjectionGrain,
+  WorkflowProjectionLadderRow,
+} from "@/lib/api";
 
 // Local copy of api.ts's isVisitDrivenGoal — this module is imported+executed by
 // vitest (which has no "@/" alias), so a value import of "@/lib/api" fails to resolve.
@@ -14,11 +20,13 @@ function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
  *   color, derived deterministically from its dynasty slug. This is a pure
  *   DISPLAY affordance (no backend avatar exists yet); the dynasty NAME stays the
  *   source of truth shown next to it.
- * - `selectBestModelEvidence` GROUPS the served candidate rows for one workflow
- *   into its cross-org row + its per-audience rows. It only filters/groups rows
- *   and reads server-provided `costPerOutcomeUsd` — it never computes a metric.
+ * - `bestModelRow` / `buildAudienceEstimateRows` PICK rows from the served
+ *   workflow-projection ladder (rows[] + resolved) and read `resolved` VERBATIM —
+ *   they never compute a CPC / projection client-side.
+ * - `grainLabel` / `isFlooredRow` describe the resolved number honestly (which
+ *   grain it came from; whether it is a zero-outcome floor → render ">$X").
  * - `goalForOptimizationGoal` maps the brand's saved objective onto the
- *   candidates/audience-stats goal enum.
+ *   projection/audience-stats goal enum.
  */
 
 const MODEL_FACES: ReadonlyArray<{ emoji: string; color: string }> = [
@@ -66,15 +74,6 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
     default:
       return "meeting";
   }
-}
-
-/** The projection field carrying the brand-level cost per outcome for the objective.
- *  form_submissions has its own field; the other beta goals borrow the nearest family field. */
-export function projectionCostKey(
-  goal: BrandOptimizationGoal,
-): "costPerSignupUsd" | "costPerMeetingBookedUsd" | "costPerFormSubmissionUsd" {
-  if (goal === "form_submissions") return "costPerFormSubmissionUsd";
-  return isVisitDrivenGoal(goal) ? "costPerSignupUsd" : "costPerMeetingBookedUsd";
 }
 
 /** The workflow-projection objective for the brand's saved goal. */
@@ -137,85 +136,107 @@ export function offerLeverValue(
     .filter((v) => v.length > 0 && v.toLowerCase() !== "unknown");
 }
 
-export interface BestModelEvidence {
-  /** The cross-org prior row for this workflow (cost sampled across all orgs). */
-  crossOrg: FeatureCandidate | null;
-  /** The audienceId-null fallback row for this workflow at whatever coarse grain it
-   *  resolved to (brand-goal when the brand has its own economics, else goal-global).
-   *  Used for audiences with no own evidence (the brand-average → cross-org rungs). */
-  fallback: FeatureCandidate | null;
-  /** Per-audience rows for this workflow (cost attributed to one audience). */
-  audiences: FeatureCandidate[];
+/** Honest source label for a resolved number, keyed by the grain it came from. */
+export function grainLabel(grain: WorkflowProjectionGrain): string {
+  switch (grain) {
+    case "crossOrg":
+      return "fleet benchmark";
+    case "brand":
+      return "this brand";
+    case "audience":
+      return "this audience";
+  }
 }
 
 /**
- * Group the served candidate rows for ONE workflow into its cross-org prior row,
- * its coarse fallback row, and its per-audience rows. Pure filter/group — picks
- * server-provided values, computes nothing.
+ * True when the resolved grain observed ZERO clicks. The server floors every unit
+ * cost to `spentUsd / max(observed, 1)`, so a 0-click grain reports the whole spend
+ * as its cost-per-click — a LOWER BOUND, not a measured average. The UI renders that
+ * as ">$X". The resolved grain block is always present (resolved picks a present grain).
  */
-export function selectBestModelEvidence(
-  candidates: FeatureCandidate[],
-  bestDynastySlug: string | null,
-): BestModelEvidence {
-  if (!bestDynastySlug) return { crossOrg: null, fallback: null, audiences: [] };
-  const mine = candidates.filter((c) => c.workflow.workflowDynastySlug === bestDynastySlug);
-  const crossOrg =
-    mine.find((c) => c.cost.grain === "goal-global" && c.audienceId == null) ?? null;
-  // The single audienceId-null fallback for this workflow — coarse grain (brand-goal
-  // or goal-global). Drives the brand-average / cross-org rungs for audiences with no
-  // own evidence.
-  const fallback = mine.find((c) => c.audienceId == null) ?? null;
-  const audiences = mine.filter((c) => c.cost.grain === "audience" && c.audienceId != null);
-  return { crossOrg, fallback, audiences };
+export function isFlooredRow(row: WorkflowProjectionLadderRow): boolean {
+  const block = row.estimatesByGrain[row.resolved.grain];
+  return block != null && block.evidence.observedClicks === 0;
 }
 
-/** Which rung of the audience → brand-average → cross-org ladder supplied a row. */
-export type AudienceMetricProvenance = "own" | "brand" | "crossOrg";
+/**
+ * The recommended workflow's BRAND-LEVEL row (audienceId null) — the source for the
+ * "Your best model" headline economics. Its `resolved` block already carries the
+ * finest grain present (audience > brand > crossOrg), read verbatim.
+ */
+export function bestModelRow(
+  rows: WorkflowProjectionLadderRow[],
+  recommendedSlug: string | null,
+): WorkflowProjectionLadderRow | null {
+  if (!recommendedSlug) return null;
+  return (
+    rows.find(
+      (r) => r.workflow.workflowDynastySlug === recommendedSlug && r.audienceId == null,
+    ) ?? null
+  );
+}
 
-/** One audience's per-metric estimate for the best workflow, all server-provided. */
-export interface AudienceMetricRow {
+/** One audience's estimate for the best workflow, read verbatim from `resolved`. */
+export interface AudienceEstimateRow {
   id: string;
   name: string;
-  /** Which fallback rung the values came from (own audience data first). */
-  provenance: AudienceMetricProvenance;
+  /** Which grain the resolved values came from (finest present). */
+  grain: WorkflowProjectionGrain;
+  /** The resolved grain saw 0 clicks → its unit cost is a floor → render ">$X". */
+  floored: boolean;
   /** CPC — cost per click (USD). */
   clickUsd: number | null;
   /** CPS — cost per goal-outcome (signup / meeting, USD). */
   costPerOutcomeUsd: number | null;
   /** ROI — lifetime return multiple. */
-  roiMultiple: number | null | undefined;
-  /** CAC — cost to win one paying client (USD). */
-  costPerCloseUsd: number | null | undefined;
+  roiMultiple: number | null;
   /** CAC% — cost to win one paying client as a share of lifetime revenue (%). */
-  cacPct: number | null | undefined;
+  cacPct: number | null;
 }
 
 /**
- * Build one metric row per active audience for the best workflow, resolving each
- * audience through the audience-own → brand-average → cross-org fallback ladder.
- * Every value is read straight from a server candidate (no client metric math) —
- * this only PICKS which candidate (own row else the coarse fallback) per audience.
+ * One estimate row per active audience for the best workflow. Picks the audience's
+ * own ladder row (audienceId × recommended workflow) when present, else the
+ * recommended workflow's brand-level row, and reads that row's server-`resolved`
+ * verbatim. No client-side CPC / projection math — this only SELECTS which row.
  */
-export function buildAudienceMetricRows(
+export function buildAudienceEstimateRows(
   activeAudiences: ReadonlyArray<{ id: string; name: string }>,
-  evidence: BestModelEvidence,
-): AudienceMetricRow[] {
-  const ownById = new Map(evidence.audiences.map((c) => [c.audienceId as string, c]));
-  const fb = evidence.fallback;
-  const fbProvenance: AudienceMetricProvenance =
-    fb?.grain === "goal-global" ? "crossOrg" : "brand";
+  rows: WorkflowProjectionLadderRow[],
+  recommendedSlug: string | null,
+): AudienceEstimateRow[] {
+  const ownById = new Map<string, WorkflowProjectionLadderRow>();
+  if (recommendedSlug) {
+    for (const r of rows) {
+      if (r.workflow.workflowDynastySlug === recommendedSlug && r.audienceId != null) {
+        ownById.set(r.audienceId, r);
+      }
+    }
+  }
+  const brandFallback = bestModelRow(rows, recommendedSlug);
   return activeAudiences.map((a) => {
-    const own = ownById.get(a.id);
-    const c = own ?? fb;
+    const row = ownById.get(a.id) ?? brandFallback;
+    if (!row) {
+      return {
+        id: a.id,
+        name: a.name,
+        grain: "crossOrg",
+        floored: false,
+        clickUsd: null,
+        costPerOutcomeUsd: null,
+        roiMultiple: null,
+        cacPct: null,
+      };
+    }
     return {
       id: a.id,
       name: a.name,
-      provenance: own ? "own" : fbProvenance,
-      clickUsd: c?.cost.clickUsd ?? null,
-      costPerOutcomeUsd: c?.costPerOutcomeUsd ?? null,
-      roiMultiple: c?.roiMultiple ?? null,
-      costPerCloseUsd: c?.costPerCloseUsd ?? null,
-      cacPct: c?.cacPct ?? null,
+      grain: row.resolved.grain,
+      floored: isFlooredRow(row),
+      clickUsd: row.resolved.costPerClickUsd,
+      costPerOutcomeUsd: row.resolved.costPerOutcomeUsd,
+      roiMultiple: row.resolved.roiMultiple,
+      cacPct: row.resolved.cacPct,
     };
   });
 }

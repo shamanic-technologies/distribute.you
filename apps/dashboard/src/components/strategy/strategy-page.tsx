@@ -12,33 +12,33 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { pollOptions } from "@/lib/query-options";
 import {
-  fetchFeatureCandidates,
   getBrandProfile,
   getBrandSalesEconomics,
-  getWorkflowProjection,
+  getWorkflowProjectionLadder,
   listAudiences,
   listWorkflowExamples,
 } from "@/lib/api";
-import type { WorkflowExampleEmail } from "@/lib/api";
+import type { WorkflowExampleEmail, WorkflowProjectionGrain } from "@/lib/api";
 import {
-  buildAudienceMetricRows,
+  bestModelRow,
+  buildAudienceEstimateRows,
   goalForOptimizationGoal,
+  grainLabel,
+  isFlooredRow,
   modelAvatar,
-  objectiveForOptimizationGoal,
   OFFER_LEVERS,
   offerLeverValue,
   outcomeNoun,
-  projectionCostKey,
-  selectBestModelEvidence,
 } from "@/lib/strategy-model";
-import type { AudienceMetricProvenance } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
 
-/** USD number → "$X.XX" (two decimals) / "—". */
-function formatUsd(usd: number | null | undefined): string {
+/** USD number → "$X.XX" (two decimals) / "—". `floored` prefixes ">" (the value is a
+ *  zero-outcome lower bound: spend / max(observed, 1), not a measured average). */
+function formatUsd(usd: number | null | undefined, floored = false): string {
   if (usd == null) return "-";
   if (usd <= 0) return "$0.00";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const amount = `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return floored ? `>${amount}` : amount;
 }
 
 /** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */
@@ -53,12 +53,11 @@ function formatRoi(x: number | null | undefined): string {
   return `${x.toLocaleString("en-US", { maximumFractionDigits: 1 })}×`;
 }
 
-/** Human label for which fallback rung supplied an audience's metrics. */
-const PROVENANCE_LABEL: Record<AudienceMetricProvenance, string> = {
-  own: "Your data",
-  brand: "Brand average",
-  crossOrg: "Cross-org average",
-};
+/** Sentence-cased grain label for a row's provenance sub-line. */
+function grainProvenanceLabel(grain: WorkflowProjectionGrain): string {
+  const l = grainLabel(grain);
+  return l.charAt(0).toUpperCase() + l.slice(1);
+}
 
 function Card({
   title,
@@ -238,23 +237,16 @@ export function StrategyPage() {
   // Default to the meetings objective until the saved economics resolve.
   const optimizationGoal = econ?.optimizationGoal ?? "sales_meetings";
   const goal = goalForOptimizationGoal(optimizationGoal);
-  const objective = objectiveForOptimizationGoal(optimizationGoal);
-  const costKey = projectionCostKey(optimizationGoal);
   const noun = outcomeNoun(optimizationGoal);
 
-  // Ranked workflows + recommended pick + brand-level projected cost per outcome.
+  // 3-grain workflow-projection ladder: one row per (audience? × workflow dynasty),
+  // each carrying a server-`resolved` block at the finest grain present (audience >
+  // brand > crossOrg — brand-real when we have it). The recommended pick + best-model
+  // economics + per-audience estimates all read `resolved` VERBATIM. This single
+  // endpoint folds in the audience×workflow grain formerly served by /candidates.
   const { data: projection, isPending: projPending } = useAuthQuery(
-    ["workflowProjection", featureSlug, brandId, objective, "strategy"],
-    // budgetUsd:1 populates `projection` (and its budget-invariant `cacPct`) so the
-    // "Projected cost of acquisition" stat renders the CAC% instead of "-".
-    () => getWorkflowProjection({ featureSlug, brandId, objective, budgetUsd: 1 }),
-    { ...pollOptions, enabled: revenueOk && !!brandId },
-  );
-
-  // Candidate evidence set (cross-org / brand-goal / per-audience grain ladder).
-  const { data: candidatesData, isPending: candPending } = useAuthQuery(
-    ["featureCandidates", featureSlug, brandId, goal],
-    () => fetchFeatureCandidates(featureSlug, { brandId, goal }),
+    ["workflowProjectionLadder", featureSlug, brandId, goal, "strategy"],
+    () => getWorkflowProjectionLadder({ featureSlug, brandId, goal }),
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
 
@@ -278,27 +270,33 @@ export function StrategyPage() {
   const brandProfileHref = `/orgs/${orgId}/brands/${brandId}/brand-profile`;
   const settingsHref = `/orgs/${orgId}/brands/${brandId}/settings`;
 
-  // Best model = the recommended workflow (lowest cost per outcome), else the
-  // first ranked workflow.
-  const workflows = projection?.workflows ?? [];
+  // Best model = the recommended workflow (lowest resolved cost per outcome), else
+  // the first row. Its headline economics come from the recommended workflow's
+  // BRAND-LEVEL row (audienceId null) `resolved` block — read verbatim, no client math.
+  const rows = projection?.rows ?? [];
   const bestSlug =
     projection?.recommendedWorkflowDynastySlug ??
-    workflows[0]?.workflowDynastySlug ??
+    rows[0]?.workflow.workflowDynastySlug ??
     null;
-  const bestWf = workflows.find((w) => w.workflowDynastySlug === bestSlug) ?? null;
-  const bestName = bestWf?.workflowDynastyName ?? bestSlug ?? "-";
-  const brandCostPerOutcome = bestWf ? (bestWf[costKey] ?? null) : null;
-  const roiMultiple = bestWf?.roiMultiple ?? null;
+  const best = bestModelRow(rows, bestSlug);
+  const resolved = best?.resolved ?? null;
+  const bestName =
+    best?.workflow.workflowDynastyName ??
+    rows.find((r) => r.workflow.workflowDynastySlug === bestSlug)?.workflow.workflowDynastyName ??
+    bestSlug ??
+    "-";
+  // The resolved number is a zero-outcome floor when its grain saw 0 clicks → ">$X".
+  const bestFloored = best ? isFlooredRow(best) : false;
+  // Honest source label for the headline numbers (fleet benchmark / this brand / this audience).
+  const bestGrainLabel = resolved ? grainLabel(resolved.grain) : null;
+  const roiMultiple = resolved?.roiMultiple ?? null;
   const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
 
-  const evidence = selectBestModelEvidence(candidatesData?.candidates ?? [], bestSlug);
-
-  // Every active audience gets a row with its four metrics (CPC / CPS / ROI / CAC),
-  // each read from its own per-audience candidate where it has run evidence, else the
-  // brand-average → cross-org fallback. Pure display join — every value stays
-  // server-provided (no client-side metric math).
+  // One estimate row per active audience for the best model = that audience's ladder
+  // row `resolved` (own audience×workflow row when it ran, else the brand-level row).
+  // Pure row SELECT — every value stays server-provided (no client-side metric math).
   const activeAudiences = audiencesData?.audiences ?? [];
-  const audienceRows = buildAudienceMetricRows(activeAudiences, evidence);
+  const audienceRows = buildAudienceEstimateRows(activeAudiences, rows, bestSlug);
 
   // Example emails for the best model — fetched on demand (drawer), cascade
   // brand → org → global; empty is a clean "no examples yet" state.
@@ -472,7 +470,7 @@ export function StrategyPage() {
                 ))}
               </div>
             </div>
-          ) : !bestWf ? (
+          ) : !best || !resolved ? (
             <p className="text-sm text-gray-500">
               No model has enough data yet. Once outreach runs, the best model appears here.
             </p>
@@ -502,25 +500,28 @@ export function StrategyPage() {
                 </div>
               </div>
 
-              {/* This brand's projected economics — all five are served fields */}
+              {/* Best-model economics — read verbatim from the resolved grain block.
+                  Each dollar number is labelled by WHERE it came from (fleet benchmark /
+                  this brand / this audience), and floored (">$X") when its grain saw 0
+                  clicks, instead of the old misleading "this brand" claim on a fleet number. */}
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                 <Stat
-                  label="This brand cost / click"
-                  value={formatUsd(bestWf.clickUsd)}
+                  label="Cost / click"
+                  value={formatUsd(resolved.costPerClickUsd, bestFloored)}
                   tooltip="Cost per click - what we pay on average for one prospect to click through to your site."
-                  hint="Projected from this brand's own economics"
+                  hint={bestGrainLabel ? `Based on ${bestGrainLabel}` : undefined}
                 />
                 <Stat
-                  label={`This brand cost / ${noun}`}
-                  value={formatUsd(brandCostPerOutcome)}
+                  label={`Cost / ${noun}`}
+                  value={formatUsd(resolved.costPerOutcomeUsd, bestFloored)}
                   tooltip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
-                  hint="Projected from this brand's own economics"
+                  hint={bestGrainLabel ? `Based on ${bestGrainLabel}` : undefined}
                 />
                 <Stat
-                  label="This brand cost / paid client"
-                  value={formatUsd(bestWf.costPerCloseUsd)}
+                  label="Cost / paid client"
+                  value={formatUsd(resolved.costPerPaidClientUsd, bestFloored)}
                   tooltip="Cost per paid client - what we pay on average to win one paying client."
-                  hint="Projected from this brand's own economics"
+                  hint={bestGrainLabel ? `Based on ${bestGrainLabel}` : undefined}
                 />
                 <Stat
                   label="Projected lifetime revenue on each dollar spent"
@@ -533,7 +534,7 @@ export function StrategyPage() {
                 />
                 <Stat
                   label="Projected cost of acquisition"
-                  value={formatPct(bestWf.projection?.cacPct)}
+                  value={formatPct(resolved.cacPct)}
                   tooltip="Cost to acquire a paid client divided by the lifetime revenue of a paid client"
                   hint="Share of a client's lifetime revenue spent to acquire them"
                 />
@@ -544,7 +545,7 @@ export function StrategyPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Estimates by audience
                 </p>
-                {candPending || audiencesPending ? (
+                {projPending || audiencesPending ? (
                   <div className="mt-2 space-y-2">
                     {[0, 1].map((i) => (
                       <Skeleton key={i} className="h-10 w-full" />
@@ -601,14 +602,14 @@ export function StrategyPage() {
                             <td className="px-4 py-2.5">
                               <span className="block truncate text-gray-700">{a.name}</span>
                               <span className="text-[10px] text-gray-400">
-                                {PROVENANCE_LABEL[a.provenance]}
+                                {grainProvenanceLabel(a.grain)}
                               </span>
                             </td>
                             <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                              {formatUsd(a.clickUsd)}
+                              {formatUsd(a.clickUsd, a.floored)}
                             </td>
                             <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                              {formatUsd(a.costPerOutcomeUsd)}
+                              {formatUsd(a.costPerOutcomeUsd, a.floored)}
                             </td>
                             <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                               {formatRoi(a.roiMultiple)}

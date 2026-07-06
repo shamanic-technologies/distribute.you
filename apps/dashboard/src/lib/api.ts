@@ -3083,6 +3083,117 @@ export async function getWorkflowProjection(
   return parsed.data;
 }
 
+// ── Sales-funnel workflow-projection LADDER (rows[] + resolved) ──────────────
+// features-service reshaped GET /features/:slug/workflow-projection into a 3-grain
+// ladder (crossOrg → brand → audience) keyed per (audienceId?, workflowDynasty),
+// FOLDING IN the audience×workflow grain formerly served by the removed /candidates
+// endpoint. Each grain block carries its OWN evidence, floor-ruled unit costs
+// (costPerXUsd = spentUsd / max(observedX, 1) — NEVER null) and projected economics
+// from the brand's effective economics; a grain is present ONLY when spentUsd > 0.
+// `resolved` = the finest present grain (audience > brand > crossOrg). The Strategy
+// page renders `resolved` verbatim — no client-side CPC/projection math. Wire shape
+// verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
+export type WorkflowProjectionGrain = "audience" | "brand" | "crossOrg";
+
+const ProjectionGrainBlockSchema = z.object({
+  evidence: z.object({
+    spentUsd: z.number(),
+    observedContacted: z.number(),
+    observedClicks: z.number(),
+    observedPositiveReplies: z.number(),
+  }),
+  unitCosts: z.object({
+    costPerClickUsd: z.number(),
+    costPerPositiveReplyUsd: z.number(),
+    costPerContactedUsd: z.number(),
+  }),
+  projected: z.object({
+    costPerSignupUsd: z.number().nullable(),
+    costPerPaidClientUsd: z.number().nullable(),
+    costPerMeetingBookedUsd: z.number().nullable(),
+    roiMultiple: z.number().nullable(),
+    cacPct: z.number().nullable(),
+  }),
+});
+
+const ProjectionResolvedSchema = z.object({
+  grain: z.union([z.literal("audience"), z.literal("brand"), z.literal("crossOrg")]),
+  // The resolved grain's cost per click — floor-filled, never null / never 0.
+  costPerClickUsd: z.number(),
+  // The GOAL metric at the resolved grain (cost per signup / meeting / paid-client
+  // per the queried goal). Null ONLY at cold start (no economics).
+  costPerOutcomeUsd: z.number().nullable(),
+  costPerPaidClientUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+  cacPct: z.number().nullable(),
+});
+
+const WorkflowProjectionLadderRowSchema = z.object({
+  // null = brand-level row (crossOrg + brand grains). Non-null = one row per
+  // (active audience × workflow dynasty) couple that ran (adds the audience grain).
+  audienceId: z.string().nullable(),
+  workflow: z.object({
+    workflowDynastySlug: z.string(),
+    workflowDynastyName: z.string().nullable(),
+  }),
+  // A grain block is present ONLY when that grain has spentUsd > 0.
+  estimatesByGrain: z.object({
+    crossOrg: ProjectionGrainBlockSchema.optional(),
+    brand: ProjectionGrainBlockSchema.optional(),
+    audience: ProjectionGrainBlockSchema.optional(),
+  }),
+  resolved: ProjectionResolvedSchema,
+});
+
+const WorkflowProjectionLadderResponseSchema = z.object({
+  featureSlug: z.string(),
+  rows: z.array(WorkflowProjectionLadderRowSchema),
+  recommendedWorkflowDynastySlug: z.string().nullable(),
+  recommendedBudgetUsd: z.number().nullable(),
+});
+
+export type WorkflowProjectionGrainBlock = z.infer<typeof ProjectionGrainBlockSchema>;
+export type WorkflowProjectionResolved = z.infer<typeof ProjectionResolvedSchema>;
+export type WorkflowProjectionLadderRow = z.infer<typeof WorkflowProjectionLadderRowSchema>;
+export type WorkflowProjectionLadderResponse = z.infer<
+  typeof WorkflowProjectionLadderResponseSchema
+>;
+
+/**
+ * GET /features/:slug/workflow-projection — the 3-grain ladder (rows[] + resolved).
+ * `goal` is the camel goal enum (signup / meetingBooked / purchase). Optional
+ * `audienceId` echoes an audience context; audience rows always enumerate ALL of
+ * the brand's active audiences that ran the workflow regardless.
+ */
+export async function getWorkflowProjectionLadder(
+  params: {
+    featureSlug: string;
+    brandId: string;
+    goal: FeatureAudienceStatsGoal;
+    audienceId?: string;
+  },
+  token?: string,
+): Promise<WorkflowProjectionLadderResponse> {
+  const query = new URLSearchParams();
+  query.set("brandId", params.brandId);
+  query.set("goal", params.goal);
+  if (params.audienceId) query.set("audienceId", params.audienceId);
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
+    { token },
+  );
+  const parsed = WorkflowProjectionLadderResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getWorkflowProjectionLadder: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getWorkflowProjectionLadder: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // Create / Upgrade / Fork workflow via AI
 export interface CreateWorkflowRequest {
   description: string;
