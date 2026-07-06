@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
@@ -70,6 +72,17 @@ export function OutreachStatCards({
   outreachOverride?: number | null;
 }) {
   const isBeta = useIsBetaUser();
+  const params = useParams();
+  const orgId = params.orgId as string | undefined;
+  const brandId = params.brandId as string | undefined;
+  // Deep-link to the Conversion Tracking section of Brand Settings. The outcome
+  // counts (Signups / Meetings) only populate once the client's site fires the
+  // conversion snippet — so the beta cards carry a one-tap setup CTA. Built from
+  // the route params (both cards render only on brand-scoped pages).
+  const setupHref =
+    orgId && brandId
+      ? `/orgs/${orgId}/brands/${brandId}/settings#conversion-tracking`
+      : null;
   const goal = optimizationGoal ?? "sales_meetings";
   const outreach =
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
@@ -106,7 +119,8 @@ export function OutreachStatCards({
         };
 
   return (
-    <div className="flex flex-nowrap gap-3 overflow-x-auto mb-6">
+    <div className="mb-6">
+    <div className="flex flex-nowrap gap-3 overflow-x-auto">
       <Cell>
         <ScoreCard
           label="Outreach"
@@ -151,6 +165,16 @@ export function OutreachStatCards({
             />
           </Cell>
         </>
+      )}
+    </div>
+      {isBeta && setupHref && (
+        <Link
+          href={setupHref}
+          className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 transition hover:text-brand-700"
+        >
+          Set up conversion tracker
+          <span aria-hidden="true">→</span>
+        </Link>
       )}
     </div>
   );
