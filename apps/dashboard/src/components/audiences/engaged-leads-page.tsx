@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -11,9 +11,11 @@ import {
   getBrandSalesEconomics,
   isVisitDrivenGoal,
   getLeadEmail,
+  listAudiences,
   type Lead,
   type LeadConsolidatedStatus,
   type LeadEmailGeneration,
+  type AudienceWire,
 } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
@@ -117,6 +119,22 @@ function timeAgo(date: string | Date): string {
   return fmt(`${years}y`);
 }
 
+// Gap between two consecutive timeline entries, shown in the left gutter so the
+// spacing between steps is visible at a glance instead of buried in the row text.
+function gapLabel(prevAt: string, at: string): string {
+  const diff = new Date(at).getTime() - new Date(prevAt).getTime();
+  const minutes = Math.round(Math.abs(diff) / 60000);
+  if (minutes < 1) return "·";
+  if (minutes < 60) return `+${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `+${hours}h`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `+${days}d`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `+${months}mo`;
+  return `+${Math.round(months / 12)}y`;
+}
+
 // Firmographic display helpers (reassurance fields). The values come from the
 // `view=basic` org projection (widened lead-service-side); render "-" until
 // present so the page ships ahead of the producer.
@@ -198,6 +216,55 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
         </span>
       )}
       <span className="text-gray-700">{audience.name}</span>
+    </div>
+  );
+}
+
+// Right-panel "Audience" card — which saved audience this lead was attributed to.
+// `inline` = the {id,name,avatarUrl} served on the lead row (always present when
+// attributed); `full` = the matching human-service audience row looked up by id
+// (description / Size / Remaining), null until listAudiences resolves or when the
+// audience was archived away. Renders nothing when the lead has no audience.
+function AudienceSection({
+  inline,
+  full,
+}: {
+  inline: { id: string; name: string; avatarUrl: string | null };
+  full: AudienceWire | null;
+}) {
+  const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
+  const description = full?.description ?? null;
+  const size = full?.sizeCount;
+  const remainingPct = full?.availableToContactPct;
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Audience</h3>
+      <div className="flex items-center gap-3">
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="w-9 h-9 rounded object-cover bg-white border border-gray-200 shrink-0"
+            loading="lazy"
+          />
+        ) : (
+          <span className="w-9 h-9 rounded bg-brand-100 text-brand-700 text-sm font-semibold flex items-center justify-center shrink-0">
+            {inline.name.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <p className="font-medium text-gray-800 text-sm">{inline.name}</p>
+      </div>
+      {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
+      {(size != null || remainingPct != null) && (
+        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+          {size != null && (
+            <div><span className="text-gray-500">Size:</span><p className="font-medium">{size.toLocaleString("en-US")}</p></div>
+          )}
+          {remainingPct != null && (
+            <div><span className="text-gray-500">Remaining:</span><p className="font-medium">{remainingPct}%</p></div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -295,45 +362,76 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     return 0;
   };
 
+  // Oldest → newest, top → bottom (past reads down into the future). Same-instant
+  // tie-break: least-advanced stage first (Contacted before Sent before Delivered…).
   const sorted = entries
     .filter((e) => !!e.at)
     .sort((a, b) => {
-      const dt = new Date(b.at).getTime() - new Date(a.at).getTime();
-      return dt !== 0 ? dt : stageRank(b) - stageRank(a);
+      const dt = new Date(a.at).getTime() - new Date(b.at).getTime();
+      return dt !== 0 ? dt : stageRank(a) - stageRank(b);
     });
 
   if (sorted.length === 0) return null;
 
+  // Split past (already happened) from future (scheduled-but-unsent follow-up
+  // steps, placed at their estimated send time). The "Now" divider sits between
+  // them so past/present/future are visually distinct.
+  const nowMs = Date.now();
+  const firstFutureIdx = sorted.findIndex((e) => new Date(e.at).getTime() > nowMs);
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Activity timeline</h3>
-      <ol className="relative ml-1">
-        {sorted.map((e, i) => (
-          <li key={`${e.kind}-${e.label}-${e.at}-${i}`} className="relative pl-5 pb-4 last:pb-0">
-            {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
-            <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.kind === "email" ? "bg-brand-500" : e.dot}`} aria-hidden />
-            <p className="text-sm font-medium text-gray-800">
-              {e.kind === "email" && (
-                <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+      <ol className="relative">
+        {sorted.map((e, i) => {
+          const isFuture = new Date(e.at).getTime() > nowMs;
+          // Left gutter: first row shows its absolute date; each later row shows
+          // the gap since the previous entry (+2d, +4h…).
+          const gutter = i === 0
+            ? new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            : gapLabel(sorted[i - 1].at, e.at);
+          return (
+            <Fragment key={`${e.kind}-${e.label}-${e.at}-${i}`}>
+              {i === firstFutureIdx && firstFutureIdx !== -1 && (
+                <li className="flex items-center gap-2 py-2" aria-hidden>
+                  <span className="w-14 shrink-0" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-600 bg-brand-50 border border-brand-200 rounded-full px-2 py-0.5">Now</span>
+                  <span className="flex-1 border-t border-dashed border-gray-200" />
+                </li>
               )}
-              {e.label}
-            </p>
-            <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
-              {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {timeAgo(e.at)}
-            </p>
-            {e.kind === "email" && (
-              <details className="mt-1.5 group">
-                <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
-                  {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
-                </summary>
-                <div className="mt-1.5 bg-gray-50 border border-gray-100 rounded p-2">
-                  <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
-                  <EmailSignature className="text-xs" />
+              <li className="flex gap-2">
+                <div className={`w-14 shrink-0 text-right pr-1 pt-1 text-[11px] tabular-nums ${i === 0 ? "text-gray-500" : "text-gray-400"}`}>
+                  {gutter}
                 </div>
-              </details>
-            )}
-          </li>
-        ))}
+                <div className={`relative flex-1 pl-4 pb-4 last:pb-0 ${isFuture ? "opacity-70" : ""}`}>
+                  {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
+                  <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.kind === "email" ? "bg-brand-500" : e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
+                  <p className="text-sm font-medium text-gray-800">
+                    {e.kind === "email" && (
+                      <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    )}
+                    {e.label}
+                    {isFuture && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-gray-400">scheduled</span>}
+                  </p>
+                  <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
+                    {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                  {e.kind === "email" && (
+                    <details className="mt-1.5 group">
+                      <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
+                        {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
+                      </summary>
+                      <div className="mt-1.5 bg-gray-50 border border-gray-100 rounded p-2">
+                        <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
+                        <EmailSignature className="text-xs" />
+                      </div>
+                    </details>
+                  )}
+                </div>
+              </li>
+            </Fragment>
+          );
+        })}
       </ol>
     </div>
   );
@@ -602,6 +700,20 @@ export function EngagedLeadsPage() {
   const personLocation = [selectedFull?.city, selectedFull?.state, selectedFull?.country].filter(Boolean).join(", ");
   const orgLocation = [selectedOrg?.city, selectedOrg?.state, selectedOrg?.country].filter(Boolean).join(", ");
 
+  // Brand audiences — shared cache with the Audiences page (usually warm). Used
+  // to enrich the panel's Audience card (description / Size / Remaining) by joining
+  // the lead's attributed `audience.id`; the name + avatar already ride the row.
+  const { data: audiencesData } = useAuthQuery(
+    ["audiences", brandId],
+    () => listAudiences(brandId),
+    {},
+  );
+  const selectedAudienceInline = selectedLead?.audience ?? null;
+  const selectedAudienceFull =
+    selectedAudienceInline
+      ? audiencesData?.audiences.find((a) => a.id === selectedAudienceInline.id) ?? null
+      : null;
+
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
@@ -695,6 +807,9 @@ export function EngagedLeadsPage() {
                   {selectedOrg.shortDescription && <div className="sm:col-span-2"><span className="text-gray-500">About:</span><p className="font-medium text-gray-700 font-normal">{selectedOrg.shortDescription}</p></div>}
                 </div>
               </div>
+            )}
+            {selectedAudienceInline && (
+              <AudienceSection inline={selectedAudienceInline} full={selectedAudienceFull} />
             )}
             <LeadTimeline lead={selectedLead} email={leadEmailData?.generation ?? null} />
             {selectedLead.servedAt && (
