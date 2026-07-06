@@ -13,6 +13,7 @@ import {
   type AdminBrand,
 } from "@/lib/api";
 import { BrandLogo } from "@/components/brand-logo";
+import { useOrg } from "@/lib/org-context";
 import { ContactLinksEditor } from "./contact-links-editor";
 import { ContactThread } from "./contact-thread";
 
@@ -91,6 +92,7 @@ function ChipRow({
  * from the staff brands list, features from the feature registry — all batched.
  */
 export function CrmWorkspace() {
+  const { org } = useOrg();
   const [rawFilter, setRawFilter] = useState("");
   const [filter, setFilter] = useState("");
   const [extra, setExtra] = useState<GoogleContactRow[]>([]);
@@ -360,6 +362,8 @@ export function CrmWorkspace() {
             <h3 className="mb-3 text-sm font-semibold text-gray-800">Status</h3>
             <ContactLinksEditor
               contact={selected}
+              lockedOrgId={org?.id}
+              lockedOrgName={org?.name}
               onSaved={(links) =>
                 setLinkOverrides((prev) => ({ ...prev, [contactKey(selected)]: links }))
               }

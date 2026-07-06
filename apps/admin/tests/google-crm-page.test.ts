@@ -211,6 +211,24 @@ describe("CrmWorkspace — contacts table + detail panel", () => {
     expect(thread).toContain("participant");
     expect(thread).toContain('["googleMessages"');
   });
+
+  it("locks the Organizations field to the current org on the org-scoped page", () => {
+    // Editor accepts a lockedOrgId prop and gates the Clerk search behind it.
+    expect(editor).toContain("lockedOrgId");
+    expect(editor).toContain("const locked = !!lockedOrgId");
+    // Org-scoped brands come from listBrands() (the authed org == the URL org),
+    // not the full /admin/brands catalog, in locked mode.
+    expect(editor).toContain("listBrands");
+    expect(editor).toContain('["orgBrands"');
+    // Workspace passes the current org down.
+    expect(ws).toContain("useOrg");
+    expect(ws).toContain("lockedOrgId={org?.id}");
+  });
+
+  it("keeps the root cross-org Clerk-search path for when lockedOrgId is absent", () => {
+    expect(editor).toContain("/api/admin/orgs");
+    expect(editor).toContain("listAdminBrands");
+  });
 });
 
 describe("Typed google-service readers (additive/optional + safeParse)", () => {
