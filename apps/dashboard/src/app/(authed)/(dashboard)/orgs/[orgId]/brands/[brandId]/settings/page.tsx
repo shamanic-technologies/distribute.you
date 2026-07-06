@@ -42,7 +42,7 @@ export default function BrandSettingsPage() {
       </section>
 
       {isBeta && (
-        <section className="mb-10">
+        <section id="conversion-tracking" className="mb-10 scroll-mt-24">
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
             Conversion Tracking
             <MaturityBadge level="beta" />
