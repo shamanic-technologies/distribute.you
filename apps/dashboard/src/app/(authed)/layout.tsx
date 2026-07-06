@@ -1,5 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { PostHogAuthTracker } from "@/components/posthog-auth-tracker";
+import { ConversionPing } from "@/components/conversion-ping";
 
 /**
  * Authed-tree layout. Wraps every dashboard / onboarding / sign-in / api /
@@ -25,6 +26,7 @@ export default function AuthedLayout({ children }: { children: React.ReactNode }
       }}
     >
       <PostHogAuthTracker />
+      <ConversionPing />
       {children}
     </ClerkProvider>
   );
