@@ -187,37 +187,53 @@ export async function collectOutcomeDigestSends(
   let eligibleUsers = 0;
 
   for (const org of orgs) {
-    const users = await listApiUsersForOrg(input, fetchFn, org.id);
-    // Every customer receives the digest — the recipient is the real org user;
-    // staff are blind-copied (STAFF_BCC_EMAILS) on the send.
-    const recipients = users.filter((u): u is ApiUser & { email: string } => !!u.email);
-    eligibleUsers += recipients.length;
-    if (recipients.length === 0) continue;
+    // Per-ORG isolation: one org's failed fetch (cold sibling, bad page) must not
+    // abort the whole fleet scan — log loud (fail-loud is preserved as a signal),
+    // skip this org, keep every other org's digest.
+    try {
+      const users = await listApiUsersForOrg(input, fetchFn, org.id);
+      // Every customer receives the digest — the recipient is the real org user;
+      // staff are blind-copied (STAFF_BCC_EMAILS) on the send.
+      const recipients = users.filter((u): u is ApiUser & { email: string } => !!u.email);
+      eligibleUsers += recipients.length;
+      if (recipients.length === 0) continue;
 
-    // One email PER BRAND, sent only when that brand recorded at least one outcome
-    // (click for a signups goal, positive reply for a sales-meetings goal) on the day.
-    const brands = await listBrandsForOrg(input, fetchFn, org.id);
-    for (const brand of brands) {
-      const revenue = await fetchBrandRevenue(input, fetchFn, org.id, brand.id);
-      if (revenue.organizations.length === 0) continue;
+      // One email PER BRAND, sent only when that brand recorded at least one outcome
+      // (click for a signups goal, positive reply for a sales-meetings goal) on the day.
+      const brands = await listBrandsForOrg(input, fetchFn, org.id);
+      for (const brand of brands) {
+        // Per-BRAND isolation: a heavy/slow /revenue for one brand must not skip the
+        // rest of the org's brands.
+        try {
+          const revenue = await fetchBrandRevenue(input, fetchFn, org.id, brand.id);
+          if (revenue.organizations.length === 0) continue;
 
-      const goal = await fetchBrandGoal(input, fetchFn, org.id, brand.id);
-      const outcome = outcomeOnDay(revenue, goal, targetDay);
-      if (outcome.count === 0) continue;
+          const goal = await fetchBrandGoal(input, fetchFn, org.id, brand.id);
+          const outcome = outcomeOnDay(revenue, goal, targetDay);
+          if (outcome.count === 0) continue;
 
-      const summary = toDigestBrandSummary(brand, revenue, goal);
-      const metadata = digestMetadataForBrand(summary, outcome.count, outcome.label);
-      for (const user of recipients) {
-        preparedSends.push({
-          orgId: org.id,
-          orgName: org.name ?? org.id,
-          brandId: brand.id,
-          brandName: summary.brandName,
-          userExternalId: user.externalId,
-          recipientEmail: user.email,
-          metadata,
-        });
+          const summary = toDigestBrandSummary(brand, revenue, goal);
+          const metadata = digestMetadataForBrand(summary, outcome.count, outcome.label);
+          for (const user of recipients) {
+            preparedSends.push({
+              orgId: org.id,
+              orgName: org.name ?? org.id,
+              brandId: brand.id,
+              brandName: summary.brandName,
+              userExternalId: user.externalId,
+              recipientEmail: user.email,
+              metadata,
+            });
+          }
+        } catch (err) {
+          console.error(
+            `[dashboard-outcome-digest] skipped brand ${brand.id} (org ${org.id}) after error:`,
+            err,
+          );
+        }
       }
+    } catch (err) {
+      console.error(`[dashboard-outcome-digest] skipped org ${org.id} after error:`, err);
     }
   }
 
@@ -264,9 +280,18 @@ export async function sendOutcomeDigestEmails(
   let deduplicated = 0;
 
   for (const item of collection.preparedSends) {
-    const result = await sendDigestEmail(input, fetchFn, item);
-    if (result.sent) sent += 1;
-    if (result.deduplicated === true) deduplicated += 1;
+    // Per-SEND isolation: a single failed email (transient send error, bad address)
+    // must not abort the remaining sends.
+    try {
+      const result = await sendDigestEmail(input, fetchFn, item);
+      if (result.sent) sent += 1;
+      if (result.deduplicated === true) deduplicated += 1;
+    } catch (err) {
+      console.error(
+        `[dashboard-outcome-digest] send failed for ${item.recipientEmail} (brand ${item.brandId}):`,
+        err,
+      );
+    }
   }
 
   return { ...collection, sent, deduplicated };
@@ -573,23 +598,65 @@ async function fetchJson<T>(
   return parsed.data;
 }
 
+// Per-fetch budget. The digest calls cold Neon-backed siblings (features/api,
+// scale-to-zero 0.25 CU) and a brand's /revenue can be heavy (a large brand owns
+// thousands of Instantly campaigns), so 30s was too tight — a single cold call
+// blew it and aborted the whole cron. 60s + a connect-phase retry absorbs the wake.
+const FETCH_TIMEOUT_MS = 60_000;
+const FETCH_RETRY_BACKOFF_MS = [250, 500, 1000];
+
+/** A THROWN transport failure worth retrying (connect timeout / reset / cold-start),
+ *  walking `err.cause` + AggregateError. Never matches a completed HTTP response —
+ *  an HTTP 5xx is a real answer and is thrown separately, not retried here. */
+function isTransientFetchError(err: unknown): boolean {
+  const seen = new Set<unknown>();
+  const visit = (e: unknown): boolean => {
+    if (!e || typeof e !== "object" || seen.has(e)) return false;
+    seen.add(e);
+    const anyErr = e as { name?: string; code?: string; message?: string; cause?: unknown; errors?: unknown[] };
+    const name = anyErr.name ?? "";
+    const code = anyErr.code ?? "";
+    const message = anyErr.message ?? "";
+    if (name === "TimeoutError" || name === "AbortError") return true;
+    if (["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN", "UND_ERR_CONNECT_TIMEOUT"].includes(code)) return true;
+    if (/timed? ?out|timeout|econnreset|econnrefused|fetch failed|network|socket hang up/i.test(message)) return true;
+    if (Array.isArray(anyErr.errors) && anyErr.errors.some(visit)) return true;
+    return visit(anyErr.cause);
+  };
+  return visit(err);
+}
+
 async function fetchJsonUntyped(
   url: string,
   init: RequestInit,
   fetchFn: DigestFetch,
   label: string,
 ): Promise<unknown> {
-  const res = await fetchFn(url, {
-    ...init,
-    cache: "no-store",
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`[dashboard-outcome-digest] ${label} ${url} returned ${res.status}: ${body.slice(0, 500)}`);
-    throw new Error(`[dashboard-outcome-digest] ${label} returned ${res.status}`);
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= FETCH_RETRY_BACKOFF_MS.length; attempt += 1) {
+    try {
+      const res = await fetchFn(url, {
+        ...init,
+        cache: "no-store",
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error(`[dashboard-outcome-digest] ${label} ${url} returned ${res.status}: ${body.slice(0, 500)}`);
+        throw new Error(`[dashboard-outcome-digest] ${label} returned ${res.status}`);
+      }
+      return (await res.json()) as unknown;
+    } catch (err) {
+      lastErr = err;
+      // Only retry a transient TRANSPORT failure (the read is idempotent GET). An
+      // HTTP-status error above is a real answer — rethrow it immediately.
+      if (!isTransientFetchError(err) || attempt === FETCH_RETRY_BACKOFF_MS.length) throw err;
+      const delay = FETCH_RETRY_BACKOFF_MS[attempt];
+      console.error(`[dashboard-outcome-digest] ${label} ${url} transient failure (attempt ${attempt + 1}), retrying in ${delay}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
-  return res.json() as Promise<unknown>;
+  throw lastErr;
 }
 
 function adminHeaders(config: EnvConfig, orgId: string, userId: string): Record<string, string> {
