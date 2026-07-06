@@ -34,12 +34,11 @@ import {
 import type { AudienceMetricProvenance } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
 
-/** USD number → "$X" (whole dollars, no cents) / "—" / "<$1". */
+/** USD number → "$X.XX" (two decimals) / "—". */
 function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
-  if (usd <= 0) return "$0";
-  if (usd < 1) return "<$1";
-  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  if (usd <= 0) return "$0.00";
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */
