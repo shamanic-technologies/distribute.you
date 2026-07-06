@@ -53,6 +53,7 @@ const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   sales_meetings: "Maximising sales meetings",
   website_visits: "Maximising website visits",
   positive_replies: "Maximising positive replies",
+  form_submissions: "Maximising form submissions",
 };
 
 const GOAL_OPTIONS: {

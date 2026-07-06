@@ -32,6 +32,9 @@ const DEFAULTS = {
   // Single-step conversions for the beta website_visits / positive_replies goals.
   visitToPaidClientPct: "5",
   replyToPaidClientPct: "25",
+  // Two-step conversions for the beta form_submissions goal (mirror the signup pair).
+  visitToFormSubmissionPct: "25",
+  formSubmissionToPaidClientPct: "20",
 } as const;
 
 type PctKey =
@@ -41,7 +44,9 @@ type PctKey =
   | "visitToSignupPct"
   | "signupToPaidClientPct"
   | "visitToPaidClientPct"
-  | "replyToPaidClientPct";
+  | "replyToPaidClientPct"
+  | "visitToFormSubmissionPct"
+  | "formSubmissionToPaidClientPct";
 type RequiredFieldKey =
   | "lifetimeRevenueUsd"
   | "replyToMeetingPct"
@@ -50,7 +55,9 @@ type RequiredFieldKey =
   | "visitToSignupPct"
   | "signupToPaidClientPct"
   | "visitToPaidClientPct"
-  | "replyToPaidClientPct";
+  | "replyToPaidClientPct"
+  | "visitToFormSubmissionPct"
+  | "formSubmissionToPaidClientPct";
 
 type FormState = {
   lifetimeRevenueUsd: string;
@@ -61,6 +68,8 @@ type FormState = {
   signupToPaidClientPct: string;
   visitToPaidClientPct: string;
   replyToPaidClientPct: string;
+  visitToFormSubmissionPct: string;
+  formSubmissionToPaidClientPct: string;
   optimizationGoal: BrandOptimizationGoal;
 };
 
@@ -76,6 +85,8 @@ function defaultForm(): FormState {
     signupToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.signupToPaidClientPct)),
     visitToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToPaidClientPct)),
     replyToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.replyToPaidClientPct)),
+    visitToFormSubmissionPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToFormSubmissionPct)),
+    formSubmissionToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.formSubmissionToPaidClientPct)),
     optimizationGoal: "sales_meetings",
   };
 }
@@ -91,6 +102,13 @@ function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState
     signupToPaidClientPct: formatLocaleNumberInputValue(e.signupToPaidClientPct),
     visitToPaidClientPct: formatLocaleNumberInputValue(e.visitToPaidClientPct),
     replyToPaidClientPct: formatLocaleNumberInputValue(e.replyToPaidClientPct),
+    // Optional on the wire until brand-service prod serves them — fall back to the seed default.
+    visitToFormSubmissionPct: formatLocaleNumberInputValue(
+      e.visitToFormSubmissionPct ?? Number(DEFAULTS.visitToFormSubmissionPct),
+    ),
+    formSubmissionToPaidClientPct: formatLocaleNumberInputValue(
+      e.formSubmissionToPaidClientPct ?? Number(DEFAULTS.formSubmissionToPaidClientPct),
+    ),
     optimizationGoal: e.optimizationGoal,
   };
 }
@@ -104,6 +122,7 @@ const OPTIMIZATION_GOALS: {
   { value: "sales_meetings", label: "# Sales Meetings" },
   { value: "website_visits", label: "# Website visits", beta: true },
   { value: "positive_replies", label: "# Positive Replies", beta: true },
+  { value: "form_submissions", label: "# Form submissions", beta: true },
 ];
 
 const PCT_FIELDS: {
@@ -154,6 +173,18 @@ const PCT_FIELDS: {
     tip: "Of leads who reply positively, the share that become paying customers.",
     goals: ["positive_replies"],
   },
+  {
+    key: "visitToFormSubmissionPct",
+    label: "Website visit → form submission",
+    tip: "Of leads who visit your website, the share that submit a form.",
+    goals: ["form_submissions"],
+  },
+  {
+    key: "formSubmissionToPaidClientPct",
+    label: "Form submission → Paid client",
+    tip: "Of leads who submit a form, the share that become paying customers.",
+    goals: ["form_submissions"],
+  },
 ];
 
 const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]> = {
@@ -161,6 +192,7 @@ const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]>
   sales_meetings: ["replyToMeetingPct", "visitToMeetingPct", "meetingToClosePct"],
   website_visits: ["visitToPaidClientPct"],
   positive_replies: ["replyToPaidClientPct"],
+  form_submissions: ["visitToFormSubmissionPct", "formSubmissionToPaidClientPct"],
 };
 
 const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
@@ -172,6 +204,8 @@ const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
   signupToPaidClientPct: "Signup → Paid client",
   visitToPaidClientPct: "Website visit → Paid client",
   replyToPaidClientPct: "Positive reply → Paid client",
+  visitToFormSubmissionPct: "Website visit → form submission",
+  formSubmissionToPaidClientPct: "Form submission → Paid client",
 };
 
 const hasNumericValue = (v: string) => parseLocaleNumberInput(v) !== null;
@@ -304,6 +338,14 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       replyToPaidClientPct: toPctOrDefault(
         form.replyToPaidClientPct,
         DEFAULTS.replyToPaidClientPct,
+      ),
+      visitToFormSubmissionPct: toPctOrDefault(
+        form.visitToFormSubmissionPct,
+        DEFAULTS.visitToFormSubmissionPct,
+      ),
+      formSubmissionToPaidClientPct: toPctOrDefault(
+        form.formSubmissionToPaidClientPct,
+        DEFAULTS.formSubmissionToPaidClientPct,
       ),
       optimizationGoal: form.optimizationGoal,
     });

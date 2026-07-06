@@ -654,7 +654,8 @@ export type BrandOptimizationGoal =
   | "signups"
   | "sales_meetings"
   | "website_visits"
-  | "positive_replies";
+  | "positive_replies"
+  | "form_submissions";
 type BrandOptimizationGoalWire =
   | BrandOptimizationGoal
   | "booked_meetings"
@@ -666,25 +667,27 @@ function normalizeBrandOptimizationGoal(
   if (goal === "signups") return "signups";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
+  if (goal === "form_submissions") return "form_submissions";
   // booked_meetings / sales / sales_meetings all collapse to sales_meetings.
   return "sales_meetings";
 }
 
 function serializeBrandOptimizationGoal(
   goal: BrandOptimizationGoal,
-): "signups" | "booked_meetings" | "website_visits" | "positive_replies" {
+): "signups" | "booked_meetings" | "website_visits" | "positive_replies" | "form_submissions" {
   if (goal === "signups") return "signups";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
+  if (goal === "form_submissions") return "form_submissions";
   return "booked_meetings";
 }
 
 // Most surfaces only distinguish VISIT-driven (website click → outcome) from
-// REPLY-driven (positive reply → outcome) behaviour. signups + website_visits are
-// visit-driven; sales_meetings + positive_replies are reply-driven. Use this instead
-// of `goal === "signups"` so the two beta goals route to the right family everywhere.
+// REPLY-driven (positive reply → outcome) behaviour. signups + website_visits +
+// form_submissions are visit-driven; sales_meetings + positive_replies are reply-driven.
+// Use this instead of `goal === "signups"` so the beta goals route to the right family everywhere.
 export function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
-  return goal === "signups" || goal === "website_visits";
+  return goal === "signups" || goal === "website_visits" || goal === "form_submissions";
 }
 
 export interface BrandSalesEconomics {
@@ -701,6 +704,11 @@ export interface BrandSalesEconomics {
   // Single-step conversions for the beta website_visits / positive_replies goals.
   visitToPaidClientPct: number;
   replyToPaidClientPct: number;
+  // Two-step conversions for the beta form_submissions goal (visit → form submission → paid),
+  // the sibling of signups. Optional on read to decouple the brand-service rollout (present once
+  // brand-service prod serves them; brand-service defaults 25 / 20 for a never-set brand).
+  visitToFormSubmissionPct?: number;
+  formSubmissionToPaidClientPct?: number;
   businessModel: BrandBusinessModel | null;
   optimizationGoal: BrandOptimizationGoal;
   updatedAt: string;
@@ -722,11 +730,15 @@ export type BrandSalesEconomicsInput = Omit<
   | "visitToClosePct"
   | "visitToPaidClientPct"
   | "replyToPaidClientPct"
+  | "visitToFormSubmissionPct"
+  | "formSubmissionToPaidClientPct"
 > & {
   businessModel?: BrandBusinessModel | null;
   optimizationGoal?: BrandOptimizationGoal;
   visitToPaidClientPct?: number;
   replyToPaidClientPct?: number;
+  visitToFormSubmissionPct?: number;
+  formSubmissionToPaidClientPct?: number;
 };
 
 const BrandSalesEconomicsSchema = z.object({
@@ -739,6 +751,10 @@ const BrandSalesEconomicsSchema = z.object({
   visitToClosePct: z.number(),
   visitToPaidClientPct: z.number(),
   replyToPaidClientPct: z.number(),
+  // Optional: brand-service serves them once the form_submissions rollout is live in prod; older
+  // prod omits them. Optional tolerates the absent case (never strips a present value).
+  visitToFormSubmissionPct: z.number().optional(),
+  formSubmissionToPaidClientPct: z.number().optional(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
   optimizationGoal: z.union([
     z.literal("signups"),
@@ -747,6 +763,7 @@ const BrandSalesEconomicsSchema = z.object({
     z.literal("sales"),
     z.literal("website_visits"),
     z.literal("positive_replies"),
+    z.literal("form_submissions"),
   ]).transform(normalizeBrandOptimizationGoal),
   updatedAt: z.string(),
 });
@@ -802,6 +819,13 @@ export async function saveBrandSalesEconomics(
         : {}),
       ...(input.replyToPaidClientPct !== undefined
         ? { replyToPaidClientPct: input.replyToPaidClientPct }
+        : {}),
+      // Two-step form-submission conversions (partial-update): send only when set.
+      ...(input.visitToFormSubmissionPct !== undefined
+        ? { visitToFormSubmissionPct: input.visitToFormSubmissionPct }
+        : {}),
+      ...(input.formSubmissionToPaidClientPct !== undefined
+        ? { formSubmissionToPaidClientPct: input.formSubmissionToPaidClientPct }
         : {}),
       // Partial-update: send businessModel only when the caller set it (settings
       // editor). Omitting it leaves the stored value unchanged; null clears it.
@@ -2896,13 +2920,15 @@ export async function fetchGlobalRankedWorkflows(params: {
 // cost-per-close + funnel projection from the brand's SAVED economics. Consumers (brand overview,
 // workflows page, onboarding) render those server values directly via getWorkflowProjection.
 // Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
-export type SalesObjective = "meeting-booked" | "self-serve";
+export type SalesObjective = "meeting-booked" | "self-serve" | "form_submissions";
 
 export function salesObjectiveForOptimizationGoal(
   goal: BrandOptimizationGoal,
 ): SalesObjective {
-  // website_visits borrows self-serve (visit-driven); positive_replies borrows
-  // meeting-booked (reply-driven) — the objective enum has no single-step variant.
+  // form_submissions has its OWN two-step objective (features sizes the budget on
+  // costPerFormSubmissionUsd). website_visits borrows self-serve (visit-driven);
+  // positive_replies borrows meeting-booked (reply-driven) — no single-step objective variant.
+  if (goal === "form_submissions") return "form_submissions";
   return isVisitDrivenGoal(goal) ? "self-serve" : "meeting-booked";
 }
 
@@ -2912,6 +2938,9 @@ const WorkflowFunnelProjectionSchema = z.object({
   contactedLeads: z.number().nullable(),
   replies: z.number().nullable(),
   visits: z.number().nullable(),
+  // Expected form submissions (visits × visitToFormSubmissionPct). Optional to decouple the
+  // features-service rollout; present once the form_submissions goal is live in prod.
+  formSubmissions: z.number().nullable().optional(),
   meetings: z.number().nullable(),
   closes: z.number().nullable(),
   revenue: z.number().nullable(),
@@ -2928,6 +2957,8 @@ const WorkflowProjectionItemSchema = z.object({
   replyUsd: z.number().nullable(),
   clickUsd: z.number().nullable(),
   costPerSignupUsd: z.number().nullable().optional(),
+  // Cost per form submission (form_submissions goal). Optional to decouple the rollout.
+  costPerFormSubmissionUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable().optional(),
   // Lifetime ROI multiple = LTR / costPerCloseUsd (= 100 / cacPct), budget-
@@ -2940,7 +2971,7 @@ const WorkflowProjectionItemSchema = z.object({
 
 const WorkflowProjectionResponseSchema = z.object({
   featureSlug: z.string(),
-  objective: z.union([z.literal("meeting-booked"), z.literal("self-serve")]),
+  objective: z.union([z.literal("meeting-booked"), z.literal("self-serve"), z.literal("form_submissions")]),
   workflows: z.array(WorkflowProjectionItemSchema),
   recommendedWorkflowDynastySlug: z.string().nullable(),
   recommendedBudgetUsd: z.number().nullable(),
@@ -2980,6 +3011,7 @@ export function keepLastGoodWorkflowProjection(
         "replyUsd",
         "clickUsd",
         "costPerSignupUsd",
+        "costPerFormSubmissionUsd",
         "costPerCloseUsd",
         "costPerMeetingBookedUsd",
         "projection",

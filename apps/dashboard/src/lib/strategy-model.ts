@@ -4,7 +4,7 @@ import type { BrandOptimizationGoal, FeatureAudienceStatsGoal, FeatureCandidate,
 // vitest (which has no "@/" alias), so a value import of "@/lib/api" fails to resolve.
 // Keep in lockstep with the exported api.ts helper.
 function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
-  return goal === "signups" || goal === "website_visits";
+  return goal === "signups" || goal === "website_visits" || goal === "form_submissions";
 }
 
 /**
@@ -61,21 +61,25 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
       return "website visit";
     case "positive_replies":
       return "positive reply";
+    case "form_submissions":
+      return "form submission";
     default:
       return "meeting";
   }
 }
 
 /** The projection field carrying the brand-level cost per outcome for the objective.
- *  Beta goals borrow the nearest family field (no single-step projection field exists). */
+ *  form_submissions has its own field; the other beta goals borrow the nearest family field. */
 export function projectionCostKey(
   goal: BrandOptimizationGoal,
-): "costPerSignupUsd" | "costPerMeetingBookedUsd" {
+): "costPerSignupUsd" | "costPerMeetingBookedUsd" | "costPerFormSubmissionUsd" {
+  if (goal === "form_submissions") return "costPerFormSubmissionUsd";
   return isVisitDrivenGoal(goal) ? "costPerSignupUsd" : "costPerMeetingBookedUsd";
 }
 
 /** The workflow-projection objective for the brand's saved goal. */
 export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): SalesObjective {
+  if (goal === "form_submissions") return "form_submissions";
   return isVisitDrivenGoal(goal) ? "self-serve" : "meeting-booked";
 }
 
