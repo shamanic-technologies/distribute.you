@@ -16,9 +16,13 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(cards).toContain("Set up conversion tracker");
     expect(cards).toContain("/settings#conversion-tracking");
     expect(cards).toContain('import { useParams } from "next/navigation"');
-    // The CTA lives inside the beta gate (same gate the Signups/CPS cards use).
-    const betaIdx = cards.indexOf("isBeta && setupHref");
-    expect(betaIdx).toBeGreaterThan(-1);
+    // The CTA renders INSIDE the outcome count card (as its subtitle), so it sits
+    // next to the metric it unblocks — not as a detached link under the row.
+    expect(cards).toContain("subtitle={setupCta}");
+    // Built only when the brand-scoped href resolves, and the outcome card that
+    // hosts it is itself behind the same `isBeta` gate as the Signups/CPS cards.
+    expect(cards).toContain("setupHref ? (");
+    expect(cards).toContain("isBeta &&");
   });
 
   it("gives the Conversion Tracking settings section an anchor to scroll to", () => {
