@@ -124,8 +124,8 @@ export function BrandConversionTrackingCard({ brandId }: { brandId: string }) {
       <p className="mb-5 text-sm text-gray-500">
         Tell us when someone signs up or books a meeting on your site. We match each event back
         to the lead we emailed for you, so your Signups and Meetings numbers reflect real
-        outcomes. Send whatever you have about the person. Email is the strongest match. A
-        name-only event is still recorded, but held for review before it counts.
+        outcomes. Send whatever you have about the person. Email matches best, but a name is
+        enough.
       </p>
 
       {/* Ingest token (publishable write-key) */}
