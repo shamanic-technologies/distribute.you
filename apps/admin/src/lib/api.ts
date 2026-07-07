@@ -4892,3 +4892,91 @@ export interface AdminBrand {
 export async function listAdminBrands(): Promise<{ brands: AdminBrand[] }> {
   return apiCall<{ brands: AdminBrand[] }>(`/admin/brands`);
 }
+
+// ---------------------------------------------------------------------------
+// Cross-org feature stats (staff admin — platform-wide, all orgs aggregated).
+// These read the features-service cross-org public stats through the api-service
+// gateway, which exposes them under `/public/features/*` (the gateway remaps the
+// downstream `/public/stats/*` family). Cross-org (no org scope), so we
+// call them with a plain `useQuery` — NOT `useAuthQuery` — since there is no
+// active org to gate on. Every displayed number is a ready backend field; the
+// dashboard renders, it never computes a cost-per-outcome in the browser
+// (CLAUDE.md "a displayed stat is features-service-owned").
+// ---------------------------------------------------------------------------
+
+/**
+ * Feature-wide EXPECTED (projected) average cost per meeting-booked and per
+ * purchase, meaned across every client brand's best workflow. USD (not cents).
+ * `null` when no brand has usable economics — render as "—", never a false $0.
+ */
+const CrossOrgCostProjectionSchema = z.object({
+  featureSlug: z.string(),
+  avgCostPerMeetingBooked: z.coerce.number().nullable(),
+  avgCostPerPurchase: z.coerce.number().nullable(),
+  brandCount: z.coerce.number(),
+});
+export type CrossOrgCostProjection = z.infer<typeof CrossOrgCostProjectionSchema>;
+
+export async function getCrossOrgCostProjection(
+  featureSlug: string,
+): Promise<CrossOrgCostProjection> {
+  const query = new URLSearchParams({ featureSlug });
+  const raw = await apiCall<unknown>(`/public/features/cost-projection?${query.toString()}`);
+  const parsed = CrossOrgCostProjectionSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getCrossOrgCostProjection: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getCrossOrgCostProjection: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Cross-org per-workflow stats bag for a feature, ranked by an output metric.
+ * `stats` is a free-form `{ key: number | null }` map (spend, volume counts,
+ * rates, and the `costPer*Cents` cost-per-outcome fields). Cost-per-outcome
+ * fields are `null` when their outcome denominator is 0 cross-org — rendered as
+ * "—", never coerced to 0. All fields come from the backend; nothing is derived
+ * client-side.
+ */
+const CrossOrgRankedWorkflowSchema = z.object({
+  workflow: z
+    .object({
+      workflowSlug: z.string(),
+      workflowName: z.string().optional(),
+      workflowDynastyName: z.string().optional(),
+      workflowDynastySlug: z.string().optional(),
+    })
+    .optional(),
+  stats: z.record(z.string(), z.coerce.number().nullable()),
+});
+const CrossOrgRankedSchema = z.object({
+  objective: z.string(),
+  sortDirection: z.enum(["asc", "desc"]),
+  results: z.array(CrossOrgRankedWorkflowSchema),
+});
+export type CrossOrgRankedWorkflow = z.infer<typeof CrossOrgRankedWorkflowSchema>;
+export type CrossOrgRanked = z.infer<typeof CrossOrgRankedSchema>;
+
+export async function getCrossOrgWorkflowStats(
+  featureSlug: string,
+  objective: string,
+  limit = 50,
+): Promise<CrossOrgRanked> {
+  const query = new URLSearchParams({
+    featureSlug,
+    groupBy: "workflow",
+    objective,
+    limit: String(limit),
+  });
+  const raw = await apiCall<unknown>(`/public/features/ranked?${query.toString()}`);
+  const parsed = CrossOrgRankedSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getCrossOrgWorkflowStats: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getCrossOrgWorkflowStats: invalid response shape");
+  }
+  return parsed.data;
+}

@@ -369,6 +369,18 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
           isActive={pathname.startsWith("/audit/instantly")}
         />
       </div>
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        <SidebarLink
+          item={{
+            id: "feature-sales-cold-email",
+            label: "Sales Cold Emails Outreach",
+            href: "/feature-stats/sales-cold-email-outreach",
+            icon: <BillingIcon />,
+          }}
+          isActive={pathname.startsWith("/feature-stats/sales-cold-email-outreach")}
+        />
+      </div>
     </SidebarSection>
   );
 }
