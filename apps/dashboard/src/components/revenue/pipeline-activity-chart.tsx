@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { isVisitDrivenGoal } from "@/lib/api";
+import { goalChartMetricKeys } from "@/lib/goal-steps";
 import type {
   BrandOptimizationGoal,
   PipelineActivityMetric,
@@ -114,10 +114,18 @@ function buildDailyCountMap(series: SignalSeries | undefined): Map<string, numbe
   return new Map((series?.daily ?? []).map((d) => [d.date, finite(d.count)] as const));
 }
 
+const METRIC_BY_KEY: Record<ChartMetricKey, MetricDef> = {
+  outreach: OUTREACH,
+  clicks: CLICKS,
+  repliedPositive: POSITIVE_REPLIES,
+};
+
+// The goal's on-path engagement signals, base→outcome (goal-steps single source):
+// visit goals → [Outreach, Website Visits]; positive_replies → [Outreach, Positive
+// replies]; sales_meetings → [Outreach, Website Visits, Positive replies] (both on
+// its click→reply→meeting path).
 function activeMetrics(optimizationGoal: BrandOptimizationGoal): MetricDef[] {
-  return isVisitDrivenGoal(optimizationGoal)
-    ? [OUTREACH, CLICKS]
-    : [OUTREACH, POSITIVE_REPLIES];
+  return goalChartMetricKeys(optimizationGoal).map((k) => METRIC_BY_KEY[k]);
 }
 
 function forecastExpected(

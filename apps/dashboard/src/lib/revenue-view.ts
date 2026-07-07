@@ -214,6 +214,9 @@ export interface Spend {
   /** REAL tracked sales-meeting-booked count (attributed + deduped) from the live tracker.
    *  Additive/optional; absent → the beta Sales Meetings card renders "—" + setup CTA. */
   salesMeetingsCount?: number;
+  /** REAL tracked form-submission count (attributed + deduped) from the live tracker —
+   *  the Form submissions card for a form_submissions brand. Additive/optional; absent → "—". */
+  formSubmissionsCount?: number;
   /** REAL cost per signup, USD cents = committed spend (actual+provisioned) ÷ `signupsCount`.
    *  Recomputed from live tracker data (the old PROJECTED cpsCents was removed in
    *  features-service#406). null when `signupsCount` is 0 (no denominator) → CPS card "—". */
@@ -221,6 +224,9 @@ export interface Spend {
   /** REAL cost per sales meeting booked, USD cents = committed spend ÷ `salesMeetingsCount`.
    *  Recomputed from live tracker data. null when `salesMeetingsCount` is 0 → CPSM card "—". */
   cpsmCents?: number | null;
+  /** REAL cost per form submission, USD cents = committed spend ÷ `formSubmissionsCount`.
+   *  null when `formSubmissionsCount` is 0 → CPFS card "—". */
+  cpfsCents?: number | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */

@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker-button";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrandConversionToken, isVisitDrivenGoal } from "@/lib/api";
+import { getBrandConversionToken } from "@/lib/api";
+import { goalOutcomeStep } from "@/lib/goal-steps";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { Spend } from "@/lib/revenue-view";
 
@@ -72,7 +72,6 @@ export function OutreachStatCards({
    */
   outreachOverride?: number | null;
 }) {
-  const isBeta = useIsBetaUser();
   const params = useParams();
   const orgId = params.orgId as string | undefined;
   const brandId = params.brandId as string | undefined;
@@ -130,31 +129,24 @@ export function OutreachStatCards({
     costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
   };
 
-  // The outcome COUNT + its cost card are REAL tracker values, server-provided by
-  // features-service (sourced from the brand's live conversion tracker). `count`
-  // is the real attributed count (renders once the tracker records conversions);
-  // null → the card shows "—" + the setup CTA. No projection.
-  const outcomeMetric =
-    !isVisitDrivenGoal(goal)
-      ? {
-          label: "Sales Meetings",
-          count: spend?.salesMeetingsCount,
-          costLabel: "CPSM",
-          costTooltip:
-            "Cost per sales meeting booked: committed spend divided by the real meetings your conversion tracker recorded.",
-          costValue: formatCostCents(spend?.cpsmCents),
-        }
-      : {
-          label: "Signups",
-          count: spend?.signupsCount,
-          costLabel: "CPS",
-          costTooltip:
-            "Cost per signup: committed spend divided by the real signups your conversion tracker recorded.",
-          costValue: formatCostCents(spend?.cpsCents),
-        };
-  // Real count → render it; absent (pre-tracker / cold payload) → "—" + setup CTA.
-  const outcomeCountValue =
-    outcomeMetric.count != null ? formatCount(outcomeMetric.count) : "—";
+  // The goal's downstream OUTCOME step (Signups / Sales Meetings / Form submissions /
+  // Purchases), or null for a 1-step goal whose outcome IS its signal (website_visits =
+  // the Website Visits card above, positive_replies = the reply) → no separate outcome
+  // card. goal-steps.ts is the single source, so form_submissions/purchase/positive_replies
+  // no longer borrow the Signups/Sales-Meetings surfaces (the "half-wired goal" trap).
+  const outcomeStep = goalOutcomeStep(goal);
+  const outcome = outcomeStep?.outcome ?? null;
+  // The outcome COUNT + its cost are REAL tracker values, server-provided by
+  // features-service (sourced from the brand's live conversion tracker). `countField`/
+  // `costField` are null when even the brand-level aggregate is not on the wire yet
+  // (purchase) → the card renders "—" + the setup CTA. No projection, no client math.
+  const outcomeCount =
+    outcome?.countField != null ? spend?.[outcome.countField] : undefined;
+  const outcomeCost = outcome?.costField != null ? spend?.[outcome.costField] : null;
+  const outcomeCountValue = outcomeCount != null ? formatCount(outcomeCount) : "—";
+  // Badge the outcome pair `beta` only while the GOAL itself is beta (purchase) — the
+  // GA goals (signups/sales_meetings/form_submissions) show their outcome ungated.
+  const goalIsBeta = goal === "purchase";
 
   return (
     <div className="mb-6">
@@ -183,14 +175,14 @@ export function OutreachStatCards({
         />
       </Cell>
 
-      {/* website_visits: the visit IS the outcome (the "Website Visits" card above),
-          so drop the borrowed Signups/CPS outcome card entirely for that goal. */}
-      {isBeta && goal !== "website_visits" && (
+      {/* The goal's outcome step (count + cost). Absent for 1-step goals
+          (website_visits / positive_replies) whose outcome IS their signal. */}
+      {outcomeStep && outcome && (
         <>
           <Cell>
             <ScoreCard
-              label={outcomeMetric.label}
-              badge={beta}
+              label={outcomeStep.label}
+              badge={goalIsBeta ? beta : undefined}
               value={outcomeCountValue}
               action={trackerButton ?? undefined}
               pending={pending}
@@ -198,10 +190,10 @@ export function OutreachStatCards({
           </Cell>
           <Cell>
             <ScoreCard
-              label={outcomeMetric.costLabel}
-              badge={beta}
-              tooltip={outcomeMetric.costTooltip}
-              value={outcomeMetric.costValue}
+              label={outcome.costLabel}
+              badge={goalIsBeta ? beta : undefined}
+              tooltip={`Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded.`}
+              value={formatCostCents(outcomeCost)}
               action={trackerButton ?? undefined}
               pending={pending}
             />

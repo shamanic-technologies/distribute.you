@@ -136,13 +136,17 @@ const SpendSchema = z.object({
   // cards render "—" + the setup CTA). Must be declared here or Zod strips them.
   signupsCount: z.coerce.number().optional(),
   salesMeetingsCount: z.coerce.number().optional(),
-  // REAL cost-per-signup / cost-per-meeting = committed spend (actual+provisioned)
-  // ÷ the REAL tracked count above (no projection — projected cpsCents/cpsmCents
-  // were removed in features-service#406 and are now recomputed from live tracker
-  // data). null when the count is 0 (no denominator) → the CPS/CPSM card renders
-  // "—", never a false $0.
+  // REAL tracked form-submission count (attributed, deduped) for a form_submissions
+  // brand — the visit-driven sibling of signups. Same rollout tolerance as above.
+  formSubmissionsCount: z.coerce.number().optional(),
+  // REAL cost-per-signup / cost-per-meeting / cost-per-form-submission = committed
+  // spend (actual+provisioned) ÷ the REAL tracked count above (no projection —
+  // projected cpsCents/cpsmCents were removed in features-service#406 and are now
+  // recomputed from live tracker data). null when the count is 0 (no denominator) →
+  // the CPS/CPSM/CPFS card renders "—", never a false $0.
   cpsCents: z.coerce.number().nullable().optional(),
   cpsmCents: z.coerce.number().nullable().optional(),
+  cpfsCents: z.coerce.number().nullable().optional(),
 });
 
 const FeatureRevenueResponseSchema = z.object({

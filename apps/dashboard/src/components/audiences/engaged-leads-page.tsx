@@ -9,7 +9,6 @@ import {
   listBrandLeads,
   getLeadConsolidatedStatus,
   getBrandSalesEconomics,
-  isVisitDrivenGoal,
   getLeadEmail,
   listAudiences,
   type Lead,
@@ -17,10 +16,18 @@ import {
   type LeadEmailGeneration,
   type AudienceWire,
 } from "@/lib/api";
+import { goalLeadTabs, type LeadTab } from "@/lib/goal-steps";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+
+// Labels for the goal-driven Leads tabs (goal-steps returns the ordered keys).
+const LEAD_TAB_LABEL: Record<LeadTab, string> = {
+  "positive-replies": "Positive replies",
+  clicks: "Website Visits",
+  outreach: "Outreach",
+};
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -633,22 +640,20 @@ export function EngagedLeadsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, sortedLeads]);
 
-  // Open, once (after leads + the sales-economics query have settled), the
-  // leftmost funnel tab that has leads, ordered by what the brand optimizes for:
-  // signups → Clicks first, sales_meetings → Positive replies first, otherwise
-  // Outreach first. Within each order we fall through to the next non-empty
-  // tab so the user never lands on an empty tab. User manual switches latch the
-  // ref and are never overridden by a later poll. Gate on `econData` (not
-  // `optimizationGoal`, which is null both while loading AND when unset).
+  // Open, once (after leads + the sales-economics query have settled), the leftmost
+  // on-path tab that has leads, in the goal's OUTCOME-FIRST order (goal-steps single
+  // source: sales_meetings → Positive replies first, visit goals → Website Visits
+  // first, Outreach last). Fall through to the next non-empty tab so the user never
+  // lands on an empty tab; default to the last (Outreach) when all empty. User manual
+  // switches latch the ref and are never overridden by a later poll. Gate on `econData`
+  // (not `optimizationGoal`, which is null both while loading AND when unset).
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
     if (sortedLeads.length === 0 || econData === undefined) return;
     hasAutoSelectedTab.current = true;
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
-    const order: Tab[] = isVisitDrivenGoal(optimizationGoal ?? "sales_meetings")
-      ? ["clicks", "outreach", "positive-replies"]
-      : ["positive-replies", "clicks", "outreach"];
-    setActiveTab(order.find((t) => count(t) > 0) ?? "outreach");
+    const order: Tab[] = goalLeadTabs(optimizationGoal ?? "sales_meetings");
+    setActiveTab(order.find((t) => count(t) > 0) ?? order[order.length - 1] ?? "outreach");
   }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
@@ -666,11 +671,16 @@ export function EngagedLeadsPage() {
     });
   }, [activeList, search]);
 
-  const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "positive-replies", label: "Positive replies", count: groupedByTab.get("positive-replies")?.length ?? 0 },
-    { key: "clicks", label: "Website Visits", count: groupedByTab.get("clicks")?.length ?? 0 },
-    { key: "outreach", label: "Outreach", count: groupedByTab.get("outreach")?.length ?? 0 },
-  ];
+  // Tabs = the goal's on-path steps only, outcome-first (goal-steps single source),
+  // so a website_visits/signups brand never shows a Positive-replies tab and a
+  // positive_replies brand never shows a Website-Visits tab (off-funnel steps dropped).
+  const tabs: { key: Tab; label: string; count: number }[] = goalLeadTabs(
+    optimizationGoal ?? "sales_meetings",
+  ).map((key) => ({
+    key,
+    label: LEAD_TAB_LABEL[key],
+    count: groupedByTab.get(key)?.length ?? 0,
+  }));
 
   // Contacted-lead count from the SAME listBrandLeads snapshot the table renders
   // (= the Outreach tab count). Passed to the stat box so the box reads the
