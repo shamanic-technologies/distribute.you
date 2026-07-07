@@ -130,9 +130,17 @@ const SpendSchema = z.object({
   actualCpcCents: z.coerce.number().nullable().optional(),
   provisionedCpcCents: z.coerce.number().nullable().optional(),
   cpcCents: z.coerce.number().nullable().optional(),
-  // cpsCents/cpsmCents (projected cost-per-signup/meeting) were removed in
-  // features-service#406. Optional so the parse survives their absence; the beta
-  // CPS/CPSM cards then render "—".
+  // REAL tracked conversion counts (attributed, deduped) from the brand's live
+  // conversion tracker — features-service sources them from lead-service. Optional
+  // for rollout tolerance (absent on a pre-rollout payload → the Signups/Meetings
+  // cards render "—" + the setup CTA). Must be declared here or Zod strips them.
+  signupsCount: z.coerce.number().optional(),
+  salesMeetingsCount: z.coerce.number().optional(),
+  // REAL cost-per-signup / cost-per-meeting = committed spend (actual+provisioned)
+  // ÷ the REAL tracked count above (no projection — projected cpsCents/cpsmCents
+  // were removed in features-service#406 and are now recomputed from live tracker
+  // data). null when the count is 0 (no denominator) → the CPS/CPSM card renders
+  // "—", never a false $0.
   cpsCents: z.coerce.number().nullable().optional(),
   cpsmCents: z.coerce.number().nullable().optional(),
 });

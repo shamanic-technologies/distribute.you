@@ -207,11 +207,19 @@ export interface Spend {
   /** LEGACY actual-only CPC. Optional for rollout: features-service renames it to
    *  `actualCpcCents`; render `totalCpcCents ?? cpcCents`. */
   cpcCents?: number | null;
-  /** Cost per signup, USD cents (PROJECTED). REMOVED in features-service#406 → optional;
-   *  absent → the beta CPS card renders "—". */
+  /** REAL tracked signup count (attributed + deduped) from the brand's live conversion
+   *  tracker — features-service sources it from lead-service. Additive/optional: absent on a
+   *  pre-rollout payload → the beta Signups card renders "—" + setup CTA. `0` is a real value. */
+  signupsCount?: number;
+  /** REAL tracked sales-meeting-booked count (attributed + deduped) from the live tracker.
+   *  Additive/optional; absent → the beta Sales Meetings card renders "—" + setup CTA. */
+  salesMeetingsCount?: number;
+  /** REAL cost per signup, USD cents = committed spend (actual+provisioned) ÷ `signupsCount`.
+   *  Recomputed from live tracker data (the old PROJECTED cpsCents was removed in
+   *  features-service#406). null when `signupsCount` is 0 (no denominator) → CPS card "—". */
   cpsCents?: number | null;
-  /** Cost per sales meeting booked, USD cents (PROJECTED). REMOVED in features-service#406
-   *  → optional; absent → the beta CPSM card renders "—". */
+  /** REAL cost per sales meeting booked, USD cents = committed spend ÷ `salesMeetingsCount`.
+   *  Recomputed from live tracker data. null when `salesMeetingsCount` is 0 → CPSM card "—". */
   cpsmCents?: number | null;
 }
 

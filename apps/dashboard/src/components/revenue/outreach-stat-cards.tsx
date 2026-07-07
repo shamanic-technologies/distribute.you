@@ -130,20 +130,31 @@ export function OutreachStatCards({
     costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
   };
 
+  // The outcome COUNT + its cost card are REAL tracker values, server-provided by
+  // features-service (sourced from the brand's live conversion tracker). `count`
+  // is the real attributed count (renders once the tracker records conversions);
+  // null → the card shows "—" + the setup CTA. No projection.
   const outcomeMetric =
     !isVisitDrivenGoal(goal)
       ? {
           label: "Sales Meetings",
+          count: spend?.salesMeetingsCount,
           costLabel: "CPSM",
-          costTooltip: "Cost per Sales Meetings.",
+          costTooltip:
+            "Cost per sales meeting booked: committed spend divided by the real meetings your conversion tracker recorded.",
           costValue: formatCostCents(spend?.cpsmCents),
         }
       : {
           label: "Signups",
+          count: spend?.signupsCount,
           costLabel: "CPS",
-          costTooltip: "Cost per signup — total spent divided by signups. Coming soon.",
+          costTooltip:
+            "Cost per signup: committed spend divided by the real signups your conversion tracker recorded.",
           costValue: formatCostCents(spend?.cpsCents),
         };
+  // Real count → render it; absent (pre-tracker / cold payload) → "—" + setup CTA.
+  const outcomeCountValue =
+    outcomeMetric.count != null ? formatCount(outcomeMetric.count) : "—";
 
   return (
     <div className="mb-6">
@@ -178,8 +189,8 @@ export function OutreachStatCards({
             <ScoreCard
               label={outcomeMetric.label}
               badge={beta}
-              value="—"
-              action={trackerButton}
+              value={outcomeCountValue}
+              action={outcomeCountValue === "—" ? trackerButton : undefined}
               pending={pending}
             />
           </Cell>

@@ -43,11 +43,21 @@ describe("OutreachStatCards copy", () => {
   it("shows the goal outcome beta pair for signups and sales meetings", () => {
     expect(cards).toContain('label: "Sales Meetings"');
     expect(cards).toContain('costLabel: "CPSM"');
-    expect(cards).toContain("Cost per Sales Meetings.");
     expect(cards).toContain('label: "Signups"');
     expect(cards).toContain('costLabel: "CPS"');
     expect(cards).not.toContain('label: "Sales"');
     expect(cards).not.toContain('costLabel: "CAC"');
+  });
+
+  it("renders the REAL server-provided tracker count for the outcome card, not a hardcoded dash", () => {
+    // Count comes from the features-service /revenue spend block (real, tracker-sourced),
+    // not the old hardcoded value="—".
+    expect(cards).toContain("count: spend?.signupsCount");
+    expect(cards).toContain("count: spend?.salesMeetingsCount");
+    expect(cards).toContain("outcomeMetric.count != null");
+    expect(cards).toContain("value={outcomeCountValue}");
+    // No projection language on the cost tooltips.
+    expect(cards).not.toContain("Coming soon");
   });
 
   it("formats cost-per metrics with two decimal places", () => {
