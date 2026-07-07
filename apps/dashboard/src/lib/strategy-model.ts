@@ -10,7 +10,12 @@ import type {
 // vitest (which has no "@/" alias), so a value import of "@/lib/api" fails to resolve.
 // Keep in lockstep with the exported api.ts helper.
 function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
-  return goal === "signups" || goal === "website_visits" || goal === "form_submissions";
+  return (
+    goal === "signups" ||
+    goal === "website_visits" ||
+    goal === "form_submissions" ||
+    goal === "purchase"
+  );
 }
 
 /**
@@ -56,6 +61,7 @@ export function modelAvatar(dynastySlug: string): { emoji: string; color: string
  *  The two beta goals borrow the nearest family (visit → signup, reply → meetingBooked);
  *  the enum has no single-step variant. */
 export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAudienceStatsGoal {
+  if (goal === "purchase") return "purchase";
   return isVisitDrivenGoal(goal) ? "signup" : "meetingBooked";
 }
 
@@ -70,6 +76,8 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
       return "positive reply";
     case "form_submissions":
       return "form submission";
+    case "purchase":
+      return "purchase";
     default:
       return "meeting";
   }
@@ -85,6 +93,7 @@ export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): Sales
   if (goal === "form_submissions") return "form_submissions";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
+  if (goal === "purchase") return "purchase";
   if (goal === "sales_meetings") return "meeting-booked";
   return "self-serve";
 }
