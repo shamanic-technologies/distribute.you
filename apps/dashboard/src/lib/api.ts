@@ -2937,9 +2937,67 @@ export function keepLastGoodWorkflowProjection(
 }
 
 /**
- * GET /features/:slug/workflow-projection — per-workflow cost-per-close + funnel projection
- * (at `budgetUsd`) + the recommended workflow/budget, for a brand under one objective.
- * Conversion economics are read server-side from the brand's saved sales-economics.
+ * Adapt the new 3-grain ladder to the legacy per-workflow `workflows[]` shape, so the
+ * consumers still on `getWorkflowProjection` (brand overview, launch, onboarding budget,
+ * workflows page + `workflow-projection-choice`) keep working unchanged after
+ * features-service folded /candidates in and dropped `workflows[]`. Pure SHAPE re-map:
+ * each brand-level row (audienceId null) → one workflow item, its fields read from the
+ * row's server-`resolved` grain block. No metric math — the corrected resolved numbers
+ * flow straight through, so every consumer inherits the brand-real fix. Funnel COUNTS
+ * (visits/replies/meetings) aren't in the new shape → null; safe because the unit costs
+ * (clickUsd/replyUsd/costPerSignupUsd/…) are floor-filled and drive the choice logic
+ * directly (the count fallbacks are only reached when a unit cost is null).
+ */
+function adaptWorkflowProjectionLadder(
+  ladder: WorkflowProjectionLadderResponse,
+  objective: SalesObjective,
+): WorkflowProjectionResponse {
+  const workflows: WorkflowProjectionItem[] = ladder.rows
+    .filter((r) => r.audienceId == null)
+    .map((r) => {
+      const block = r.estimatesByGrain[r.resolved.grain];
+      const p = block?.projected;
+      const u = block?.unitCosts;
+      return {
+        workflowDynastySlug: r.workflow.workflowDynastySlug,
+        workflowDynastyName: r.workflow.workflowDynastyName,
+        contactedUsd: u?.costPerContactedUsd ?? null,
+        replyUsd: u?.costPerPositiveReplyUsd ?? null,
+        clickUsd: u?.costPerClickUsd ?? r.resolved.costPerClickUsd,
+        costPerSignupUsd: p?.costPerSignupUsd ?? r.resolved.costPerOutcomeUsd ?? null,
+        costPerFormSubmissionUsd: null,
+        costPerCloseUsd: p?.costPerPaidClientUsd ?? r.resolved.costPerPaidClientUsd,
+        costPerMeetingBookedUsd:
+          p?.costPerMeetingBookedUsd ?? r.resolved.costPerMeetingBookedUsd,
+        roiMultiple: p?.roiMultiple ?? r.resolved.roiMultiple,
+        projection: {
+          contactedLeads: null,
+          replies: null,
+          visits: null,
+          formSubmissions: null,
+          meetings: null,
+          closes: null,
+          revenue: null,
+          cacPct: p?.cacPct ?? r.resolved.cacPct,
+          cacAbs: p?.costPerPaidClientUsd ?? r.resolved.costPerPaidClientUsd,
+        },
+      };
+    });
+  return {
+    featureSlug: ladder.featureSlug,
+    objective,
+    workflows,
+    recommendedWorkflowDynastySlug: ladder.recommendedWorkflowDynastySlug,
+    recommendedBudgetUsd: ladder.recommendedBudgetUsd,
+  };
+}
+
+/**
+ * GET /features/:slug/workflow-projection in the LEGACY `workflows[]` shape. Since
+ * features-service reshaped the endpoint into the 3-grain ladder (see
+ * `getWorkflowProjectionLadder`), this fetches the ladder and adapts it back to the old
+ * per-workflow shape for the remaining `workflows[]` consumers. New surfaces (Strategy)
+ * read the ladder directly; migrate a consumer off this adapter when convenient.
  */
 export async function getWorkflowProjection(
   params: {
@@ -2950,23 +3008,18 @@ export async function getWorkflowProjection(
   },
   token?: string,
 ): Promise<WorkflowProjectionResponse> {
-  const query = new URLSearchParams();
-  query.set("brandId", params.brandId);
-  query.set("objective", params.objective);
-  if (params.budgetUsd != null) query.set("budgetUsd", String(params.budgetUsd));
-  const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
-    { token },
+  const goal: FeatureAudienceStatsGoal =
+    params.objective === "meeting-booked" ? "meetingBooked" : "signup";
+  const ladder = await getWorkflowProjectionLadder(
+    {
+      featureSlug: params.featureSlug,
+      brandId: params.brandId,
+      goal,
+      objective: params.objective,
+    },
+    token,
   );
-  const parsed = WorkflowProjectionResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getWorkflowProjection: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getWorkflowProjection: invalid response shape");
-  }
-  return parsed.data;
+  return adaptWorkflowProjectionLadder(ladder, params.objective);
 }
 
 // ── Strategy: 3-grain workflow-projection ladder ─────────────────────────────
