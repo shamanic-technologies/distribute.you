@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker-button";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrandConversionToken, isVisitDrivenGoal } from "@/lib/api";
+import { getBrandConversionToken } from "@/lib/api";
+import { goalOutcomeStep } from "@/lib/goal-steps";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { Spend } from "@/lib/revenue-view";
 
@@ -72,7 +72,6 @@ export function OutreachStatCards({
    */
   outreachOverride?: number | null;
 }) {
-  const isBeta = useIsBetaUser();
   const params = useParams();
   const orgId = params.orgId as string | undefined;
   const brandId = params.brandId as string | undefined;
@@ -135,48 +134,61 @@ export function OutreachStatCards({
     costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
   };
 
-  // The outcome COUNT + its cost card are REAL tracker values, server-provided by
-  // features-service (sourced from the brand's live conversion tracker). `count`
-  // is the real attributed count (renders once the tracker records conversions);
-  // null → the card shows "—" + the setup CTA. No projection.
-  const outcomeMetric = isPositiveReplies
+  // The goal's downstream OUTCOME step (Signups / Sales Meetings / Form submissions /
+  // Purchases), or null for a 1-step goal whose outcome IS its signal. goal-steps.ts is
+  // the single source, so form_submissions/purchase no longer borrow the Signups/
+  // Sales-Meetings surfaces (the "half-wired goal" trap).
+  const outcomeStep = goalOutcomeStep(goal);
+  const outcome = outcomeStep?.outcome ?? null;
+  // The outcome COUNT + its cost are REAL tracker values, server-provided by
+  // features-service (sourced from the brand's live conversion tracker). `countField`/
+  // `costField` are null when even the brand-level aggregate is not on the wire yet
+  // (purchase) → the card renders "—" + the setup CTA. No projection, no client math.
+  const outcomeCount =
+    outcome?.countField != null ? spend?.[outcome.countField] : undefined;
+  const outcomeCost = outcome?.costField != null ? spend?.[outcome.costField] : null;
+  const outcomeCountValue = outcomeCount != null ? formatCount(outcomeCount) : "—";
+  // Badge the outcome pair `beta` only while the GOAL itself is beta (purchase) — the
+  // GA goals (signups/sales_meetings/form_submissions) show their outcome ungated.
+  const goalIsBeta = goal === "purchase";
+
+  // Unified outcome card. positive_replies is a 1-step goal (goalOutcomeStep is null) but
+  // the reply IS the outcome — surface it as Positive Replies + Cost per positive reply
+  // (GA, no badge, no conversion-tracker CTA: reply attribution is inbox-sourced, not the
+  // site tracker). Every other multi-step goal uses its goal-steps outcome step verbatim.
+  const outcomeCard: {
+    label: string;
+    countValue: string;
+    costLabel: string;
+    costTooltip: string;
+    costValue: string;
+    badge: ReactNode | undefined;
+    showAction: boolean;
+  } | null = isPositiveReplies
     ? {
         label: "Positive Replies",
-        count: spend?.positiveRepliesCount,
+        countValue:
+          spend?.positiveRepliesCount != null
+            ? formatCount(spend.positiveRepliesCount)
+            : "—",
         costLabel: "Cost per positive reply",
         costTooltip:
           "Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach.",
         costValue: formatCostCents(spend?.cpprCents),
+        badge: undefined,
+        showAction: false,
       }
-    : !isVisitDrivenGoal(goal)
+    : outcomeStep && outcome
       ? {
-          label: "Sales Meetings",
-          count: spend?.salesMeetingsCount,
-          costLabel: "CPSM",
-          costTooltip:
-            "Cost per sales meeting booked: committed spend divided by the real meetings your conversion tracker recorded.",
-          costValue: formatCostCents(spend?.cpsmCents),
+          label: outcomeStep.label,
+          countValue: outcomeCountValue,
+          costLabel: outcome.costLabel,
+          costTooltip: `Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded.`,
+          costValue: formatCostCents(outcomeCost),
+          badge: goalIsBeta ? beta : undefined,
+          showAction: true,
         }
-      : goal === "form_submissions"
-        ? {
-            label: "Form submissions",
-            count: spend?.formSubmissionsCount,
-            costLabel: "CPFS",
-            costTooltip:
-              "Cost per form submission: committed spend divided by the real form submissions your conversion tracker recorded.",
-            costValue: formatCostCents(spend?.cpfsCents),
-          }
-        : {
-            label: "Signups",
-            count: spend?.signupsCount,
-            costLabel: "CPS",
-            costTooltip:
-              "Cost per signup: committed spend divided by the real signups your conversion tracker recorded.",
-            costValue: formatCostCents(spend?.cpsCents),
-          };
-  // Real count → render it; absent (pre-tracker / cold payload) → "—" + setup CTA.
-  const outcomeCountValue =
-    outcomeMetric.count != null ? formatCount(outcomeMetric.count) : "—";
+      : null;
 
   return (
     <div className="mb-6">
@@ -211,27 +223,27 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* Outcome pair. website_visits: the visit IS the outcome (Website Visits card
-          above) → skip. positive_replies: GA outcome (Positive Replies + CPPR, no beta
-          badge). Signups/Meetings stay beta-gated. */}
-      {(isPositiveReplies || (isBeta && goal !== "website_visits")) && (
+      {/* Outcome pair — the goal's outcome step, or the reply for positive_replies (its
+          1-step outcome). website_visits stays 1-step with no card (its outcome IS the
+          Website Visits card above). */}
+      {outcomeCard && (
         <>
           <Cell>
             <ScoreCard
-              label={outcomeMetric.label}
-              badge={isPositiveReplies ? undefined : beta}
-              value={outcomeCountValue}
-              action={isPositiveReplies ? undefined : (trackerButton ?? undefined)}
+              label={outcomeCard.label}
+              badge={outcomeCard.badge}
+              value={outcomeCard.countValue}
+              action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
-              label={outcomeMetric.costLabel}
-              badge={isPositiveReplies ? undefined : beta}
-              tooltip={outcomeMetric.costTooltip}
-              value={outcomeMetric.costValue}
-              action={isPositiveReplies ? undefined : (trackerButton ?? undefined)}
+              label={outcomeCard.costLabel}
+              badge={outcomeCard.badge}
+              tooltip={outcomeCard.costTooltip}
+              value={outcomeCard.costValue}
+              action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}
               pending={pending}
             />
           </Cell>

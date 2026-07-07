@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { isVisitDrivenGoal } from "@/lib/api";
+import { goalChartMetricKeys } from "@/lib/goal-steps";
 import type {
   BrandOptimizationGoal,
   PipelineActivityMetric,
@@ -126,13 +126,20 @@ function buildDailyCountMap(series: SignalSeries | undefined): Map<string, numbe
   return new Map((series?.daily ?? []).map((d) => [d.date, finite(d.count)] as const));
 }
 
+const METRIC_BY_KEY: Record<ChartMetricKey, MetricDef> = {
+  outreach: OUTREACH,
+  clicks: CLICKS,
+  repliedPositive: POSITIVE_REPLIES,
+  formSubmissions: FORM_SUBMISSIONS,
+};
+
+// The goal's on-path signals with a daily series, base→outcome (goal-steps single
+// source): visit goals → [Outreach, Website Visits]; form_submissions also adds its
+// [Form submissions] bar (features-service serves the daily FS series); positive_replies
+// → [Outreach, Positive replies]; sales_meetings → [Outreach, Website Visits, Positive
+// replies] (both on its click→reply→meeting path).
 function activeMetrics(optimizationGoal: BrandOptimizationGoal): MetricDef[] {
-  // form_submissions: show the form-submission bar BESIDE Website Visits (both
-  // visit-driven) — three bars per day.
-  if (optimizationGoal === "form_submissions") return [OUTREACH, CLICKS, FORM_SUBMISSIONS];
-  return isVisitDrivenGoal(optimizationGoal)
-    ? [OUTREACH, CLICKS]
-    : [OUTREACH, POSITIVE_REPLIES];
+  return goalChartMetricKeys(optimizationGoal).map((k) => METRIC_BY_KEY[k]);
 }
 
 function forecastExpected(

@@ -87,7 +87,6 @@ const GOAL_OPTIONS: {
     value: "form_submissions",
     label: "# Form submissions",
     description: "Optimize outreach toward form submissions that convert to paid clients.",
-    beta: true,
   },
   {
     value: "purchase",

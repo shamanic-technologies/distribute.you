@@ -18,16 +18,16 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(button).toContain("Set up conversion tracker");
     expect(cards).toContain("/settings#conversion-tracking");
     expect(cards).toContain('import { useParams } from "next/navigation"');
-    // The button renders IN PLACE OF the value on EVERY untracked outcome card (via
+    // The button renders IN PLACE OF the value on an untracked outcome card (via
     // ScoreCard's `action` slot) whenever the tracker is not live — `trackerButton`
     // is null once live, so a live tracker hides the CTA and the real count/cost shows.
-    // EXCEPT positive_replies: reply attribution is inbox-sourced (not the site
-    // conversion tracker), so the CTA is suppressed there on both cards.
+    // Gated on the unified outcome card's `showAction`, which is false for positive_replies
+    // (reply attribution is inbox-sourced, not the site conversion tracker).
     expect(cards).toContain(
-      "action={isPositiveReplies ? undefined : (trackerButton ?? undefined)}",
+      "action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}",
     );
     expect(
-      cards.match(/action=\{isPositiveReplies \? undefined : \(trackerButton \?\? undefined\)\}/g)
+      cards.match(/action=\{outcomeCard\.showAction \? \(trackerButton \?\? undefined\) : undefined\}/g)
         ?.length,
     ).toBe(2);
     // Built only when the brand-scoped href resolves AND the tracker is not yet
@@ -37,8 +37,10 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(cards).toContain('conversionToken?.status === "live"');
     expect(cards).toContain('conversionToken?.status === "live_waiting"');
     expect(cards).toContain('["brandConversionToken", brandId]');
-    // The outcome cards that host the CTA are behind the same `isBeta` gate.
-    expect(cards).toContain("isBeta &&");
+    // The outcome cards that host the CTA render only when the goal has an outcome
+    // step (goal-steps single source) — not the old user-level isBeta gate.
+    expect(cards).toContain("outcomeStep && outcome");
+    expect(cards).not.toContain("isBeta &&");
   });
 
   it("renders the setup CTA as a discreet ghost button (transparent, 1px border, near-black text)", () => {
