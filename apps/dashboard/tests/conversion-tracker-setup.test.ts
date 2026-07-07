@@ -18,9 +18,12 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(button).toContain("Set up conversion tracker");
     expect(cards).toContain("/settings#conversion-tracking");
     expect(cards).toContain('import { useParams } from "next/navigation"');
-    // The button renders IN PLACE OF the value on every untracked outcome card
-    // (via ScoreCard's `action` slot), so it sits where the metric would be.
-    expect(cards).toContain("action={trackerButton}");
+    // The button renders IN PLACE OF the value on an untracked outcome card (via
+    // ScoreCard's `action` slot) — only when the value itself is missing ("—"),
+    // so a real tracker count/cost hides the CTA.
+    expect(cards).toContain(
+      'action={outcomeCountValue === "—" ? trackerButton : undefined}',
+    );
     expect(cards).toContain(
       'action={outcomeMetric.costValue === "—" ? trackerButton : undefined}',
     );
