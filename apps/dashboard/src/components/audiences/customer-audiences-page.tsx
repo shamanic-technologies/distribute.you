@@ -37,6 +37,68 @@ function formatCents(cents: number | null): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+type SortCol = "audience" | "cpc" | "clicks" | "outreach" | "remaining" | "size";
+
+/**
+ * Sort key for an audience row under a given column. `audience` sorts by name
+ * (string, always present); the numeric columns read the joined stats overlay /
+ * audience fields and return `null` when absent — the caller pushes nulls last.
+ */
+function sortValue(
+  col: SortCol,
+  audience: AudienceWire,
+  stats: FeatureAudienceStatsRow | undefined,
+): string | number | null {
+  switch (col) {
+    case "audience":
+      return (audience.name || "").toLowerCase();
+    case "cpc":
+      return stats?.metrics.cpcCents ?? null;
+    case "clicks":
+      return stats?.evidence.websiteClicks ?? null;
+    case "outreach":
+      return stats?.evidence.contacted ?? null;
+    case "remaining":
+      return audience.availableToContactPct ?? null;
+    case "size":
+      return audience.sizeCount ?? null;
+  }
+}
+
+/** Clickable, sortable column header. Shows a ▲/▼ caret when it's the active sort. */
+function SortHeader({
+  label,
+  col,
+  sortCol,
+  sortDir,
+  onSort,
+  align = "right",
+}: {
+  label: string;
+  col: SortCol;
+  sortCol: SortCol;
+  sortDir: "asc" | "desc";
+  onSort: (col: SortCol) => void;
+  align?: "left" | "right";
+}) {
+  const active = sortCol === col;
+  return (
+    <th className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : "text-left"}`}>
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        aria-label={`Sort by ${label}`}
+        className={`inline-flex items-center gap-1 transition hover:text-gray-600 ${
+          align === "right" ? "flex-row-reverse" : ""
+        } ${active ? "text-gray-700" : ""}`}
+      >
+        <span>{label}</span>
+        <span className="text-[9px] leading-none">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
+      </button>
+    </th>
+  );
+}
+
 /**
  * Audiences (beta).
  *
@@ -106,6 +168,22 @@ export function CustomerAudiencesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(initialAudienceId);
   const [aiOpen, setAiOpen] = useState(false);
   const [autoPrompt, setAutoPrompt] = useState<string | null>(null);
+
+  // Column sort. Defaults to Cost per click ascending (cheapest first) — the
+  // primary way the user ranks audiences. Clicking a header sorts by that column
+  // ascending; clicking the active header again toggles descending. Missing values
+  // (no attributed CPC/clicks/size) always sort LAST regardless of direction, so a
+  // null never masquerades as the cheapest ($0) row.
+  const [sortCol, setSortCol] = useState<SortCol>("cpc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const onSort = (col: SortCol) => {
+    if (col === sortCol) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
 
   const {
     data: activeData,
@@ -343,21 +421,35 @@ export function CustomerAudiencesPage() {
             </div>
           );
         }
+        // Sort the visible rows by the active column. Nulls (missing stat) always
+        // last, both directions, so a no-data row never sorts as the cheapest $0.
+        const sorted = [...visible].sort((a, b) => {
+          const av = sortValue(sortCol, a, statsByAudienceId.get(a.id));
+          const bv = sortValue(sortCol, b, statsByAudienceId.get(b.id));
+          if (av == null && bv == null) return 0;
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          const cmp =
+            typeof av === "string" && typeof bv === "string"
+              ? av.localeCompare(bv)
+              : (av as number) - (bv as number);
+          return sortDir === "asc" ? cmp : -cmp;
+        });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
             <table className="min-w-[900px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
-                  <th className="px-4 py-3 font-medium">Audience</th>
-                  <th className="px-4 py-3 text-right font-medium">Cost per click</th>
-                  <th className="px-4 py-3 text-right font-medium">Clicks</th>
-                  <th className="px-4 py-3 text-right font-medium">Outreach</th>
-                  <th className="px-4 py-3 text-right font-medium">Remaining</th>
-                  <th className="px-4 py-3 text-right font-medium">Size</th>
+                  <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
+                  <SortHeader label="Cost per click" col="cpc" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  <SortHeader label="Clicks" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  <SortHeader label="Outreach" col="outreach" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  <SortHeader label="Remaining" col="remaining" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  <SortHeader label="Size" col="size" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                 </tr>
               </thead>
               <tbody>
-                {visible.map((audience) => {
+                {sorted.map((audience) => {
                   const isSelected = selectedId === audience.id;
                   const stats = statsByAudienceId.get(audience.id);
                   return (
