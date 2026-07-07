@@ -6,7 +6,8 @@ import { ScoreCard } from "@/components/visibility/score-card";
 import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker-button";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { isVisitDrivenGoal } from "@/lib/api";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getBrandConversionToken, isVisitDrivenGoal } from "@/lib/api";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { Spend } from "@/lib/revenue-view";
 
@@ -83,6 +84,22 @@ export function OutreachStatCards({
     orgId && brandId
       ? `/orgs/${orgId}/brands/${brandId}/settings#conversion-tracking`
       : null;
+
+  // The conversion tracker's live status is server-owned (lead-service derives it
+  // from received pings/events). Once the client's site fires its first ping the
+  // tracker is proven alive (`live_waiting`) — or already receiving conversions
+  // (`live`) — so the "Set up conversion tracker" CTA must STOP showing, otherwise
+  // the stat cards nag "set up" while Brand Settings shows "Tracker live" (an
+  // incoherent secondary surface). Same query key as the settings card → the
+  // React Query cache is shared/deduped, no extra network. Gated on brandId.
+  const { data: conversionToken } = useAuthQuery(
+    ["brandConversionToken", brandId],
+    () => getBrandConversionToken(brandId as string),
+    { enabled: !!brandId },
+  );
+  const trackerLive =
+    conversionToken?.status === "live" ||
+    conversionToken?.status === "live_waiting";
   const goal = optimizationGoal ?? "sales_meetings";
   const outreach =
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
@@ -93,10 +110,11 @@ export function OutreachStatCards({
   // no value to show — so they render a discreet ghost button IN PLACE OF the
   // value (transparent, 1px border, near-black text) that deep-links to setup.
   // One shared button on every untracked outcome card, next to the metric it
-  // unblocks. Only built when the brand-scoped href resolves.
-  const trackerButton = setupHref ? (
-    <ConversionTrackerButton href={setupHref} />
-  ) : null;
+  // unblocks. Only built when the brand-scoped href resolves AND the tracker is
+  // not yet live — a live/live_waiting tracker no longer needs setup, so the
+  // cards fall back to a plain "—" until the first conversion produces a value.
+  const trackerButton =
+    setupHref && !trackerLive ? <ConversionTrackerButton href={setupHref} /> : null;
 
   const clickMetric = {
     label: "Clicks",
