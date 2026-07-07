@@ -192,7 +192,7 @@ export function OutreachStatCards({
               label={outcomeMetric.label}
               badge={beta}
               value={outcomeCountValue}
-              action={outcomeCountValue === "—" ? trackerButton : undefined}
+              action={trackerButton ?? undefined}
               pending={pending}
             />
           </Cell>
@@ -202,7 +202,7 @@ export function OutreachStatCards({
               badge={beta}
               tooltip={outcomeMetric.costTooltip}
               value={outcomeMetric.costValue}
-              action={outcomeMetric.costValue === "—" ? trackerButton : undefined}
+              action={trackerButton ?? undefined}
               pending={pending}
             />
           </Cell>
