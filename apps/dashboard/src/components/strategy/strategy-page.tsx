@@ -20,7 +20,7 @@ import {
   listWorkflowExamples,
   saveBrandProfileVersion,
 } from "@/lib/api";
-import type { WorkflowExampleEmail } from "@/lib/api";
+import type { WorkflowExampleEmail, WorkflowProjectionRow } from "@/lib/api";
 import {
   ALL_FIELDS,
   cloneFields,
@@ -41,6 +41,16 @@ import {
   WORKFLOW_GRAIN_LABEL,
 } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
+
+/** Cost per positive reply at a row's server-resolved grain — read VERBATIM from the
+ *  floor-filled unit-costs block (never null when the block exists), mirroring the
+ *  ladder→item adapter in api.ts. `null` when the row / grain block is absent. No
+ *  client-side math — same feature-service field the audiences page renders. */
+function cpprFromRow(row: WorkflowProjectionRow | null | undefined): number | null {
+  if (!row) return null;
+  const block = row.estimatesByGrain[row.resolved.grain];
+  return block?.unitCosts.costPerPositiveReplyUsd ?? null;
+}
 
 /** USD number → whole dollars "$X" (no cents) / "—". */
 function formatUsd(usd: number | null | undefined): string {
@@ -287,6 +297,10 @@ export function StrategyPage() {
   const goal = goalForOptimizationGoal(optimizationGoal);
   const objective = objectiveForOptimizationGoal(optimizationGoal);
   const noun = outcomeNoun(optimizationGoal);
+  // Sales-meetings objective → the funnel runs through a positive reply, so surface
+  // the cost per positive reply (a card left of "Cost / meeting" + a CPPR column left
+  // of CPC in the per-audience table). Read verbatim from the resolved grain.
+  const showReplyStat = optimizationGoal === "sales_meetings";
 
   // The 3-grain workflow-projection ladder: one row per (audienceId, workflow) with
   // its cost at each grain + the server-`resolved` grain (brand-real when the brand
@@ -624,13 +638,21 @@ export function StrategyPage() {
                   Labelled by grain (hint) so a fleet-benchmark or per-audience number is
                   never mislabelled "this brand"; costs render ">$X" when the grain saw 0
                   clicks (a floor, not an exact figure). */}
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+              <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${showReplyStat ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
                 <Stat
                   label="Cost / click"
                   value={formatUsdCents(resolved.costPerClickUsd)}
                   tooltip="Cost per click - what we pay on average for one prospect to click through to your site."
                   hint={grainHint(brandGrain)}
                 />
+                {showReplyStat && (
+                  <Stat
+                    label="Cost / positive reply"
+                    value={formatUsdFloor(cpprFromRow(brandRow), brandFloored)}
+                    tooltip="Cost per positive reply - what we pay on average for one prospect to reply with genuine interest."
+                    hint={grainHint(brandGrain)}
+                  />
+                )}
                 <Stat
                   label={`Cost / ${noun}`}
                   value={formatUsdFloor(resolved.costPerOutcomeUsd, brandFloored)}
@@ -678,10 +700,20 @@ export function StrategyPage() {
                   </p>
                 ) : (
                   <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200">
-                    <table className="w-full min-w-[600px] border-collapse text-sm">
+                    <table className={`w-full ${showReplyStat ? "min-w-[720px]" : "min-w-[600px]"} border-collapse text-sm`}>
                       <thead>
                         <tr className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                           <th className="px-4 py-2.5 text-left font-semibold">Audience</th>
+                          {showReplyStat && (
+                            <th className="px-4 py-2.5 text-right font-semibold">
+                              <span className="inline-flex items-center justify-end gap-1">
+                                <MetricLabel
+                                  text="CPPR"
+                                  tip="Cost per positive reply - what we pay on average for one prospect to reply with genuine interest."
+                                />
+                              </span>
+                            </th>
+                          )}
                           <th className="px-4 py-2.5 text-right font-semibold">
                             <span className="inline-flex items-center justify-end gap-1">
                               <MetricLabel
@@ -732,6 +764,11 @@ export function StrategyPage() {
                                   {r ? WORKFLOW_GRAIN_LABEL[r.grain] : "No data yet"}
                                 </span>
                               </td>
+                              {showReplyStat && (
+                                <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                                  {formatUsdFloor(cpprFromRow(row), floored)}
+                                </td>
+                              )}
                               <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                                 {formatUsdCents(r?.costPerClickUsd)}
                               </td>

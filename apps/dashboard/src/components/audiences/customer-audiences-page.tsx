@@ -9,6 +9,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
@@ -37,7 +38,7 @@ function formatCents(cents: number | null): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-type SortCol = "audience" | "cpc" | "clicks" | "outreach" | "remaining" | "size";
+type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "outreach" | "remaining" | "size";
 
 /**
  * Sort key for an audience row under a given column. `audience` sorts by name
@@ -52,6 +53,10 @@ function sortValue(
   switch (col) {
     case "audience":
       return (audience.name || "").toLowerCase();
+    case "replies":
+      return stats?.evidence.positiveReplies ?? null;
+    case "cppr":
+      return stats?.metrics.cpprCents ?? null;
     case "cpc":
       return stats?.metrics.cpcCents ?? null;
     case "clicks":
@@ -73,6 +78,7 @@ function SortHeader({
   sortDir,
   onSort,
   align = "right",
+  info,
 }: {
   label: string;
   col: SortCol;
@@ -80,21 +86,25 @@ function SortHeader({
   sortDir: "asc" | "desc";
   onSort: (col: SortCol) => void;
   align?: "left" | "right";
+  info?: string;
 }) {
   const active = sortCol === col;
   return (
     <th className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : "text-left"}`}>
-      <button
-        type="button"
-        onClick={() => onSort(col)}
-        aria-label={`Sort by ${label}`}
-        className={`inline-flex items-center gap-1 transition hover:text-gray-600 ${
-          align === "right" ? "flex-row-reverse" : ""
-        } ${active ? "text-gray-700" : ""}`}
-      >
-        <span>{label}</span>
-        <span className="text-[9px] leading-none">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
-      </button>
+      <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
+        <button
+          type="button"
+          onClick={() => onSort(col)}
+          aria-label={`Sort by ${label}`}
+          className={`inline-flex items-center gap-1 transition hover:text-gray-600 ${
+            align === "right" ? "flex-row-reverse" : ""
+          } ${active ? "text-gray-700" : ""}`}
+        >
+          <span>{label}</span>
+          <span className="text-[9px] leading-none">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
+        </button>
+        {info && <InfoTooltip tip={info} placement="bottom" />}
+      </span>
     </th>
   );
 }
@@ -176,7 +186,12 @@ export function CustomerAudiencesPage() {
   // null never masquerades as the cheapest ($0) row.
   const [sortCol, setSortCol] = useState<SortCol>("cpc");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  // Once the user clicks any header we stop overriding the default sort from the
+  // brand goal (the effect below only seeds the initial column, never fights a
+  // manual sort).
+  const [hasUserSorted, setHasUserSorted] = useState(false);
   const onSort = (col: SortCol) => {
+    setHasUserSorted(true);
     if (col === sortCol) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -225,6 +240,16 @@ export function CustomerAudiencesPage() {
   )
     ? "signup"
     : "meetingBooked";
+  // Sales-meetings goal → surface reply economics: extra "Positive Replies" +
+  // "CPPR" columns (left of Cost per click), and default the sort to CPPR asc.
+  const showMeetingCols = audienceStatsGoal === "meetingBooked";
+  // Seed the initial sort column from the brand goal once it resolves — CPPR for
+  // meetings, CPC for signup — until the user picks a column manually.
+  useEffect(() => {
+    if (hasUserSorted) return;
+    setSortCol(showMeetingCols ? "cppr" : "cpc");
+    setSortDir("asc");
+  }, [showMeetingCols, hasUserSorted]);
 
   // Per-audience outreach / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed
@@ -437,11 +462,31 @@ export function CustomerAudiencesPage() {
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="min-w-[900px] w-full text-sm">
+            <table className={`${showMeetingCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
-                  <SortHeader label="Cost per click" col="cpc" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  {showMeetingCols && (
+                    <>
+                      <SortHeader label="Positive replies" col="replies" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                      <SortHeader
+                        label="CPPR"
+                        col="cppr"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better."
+                      />
+                    </>
+                  )}
+                  <SortHeader
+                    label="Cost per click"
+                    col="cpc"
+                    sortCol={sortCol}
+                    sortDir={sortDir}
+                    onSort={onSort}
+                    info="Cost per click — audience-scoped spend divided by website clicks. Lower is better."
+                  />
                   <SortHeader label="Clicks" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Outreach" col="outreach" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Remaining" col="remaining" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
@@ -484,6 +529,28 @@ export function CustomerAudiencesPage() {
                           </div>
                         </div>
                       </td>
+                      {showMeetingCols && (
+                        <>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-10" />
+                            ) : stats ? (
+                              stats.evidence.positiveReplies.toLocaleString("en-US")
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats ? (
+                              formatCents(stats.metrics.cpprCents)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </>
+                      )}
                       <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                         {statsLoading ? (
                           <Skeleton className="ml-auto h-4 w-12" />
