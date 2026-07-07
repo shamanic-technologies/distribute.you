@@ -50,16 +50,16 @@ function formatUsd(usd: number | null | undefined): string {
 }
 
 /**
- * USD render for a resolved cost-per-X tile — whole dollars, no cents ("$39"). When
- * `floored` the grain observed zero clicks/outcomes, so the number is a floor
- * (spentUsd / max(1)); we render it plain (no ">" prefix) because the ">" read as
- * confusing on a not-yet-realized outcome. `floored` is kept for callers that still
- * distinguish the grain elsewhere.
+ * USD render for a resolved cost-per-X tile — two decimals ("$0.58"); the cents carry
+ * real precision on per-click / per-signup costs. When `floored` the grain observed zero
+ * clicks/outcomes, so the number is a floor (spentUsd / max(1)); we render it plain (no
+ * ">" prefix) because the ">" read as confusing on a not-yet-realized outcome. `floored`
+ * is kept for callers that still distinguish the grain elsewhere.
  */
 function formatUsdFloor(usd: number | null | undefined, _floored: boolean): string {
   if (usd == null) return "-";
-  if (usd <= 0) return "$0";
-  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  if (usd <= 0) return "$0.00";
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */
