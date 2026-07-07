@@ -480,14 +480,14 @@ export function CustomerAudiencesPage() {
                     </>
                   )}
                   <SortHeader
-                    label="Cost per click"
+                    label="Cost per website visit"
                     col="cpc"
                     sortCol={sortCol}
                     sortDir={sortDir}
                     onSort={onSort}
-                    info="Cost per click — audience-scoped spend divided by website clicks. Lower is better."
+                    info="Cost per website visit — audience-scoped spend divided by website visits. Lower is better."
                   />
-                  <SortHeader label="Clicks" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  <SortHeader label="Website Visits" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Outreach" col="outreach" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Remaining" col="remaining" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Size" col="size" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />

@@ -23,12 +23,12 @@ function formatCents(cents: number | null): string {
 }
 
 function metricLabel(metric: FeatureAudienceStatsSortMetric): string {
-  return metric === "cpc" ? "CPC" : "CPPR";
+  return metric === "cpc" ? "Cost per website visit" : "CPPR";
 }
 
 function metricInfo(metric: FeatureAudienceStatsSortMetric): string {
   return metric === "cpc"
-    ? "Cost per click — audience-scoped spend divided by website clicks. Lower is better."
+    ? "Cost per website visit — audience-scoped spend divided by website visits. Lower is better."
     : "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.";
 }
 

@@ -38,7 +38,7 @@ type MetricDef = {
 };
 
 const OUTREACH: MetricDef = { key: "outreach", label: "Outreach", actual: "#334155", expected: "#cbd5e1" };
-const CLICKS: MetricDef = { key: "clicks", label: "Clicks", actual: "#0891b2", expected: "#bae6fd" };
+const CLICKS: MetricDef = { key: "clicks", label: "Website Visits", actual: "#0891b2", expected: "#bae6fd" };
 const POSITIVE_REPLIES: MetricDef = {
   key: "repliedPositive",
   label: "Positive replies",

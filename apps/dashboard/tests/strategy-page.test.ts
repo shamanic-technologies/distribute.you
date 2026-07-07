@@ -267,22 +267,25 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain("activeAudiences");
     expect(page).toContain("Estimates by audience");
   });
-  it("shows the five served projected-economics boxes for the best model", () => {
-    expect(page).toContain("Cost / click");
+  it("shows the served projected-economics boxes for the best model", () => {
+    // "Cost per website visit" = the click cost; for website_visits it IS the outcome,
+    // so the separate "Cost / <noun>" outcome tile is dropped for that goal only.
+    expect(page).toContain("Cost per website visit");
+    expect(page).toContain("isWebsiteVisitsGoal");
     expect(page).toContain("Cost / paid client");
     expect(page).toContain("Lifetime revenue on each dollar spent");
     expect(page).toContain("Cost of acquisition");
   });
-  it("renders the per-audience metric table with expansion-first CPC/CPS/ROI/CAC tooltips", () => {
+  it("renders the per-audience metric table with expansion-first cost/ROI/CAC tooltips", () => {
     expect(page).toContain("MetricLabel");
-    expect(page).toContain('text="CPC"');
+    expect(page).toContain('text="Cost per website visit"');
     expect(page).toContain('text="CAC"');
     expect(page).toContain('text="ROI"');
     expect(page).toContain("formatRoi");
     // CAC is rendered as a % (cost-to-win ÷ lifetime revenue), not a $ amount
     expect(page).toContain("formatPctWhole(r?.cacPct)");
     // tooltips spell out the abbreviation first
-    expect(page).toContain("Cost per click -");
+    expect(page).toContain("Cost per website visit -");
     expect(page).toContain("Customer acquisition cost -");
     expect(page).toContain("Return on investment -");
     // the confusing single-value label is gone

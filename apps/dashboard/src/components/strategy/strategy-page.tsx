@@ -30,7 +30,6 @@ import {
   type ProfileFields,
 } from "@/components/brand-profile/field-editor";
 import {
-  goalForOptimizationGoal,
   isRowFloored,
   modelAvatar,
   objectiveForOptimizationGoal,
@@ -294,13 +293,17 @@ export function StrategyPage() {
   const econ = econData?.salesEconomics ?? null;
   // Default to the meetings objective until the saved economics resolve.
   const optimizationGoal = econ?.optimizationGoal ?? "sales_meetings";
-  const goal = goalForOptimizationGoal(optimizationGoal);
   const objective = objectiveForOptimizationGoal(optimizationGoal);
   const noun = outcomeNoun(optimizationGoal);
   // Sales-meetings objective → the funnel runs through a positive reply, so surface
   // the cost per positive reply (a card left of "Cost / meeting" + a CPPR column left
   // of CPC in the per-audience table). Read verbatim from the resolved grain.
   const showReplyStat = optimizationGoal === "sales_meetings";
+  // For a website-visits brand the OUTCOME is the website visit itself, i.e. the click:
+  // cost per website visit ≡ cost per click. So we render ONE "Cost per website visit"
+  // tile/column (the click cost) and drop the separate outcome tile/column that would
+  // otherwise duplicate it. Other goals keep both (click cost + a distinct outcome cost).
+  const isWebsiteVisitsGoal = optimizationGoal === "website_visits";
 
   // The 3-grain workflow-projection ladder: one row per (audienceId, workflow) with
   // its cost at each grain + the server-`resolved` grain (brand-real when the brand
@@ -308,8 +311,8 @@ export function StrategyPage() {
   // headline (brand-level row) and the per-audience table (per-audience rows). Every
   // cost is read verbatim from `resolved` — no client-side CPC/CPS/projection math.
   const { data: projection, isPending: projPending } = useAuthQuery(
-    ["workflowProjection", featureSlug, brandId, goal, "strategy-ladder"],
-    () => getWorkflowProjectionLadder({ featureSlug, brandId, goal, objective }),
+    ["workflowProjection", featureSlug, brandId, objective, "strategy-ladder"],
+    () => getWorkflowProjectionLadder({ featureSlug, brandId, objective }),
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
 
@@ -638,11 +641,11 @@ export function StrategyPage() {
                   Labelled by grain (hint) so a fleet-benchmark or per-audience number is
                   never mislabelled "this brand"; costs render ">$X" when the grain saw 0
                   clicks (a floor, not an exact figure). */}
-              <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${showReplyStat ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+              <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${showReplyStat ? "lg:grid-cols-6" : isWebsiteVisitsGoal ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
                 <Stat
-                  label="Cost / click"
+                  label="Cost per website visit"
                   value={formatUsdCents(resolved.costPerClickUsd)}
-                  tooltip="Cost per click - what we pay on average for one prospect to click through to your site."
+                  tooltip="Cost per website visit - what we pay on average for one prospect to visit your site."
                   hint={grainHint(brandGrain)}
                 />
                 {showReplyStat && (
@@ -653,12 +656,16 @@ export function StrategyPage() {
                     hint={grainHint(brandGrain)}
                   />
                 )}
-                <Stat
-                  label={`Cost / ${noun}`}
-                  value={formatUsdFloor(resolved.costPerOutcomeUsd, brandFloored)}
-                  tooltip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
-                  hint={grainHint(brandGrain)}
-                />
+                {/* website_visits: the visit IS the outcome (= the click), so the tile above
+                    already shows it — skip the duplicate outcome tile. */}
+                {!isWebsiteVisitsGoal && (
+                  <Stat
+                    label={`Cost / ${noun}`}
+                    value={formatUsdFloor(resolved.costPerOutcomeUsd, brandFloored)}
+                    tooltip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
+                    hint={grainHint(brandGrain)}
+                  />
+                )}
                 <Stat
                   label="Cost / paid client"
                   value={formatUsdFloor(resolved.costPerPaidClientUsd, brandFloored)}
@@ -717,19 +724,22 @@ export function StrategyPage() {
                           <th className="px-4 py-2.5 text-right font-semibold">
                             <span className="inline-flex items-center justify-end gap-1">
                               <MetricLabel
-                                text="CPC"
-                                tip="Cost per click - what we pay on average for one prospect to click through to your site."
+                                text="Cost per website visit"
+                                tip="Cost per website visit - what we pay on average for one prospect to visit your site."
                               />
                             </span>
                           </th>
-                          <th className="px-4 py-2.5 text-right font-semibold">
-                            <span className="inline-flex items-center justify-end gap-1">
-                              <MetricLabel
-                                text={optimizationGoal === "signups" ? "CPS" : `Cost / ${noun}`}
-                                tip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
-                              />
-                            </span>
-                          </th>
+                          {/* website_visits: outcome ≡ website visit ≡ the column above — skip. */}
+                          {!isWebsiteVisitsGoal && (
+                            <th className="px-4 py-2.5 text-right font-semibold">
+                              <span className="inline-flex items-center justify-end gap-1">
+                                <MetricLabel
+                                  text={optimizationGoal === "signups" ? "CPS" : `Cost / ${noun}`}
+                                  tip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
+                                />
+                              </span>
+                            </th>
+                          )}
                           <th className="px-4 py-2.5 text-right font-semibold">
                             <span className="inline-flex items-center justify-end gap-1">
                               <MetricLabel
@@ -772,9 +782,11 @@ export function StrategyPage() {
                               <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                                 {formatUsdCents(r?.costPerClickUsd)}
                               </td>
-                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                                {formatUsdFloor(r?.costPerOutcomeUsd, floored)}
-                              </td>
+                              {!isWebsiteVisitsGoal && (
+                                <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                                  {formatUsdFloor(r?.costPerOutcomeUsd, floored)}
+                                </td>
+                              )}
                               <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                                 {formatRoi(r?.roiMultiple)}
                               </td>

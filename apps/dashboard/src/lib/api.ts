@@ -2837,16 +2837,28 @@ export async function fetchGlobalRankedWorkflows(params: {
 // cost-per-close + funnel projection from the brand's SAVED economics. Consumers (brand overview,
 // workflows page, onboarding) render those server values directly via getWorkflowProjection.
 // Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
-export type SalesObjective = "meeting-booked" | "self-serve" | "form_submissions";
+export type SalesObjective =
+  | "meeting-booked"
+  | "self-serve"
+  | "form_submissions"
+  | "website_visits"
+  | "positive_replies";
 
 export function salesObjectiveForOptimizationGoal(
   goal: BrandOptimizationGoal,
 ): SalesObjective {
-  // form_submissions has its OWN two-step objective (features sizes the budget on
-  // costPerFormSubmissionUsd). website_visits borrows self-serve (visit-driven);
-  // positive_replies borrows meeting-booked (reply-driven) — no single-step objective variant.
+  // Each goal maps to features-service's native objective so the server computes the
+  // right funnel: website_visits + positive_replies are SINGLE-STEP (visit→paid /
+  // reply→paid, using visitToPaidClientPct / replyToPaidClientPct); form_submissions is
+  // its own two-step; signups → self-serve (visit→signup→paid); sales_meetings →
+  // meeting-booked. (features-service natively supports all five — the old "borrow the
+  // nearest family" workaround is gone; sending the real goal fixes cost-per-outcome,
+  // cost-per-paid-client, ROI + CAC for the single-step goals.)
   if (goal === "form_submissions") return "form_submissions";
-  return isVisitDrivenGoal(goal) ? "self-serve" : "meeting-booked";
+  if (goal === "website_visits") return "website_visits";
+  if (goal === "positive_replies") return "positive_replies";
+  if (goal === "sales_meetings") return "meeting-booked";
+  return "self-serve";
 }
 
 /** Per-workflow funnel projection at the requested budget. All fields null where the route
@@ -2888,7 +2900,13 @@ const WorkflowProjectionItemSchema = z.object({
 
 const WorkflowProjectionResponseSchema = z.object({
   featureSlug: z.string(),
-  objective: z.union([z.literal("meeting-booked"), z.literal("self-serve"), z.literal("form_submissions")]),
+  objective: z.union([
+    z.literal("meeting-booked"),
+    z.literal("self-serve"),
+    z.literal("form_submissions"),
+    z.literal("website_visits"),
+    z.literal("positive_replies"),
+  ]),
   workflows: z.array(WorkflowProjectionItemSchema),
   recommendedWorkflowDynastySlug: z.string().nullable(),
   recommendedBudgetUsd: z.number().nullable(),

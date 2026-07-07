@@ -49,7 +49,7 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(section).toContain("isVisitDrivenGoal(optimizationGoal)");
     expect(section).toContain("pipelineActualSeries?.clicks");
     expect(section).toContain("pipelineActualSeries?.repliedPositive");
-    expect(section).toContain('"Website clicks"');
+    expect(section).toContain('"Website visits"');
     expect(section).toContain('"Positive replies"');
   });
 

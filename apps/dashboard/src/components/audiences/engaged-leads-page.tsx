@@ -668,7 +668,7 @@ export function EngagedLeadsPage() {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "positive-replies", label: "Positive replies", count: groupedByTab.get("positive-replies")?.length ?? 0 },
-    { key: "clicks", label: "Clicks", count: groupedByTab.get("clicks")?.length ?? 0 },
+    { key: "clicks", label: "Website Visits", count: groupedByTab.get("clicks")?.length ?? 0 },
     { key: "outreach", label: "Outreach", count: groupedByTab.get("outreach")?.length ?? 0 },
   ];
 

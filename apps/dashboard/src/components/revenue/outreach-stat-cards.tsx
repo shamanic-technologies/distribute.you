@@ -117,13 +117,13 @@ export function OutreachStatCards({
     setupHref && !trackerLive ? <ConversionTrackerButton href={setupHref} /> : null;
 
   const clickMetric = {
-    label: "Clicks",
+    label: "Website Visits",
     tooltip:
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     value: formatCount(clicks),
-    costLabel: "CPC",
+    costLabel: "Cost per website visit",
     costTooltip:
-      "Cost per click: committed spend (billed plus reserved for scheduled follow-ups) divided by link clicks. It can dip when a reserved follow-up sends or gets cancelled.",
+      "Cost per website visit: committed spend (billed plus reserved for scheduled follow-ups) divided by website visits. It can dip when a reserved follow-up sends or gets cancelled.",
     // Committed CPC (= actual + provisioned / clicks). Prefer the new `totalCpcCents`,
     // fall back to the legacy `cpcCents` until features-service lands. Server-provided
     // either way — no client division.
@@ -183,7 +183,9 @@ export function OutreachStatCards({
         />
       </Cell>
 
-      {isBeta && (
+      {/* website_visits: the visit IS the outcome (the "Website Visits" card above),
+          so drop the borrowed Signups/CPS outcome card entirely for that goal. */}
+      {isBeta && goal !== "website_visits" && (
         <>
           <Cell>
             <ScoreCard

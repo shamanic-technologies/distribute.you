@@ -30,14 +30,18 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain('label="Impressions"');
   });
 
-  it("uses Clicks/CPC with the requested click tooltip for every goal", () => {
-    expect(cards).toContain('label: "Clicks"');
+  it("uses Website Visits / Cost per website visit with the requested tooltip for every goal", () => {
+    expect(cards).toContain('label: "Website Visits"');
     expect(cards).toContain(
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     );
-    expect(cards).toContain('costLabel: "CPC"');
+    expect(cards).toContain('costLabel: "Cost per website visit"');
     expect(cards).not.toContain('label: "Positive Replies"');
     expect(cards).not.toContain('costLabel: "CPPR"');
+  });
+
+  it("drops the borrowed Signups/CPS outcome card when the goal is website_visits", () => {
+    expect(cards).toContain('goal !== "website_visits"');
   });
 
   it("shows the goal outcome beta pair for signups and sales meetings", () => {
