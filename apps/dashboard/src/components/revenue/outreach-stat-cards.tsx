@@ -100,6 +100,11 @@ export function OutreachStatCards({
     conversionToken?.status === "live" ||
     conversionToken?.status === "live_waiting";
   const goal = optimizationGoal ?? "sales_meetings";
+  // positive_replies is a SINGLE-STEP goal (reply IS the outcome; reply → paid). Clicks /
+  // website visits aren't in that funnel, so the Website Visits + Cost-per-visit cards are
+  // hidden and the outcome pair becomes Positive Replies + Cost per positive reply (GA, no
+  // beta badge — the goal itself is GA).
+  const isPositiveReplies = goal === "positive_replies";
   const outreach =
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
@@ -130,10 +135,9 @@ export function OutreachStatCards({
   };
 
   // The goal's downstream OUTCOME step (Signups / Sales Meetings / Form submissions /
-  // Purchases), or null for a 1-step goal whose outcome IS its signal (website_visits =
-  // the Website Visits card above, positive_replies = the reply) → no separate outcome
-  // card. goal-steps.ts is the single source, so form_submissions/purchase/positive_replies
-  // no longer borrow the Signups/Sales-Meetings surfaces (the "half-wired goal" trap).
+  // Purchases), or null for a 1-step goal whose outcome IS its signal. goal-steps.ts is
+  // the single source, so form_submissions/purchase no longer borrow the Signups/
+  // Sales-Meetings surfaces (the "half-wired goal" trap).
   const outcomeStep = goalOutcomeStep(goal);
   const outcome = outcomeStep?.outcome ?? null;
   // The outcome COUNT + its cost are REAL tracker values, server-provided by
@@ -148,6 +152,44 @@ export function OutreachStatCards({
   // GA goals (signups/sales_meetings/form_submissions) show their outcome ungated.
   const goalIsBeta = goal === "purchase";
 
+  // Unified outcome card. positive_replies is a 1-step goal (goalOutcomeStep is null) but
+  // the reply IS the outcome — surface it as Positive Replies + Cost per positive reply
+  // (GA, no badge, no conversion-tracker CTA: reply attribution is inbox-sourced, not the
+  // site tracker). Every other multi-step goal uses its goal-steps outcome step verbatim.
+  const outcomeCard: {
+    label: string;
+    countValue: string;
+    costLabel: string;
+    costTooltip: string;
+    costValue: string;
+    badge: ReactNode | undefined;
+    showAction: boolean;
+  } | null = isPositiveReplies
+    ? {
+        label: "Positive Replies",
+        countValue:
+          spend?.positiveRepliesCount != null
+            ? formatCount(spend.positiveRepliesCount)
+            : "—",
+        costLabel: "Cost per positive reply",
+        costTooltip:
+          "Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach.",
+        costValue: formatCostCents(spend?.cpprCents),
+        badge: undefined,
+        showAction: false,
+      }
+    : outcomeStep && outcome
+      ? {
+          label: outcomeStep.label,
+          countValue: outcomeCountValue,
+          costLabel: outcome.costLabel,
+          costTooltip: `Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded.`,
+          costValue: formatCostCents(outcomeCost),
+          badge: goalIsBeta ? beta : undefined,
+          showAction: true,
+        }
+      : null;
+
   return (
     <div className="mb-6">
     <div className="flex flex-nowrap gap-3 overflow-x-auto">
@@ -158,43 +200,50 @@ export function OutreachStatCards({
           pending={pending}
         />
       </Cell>
-      <Cell>
-        <ScoreCard
-          label={clickMetric.label}
-          tooltip={clickMetric.tooltip}
-          value={clickMetric.value}
-          pending={pending}
-        />
-      </Cell>
-      <Cell>
-        <ScoreCard
-          label={clickMetric.costLabel}
-          tooltip={clickMetric.costTooltip}
-          value={clickMetric.costValue}
-          pending={pending}
-        />
-      </Cell>
-
-      {/* The goal's outcome step (count + cost). Absent for 1-step goals
-          (website_visits / positive_replies) whose outcome IS their signal. */}
-      {outcomeStep && outcome && (
+      {/* positive_replies: reply→paid single-step — clicks/website visits aren't in the
+          funnel, so hide the Website Visits count + Cost-per-visit cards entirely. */}
+      {!isPositiveReplies && (
         <>
           <Cell>
             <ScoreCard
-              label={outcomeStep.label}
-              badge={goalIsBeta ? beta : undefined}
-              value={outcomeCountValue}
-              action={trackerButton ?? undefined}
+              label={clickMetric.label}
+              tooltip={clickMetric.tooltip}
+              value={clickMetric.value}
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
-              label={outcome.costLabel}
-              badge={goalIsBeta ? beta : undefined}
-              tooltip={`Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded.`}
-              value={formatCostCents(outcomeCost)}
-              action={trackerButton ?? undefined}
+              label={clickMetric.costLabel}
+              tooltip={clickMetric.costTooltip}
+              value={clickMetric.costValue}
+              pending={pending}
+            />
+          </Cell>
+        </>
+      )}
+
+      {/* Outcome pair — the goal's outcome step, or the reply for positive_replies (its
+          1-step outcome). website_visits stays 1-step with no card (its outcome IS the
+          Website Visits card above). */}
+      {outcomeCard && (
+        <>
+          <Cell>
+            <ScoreCard
+              label={outcomeCard.label}
+              badge={outcomeCard.badge}
+              value={outcomeCard.countValue}
+              action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}
+              pending={pending}
+            />
+          </Cell>
+          <Cell>
+            <ScoreCard
+              label={outcomeCard.costLabel}
+              badge={outcomeCard.badge}
+              tooltip={outcomeCard.costTooltip}
+              value={outcomeCard.costValue}
+              action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}
               pending={pending}
             />
           </Cell>

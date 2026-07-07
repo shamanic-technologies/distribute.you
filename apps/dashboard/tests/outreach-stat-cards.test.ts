@@ -30,13 +30,27 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain('label="Impressions"');
   });
 
-  it("uses Website Visits / Cost per website visit with the requested tooltip for every goal", () => {
+  it("uses Website Visits / Cost per website visit with the requested tooltip", () => {
     expect(cards).toContain('label: "Website Visits"');
     expect(cards).toContain(
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     );
     expect(cards).toContain('costLabel: "Cost per website visit"');
-    expect(cards).not.toContain('label: "Positive Replies"');
+  });
+
+  it("hides the click cards and shows the Positive Replies outcome for positive_replies", () => {
+    // Single-step reply→paid goal: Website Visits + CPC cards are hidden, and the unified
+    // outcome card becomes Positive Replies + Cost per positive reply (GA, no beta badge,
+    // no conversion-tracker CTA — reply attribution is inbox-sourced).
+    expect(cards).toContain('const isPositiveReplies = goal === "positive_replies"');
+    expect(cards).toContain("{!isPositiveReplies && (");
+    expect(cards).toContain('label: "Positive Replies"');
+    expect(cards).toContain('costLabel: "Cost per positive reply"');
+    expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
+    expect(cards).toContain("formatCostCents(spend?.cpprCents)");
+    // GA outcome — the reply card carries no beta badge and no setup CTA.
+    expect(cards).toContain("showAction: false");
+    // CPPR abbreviation is not used as a card label here (full phrase instead).
     expect(cards).not.toContain('costLabel: "CPPR"');
   });
 
@@ -50,8 +64,12 @@ describe("OutreachStatCards copy", () => {
   });
 
   it("renders the goal's outcome label + cost label from the step (not a hardcoded binary)", () => {
-    expect(cards).toContain("label={outcomeStep.label}");
-    expect(cards).toContain("label={outcome.costLabel}");
+    // The multi-step outcome card sources its label/cost-label from the goal-steps step.
+    expect(cards).toContain("label: outcomeStep.label");
+    expect(cards).toContain("costLabel: outcome.costLabel");
+    // The render reads them off the unified outcome card.
+    expect(cards).toContain("label={outcomeCard.label}");
+    expect(cards).toContain("label={outcomeCard.costLabel}");
     expect(cards).not.toContain('label: "Sales"');
     expect(cards).not.toContain('costLabel: "CAC"');
   });
@@ -73,7 +91,7 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("spend?.[outcome.countField]");
     expect(cards).toContain("spend?.[outcome.costField]");
     expect(cards).toContain("outcomeCount != null");
-    expect(cards).toContain("value={outcomeCountValue}");
+    expect(cards).toContain("value={outcomeCard.countValue}");
     // No projection language on the cost tooltips.
     expect(cards).not.toContain("Coming soon");
   });

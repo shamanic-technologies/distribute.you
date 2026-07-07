@@ -354,6 +354,15 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain("Lifetime revenue on each dollar spent");
     expect(page).toContain("Cost of acquisition");
   });
+  it("drops the Cost per website visit tile + column for positive_replies", () => {
+    // Single-step reply→paid goal: clicks aren't in the funnel, so the CPC tile/column
+    // are gated off; the "Cost / positive reply" outcome tile prices the funnel instead.
+    expect(page).toContain(
+      'const isPositiveRepliesGoal = optimizationGoal === "positive_replies"',
+    );
+    expect(page).toContain("{!isPositiveRepliesGoal && (");
+    expect(page).toContain("isWebsiteVisitsGoal || isPositiveRepliesGoal");
+  });
   it("renders the per-audience metric table with expansion-first cost/ROI/CAC tooltips", () => {
     expect(page).toContain("MetricLabel");
     expect(page).toContain('text="Cost per website visit"');
