@@ -10,6 +10,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -395,10 +396,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const { isLoading: featuresLoading } = useFeatures();
   const { organization } = useOrganization();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  // Brand Profile is GA (scoped to revenue features) — surfaced flat at the
-  // sidebar bottom next to Brand Settings, replacing the old intermediate
-  // Settings button.
-  const brandProfileOk = isRevenueFeature(featureSlug);
+  // Brand Profile is BETA (email allowlist) — surfaced flat at the sidebar
+  // bottom next to Brand Settings. Scoped to revenue features AND gated to the
+  // beta allowlist; carries the beta badge on the nav entry.
+  const isBeta = useIsBetaUser();
+  const brandProfileOk = isRevenueFeature(featureSlug) && isBeta;
   // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog
   // resolves. Folded flat into this footer so the brand sidebar stays mounted on
   // /brand-info + /workflows (no separate Settings sidebar level).
@@ -490,6 +492,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
                   label: "Brand Profile",
                   href: `${basePath}/brand-profile`,
                   icon: <BrandProfileIcon />,
+                  maturity: "beta",
                 }}
                 isActive={pathname.startsWith(`${basePath}/brand-profile`)}
               />
