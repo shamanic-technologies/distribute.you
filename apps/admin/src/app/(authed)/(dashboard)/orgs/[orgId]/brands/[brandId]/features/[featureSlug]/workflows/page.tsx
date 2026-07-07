@@ -2,12 +2,14 @@
 
 import { useMemo, useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchGlobalRankedWorkflows,
   getWorkflowProjection,
   keepLastGoodWorkflowProjection,
   listWorkflows,
+  setWorkflowDynastyStatus,
   type WorkflowProjectionResponse,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
@@ -16,7 +18,7 @@ import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
-import { PlusIcon, ChatBubbleLeftRightIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, ChatBubbleLeftRightIcon, PencilSquareIcon, ArchiveBoxIcon, ArrowUturnLeftIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
 import { WorkflowExamplesPanel } from "@/components/workflows/workflow-examples-panel";
 
@@ -82,6 +84,14 @@ export default function FeatureWorkflowsPage() {
 
   // Edit slide-over: the workflow whose example emails are being previewed (null = closed).
   const [editWf, setEditWf] = useState<{ workflowSlug: string; workflowDynastyName: string } | null>(null);
+
+  // Dynasty status write (active <-> deprecated); refetch the list on success.
+  const queryClient = useQueryClient();
+  const statusMutation = useMutation({
+    mutationFn: (vars: { workflowDynastySlug: string; status: "active" | "deprecated" }) =>
+      setWorkflowDynastyStatus(vars.workflowDynastySlug, vars.status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["workflows", featureSlug] }),
+  });
 
   const handleCreateWorkflow = useCallback(() => {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
@@ -159,6 +169,7 @@ export default function FeatureWorkflowsPage() {
       workflowSlug: wf.workflowSlug,
       workflowDynastySlug: wf.workflowDynastySlug,
       workflowDynastyName: wf.workflowDynastyName,
+      status: (wf.status ?? "active") as "active" | "deprecated",
       stats: statsMap.get(wf.workflowDynastySlug) ?? {},
       roi: roiByDynasty.get(wf.workflowDynastySlug) ?? null,
     }));
@@ -246,13 +257,14 @@ export default function FeatureWorkflowsPage() {
                 {revenueEnabled && (
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
                 )}
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[1, 2, 3].map((i) => (
                 <tr key={i}>
-                  {Array.from({ length: visibleOutputs.length + 2 + (revenueEnabled ? 1 : 0) }).map((_, j) => (
+                  {Array.from({ length: visibleOutputs.length + 3 + (revenueEnabled ? 1 : 0) }).map((_, j) => (
                     <td key={j} className="px-3 py-4">
                       <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
                     </td>
@@ -302,6 +314,9 @@ export default function FeatureWorkflowsPage() {
                       onSort={handleSort}
                     />
                   )}
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
                   <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -331,6 +346,17 @@ export default function FeatureWorkflowsPage() {
                         {roiPending ? <Skeleton className="h-4 w-12" /> : formatRoi(wf.roi)}
                       </td>
                     )}
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          wf.status === "deprecated"
+                            ? "bg-gray-100 text-gray-500"
+                            : "bg-green-50 text-green-700"
+                        }`}
+                      >
+                        {wf.status === "deprecated" ? "Deprecated" : "Active"}
+                      </span>
+                    </td>
                     <td className="px-3 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -356,6 +382,35 @@ export default function FeatureWorkflowsPage() {
                         >
                           <PencilSquareIcon className="w-4 h-4" />
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          title={wf.status === "deprecated" ? "Reactivate dynasty" : "Deprecate dynasty"}
+                          disabled={statusMutation.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            statusMutation.mutate({
+                              workflowDynastySlug: wf.workflowDynastySlug,
+                              status: wf.status === "deprecated" ? "active" : "deprecated",
+                            });
+                          }}
+                          className={`inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                            wf.status === "deprecated"
+                              ? "text-gray-600 hover:bg-gray-50 hover:text-green-600"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-amber-600"
+                          }`}
+                        >
+                          {wf.status === "deprecated" ? (
+                            <>
+                              <ArrowUturnLeftIcon className="w-4 h-4" />
+                              Reactivate
+                            </>
+                          ) : (
+                            <>
+                              <ArchiveBoxIcon className="w-4 h-4" />
+                              Deprecate
+                            </>
+                          )}
                         </button>
                       </div>
                     </td>
