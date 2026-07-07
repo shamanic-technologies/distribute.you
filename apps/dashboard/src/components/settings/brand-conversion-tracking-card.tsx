@@ -102,9 +102,9 @@ function StatusPill({ data }: { data: BrandConversionToken }) {
         }
       : status === "live_waiting"
         ? {
-            dot: "bg-amber-500",
-            text: "text-amber-700",
-            box: "border-amber-200 bg-amber-50",
+            dot: "bg-green-500",
+            text: "text-green-700",
+            box: "border-green-200 bg-green-50",
             label: "Tracker live",
             sub:
               lastPingAt != null
