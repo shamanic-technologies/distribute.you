@@ -72,8 +72,11 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     }
     expect(chart).toContain('key: "repliedPositive"');
     expect(chart).toContain('label: "Positive replies"');
-    expect(chart).toContain("isVisitDrivenGoal(optimizationGoal)");
+    // Metrics come from the goal-steps single source (sales_meetings shows BOTH
+    // clicks and positive replies — its full click→reply→meeting path).
+    expect(chart).toContain("goalChartMetricKeys(optimizationGoal)");
     expect(chart).toContain("POSITIVE_REPLIES");
+    expect(chart).not.toContain("isVisitDrivenGoal");
     // No client-side salesMeetings projection anymore — the series is server-computed.
     expect(chart).not.toContain('label: "Sales meetings"');
     expect(chart).not.toContain("projectedMetric");

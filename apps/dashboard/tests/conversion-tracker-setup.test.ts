@@ -32,8 +32,10 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(cards).toContain('conversionToken?.status === "live"');
     expect(cards).toContain('conversionToken?.status === "live_waiting"');
     expect(cards).toContain('["brandConversionToken", brandId]');
-    // The outcome cards that host the CTA are behind the same `isBeta` gate.
-    expect(cards).toContain("isBeta &&");
+    // The outcome cards that host the CTA render only when the goal has an outcome
+    // step (goal-steps single source) — not the old user-level isBeta gate.
+    expect(cards).toContain("outcomeStep && outcome");
+    expect(cards).not.toContain("isBeta &&");
   });
 
   it("renders the setup CTA as a discreet ghost button (transparent, 1px border, near-black text)", () => {

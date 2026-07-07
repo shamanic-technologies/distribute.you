@@ -40,33 +40,39 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain('costLabel: "CPPR"');
   });
 
-  it("drops the borrowed Signups/CPS outcome card when the goal is website_visits", () => {
-    expect(cards).toContain('goal !== "website_visits"');
+  it("derives the outcome card from the goal-steps single source (no borrowed card for 1-step goals)", () => {
+    // The per-goal outcome (Signups / Sales Meetings / Form submissions / Purchases, or
+    // NONE for website_visits/positive_replies) comes from goalOutcomeStep — the component
+    // no longer hardcodes a visit-vs-reply binary that mislabelled the newer goals.
+    expect(cards).toContain("goalOutcomeStep");
+    expect(cards).toContain("const outcomeStep = goalOutcomeStep(goal)");
+    expect(cards).not.toContain("isVisitDrivenGoal");
   });
 
-  it("shows the goal outcome beta pair for signups and sales meetings", () => {
-    expect(cards).toContain('label: "Sales Meetings"');
-    expect(cards).toContain('costLabel: "CPSM"');
-    expect(cards).toContain('label: "Signups"');
-    expect(cards).toContain('costLabel: "CPS"');
+  it("renders the goal's outcome label + cost label from the step (not a hardcoded binary)", () => {
+    expect(cards).toContain("label={outcomeStep.label}");
+    expect(cards).toContain("label={outcome.costLabel}");
     expect(cards).not.toContain('label: "Sales"');
     expect(cards).not.toContain('costLabel: "CAC"');
   });
 
-  it("shows the Form submissions/CPFS outcome pair for the form_submissions goal", () => {
-    expect(cards).toContain('goal === "form_submissions"');
-    expect(cards).toContain('label: "Form submissions"');
-    expect(cards).toContain('costLabel: "CPFS"');
-    expect(cards).toContain("count: spend?.formSubmissionsCount");
-    expect(cards).toContain("spend?.cpfsCents");
+  it("binds the Form submissions/CPFS outcome for the form_submissions goal via the goal-steps source", () => {
+    // The form_submissions outcome (label + count/cost fields) now lives in the
+    // goal-steps single source, not a hardcoded branch in the component. The card
+    // renders it through goalOutcomeStep like every other goal.
+    const steps = read("../src/lib/goal-steps.ts");
+    expect(steps).toContain('label: "Form submissions"');
+    expect(steps).toContain('countField: "formSubmissionsCount"');
+    expect(steps).toContain('costField: "cpfsCents"');
+    expect(steps).toContain('costLabel: "CPFS"');
   });
 
   it("renders the REAL server-provided tracker count for the outcome card, not a hardcoded dash", () => {
-    // Count comes from the features-service /revenue spend block (real, tracker-sourced),
-    // not the old hardcoded value="—".
-    expect(cards).toContain("count: spend?.signupsCount");
-    expect(cards).toContain("count: spend?.salesMeetingsCount");
-    expect(cards).toContain("outcomeMetric.count != null");
+    // Count/cost come from the features-service /revenue spend block (real, tracker-sourced)
+    // via the step's countField/costField, not the old hardcoded value="—".
+    expect(cards).toContain("spend?.[outcome.countField]");
+    expect(cards).toContain("spend?.[outcome.costField]");
+    expect(cards).toContain("outcomeCount != null");
     expect(cards).toContain("value={outcomeCountValue}");
     // No projection language on the cost tooltips.
     expect(cards).not.toContain("Coming soon");
