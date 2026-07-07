@@ -12,6 +12,10 @@ const pagePath = path.resolve(
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx"
 );
 const content = fs.readFileSync(pagePath, "utf-8");
+// The email card was extracted into a shared component reused by the workflows-table
+// Edit panel; card-internal rendering (sequence body, cross-brand tag) is asserted there.
+const cardPath = path.resolve(__dirname, "../src/components/workflows/example-email-card.tsx");
+const cardContent = fs.readFileSync(cardPath, "utf-8");
 
 describe("Workflow test-run status detection", () => {
   it("must NOT gate the test run on the dead 'active' status literal", () => {
@@ -55,7 +59,7 @@ describe("Workflow test-run status detection", () => {
 
   it("renders the cold-email body from the sequence, not only the null top-level bodyText", () => {
     // Sequenced cold-emails store the body in sequence[].bodyText; top-level bodyText is null.
-    expect(content).toContain("sequence?.[0]?.bodyText");
+    expect(cardContent).toContain("sequence?.[0]?.bodyText");
   });
 
   it("shows a terminal state instead of an endless spinner when a test ends with no emails / errors", () => {
@@ -78,7 +82,7 @@ describe("Workflow test-run status detection", () => {
 
   it("keeps a Regenerate option and tags examples from another brand / org", () => {
     expect(content).toContain("Regenerate · 3 leads");
-    // Non-brand examples carry a transparency tag.
-    expect(content).toContain("Example ·");
+    // Non-brand examples carry a transparency tag (rendered by the shared card).
+    expect(cardContent).toContain("Example ·");
   });
 });

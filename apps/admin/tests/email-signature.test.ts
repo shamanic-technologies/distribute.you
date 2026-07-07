@@ -7,8 +7,10 @@ const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf
 const componentPath = "../src/components/email-signature.tsx";
 
 // Every surface where a sent / example email body is displayed to the user.
+// The New Campaign picker + the Workflows-table Edit panel both render example emails
+// through the shared ExampleEmailCard, which is where the signature is appended.
 const renderSurfaces = [
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
+  "../src/components/workflows/example-email-card.tsx",
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/[id]/emails/page.tsx",
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx",
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/emails/page.tsx",

@@ -48,8 +48,8 @@ import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-pane
 import { CampaignAIPanel } from "@/components/campaigns/campaign-ai-panel";
 import { BrandLogo } from "@/components/brand-logo";
 import { Skeleton } from "@/components/skeleton";
-import { EmailSignature } from "@/components/email-signature";
-import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, InformationCircleIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
+import { ExampleEmailCard, ExampleEmailSkeleton, type ExampleEmailCardData } from "@/components/workflows/example-email-card";
+import { SparklesIcon, XMarkIcon, EllipsisVerticalIcon, PlusIcon, InformationCircleIcon } from "@heroicons/react/20/solid";
 
 type Mode = "autopilot" | "manual";
 type BudgetFrequency = "one-off" | "daily" | "weekly" | "monthly";
@@ -182,85 +182,6 @@ function countWithPctLabel(value: number, pct: number | null): string {
   return pct == null ? count : `${count} (${fmtPct(pct)})`;
 }
 
-// One email card in the picker's preview panel — used for both this-session test runs and
-// pre-filled past examples. Click toggles the full multi-step sequence. A `scope` other than
-// "brand" renders a small source tag (the example came from another brand / org).
-interface TestEmailCardData {
-  id: string;
-  subject: string | null;
-  bodyText: string | null;
-  sequence: EmailSequenceStep[] | null;
-  leadFirstName: string | null;
-  leadLastName: string | null;
-  leadCompany: string | null;
-  generationRun?: { status: string } | null;
-  scope?: "brand" | "org" | "global";
-  brandName?: string | null;
-}
-
-function TestEmailCard({ email, expanded, onToggle }: { email: TestEmailCardData; expanded: boolean; onToggle: () => void }) {
-  const firstBody = email.sequence?.[0]?.bodyText ?? email.bodyText;
-  // Full email = the whole sequence (initial + follow-ups); fall back to a single synthetic step.
-  const steps = email.sequence && email.sequence.length > 0
-    ? email.sequence
-    : (firstBody ? [{ step: 1, bodyText: firstBody, bodyHtml: "", daysSinceLastStep: 0 }] : []);
-  const otherSource = email.scope === "org" || email.scope === "global";
-  const sourceLabel = email.brandName || (email.scope === "org" ? "another brand" : "another workspace");
-  return (
-    <button type="button" onClick={onToggle}
-      className="w-full text-left bg-white rounded-lg border border-gray-200 p-3 hover:border-gray-300 transition cursor-pointer">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-gray-800 truncate">{[email.leadFirstName, email.leadLastName].filter(Boolean).join(" ") || "Lead"}{email.leadCompany ? ` · ${email.leadCompany}` : ""}</span>
-        <span className="flex items-center gap-1.5 shrink-0">
-          {otherSource && (
-            <span title="Example from another brand / organization, shown so you can preview this workflow"
-              className="text-[9px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
-              Example · {sourceLabel}
-            </span>
-          )}
-          {email.generationRun?.status && <span className="text-[10px] text-gray-400">{email.generationRun.status}</span>}
-          {steps.length > 0 && <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} />}
-        </span>
-      </div>
-      {email.subject && <div className="text-xs font-semibold text-gray-700 mt-1 truncate">{email.subject}</div>}
-      {!expanded && firstBody && <div className="text-[11px] text-gray-500 mt-1 line-clamp-3 whitespace-pre-wrap">{firstBody}</div>}
-      {expanded && (
-        <div className="mt-2 space-y-2">
-          {steps.map((s) => (
-            <div key={s.step} className="border-t border-gray-100 pt-2">
-              {steps.length > 1 && (
-                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                  {s.step === 1
-                    ? "Initial email"
-                    : `Follow-up ${s.step - 1}${s.daysSinceLastStep ? ` · ${s.daysSinceLastStep} day${s.daysSinceLastStep === 1 ? "" : "s"} later` : ""}`}
-                </div>
-              )}
-              <div className="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">{s.bodyText}</div>
-              {s.bodyText && <EmailSignature className="text-[11px] text-gray-500" />}
-            </div>
-          ))}
-        </div>
-      )}
-    </button>
-  );
-}
-
-// Placeholder card shown while the selected workflow's examples fetch — mirrors the
-// collapsed TestEmailCard layout (lead row + subject + 3 body lines) for zero shift.
-function ExampleEmailSkeleton() {
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <Skeleton className="h-3.5 w-40" />
-        <Skeleton className="h-3.5 w-3.5 shrink-0" />
-      </div>
-      <Skeleton className="h-3 w-32 mt-1.5" />
-      <Skeleton className="h-2.5 w-full mt-1.5" />
-      <Skeleton className="h-2.5 w-5/6 mt-1" />
-      <Skeleton className="h-2.5 w-2/3 mt-1" />
-    </div>
-  );
-}
 
 // Inline loading spinner (mirrors link-button.tsx) — used on the Launch/Start button
 // and the full-screen "Launching…" overlay while the create-campaign POST is in flight.
@@ -1902,7 +1823,7 @@ export default function FeatureCreateCampaignPage() {
                       // A this-session test run takes precedence; otherwise show pre-filled examples.
                       const liveTest = !!t || starting;
                       const showExamples = !liveTest;
-                      const cards: TestEmailCardData[] = showExamples ? examples : testEmails;
+                      const cards: ExampleEmailCardData[] = showExamples ? examples : testEmails;
                       // Loading window = first cold load OR switching workflows (placeholder = the
                       // previous workflow's emails kept by keepPreviousData). Paint skeletons, never
                       // the stale cards. A warm re-click (cache hit < 60s) skips this → instant.
@@ -1946,7 +1867,7 @@ export default function FeatureCreateCampaignPage() {
                           {!examplesLoading && (
                             <div className="space-y-2">
                               {cards.map((e) => (
-                                <TestEmailCard key={e.id} email={e}
+                                <ExampleEmailCard key={e.id} email={e}
                                   expanded={expandedTestEmailId === e.id}
                                   onToggle={() => setExpandedTestEmailId((cur) => (cur === e.id ? null : e.id))} />
                               ))}
