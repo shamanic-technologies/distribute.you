@@ -20,7 +20,11 @@ import {
   listWorkflowExamples,
   saveBrandProfileVersion,
 } from "@/lib/api";
-import type { WorkflowExampleEmail, WorkflowProjectionRow } from "@/lib/api";
+import type {
+  BrandOptimizationGoal,
+  WorkflowExampleEmail,
+  WorkflowProjectionRow,
+} from "@/lib/api";
 import {
   ALL_FIELDS,
   cloneFields,
@@ -331,6 +335,40 @@ export function StrategyPage() {
   // otherwise duplicate it. Other goals keep both (click cost + a distinct outcome cost).
   const isWebsiteVisitsGoal = optimizationGoal === "website_visits";
 
+  // Objective + conversion-rate labels/values per goal (drives the header stat row).
+  // purchase reuses the self-serve two-step (visit → signup → paid) — brand-service has
+  // no purchase-specific rate; form_submissions is its own two-step (visit → form → paid).
+  const OBJECTIVE_LABEL: Record<BrandOptimizationGoal, string> = {
+    signups: "Signups",
+    sales_meetings: "Sales meetings",
+    website_visits: "Website visits",
+    positive_replies: "Positive replies",
+    form_submissions: "Form submissions",
+    purchase: "Purchases",
+  };
+  const conv1: { label: string; value: number | null | undefined } =
+    optimizationGoal === "signups"
+      ? { label: "Visit → signup", value: econ?.visitToSignupPct }
+      : optimizationGoal === "website_visits"
+        ? { label: "Website visit → paid", value: econ?.visitToPaidClientPct }
+        : optimizationGoal === "positive_replies"
+          ? { label: "Positive reply → paid", value: econ?.replyToPaidClientPct }
+          : optimizationGoal === "form_submissions"
+            ? { label: "Visit → form submission", value: econ?.visitToFormSubmissionPct }
+            : optimizationGoal === "purchase"
+              ? { label: "Visit → signup", value: econ?.visitToSignupPct }
+              : { label: "Reply → meeting", value: econ?.replyToMeetingPct };
+  // Two-step goals show a second conversion; the single-step beta goals
+  // (website_visits / positive_replies) go straight to paid, so no row 2.
+  const conv2: { label: string; value: number | null | undefined } | null =
+    optimizationGoal === "signups" || optimizationGoal === "purchase"
+      ? { label: "Signup → paid", value: econ?.signupToPaidClientPct }
+      : optimizationGoal === "form_submissions"
+        ? { label: "Form submission → paid", value: econ?.formSubmissionToPaidClientPct }
+        : optimizationGoal === "sales_meetings"
+          ? { label: "Meeting → close", value: econ?.meetingToClosePct }
+          : null;
+
   // The 3-grain workflow-projection ladder: one row per (audienceId, workflow) with
   // its cost at each grain + the server-`resolved` grain (brand-real when the brand
   // has run enough, else the fleet benchmark). This ONE call feeds both the best-model
@@ -483,71 +521,16 @@ export function StrategyPage() {
             <Stat
               label="Objective"
               pending={econPending}
-              value={
-                optimizationGoal === "signups"
-                  ? "Signups"
-                  : optimizationGoal === "website_visits"
-                    ? "Website visits"
-                    : optimizationGoal === "positive_replies"
-                      ? "Positive replies"
-                      : optimizationGoal === "form_submissions"
-                        ? "Form submissions"
-                        : "Sales meetings"
-              }
+              value={OBJECTIVE_LABEL[optimizationGoal]}
             />
             <Stat
               label="Lifetime revenue / client"
               pending={econPending}
               value={econ ? formatUsd(econ.lifetimeRevenueUsd) : "-"}
             />
-            <Stat
-              label={
-                optimizationGoal === "signups"
-                  ? "Visit → signup"
-                  : optimizationGoal === "website_visits"
-                    ? "Website visit → paid"
-                    : optimizationGoal === "positive_replies"
-                      ? "Positive reply → paid"
-                      : optimizationGoal === "form_submissions"
-                        ? "Visit → form submission"
-                        : "Reply → meeting"
-              }
-              pending={econPending}
-              value={formatPct(
-                optimizationGoal === "signups"
-                  ? econ?.visitToSignupPct
-                  : optimizationGoal === "website_visits"
-                    ? econ?.visitToPaidClientPct
-                    : optimizationGoal === "positive_replies"
-                      ? econ?.replyToPaidClientPct
-                      : optimizationGoal === "form_submissions"
-                        ? econ?.visitToFormSubmissionPct
-                        : econ?.replyToMeetingPct,
-              )}
-            />
-            {/* The two-step goals (signups, form_submissions, sales_meetings) show a
-                second conversion; the single-step beta goals (website_visits /
-                positive_replies) go straight to paid, so no row 2. */}
-            {(optimizationGoal === "signups" ||
-              optimizationGoal === "form_submissions" ||
-              optimizationGoal === "sales_meetings") && (
-              <Stat
-                label={
-                  optimizationGoal === "signups"
-                    ? "Signup → paid"
-                    : optimizationGoal === "form_submissions"
-                      ? "Form submission → paid"
-                      : "Meeting → close"
-                }
-                pending={econPending}
-                value={formatPct(
-                  optimizationGoal === "signups"
-                    ? econ?.signupToPaidClientPct
-                    : optimizationGoal === "form_submissions"
-                      ? econ?.formSubmissionToPaidClientPct
-                      : econ?.meetingToClosePct,
-                )}
-              />
+            <Stat label={conv1.label} pending={econPending} value={formatPct(conv1.value)} />
+            {conv2 && (
+              <Stat label={conv2.label} pending={econPending} value={formatPct(conv2.value)} />
             )}
           </div>
           {!econPending && !econ ? (

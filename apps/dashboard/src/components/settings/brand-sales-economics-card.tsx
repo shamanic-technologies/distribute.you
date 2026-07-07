@@ -123,6 +123,7 @@ const OPTIMIZATION_GOALS: {
   { value: "website_visits", label: "# Website visits" },
   { value: "positive_replies", label: "# Positive Replies", beta: true },
   { value: "form_submissions", label: "# Form submissions", beta: true },
+  { value: "purchase", label: "# Purchases", beta: true },
 ];
 
 const PCT_FIELDS: {
@@ -153,13 +154,13 @@ const PCT_FIELDS: {
     key: "visitToSignupPct",
     label: "Website visit → signup",
     tip: "Of leads who visit your website, the share that sign up.",
-    goals: ["signups"],
+    goals: ["signups", "purchase"],
   },
   {
     key: "signupToPaidClientPct",
     label: "Signup → Paid client",
     tip: "Of leads who sign up, the share that become paying customers.",
-    goals: ["signups"],
+    goals: ["signups", "purchase"],
   },
   {
     key: "visitToPaidClientPct",
@@ -193,6 +194,7 @@ const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]>
   website_visits: ["visitToPaidClientPct"],
   positive_replies: ["replyToPaidClientPct"],
   form_submissions: ["visitToFormSubmissionPct", "formSubmissionToPaidClientPct"],
+  purchase: ["visitToSignupPct", "signupToPaidClientPct"],
 };
 
 const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {

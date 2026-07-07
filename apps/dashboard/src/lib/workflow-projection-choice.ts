@@ -25,6 +25,15 @@ function serverOutcomeUnitCost(
   // their per-outcome cost is the click / reply cost directly — no conversion step.
   if (goal === "website_visits") return positiveOrNull(workflow.clickUsd);
   if (goal === "positive_replies") return positiveOrNull(workflow.replyUsd);
+  // form_submissions has no dedicated grain field — read the server-resolved GOAL metric
+  // (resolved.costPerOutcomeUsd = cost per form submission for this objective).
+  if (goal === "form_submissions") {
+    return positiveOrNull(workflow.costPerFormSubmissionUsd ?? workflow.costPerOutcomeUsd);
+  }
+  // purchase = the paid client itself (multi-step purchase funnel) → cost-per-paid-client.
+  if (goal === "purchase") {
+    return positiveOrNull(workflow.costPerCloseUsd ?? workflow.costPerOutcomeUsd);
+  }
   const cost =
     goal === "signups"
       ? workflow.costPerSignupUsd
@@ -54,6 +63,25 @@ function workflowOutcomeUnitCostFromRates(
       positiveOrNull(workflow.replyUsd) ??
       (workflow.projection?.replies != null && workflow.projection.replies > 0
         ? projectionBudgetUsd / workflow.projection.replies
+        : null)
+    );
+  }
+
+  // form_submissions / purchase read the server-resolved GOAL metric (never null when the
+  // brand has economics); the projected-count fallback covers the legacy count shape.
+  if (goal === "form_submissions") {
+    return (
+      positiveOrNull(workflow.costPerFormSubmissionUsd ?? workflow.costPerOutcomeUsd) ??
+      (workflow.projection?.formSubmissions != null && workflow.projection.formSubmissions > 0
+        ? projectionBudgetUsd / workflow.projection.formSubmissions
+        : null)
+    );
+  }
+  if (goal === "purchase") {
+    return (
+      positiveOrNull(workflow.costPerCloseUsd ?? workflow.costPerOutcomeUsd) ??
+      (workflow.projection?.closes != null && workflow.projection.closes > 0
+        ? projectionBudgetUsd / workflow.projection.closes
         : null)
     );
   }
