@@ -2,62 +2,78 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import {
-  buildAudienceMetricRows,
   goalForOptimizationGoal,
+  isRowFloored,
   modelAvatar,
   objectiveForOptimizationGoal,
   OFFER_LEVERS,
   offerLeverValue,
   outcomeNoun,
-  projectionCostKey,
-  selectBestModelEvidence,
+  pickAudienceRow,
+  pickBrandRow,
+  WORKFLOW_GRAIN_LABEL,
 } from "../src/lib/strategy-model";
-import type { FeatureCandidate, FeatureCandidateGrain } from "../src/lib/api";
+import type { WorkflowProjectionGrain, WorkflowProjectionRow } from "../src/lib/api";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
-function candidate(over: Partial<FeatureCandidate> & {
+/** Build a workflow-projection ladder row. The single grain block is placed at the
+ *  resolved grain so `isRowFloored` reads the right evidence. */
+function row(over: {
   workflowDynastySlug: string;
   audienceId: string | null;
-  costGrain: "goal-global" | "audience";
-  costPerOutcomeUsd: number | null;
-  grain?: FeatureCandidateGrain;
-  clickUsd?: number | null;
+  grain: WorkflowProjectionGrain;
+  observedClicks?: number;
+  costPerClickUsd?: number;
+  costPerOutcomeUsd?: number | null;
+  costPerPaidClientUsd?: number | null;
   roiMultiple?: number | null;
-  costPerCloseUsd?: number | null;
-}): FeatureCandidate {
+  cacPct?: number | null;
+}): WorkflowProjectionRow {
+  const block = {
+    evidence: {
+      spentUsd: 100,
+      observedContacted: 10,
+      observedClicks: over.observedClicks ?? 5,
+      observedPositiveReplies: 2,
+    },
+    unitCosts: {
+      costPerClickUsd: over.costPerClickUsd ?? 2,
+      costPerPositiveReplyUsd: 10,
+      costPerContactedUsd: 1,
+    },
+    projected: {
+      costPerSignupUsd: over.costPerOutcomeUsd ?? 40,
+      costPerPaidClientUsd: over.costPerPaidClientUsd ?? 200,
+      costPerMeetingBookedUsd: 30,
+      roiMultiple: over.roiMultiple ?? 6,
+      cacPct: over.cacPct ?? 8,
+    },
+  };
   return {
     audienceId: over.audienceId,
     workflow: { workflowDynastySlug: over.workflowDynastySlug, workflowDynastyName: "Pelican" },
-    goal: "meetingBooked",
-    grain: over.grain ?? (over.costGrain === "audience" ? "audience" : "goal-global"),
-    costPerOutcomeUsd: over.costPerOutcomeUsd,
-    costPerCloseUsd: over.costPerCloseUsd,
-    roiMultiple: over.roiMultiple,
-    cacPct: over.cacPct,
-    conversion: { rate: 0.1, grain: "brand-goal", sampleSize: null },
-    cost: {
-      costPerLeadUsd: 1,
-      clickUsd: over.clickUsd ?? 2,
-      replyUsd: 3,
-      grain: over.costGrain,
-      sampleSize: { runs: 1, contacted: 1, clicks: 1, replies: 1 },
+    estimatesByGrain: { [over.grain]: block },
+    resolved: {
+      grain: over.grain,
+      costPerClickUsd: over.costPerClickUsd ?? 2,
+      costPerOutcomeUsd: over.costPerOutcomeUsd ?? 40,
+      costPerPaidClientUsd: over.costPerPaidClientUsd ?? 200,
+      costPerMeetingBookedUsd: 30,
+      roiMultiple: over.roiMultiple ?? 6,
+      cacPct: over.cacPct ?? 8,
     },
   };
 }
 
 describe("strategy goal mapping", () => {
-  it("maps the saved objective onto the candidates goal enum", () => {
+  it("maps the saved objective onto the projection goal enum", () => {
     expect(goalForOptimizationGoal("signups")).toBe("signup");
     expect(goalForOptimizationGoal("sales_meetings")).toBe("meetingBooked");
   });
   it("maps the saved objective onto the projection objective", () => {
     expect(objectiveForOptimizationGoal("signups")).toBe("self-serve");
     expect(objectiveForOptimizationGoal("sales_meetings")).toBe("meeting-booked");
-  });
-  it("picks the projection cost field for the objective", () => {
-    expect(projectionCostKey("signups")).toBe("costPerSignupUsd");
-    expect(projectionCostKey("sales_meetings")).toBe("costPerMeetingBookedUsd");
   });
   it("names the outcome", () => {
     expect(outcomeNoun("signups")).toBe("signup");
@@ -76,118 +92,68 @@ describe("modelAvatar — deterministic placeholder face", () => {
   });
 });
 
-describe("selectBestModelEvidence — groups served rows, never computes", () => {
-  const candidates: FeatureCandidate[] = [
-    candidate({ workflowDynastySlug: "best", audienceId: null, costGrain: "goal-global", costPerOutcomeUsd: 50 }),
-    candidate({ workflowDynastySlug: "best", audienceId: "a1", costGrain: "audience", costPerOutcomeUsd: 40 }),
-    candidate({ workflowDynastySlug: "best", audienceId: "a2", costGrain: "audience", costPerOutcomeUsd: 60 }),
-    candidate({ workflowDynastySlug: "other", audienceId: "a3", costGrain: "audience", costPerOutcomeUsd: 99 }),
-  ];
-
-  it("returns the cross-org row for the best workflow", () => {
-    const e = selectBestModelEvidence(candidates, "best");
-    expect(e.crossOrg?.costPerOutcomeUsd).toBe(50);
-  });
-  it("returns only the best workflow's per-audience rows", () => {
-    const e = selectBestModelEvidence(candidates, "best");
-    expect(e.audiences.map((c) => c.audienceId).sort()).toEqual(["a1", "a2"]);
-  });
-  it("is empty when there is no best pick", () => {
-    const e = selectBestModelEvidence(candidates, null);
-    expect(e.crossOrg).toBeNull();
-    expect(e.fallback).toBeNull();
-    expect(e.audiences).toEqual([]);
-  });
-  it("returns the audienceId-null fallback row (any coarse grain)", () => {
-    const brandFallback = candidate({
-      workflowDynastySlug: "b2",
-      audienceId: null,
-      costGrain: "goal-global",
-      grain: "brand-goal",
-      costPerOutcomeUsd: 55,
-    });
-    const e = selectBestModelEvidence([brandFallback], "b2");
-    // fallback keys on audienceId-null (any coarse grain); summary grain = brand-goal
-    expect(e.fallback?.grain).toBe("brand-goal");
+describe("WORKFLOW_GRAIN_LABEL — honest population label", () => {
+  it("labels each grain by the population it came from", () => {
+    expect(WORKFLOW_GRAIN_LABEL.crossOrg).toBe("fleet benchmark");
+    expect(WORKFLOW_GRAIN_LABEL.brand).toBe("this brand");
+    expect(WORKFLOW_GRAIN_LABEL.audience).toBe("this audience");
   });
 });
 
-describe("buildAudienceMetricRows — audience → brand-average → cross-org ladder", () => {
-  const ownA1 = candidate({
-    workflowDynastySlug: "best",
-    audienceId: "a1",
-    costGrain: "audience",
-    grain: "audience",
-    costPerOutcomeUsd: 40,
-    clickUsd: 4,
-    roiMultiple: 6,
-    costPerCloseUsd: 200,
-    cacPct: 8,
-  });
+describe("pickBrandRow — the workflow's brand-level (audienceId null) row", () => {
+  const rows: WorkflowProjectionRow[] = [
+    row({ workflowDynastySlug: "best", audienceId: null, grain: "brand", costPerClickUsd: 3 }),
+    row({ workflowDynastySlug: "best", audienceId: "a1", grain: "audience", costPerClickUsd: 4 }),
+    row({ workflowDynastySlug: "other", audienceId: null, grain: "crossOrg", costPerClickUsd: 9 }),
+  ];
 
-  it("uses an audience's OWN row + reads CPC/CPS/ROI/CAC verbatim", () => {
-    const evidence = selectBestModelEvidence([ownA1], "best");
-    const rows = buildAudienceMetricRows([{ id: "a1", name: "Founders" }], evidence);
-    expect(rows[0]).toMatchObject({
-      provenance: "own",
-      clickUsd: 4,
-      costPerOutcomeUsd: 40,
-      roiMultiple: 6,
-      costPerCloseUsd: 200,
-      cacPct: 8,
-    });
+  it("returns the audienceId-null row for the given workflow", () => {
+    const r = pickBrandRow(rows, "best");
+    expect(r?.audienceId).toBeNull();
+    expect(r?.resolved.costPerClickUsd).toBe(3);
   });
-
-  it("falls back to BRAND average (grain=brand-goal) for an audience with no own row", () => {
-    const brandFb = candidate({
-      workflowDynastySlug: "best",
-      audienceId: null,
-      costGrain: "goal-global",
-      grain: "brand-goal",
-      costPerOutcomeUsd: 55,
-      roiMultiple: 5,
-      costPerCloseUsd: 220,
-    });
-    const evidence = selectBestModelEvidence([ownA1, brandFb], "best");
-    const rows = buildAudienceMetricRows(
-      [
-        { id: "a1", name: "Founders" },
-        { id: "a2", name: "Marketers" },
-      ],
-      evidence,
-    );
-    expect(rows.find((r) => r.id === "a1")?.provenance).toBe("own");
-    expect(rows.find((r) => r.id === "a2")).toMatchObject({
-      provenance: "brand",
-      costPerOutcomeUsd: 55,
-      roiMultiple: 5,
-      costPerCloseUsd: 220,
-    });
+  it("ignores other workflows' rows", () => {
+    expect(pickBrandRow(rows, "best")?.workflow.workflowDynastySlug).toBe("best");
   });
-
-  it("falls back to CROSS-ORG (grain=goal-global) when there is no brand average", () => {
-    const crossFb = candidate({
-      workflowDynastySlug: "best",
-      audienceId: null,
-      costGrain: "goal-global",
-      grain: "goal-global",
-      costPerOutcomeUsd: 70,
-    });
-    const evidence = selectBestModelEvidence([crossFb], "best");
-    const rows = buildAudienceMetricRows([{ id: "a9", name: "New" }], evidence);
-    expect(rows[0]?.provenance).toBe("crossOrg");
-    expect(rows[0]?.costPerOutcomeUsd).toBe(70);
+  it("is null when there is no best pick", () => {
+    expect(pickBrandRow(rows, null)).toBeNull();
   });
+});
 
-  it("emits nulls (never a synthesized 0) when no candidate covers an audience", () => {
-    const evidence = selectBestModelEvidence([], "best");
-    const rows = buildAudienceMetricRows([{ id: "a1", name: "Founders" }], evidence);
-    expect(rows[0]).toMatchObject({
-      clickUsd: null,
-      costPerOutcomeUsd: null,
-      roiMultiple: null,
-      costPerCloseUsd: null,
-    });
+describe("pickAudienceRow — the workflow's per-audience row (server-resolved grain)", () => {
+  const rows: WorkflowProjectionRow[] = [
+    row({ workflowDynastySlug: "best", audienceId: null, grain: "brand" }),
+    row({ workflowDynastySlug: "best", audienceId: "a1", grain: "audience", costPerOutcomeUsd: 40 }),
+    row({ workflowDynastySlug: "best", audienceId: "a2", grain: "brand", costPerOutcomeUsd: 55 }),
+  ];
+
+  it("returns the matching audience's row + reads resolved verbatim", () => {
+    const r = pickAudienceRow(rows, "best", "a1");
+    expect(r?.audienceId).toBe("a1");
+    expect(r?.resolved.grain).toBe("audience");
+    expect(r?.resolved.costPerOutcomeUsd).toBe(40);
+  });
+  it("returns a fallback-grain row when the audience has no own evidence (server-resolved)", () => {
+    const r = pickAudienceRow(rows, "best", "a2");
+    expect(r?.resolved.grain).toBe("brand");
+    expect(r?.resolved.costPerOutcomeUsd).toBe(55);
+  });
+  it("is null for an audience with no row", () => {
+    expect(pickAudienceRow(rows, "best", "missing")).toBeNull();
+  });
+});
+
+describe("isRowFloored — 0 observed clicks ⇒ the cost is a floor", () => {
+  it("is true when the resolved grain observed zero clicks", () => {
+    const r = row({ workflowDynastySlug: "best", audienceId: null, grain: "crossOrg", observedClicks: 0 });
+    expect(isRowFloored(r)).toBe(true);
+  });
+  it("is false when the resolved grain has observed clicks", () => {
+    const r = row({ workflowDynastySlug: "best", audienceId: null, grain: "brand", observedClicks: 5 });
+    expect(isRowFloored(r)).toBe(false);
+  });
+  it("is false for a null row", () => {
+    expect(isRowFloored(null)).toBe(false);
   });
 });
 
@@ -242,11 +208,34 @@ describe("StrategyPage source guards", () => {
     expect(page).not.toContain("if (!isBeta) return <NotAvailable />");
     expect(page).not.toContain('<MaturityBadge level="beta" />');
   });
-  it("reads the best model + 3-level cost per outcome from served endpoints", () => {
-    expect(page).toContain("getWorkflowProjection");
-    expect(page).toContain("fetchFeatureCandidates");
+  it("reads the best model + per-audience estimates from the one workflow-projection ladder", () => {
+    expect(page).toContain("getWorkflowProjectionLadder");
     expect(page).toContain("recommendedWorkflowDynastySlug");
-    expect(page).toContain("selectBestModelEvidence");
+    expect(page).toContain("pickBrandRow");
+    expect(page).toContain("pickAudienceRow");
+    // the old two-endpoint + client-side grain ladder is gone
+    expect(page).not.toContain("fetchFeatureCandidates");
+    expect(page).not.toContain("selectBestModelEvidence");
+    expect(page).not.toContain("buildAudienceMetricRows");
+  });
+  it("reads costs VERBATIM from the server-resolved grain (no client CPC/projection math)", () => {
+    expect(page).toContain("resolved.costPerClickUsd");
+    expect(page).toContain("resolved.costPerOutcomeUsd");
+    expect(page).toContain("resolved.costPerPaidClientUsd");
+    expect(page).toContain("formatPct(resolved.cacPct)");
+    // no rescale of a brand projection by an audience CPC
+    expect(page).not.toContain("bestWf");
+    expect(page).not.toContain("brandCostPerOutcome");
+  });
+  it("labels the number by its resolved grain, not a fixed 'this brand'", () => {
+    expect(page).toContain("WORKFLOW_GRAIN_LABEL");
+    expect(page).toContain("Based on ");
+    expect(page).not.toContain("This brand cost / click");
+  });
+  it("renders a >$X floor when the resolved grain saw 0 clicks", () => {
+    expect(page).toContain("formatUsdFloor");
+    expect(page).toContain("isRowFloored");
+    expect(page).toContain("`>${s}`");
   });
   it("surfaces the agency-domain framing", () => {
     expect(page).toContain("on your behalf");
@@ -271,26 +260,22 @@ describe("StrategyPage source guards", () => {
   });
   it("lists every active audience (not only ones with evidence) in the best model", () => {
     expect(page).toContain("activeAudiences");
-    expect(page).toContain("audienceRows");
+    expect(page).toContain("Estimates by audience");
   });
-  it("shows the five served projected-economics boxes for this brand", () => {
-    expect(page).toContain("This brand cost / click");
-    expect(page).toContain("bestWf.clickUsd");
-    expect(page).toContain("This brand cost / paid client");
-    expect(page).toContain("bestWf.costPerCloseUsd");
-    expect(page).toContain("Projected lifetime revenue on each dollar spent");
-    expect(page).toContain("Projected cost of acquisition");
-    expect(page).toContain("bestWf.projection?.cacPct");
+  it("shows the five served projected-economics boxes for the best model", () => {
+    expect(page).toContain("Cost / click");
+    expect(page).toContain("Cost / paid client");
+    expect(page).toContain("Lifetime revenue on each dollar spent");
+    expect(page).toContain("Cost of acquisition");
   });
   it("renders the per-audience metric table with expansion-first CPC/CPS/ROI/CAC tooltips", () => {
-    expect(page).toContain("buildAudienceMetricRows");
     expect(page).toContain("MetricLabel");
     expect(page).toContain('text="CPC"');
     expect(page).toContain('text="CAC"');
     expect(page).toContain('text="ROI"');
     expect(page).toContain("formatRoi");
     // CAC is rendered as a % (cost-to-win ÷ lifetime revenue), not a $ amount
-    expect(page).toContain("formatPct(a.cacPct)");
+    expect(page).toContain("formatPct(r?.cacPct)");
     // tooltips spell out the abbreviation first
     expect(page).toContain("Cost per click -");
     expect(page).toContain("Customer acquisition cost -");
