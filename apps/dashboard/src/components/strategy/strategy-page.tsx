@@ -304,6 +304,11 @@ export function StrategyPage() {
   // tile/column (the click cost) and drop the separate outcome tile/column that would
   // otherwise duplicate it. Other goals keep both (click cost + a distinct outcome cost).
   const isWebsiteVisitsGoal = optimizationGoal === "website_visits";
+  // positive_replies is single-step (reply → paid): the positive reply IS the outcome, and
+  // clicks/website visits are not in the funnel. So DROP the "Cost per website visit" tile +
+  // column (the "Cost / positive reply" outcome tile below already prices the funnel). Mirror
+  // of the website_visits collapse, inverted (there the click IS the outcome; here it's noise).
+  const isPositiveRepliesGoal = optimizationGoal === "positive_replies";
 
   // The 3-grain workflow-projection ladder: one row per (audienceId, workflow) with
   // its cost at each grain + the server-`resolved` grain (brand-real when the brand
@@ -641,13 +646,15 @@ export function StrategyPage() {
                   Labelled by grain (hint) so a fleet-benchmark or per-audience number is
                   never mislabelled "this brand"; costs render ">$X" when the grain saw 0
                   clicks (a floor, not an exact figure). */}
-              <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${showReplyStat ? "lg:grid-cols-6" : isWebsiteVisitsGoal ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
-                <Stat
-                  label="Cost per website visit"
-                  value={formatUsdCents(resolved.costPerClickUsd)}
-                  tooltip="Cost per website visit - what we pay on average for one prospect to visit your site."
-                  hint={grainHint(brandGrain)}
-                />
+              <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${showReplyStat ? "lg:grid-cols-6" : isWebsiteVisitsGoal || isPositiveRepliesGoal ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
+                {!isPositiveRepliesGoal && (
+                  <Stat
+                    label="Cost per website visit"
+                    value={formatUsdCents(resolved.costPerClickUsd)}
+                    tooltip="Cost per website visit - what we pay on average for one prospect to visit your site."
+                    hint={grainHint(brandGrain)}
+                  />
+                )}
                 {showReplyStat && (
                   <Stat
                     label="Cost / positive reply"
@@ -721,14 +728,17 @@ export function StrategyPage() {
                               </span>
                             </th>
                           )}
-                          <th className="px-4 py-2.5 text-right font-semibold">
-                            <span className="inline-flex items-center justify-end gap-1">
-                              <MetricLabel
-                                text="Cost per website visit"
-                                tip="Cost per website visit - what we pay on average for one prospect to visit your site."
-                              />
-                            </span>
-                          </th>
+                          {/* positive_replies: clicks aren't in the reply→paid funnel — drop the CPC column. */}
+                          {!isPositiveRepliesGoal && (
+                            <th className="px-4 py-2.5 text-right font-semibold">
+                              <span className="inline-flex items-center justify-end gap-1">
+                                <MetricLabel
+                                  text="Cost per website visit"
+                                  tip="Cost per website visit - what we pay on average for one prospect to visit your site."
+                                />
+                              </span>
+                            </th>
+                          )}
                           {/* website_visits: outcome ≡ website visit ≡ the column above — skip. */}
                           {!isWebsiteVisitsGoal && (
                             <th className="px-4 py-2.5 text-right font-semibold">
@@ -779,9 +789,11 @@ export function StrategyPage() {
                                   {formatUsdFloor(cpprFromRow(row), floored)}
                                 </td>
                               )}
-                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                                {formatUsdCents(r?.costPerClickUsd)}
-                              </td>
+                              {!isPositiveRepliesGoal && (
+                                <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
+                                  {formatUsdCents(r?.costPerClickUsd)}
+                                </td>
+                              )}
                               {!isWebsiteVisitsGoal && (
                                 <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                                   {formatUsdFloor(r?.costPerOutcomeUsd, floored)}

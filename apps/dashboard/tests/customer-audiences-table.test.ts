@@ -35,6 +35,14 @@ describe("Audiences page", () => {
     expect(src).toContain("Paused");
   });
 
+  it("hides the CPC + Website Visits columns for the positive_replies goal", () => {
+    // Single-step reply→paid goal: clicks aren't in the funnel, so both the header and
+    // body cells for CPC + Website Visits are gated off (CPPR columns stay).
+    expect(src).toContain('"positive_replies"');
+    expect(src).toContain("const isPositiveReplies");
+    expect(src).toContain("{!isPositiveReplies && (");
+  });
+
   it("joins per-audience evidence from features-service audience-stats by audienceId", () => {
     expect(src).toContain("fetchFeatureAudienceStats");
     expect(src).toContain("statsByAudienceId");

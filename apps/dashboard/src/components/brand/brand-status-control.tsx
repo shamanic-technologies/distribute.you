@@ -81,7 +81,6 @@ const GOAL_OPTIONS: {
     value: "positive_replies",
     label: "# Positive Replies",
     description: "Optimize outreach toward positive replies that convert to paid clients.",
-    beta: true,
   },
 ];
 

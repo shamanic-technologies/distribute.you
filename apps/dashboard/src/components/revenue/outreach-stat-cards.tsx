@@ -101,6 +101,11 @@ export function OutreachStatCards({
     conversionToken?.status === "live" ||
     conversionToken?.status === "live_waiting";
   const goal = optimizationGoal ?? "sales_meetings";
+  // positive_replies is a SINGLE-STEP goal (reply IS the outcome; reply → paid). Clicks /
+  // website visits aren't in that funnel, so the Website Visits + Cost-per-visit cards are
+  // hidden and the outcome pair becomes Positive Replies + Cost per positive reply (GA, no
+  // beta badge — the goal itself is GA).
+  const isPositiveReplies = goal === "positive_replies";
   const outreach =
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
@@ -134,8 +139,16 @@ export function OutreachStatCards({
   // features-service (sourced from the brand's live conversion tracker). `count`
   // is the real attributed count (renders once the tracker records conversions);
   // null → the card shows "—" + the setup CTA. No projection.
-  const outcomeMetric =
-    !isVisitDrivenGoal(goal)
+  const outcomeMetric = isPositiveReplies
+    ? {
+        label: "Positive Replies",
+        count: spend?.positiveRepliesCount,
+        costLabel: "Cost per positive reply",
+        costTooltip:
+          "Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach.",
+        costValue: formatCostCents(spend?.cpprCents),
+      }
+    : !isVisitDrivenGoal(goal)
       ? {
           label: "Sales Meetings",
           count: spend?.salesMeetingsCount,
@@ -166,43 +179,58 @@ export function OutreachStatCards({
           pending={pending}
         />
       </Cell>
-      <Cell>
-        <ScoreCard
-          label={clickMetric.label}
-          tooltip={clickMetric.tooltip}
-          value={clickMetric.value}
-          pending={pending}
-        />
-      </Cell>
-      <Cell>
-        <ScoreCard
-          label={clickMetric.costLabel}
-          tooltip={clickMetric.costTooltip}
-          value={clickMetric.costValue}
-          pending={pending}
-        />
-      </Cell>
+      {/* positive_replies: reply→paid single-step — clicks/website visits aren't in the
+          funnel, so hide the Website Visits count + Cost-per-visit cards entirely. */}
+      {!isPositiveReplies && (
+        <>
+          <Cell>
+            <ScoreCard
+              label={clickMetric.label}
+              tooltip={clickMetric.tooltip}
+              value={clickMetric.value}
+              pending={pending}
+            />
+          </Cell>
+          <Cell>
+            <ScoreCard
+              label={clickMetric.costLabel}
+              tooltip={clickMetric.costTooltip}
+              value={clickMetric.costValue}
+              pending={pending}
+            />
+          </Cell>
+        </>
+      )}
 
-      {/* website_visits: the visit IS the outcome (the "Website Visits" card above),
-          so drop the borrowed Signups/CPS outcome card entirely for that goal. */}
-      {isBeta && goal !== "website_visits" && (
+      {/* Outcome pair. website_visits: the visit IS the outcome (Website Visits card
+          above) → skip. positive_replies: GA outcome (Positive Replies + CPPR, no beta
+          badge). Signups/Meetings stay beta-gated. */}
+      {(isPositiveReplies || (isBeta && goal !== "website_visits")) && (
         <>
           <Cell>
             <ScoreCard
               label={outcomeMetric.label}
-              badge={beta}
+              badge={isPositiveReplies ? undefined : beta}
               value={outcomeCountValue}
-              action={outcomeCountValue === "—" ? trackerButton : undefined}
+              action={
+                outcomeCountValue === "—" && !isPositiveReplies
+                  ? trackerButton
+                  : undefined
+              }
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
               label={outcomeMetric.costLabel}
-              badge={beta}
+              badge={isPositiveReplies ? undefined : beta}
               tooltip={outcomeMetric.costTooltip}
               value={outcomeMetric.costValue}
-              action={outcomeMetric.costValue === "—" ? trackerButton : undefined}
+              action={
+                outcomeMetric.costValue === "—" && !isPositiveReplies
+                  ? trackerButton
+                  : undefined
+              }
               pending={pending}
             />
           </Cell>

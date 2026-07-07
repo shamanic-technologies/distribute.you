@@ -143,6 +143,11 @@ const SpendSchema = z.object({
   // "—", never a false $0.
   cpsCents: z.coerce.number().nullable().optional(),
   cpsmCents: z.coerce.number().nullable().optional(),
+  // REAL attributed positive-reply count + cost-per-positive-reply for the single-step
+  // `positive_replies` goal (mirrors signupsCount/cpsCents). Additive/optional — absent
+  // until features-service ships the field (spawned in lockstep); cost null when count 0.
+  positiveRepliesCount: z.coerce.number().optional(),
+  cpprCents: z.coerce.number().nullable().optional(),
 });
 
 const FeatureRevenueResponseSchema = z.object({

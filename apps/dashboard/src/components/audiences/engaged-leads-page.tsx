@@ -583,6 +583,9 @@ export function EngagedLeadsPage() {
     {},
   );
   const optimizationGoal = econData?.salesEconomics?.optimizationGoal ?? null;
+  // positive_replies is single-step (reply → paid): clicks/website visits aren't in the
+  // funnel, so drop the "Website Visits" (clicks) tab entirely for that goal.
+  const isPositiveReplies = optimizationGoal === "positive_replies";
 
   // Audience per lead — read straight off the lead row. lead-service serves
   // `lead.audience` ({id,name,avatarUrl}) from the leads_campaigns attribution,
@@ -645,9 +648,11 @@ export function EngagedLeadsPage() {
     if (sortedLeads.length === 0 || econData === undefined) return;
     hasAutoSelectedTab.current = true;
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
-    const order: Tab[] = isVisitDrivenGoal(optimizationGoal ?? "sales_meetings")
-      ? ["clicks", "outreach", "positive-replies"]
-      : ["positive-replies", "clicks", "outreach"];
+    const order: Tab[] = isPositiveReplies
+      ? ["positive-replies", "outreach"]
+      : isVisitDrivenGoal(optimizationGoal ?? "sales_meetings")
+        ? ["clicks", "outreach", "positive-replies"]
+        : ["positive-replies", "clicks", "outreach"];
     setActiveTab(order.find((t) => count(t) > 0) ?? "outreach");
   }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
 
@@ -668,7 +673,9 @@ export function EngagedLeadsPage() {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "positive-replies", label: "Positive replies", count: groupedByTab.get("positive-replies")?.length ?? 0 },
-    { key: "clicks", label: "Website Visits", count: groupedByTab.get("clicks")?.length ?? 0 },
+    ...(isPositiveReplies
+      ? []
+      : [{ key: "clicks" as Tab, label: "Website Visits", count: groupedByTab.get("clicks")?.length ?? 0 }]),
     { key: "outreach", label: "Outreach", count: groupedByTab.get("outreach")?.length ?? 0 },
   ];
 

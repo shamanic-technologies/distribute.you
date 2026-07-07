@@ -243,6 +243,12 @@ export function CustomerAudiencesPage() {
   // Sales-meetings goal → surface reply economics: extra "Positive Replies" +
   // "CPPR" columns (left of Cost per click), and default the sort to CPPR asc.
   const showMeetingCols = audienceStatsGoal === "meetingBooked";
+  // positive_replies is single-step (reply → paid) — clicks/website visits aren't in the
+  // funnel, so hide the "Cost per website visit" (CPC) + "Website Visits" columns. The CPPR +
+  // Positive replies columns (showMeetingCols) stay, and the sort default is already CPPR-asc.
+  const isPositiveReplies =
+    (economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings") ===
+    "positive_replies";
   // Seed the initial sort column from the brand goal once it resolves — CPPR for
   // meetings, CPC for signup — until the user picks a column manually.
   useEffect(() => {
@@ -462,7 +468,7 @@ export function CustomerAudiencesPage() {
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${showMeetingCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            <table className={`${isPositiveReplies ? "min-w-[820px]" : showMeetingCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
@@ -479,15 +485,20 @@ export function CustomerAudiencesPage() {
                       />
                     </>
                   )}
-                  <SortHeader
-                    label="Cost per website visit"
-                    col="cpc"
-                    sortCol={sortCol}
-                    sortDir={sortDir}
-                    onSort={onSort}
-                    info="Cost per website visit — audience-scoped spend divided by website visits. Lower is better."
-                  />
-                  <SortHeader label="Website Visits" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  {/* positive_replies: clicks aren't in the reply→paid funnel — hide CPC + visits. */}
+                  {!isPositiveReplies && (
+                    <>
+                      <SortHeader
+                        label="Cost per website visit"
+                        col="cpc"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Cost per website visit — audience-scoped spend divided by website visits. Lower is better."
+                      />
+                      <SortHeader label="Website Visits" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                    </>
+                  )}
                   <SortHeader label="Outreach" col="outreach" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Remaining" col="remaining" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Size" col="size" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
@@ -551,24 +562,28 @@ export function CustomerAudiencesPage() {
                           </td>
                         </>
                       )}
-                      <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                        {statsLoading ? (
-                          <Skeleton className="ml-auto h-4 w-12" />
-                        ) : stats ? (
-                          formatCents(stats.metrics.cpcCents)
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                        {statsLoading ? (
-                          <Skeleton className="ml-auto h-4 w-10" />
-                        ) : stats ? (
-                          stats.evidence.websiteClicks.toLocaleString("en-US")
-                        ) : (
-                          "-"
-                        )}
-                      </td>
+                      {!isPositiveReplies && (
+                        <>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats ? (
+                              formatCents(stats.metrics.cpcCents)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-10" />
+                            ) : stats ? (
+                              stats.evidence.websiteClicks.toLocaleString("en-US")
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </>
+                      )}
                       <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
                         {statsLoading ? (
                           <Skeleton className="ml-auto h-4 w-10" />

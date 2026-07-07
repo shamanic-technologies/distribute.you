@@ -221,6 +221,14 @@ export interface Spend {
   /** REAL cost per sales meeting booked, USD cents = committed spend ÷ `salesMeetingsCount`.
    *  Recomputed from live tracker data. null when `salesMeetingsCount` is 0 → CPSM card "—". */
   cpsmCents?: number | null;
+  /** REAL attributed positive-reply count for the brand (single-step `positive_replies` goal).
+   *  Additive/optional — absent until features-service ships it (spawned in lockstep); until
+   *  then the Positive Replies card renders "—". `0` is a real value. */
+  positiveRepliesCount?: number;
+  /** REAL cost per positive reply, USD cents = committed spend ÷ `positiveRepliesCount`.
+   *  Additive/optional; null when the count is 0 (no denominator) → the card renders "—",
+   *  never a false $0. */
+  cpprCents?: number | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */

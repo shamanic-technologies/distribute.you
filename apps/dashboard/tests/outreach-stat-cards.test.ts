@@ -30,13 +30,25 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain('label="Impressions"');
   });
 
-  it("uses Website Visits / Cost per website visit with the requested tooltip for every goal", () => {
+  it("uses Website Visits / Cost per website visit with the requested tooltip", () => {
     expect(cards).toContain('label: "Website Visits"');
     expect(cards).toContain(
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     );
     expect(cards).toContain('costLabel: "Cost per website visit"');
-    expect(cards).not.toContain('label: "Positive Replies"');
+  });
+
+  it("hides the click cards and shows the Positive Replies outcome for positive_replies", () => {
+    // Single-step reply→paid goal: Website Visits + CPC cards are hidden, and the outcome
+    // pair becomes Positive Replies + Cost per positive reply (GA, no beta badge, no setup CTA).
+    expect(cards).toContain('const isPositiveReplies = goal === "positive_replies"');
+    expect(cards).toContain("{!isPositiveReplies && (");
+    expect(cards).toContain('label: "Positive Replies"');
+    expect(cards).toContain('costLabel: "Cost per positive reply"');
+    expect(cards).toContain("count: spend?.positiveRepliesCount");
+    expect(cards).toContain("formatCostCents(spend?.cpprCents)");
+    expect(cards).toContain("isPositiveReplies ? undefined : beta");
+    // CPPR abbreviation is not used as a card label here (full phrase instead).
     expect(cards).not.toContain('costLabel: "CPPR"');
   });
 
