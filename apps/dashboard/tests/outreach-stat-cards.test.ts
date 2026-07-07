@@ -56,6 +56,17 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain('costLabel: "CAC"');
   });
 
+  it("binds the Form submissions/CPFS outcome for the form_submissions goal via the goal-steps source", () => {
+    // The form_submissions outcome (label + count/cost fields) now lives in the
+    // goal-steps single source, not a hardcoded branch in the component. The card
+    // renders it through goalOutcomeStep like every other goal.
+    const steps = read("../src/lib/goal-steps.ts");
+    expect(steps).toContain('label: "Form submissions"');
+    expect(steps).toContain('countField: "formSubmissionsCount"');
+    expect(steps).toContain('costField: "cpfsCents"');
+    expect(steps).toContain('costLabel: "CPFS"');
+  });
+
   it("renders the REAL server-provided tracker count for the outcome card, not a hardcoded dash", () => {
     // Count/cost come from the features-service /revenue spend block (real, tracker-sourced)
     // via the step's countField/costField, not the old hardcoded value="—".

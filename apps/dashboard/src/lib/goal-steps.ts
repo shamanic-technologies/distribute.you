@@ -28,7 +28,7 @@ import type { BrandOptimizationGoal } from "@/lib/api";
 /** Leads-page tab key for a lead-signal step. */
 export type LeadTab = "outreach" | "clicks" | "positive-replies";
 /** Activity-chart metric key for a step with a daily series. */
-export type ChartMetricKey = "outreach" | "clicks" | "repliedPositive";
+export type ChartMetricKey = "outreach" | "clicks" | "repliedPositive" | "formSubmissions";
 /** Aggregate count/cost fields on the features-service `/revenue` `spend` block. */
 type SpendCountField = "signupsCount" | "salesMeetingsCount" | "formSubmissionsCount";
 type SpendCostField = "cpsCents" | "cpsmCents" | "cpfsCents";
@@ -101,10 +101,15 @@ const MEETINGS_OUTCOME: GoalStep = {
   color: "#7c3aed",
   outcome: { countField: "salesMeetingsCount", costField: "cpsmCents", costLabel: "CPSM" },
 };
+// Form submissions have a brand-level aggregate (stat card) AND a daily series
+// (features-service serves `metrics.formSubmissions`, so the activity graph plots a
+// Form-submissions bar) — but no per-lead attribution yet, so no Leads tab (`tab`
+// absent). The `chartKey` gives it the daily bar without a per-lead surface.
 const FORM_OUTCOME: GoalStep = {
   key: "form_submissions",
   label: "Form submissions",
   color: "#7c3aed",
+  chartKey: "formSubmissions",
   outcome: { countField: "formSubmissionsCount", costField: "cpfsCents", costLabel: "CPFS" },
 };
 // Purchases are attributed per-lead upstream but have no brand-level aggregate

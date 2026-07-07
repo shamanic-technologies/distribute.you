@@ -26,7 +26,7 @@ import type { SignalSeries } from "@/lib/revenue-view";
  * actual + remaining-expected so a single day reads as one bar per metric.
  */
 
-type ChartMetricKey = "outreach" | "clicks" | "repliedPositive";
+type ChartMetricKey = "outreach" | "clicks" | "repliedPositive" | "formSubmissions";
 
 const RANGES = [7, 30, 90] as const;
 
@@ -45,9 +45,21 @@ const POSITIVE_REPLIES: MetricDef = {
   actual: "#dc2626",
   expected: "#fecaca",
 };
+// Form-submission bar (form_submissions goal) — the visit-driven outcome shown
+// beside Website Visits. Beta violet to distinguish from the cyan Website Visits bar.
+const FORM_SUBMISSIONS: MetricDef = {
+  key: "formSubmissions",
+  label: "Form submissions",
+  actual: "#7c3aed",
+  expected: "#ddd6fe",
+};
 
 /** Bars with NO pipeline-activity forecast (no projection rate) get expected = 0. */
-const FORECASTABLE: ReadonlySet<ChartMetricKey> = new Set(["outreach", "clicks"]);
+const FORECASTABLE: ReadonlySet<ChartMetricKey> = new Set([
+  "outreach",
+  "clicks",
+  "formSubmissions",
+]);
 
 type PipelineActualSeries = Partial<Record<string, SignalSeries | undefined>>;
 
@@ -118,12 +130,14 @@ const METRIC_BY_KEY: Record<ChartMetricKey, MetricDef> = {
   outreach: OUTREACH,
   clicks: CLICKS,
   repliedPositive: POSITIVE_REPLIES,
+  formSubmissions: FORM_SUBMISSIONS,
 };
 
-// The goal's on-path engagement signals, base→outcome (goal-steps single source):
-// visit goals → [Outreach, Website Visits]; positive_replies → [Outreach, Positive
-// replies]; sales_meetings → [Outreach, Website Visits, Positive replies] (both on
-// its click→reply→meeting path).
+// The goal's on-path signals with a daily series, base→outcome (goal-steps single
+// source): visit goals → [Outreach, Website Visits]; form_submissions also adds its
+// [Form submissions] bar (features-service serves the daily FS series); positive_replies
+// → [Outreach, Positive replies]; sales_meetings → [Outreach, Website Visits, Positive
+// replies] (both on its click→reply→meeting path).
 function activeMetrics(optimizationGoal: BrandOptimizationGoal): MetricDef[] {
   return goalChartMetricKeys(optimizationGoal).map((k) => METRIC_BY_KEY[k]);
 }
@@ -181,7 +195,19 @@ function buildChartData({
       raw,
     };
     for (const metric of metrics) {
-      const actual = isFuture ? 0 : finite(maps[metric.key]?.get(date));
+      const histActual = isFuture ? 0 : finite(maps[metric.key]?.get(date));
+      // Form submissions have no historical /revenue daily series (unlike clicks),
+      // so their past bars are empty; TODAY's actual-so-far comes from the
+      // pipeline-activity today bucket. Only fill from there when the historical
+      // map is empty for today (leaves clicks/outreach untouched).
+      const actual =
+        isToday && histActual === 0
+          ? finite(
+              (forecastMetrics as Record<string, PipelineActivityMetric> | undefined)?.[
+                metric.key
+              ]?.actual,
+            )
+          : histActual;
       // Today shows ACTUAL-so-far only (no expected ghost); only future days carry
       // the forecast. Past days are pure actuals.
       const expected = isFuture ? forecastExpected(forecastMetrics, metric.key) : 0;
