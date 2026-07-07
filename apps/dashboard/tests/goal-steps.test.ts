@@ -47,9 +47,16 @@ describe("goal-steps: Leads tabs (outcome-first, off-path dropped)", () => {
 
 describe("goal-steps: activity-chart metrics (base→outcome)", () => {
   it("visit-driven goals plot Outreach + Website Visits", () => {
-    for (const goal of ["website_visits", "signups", "form_submissions", "purchase"] as const) {
+    for (const goal of ["website_visits", "signups", "purchase"] as const) {
       expect(goalChartMetricKeys(goal)).toEqual(["outreach", "clicks"]);
     }
+  });
+  it("form_submissions also plots its Form-submissions bar (features serves the daily series)", () => {
+    expect(goalChartMetricKeys("form_submissions")).toEqual([
+      "outreach",
+      "clicks",
+      "formSubmissions",
+    ]);
   });
   it("positive_replies plots Outreach + Positive replies", () => {
     expect(goalChartMetricKeys("positive_replies")).toEqual(["outreach", "repliedPositive"]);
