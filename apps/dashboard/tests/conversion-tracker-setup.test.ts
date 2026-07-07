@@ -18,13 +18,18 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(button).toContain("Set up conversion tracker");
     expect(cards).toContain("/settings#conversion-tracking");
     expect(cards).toContain('import { useParams } from "next/navigation"');
-    // The button renders IN PLACE OF the value on an untracked outcome card (via
-    // ScoreCard's `action` slot) — only when the value itself is missing ("—"),
-    // so a real tracker count/cost hides the CTA. Suppressed for positive_replies
-    // (reply attribution is inbox-sourced, not the site conversion tracker).
-    expect(cards).toContain('outcomeCountValue === "—" && !isPositiveReplies');
-    expect(cards).toContain('outcomeMetric.costValue === "—" && !isPositiveReplies');
-    expect(cards).toContain("? trackerButton");
+    // The button renders IN PLACE OF the value on EVERY untracked outcome card (via
+    // ScoreCard's `action` slot) whenever the tracker is not live — `trackerButton`
+    // is null once live, so a live tracker hides the CTA and the real count/cost shows.
+    // EXCEPT positive_replies: reply attribution is inbox-sourced (not the site
+    // conversion tracker), so the CTA is suppressed there on both cards.
+    expect(cards).toContain(
+      "action={isPositiveReplies ? undefined : (trackerButton ?? undefined)}",
+    );
+    expect(
+      cards.match(/action=\{isPositiveReplies \? undefined : \(trackerButton \?\? undefined\)\}/g)
+        ?.length,
+    ).toBe(2);
     // Built only when the brand-scoped href resolves AND the tracker is not yet
     // live — once lead-service reports live/live_waiting the CTA must stop, so the
     // stat cards never nag "set up" while Brand Settings shows "Tracker live".

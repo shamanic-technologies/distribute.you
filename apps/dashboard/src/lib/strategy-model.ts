@@ -10,7 +10,12 @@ import type {
 // vitest (which has no "@/" alias), so a value import of "@/lib/api" fails to resolve.
 // Keep in lockstep with the exported api.ts helper.
 function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
-  return goal === "signups" || goal === "website_visits" || goal === "form_submissions";
+  return (
+    goal === "signups" ||
+    goal === "website_visits" ||
+    goal === "form_submissions" ||
+    goal === "purchase"
+  );
 }
 
 /**
@@ -56,6 +61,10 @@ export function modelAvatar(dynastySlug: string): { emoji: string; color: string
  *  The two beta goals borrow the nearest family (visit → signup, reply → meetingBooked);
  *  the enum has no single-step variant. */
 export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAudienceStatsGoal {
+  if (goal === "purchase") return "purchase";
+  // form_submissions has its own native audience-stats goal (visit-driven, sorts on
+  // CPC like signup, but carries per-audience formSubmissions + cpfsCents evidence).
+  if (goal === "form_submissions") return "formSubmission";
   return isVisitDrivenGoal(goal) ? "signup" : "meetingBooked";
 }
 
@@ -70,6 +79,8 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
       return "positive reply";
     case "form_submissions":
       return "form submission";
+    case "purchase":
+      return "purchase";
     default:
       return "meeting";
   }
@@ -85,6 +96,7 @@ export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): Sales
   if (goal === "form_submissions") return "form_submissions";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
+  if (goal === "purchase") return "purchase";
   if (goal === "sales_meetings") return "meeting-booked";
   return "self-serve";
 }
@@ -169,6 +181,43 @@ export function pickBrandRow(
 }
 
 /**
+ * The BEST workflow for the brand — the cheapest BRAND-LEVEL row (audienceId null),
+ * ranked on `resolved.costPerOutcomeUsd` ascending (the goal metric, at the row's
+ * server-resolved brand/crossOrg grain). Rows whose metric is null (cold start, no
+ * economics) or <= 0 are skipped.
+ *
+ * We deliberately do NOT drive the headline off `recommendedWorkflowDynastySlug`: that
+ * backend argmin spans per-audience rows too (it exists for campaign-service's per-run
+ * audience selection, which also picks the cheapest audience leg), so a single cheap
+ * 2-click audience row can crown a dynasty whose BRAND-level cost is actually bad and
+ * floored. Ranking the brand-level rows here keeps the headline coherent with the
+ * per-audience table and the brand's own averages.
+ *
+ * Fallbacks when no brand-level row ranks (all null/<=0): the recommended dynasty's
+ * brand-level row, then the first brand-level row. Pure pick — the chosen row's
+ * `resolved` block is rendered verbatim.
+ */
+export function pickBestBrandRow(
+  rows: readonly WorkflowProjectionRow[],
+  recommendedDynastySlug: string | null,
+): WorkflowProjectionRow | null {
+  const brandRows = rows.filter((r) => r.audienceId == null);
+  if (brandRows.length === 0) return null;
+  let best: WorkflowProjectionRow | null = null;
+  let bestCost = Infinity;
+  for (const r of brandRows) {
+    const c = r.resolved.costPerOutcomeUsd;
+    if (c == null || c <= 0) continue;
+    if (c < bestCost) {
+      bestCost = c;
+      best = r;
+    }
+  }
+  if (best) return best;
+  return pickBrandRow(rows, recommendedDynastySlug) ?? brandRows[0];
+}
+
+/**
  * The per-audience row for one workflow. The backend already resolved that row through
  * the audience → brand → crossOrg grain ladder (see `resolved.grain`); this only PICKS
  * the matching row — no client-side fallback resolution, no metric math.
@@ -185,6 +234,25 @@ export function pickAudienceRow(
         r.audienceId === audienceId &&
         r.workflow.workflowDynastySlug === workflowDynastySlug,
     ) ?? null
+  );
+}
+
+/**
+ * The per-audience row for a workflow, falling back to the workflow's BRAND-LEVEL row
+ * when this audience never ran it (no couple row). So every active audience shows the
+ * best workflow's cost — its own audience-grain figure where it has run evidence, else
+ * the workflow's brand/crossOrg cost — instead of a bare "-". Pure pick; `resolved` is
+ * read verbatim, and the fallback row's grain honestly labels the number ("this brand"
+ * / "fleet benchmark"), never claiming a per-audience result the audience doesn't have.
+ */
+export function pickAudienceOrBrandRow(
+  rows: readonly WorkflowProjectionRow[],
+  workflowDynastySlug: string | null,
+  audienceId: string,
+): WorkflowProjectionRow | null {
+  return (
+    pickAudienceRow(rows, workflowDynastySlug, audienceId) ??
+    pickBrandRow(rows, workflowDynastySlug)
   );
 }
 

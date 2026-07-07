@@ -20,7 +20,11 @@ import {
   listWorkflowExamples,
   saveBrandProfileVersion,
 } from "@/lib/api";
-import type { WorkflowExampleEmail, WorkflowProjectionRow } from "@/lib/api";
+import type {
+  BrandOptimizationGoal,
+  WorkflowExampleEmail,
+  WorkflowProjectionRow,
+} from "@/lib/api";
 import {
   ALL_FIELDS,
   cloneFields,
@@ -35,8 +39,8 @@ import {
   objectiveForOptimizationGoal,
   OFFER_LEVERS,
   outcomeNoun,
-  pickAudienceRow,
-  pickBrandRow,
+  pickAudienceOrBrandRow,
+  pickBestBrandRow,
   WORKFLOW_GRAIN_LABEL,
 } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
@@ -111,6 +115,32 @@ function grainHint(grain: "crossOrg" | "brand" | "audience" | null | undefined):
     default:
       return "";
   }
+}
+
+/** Up-to-2-letter initials fallback when an audience has no generated avatar yet. */
+function audienceInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "A";
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+}
+
+/** Audience profile picture — the server-generated avatar when present, else an
+ *  initials badge (mirrors the Top-audiences card + Customer Audiences table). */
+function AudienceAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className="h-7 w-7 shrink-0 rounded-full border border-gray-200 bg-white object-cover"
+      />
+    );
+  }
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand-100 bg-brand-50 text-[10px] font-semibold text-brand-700">
+      {audienceInitials(name)}
+    </span>
+  );
 }
 
 function Card({
@@ -310,6 +340,40 @@ export function StrategyPage() {
   // of the website_visits collapse, inverted (there the click IS the outcome; here it's noise).
   const isPositiveRepliesGoal = optimizationGoal === "positive_replies";
 
+  // Objective + conversion-rate labels/values per goal (drives the header stat row).
+  // purchase reuses the self-serve two-step (visit → signup → paid) — brand-service has
+  // no purchase-specific rate; form_submissions is its own two-step (visit → form → paid).
+  const OBJECTIVE_LABEL: Record<BrandOptimizationGoal, string> = {
+    signups: "Signups",
+    sales_meetings: "Sales meetings",
+    website_visits: "Website visits",
+    positive_replies: "Positive replies",
+    form_submissions: "Form submissions",
+    purchase: "Purchases",
+  };
+  const conv1: { label: string; value: number | null | undefined } =
+    optimizationGoal === "signups"
+      ? { label: "Visit → signup", value: econ?.visitToSignupPct }
+      : optimizationGoal === "website_visits"
+        ? { label: "Website visit → paid", value: econ?.visitToPaidClientPct }
+        : optimizationGoal === "positive_replies"
+          ? { label: "Positive reply → paid", value: econ?.replyToPaidClientPct }
+          : optimizationGoal === "form_submissions"
+            ? { label: "Visit → form submission", value: econ?.visitToFormSubmissionPct }
+            : optimizationGoal === "purchase"
+              ? { label: "Visit → signup", value: econ?.visitToSignupPct }
+              : { label: "Reply → meeting", value: econ?.replyToMeetingPct };
+  // Two-step goals show a second conversion; the single-step beta goals
+  // (website_visits / positive_replies) go straight to paid, so no row 2.
+  const conv2: { label: string; value: number | null | undefined } | null =
+    optimizationGoal === "signups" || optimizationGoal === "purchase"
+      ? { label: "Signup → paid", value: econ?.signupToPaidClientPct }
+      : optimizationGoal === "form_submissions"
+        ? { label: "Form submission → paid", value: econ?.formSubmissionToPaidClientPct }
+        : optimizationGoal === "sales_meetings"
+          ? { label: "Meeting → close", value: econ?.meetingToClosePct }
+          : null;
+
   // The 3-grain workflow-projection ladder: one row per (audienceId, workflow) with
   // its cost at each grain + the server-`resolved` grain (brand-real when the brand
   // has run enough, else the fleet benchmark). This ONE call feeds both the best-model
@@ -381,14 +445,16 @@ export function StrategyPage() {
     saveOfferMut.mutate(offerFields);
   };
 
-  // Best model = the recommended workflow, else the first row's workflow. Its headline
-  // economics come from that workflow's BRAND-LEVEL row (audienceId null) `resolved`.
+  // Best model = the cheapest BRAND-LEVEL workflow, ranked on resolved.costPerOutcomeUsd
+  // (the goal metric) at the row's server-resolved brand/crossOrg grain. We do NOT drive
+  // this off recommendedWorkflowDynastySlug — that argmin spans per-audience rows (it's
+  // for campaign-service's per-run audience selection), so one cheap 2-click audience leg
+  // can crown a dynasty whose brand-level cost is bad/floored, making the headline show a
+  // worse number than the brand's own average. Ranking the brand rows keeps it coherent.
+  // Its headline economics are read verbatim from that row's `resolved`.
   const rows = projection?.rows ?? [];
-  const bestSlug =
-    projection?.recommendedWorkflowDynastySlug ??
-    rows[0]?.workflow.workflowDynastySlug ??
-    null;
-  const brandRow = pickBrandRow(rows, bestSlug);
+  const brandRow = pickBestBrandRow(rows, projection?.recommendedWorkflowDynastySlug ?? null);
+  const bestSlug = brandRow?.workflow.workflowDynastySlug ?? null;
   const bestName = brandRow?.workflow.workflowDynastyName ?? bestSlug ?? "-";
   // Everything below is read straight from the server-resolved grain (never rescaled).
   const resolved = brandRow?.resolved ?? null;
@@ -401,6 +467,20 @@ export function StrategyPage() {
   // grain, already picked audience→brand→crossOrg server-side). Pure display pick — every
   // value stays server-provided (no client-side metric math, no rescale).
   const activeAudiences = audiencesData?.audiences ?? [];
+
+  // Table order: cheapest Cost per website visit (= resolved.costPerClickUsd) first.
+  // Audiences with no evidence row yet (no resolved cost) sort to the END. Each audience
+  // falls back to the best workflow's brand-level row when it never ran it, so the cost
+  // is that couple's audience-grain figure or the workflow's brand/crossOrg cost. Pure
+  // display ordering — the cost itself is the server-resolved value, never recomputed here.
+  const sortedAudiences = [...activeAudiences].sort((a, b) => {
+    const ca = pickAudienceOrBrandRow(rows, bestSlug, a.id)?.resolved?.costPerClickUsd ?? null;
+    const cb = pickAudienceOrBrandRow(rows, bestSlug, b.id)?.resolved?.costPerClickUsd ?? null;
+    if (ca == null && cb == null) return 0;
+    if (ca == null) return 1;
+    if (cb == null) return -1;
+    return ca - cb;
+  });
 
   // Example emails for the best model — fetched on demand (drawer), cascade
   // brand → org → global; empty is a clean "no examples yet" state.
@@ -446,54 +526,16 @@ export function StrategyPage() {
             <Stat
               label="Objective"
               pending={econPending}
-              value={
-                optimizationGoal === "signups"
-                  ? "Signups"
-                  : optimizationGoal === "website_visits"
-                    ? "Website visits"
-                    : optimizationGoal === "positive_replies"
-                      ? "Positive replies"
-                      : "Sales meetings"
-              }
+              value={OBJECTIVE_LABEL[optimizationGoal]}
             />
             <Stat
               label="Lifetime revenue / client"
               pending={econPending}
               value={econ ? formatUsd(econ.lifetimeRevenueUsd) : "-"}
             />
-            <Stat
-              label={
-                optimizationGoal === "signups"
-                  ? "Visit → signup"
-                  : optimizationGoal === "website_visits"
-                    ? "Website visit → paid"
-                    : optimizationGoal === "positive_replies"
-                      ? "Positive reply → paid"
-                      : "Reply → meeting"
-              }
-              pending={econPending}
-              value={formatPct(
-                optimizationGoal === "signups"
-                  ? econ?.visitToSignupPct
-                  : optimizationGoal === "website_visits"
-                    ? econ?.visitToPaidClientPct
-                    : optimizationGoal === "positive_replies"
-                      ? econ?.replyToPaidClientPct
-                      : econ?.replyToMeetingPct,
-              )}
-            />
-            {/* The two-step goals show a second conversion; the single-step beta goals
-                (website_visits / positive_replies) go straight to paid, so no row 2. */}
-            {(optimizationGoal === "signups" || optimizationGoal === "sales_meetings") && (
-              <Stat
-                label={optimizationGoal === "signups" ? "Signup → paid" : "Meeting → close"}
-                pending={econPending}
-                value={formatPct(
-                  optimizationGoal === "signups"
-                    ? econ?.signupToPaidClientPct
-                    : econ?.meetingToClosePct,
-                )}
-              />
+            <Stat label={conv1.label} pending={econPending} value={formatPct(conv1.value)} />
+            {conv2 && (
+              <Stat label={conv2.label} pending={econPending} value={formatPct(conv2.value)} />
             )}
           </div>
           {!econPending && !econ ? (
@@ -744,7 +786,13 @@ export function StrategyPage() {
                             <th className="px-4 py-2.5 text-right font-semibold">
                               <span className="inline-flex items-center justify-end gap-1">
                                 <MetricLabel
-                                  text={optimizationGoal === "signups" ? "CPS" : `Cost / ${noun}`}
+                                  text={
+                                    optimizationGoal === "signups"
+                                      ? "CPS"
+                                      : optimizationGoal === "form_submissions"
+                                        ? "CPFS"
+                                        : `Cost / ${noun}`
+                                  }
                                   tip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
                                 />
                               </span>
@@ -769,20 +817,27 @@ export function StrategyPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {activeAudiences.map((a) => {
-                          // The audience's own projection row; its `resolved` grain was
-                          // already picked audience→brand→crossOrg server-side. Read
-                          // verbatim — plain "$X" even when that grain saw 0 clicks.
-                          const row = pickAudienceRow(rows, bestSlug, a.id);
+                        {sortedAudiences.map((a) => {
+                          // The audience's own projection row for the best workflow — its
+                          // `resolved` grain was already picked audience→brand→crossOrg
+                          // server-side. Falls back to the workflow's brand-level row when
+                          // this audience never ran it (grain then honestly reads "this
+                          // brand" / "fleet benchmark"). Read verbatim.
+                          const row = pickAudienceOrBrandRow(rows, bestSlug, a.id);
                           const r = row?.resolved ?? null;
                           const floored = isRowFloored(row);
                           return (
                             <tr key={a.id}>
                               <td className="px-4 py-2.5">
-                                <span className="block truncate text-gray-700">{a.name}</span>
-                                <span className="text-[10px] text-gray-400">
-                                  {r ? WORKFLOW_GRAIN_LABEL[r.grain] : "No data yet"}
-                                </span>
+                                <div className="flex items-center gap-2.5">
+                                  <AudienceAvatar name={a.name} avatarUrl={a.avatarUrl} />
+                                  <div className="min-w-0">
+                                    <span className="block truncate text-gray-700">{a.name}</span>
+                                    <span className="text-[10px] text-gray-400">
+                                      {r ? WORKFLOW_GRAIN_LABEL[r.grain] : "No data yet"}
+                                    </span>
+                                  </div>
+                                </div>
                               </td>
                               {showReplyStat && (
                                 <td className="px-4 py-2.5 text-right font-semibold text-gray-900">

@@ -229,6 +229,13 @@ export interface Spend {
    *  Additive/optional; null when the count is 0 (no denominator) → the card renders "—",
    *  never a false $0. */
   cpprCents?: number | null;
+  /** REAL tracked form-submission count (attributed + deduped) from the live conversion
+   *  tracker — the form_submissions goal outcome, sibling of `signupsCount`. Additive/optional;
+   *  absent → the beta Form submissions card renders "—" + setup CTA. `0` is a real value. */
+  formSubmissionsCount?: number;
+  /** REAL cost per form submission, USD cents = committed spend ÷ `formSubmissionsCount`.
+   *  null when `formSubmissionsCount` is 0 (no denominator) → the CPFS card renders "—". */
+  cpfsCents?: number | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */

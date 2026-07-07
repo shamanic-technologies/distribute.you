@@ -191,7 +191,7 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain("visiblePctFields");
     expect(content).toContain("f.goals.includes(form.optimizationGoal)");
     expect(content).toContain('goals: ["sales_meetings"]');
-    expect(content).toContain('goals: ["signups"]');
+    expect(content).toContain('goals: ["signups", "purchase"]');
   });
 
   it("validates the selected goal fields before saving and persists the optimization goal", () => {

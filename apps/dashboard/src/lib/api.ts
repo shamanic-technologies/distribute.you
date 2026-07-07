@@ -655,7 +655,8 @@ export type BrandOptimizationGoal =
   | "sales_meetings"
   | "website_visits"
   | "positive_replies"
-  | "form_submissions";
+  | "form_submissions"
+  | "purchase";
 type BrandOptimizationGoalWire =
   | BrandOptimizationGoal
   | "booked_meetings"
@@ -668,26 +669,36 @@ function normalizeBrandOptimizationGoal(
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
   if (goal === "form_submissions") return "form_submissions";
-  // booked_meetings / sales / sales_meetings all collapse to sales_meetings.
+  // brand-service persists the purchase goal under the snake wire value `sales`.
+  if (goal === "sales" || goal === "purchase") return "purchase";
+  // booked_meetings / sales_meetings collapse to sales_meetings.
   return "sales_meetings";
 }
 
 function serializeBrandOptimizationGoal(
   goal: BrandOptimizationGoal,
-): "signups" | "booked_meetings" | "website_visits" | "positive_replies" | "form_submissions" {
+): "signups" | "booked_meetings" | "website_visits" | "positive_replies" | "form_submissions" | "sales" {
   if (goal === "signups") return "signups";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
   if (goal === "form_submissions") return "form_submissions";
+  // purchase serialises to brand-service's snake `sales` optimizationGoal.
+  if (goal === "purchase") return "sales";
   return "booked_meetings";
 }
 
 // Most surfaces only distinguish VISIT-driven (website click → outcome) from
 // REPLY-driven (positive reply → outcome) behaviour. signups + website_visits +
-// form_submissions are visit-driven; sales_meetings + positive_replies are reply-driven.
-// Use this instead of `goal === "signups"` so the beta goals route to the right family everywhere.
+// form_submissions + purchase are visit-driven; sales_meetings + positive_replies are
+// reply-driven. Use this instead of `goal === "signups"` so the beta goals route to the
+// right family everywhere.
 export function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
-  return goal === "signups" || goal === "website_visits" || goal === "form_submissions";
+  return (
+    goal === "signups" ||
+    goal === "website_visits" ||
+    goal === "form_submissions" ||
+    goal === "purchase"
+  );
 }
 
 export interface BrandSalesEconomics {
@@ -1724,7 +1735,11 @@ export interface GlobalStatsResponse {
   groups?: StatsGroup[];
 }
 
-export type PipelineActivityMetricKey = "outreach" | "clicks" | "signups";
+export type PipelineActivityMetricKey =
+  | "outreach"
+  | "clicks"
+  | "signups"
+  | "formSubmissions";
 
 export interface PipelineActivityMetric {
   actual: number | null;
@@ -1741,6 +1756,9 @@ export interface PipelineActivityDay {
 export interface PipelineActivitySummary {
   dailyBudgetUsd: number | null;
   clickToSignupPct: number | null;
+  /** Brand effective visit→form-submission rate (form-submission projection rate).
+   *  Null when economics absent or the brand carries no form-submission rate. */
+  clickToFormSubmissionPct?: number | null;
 }
 
 export interface PipelineActivityResponse {
@@ -1752,7 +1770,11 @@ export interface PipelineActivityResponse {
   summary: PipelineActivitySummary;
 }
 
-export type FeatureAudienceStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeatureAudienceStatsGoal =
+  | "signup"
+  | "meetingBooked"
+  | "purchase"
+  | "formSubmission";
 export type FeatureAudienceStatsSortMetric = "cpc" | "cppr";
 
 export interface FeatureAudienceStatsRow {
@@ -1773,10 +1795,16 @@ export interface FeatureAudienceStatsRow {
     contacted: number;
     websiteClicks: number;
     positiveReplies: number;
+    /** REAL per-audience form-submission conversions (attributed, deduped). Present
+     *  ONLY for the form_submissions goal; absent otherwise — never a fabricated 0. */
+    formSubmissions?: number;
   };
   metrics: {
     cpcCents: number | null;
     cpprCents: number | null;
+    /** REAL cost per form submission = spend ÷ formSubmissions. Null when 0/absent
+     *  (not the form_submissions goal, or emails not served). Never a false $0. */
+    cpfsCents?: number | null;
   };
 }
 
@@ -1807,17 +1835,24 @@ const FeatureAudienceStatsRowSchema = z.object({
     contacted: z.number(),
     websiteClicks: z.number(),
     positiveReplies: z.number(),
+    formSubmissions: z.number().optional(),
   }),
   metrics: z.object({
     cpcCents: z.number().nullable(),
     cpprCents: z.number().nullable(),
+    cpfsCents: z.number().nullable().optional(),
   }),
 });
 
 const FeatureAudienceStatsResponseSchema = z.object({
   featureSlug: z.string(),
   brandId: z.string(),
-  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  goal: z.union([
+    z.literal("signup"),
+    z.literal("meetingBooked"),
+    z.literal("purchase"),
+    z.literal("formSubmission"),
+  ]),
   brandProfileId: z.string().nullable(),
   sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
   audiences: z.array(FeatureAudienceStatsRowSchema),
@@ -1985,12 +2020,14 @@ const PipelineActivityResponseSchema = z.object({
         outreach: PipelineActivityMetricSchema,
         clicks: PipelineActivityMetricSchema,
         signups: PipelineActivityMetricSchema,
+        formSubmissions: PipelineActivityMetricSchema,
       }),
     }),
   ),
   summary: z.object({
     dailyBudgetUsd: z.number().nullable(),
     clickToSignupPct: z.number().nullable(),
+    clickToFormSubmissionPct: z.number().nullable().optional(),
   }),
 });
 
@@ -2842,7 +2879,8 @@ export type SalesObjective =
   | "self-serve"
   | "form_submissions"
   | "website_visits"
-  | "positive_replies";
+  | "positive_replies"
+  | "purchase";
 
 export function salesObjectiveForOptimizationGoal(
   goal: BrandOptimizationGoal,
@@ -2857,6 +2895,8 @@ export function salesObjectiveForOptimizationGoal(
   if (goal === "form_submissions") return "form_submissions";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
+  // purchase → the native multi-step purchase funnel (cost-per-paid-client).
+  if (goal === "purchase") return "purchase";
   if (goal === "sales_meetings") return "meeting-booked";
   return "self-serve";
 }
@@ -2888,6 +2928,10 @@ const WorkflowProjectionItemSchema = z.object({
   costPerSignupUsd: z.number().nullable().optional(),
   // Cost per form submission (form_submissions goal). Optional to decouple the rollout.
   costPerFormSubmissionUsd: z.number().nullable().optional(),
+  // The GOAL metric the projection was queried for (resolved.costPerOutcomeUsd) — the
+  // native per-goal cost features-service ranks on. Used by the form_submissions +
+  // purchase unit-cost path where no dedicated grain field exists. Optional to decouple.
+  costPerOutcomeUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable().optional(),
   // Lifetime ROI multiple = LTR / costPerCloseUsd (= 100 / cacPct), budget-
@@ -2906,6 +2950,7 @@ const WorkflowProjectionResponseSchema = z.object({
     z.literal("form_submissions"),
     z.literal("website_visits"),
     z.literal("positive_replies"),
+    z.literal("purchase"),
   ]),
   workflows: z.array(WorkflowProjectionItemSchema),
   recommendedWorkflowDynastySlug: z.string().nullable(),
@@ -2947,6 +2992,7 @@ export function keepLastGoodWorkflowProjection(
         "clickUsd",
         "costPerSignupUsd",
         "costPerFormSubmissionUsd",
+        "costPerOutcomeUsd",
         "costPerCloseUsd",
         "costPerMeetingBookedUsd",
         "projection",
@@ -2975,6 +3021,7 @@ function ladderRowToWorkflowItem(row: WorkflowProjectionRow): WorkflowProjection
     clickUsd: row.resolved.costPerClickUsd,
     costPerSignupUsd: block?.projected.costPerSignupUsd ?? null,
     costPerFormSubmissionUsd: null,
+    costPerOutcomeUsd: row.resolved.costPerOutcomeUsd,
     costPerCloseUsd: row.resolved.costPerPaidClientUsd,
     costPerMeetingBookedUsd: row.resolved.costPerMeetingBookedUsd,
     roiMultiple: row.resolved.roiMultiple,

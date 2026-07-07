@@ -157,14 +157,23 @@ export function OutreachStatCards({
             "Cost per sales meeting booked: committed spend divided by the real meetings your conversion tracker recorded.",
           costValue: formatCostCents(spend?.cpsmCents),
         }
-      : {
-          label: "Signups",
-          count: spend?.signupsCount,
-          costLabel: "CPS",
-          costTooltip:
-            "Cost per signup: committed spend divided by the real signups your conversion tracker recorded.",
-          costValue: formatCostCents(spend?.cpsCents),
-        };
+      : goal === "form_submissions"
+        ? {
+            label: "Form submissions",
+            count: spend?.formSubmissionsCount,
+            costLabel: "CPFS",
+            costTooltip:
+              "Cost per form submission: committed spend divided by the real form submissions your conversion tracker recorded.",
+            costValue: formatCostCents(spend?.cpfsCents),
+          }
+        : {
+            label: "Signups",
+            count: spend?.signupsCount,
+            costLabel: "CPS",
+            costTooltip:
+              "Cost per signup: committed spend divided by the real signups your conversion tracker recorded.",
+            costValue: formatCostCents(spend?.cpsCents),
+          };
   // Real count → render it; absent (pre-tracker / cold payload) → "—" + setup CTA.
   const outcomeCountValue =
     outcomeMetric.count != null ? formatCount(outcomeMetric.count) : "—";
@@ -212,11 +221,7 @@ export function OutreachStatCards({
               label={outcomeMetric.label}
               badge={isPositiveReplies ? undefined : beta}
               value={outcomeCountValue}
-              action={
-                outcomeCountValue === "—" && !isPositiveReplies
-                  ? trackerButton
-                  : undefined
-              }
+              action={isPositiveReplies ? undefined : (trackerButton ?? undefined)}
               pending={pending}
             />
           </Cell>
@@ -226,11 +231,7 @@ export function OutreachStatCards({
               badge={isPositiveReplies ? undefined : beta}
               tooltip={outcomeMetric.costTooltip}
               value={outcomeMetric.costValue}
-              action={
-                outcomeMetric.costValue === "—" && !isPositiveReplies
-                  ? trackerButton
-                  : undefined
-              }
+              action={isPositiveReplies ? undefined : (trackerButton ?? undefined)}
               pending={pending}
             />
           </Cell>

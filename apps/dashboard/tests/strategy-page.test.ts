@@ -9,7 +9,9 @@ import {
   OFFER_LEVERS,
   offerLeverValue,
   outcomeNoun,
+  pickAudienceOrBrandRow,
   pickAudienceRow,
+  pickBestBrandRow,
   pickBrandRow,
   WORKFLOW_GRAIN_LABEL,
 } from "../src/lib/strategy-model";
@@ -30,6 +32,9 @@ function row(over: {
   roiMultiple?: number | null;
   cacPct?: number | null;
 }): WorkflowProjectionRow {
+  // Explicit `null` must survive (a cold-start / no-economics cost); only `undefined`
+  // (the key omitted) falls back to the default.
+  const outcome = over.costPerOutcomeUsd === undefined ? 40 : over.costPerOutcomeUsd;
   const block = {
     evidence: {
       spentUsd: 100,
@@ -43,7 +48,7 @@ function row(over: {
       costPerContactedUsd: 1,
     },
     projected: {
-      costPerSignupUsd: over.costPerOutcomeUsd ?? 40,
+      costPerSignupUsd: outcome,
       costPerPaidClientUsd: over.costPerPaidClientUsd ?? 200,
       costPerMeetingBookedUsd: 30,
       roiMultiple: over.roiMultiple ?? 6,
@@ -57,7 +62,7 @@ function row(over: {
     resolved: {
       grain: over.grain,
       costPerClickUsd: over.costPerClickUsd ?? 2,
-      costPerOutcomeUsd: over.costPerOutcomeUsd ?? 40,
+      costPerOutcomeUsd: outcome,
       costPerPaidClientUsd: over.costPerPaidClientUsd ?? 200,
       costPerMeetingBookedUsd: 30,
       roiMultiple: over.roiMultiple ?? 6,
@@ -117,6 +122,76 @@ describe("pickBrandRow — the workflow's brand-level (audienceId null) row", ()
   });
   it("is null when there is no best pick", () => {
     expect(pickBrandRow(rows, null)).toBeNull();
+  });
+});
+
+describe("pickBestBrandRow — cheapest brand-level workflow by resolved.costPerOutcomeUsd", () => {
+  it("picks the cheapest brand-level cost-per-outcome, NOT recommendedWorkflowDynastySlug", () => {
+    // azalea is the backend-recommended dynasty (its cheap 2-click AUDIENCE leg won the
+    // fleet-wide argmin), but its BRAND-level row is 0-click → floored to a bad cost.
+    // pelican has real brand clicks → a far cheaper brand-level cost-per-outcome.
+    const rows: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "azalea", audienceId: null, grain: "crossOrg", observedClicks: 0, costPerClickUsd: 5.58, costPerOutcomeUsd: 3720 }),
+      row({ workflowDynastySlug: "azalea", audienceId: "cheap-leg", grain: "audience", observedClicks: 2, costPerClickUsd: 1.1, costPerOutcomeUsd: 50 }),
+      row({ workflowDynastySlug: "pelican", audienceId: null, grain: "brand", observedClicks: 30, costPerClickUsd: 2.86, costPerOutcomeUsd: 400 }),
+      row({ workflowDynastySlug: "rampart", audienceId: null, grain: "brand", observedClicks: 27, costPerClickUsd: 3.79, costPerOutcomeUsd: 530 }),
+    ];
+    const best = pickBestBrandRow(rows, "azalea");
+    expect(best?.workflow.workflowDynastySlug).toBe("pelican");
+    expect(best?.audienceId).toBeNull();
+    expect(best?.resolved.costPerClickUsd).toBe(2.86);
+    expect(best?.resolved.grain).toBe("brand"); // never a crossOrg-floored row when a real one is cheaper
+  });
+
+  it("skips brand rows whose cost-per-outcome is null or <= 0", () => {
+    const rows: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "coldstart", audienceId: null, grain: "crossOrg", costPerOutcomeUsd: null }),
+      row({ workflowDynastySlug: "zero", audienceId: null, grain: "brand", costPerOutcomeUsd: 0 }),
+      row({ workflowDynastySlug: "real", audienceId: null, grain: "brand", costPerClickUsd: 4, costPerOutcomeUsd: 600 }),
+    ];
+    expect(pickBestBrandRow(rows, null)?.workflow.workflowDynastySlug).toBe("real");
+  });
+
+  it("falls back to the recommended dynasty's brand row when none rank", () => {
+    const rows: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "a", audienceId: null, grain: "crossOrg", costPerOutcomeUsd: null }),
+      row({ workflowDynastySlug: "b", audienceId: null, grain: "crossOrg", costPerOutcomeUsd: null }),
+    ];
+    expect(pickBestBrandRow(rows, "b")?.workflow.workflowDynastySlug).toBe("b");
+  });
+
+  it("falls back to the first brand row when nothing ranks and no recommended pick", () => {
+    const rows: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "first", audienceId: null, grain: "crossOrg", costPerOutcomeUsd: null }),
+      row({ workflowDynastySlug: "second", audienceId: null, grain: "crossOrg", costPerOutcomeUsd: null }),
+    ];
+    expect(pickBestBrandRow(rows, null)?.workflow.workflowDynastySlug).toBe("first");
+  });
+
+  it("is null when there are no brand-level rows", () => {
+    const rows: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "x", audienceId: "a1", grain: "audience" }),
+    ];
+    expect(pickBestBrandRow(rows, "x")).toBeNull();
+  });
+});
+
+describe("pickAudienceOrBrandRow — per-audience row, brand-level fallback", () => {
+  const rows: WorkflowProjectionRow[] = [
+    row({ workflowDynastySlug: "best", audienceId: null, grain: "brand", costPerClickUsd: 3 }),
+    row({ workflowDynastySlug: "best", audienceId: "ran-it", grain: "audience", costPerClickUsd: 2 }),
+  ];
+  it("returns the audience's own row when it ran the workflow", () => {
+    const r = pickAudienceOrBrandRow(rows, "best", "ran-it");
+    expect(r?.audienceId).toBe("ran-it");
+    expect(r?.resolved.grain).toBe("audience");
+    expect(r?.resolved.costPerClickUsd).toBe(2);
+  });
+  it("falls back to the workflow's brand-level row when the audience never ran it", () => {
+    const r = pickAudienceOrBrandRow(rows, "best", "never-ran");
+    expect(r?.audienceId).toBeNull();
+    expect(r?.resolved.grain).toBe("brand");
+    expect(r?.resolved.costPerClickUsd).toBe(3);
   });
 });
 
@@ -210,9 +285,12 @@ describe("StrategyPage source guards", () => {
   });
   it("reads the best model + per-audience estimates from the one workflow-projection ladder", () => {
     expect(page).toContain("getWorkflowProjectionLadder");
+    // the headline ranks the BRAND-LEVEL rows itself (cheapest cost-per-outcome); it does
+    // NOT crown the workflow off recommendedWorkflowDynastySlug (that argmin spans audience
+    // rows) — but still passes it in as the fallback pick.
     expect(page).toContain("recommendedWorkflowDynastySlug");
-    expect(page).toContain("pickBrandRow");
-    expect(page).toContain("pickAudienceRow");
+    expect(page).toContain("pickBestBrandRow");
+    expect(page).toContain("pickAudienceOrBrandRow");
     // the old two-endpoint + client-side grain ladder is gone
     expect(page).not.toContain("fetchFeatureCandidates");
     expect(page).not.toContain("selectBestModelEvidence");
