@@ -16,8 +16,13 @@ import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { FEATURE_GATES } from "@/lib/feature-gates";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
-import { PlusIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, ChatBubbleLeftRightIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
+import { WorkflowExamplesPanel } from "@/components/workflows/workflow-examples-panel";
+
+// Columns whose stat relates to email Opens are hidden from the workflows table —
+// we no longer surface open rate / cost-per-open / opens count here.
+const isOpensColumn = (key: string, label: string) => /open/i.test(key) || /open/i.test(label);
 
 function SortHeader({
   label,
@@ -35,7 +40,7 @@ function SortHeader({
   const active = currentSort === sortKey;
   return (
     <th
-      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-brand-600 select-none"
+      className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-brand-600 select-none"
       onClick={() => onSort(sortKey)}
     >
       {label} {active ? (currentDir === "desc" ? "↓" : "↑") : ""}
@@ -74,6 +79,9 @@ export default function FeatureWorkflowsPage() {
   // otherwise fall back to the feature's declared default output sort.
   const [metric, setMetric] = useState(revenueEnabled ? "roi" : defaultSortKey);
   const [sortDir, setSortDir] = useState<"asc" | "desc">(revenueEnabled ? "desc" : defaultSortDir);
+
+  // Edit slide-over: the workflow whose example emails are being previewed (null = closed).
+  const [editWf, setEditWf] = useState<{ workflowSlug: string; workflowDynastyName: string } | null>(null);
 
   const handleCreateWorkflow = useCallback(() => {
     router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/new`);
@@ -187,6 +195,12 @@ export default function FeatureWorkflowsPage() {
     [outputs]
   );
 
+  // Drop every Opens-related column (open rate %, cost-per-open $, opens count #).
+  const visibleOutputs = useMemo(
+    () => sortedOutputs.filter((o) => !isOpensColumn(o.key, registry[o.key]?.label ?? o.key)),
+    [sortedOutputs, registry]
+  );
+
   if (!ok) {
     return (
       <div className="p-4 md:p-8">
@@ -223,22 +237,23 @@ export default function FeatureWorkflowsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Workflow</th>
-                {sortedOutputs.map((o) => (
-                  <th key={o.key} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Workflow</th>
+                {visibleOutputs.map((o) => (
+                  <th key={o.key} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {registry[o.key]?.label ?? o.key}
                   </th>
                 ))}
                 {revenueEnabled && (
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
                 )}
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {[1, 2, 3].map((i) => (
                 <tr key={i}>
-                  {Array.from({ length: sortedOutputs.length + 1 + (revenueEnabled ? 1 : 0) }).map((_, j) => (
-                    <td key={j} className="px-4 py-4">
+                  {Array.from({ length: visibleOutputs.length + 2 + (revenueEnabled ? 1 : 0) }).map((_, j) => (
+                    <td key={j} className="px-3 py-4">
                       <Skeleton className={`h-4 ${j === 0 ? "w-32" : "w-16"}`} />
                     </td>
                   ))}
@@ -265,10 +280,10 @@ export default function FeatureWorkflowsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Workflow
                   </th>
-                  {sortedOutputs.map((o) => (
+                  {visibleOutputs.map((o) => (
                     <SortHeader
                       key={o.key}
                       label={registry[o.key]?.label ?? o.key}
@@ -287,6 +302,9 @@ export default function FeatureWorkflowsPage() {
                       onSort={handleSort}
                     />
                   )}
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -298,27 +316,63 @@ export default function FeatureWorkflowsPage() {
                       router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${wf.id}`);
                     }}
                   >
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900">{wf.workflowDynastyName}</span>
                       </div>
                     </td>
-                    {sortedOutputs.map((o) => (
-                      <td key={o.key} className="px-4 py-4 text-sm text-gray-600">
+                    {visibleOutputs.map((o) => (
+                      <td key={o.key} className="px-3 py-4 text-sm text-gray-600">
                         {formatStatValue(wf.stats[o.key], registry[o.key])}
                       </td>
                     ))}
                     {revenueEnabled && (
-                      <td className="px-4 py-4 text-sm font-medium text-green-700">
+                      <td className="px-3 py-4 text-sm font-medium text-green-700">
                         {roiPending ? <Skeleton className="h-4 w-12" /> : formatRoi(wf.roi)}
                       </td>
                     )}
+                    <td className="px-3 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          title="Chat"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows/${wf.id}`);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-brand-600 transition"
+                        >
+                          <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                          Chat
+                        </button>
+                        <button
+                          type="button"
+                          title="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditWf({ workflowSlug: wf.workflowSlug, workflowDynastyName: wf.workflowDynastyName });
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-brand-600 transition"
+                        >
+                          <PencilSquareIcon className="w-4 h-4" />
+                          Edit
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+      {editWf && (
+        <WorkflowExamplesPanel
+          workflowSlug={editWf.workflowSlug}
+          workflowDynastyName={editWf.workflowDynastyName}
+          brandId={brandId}
+          onClose={() => setEditWf(null)}
+        />
       )}
     </div>
   );
