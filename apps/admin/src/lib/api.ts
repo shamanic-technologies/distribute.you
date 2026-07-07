@@ -1982,6 +1982,9 @@ const WorkflowFunnelProjectionSchema = z.object({
   contactedLeads: z.number().nullable(),
   replies: z.number().nullable(),
   visits: z.number().nullable(),
+  // Expected form submissions (visits × visitToFormSubmissionPct). Optional to decouple the
+  // features-service rollout; present once the form_submissions goal is live in prod.
+  formSubmissions: z.number().nullable().optional(),
   meetings: z.number().nullable(),
   closes: z.number().nullable(),
   revenue: z.number().nullable(),
@@ -1997,7 +2000,15 @@ const WorkflowProjectionItemSchema = z.object({
   contactedUsd: z.number().nullable(),
   replyUsd: z.number().nullable(),
   clickUsd: z.number().nullable(),
+  costPerSignupUsd: z.number().nullable().optional(),
+  // Cost per form submission (form_submissions goal). Optional to decouple the rollout.
+  costPerFormSubmissionUsd: z.number().nullable().optional(),
   costPerCloseUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable().optional(),
+  // Lifetime ROI multiple = LTR / costPerCloseUsd (= 100 / cacPct), budget-
+  // independent — rendered VERBATIM instead of inverting cacPct client-side
+  // (features-service#396). `.optional()` decouples the backend rollout.
+  roiMultiple: z.number().nullable().optional(),
   // null when budgetUsd is absent/≤0 or the workflow has no usable data.
   projection: WorkflowFunnelProjectionSchema.nullable(),
 });
@@ -2039,16 +2050,66 @@ export function keepLastGoodWorkflowProjection(
     ...top,
     workflows: keepLastGoodList(prev.workflows, next.workflows, {
       keyFn: (w) => w.workflowDynastySlug,
-      fields: ["contactedUsd", "replyUsd", "clickUsd", "costPerCloseUsd", "projection", "workflowDynastyName"],
+      fields: [
+        "contactedUsd",
+        "replyUsd",
+        "clickUsd",
+        "costPerSignupUsd",
+        "costPerFormSubmissionUsd",
+        "costPerCloseUsd",
+        "costPerMeetingBookedUsd",
+        "projection",
+        "workflowDynastyName",
+      ],
       label: "workflowProjection.workflows",
     }),
   };
 }
 
 /**
- * GET /features/:slug/workflow-projection — per-workflow cost-per-close + funnel projection
- * (at `budgetUsd`) + the recommended workflow/budget, for a brand under one objective.
- * Conversion economics are read server-side from the brand's saved sales-economics.
+ * Adapt ONE ladder row (a workflow dynasty's brand-level row) into the legacy
+ * `WorkflowProjectionItem`. Every value is read VERBATIM from the row's resolved grain
+ * block (the finest present) — no arithmetic. The funnel COUNT projection
+ * (contactedLeads/replies/visits/meetings/closes/revenue) no longer exists in the
+ * reshaped contract, so those are null (fail to "-", never fabricated); `cacPct`/`cacAbs`
+ * carry the resolved values so any consumer reading them stays correct.
+ */
+function ladderRowToWorkflowItem(row: WorkflowProjectionRow): WorkflowProjectionItem {
+  const block = row.estimatesByGrain[row.resolved.grain];
+  return {
+    workflowDynastySlug: row.workflow.workflowDynastySlug,
+    workflowDynastyName: row.workflow.workflowDynastyName,
+    contactedUsd: block?.unitCosts.costPerContactedUsd ?? null,
+    replyUsd: block?.unitCosts.costPerPositiveReplyUsd ?? null,
+    clickUsd: row.resolved.costPerClickUsd,
+    costPerSignupUsd: block?.projected.costPerSignupUsd ?? null,
+    costPerFormSubmissionUsd: null,
+    costPerCloseUsd: row.resolved.costPerPaidClientUsd,
+    costPerMeetingBookedUsd: row.resolved.costPerMeetingBookedUsd,
+    roiMultiple: row.resolved.roiMultiple,
+    projection: {
+      contactedLeads: null,
+      replies: null,
+      visits: null,
+      formSubmissions: null,
+      meetings: null,
+      closes: null,
+      revenue: null,
+      cacPct: row.resolved.cacPct,
+      cacAbs: row.resolved.costPerPaidClientUsd,
+    },
+  };
+}
+
+/**
+ * GET /features/:slug/workflow-projection — the recommended workflow + per-workflow
+ * economics for a brand under one objective. features-service reshaped the endpoint
+ * into a 3-grain ladder (rows[] + resolved); this reader fetches that ladder (via
+ * `getWorkflowProjectionLadder`) and maps the brand-level rows (audienceId null) back
+ * onto the legacy `workflows[]` shape so existing consumers (campaigns/new, workflows
+ * page, top-workflows card) keep reading server values verbatim. `budgetUsd` is
+ * accepted for call-site compatibility; the ladder + `recommendedBudgetUsd` carry the
+ * projection surface.
  */
 export async function getWorkflowProjection(
   params: {
@@ -2059,21 +2120,138 @@ export async function getWorkflowProjection(
   },
   token?: string,
 ): Promise<WorkflowProjectionResponse> {
+  const ladder = await getWorkflowProjectionLadder(
+    { featureSlug: params.featureSlug, brandId: params.brandId, objective: params.objective },
+    token,
+  );
+  return {
+    featureSlug: ladder.featureSlug,
+    objective: params.objective,
+    workflows: ladder.rows
+      .filter((r) => r.audienceId == null)
+      .map(ladderRowToWorkflowItem),
+    recommendedWorkflowDynastySlug: ladder.recommendedWorkflowDynastySlug,
+    recommendedBudgetUsd: ladder.recommendedBudgetUsd,
+  };
+}
+
+// ── Workflow-projection 3-grain ladder ───────────────────────────────────────
+// features-service folded the old /candidates grain INTO workflow-projection: one
+// call now returns a row per (audienceId, workflow) carrying the cost estimate at
+// each grain (crossOrg / brand / audience) PLUS the `resolved` block — the finest
+// grain that has real evidence (brand-real when the brand has run enough, else the
+// fleet benchmark). Every cost is read VERBATIM from `resolved` — no client-side math.
+// Proxied via api-service /v1/features/:slug/workflow-projection.
+export type WorkflowProjectionGrain = "crossOrg" | "brand" | "audience";
+
+/** Observed run evidence at one grain — the denominator behind the floor-filled unit
+ *  costs. `observedClicks === 0` ⇒ every unit cost is a FLOOR (spentUsd / max(…,1)),
+ *  so a cost from that grain renders as a ">$X" lower bound. */
+const WorkflowGrainEvidenceSchema = z.object({
+  spentUsd: z.number(),
+  observedContacted: z.number(),
+  observedClicks: z.number(),
+  observedPositiveReplies: z.number(),
+});
+
+/** Floor-filled unit costs at one grain — NEVER null (spentUsd / max(observed,1)). */
+const WorkflowGrainUnitCostsSchema = z.object({
+  costPerClickUsd: z.number(),
+  costPerPositiveReplyUsd: z.number(),
+  costPerContactedUsd: z.number(),
+});
+
+/** Projected economics at one grain — null where the objective doesn't apply or the
+ *  brand has no saved conversion economics yet. */
+const WorkflowGrainProjectedSchema = z.object({
+  costPerSignupUsd: z.number().nullable(),
+  costPerPaidClientUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+  cacPct: z.number().nullable(),
+});
+
+const WorkflowGrainBlockSchema = z.object({
+  evidence: WorkflowGrainEvidenceSchema,
+  unitCosts: WorkflowGrainUnitCostsSchema,
+  projected: WorkflowGrainProjectedSchema,
+});
+
+/** The grain the backend RESOLVED to (brand-real when available, else fleet benchmark)
+ *  + its cost numbers, ready to render. costPerClickUsd is floor-filled (never null);
+ *  the projected costs are null where the objective / economics don't apply. */
+const WorkflowResolvedSchema = z.object({
+  grain: z.union([z.literal("crossOrg"), z.literal("brand"), z.literal("audience")]),
+  costPerClickUsd: z.number(),
+  costPerOutcomeUsd: z.number().nullable(),
+  costPerPaidClientUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+  cacPct: z.number().nullable(),
+});
+
+const WorkflowProjectionRowSchema = z.object({
+  /** null = the brand-level row for this workflow (the "Your best model" headline);
+   *  non-null = a per-audience row (one per active audience). */
+  audienceId: z.string().nullable(),
+  workflow: z.object({
+    workflowDynastySlug: z.string(),
+    workflowDynastyName: z.string().nullable(),
+  }),
+  estimatesByGrain: z.object({
+    crossOrg: WorkflowGrainBlockSchema.optional(),
+    brand: WorkflowGrainBlockSchema.optional(),
+    audience: WorkflowGrainBlockSchema.optional(),
+  }),
+  resolved: WorkflowResolvedSchema,
+});
+
+const WorkflowProjectionLadderResponseSchema = z.object({
+  featureSlug: z.string(),
+  objective: z.string().nullable().optional(),
+  goal: z.string().nullable().optional(),
+  rows: z.array(WorkflowProjectionRowSchema),
+  recommendedWorkflowDynastySlug: z.string().nullable(),
+  recommendedBudgetUsd: z.number().nullable(),
+});
+
+export type WorkflowProjectionGrainBlock = z.infer<typeof WorkflowGrainBlockSchema>;
+export type WorkflowProjectionResolved = z.infer<typeof WorkflowResolvedSchema>;
+export type WorkflowProjectionRow = z.infer<typeof WorkflowProjectionRowSchema>;
+export type WorkflowProjectionLadderResponse = z.infer<
+  typeof WorkflowProjectionLadderResponseSchema
+>;
+
+/**
+ * GET /features/:slug/workflow-projection — the 3-grain ladder (rows[] + resolved).
+ * Every cost is read VERBATIM from `resolved` — no client-side CPC / CPS / projection math.
+ */
+export async function getWorkflowProjectionLadder(
+  params: {
+    featureSlug: string;
+    brandId: string;
+    goal?: string;
+    objective?: SalesObjective | string;
+    audienceId?: string;
+  },
+  token?: string,
+): Promise<WorkflowProjectionLadderResponse> {
   const query = new URLSearchParams();
   query.set("brandId", params.brandId);
-  query.set("objective", params.objective);
-  if (params.budgetUsd != null) query.set("budgetUsd", String(params.budgetUsd));
+  if (params.goal) query.set("goal", params.goal);
+  if (params.objective) query.set("objective", params.objective);
+  if (params.audienceId) query.set("audienceId", params.audienceId);
   const raw = await apiCall<unknown>(
     `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
     { token },
   );
-  const parsed = WorkflowProjectionResponseSchema.safeParse(raw);
+  const parsed = WorkflowProjectionLadderResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getWorkflowProjection: response shape mismatch", {
+    console.error("[admin] getWorkflowProjectionLadder: response shape mismatch", {
       issues: parsed.error.issues,
       raw,
     });
-    throw new Error("[dashboard] getWorkflowProjection: invalid response shape");
+    throw new Error("[admin] getWorkflowProjectionLadder: invalid response shape");
   }
   return parsed.data;
 }
