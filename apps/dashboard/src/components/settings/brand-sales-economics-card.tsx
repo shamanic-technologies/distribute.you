@@ -208,6 +208,10 @@ const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
   formSubmissionToPaidClientPct: "Form submission → Paid client",
 };
 
+function formsEqual(a: FormState, b: FormState): boolean {
+  return (Object.keys(a) as (keyof FormState)[]).every((k) => a[k] === b[k]);
+}
+
 const hasNumericValue = (v: string) => parseLocaleNumberInput(v) !== null;
 const parseNumberOrDefault = (v: string, fallback: string) =>
   parseLocaleNumberInput(v) ?? Number(fallback);
@@ -232,18 +236,28 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
   const [form, setForm] = useState<FormState>(() =>
     formFromEconomics(initialData?.salesEconomics),
   );
-  const [dirty, setDirty] = useState(false);
+  // The last SAVED (or hydrated) values. Save is enabled only while the live form
+  // differs from this — so flipping a goal tab and returning, or editing a field
+  // and reverting it, correctly disables Save again (no sticky-dirty latch).
+  const [baseline, setBaseline] = useState<FormState>(() =>
+    formFromEconomics(initialData?.salesEconomics),
+  );
   const [saved, setSaved] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const dirtyRef = useRef(false);
   const hydrated = useRef(initialData !== undefined);
 
+  const dirty = !formsEqual(form, baseline);
+
   // The editor paints immediately from cache/defaults; the backend read only hydrates
-  // it once, and never clobbers an edit the user has already started.
+  // it once. Baseline always tracks the server value; the visible form is only
+  // overwritten when the user hasn't started editing (form still equals baseline).
   useEffect(() => {
     if (hydrated.current || data === undefined) return;
     hydrated.current = true;
-    if (!dirtyRef.current) setForm(formFromEconomics(data.salesEconomics));
+    const next = formFromEconomics(data.salesEconomics);
+    const untouched = formsEqual(form, baseline);
+    setBaseline(next);
+    if (untouched) setForm(next);
   }, [data]);
 
   const { mutate, isPending: saving, error } = useMutation({
@@ -257,22 +271,19 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       // activity, workflow/strategy projections). Invalidate the whole cache so no
       // econ-derived number stays stale anywhere — one-time burst on a user save.
       queryClient.invalidateQueries();
-      dirtyRef.current = false;
-      setDirty(false);
+      // Re-baseline to the canonical saved values so Save disables and a later
+      // edit-then-revert clears it again.
+      const next = formFromEconomics(res.salesEconomics);
+      setForm(next);
+      setBaseline(next);
       setSaved(true);
     },
   });
 
-  function markDirty() {
-    dirtyRef.current = true;
-    setDirty(true);
-    setSaved(false);
-    setValidationError(null);
-  }
-
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
-    markDirty();
+    setSaved(false);
+    setValidationError(null);
   }
 
   function normalizeNumberInput(key: Exclude<keyof FormState, "optimizationGoal">) {
