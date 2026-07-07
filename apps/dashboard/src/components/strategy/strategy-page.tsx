@@ -42,11 +42,11 @@ import {
 } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
 
-/** USD number → "$X.XX" (two decimals) / "—". */
+/** USD number → whole dollars "$X" (no cents) / "—". */
 function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
-  if (usd <= 0) return "$0.00";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (usd <= 0) return "$0";
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 /**
