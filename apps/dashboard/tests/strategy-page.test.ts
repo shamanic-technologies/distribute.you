@@ -222,7 +222,7 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain("resolved.costPerClickUsd");
     expect(page).toContain("resolved.costPerOutcomeUsd");
     expect(page).toContain("resolved.costPerPaidClientUsd");
-    expect(page).toContain("formatPct(resolved.cacPct)");
+    expect(page).toContain("formatPctWhole(resolved.cacPct)");
     // no rescale of a brand projection by an audience CPC
     expect(page).not.toContain("bestWf");
     expect(page).not.toContain("brandCostPerOutcome");
@@ -232,10 +232,11 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain("Based on ");
     expect(page).not.toContain("This brand cost / click");
   });
-  it("renders a >$X floor when the resolved grain saw 0 clicks", () => {
+  it("renders a plain whole-dollar cost (no '>' prefix) even when the grain saw 0 clicks", () => {
     expect(page).toContain("formatUsdFloor");
     expect(page).toContain("isRowFloored");
-    expect(page).toContain("`>${s}`");
+    // the ">" floor prefix read as confusing on a not-yet-realized outcome — dropped.
+    expect(page).not.toContain("`>${s}`");
   });
   it("surfaces the agency-domain framing", () => {
     expect(page).toContain("on your behalf");
@@ -279,7 +280,7 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain('text="ROI"');
     expect(page).toContain("formatRoi");
     // CAC is rendered as a % (cost-to-win ÷ lifetime revenue), not a $ amount
-    expect(page).toContain("formatPct(r?.cacPct)");
+    expect(page).toContain("formatPctWhole(r?.cacPct)");
     // tooltips spell out the abbreviation first
     expect(page).toContain("Cost per click -");
     expect(page).toContain("Customer acquisition cost -");
