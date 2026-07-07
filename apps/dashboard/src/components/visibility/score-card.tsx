@@ -13,6 +13,12 @@ type ScoreCardCommon = {
   tooltip?: string;
   /** Optional pill rendered after the label (e.g. a `beta` maturity badge). */
   badge?: ReactNode;
+  /**
+   * Rendered in the VALUE position instead of `value` (e.g. a setup-tracker
+   * ghost button when the metric has no data yet). Skeleton still wins while
+   * `pending`; `value` is the fallback when `action` is absent.
+   */
+  action?: ReactNode;
   pending?: boolean;
 };
 
@@ -39,7 +45,7 @@ export function formatDelta(
 }
 
 export function ScoreCard(props: ScoreCardProps) {
-  const { label, value, subtitle, tooltip, badge, pending = false } = props;
+  const { label, value, subtitle, tooltip, badge, action, pending = false } = props;
   const fmt =
     "deltaFormat" in props && props.deltaFormat
       ? formatDelta(props.delta, props.deltaFormat, props.deltaInverted ?? false)
@@ -54,6 +60,8 @@ export function ScoreCard(props: ScoreCardProps) {
       <div className="flex items-baseline gap-2">
         {pending ? (
           <Skeleton className="h-6 w-16" />
+        ) : action ? (
+          action
         ) : (
           <p className="text-2xl font-semibold text-gray-800">{value}</p>
         )}

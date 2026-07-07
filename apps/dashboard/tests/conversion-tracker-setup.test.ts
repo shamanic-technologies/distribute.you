@@ -10,19 +10,31 @@ describe("conversion tracker setup CTA + live status", () => {
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
   );
   const card = read("../src/components/settings/brand-conversion-tracking-card.tsx");
+  const button = read("../src/components/revenue/conversion-tracker-button.tsx");
   const api = read("../src/lib/api.ts");
 
   it("deep-links the beta outcome cards to the settings conversion section", () => {
-    expect(cards).toContain("Set up conversion tracker");
+    // The CTA label lives on the shared ghost button, not inline in the cards.
+    expect(button).toContain("Set up conversion tracker");
     expect(cards).toContain("/settings#conversion-tracking");
     expect(cards).toContain('import { useParams } from "next/navigation"');
-    // The CTA renders INSIDE the outcome count card (as its subtitle), so it sits
-    // next to the metric it unblocks — not as a detached link under the row.
-    expect(cards).toContain("subtitle={setupCta}");
-    // Built only when the brand-scoped href resolves, and the outcome card that
-    // hosts it is itself behind the same `isBeta` gate as the Signups/CPS cards.
+    // The button renders IN PLACE OF the value on every untracked outcome card
+    // (via ScoreCard's `action` slot), so it sits where the metric would be.
+    expect(cards).toContain("action={trackerButton}");
+    expect(cards).toContain(
+      'action={outcomeMetric.costValue === "—" ? trackerButton : undefined}',
+    );
+    // Built only when the brand-scoped href resolves, and the outcome cards that
+    // host it are behind the same `isBeta` gate as the Signups/CPS cards.
     expect(cards).toContain("setupHref ? (");
     expect(cards).toContain("isBeta &&");
+  });
+
+  it("renders the setup CTA as a discreet ghost button (transparent, 1px border, near-black text)", () => {
+    expect(button).toContain("ConversionTrackerButton");
+    expect(button).toContain("border border-gray-300");
+    expect(button).toContain("text-gray-900");
+    expect(button).toContain("hover:bg-gray-50");
   });
 
   it("gives the Conversion Tracking settings section an anchor to scroll to", () => {
