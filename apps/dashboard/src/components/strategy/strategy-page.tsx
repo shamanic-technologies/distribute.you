@@ -486,7 +486,9 @@ export function StrategyPage() {
                     ? "Website visits"
                     : optimizationGoal === "positive_replies"
                       ? "Positive replies"
-                      : "Sales meetings"
+                      : optimizationGoal === "form_submissions"
+                        ? "Form submissions"
+                        : "Sales meetings"
               }
             />
             <Stat
@@ -502,7 +504,9 @@ export function StrategyPage() {
                     ? "Website visit → paid"
                     : optimizationGoal === "positive_replies"
                       ? "Positive reply → paid"
-                      : "Reply → meeting"
+                      : optimizationGoal === "form_submissions"
+                        ? "Visit → form submission"
+                        : "Reply → meeting"
               }
               pending={econPending}
               value={formatPct(
@@ -512,19 +516,32 @@ export function StrategyPage() {
                     ? econ?.visitToPaidClientPct
                     : optimizationGoal === "positive_replies"
                       ? econ?.replyToPaidClientPct
-                      : econ?.replyToMeetingPct,
+                      : optimizationGoal === "form_submissions"
+                        ? econ?.visitToFormSubmissionPct
+                        : econ?.replyToMeetingPct,
               )}
             />
-            {/* The two-step goals show a second conversion; the single-step beta goals
-                (website_visits / positive_replies) go straight to paid, so no row 2. */}
-            {(optimizationGoal === "signups" || optimizationGoal === "sales_meetings") && (
+            {/* The two-step goals (signups, form_submissions, sales_meetings) show a
+                second conversion; the single-step beta goals (website_visits /
+                positive_replies) go straight to paid, so no row 2. */}
+            {(optimizationGoal === "signups" ||
+              optimizationGoal === "form_submissions" ||
+              optimizationGoal === "sales_meetings") && (
               <Stat
-                label={optimizationGoal === "signups" ? "Signup → paid" : "Meeting → close"}
+                label={
+                  optimizationGoal === "signups"
+                    ? "Signup → paid"
+                    : optimizationGoal === "form_submissions"
+                      ? "Form submission → paid"
+                      : "Meeting → close"
+                }
                 pending={econPending}
                 value={formatPct(
                   optimizationGoal === "signups"
                     ? econ?.signupToPaidClientPct
-                    : econ?.meetingToClosePct,
+                    : optimizationGoal === "form_submissions"
+                      ? econ?.formSubmissionToPaidClientPct
+                      : econ?.meetingToClosePct,
                 )}
               />
             )}
@@ -772,7 +789,13 @@ export function StrategyPage() {
                             <th className="px-4 py-2.5 text-right font-semibold">
                               <span className="inline-flex items-center justify-end gap-1">
                                 <MetricLabel
-                                  text={optimizationGoal === "signups" ? "CPS" : `Cost / ${noun}`}
+                                  text={
+                                    optimizationGoal === "signups"
+                                      ? "CPS"
+                                      : optimizationGoal === "form_submissions"
+                                        ? "CPFS"
+                                        : `Cost / ${noun}`
+                                  }
                                   tip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
                                 />
                               </span>
