@@ -24,9 +24,14 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(cards).toContain(
       'action={outcomeMetric.costValue === "—" ? trackerButton : undefined}',
     );
-    // Built only when the brand-scoped href resolves, and the outcome cards that
-    // host it are behind the same `isBeta` gate as the Signups/CPS cards.
-    expect(cards).toContain("setupHref ? (");
+    // Built only when the brand-scoped href resolves AND the tracker is not yet
+    // live — once lead-service reports live/live_waiting the CTA must stop, so the
+    // stat cards never nag "set up" while Brand Settings shows "Tracker live".
+    expect(cards).toContain("setupHref && !trackerLive ?");
+    expect(cards).toContain('conversionToken?.status === "live"');
+    expect(cards).toContain('conversionToken?.status === "live_waiting"');
+    expect(cards).toContain('["brandConversionToken", brandId]');
+    // The outcome cards that host the CTA are behind the same `isBeta` gate.
     expect(cards).toContain("isBeta &&");
   });
 
