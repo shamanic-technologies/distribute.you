@@ -1905,125 +1905,11 @@ export async function fetchFeatureAudienceStats(
   return parsed.data;
 }
 
-// ── Strategy: candidate evidence set (the runtime selection grain ladder) ────
-// features-service serves the (audienceId, workflow) candidate SET, each with its
-// OWN cost-per-outcome for the goal at a grain ladder (finest→coarsest):
-//   audience (brandId×goal×audienceId) → brand-goal (brandId×goal) → goal-global
-//   (cross-org workflow evidence).
-// This is the same evidence the runtime selection policy reads. The Strategy page
-// renders it to show how the best model's $/outcome is reassessed from the cross-org
-// prior down to per-audience. Proxied via api-service /v1/features/:slug/candidates.
-export type FeatureCandidateGrain = "audience" | "brand-goal" | "goal-global";
-export type FeatureCandidateCostGrain = "goal-global" | "audience";
-
-export interface FeatureCandidate {
-  /** Non-null with cost.grain='audience' for couples with audience-attributed
-   *  evidence; null on the coarser goal-global fallback rows. */
-  audienceId: string | null;
-  workflow: { workflowDynastySlug: string; workflowDynastyName: string | null };
-  goal: FeatureAudienceStatsGoal;
-  grain: FeatureCandidateGrain;
-  /** The goal metric: cost per goal-outcome (USD). Null at cold start (no economics). */
-  costPerOutcomeUsd: number | null;
-  /** Cost to win one paying client (cost per close, USD), at this candidate's grain.
-   *  `.optional()` decouples the features-service rollout — renders `-` until live. */
-  costPerCloseUsd?: number | null;
-  /** Lifetime ROI multiple (LTR ÷ costPerCloseUsd = 100 / cacPct), at this candidate's
-   *  grain. `.optional()` decouples the features-service rollout. */
-  roiMultiple?: number | null;
-  /** CAC as a share of lifetime revenue (% = costPerCloseUsd ÷ LTR × 100 = 100 / roiMultiple),
-   *  at this candidate's grain. Server-provided so the Strategy per-audience CAC% is never
-   *  inverted client-side. `.optional()` decouples the features-service rollout. */
-  cacPct?: number | null;
-  conversion: {
-    rate: number | null;
-    grain: "brand-goal" | "goal-global" | null;
-    /** Always null (conversion comes from saved economics, no per-grain count). */
-    sampleSize: unknown;
-  };
-  cost: {
-    costPerLeadUsd: number | null;
-    clickUsd: number | null;
-    replyUsd: number | null;
-    /** 'goal-global' = cross-org workflow unit costs; 'audience' = audience-attributed. */
-    grain: FeatureCandidateCostGrain;
-    sampleSize: { runs: number; contacted: number; clicks: number; replies: number };
-  };
-}
-
-export interface FeatureCandidatesResponse {
-  featureSlug: string;
-  brandId: string;
-  goal: FeatureAudienceStatsGoal;
-  brandProfileId: string | null;
-  candidates: FeatureCandidate[];
-}
-
-const FeatureCandidateSchema = z.object({
-  audienceId: z.string().nullable(),
-  workflow: z.object({
-    workflowDynastySlug: z.string(),
-    workflowDynastyName: z.string().nullable(),
-  }),
-  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
-  grain: z.union([z.literal("audience"), z.literal("brand-goal"), z.literal("goal-global")]),
-  costPerOutcomeUsd: z.number().nullable(),
-  // Additive — features-service rollout decoupled via .optional(). See FeatureCandidate.
-  costPerCloseUsd: z.number().nullable().optional(),
-  roiMultiple: z.number().nullable().optional(),
-  cacPct: z.number().nullable().optional(),
-  conversion: z.object({
-    rate: z.number().nullable(),
-    grain: z.union([z.literal("brand-goal"), z.literal("goal-global")]).nullable(),
-    sampleSize: z.unknown().nullable(),
-  }),
-  cost: z.object({
-    costPerLeadUsd: z.number().nullable(),
-    clickUsd: z.number().nullable(),
-    replyUsd: z.number().nullable(),
-    grain: z.union([z.literal("goal-global"), z.literal("audience")]),
-    sampleSize: z.object({
-      runs: z.number(),
-      contacted: z.number(),
-      clicks: z.number(),
-      replies: z.number(),
-    }),
-  }),
-});
-
-const FeatureCandidatesResponseSchema = z.object({
-  featureSlug: z.string(),
-  brandId: z.string(),
-  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
-  brandProfileId: z.string().nullable(),
-  candidates: z.array(FeatureCandidateSchema),
-});
-
-/** GET /features/:slug/candidates — the (audienceId, workflow) candidate evidence
- *  set with per-candidate cost-per-outcome at the audience/brand-goal/goal-global
- *  grain ladder. The Strategy page's source for the best model's cross-org vs
- *  per-audience $/outcome. */
-export async function fetchFeatureCandidates(
-  featureSlug: string,
-  params: { brandId: string; goal: FeatureAudienceStatsGoal; brandProfileId?: string },
-  token?: string,
-): Promise<FeatureCandidatesResponse> {
-  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
-  if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
-  const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(featureSlug)}/candidates?${query.toString()}`,
-    { token },
-  );
-  const parsed = FeatureCandidatesResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] fetchFeatureCandidates: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] fetchFeatureCandidates: invalid response shape");
-  }
-  return parsed.data;
-}
+// NOTE: The old `GET /features/:slug/candidates` reader (FeatureCandidate*, the
+// audience/brand-goal/goal-global grain ladder) was REMOVED — features-service folded
+// that grain into `GET /features/:slug/workflow-projection` (the 3-grain ladder above,
+// `getWorkflowProjectionLadder`). The Strategy page reads the server-resolved grain
+// verbatim; there is no separate candidates fetch or client-side ladder resolution.
 
 /** GET /features/stats — global stats cross-features */
 export async function fetchGlobalStats(
@@ -3058,7 +2944,7 @@ export function keepLastGoodWorkflowProjection(
  * reshaped contract, so those are null (fail to "-", never fabricated); `cacPct`/`cacAbs`
  * carry the resolved values so any consumer reading them stays correct.
  */
-function ladderRowToWorkflowItem(row: WorkflowProjectionLadderRow): WorkflowProjectionItem {
+function ladderRowToWorkflowItem(row: WorkflowProjectionRow): WorkflowProjectionItem {
   const block = row.estimatesByGrain[row.resolved.grain];
   return {
     workflowDynastySlug: row.workflow.workflowDynastySlug,
@@ -3088,12 +2974,13 @@ function ladderRowToWorkflowItem(row: WorkflowProjectionLadderRow): WorkflowProj
 /**
  * GET /features/:slug/workflow-projection — the recommended workflow + per-workflow
  * economics for a brand under one objective. features-service reshaped the endpoint
- * into a 3-grain ladder (rows[] + resolved); this reader fetches that ladder and maps
- * the brand-level rows (audienceId null) back onto the legacy `workflows[]` shape so
- * existing consumers (brand overview, workflows page, onboarding, brand-status) keep
- * reading server values verbatim. `budgetUsd` is accepted for call-site compatibility;
- * the ladder + `recommendedBudgetUsd` carry the projection surface. New surfaces that
- * want the per-audience grains should call `getWorkflowProjectionLadder` directly.
+ * into a 3-grain ladder (rows[] + resolved); this reader fetches that ladder (via
+ * `getWorkflowProjectionLadder`) and maps the brand-level rows (audienceId null) back
+ * onto the legacy `workflows[]` shape so existing consumers (brand overview, workflows
+ * page, onboarding, brand-status) keep reading server values verbatim. `budgetUsd` is
+ * accepted for call-site compatibility; the ladder + `recommendedBudgetUsd` carry the
+ * projection surface. New surfaces that want the per-audience grains (Strategy) should
+ * call `getWorkflowProjectionLadder` directly.
  */
 export async function getWorkflowProjection(
   params: {
@@ -3119,45 +3006,54 @@ export async function getWorkflowProjection(
   };
 }
 
-// ── Sales-funnel workflow-projection LADDER (rows[] + resolved) ──────────────
-// features-service reshaped GET /features/:slug/workflow-projection into a 3-grain
-// ladder (crossOrg → brand → audience) keyed per (audienceId?, workflowDynasty),
-// FOLDING IN the audience×workflow grain formerly served by the removed /candidates
-// endpoint. Each grain block carries its OWN evidence, floor-ruled unit costs
-// (costPerXUsd = spentUsd / max(observedX, 1) — NEVER null) and projected economics
-// from the brand's effective economics; a grain is present ONLY when spentUsd > 0.
-// `resolved` = the finest present grain (audience > brand > crossOrg). The Strategy
-// page renders `resolved` verbatim — no client-side CPC/projection math. Wire shape
-// verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
-export type WorkflowProjectionGrain = "audience" | "brand" | "crossOrg";
+// ── Strategy: 3-grain workflow-projection ladder ─────────────────────────────
+// features-service folded the old /candidates grain INTO workflow-projection: one
+// call now returns a row per (audienceId, workflow) carrying the cost estimate at
+// each grain (crossOrg / brand / audience) PLUS the `resolved` block — the finest
+// grain that has real evidence (brand-real when the brand has run enough, else the
+// fleet benchmark). The Strategy page renders `resolved` VERBATIM; it never scales
+// or recomputes a cost. Proxied via api-service /v1/features/:slug/workflow-projection.
+export type WorkflowProjectionGrain = "crossOrg" | "brand" | "audience";
 
-const ProjectionGrainBlockSchema = z.object({
-  evidence: z.object({
-    spentUsd: z.number(),
-    observedContacted: z.number(),
-    observedClicks: z.number(),
-    observedPositiveReplies: z.number(),
-  }),
-  unitCosts: z.object({
-    costPerClickUsd: z.number(),
-    costPerPositiveReplyUsd: z.number(),
-    costPerContactedUsd: z.number(),
-  }),
-  projected: z.object({
-    costPerSignupUsd: z.number().nullable(),
-    costPerPaidClientUsd: z.number().nullable(),
-    costPerMeetingBookedUsd: z.number().nullable(),
-    roiMultiple: z.number().nullable(),
-    cacPct: z.number().nullable(),
-  }),
+/** Observed run evidence at one grain — the denominator behind the floor-filled unit
+ *  costs. `observedClicks === 0` ⇒ every unit cost is a FLOOR (spentUsd / max(…,1)),
+ *  so a cost from that grain renders as a ">$X" lower bound. */
+const WorkflowGrainEvidenceSchema = z.object({
+  spentUsd: z.number(),
+  observedContacted: z.number(),
+  observedClicks: z.number(),
+  observedPositiveReplies: z.number(),
 });
 
-const ProjectionResolvedSchema = z.object({
-  grain: z.union([z.literal("audience"), z.literal("brand"), z.literal("crossOrg")]),
-  // The resolved grain's cost per click — floor-filled, never null / never 0.
+/** Floor-filled unit costs at one grain — NEVER null (spentUsd / max(observed,1)). */
+const WorkflowGrainUnitCostsSchema = z.object({
   costPerClickUsd: z.number(),
-  // The GOAL metric at the resolved grain (cost per signup / meeting / paid-client
-  // per the queried goal). Null ONLY at cold start (no economics).
+  costPerPositiveReplyUsd: z.number(),
+  costPerContactedUsd: z.number(),
+});
+
+/** Projected economics at one grain — null where the objective doesn't apply or the
+ *  brand has no saved conversion economics yet. */
+const WorkflowGrainProjectedSchema = z.object({
+  costPerSignupUsd: z.number().nullable(),
+  costPerPaidClientUsd: z.number().nullable(),
+  costPerMeetingBookedUsd: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+  cacPct: z.number().nullable(),
+});
+
+const WorkflowGrainBlockSchema = z.object({
+  evidence: WorkflowGrainEvidenceSchema,
+  unitCosts: WorkflowGrainUnitCostsSchema,
+  projected: WorkflowGrainProjectedSchema,
+});
+
+/** The grain the backend RESOLVED to (brand-real when available, else fleet benchmark)
+ *  + its cost numbers, ready to render. costPerClickUsd is floor-filled (never null);
+ *  the projected costs are null where the objective / economics don't apply. */
+const WorkflowResolvedSchema = z.object({
+  grain: z.union([z.literal("crossOrg"), z.literal("brand"), z.literal("audience")]),
+  costPerClickUsd: z.number(),
   costPerOutcomeUsd: z.number().nullable(),
   costPerPaidClientUsd: z.number().nullable(),
   costPerMeetingBookedUsd: z.number().nullable(),
@@ -3165,50 +3061,51 @@ const ProjectionResolvedSchema = z.object({
   cacPct: z.number().nullable(),
 });
 
-const WorkflowProjectionLadderRowSchema = z.object({
-  // null = brand-level row (crossOrg + brand grains). Non-null = one row per
-  // (active audience × workflow dynasty) couple that ran (adds the audience grain).
+const WorkflowProjectionRowSchema = z.object({
+  /** null = the brand-level row for this workflow (the "Your best model" headline);
+   *  non-null = a per-audience row (one per active audience). */
   audienceId: z.string().nullable(),
   workflow: z.object({
     workflowDynastySlug: z.string(),
     workflowDynastyName: z.string().nullable(),
   }),
-  // A grain block is present ONLY when that grain has spentUsd > 0.
   estimatesByGrain: z.object({
-    crossOrg: ProjectionGrainBlockSchema.optional(),
-    brand: ProjectionGrainBlockSchema.optional(),
-    audience: ProjectionGrainBlockSchema.optional(),
+    crossOrg: WorkflowGrainBlockSchema.optional(),
+    brand: WorkflowGrainBlockSchema.optional(),
+    audience: WorkflowGrainBlockSchema.optional(),
   }),
-  resolved: ProjectionResolvedSchema,
+  resolved: WorkflowResolvedSchema,
 });
 
 const WorkflowProjectionLadderResponseSchema = z.object({
   featureSlug: z.string(),
-  rows: z.array(WorkflowProjectionLadderRowSchema),
+  objective: z.string().nullable().optional(),
+  goal: z.string().nullable().optional(),
+  rows: z.array(WorkflowProjectionRowSchema),
   recommendedWorkflowDynastySlug: z.string().nullable(),
   recommendedBudgetUsd: z.number().nullable(),
 });
 
-export type WorkflowProjectionGrainBlock = z.infer<typeof ProjectionGrainBlockSchema>;
-export type WorkflowProjectionResolved = z.infer<typeof ProjectionResolvedSchema>;
-export type WorkflowProjectionLadderRow = z.infer<typeof WorkflowProjectionLadderRowSchema>;
+export type WorkflowProjectionGrainBlock = z.infer<typeof WorkflowGrainBlockSchema>;
+export type WorkflowProjectionResolved = z.infer<typeof WorkflowResolvedSchema>;
+export type WorkflowProjectionRow = z.infer<typeof WorkflowProjectionRowSchema>;
 export type WorkflowProjectionLadderResponse = z.infer<
   typeof WorkflowProjectionLadderResponseSchema
 >;
 
 /**
- * GET /features/:slug/workflow-projection — the 3-grain ladder (rows[] + resolved).
- * Pass EITHER `goal` (camel enum: signup / meetingBooked / purchase) OR `objective`
- * (snake/kebab: meeting-booked / self-serve / form_submissions) — the endpoint
- * accepts both spellings. Optional `audienceId` echoes an audience context; audience
- * rows always enumerate ALL of the brand's active audiences that ran the workflow.
+ * GET /features/:slug/workflow-projection — the 3-grain ladder: one row per
+ * (audienceId, workflow) with its cost estimate at each grain plus the `resolved`
+ * grain (brand-real when the brand has evidence, else the fleet benchmark). Powers
+ * the Strategy "Your best model" card + "Estimates by audience" table. Every cost is
+ * read VERBATIM from `resolved` — no client-side CPC / CPS / projection math.
  */
 export async function getWorkflowProjectionLadder(
   params: {
     featureSlug: string;
     brandId: string;
     goal?: FeatureAudienceStatsGoal;
-    objective?: string;
+    objective?: SalesObjective | string;
     audienceId?: string;
   },
   token?: string,

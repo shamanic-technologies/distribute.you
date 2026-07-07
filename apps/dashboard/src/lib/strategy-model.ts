@@ -3,7 +3,7 @@ import type {
   FeatureAudienceStatsGoal,
   SalesObjective,
   WorkflowProjectionGrain,
-  WorkflowProjectionLadderRow,
+  WorkflowProjectionRow,
 } from "@/lib/api";
 
 // Local copy of api.ts's isVisitDrivenGoal — this module is imported+executed by
@@ -20,13 +20,12 @@ function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
  *   color, derived deterministically from its dynasty slug. This is a pure
  *   DISPLAY affordance (no backend avatar exists yet); the dynasty NAME stays the
  *   source of truth shown next to it.
- * - `bestModelRow` / `buildAudienceEstimateRows` PICK rows from the served
- *   workflow-projection ladder (rows[] + resolved) and read `resolved` VERBATIM —
- *   they never compute a CPC / projection client-side.
- * - `grainLabel` / `isFlooredRow` describe the resolved number honestly (which
- *   grain it came from; whether it is a zero-outcome floor → render ">$X").
+ * - `pickBrandRow` / `pickAudienceRow` PICK the right row out of the
+ *   workflow-projection ladder (brand-level row for the headline, per-audience row
+ *   for the table). They only filter — every cost is read verbatim from the row's
+ *   server-resolved grain; nothing is computed or rescaled client-side.
  * - `goalForOptimizationGoal` maps the brand's saved objective onto the
- *   projection/audience-stats goal enum.
+ *   workflow-projection/audience-stats goal enum.
  */
 
 const MODEL_FACES: ReadonlyArray<{ emoji: string; color: string }> = [
@@ -136,107 +135,58 @@ export function offerLeverValue(
     .filter((v) => v.length > 0 && v.toLowerCase() !== "unknown");
 }
 
-/** Honest source label for a resolved number, keyed by the grain it came from. */
-export function grainLabel(grain: WorkflowProjectionGrain): string {
-  switch (grain) {
-    case "crossOrg":
-      return "fleet benchmark";
-    case "brand":
-      return "this brand";
-    case "audience":
-      return "this audience";
-  }
-}
+/** Honest human label for which POPULATION produced a resolved cost number, so the UI
+ *  never mislabels a fleet-benchmark or per-audience number as "this brand". */
+export const WORKFLOW_GRAIN_LABEL: Record<WorkflowProjectionGrain, string> = {
+  crossOrg: "fleet benchmark",
+  brand: "this brand",
+  audience: "this audience",
+};
 
 /**
- * True when the resolved grain observed ZERO clicks. The server floors every unit
- * cost to `spentUsd / max(observed, 1)`, so a 0-click grain reports the whole spend
- * as its cost-per-click — a LOWER BOUND, not a measured average. The UI renders that
- * as ">$X". The resolved grain block is always present (resolved picks a present grain).
+ * The brand-level row (audienceId null) for one workflow — the source of the
+ * "Your best model" headline economics. Pure pick; the row's `resolved` block is
+ * rendered verbatim.
  */
-export function isFlooredRow(row: WorkflowProjectionLadderRow): boolean {
-  const block = row.estimatesByGrain[row.resolved.grain];
-  return block != null && block.evidence.observedClicks === 0;
-}
-
-/**
- * The recommended workflow's BRAND-LEVEL row (audienceId null) — the source for the
- * "Your best model" headline economics. Its `resolved` block already carries the
- * finest grain present (audience > brand > crossOrg), read verbatim.
- */
-export function bestModelRow(
-  rows: WorkflowProjectionLadderRow[],
-  recommendedSlug: string | null,
-): WorkflowProjectionLadderRow | null {
-  if (!recommendedSlug) return null;
+export function pickBrandRow(
+  rows: readonly WorkflowProjectionRow[],
+  workflowDynastySlug: string | null,
+): WorkflowProjectionRow | null {
+  if (!workflowDynastySlug) return null;
   return (
     rows.find(
-      (r) => r.workflow.workflowDynastySlug === recommendedSlug && r.audienceId == null,
+      (r) => r.audienceId == null && r.workflow.workflowDynastySlug === workflowDynastySlug,
     ) ?? null
   );
 }
 
-/** One audience's estimate for the best workflow, read verbatim from `resolved`. */
-export interface AudienceEstimateRow {
-  id: string;
-  name: string;
-  /** Which grain the resolved values came from (finest present). */
-  grain: WorkflowProjectionGrain;
-  /** The resolved grain saw 0 clicks → its unit cost is a floor → render ">$X". */
-  floored: boolean;
-  /** CPC — cost per click (USD). */
-  clickUsd: number | null;
-  /** CPS — cost per goal-outcome (signup / meeting, USD). */
-  costPerOutcomeUsd: number | null;
-  /** ROI — lifetime return multiple. */
-  roiMultiple: number | null;
-  /** CAC% — cost to win one paying client as a share of lifetime revenue (%). */
-  cacPct: number | null;
+/**
+ * The per-audience row for one workflow. The backend already resolved that row through
+ * the audience → brand → crossOrg grain ladder (see `resolved.grain`); this only PICKS
+ * the matching row — no client-side fallback resolution, no metric math.
+ */
+export function pickAudienceRow(
+  rows: readonly WorkflowProjectionRow[],
+  workflowDynastySlug: string | null,
+  audienceId: string,
+): WorkflowProjectionRow | null {
+  if (!workflowDynastySlug) return null;
+  return (
+    rows.find(
+      (r) =>
+        r.audienceId === audienceId &&
+        r.workflow.workflowDynastySlug === workflowDynastySlug,
+    ) ?? null
+  );
 }
 
 /**
- * One estimate row per active audience for the best workflow. Picks the audience's
- * own ladder row (audienceId × recommended workflow) when present, else the
- * recommended workflow's brand-level row, and reads that row's server-`resolved`
- * verbatim. No client-side CPC / projection math — this only SELECTS which row.
+ * True when the row's RESOLVED grain observed zero clicks → every unit cost at that
+ * grain is a FLOOR (spentUsd / max(observed,1)), so a rendered cost is a ">$X" lower
+ * bound, not an exact figure. Reads `estimatesByGrain[resolved.grain].evidence`.
  */
-export function buildAudienceEstimateRows(
-  activeAudiences: ReadonlyArray<{ id: string; name: string }>,
-  rows: WorkflowProjectionLadderRow[],
-  recommendedSlug: string | null,
-): AudienceEstimateRow[] {
-  const ownById = new Map<string, WorkflowProjectionLadderRow>();
-  if (recommendedSlug) {
-    for (const r of rows) {
-      if (r.workflow.workflowDynastySlug === recommendedSlug && r.audienceId != null) {
-        ownById.set(r.audienceId, r);
-      }
-    }
-  }
-  const brandFallback = bestModelRow(rows, recommendedSlug);
-  return activeAudiences.map((a) => {
-    const row = ownById.get(a.id) ?? brandFallback;
-    if (!row) {
-      return {
-        id: a.id,
-        name: a.name,
-        grain: "crossOrg",
-        floored: false,
-        clickUsd: null,
-        costPerOutcomeUsd: null,
-        roiMultiple: null,
-        cacPct: null,
-      };
-    }
-    return {
-      id: a.id,
-      name: a.name,
-      grain: row.resolved.grain,
-      floored: isFlooredRow(row),
-      clickUsd: row.resolved.costPerClickUsd,
-      costPerOutcomeUsd: row.resolved.costPerOutcomeUsd,
-      roiMultiple: row.resolved.roiMultiple,
-      cacPct: row.resolved.cacPct,
-    };
-  });
+export function isRowFloored(row: WorkflowProjectionRow | null): boolean {
+  if (!row) return false;
+  const block = row.estimatesByGrain[row.resolved.grain];
+  return (block?.evidence.observedClicks ?? 0) === 0;
 }
