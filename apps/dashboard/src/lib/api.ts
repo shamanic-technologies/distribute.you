@@ -3051,9 +3051,49 @@ export function keepLastGoodWorkflowProjection(
 }
 
 /**
- * GET /features/:slug/workflow-projection — per-workflow cost-per-close + funnel projection
- * (at `budgetUsd`) + the recommended workflow/budget, for a brand under one objective.
- * Conversion economics are read server-side from the brand's saved sales-economics.
+ * Adapt ONE ladder row (a workflow dynasty's brand-level row) into the legacy
+ * `WorkflowProjectionItem`. Every value is read VERBATIM from the row's resolved grain
+ * block (the finest present) — no arithmetic. The funnel COUNT projection
+ * (contactedLeads/replies/visits/meetings/closes/revenue) no longer exists in the
+ * reshaped contract, so those are null (fail to "-", never fabricated); `cacPct`/`cacAbs`
+ * carry the resolved values so any consumer reading them stays correct.
+ */
+function ladderRowToWorkflowItem(row: WorkflowProjectionLadderRow): WorkflowProjectionItem {
+  const block = row.estimatesByGrain[row.resolved.grain];
+  return {
+    workflowDynastySlug: row.workflow.workflowDynastySlug,
+    workflowDynastyName: row.workflow.workflowDynastyName,
+    contactedUsd: block?.unitCosts.costPerContactedUsd ?? null,
+    replyUsd: block?.unitCosts.costPerPositiveReplyUsd ?? null,
+    clickUsd: row.resolved.costPerClickUsd,
+    costPerSignupUsd: block?.projected.costPerSignupUsd ?? null,
+    costPerFormSubmissionUsd: null,
+    costPerCloseUsd: row.resolved.costPerPaidClientUsd,
+    costPerMeetingBookedUsd: row.resolved.costPerMeetingBookedUsd,
+    roiMultiple: row.resolved.roiMultiple,
+    projection: {
+      contactedLeads: null,
+      replies: null,
+      visits: null,
+      formSubmissions: null,
+      meetings: null,
+      closes: null,
+      revenue: null,
+      cacPct: row.resolved.cacPct,
+      cacAbs: row.resolved.costPerPaidClientUsd,
+    },
+  };
+}
+
+/**
+ * GET /features/:slug/workflow-projection — the recommended workflow + per-workflow
+ * economics for a brand under one objective. features-service reshaped the endpoint
+ * into a 3-grain ladder (rows[] + resolved); this reader fetches that ladder and maps
+ * the brand-level rows (audienceId null) back onto the legacy `workflows[]` shape so
+ * existing consumers (brand overview, workflows page, onboarding, brand-status) keep
+ * reading server values verbatim. `budgetUsd` is accepted for call-site compatibility;
+ * the ladder + `recommendedBudgetUsd` carry the projection surface. New surfaces that
+ * want the per-audience grains should call `getWorkflowProjectionLadder` directly.
  */
 export async function getWorkflowProjection(
   params: {
@@ -3064,23 +3104,19 @@ export async function getWorkflowProjection(
   },
   token?: string,
 ): Promise<WorkflowProjectionResponse> {
-  const query = new URLSearchParams();
-  query.set("brandId", params.brandId);
-  query.set("objective", params.objective);
-  if (params.budgetUsd != null) query.set("budgetUsd", String(params.budgetUsd));
-  const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
-    { token },
+  const ladder = await getWorkflowProjectionLadder(
+    { featureSlug: params.featureSlug, brandId: params.brandId, objective: params.objective },
+    token,
   );
-  const parsed = WorkflowProjectionResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getWorkflowProjection: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getWorkflowProjection: invalid response shape");
-  }
-  return parsed.data;
+  return {
+    featureSlug: ladder.featureSlug,
+    objective: params.objective,
+    workflows: ladder.rows
+      .filter((r) => r.audienceId == null)
+      .map(ladderRowToWorkflowItem),
+    recommendedWorkflowDynastySlug: ladder.recommendedWorkflowDynastySlug,
+    recommendedBudgetUsd: ladder.recommendedBudgetUsd,
+  };
 }
 
 // ── Sales-funnel workflow-projection LADDER (rows[] + resolved) ──────────────
@@ -3162,22 +3198,25 @@ export type WorkflowProjectionLadderResponse = z.infer<
 
 /**
  * GET /features/:slug/workflow-projection — the 3-grain ladder (rows[] + resolved).
- * `goal` is the camel goal enum (signup / meetingBooked / purchase). Optional
- * `audienceId` echoes an audience context; audience rows always enumerate ALL of
- * the brand's active audiences that ran the workflow regardless.
+ * Pass EITHER `goal` (camel enum: signup / meetingBooked / purchase) OR `objective`
+ * (snake/kebab: meeting-booked / self-serve / form_submissions) — the endpoint
+ * accepts both spellings. Optional `audienceId` echoes an audience context; audience
+ * rows always enumerate ALL of the brand's active audiences that ran the workflow.
  */
 export async function getWorkflowProjectionLadder(
   params: {
     featureSlug: string;
     brandId: string;
-    goal: FeatureAudienceStatsGoal;
+    goal?: FeatureAudienceStatsGoal;
+    objective?: string;
     audienceId?: string;
   },
   token?: string,
 ): Promise<WorkflowProjectionLadderResponse> {
   const query = new URLSearchParams();
   query.set("brandId", params.brandId);
-  query.set("goal", params.goal);
+  if (params.goal) query.set("goal", params.goal);
+  if (params.objective) query.set("objective", params.objective);
   if (params.audienceId) query.set("audienceId", params.audienceId);
   const raw = await apiCall<unknown>(
     `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
