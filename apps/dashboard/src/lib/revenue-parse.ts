@@ -143,6 +143,11 @@ const SpendSchema = z.object({
   // "—", never a false $0.
   cpsCents: z.coerce.number().nullable().optional(),
   cpsmCents: z.coerce.number().nullable().optional(),
+  // REAL tracked form-submission count + cost-per-form-submission (form_submissions
+  // goal, the visit-driven sibling of signups). Same committed-spend denominator as
+  // cpsCents. Optional for rollout tolerance; cpfsCents null when the count is 0.
+  formSubmissionsCount: z.coerce.number().optional(),
+  cpfsCents: z.coerce.number().nullable().optional(),
 });
 
 const FeatureRevenueResponseSchema = z.object({

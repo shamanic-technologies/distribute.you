@@ -1735,7 +1735,11 @@ export interface GlobalStatsResponse {
   groups?: StatsGroup[];
 }
 
-export type PipelineActivityMetricKey = "outreach" | "clicks" | "signups";
+export type PipelineActivityMetricKey =
+  | "outreach"
+  | "clicks"
+  | "signups"
+  | "formSubmissions";
 
 export interface PipelineActivityMetric {
   actual: number | null;
@@ -1752,6 +1756,9 @@ export interface PipelineActivityDay {
 export interface PipelineActivitySummary {
   dailyBudgetUsd: number | null;
   clickToSignupPct: number | null;
+  /** Brand effective visit→form-submission rate (form-submission projection rate).
+   *  Null when economics absent or the brand carries no form-submission rate. */
+  clickToFormSubmissionPct?: number | null;
 }
 
 export interface PipelineActivityResponse {
@@ -1763,7 +1770,11 @@ export interface PipelineActivityResponse {
   summary: PipelineActivitySummary;
 }
 
-export type FeatureAudienceStatsGoal = "signup" | "meetingBooked" | "purchase";
+export type FeatureAudienceStatsGoal =
+  | "signup"
+  | "meetingBooked"
+  | "purchase"
+  | "formSubmission";
 export type FeatureAudienceStatsSortMetric = "cpc" | "cppr";
 
 export interface FeatureAudienceStatsRow {
@@ -1784,10 +1795,16 @@ export interface FeatureAudienceStatsRow {
     contacted: number;
     websiteClicks: number;
     positiveReplies: number;
+    /** REAL per-audience form-submission conversions (attributed, deduped). Present
+     *  ONLY for the form_submissions goal; absent otherwise — never a fabricated 0. */
+    formSubmissions?: number;
   };
   metrics: {
     cpcCents: number | null;
     cpprCents: number | null;
+    /** REAL cost per form submission = spend ÷ formSubmissions. Null when 0/absent
+     *  (not the form_submissions goal, or emails not served). Never a false $0. */
+    cpfsCents?: number | null;
   };
 }
 
@@ -1818,17 +1835,24 @@ const FeatureAudienceStatsRowSchema = z.object({
     contacted: z.number(),
     websiteClicks: z.number(),
     positiveReplies: z.number(),
+    formSubmissions: z.number().optional(),
   }),
   metrics: z.object({
     cpcCents: z.number().nullable(),
     cpprCents: z.number().nullable(),
+    cpfsCents: z.number().nullable().optional(),
   }),
 });
 
 const FeatureAudienceStatsResponseSchema = z.object({
   featureSlug: z.string(),
   brandId: z.string(),
-  goal: z.union([z.literal("signup"), z.literal("meetingBooked"), z.literal("purchase")]),
+  goal: z.union([
+    z.literal("signup"),
+    z.literal("meetingBooked"),
+    z.literal("purchase"),
+    z.literal("formSubmission"),
+  ]),
   brandProfileId: z.string().nullable(),
   sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
   audiences: z.array(FeatureAudienceStatsRowSchema),
@@ -1996,12 +2020,14 @@ const PipelineActivityResponseSchema = z.object({
         outreach: PipelineActivityMetricSchema,
         clicks: PipelineActivityMetricSchema,
         signups: PipelineActivityMetricSchema,
+        formSubmissions: PipelineActivityMetricSchema,
       }),
     }),
   ),
   summary: z.object({
     dailyBudgetUsd: z.number().nullable(),
     clickToSignupPct: z.number().nullable(),
+    clickToFormSubmissionPct: z.number().nullable().optional(),
   }),
 });
 

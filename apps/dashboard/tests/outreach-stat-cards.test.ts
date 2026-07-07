@@ -53,6 +53,14 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain('costLabel: "CAC"');
   });
 
+  it("shows the Form submissions/CPFS outcome pair for the form_submissions goal", () => {
+    expect(cards).toContain('goal === "form_submissions"');
+    expect(cards).toContain('label: "Form submissions"');
+    expect(cards).toContain('costLabel: "CPFS"');
+    expect(cards).toContain("count: spend?.formSubmissionsCount");
+    expect(cards).toContain("spend?.cpfsCents");
+  });
+
   it("renders the REAL server-provided tracker count for the outcome card, not a hardcoded dash", () => {
     // Count comes from the features-service /revenue spend block (real, tracker-sourced),
     // not the old hardcoded value="—".

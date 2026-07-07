@@ -25,6 +25,7 @@ import {
   type AudienceStatus,
   type AudienceWire,
   type FeatureAudienceStatsRow,
+  type FeatureAudienceStatsGoal,
 } from "@/lib/api";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
@@ -38,7 +39,7 @@ function formatCents(cents: number | null): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "outreach" | "remaining" | "size";
+type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "formSubmissions" | "cpfs" | "outreach" | "remaining" | "size";
 
 /**
  * Sort key for an audience row under a given column. `audience` sorts by name
@@ -61,6 +62,10 @@ function sortValue(
       return stats?.metrics.cpcCents ?? null;
     case "clicks":
       return stats?.evidence.websiteClicks ?? null;
+    case "formSubmissions":
+      return stats?.evidence.formSubmissions ?? null;
+    case "cpfs":
+      return stats?.metrics.cpfsCents ?? null;
     case "outreach":
       return stats?.evidence.contacted ?? null;
     case "remaining":
@@ -235,14 +240,20 @@ export function CustomerAudiencesPage() {
     () => getBrandSalesEconomics(brandId),
     pollOptions,
   );
-  const audienceStatsGoal = isVisitDrivenGoal(
-    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings",
-  )
-    ? "signup"
-    : "meetingBooked";
+  const optimizationGoal =
+    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+  const audienceStatsGoal: FeatureAudienceStatsGoal =
+    optimizationGoal === "form_submissions"
+      ? "formSubmission"
+      : isVisitDrivenGoal(optimizationGoal)
+        ? "signup"
+        : "meetingBooked";
   // Sales-meetings goal → surface reply economics: extra "Positive Replies" +
   // "CPPR" columns (left of Cost per click), and default the sort to CPPR asc.
   const showMeetingCols = audienceStatsGoal === "meetingBooked";
+  // form_submissions goal → surface the real per-audience outcome: extra "Form
+  // submissions" + "CPFS" columns (right of Website Visits). Sorts stay on CPC.
+  const showFormSubmissionCols = optimizationGoal === "form_submissions";
   // Seed the initial sort column from the brand goal once it resolves — CPPR for
   // meetings, CPC for signup — until the user picks a column manually.
   useEffect(() => {
@@ -462,7 +473,7 @@ export function CustomerAudiencesPage() {
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${showMeetingCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            <table className={`${showMeetingCols || showFormSubmissionCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
@@ -488,6 +499,19 @@ export function CustomerAudiencesPage() {
                     info="Cost per website visit — audience-scoped spend divided by website visits. Lower is better."
                   />
                   <SortHeader label="Website Visits" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                  {showFormSubmissionCols && (
+                    <>
+                      <SortHeader label="Form submissions" col="formSubmissions" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                      <SortHeader
+                        label="CPFS"
+                        col="cpfs"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Cost per form submission — audience-scoped spend divided by form submissions. Lower is better."
+                      />
+                    </>
+                  )}
                   <SortHeader label="Outreach" col="outreach" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Remaining" col="remaining" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Size" col="size" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
@@ -569,6 +593,28 @@ export function CustomerAudiencesPage() {
                           "-"
                         )}
                       </td>
+                      {showFormSubmissionCols && (
+                        <>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-10" />
+                            ) : stats?.evidence.formSubmissions != null ? (
+                              stats.evidence.formSubmissions.toLocaleString("en-US")
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats ? (
+                              formatCents(stats.metrics.cpfsCents ?? null)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </>
+                      )}
                       <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
                         {statsLoading ? (
                           <Skeleton className="ml-auto h-4 w-10" />

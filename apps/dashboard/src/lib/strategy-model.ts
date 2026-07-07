@@ -62,6 +62,9 @@ export function modelAvatar(dynastySlug: string): { emoji: string; color: string
  *  the enum has no single-step variant. */
 export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAudienceStatsGoal {
   if (goal === "purchase") return "purchase";
+  // form_submissions has its own native audience-stats goal (visit-driven, sorts on
+  // CPC like signup, but carries per-audience formSubmissions + cpfsCents evidence).
+  if (goal === "form_submissions") return "formSubmission";
   return isVisitDrivenGoal(goal) ? "signup" : "meetingBooked";
 }
 
