@@ -17,6 +17,8 @@ import {
   type AudienceWire,
 } from "@/lib/api";
 import { goalLeadTabs, type LeadTab } from "@/lib/goal-steps";
+import { buildLeadsCsv } from "@/lib/leads-csv";
+import { CsvDownloadButton } from "@/components/report/csv-button";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
@@ -622,6 +624,15 @@ export function EngagedLeadsPage() {
   const statusOf = (lead: Lead): LeadConsolidatedStatus =>
     (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
 
+  // CSV export = the WHOLE leads list (every tab), not the active-tab/search
+  // subset. Status label uses the same latched `statusOf` the badge renders, so
+  // the exported Status matches on-screen. Recomputed only when leads/latch move.
+  const leadsCsv = useMemo(
+    () => buildLeadsCsv(leads, (l) => leadStatusLabel(statusOf(l))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [leads, latchedStatus],
+  );
+
   const groupedByTab = useMemo(() => {
     const positive: Lead[] = [];
     const clicks: Lead[] = [];
@@ -737,6 +748,9 @@ export function EngagedLeadsPage() {
               <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} leads)</span>
             )}
           </h1>
+          {!loading && (
+            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={leads.length === 0} />
+          )}
         </div>
 
         {loading ? (
