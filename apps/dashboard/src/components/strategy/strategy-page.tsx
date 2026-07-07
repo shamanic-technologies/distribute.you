@@ -35,8 +35,8 @@ import {
   objectiveForOptimizationGoal,
   OFFER_LEVERS,
   outcomeNoun,
-  pickAudienceRow,
-  pickBrandRow,
+  pickAudienceOrBrandRow,
+  pickBestBrandRow,
   WORKFLOW_GRAIN_LABEL,
 } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
@@ -402,14 +402,16 @@ export function StrategyPage() {
     saveOfferMut.mutate(offerFields);
   };
 
-  // Best model = the recommended workflow, else the first row's workflow. Its headline
-  // economics come from that workflow's BRAND-LEVEL row (audienceId null) `resolved`.
+  // Best model = the cheapest BRAND-LEVEL workflow, ranked on resolved.costPerOutcomeUsd
+  // (the goal metric) at the row's server-resolved brand/crossOrg grain. We do NOT drive
+  // this off recommendedWorkflowDynastySlug — that argmin spans per-audience rows (it's
+  // for campaign-service's per-run audience selection), so one cheap 2-click audience leg
+  // can crown a dynasty whose brand-level cost is bad/floored, making the headline show a
+  // worse number than the brand's own average. Ranking the brand rows keeps it coherent.
+  // Its headline economics are read verbatim from that row's `resolved`.
   const rows = projection?.rows ?? [];
-  const bestSlug =
-    projection?.recommendedWorkflowDynastySlug ??
-    rows[0]?.workflow.workflowDynastySlug ??
-    null;
-  const brandRow = pickBrandRow(rows, bestSlug);
+  const brandRow = pickBestBrandRow(rows, projection?.recommendedWorkflowDynastySlug ?? null);
+  const bestSlug = brandRow?.workflow.workflowDynastySlug ?? null;
   const bestName = brandRow?.workflow.workflowDynastyName ?? bestSlug ?? "-";
   // Everything below is read straight from the server-resolved grain (never rescaled).
   const resolved = brandRow?.resolved ?? null;
@@ -424,11 +426,13 @@ export function StrategyPage() {
   const activeAudiences = audiencesData?.audiences ?? [];
 
   // Table order: cheapest Cost per website visit (= resolved.costPerClickUsd) first.
-  // Audiences with no evidence row yet (no resolved cost) sort to the END. Pure display
-  // ordering — the cost itself is the server-resolved value, never recomputed here.
+  // Audiences with no evidence row yet (no resolved cost) sort to the END. Each audience
+  // falls back to the best workflow's brand-level row when it never ran it, so the cost
+  // is that couple's audience-grain figure or the workflow's brand/crossOrg cost. Pure
+  // display ordering — the cost itself is the server-resolved value, never recomputed here.
   const sortedAudiences = [...activeAudiences].sort((a, b) => {
-    const ca = pickAudienceRow(rows, bestSlug, a.id)?.resolved?.costPerClickUsd ?? null;
-    const cb = pickAudienceRow(rows, bestSlug, b.id)?.resolved?.costPerClickUsd ?? null;
+    const ca = pickAudienceOrBrandRow(rows, bestSlug, a.id)?.resolved?.costPerClickUsd ?? null;
+    const cb = pickAudienceOrBrandRow(rows, bestSlug, b.id)?.resolved?.costPerClickUsd ?? null;
     if (ca == null && cb == null) return 0;
     if (ca == null) return 1;
     if (cb == null) return -1;
@@ -798,10 +802,12 @@ export function StrategyPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {sortedAudiences.map((a) => {
-                          // The audience's own projection row; its `resolved` grain was
-                          // already picked audience→brand→crossOrg server-side. Read
-                          // verbatim — plain "$X" even when that grain saw 0 clicks.
-                          const row = pickAudienceRow(rows, bestSlug, a.id);
+                          // The audience's own projection row for the best workflow — its
+                          // `resolved` grain was already picked audience→brand→crossOrg
+                          // server-side. Falls back to the workflow's brand-level row when
+                          // this audience never ran it (grain then honestly reads "this
+                          // brand" / "fleet benchmark"). Read verbatim.
+                          const row = pickAudienceOrBrandRow(rows, bestSlug, a.id);
                           const r = row?.resolved ?? null;
                           const floored = isRowFloored(row);
                           return (
