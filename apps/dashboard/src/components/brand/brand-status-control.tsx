@@ -76,7 +76,6 @@ const GOAL_OPTIONS: {
     value: "website_visits",
     label: "# Website visits",
     description: "Optimize outreach toward website visits that convert to paid clients.",
-    beta: true,
   },
   {
     value: "positive_replies",

@@ -75,10 +75,18 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
   }
 }
 
-/** The workflow-projection objective for the brand's saved goal. */
+/** The workflow-projection objective for the brand's saved goal.
+ *  Sends features-service's NATIVE objective per goal so the server computes the right
+ *  funnel: website_visits + positive_replies are SINGLE-STEP (visit→paid / reply→paid),
+ *  form_submissions two-step, signups → self-serve, sales_meetings → meeting-booked.
+ *  (features-service supports all five natively — the single-step goals no longer borrow
+ *  self-serve, which was serving cost-per-SIGNUP under a website_visits brand.) */
 export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): SalesObjective {
   if (goal === "form_submissions") return "form_submissions";
-  return isVisitDrivenGoal(goal) ? "self-serve" : "meeting-booked";
+  if (goal === "website_visits") return "website_visits";
+  if (goal === "positive_replies") return "positive_replies";
+  if (goal === "sales_meetings") return "meeting-booked";
+  return "self-serve";
 }
 
 /**

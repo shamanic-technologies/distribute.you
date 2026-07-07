@@ -96,7 +96,7 @@ export function RevenueOverviewSection({
   const outcomeSeries = isVisitDriven
     ? pipelineActualSeries?.clicks
     : pipelineActualSeries?.repliedPositive;
-  const outcomeLabel = isVisitDriven ? "Website clicks" : "Positive replies";
+  const outcomeLabel = isVisitDriven ? "Website visits" : "Positive replies";
   const outcomeColor = isVisitDriven ? "#0891b2" : "#dc2626";
 
   // Forward projection for the Outcome line — the expected daily increments past

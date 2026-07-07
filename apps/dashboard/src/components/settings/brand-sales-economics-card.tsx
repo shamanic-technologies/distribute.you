@@ -120,7 +120,7 @@ const OPTIMIZATION_GOALS: {
 }[] = [
   { value: "signups", label: "# Signups" },
   { value: "sales_meetings", label: "# Sales Meetings" },
-  { value: "website_visits", label: "# Website visits", beta: true },
+  { value: "website_visits", label: "# Website visits" },
   { value: "positive_replies", label: "# Positive Replies", beta: true },
   { value: "form_submissions", label: "# Form submissions", beta: true },
 ];
