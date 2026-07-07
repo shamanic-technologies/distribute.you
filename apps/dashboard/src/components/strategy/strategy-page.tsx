@@ -42,28 +42,37 @@ import {
 } from "@/lib/strategy-model";
 import { MetricLabel } from "@/components/visibility/metric-info";
 
-/** USD number → "$X.XX" (two decimals) / "—". */
+/** USD number → whole dollars "$X" (no cents) / "—". */
 function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
-  if (usd <= 0) return "$0.00";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (usd <= 0) return "$0";
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 /**
- * USD, but prefixed ">" when `floored` — the cost's grain observed zero clicks, so the
- * number is a floor (spentUsd / max(1)) and the true cost is at least this much. Honest
- * rendering of the "$X per click with 0 clicks" case (never a fake exact figure).
+ * USD render for a resolved cost-per-X tile — whole dollars, no cents ("$39"). When
+ * `floored` the grain observed zero clicks/outcomes, so the number is a floor
+ * (spentUsd / max(1)); we render it plain (no ">" prefix) because the ">" read as
+ * confusing on a not-yet-realized outcome. `floored` is kept for callers that still
+ * distinguish the grain elsewhere.
  */
-function formatUsdFloor(usd: number | null | undefined, floored: boolean): string {
-  const s = formatUsd(usd);
-  if (floored && usd != null && s !== "-") return `>${s}`;
-  return s;
+function formatUsdFloor(usd: number | null | undefined, _floored: boolean): string {
+  if (usd == null) return "-";
+  if (usd <= 0) return "$0";
+  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 /** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */
 function formatPct(pct: number | null | undefined): string {
   if (pct == null) return "-";
   return `${pct.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+}
+
+/** A percentage in % units rendered as a whole number → "39%" / "—". For headline cost-of-
+ *  acquisition tiles where the decimal reads as noise (conversion rates keep `formatPct`). */
+function formatPctWhole(pct: number | null | undefined): string {
+  if (pct == null) return "-";
+  return `${pct.toLocaleString("en-US", { maximumFractionDigits: 0 })}%`;
 }
 
 /** A lifetime-return multiple → "X.X×" / "—". */
@@ -637,7 +646,7 @@ export function StrategyPage() {
                 />
                 <Stat
                   label="Cost of acquisition"
-                  value={formatPct(resolved.cacPct)}
+                  value={formatPctWhole(resolved.cacPct)}
                   tooltip="Cost to acquire a paid client divided by the lifetime revenue of a paid client"
                   hint="Share of a client's lifetime revenue spent to acquire them"
                 />
@@ -703,7 +712,7 @@ export function StrategyPage() {
                         {activeAudiences.map((a) => {
                           // The audience's own projection row; its `resolved` grain was
                           // already picked audience→brand→crossOrg server-side. Read
-                          // verbatim — floor to ">$X" when that grain saw 0 clicks.
+                          // verbatim — plain "$X" even when that grain saw 0 clicks.
                           const row = pickAudienceRow(rows, bestSlug, a.id);
                           const r = row?.resolved ?? null;
                           const floored = isRowFloored(row);
@@ -725,7 +734,7 @@ export function StrategyPage() {
                                 {formatRoi(r?.roiMultiple)}
                               </td>
                               <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                                {formatPct(r?.cacPct)}
+                                {formatPctWhole(r?.cacPct)}
                               </td>
                             </tr>
                           );
