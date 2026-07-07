@@ -772,7 +772,13 @@ export function StrategyPage() {
                             <th className="px-4 py-2.5 text-right font-semibold">
                               <span className="inline-flex items-center justify-end gap-1">
                                 <MetricLabel
-                                  text={optimizationGoal === "signups" ? "CPS" : `Cost / ${noun}`}
+                                  text={
+                                    optimizationGoal === "signups"
+                                      ? "CPS"
+                                      : optimizationGoal === "form_submissions"
+                                        ? "CPFS"
+                                        : `Cost / ${noun}`
+                                  }
                                   tip={`Cost per ${noun} - what we pay on average for one ${noun}.`}
                                 />
                               </span>
