@@ -967,6 +967,28 @@ export function Onboarding() {
       });
       if (attempt < PRICING_REFRESH_RETRIES) await delay(PRICING_REFRESH_RETRY_DELAY_MS);
     }
+    // Retries exhausted. The reshaped workflow-projection backend computes projected
+    // cost from the brand's EFFECTIVE economics server-side, which the client cannot
+    // always reproduce from the raw saved rates within the freshness tolerance — so a
+    // persistently "unfresh" projection is NOT a hard failure. Proceed as long as SOME
+    // workflow yields a usable unit cost; only block when none does (genuinely no data).
+    if (lastProjection) {
+      const goal = optimizationGoalForOutcome(nextOutcome);
+      const usable = lastProjection.workflows.some(
+        (w) =>
+          workflowOutcomeUnitCost(w, goal, {
+            visitToSignupPct: nextRates.v2s,
+            replyToMeetingPct: nextRates.r2m,
+            visitToMeetingPct: nextRates.v2m,
+          }) != null,
+      );
+      if (usable) {
+        console.warn(
+          "[dashboard] onboarding: proceeding with a usable projection that never met the freshness tolerance (server computes cost from effective economics)",
+        );
+        return lastProjection;
+      }
+    }
     throw new Error(
       lastProjection
         ? "Pricing is still refreshing from your new rates. Please try again."
