@@ -113,6 +113,32 @@ function grainHint(grain: "crossOrg" | "brand" | "audience" | null | undefined):
   }
 }
 
+/** Up-to-2-letter initials fallback when an audience has no generated avatar yet. */
+function audienceInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "A";
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+}
+
+/** Audience profile picture — the server-generated avatar when present, else an
+ *  initials badge (mirrors the Top-audiences card + Customer Audiences table). */
+function AudienceAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        className="h-7 w-7 shrink-0 rounded-full border border-gray-200 bg-white object-cover"
+      />
+    );
+  }
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand-100 bg-brand-50 text-[10px] font-semibold text-brand-700">
+      {audienceInitials(name)}
+    </span>
+  );
+}
+
 function Card({
   title,
   subtitle,
@@ -396,6 +422,18 @@ export function StrategyPage() {
   // grain, already picked audience→brand→crossOrg server-side). Pure display pick — every
   // value stays server-provided (no client-side metric math, no rescale).
   const activeAudiences = audiencesData?.audiences ?? [];
+
+  // Table order: cheapest Cost per website visit (= resolved.costPerClickUsd) first.
+  // Audiences with no evidence row yet (no resolved cost) sort to the END. Pure display
+  // ordering — the cost itself is the server-resolved value, never recomputed here.
+  const sortedAudiences = [...activeAudiences].sort((a, b) => {
+    const ca = pickAudienceRow(rows, bestSlug, a.id)?.resolved?.costPerClickUsd ?? null;
+    const cb = pickAudienceRow(rows, bestSlug, b.id)?.resolved?.costPerClickUsd ?? null;
+    if (ca == null && cb == null) return 0;
+    if (ca == null) return 1;
+    if (cb == null) return -1;
+    return ca - cb;
+  });
 
   // Example emails for the best model — fetched on demand (drawer), cascade
   // brand → org → global; empty is a clean "no examples yet" state.
@@ -759,7 +797,7 @@ export function StrategyPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {activeAudiences.map((a) => {
+                        {sortedAudiences.map((a) => {
                           // The audience's own projection row; its `resolved` grain was
                           // already picked audience→brand→crossOrg server-side. Read
                           // verbatim — plain "$X" even when that grain saw 0 clicks.
@@ -769,10 +807,15 @@ export function StrategyPage() {
                           return (
                             <tr key={a.id}>
                               <td className="px-4 py-2.5">
-                                <span className="block truncate text-gray-700">{a.name}</span>
-                                <span className="text-[10px] text-gray-400">
-                                  {r ? WORKFLOW_GRAIN_LABEL[r.grain] : "No data yet"}
-                                </span>
+                                <div className="flex items-center gap-2.5">
+                                  <AudienceAvatar name={a.name} avatarUrl={a.avatarUrl} />
+                                  <div className="min-w-0">
+                                    <span className="block truncate text-gray-700">{a.name}</span>
+                                    <span className="text-[10px] text-gray-400">
+                                      {r ? WORKFLOW_GRAIN_LABEL[r.grain] : "No data yet"}
+                                    </span>
+                                  </div>
+                                </div>
                               </td>
                               {showReplyStat && (
                                 <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
