@@ -144,14 +144,23 @@ export function OutreachStatCards({
             "Cost per sales meeting booked: committed spend divided by the real meetings your conversion tracker recorded.",
           costValue: formatCostCents(spend?.cpsmCents),
         }
-      : {
-          label: "Signups",
-          count: spend?.signupsCount,
-          costLabel: "CPS",
-          costTooltip:
-            "Cost per signup: committed spend divided by the real signups your conversion tracker recorded.",
-          costValue: formatCostCents(spend?.cpsCents),
-        };
+      : goal === "form_submissions"
+        ? {
+            label: "Form submissions",
+            count: spend?.formSubmissionsCount,
+            costLabel: "CPFS",
+            costTooltip:
+              "Cost per form submission: committed spend divided by the real form submissions your conversion tracker recorded.",
+            costValue: formatCostCents(spend?.cpfsCents),
+          }
+        : {
+            label: "Signups",
+            count: spend?.signupsCount,
+            costLabel: "CPS",
+            costTooltip:
+              "Cost per signup: committed spend divided by the real signups your conversion tracker recorded.",
+            costValue: formatCostCents(spend?.cpsCents),
+          };
   // Real count → render it; absent (pre-tracker / cold payload) → "—" + setup CTA.
   const outcomeCountValue =
     outcomeMetric.count != null ? formatCount(outcomeMetric.count) : "—";
