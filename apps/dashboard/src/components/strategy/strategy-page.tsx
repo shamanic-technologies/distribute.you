@@ -62,6 +62,14 @@ function formatUsdFloor(usd: number | null | undefined, _floored: boolean): stri
   return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
+/** USD render for cost-per-click — always two decimals "$X.XX" / "$0.00" / "-". CPC is a
+ *  small figure ($1–$7) where whole-dollar rounding loses the meaningful cents. */
+function formatUsdCents(usd: number | null | undefined): string {
+  if (usd == null) return "-";
+  if (usd <= 0) return "$0.00";
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 /** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */
 function formatPct(pct: number | null | undefined): string {
   if (pct == null) return "-";
@@ -619,7 +627,7 @@ export function StrategyPage() {
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
                 <Stat
                   label="Cost / click"
-                  value={formatUsdFloor(resolved.costPerClickUsd, brandFloored)}
+                  value={formatUsdCents(resolved.costPerClickUsd)}
                   tooltip="Cost per click - what we pay on average for one prospect to click through to your site."
                   hint={grainHint(brandGrain)}
                 />
@@ -725,7 +733,7 @@ export function StrategyPage() {
                                 </span>
                               </td>
                               <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
-                                {formatUsdFloor(r?.costPerClickUsd, floored)}
+                                {formatUsdCents(r?.costPerClickUsd)}
                               </td>
                               <td className="px-4 py-2.5 text-right font-semibold text-gray-900">
                                 {formatUsdFloor(r?.costPerOutcomeUsd, floored)}
