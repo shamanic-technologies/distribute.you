@@ -705,10 +705,11 @@ export interface BrandSalesEconomics {
   visitToPaidClientPct: number;
   replyToPaidClientPct: number;
   // Two-step conversions for the beta form_submissions goal (visit → form submission → paid),
-  // the sibling of signups. Optional on read to decouple the brand-service rollout (present once
-  // brand-service prod serves them; brand-service defaults 25 / 20 for a never-set brand).
-  visitToFormSubmissionPct?: number;
-  formSubmissionToPaidClientPct?: number;
+  // the sibling of signups. brand-service serves them PRESENT-BUT-NULLABLE: a brand that never
+  // set form-submission rates gets `null` (not absent). Hence `number | null` — a bare `number`
+  // (or a non-nullable schema) makes the GET safeParse throw on every such brand.
+  visitToFormSubmissionPct?: number | null;
+  formSubmissionToPaidClientPct?: number | null;
   businessModel: BrandBusinessModel | null;
   optimizationGoal: BrandOptimizationGoal;
   updatedAt: string;
@@ -751,10 +752,12 @@ const BrandSalesEconomicsSchema = z.object({
   visitToClosePct: z.number(),
   visitToPaidClientPct: z.number(),
   replyToPaidClientPct: z.number(),
-  // Optional: brand-service serves them once the form_submissions rollout is live in prod; older
-  // prod omits them. Optional tolerates the absent case (never strips a present value).
-  visitToFormSubmissionPct: z.number().optional(),
-  formSubmissionToPaidClientPct: z.number().optional(),
+  // Present-but-NULLABLE on the wire: brand-service returns these in `required[]` but serves `null`
+  // for a brand that never set form-submission rates. `.nullable().optional()` tolerates BOTH null
+  // (the common case) and absent (older prod) — a bare `.optional()` rejects null → the whole GET
+  // safeParse throws, breaking every econ-reading surface. Consumers already `?? default`-guard.
+  visitToFormSubmissionPct: z.number().nullable().optional(),
+  formSubmissionToPaidClientPct: z.number().nullable().optional(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
   optimizationGoal: z.union([
     z.literal("signups"),
