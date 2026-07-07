@@ -4895,8 +4895,9 @@ export async function listAdminBrands(): Promise<{ brands: AdminBrand[] }> {
 
 // ---------------------------------------------------------------------------
 // Cross-org feature stats (staff admin — platform-wide, all orgs aggregated).
-// These read features-service `/public/stats/*` through the api-service gateway
-// (transparent passthrough). The endpoints are cross-org (no org scope), so we
+// These read the features-service cross-org public stats through the api-service
+// gateway, which exposes them under `/public/features/*` (the gateway remaps the
+// downstream `/public/stats/*` family). Cross-org (no org scope), so we
 // call them with a plain `useQuery` — NOT `useAuthQuery` — since there is no
 // active org to gate on. Every displayed number is a ready backend field; the
 // dashboard renders, it never computes a cost-per-outcome in the browser
@@ -4920,7 +4921,7 @@ export async function getCrossOrgCostProjection(
   featureSlug: string,
 ): Promise<CrossOrgCostProjection> {
   const query = new URLSearchParams({ featureSlug });
-  const raw = await apiCall<unknown>(`/public/stats/cost-projection?${query.toString()}`);
+  const raw = await apiCall<unknown>(`/public/features/cost-projection?${query.toString()}`);
   const parsed = CrossOrgCostProjectionSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[admin] getCrossOrgCostProjection: response shape mismatch", {
@@ -4969,7 +4970,7 @@ export async function getCrossOrgWorkflowStats(
     objective,
     limit: String(limit),
   });
-  const raw = await apiCall<unknown>(`/public/stats/ranked?${query.toString()}`);
+  const raw = await apiCall<unknown>(`/public/features/ranked?${query.toString()}`);
   const parsed = CrossOrgRankedSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[admin] getCrossOrgWorkflowStats: response shape mismatch", {
