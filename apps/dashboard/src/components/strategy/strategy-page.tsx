@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronDownIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 import { EmailSignature } from "@/components/email-signature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -17,15 +18,23 @@ import {
   getWorkflowProjectionLadder,
   listAudiences,
   listWorkflowExamples,
+  saveBrandProfileVersion,
 } from "@/lib/api";
 import type { WorkflowExampleEmail } from "@/lib/api";
+import {
+  ALL_FIELDS,
+  cloneFields,
+  fieldsEqual,
+  ListEditor,
+  TextEditor,
+  type ProfileFields,
+} from "@/components/brand-profile/field-editor";
 import {
   goalForOptimizationGoal,
   isRowFloored,
   modelAvatar,
   objectiveForOptimizationGoal,
   OFFER_LEVERS,
-  offerLeverValue,
   outcomeNoun,
   pickAudienceRow,
   pickBrandRow,
@@ -243,8 +252,11 @@ export function StrategyPage() {
   const brandId = params.brandId as string;
   const orgId = params.orgId as string;
 
+  const queryClient = useQueryClient();
   const [examplesOpen, setExamplesOpen] = useState(false);
   const [expandedExampleId, setExpandedExampleId] = useState<string | null>(null);
+  // Offer-fields inline edit: null = follow the saved baseline, an object = working edits.
+  const [offerDraft, setOfferDraft] = useState<ProfileFields | null>(null);
 
   // Objective + conversion economics for the brand (drives the goal mapping).
   const { data: econData, isPending: econPending } = useAuthQuery(
@@ -280,15 +292,55 @@ export function StrategyPage() {
   );
 
   // Brand profile — the offer fields we optimise conversion against. Same data as
-  // the Brand Profile editor in settings; here it's a read view.
+  // the Brand Profile editor; here the offer levers are edited inline (hover a zone
+  // → click to edit), and Save forks a new immutable brand-profile version.
   const { data: profileData, isPending: profilePending } = useAuthQuery(
     ["brandProfile", brandId],
     () => getBrandProfile(brandId),
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
-  const profileFields = profileData?.current?.fields ?? null;
-  const brandProfileHref = `/orgs/${orgId}/brands/${brandId}/brand-profile`;
   const settingsHref = `/orgs/${orgId}/brands/${brandId}/settings`;
+
+  // Full baseline fields bag — Save POSTs the WHOLE bag as a new version, so edits
+  // to the offer levers must ride on top of every other brand-profile field, never
+  // wipe them.
+  const offerBaseline = cloneFields((profileData?.current?.fields ?? {}) as ProfileFields);
+  const offerFields = offerDraft ?? offerBaseline;
+  const offerDirty = offerDraft !== null && !fieldsEqual(offerDraft, offerBaseline);
+
+  const saveOfferMut = useMutation({
+    mutationFn: (fields: ProfileFields) => saveBrandProfileVersion(brandId, fields),
+    onSuccess: () => {
+      setOfferDraft(null);
+      queryClient.invalidateQueries({ queryKey: ["brandProfile", brandId] });
+    },
+  });
+
+  const setOfferText = (key: string, value: string) =>
+    setOfferDraft((prev) => ({ ...(prev ?? offerBaseline), [key]: value }));
+
+  const addOfferItem = (key: string, raw: string) => {
+    const value = raw.trim();
+    if (!value) return;
+    setOfferDraft((prev) => {
+      const cur = prev ?? offerBaseline;
+      const arr = Array.isArray(cur[key]) ? (cur[key] as string[]) : [];
+      if (arr.some((v) => v.toLowerCase() === value.toLowerCase())) return cur;
+      return { ...cur, [key]: [...arr, value] };
+    });
+  };
+
+  const removeOfferItem = (key: string, value: string) =>
+    setOfferDraft((prev) => {
+      const cur = prev ?? offerBaseline;
+      const arr = Array.isArray(cur[key]) ? (cur[key] as string[]) : [];
+      return { ...cur, [key]: arr.filter((v) => v !== value) };
+    });
+
+  const saveOffer = () => {
+    if (!offerDirty || saveOfferMut.isPending) return;
+    saveOfferMut.mutate(offerFields);
+  };
 
   // Best model = the recommended workflow, else the first row's workflow. Its headline
   // economics come from that workflow's BRAND-LEVEL row (audienceId null) `resolved`.
@@ -413,11 +465,12 @@ export function StrategyPage() {
           ) : null}
         </Card>
 
-        {/* What we use to optimise conversion — the offer, read from Brand Profile */}
+        {/* What we use to optimise conversion — the offer, edited inline. Each lever
+            is a hover-to-edit zone (the pencil appears on hover); Save forks a new
+            immutable brand-profile version. No separate "Edit in Brand Profile" jump. */}
         <Card
           title="What we use to optimize your conversion"
-          subtitle="Your offer through the Alex Hormozi value equation. We write the emails around these. Edit them in Brand Profile."
-          action={<EditLink href={brandProfileHref} />}
+          subtitle="Your offer through the Alex Hormozi value equation. We write the emails around these. Hover any field to edit it inline."
         >
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
             <img
@@ -438,34 +491,63 @@ export function StrategyPage() {
               ))}
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
-              {OFFER_LEVERS.map((lever) => {
-                const lines = offerLeverValue(profileFields, lever.key);
-                return (
-                  <li key={lever.key} className="px-4 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                      <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
-                    </p>
-                    {lines.length === 0 ? (
-                      <p className="mt-1 text-sm text-gray-400">
-                        Not set yet.{" "}
-                        <Link href={brandProfileHref} className="text-brand-600 hover:underline">
-                          Add in Brand Profile
-                        </Link>
+            <>
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
+                {OFFER_LEVERS.map((lever) => {
+                  // Kind + placeholder come from the shared brand-profile field set
+                  // (services / socialProof are lists, the rest free text).
+                  const def = ALL_FIELDS.find((f) => f.key === lever.key);
+                  const kind = def?.kind ?? "text";
+                  const placeholder = def?.placeholder ?? "";
+                  const value = offerFields[lever.key];
+                  return (
+                    <li key={lever.key} className="px-4 py-3">
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
                       </p>
-                    ) : lines.length === 1 ? (
-                      <p className="mt-1 text-sm text-gray-700">{lines[0]}</p>
-                    ) : (
-                      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-gray-700">
-                        {lines.map((line, i) => (
-                          <li key={i}>{line}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+                      {kind === "text" ? (
+                        <TextEditor
+                          value={typeof value === "string" ? value : ""}
+                          placeholder={placeholder}
+                          onText={(v) => setOfferText(lever.key, v)}
+                        />
+                      ) : (
+                        <ListEditor
+                          values={Array.isArray(value) ? value : []}
+                          placeholder={placeholder}
+                          onAdd={(v) => addOfferItem(lever.key, v)}
+                          onRemove={(v) => removeOfferItem(lever.key, v)}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {offerDirty ? (
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOfferDraft(null)}
+                    className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveOffer}
+                    disabled={saveOfferMut.isPending}
+                    className={`rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition ${
+                      saveOfferMut.isPending
+                        ? "cursor-wait"
+                        : "hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                    }`}
+                  >
+                    {saveOfferMut.isPending ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
+              ) : null}
+            </>
           )}
         </Card>
 

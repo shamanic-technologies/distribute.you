@@ -251,12 +251,16 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain("What we use to optimize your conversion");
     expect(page).toContain("Alex Hormozi value equation");
   });
-  it("puts an Edit link top-right of The plan (→ settings) and the offer card (→ brand profile)", () => {
+  it("keeps an Edit link on The plan (→ settings); the offer card is edited INLINE (no blue Edit button)", () => {
     expect(page).toContain("settingsHref");
     expect(page).toContain("action={<EditLink href={settingsHref} />}");
-    expect(page).toContain("action={<EditLink href={brandProfileHref} />}");
-    // the old bottom button was moved to the header Edit link
+    // the offer card no longer jumps to Brand Profile — each lever is a hover-to-edit
+    // zone (TextEditor / ListEditor) and Save forks a new brand-profile version.
+    expect(page).not.toContain("action={<EditLink href={brandProfileHref} />}");
     expect(page).not.toContain("Edit your offer in Brand Profile");
+    expect(page).toContain("saveBrandProfileVersion");
+    expect(page).toContain("TextEditor");
+    expect(page).toContain("ListEditor");
   });
   it("lists every active audience (not only ones with evidence) in the best model", () => {
     expect(page).toContain("activeAudiences");

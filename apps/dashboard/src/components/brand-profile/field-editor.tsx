@@ -140,7 +140,9 @@ export function FieldEditor({
 
 // Long/free text — clean read view by default; click anywhere to drop into an
 // edit textarea. Blur or Escape exits edit mode (edits apply live as you type).
-function TextEditor({
+// Exported so surfaces beyond the Brand Profile page (e.g. the Strategy page's
+// inline offer editor) can compose the same hover-to-edit affordance.
+export function TextEditor({
   value,
   placeholder,
   onText,
@@ -186,7 +188,7 @@ function TextEditor({
   );
 }
 
-function ListEditor({
+export function ListEditor({
   values,
   placeholder,
   onAdd,
