@@ -1834,6 +1834,19 @@ export async function getWorkflow(workflowId: string, token?: string): Promise<W
   return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
 }
 
+// Set a whole workflow dynasty's lifecycle status (active/deprecated). Dynasty-scoped,
+// idempotent. Deprecated dynasties are hidden from selection. Owned by workflow-service.
+export async function setWorkflowDynastyStatus(
+  workflowDynastySlug: string,
+  status: "active" | "deprecated",
+  token?: string,
+): Promise<{ workflowDynastySlug: string; status: "active" | "deprecated" }> {
+  return apiCall<{ workflowDynastySlug: string; status: "active" | "deprecated" }>(
+    `/workflows/dynasty/${encodeURIComponent(workflowDynastySlug)}/status`,
+    { token, method: "PUT", body: { status } },
+  );
+}
+
 export async function getWorkflowSummary(workflowId: string, token?: string): Promise<WorkflowSummary> {
   return apiCall<WorkflowSummary>(`/workflows/${workflowId}/summary`, { token });
 }
