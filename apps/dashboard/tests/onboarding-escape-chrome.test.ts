@@ -25,11 +25,15 @@ describe("Onboarding escape chrome", () => {
   });
 
   it("first-run signup keeps the focused, no-escape account widget only", () => {
-    // The non-add branch renders the floating account widget and NOTHING else —
-    // no breadcrumb, no logo link, no Cancel. The trap is intentional (DIS-111).
+    // The non-add branch renders the account widget and NOTHING else — no
+    // breadcrumb, no logo link, no Cancel. The trap is intentional (DIS-111).
+    // The widget is a slim IN-FLOW top bar (shrink-0, right-aligned), NOT a
+    // floating `fixed` corner overlay — the overlay read as a stray orphan.
     expect(chrome).toContain("if (!isAddFlow)");
-    expect(chrome).toContain("fixed top-4 right-4");
+    expect(chrome).toContain("flex shrink-0 justify-end");
     expect(chrome).toContain("OnboardingAccountWidget");
+    // No floating overlay on the first-run widget.
+    expect(chrome).not.toContain("fixed top-4 right-4");
   });
 
   it("add/new flow mounts the org→brand switcher + a logo + a Cancel exit", () => {
@@ -44,7 +48,7 @@ describe("Onboarding escape chrome", () => {
     expect(layout).toContain("OnboardingTopChrome");
     // The centered content shell (and its responsive classes asserted by
     // onboarding-responsive.test.ts) must stay in the layout, not move into chrome.
-    expect(layout).toContain("min-h-dvh");
-    expect(layout).toContain("w-full max-w-5xl min-w-0");
+    expect(layout).toContain("min-h-[100svh]");
+    expect(layout).toContain("flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:flex-none");
   });
 });

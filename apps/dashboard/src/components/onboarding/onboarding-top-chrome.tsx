@@ -38,10 +38,15 @@ export function OnboardingTopChrome() {
   const isAddFlow = params.get("from") === "add" || params.get("new") === "1";
 
   if (!isAddFlow) {
+    // First-run signup: keep the account widget (sign out / switch account —
+    // the only escape from a wrong account) but do NOT float it. A `fixed`
+    // corner widget overlays the step content and reads as a stray orphan on
+    // mobile. Render a slim in-flow bar (shrink-0 in the layout column) that
+    // sits above the step, right-aligned, and scrolls with the page.
     return (
-      <div className="fixed top-4 right-4 z-50">
+      <header className="flex shrink-0 justify-end px-4 py-2.5">
         <OnboardingAccountWidget />
-      </div>
+      </header>
     );
   }
 

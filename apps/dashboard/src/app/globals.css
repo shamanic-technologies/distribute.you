@@ -104,6 +104,16 @@ body {
   font-size: var(--text-sm);
 }
 
+/* Horizontal-overflow safety net (mirrors apps/landing). A single wide element
+ * (pricing tier grid, persona chip row, a dense table) that spills past the
+ * viewport must NOT make the whole page scroll sideways / clip content at the
+ * screen edge on mobile. `clip` (NOT `hidden`) — `hidden` turns html/body into
+ * a scroll container and breaks `position: sticky` (header, sidebar). Real
+ * spills still get their own `overflow-x-auto` at the element level. */
+html {
+  overflow-x: clip;
+}
+
 /* Landing radial-glow backdrop — the .dy-page::before signature, attached to
  * the dark dashboard body. Fixed, behind everything, non-interactive. */
 html.dark body::before {
