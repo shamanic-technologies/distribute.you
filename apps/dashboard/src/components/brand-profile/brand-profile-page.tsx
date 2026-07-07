@@ -74,7 +74,7 @@ export function BrandProfilePage() {
     },
   });
 
-  if (!revenueOk) {
+  if (!revenueOk || !isBeta) {
     return (
       <DashboardPage width="narrow">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
@@ -170,6 +170,7 @@ export function BrandProfilePage() {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold text-gray-900">Brand Profile</h1>
+            <MaturityBadge level="beta" />
           </div>
           <p className="mt-1 text-sm text-gray-500">
             Your brand’s own info — the audience lives in{" "}
