@@ -193,6 +193,38 @@ describe("pickAudienceOrBrandRow — per-audience row, brand-level fallback", ()
     expect(r?.resolved.grain).toBe("brand");
     expect(r?.resolved.costPerClickUsd).toBe(3);
   });
+  it("returns the audience's OWN audience-grain row even under a NON-best dynasty (grain is audience-wide)", () => {
+    // The audience's only audience-grain evidence sits under "other", NOT the brand-best
+    // "best" dynasty. Locking to (audience × best) would miss and collapse to the brand
+    // fallback ($2.89-on-every-row bug). We must surface the audience's own $0.92 figure.
+    const laddered: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "best", audienceId: null, grain: "brand", costPerClickUsd: 2.89 }),
+      row({ workflowDynastySlug: "other", audienceId: "ml-it", grain: "audience", costPerClickUsd: 0.92 }),
+    ];
+    const r = pickAudienceOrBrandRow(laddered, "best", "ml-it");
+    expect(r?.audienceId).toBe("ml-it");
+    expect(r?.resolved.grain).toBe("audience");
+    expect(r?.resolved.costPerClickUsd).toBe(0.92);
+  });
+  it("prefers an audience-grain row over a same-audience brand-grain row", () => {
+    // An audience can carry both a brand-resolved row (under best) and its own
+    // audience-grain row (under another dynasty). The audience-grain one wins.
+    const laddered: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "best", audienceId: "a1", grain: "brand", costPerClickUsd: 2.89 }),
+      row({ workflowDynastySlug: "other", audienceId: "a1", grain: "audience", costPerClickUsd: 1.1 }),
+    ];
+    const r = pickAudienceOrBrandRow(laddered, "best", "a1");
+    expect(r?.resolved.grain).toBe("audience");
+    expect(r?.resolved.costPerClickUsd).toBe(1.1);
+  });
+  it("deterministically picks the lowest-CPC audience-grain row on ties", () => {
+    const laddered: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "w1", audienceId: "a1", grain: "audience", costPerClickUsd: 3 }),
+      row({ workflowDynastySlug: "w2", audienceId: "a1", grain: "audience", costPerClickUsd: 1.5 }),
+      row({ workflowDynastySlug: "w3", audienceId: "a1", grain: "audience", costPerClickUsd: 2 }),
+    ];
+    expect(pickAudienceOrBrandRow(laddered, "w1", "a1")?.resolved.costPerClickUsd).toBe(1.5);
+  });
 });
 
 describe("pickAudienceRow — the workflow's per-audience row (server-resolved grain)", () => {
