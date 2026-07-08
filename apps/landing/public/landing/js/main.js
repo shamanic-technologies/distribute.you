@@ -281,8 +281,11 @@ if (pricingForm) {
     e.preventDefault();
     const input = document.getElementById('pricing-url');
     const raw = ((input && input.value) || '').trim();
-    // Reduce to a bare domain; empty input → plain signup (no prefill).
-    const site = raw.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').trim();
+    // Strip protocol but KEEP the path — a sub-page (e.g. acme.com/pricing)
+    // prefills the onboarding brand URL and pre-selects that page as the click
+    // destination. extractDomain reduces it to the bare domain for brand analysis.
+    // Empty input → plain signup (no prefill).
+    const site = raw.replace(/^https?:\/\//i, '').trim();
     const base = 'https://dashboard.distribute.you/sign-up';
     window.location.href = site ? base + '?url=' + encodeURIComponent(site) : base;
   });
