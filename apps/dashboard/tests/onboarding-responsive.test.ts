@@ -13,25 +13,31 @@ describe("Onboarding mobile responsiveness", () => {
   );
 
   it("full-bleeds + stretches the onboarding shell on mobile, centers it on sm+", () => {
-    // Mobile: no side gutters, items-stretch so the step (StepShell) fills the
-    // viewport edge-to-edge. sm+: the centered, padded floating-card frame returns.
-    expect(layout).toContain("min-h-dvh");
+    // Mobile app-shell column: 100svh (iOS address bar can't eat the pinned CTA),
+    // a slim in-flow top bar (shrink-0), then a flex-1 body. No side gutters,
+    // items-stretch so the step (StepShell) fills the body. sm+: centered card.
+    expect(layout).toContain("min-h-[100svh]");
+    expect(layout).toContain("flex-col");
     expect(layout).toContain("items-stretch");
     expect(layout).toContain("sm:items-center");
     expect(layout).toContain("sm:px-4 sm:py-6");
-    expect(layout).toContain("w-full max-w-5xl min-w-0");
+    expect(layout).toContain("flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:flex-none");
     // The old top-aligned, side-padded mobile shell is gone.
     expect(layout).not.toContain("items-start");
     expect(layout).not.toContain("px-3 py-4");
+    // No dvh — svh only (the iOS Safari address-bar fix).
+    expect(layout).not.toContain("min-h-dvh");
   });
 
-  it("StepShell makes each step full-screen on mobile and a floating card on sm+", () => {
-    // Mobile: min-h-[100dvh] flex column, header pinned top, CTA pinned bottom,
-    // only the middle content scrolls (overflow-y-auto). sm+: card chrome returns.
+  it("StepShell fills the body on mobile (pinned CTA) and a floating card on sm+", () => {
+    // Mobile: flex-1 under the layout's 100svh column, header pinned top, CTA
+    // pinned bottom, only the middle content scrolls (overflow-y-auto). sm+: card.
     expect(onboardingFlow).toContain("function StepShell");
-    expect(onboardingFlow).toContain("flex min-h-[100dvh] w-full min-w-0 flex-col sm:mx-auto sm:min-h-0 sm:gap-3");
+    expect(onboardingFlow).toContain("flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-3");
     expect(onboardingFlow).toContain("sm:flex-none sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm");
     expect(onboardingFlow).toContain("min-h-0 flex-1 overflow-y-auto sm:flex-none sm:overflow-visible");
+    // No 100dvh anywhere in the shell (svh via the layout column).
+    expect(onboardingFlow).not.toContain("min-h-[100dvh]");
     // 12 steps all route through the shared shell (no inline card wrappers left).
     const shellUses = onboardingFlow.match(/<StepShell/g) ?? [];
     expect(shellUses.length).toBe(12);

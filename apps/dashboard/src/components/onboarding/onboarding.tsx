@@ -2215,12 +2215,13 @@ function BrandStepHeader({ domain, hostname, onEdit }: { domain: string | null; 
   );
 }
 
-// Full-screen step shell. On MOBILE every step fills the viewport edge-to-edge
-// (`min-h-[100dvh]`, no side gutters, no card chrome): the optional brand header is
-// pinned at the top, the forward CTA is pinned to the bottom (always reachable, never
-// scroll to find it), and ONLY the middle content scrolls — and only on the few steps
-// too tall to fit. On `sm+` it reverts byte-for-byte to the prior floating card:
-// centered, max-width-capped, rounded border + shadow, content + CTA in natural flow.
+// Step shell. On MOBILE every step fills the available body height (`flex-1` under
+// the layout's `100svh` app-shell column, no side gutters, no card chrome): the
+// optional brand header is pinned at the top, the forward CTA is pinned to the bottom
+// (always reachable, never scroll to find it), and ONLY the middle content scrolls —
+// and only on the few steps too tall to fit. `svh` (not `dvh`) so the iOS Safari
+// address bar can't push the pinned CTA off-screen. On `sm+` it reverts to the prior
+// floating card: centered, max-width-capped, rounded border + shadow, natural flow.
 function StepShell({
   header,
   footer,
@@ -2235,7 +2236,7 @@ function StepShell({
   children: ReactNode;
 }) {
   return (
-    <div className={`flex min-h-[100dvh] w-full min-w-0 flex-col sm:mx-auto sm:min-h-0 sm:gap-3 ${maxWidth}`}>
+    <div className={`flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-3 ${maxWidth}`}>
       {header && <div className="shrink-0 px-3 pt-3 sm:px-0 sm:pt-0">{header}</div>}
       <div
         className={`flex min-h-0 flex-1 flex-col bg-white ${pad} sm:flex-none sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm`}
