@@ -193,6 +193,30 @@ describe("pickAudienceOrBrandRow — per-audience row, brand-level fallback", ()
     expect(r?.resolved.grain).toBe("brand");
     expect(r?.resolved.costPerClickUsd).toBe(3);
   });
+  it("returns the audience's OWN audience-grain row even under a NON-best dynasty (audience grain is audience-wide, workflow-agnostic)", () => {
+    // The audience's only audience-grain evidence sits under "other", NOT the brand-best
+    // "best" workflow. It must still surface THAT audience's own cost, not collapse to the
+    // brand fallback (the bug: locking the lookup to bestSlug flattened every audience to $brand).
+    const mixed: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "best", audienceId: null, grain: "brand", costPerClickUsd: 2.89 }),
+      row({ workflowDynastySlug: "other", audienceId: "a-off-best", grain: "audience", costPerClickUsd: 0.92 }),
+    ];
+    const r = pickAudienceOrBrandRow(mixed, "best", "a-off-best");
+    expect(r?.audienceId).toBe("a-off-best");
+    expect(r?.resolved.grain).toBe("audience");
+    expect(r?.resolved.costPerClickUsd).toBe(0.92); // its own cost, NOT the $2.89 brand fallback
+  });
+  it("prefers an audience-grain row over a same-audience brand-grain fallback row", () => {
+    // The audience has a server-resolved brand-grain row under the best workflow AND a real
+    // audience-grain row under another workflow — the audience-grain figure wins.
+    const mixed: WorkflowProjectionRow[] = [
+      row({ workflowDynastySlug: "best", audienceId: "a1", grain: "brand", costPerClickUsd: 2.89 }),
+      row({ workflowDynastySlug: "other", audienceId: "a1", grain: "audience", costPerClickUsd: 1.1 }),
+    ];
+    const r = pickAudienceOrBrandRow(mixed, "best", "a1");
+    expect(r?.resolved.grain).toBe("audience");
+    expect(r?.resolved.costPerClickUsd).toBe(1.1);
+  });
 });
 
 describe("pickAudienceRow — the workflow's per-audience row (server-resolved grain)", () => {

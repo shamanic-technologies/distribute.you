@@ -238,12 +238,36 @@ export function pickAudienceRow(
 }
 
 /**
- * The per-audience row for a workflow, falling back to the workflow's BRAND-LEVEL row
- * when this audience never ran it (no couple row). So every active audience shows the
- * best workflow's cost — its own audience-grain figure where it has run evidence, else
- * the workflow's brand/crossOrg cost — instead of a bare "-". Pure pick; `resolved` is
- * read verbatim, and the fallback row's grain honestly labels the number ("this brand"
- * / "fleet benchmark"), never claiming a per-audience result the audience doesn't have.
+ * The audience's OWN audience-grain row, WORKFLOW-AGNOSTIC. The workflow-projection
+ * audience grain is audience-WIDE (features-service invariant: an audience's cost-per-
+ * outcome does NOT depend on which workflow row it's attached to — it's the SAME across
+ * that audience's workflow rows), so any of the audience's `resolved.grain === "audience"`
+ * rows carries that audience's real figure. We pick the lowest-CPC one purely for
+ * determinism (they're equal when clicks > 0). Pure pick; `resolved` read verbatim.
+ */
+export function pickAudienceGrainRow(
+  rows: readonly WorkflowProjectionRow[],
+  audienceId: string,
+): WorkflowProjectionRow | null {
+  let best: WorkflowProjectionRow | null = null;
+  for (const r of rows) {
+    if (r.audienceId !== audienceId || r.resolved.grain !== "audience") continue;
+    if (best == null || r.resolved.costPerClickUsd < best.resolved.costPerClickUsd) {
+      best = r;
+    }
+  }
+  return best;
+}
+
+/**
+ * The per-audience row for the table, falling back to the workflow's BRAND-LEVEL row
+ * only when this audience has NO audience-grain evidence at all. So every active audience
+ * shows ITS OWN audience-grain figure (workflow-agnostic — the audience grain is
+ * audience-wide, not split per-workflow), coherent with the Audiences page — instead of
+ * collapsing every audience to the brand-best number just because the audience's row
+ * doesn't sit under the single brand-best workflow. Pure pick; `resolved` is read
+ * verbatim, and the brand fallback's grain honestly labels the number ("this brand" /
+ * "fleet benchmark"), never claiming a per-audience result the audience doesn't have.
  */
 export function pickAudienceOrBrandRow(
   rows: readonly WorkflowProjectionRow[],
@@ -251,7 +275,7 @@ export function pickAudienceOrBrandRow(
   audienceId: string,
 ): WorkflowProjectionRow | null {
   return (
-    pickAudienceRow(rows, workflowDynastySlug, audienceId) ??
+    pickAudienceGrainRow(rows, audienceId) ??
     pickBrandRow(rows, workflowDynastySlug)
   );
 }
