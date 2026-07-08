@@ -13,3 +13,19 @@ export function extractDomain(input: string): string | null {
     return null;
   }
 }
+
+/** If the input URL carries a path beyond the root ("/"), return the full
+ *  normalized URL (protocol + host + path + query). Used to pre-select a
+ *  sub-page (e.g. "acme.com/pricing") as the outreach click destination.
+ *  A bare domain or root path ("/") returns "" (→ homepage default). */
+export function subpageDestinationFromUrl(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const hasSubpage = (url.pathname && url.pathname !== "/") || Boolean(url.search);
+    return hasSubpage ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}

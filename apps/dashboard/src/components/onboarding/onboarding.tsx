@@ -55,7 +55,7 @@ import {
   workflowProjectionMatchesOutcomeRates,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
-import { extractDomain } from "@/lib/extract-domain";
+import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
@@ -560,8 +560,12 @@ export function Onboarding() {
   const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
   const [serviceDraft, setServiceDraft] = useState("");
   // Page outreach clicks land on. "" means "use the brand domain" (the default
-  // selection); a non-empty value is a user-typed custom page.
-  const [clickDestinationUrl, setClickDestinationUrl] = useState<string>(() => restored?.clickDestinationUrl ?? "");
+  // selection); a non-empty value is a custom page. Seeded from a sub-page in the
+  // incoming brand URL (landing pricing prefill or ?url=) so arriving with e.g.
+  // "acme.com/pricing" pre-selects that page instead of the homepage default.
+  const [clickDestinationUrl, setClickDestinationUrl] = useState<string>(
+    () => restored?.clickDestinationUrl ?? subpageDestinationFromUrl(restored?.url ?? searchParams.get("url")?.trim() ?? ""),
+  );
   const [profile, setProfile] = useState<Record<string, string | string[]>>(() => restored?.profile ?? {});
   // Outcome-count budget selection. selectedCount drives the derived $/day; budget
   // is the $/day value sent to the campaign. Tiers are derived from a STABLE base

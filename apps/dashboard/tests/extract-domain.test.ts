@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractDomain } from "../src/lib/extract-domain";
+import { extractDomain, subpageDestinationFromUrl } from "../src/lib/extract-domain";
 
 describe("extractDomain", () => {
   it("returns null for empty string", () => {
@@ -48,5 +48,36 @@ describe("extractDomain", () => {
 
   it("trims surrounding whitespace", () => {
     expect(extractDomain("  example.com  ")).toBe("example.com");
+  });
+});
+
+describe("subpageDestinationFromUrl", () => {
+  it("returns '' for empty / whitespace", () => {
+    expect(subpageDestinationFromUrl("")).toBe("");
+    expect(subpageDestinationFromUrl("   ")).toBe("");
+  });
+
+  it("returns '' for a bare domain (no sub-page)", () => {
+    expect(subpageDestinationFromUrl("acme.com")).toBe("");
+  });
+
+  it("returns '' for a domain with only a root path", () => {
+    expect(subpageDestinationFromUrl("acme.com/")).toBe("");
+  });
+
+  it("returns the full normalized URL for a sub-page (protocol-less)", () => {
+    expect(subpageDestinationFromUrl("acme.com/pricing")).toBe("https://acme.com/pricing");
+  });
+
+  it("preserves an existing https:// protocol + path", () => {
+    expect(subpageDestinationFromUrl("https://acme.com/pricing")).toBe("https://acme.com/pricing");
+  });
+
+  it("treats a query-only URL as a sub-page", () => {
+    expect(subpageDestinationFromUrl("acme.com?ref=x")).toBe("https://acme.com/?ref=x");
+  });
+
+  it("returns '' for unparseable input", () => {
+    expect(subpageDestinationFromUrl("mon entreprise")).toBe("");
   });
 });
