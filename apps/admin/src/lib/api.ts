@@ -4932,51 +4932,91 @@ export async function getCrossOrgCostProjection(
   return parsed.data;
 }
 
-/**
- * Cross-org per-workflow stats bag for a feature, ranked by an output metric.
- * `stats` is a free-form `{ key: number | null }` map (spend, volume counts,
- * rates, and the `costPer*Cents` cost-per-outcome fields). Cost-per-outcome
- * fields are `null` when their outcome denominator is 0 cross-org — rendered as
- * "—", never coerced to 0. All fields come from the backend; nothing is derived
- * client-side.
- */
-const CrossOrgRankedWorkflowSchema = z.object({
-  workflow: z
-    .object({
-      workflowSlug: z.string(),
-      workflowName: z.string().optional(),
-      workflowDynastyName: z.string().optional(),
-      workflowDynastySlug: z.string().optional(),
-    })
-    .optional(),
-  stats: z.record(z.string(), z.coerce.number().nullable()),
-});
-const CrossOrgRankedSchema = z.object({
-  objective: z.string(),
-  sortDirection: z.enum(["asc", "desc"]),
-  results: z.array(CrossOrgRankedWorkflowSchema),
-});
-export type CrossOrgRankedWorkflow = z.infer<typeof CrossOrgRankedWorkflowSchema>;
-export type CrossOrgRanked = z.infer<typeof CrossOrgRankedSchema>;
+// The optimization objectives (canonical camelCase) the cross-org trend +
+// per-workflow endpoints accept. Mirrors the features-service objective set.
+export type CrossOrgObjective =
+  | "websiteVisit"
+  | "positiveReply"
+  | "signup"
+  | "formSubmission"
+  | "meetingBooked"
+  | "purchase";
 
-export async function getCrossOrgWorkflowStats(
+/**
+ * Cross-org (fleet-wide) dated MOVING-AVERAGE cost-per-outcome series for one
+ * objective. Each point is a trailing window (~`windowOutcomes` outcomes) of
+ * fleet spend ÷ outcomes. `costPerOutcomeUsd` is null when the window is
+ * unbacked (render blank, never $0). Everything is backend-computed.
+ */
+const CrossOrgTrendPointSchema = z.object({
+  date: z.string(),
+  costPerOutcomeUsd: z.coerce.number().nullable(),
+  windowOutcomeCount: z.coerce.number(),
+  windowSpentUsd: z.coerce.number(),
+  windowStartDate: z.string(),
+});
+const CrossOrgTrendSchema = z.object({
+  featureSlug: z.string(),
+  objective: z.string(),
+  windowOutcomes: z.coerce.number(),
+  points: z.array(CrossOrgTrendPointSchema),
+});
+export type CrossOrgTrendPoint = z.infer<typeof CrossOrgTrendPointSchema>;
+export type CrossOrgTrend = z.infer<typeof CrossOrgTrendSchema>;
+
+export async function getCrossOrgCostPerOutcomeTrend(
   featureSlug: string,
-  objective: string,
-  limit = 50,
-): Promise<CrossOrgRanked> {
-  const query = new URLSearchParams({
-    featureSlug,
-    groupBy: "workflow",
-    objective,
-    limit: String(limit),
-  });
-  const raw = await apiCall<unknown>(`/public/features/ranked?${query.toString()}`);
-  const parsed = CrossOrgRankedSchema.safeParse(raw);
+  objective: CrossOrgObjective,
+  opts?: { days?: number; windowOutcomes?: number },
+): Promise<CrossOrgTrend> {
+  const query = new URLSearchParams({ featureSlug, objective });
+  if (opts?.days) query.set("days", String(opts.days));
+  if (opts?.windowOutcomes) query.set("windowOutcomes", String(opts.windowOutcomes));
+  const raw = await apiCall<unknown>(`/public/features/cost-per-outcome-trend?${query.toString()}`);
+  const parsed = CrossOrgTrendSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[admin] getCrossOrgWorkflowStats: response shape mismatch", {
+    console.error("[admin] getCrossOrgCostPerOutcomeTrend: response shape mismatch", {
       issues: parsed.error.issues,
     });
-    throw new Error("[admin] getCrossOrgWorkflowStats: invalid response shape");
+    throw new Error("[admin] getCrossOrgCostPerOutcomeTrend: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * Cross-org (fleet-wide) per-workflow-dynasty cost-per-outcome for one
+ * objective. `costPerOutcomeUsd` is floored to populate whenever a workflow has
+ * spend (max(spend, fleet unit cost) when the outcome denominator is 0), so the
+ * table's value column reads reliably. Backend-computed; sorted by spend desc.
+ */
+const CrossOrgWorkflowCostRowSchema = z.object({
+  workflowDynastySlug: z.string(),
+  workflowDynastyName: z.string(),
+  spentUsd: z.coerce.number(),
+  observedClicks: z.coerce.number(),
+  observedPositiveReplies: z.coerce.number(),
+  costPerOutcomeUsd: z.coerce.number().nullable(),
+});
+const CrossOrgWorkflowCostSchema = z.object({
+  featureSlug: z.string(),
+  objective: z.string(),
+  workflows: z.array(CrossOrgWorkflowCostRowSchema),
+});
+export type CrossOrgWorkflowCostRow = z.infer<typeof CrossOrgWorkflowCostRowSchema>;
+export type CrossOrgWorkflowCost = z.infer<typeof CrossOrgWorkflowCostSchema>;
+
+export async function getCrossOrgWorkflowCostPerOutcome(
+  featureSlug: string,
+  objective: CrossOrgObjective,
+): Promise<CrossOrgWorkflowCost> {
+  const query = new URLSearchParams({ featureSlug, objective });
+  const raw = await apiCall<unknown>(`/public/features/workflow-cost-per-outcome?${query.toString()}`);
+  const parsed = CrossOrgWorkflowCostSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getCrossOrgWorkflowCostPerOutcome: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getCrossOrgWorkflowCostPerOutcome: invalid response shape");
   }
   return parsed.data;
 }
