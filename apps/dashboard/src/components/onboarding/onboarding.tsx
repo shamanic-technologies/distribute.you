@@ -909,6 +909,11 @@ export function Onboarding() {
 
   async function startAnalyze() {
     if (!domain) return;
+    // Seed the click destination from a sub-page typed in the "What are we promoting?"
+    // step (e.g. acme.com/pricing) — same as the landing ?url= prefill, but for a URL
+    // entered inside onboarding rather than carried in at mount. Preserve an
+    // already-customized value (|| keeps a user-set destination; a bare domain → "").
+    setClickDestinationUrl((prev) => prev || subpageDestinationFromUrl(url));
     setError(null);
     setStep("loading");
     resetLoadingProgress();
