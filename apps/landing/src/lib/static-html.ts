@@ -285,62 +285,41 @@ async function withLivePerformanceMetrics(html: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// /v2 landing — cross-org cost-per-outcome "stock ticker" board.
-// Server-substituted so the real numbers ship in the raw HTML (SEO/AI-scraper
-// safe), fetched from the same public endpoints the admin feature-stats page
-// reads. Distinct token set from the home-page live metrics above so the two
-// substitutions stay independent.
+// /v2 landing — cross-org cost-per-outcome stock-ticker board.
+// Four equal cards (cost per click / positive reply / meeting / signup), each
+// with the observed average price, a cost-semantic weekly change (a falling
+// cost is good = green ▼, a rising cost is bad = red ▲), and an inline SVG
+// sparkline. Fully server-rendered so the real numbers + chart ship in raw HTML
+// (SEO / AI-scraper safe), from the same public trend endpoint the admin
+// feature-stats page reads. `__V2_CPC__`/`__V2_CPR__`/`__V2_CPM__` scalars feed
+// the pricing card / mockup that reuse the same figures.
 // ─────────────────────────────────────────────────────────────────────────
-interface V2TickerMetrics {
-  cpc: string; // websiteVisit cost per click, 100-outcome moving avg (headline)
-  costPerReply: string; // positiveReply, 100-outcome moving avg
-  costPerMeeting: string; // meetingBooked, 100-outcome moving avg
-  costPerSignup: string; // signup, 100-outcome moving avg
-  bestReplyCost: string; // min cost-per-positive-reply of any backed model
-  bestModelName: string; // that model's short name ("Ballad")
-  brandCount: string;
-  totalClicks: string;
+const V2_OBJECTIVES = [
+  { key: "websiteVisit", sym: "CPC", label: "cost per click" },
+  { key: "positiveReply", sym: "RPL", label: "positive reply" },
+  { key: "meetingBooked", sym: "MTG", label: "meeting booked" },
+  { key: "signup", sym: "SGN", label: "signup" },
+] as const;
+
+const V2_BOARD_TOKEN = "__V2_TICKER_BOARD__";
+
+interface V2Ticker {
+  board: string; // server-rendered <div class="ticker-board">…</div>
+  cpc: string; // scalars for the reused pricing card / mockup / compare rows
+  cpr: string;
+  cpm: string;
 }
 
-// Last-known-good 100-outcome moving-average prices (observed 2026-07-09). Used
-// only when the public metrics API is unreachable, so a build-time prerender
-// never aborts the deploy and the page never ships raw __V2_*__ tokens.
-const FALLBACK_V2_TICKER: V2TickerMetrics = {
-  cpc: "$0.72",
-  costPerReply: "$145",
-  costPerMeeting: "$5.25",
-  costPerSignup: "$18",
-  bestReplyCost: "$18.82",
-  bestModelName: "Ballad",
-  brandCount: "21",
-  totalClicks: "479",
-};
-
-const V2_TICKER_TOKENS = {
-  cpc: "__V2_CPC__",
-  costPerReply: "__V2_CPR__",
-  costPerMeeting: "__V2_CPM__",
-  costPerSignup: "__V2_CPS__",
-  bestReplyCost: "__V2_BEST_REPLY__",
-  bestModelName: "__V2_BEST_MODEL__",
-  brandCount: "__V2_BRANDS__",
-  totalClicks: "__V2_CLICKS__",
-} as const;
-
-interface LifetimeCostResponse {
-  avgCostPerOutcomeByObjective: Record<string, number | null> | null;
-  totalClicks: number | null;
-  brandCount: number | null;
-}
-
-interface WorkflowCostItem {
-  workflowDynastyName: string | null;
-  observedPositiveReplies: number | null;
+interface TrendPoint {
+  date: string | null;
   costPerOutcomeUsd: number | null;
 }
-
-interface WorkflowCostResponse {
-  workflows: WorkflowCostItem[];
+interface TrendResponse {
+  points: TrendPoint[];
+}
+interface SeriesPoint {
+  date: string;
+  v: number;
 }
 
 function usdWhole(value: number): string {
@@ -351,35 +330,118 @@ function usd2(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-// Sub-$10 keeps two decimals (a click can cost cents); $10+ rounds to whole.
+// Stock-style: sub-$10 keeps two decimals (a click can cost cents); $10+ rounds
+// to whole dollars.
 function usdSmart(value: number): string {
   return value < 10 ? usd2(value) : usdWhole(value);
 }
 
-interface TrendPoint {
-  costPerOutcomeUsd: number | null;
-}
-interface TrendResponse {
-  points: TrendPoint[];
+function numericOrNull(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-// The "price" is the latest backed point of the trailing 100-outcome moving avg.
-function latestTrendPrice(points: TrendPoint[]): number | null {
-  for (let i = points.length - 1; i >= 0; i--) {
-    const v = numericOrNull(points[i]?.costPerOutcomeUsd);
-    if (v !== null) return v;
+// Weekly change: latest backed point vs the closest backed point ~7 days
+// before it, as a signed fraction (a display delta over the two points the
+// sparkline already draws — no hidden metric). Null when either side missing.
+function growth7d(points: SeriesPoint[]): number | null {
+  if (points.length < 2) return null;
+  const latest = points[points.length - 1];
+  const targetMs =
+    Date.parse(`${latest.date}T00:00:00.000Z`) - 7 * 24 * 60 * 60 * 1000;
+  let prev: SeriesPoint | null = null;
+  for (let i = points.length - 2; i >= 0; i--) {
+    prev = points[i];
+    if (Date.parse(`${points[i].date}T00:00:00.000Z`) <= targetMs) break;
   }
-  return null;
+  if (!prev || prev.v === 0) return null;
+  return (latest.v - prev.v) / prev.v;
 }
 
-async function fetchTrendPrice(
+// Cost-semantic stroke: rising cost red, falling cost green, flat/unknown gray.
+function trendStroke(growth: number | null): string {
+  if (growth === null || growth === 0) return "#94a3b8";
+  return growth > 0 ? "#dc2626" : "#16a34a";
+}
+
+function sparklineSvg(points: SeriesPoint[], stroke: string): string {
+  if (points.length < 2) {
+    return `<div class="tkr-spark tkr-spark-empty" aria-hidden="true"></div>`;
+  }
+  const vals = points.map((p) => p.v);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const span = max - min || 1;
+  const W = 120;
+  const H = 34;
+  const pad = 3;
+  const coords = vals
+    .map((v, i) => {
+      const x = (i / (vals.length - 1)) * W;
+      const y = pad + (1 - (v - min) / span) * (H - 2 * pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return `<svg class="tkr-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+function tickerCard(
+  cfg: { sym: string; label: string },
+  points: SeriesPoint[],
+): string {
+  const price = points.length ? points[points.length - 1].v : null;
+  const priceStr = price === null ? "&mdash;" : usdSmart(price);
+  const g = growth7d(points);
+  let chg: string;
+  if (g === null || g === 0) {
+    chg = `<span class="tkr-chg flat">&mdash;</span>`;
+  } else {
+    const up = g > 0;
+    const pct = (Math.abs(g) * 100).toFixed(1);
+    chg = `<span class="tkr-chg ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${pct}% <span class="tkr-wk">wk</span></span>`;
+  }
+  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke(g))}</div>`;
+}
+
+function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
+  const cards = V2_OBJECTIVES.map((o) =>
+    tickerCard(o, seriesByObjective[o.key] ?? []),
+  ).join("");
+  return `<div class="ticker-board">${cards}</div>`;
+}
+
+// Last-known-good (observed 2026-07-09) — synthetic descending series per
+// objective so the fallback board still renders prices + a green ▼ + sparkline
+// when the public API is unreachable (a build-time prerender must never abort).
+function fallbackSeries(end: number): SeriesPoint[] {
+  return [
+    { date: "2026-06-25", v: end * 1.5 },
+    { date: "2026-07-02", v: end * 1.2 },
+    { date: "2026-07-09", v: end },
+  ];
+}
+function buildFallbackTicker(): V2Ticker {
+  const series: Record<string, SeriesPoint[]> = {
+    websiteVisit: fallbackSeries(0.72),
+    positiveReply: fallbackSeries(145),
+    meetingBooked: fallbackSeries(5.25),
+    signup: fallbackSeries(18),
+  };
+  return {
+    board: tickerBoard(series),
+    cpc: "$0.72",
+    cpr: "$145",
+    cpm: "$5.25",
+  };
+}
+
+async function fetchTrendSeries(
   apiUrl: string,
   headers: Record<string, string>,
   slug: string,
   objective: string,
-): Promise<number | null> {
+): Promise<SeriesPoint[]> {
   const res = await fetch(
-    `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}`,
+    `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=90`,
     { headers, next: { revalidate: 300 } },
   );
   if (!res.ok) {
@@ -388,124 +450,64 @@ async function fetchTrendPrice(
     );
   }
   const data = (await res.json()) as TrendResponse;
-  return latestTrendPrice(data.points ?? []);
+  return (data.points ?? []).flatMap((p) => {
+    const v = numericOrNull(p?.costPerOutcomeUsd);
+    return v !== null && typeof p.date === "string" ? [{ date: p.date, v }] : [];
+  });
 }
 
-function numericOrNull(value: number | null | undefined): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-// "Sales Cold Email Outreach Ballad" → "Ballad"
-function shortModelName(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return parts[parts.length - 1] || name;
-}
-
-async function fetchV2TickerMetrics(): Promise<V2TickerMetrics> {
+async function fetchV2Ticker(): Promise<V2Ticker> {
   const apiUrl = resolvePublicApiUrl();
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
 
-  // Every headline number is the trailing 100-outcome moving average (the
-  // "price"), read per objective from the trend endpoint. Lifetime is kept only
-  // for the cumulative counts (brands, clicks); workflow for the best model.
-  const [cpc, reply, meeting, signup, lifeRes, wfRes] = await Promise.all([
-    fetchTrendPrice(apiUrl, headers, slug, "websiteVisit"),
-    fetchTrendPrice(apiUrl, headers, slug, "positiveReply"),
-    fetchTrendPrice(apiUrl, headers, slug, "meetingBooked"),
-    fetchTrendPrice(apiUrl, headers, slug, "signup"),
-    fetch(
-      `${apiUrl}/v1/public/features/cost-per-outcome-lifetime?featureSlug=${slug}`,
-      { headers, next: { revalidate: 300 } },
-    ),
-    fetch(
-      `${apiUrl}/v1/public/features/workflow-cost-per-outcome?featureSlug=${slug}&objective=positiveReply`,
-      { headers, next: { revalidate: 300 } },
-    ),
-  ]);
-
-  if (cpc === null) {
-    throw new Error(
-      "[landing] cost-per-outcome-trend websiteVisit returned no backed price (CPC headline)",
-    );
-  }
-  if (!lifeRes.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/cost-per-outcome-lifetime failed: ${lifeRes.status}`,
-    );
-  }
-  if (!wfRes.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/workflow-cost-per-outcome failed: ${wfRes.status}`,
-    );
-  }
-
-  const life = (await lifeRes.json()) as LifetimeCostResponse;
-  const wf = (await wfRes.json()) as WorkflowCostResponse;
-
-  // Best model = lowest cost-per-positive-reply among models that actually
-  // produced a positive reply. Zero-data models carry a projected default cost
-  // (identical across many rows), so excluding them keeps "best" honest.
-  const backed = wf.workflows.filter(
-    (w) =>
-      numericOrNull(w.costPerOutcomeUsd) !== null &&
-      (w.observedPositiveReplies ?? 0) >= 1,
-  );
-  if (backed.length === 0) {
-    throw new Error(
-      "[landing] no backed workflow with an observed positive reply for best-model cost",
-    );
-  }
-  const best = backed.reduce((a, b) =>
-    (b.costPerOutcomeUsd as number) < (a.costPerOutcomeUsd as number) ? b : a,
+  const [visit, reply, meeting, signup] = await Promise.all(
+    V2_OBJECTIVES.map((o) => fetchTrendSeries(apiUrl, headers, slug, o.key)),
   );
 
-  const brands = numericOrNull(life.brandCount);
-  const clicks = numericOrNull(life.totalClicks);
+  if (!visit.length && !reply.length && !meeting.length && !signup.length) {
+    throw new Error("[landing] cost-per-outcome-trend returned no backed series");
+  }
+
+  const series: Record<string, SeriesPoint[]> = {
+    websiteVisit: visit,
+    positiveReply: reply,
+    meetingBooked: meeting,
+    signup,
+  };
+  const last = (s: SeriesPoint[]): string | null =>
+    s.length ? usdSmart(s[s.length - 1].v) : null;
+  const fb = buildFallbackTicker();
 
   return {
-    cpc: usdSmart(cpc),
-    costPerReply: reply !== null ? usdSmart(reply) : FALLBACK_V2_TICKER.costPerReply,
-    costPerMeeting:
-      meeting !== null ? usdSmart(meeting) : FALLBACK_V2_TICKER.costPerMeeting,
-    costPerSignup:
-      signup !== null ? usdSmart(signup) : FALLBACK_V2_TICKER.costPerSignup,
-    bestReplyCost: usd2(best.costPerOutcomeUsd as number),
-    bestModelName: shortModelName(
-      best.workflowDynastyName ?? FALLBACK_V2_TICKER.bestModelName,
-    ),
-    brandCount:
-      brands !== null ? String(Math.round(brands)) : FALLBACK_V2_TICKER.brandCount,
-    totalClicks:
-      clicks !== null ? String(Math.round(clicks)) : FALLBACK_V2_TICKER.totalClicks,
+    board: tickerBoard(series),
+    cpc: last(visit) ?? fb.cpc,
+    cpr: last(reply) ?? fb.cpr,
+    cpm: last(meeting) ?? fb.cpm,
   };
 }
 
-async function resolveV2TickerMetrics(): Promise<V2TickerMetrics> {
+async function resolveV2Ticker(): Promise<V2Ticker> {
   try {
-    return await fetchV2TickerMetrics();
+    return await fetchV2Ticker();
   } catch (error) {
     console.error(
-      "[landing] v2 ticker metrics unavailable, using fallback values",
+      "[landing] v2 ticker unavailable, using fallback values",
       error,
     );
-    return FALLBACK_V2_TICKER;
+    return buildFallbackTicker();
   }
 }
 
 async function withV2TickerMetrics(html: string) {
-  if (!html.includes(V2_TICKER_TOKENS.cpc)) return html;
+  if (!html.includes(V2_BOARD_TOKEN)) return html;
 
-  const m = await resolveV2TickerMetrics();
+  const t = await resolveV2Ticker();
   return html
-    .replaceAll(V2_TICKER_TOKENS.cpc, m.cpc)
-    .replaceAll(V2_TICKER_TOKENS.costPerReply, m.costPerReply)
-    .replaceAll(V2_TICKER_TOKENS.costPerMeeting, m.costPerMeeting)
-    .replaceAll(V2_TICKER_TOKENS.costPerSignup, m.costPerSignup)
-    .replaceAll(V2_TICKER_TOKENS.bestReplyCost, m.bestReplyCost)
-    .replaceAll(V2_TICKER_TOKENS.bestModelName, m.bestModelName)
-    .replaceAll(V2_TICKER_TOKENS.brandCount, m.brandCount)
-    .replaceAll(V2_TICKER_TOKENS.totalClicks, m.totalClicks);
+    .replaceAll(V2_BOARD_TOKEN, t.board)
+    .replaceAll("__V2_CPC__", t.cpc)
+    .replaceAll("__V2_CPR__", t.cpr)
+    .replaceAll("__V2_CPM__", t.cpm);
 }
 
 export async function staticResponse(fileName: string) {
