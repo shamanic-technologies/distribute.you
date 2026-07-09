@@ -284,8 +284,192 @@ async function withLivePerformanceMetrics(html: string) {
     .replaceAll("$1.42", liveMetrics.costPerPositiveReplyLabel);
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// /v2 landing — cross-org cost-per-outcome "stock ticker" board.
+// Server-substituted so the real numbers ship in the raw HTML (SEO/AI-scraper
+// safe), fetched from the same public endpoints the admin feature-stats page
+// reads. Distinct token set from the home-page live metrics above so the two
+// substitutions stay independent.
+// ─────────────────────────────────────────────────────────────────────────
+interface V2TickerMetrics {
+  cpc: string; // websiteVisit — cost per click, the stable headline
+  costPerReply: string; // positiveReply
+  costPerMeeting: string; // meetingBooked
+  costPerSignup: string; // signup
+  bestReplyCost: string; // min cost-per-positive-reply of any backed model
+  bestModelName: string; // that model's short name ("Ballad")
+  brandCount: string;
+  totalClicks: string;
+}
+
+// Last-known-good (live values observed 2026-07-09). Used only when the public
+// metrics API is unreachable, so a build-time prerender never aborts the deploy
+// and the page never ships raw __V2_*__ tokens.
+const FALLBACK_V2_TICKER: V2TickerMetrics = {
+  cpc: "$6.35",
+  costPerReply: "$152",
+  costPerMeeting: "$54",
+  costPerSignup: "$115",
+  bestReplyCost: "$18.82",
+  bestModelName: "Ballad",
+  brandCount: "21",
+  totalClicks: "479",
+};
+
+const V2_TICKER_TOKENS = {
+  cpc: "__V2_CPC__",
+  costPerReply: "__V2_CPR__",
+  costPerMeeting: "__V2_CPM__",
+  costPerSignup: "__V2_CPS__",
+  bestReplyCost: "__V2_BEST_REPLY__",
+  bestModelName: "__V2_BEST_MODEL__",
+  brandCount: "__V2_BRANDS__",
+  totalClicks: "__V2_CLICKS__",
+} as const;
+
+interface LifetimeCostResponse {
+  avgCostPerOutcomeByObjective: Record<string, number | null> | null;
+  totalClicks: number | null;
+  brandCount: number | null;
+}
+
+interface WorkflowCostItem {
+  workflowDynastyName: string | null;
+  observedPositiveReplies: number | null;
+  costPerOutcomeUsd: number | null;
+}
+
+interface WorkflowCostResponse {
+  workflows: WorkflowCostItem[];
+}
+
+function usdWhole(value: number): string {
+  return `$${Math.round(value).toLocaleString("en-US")}`;
+}
+
+function usd2(value: number): string {
+  return `$${value.toFixed(2)}`;
+}
+
+function numericOrNull(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+// "Sales Cold Email Outreach Ballad" → "Ballad"
+function shortModelName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1] || name;
+}
+
+async function fetchV2TickerMetrics(): Promise<V2TickerMetrics> {
+  const apiUrl = resolvePublicApiUrl();
+  const headers = { Accept: "application/json" };
+  const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
+  const [lifeRes, wfRes] = await Promise.all([
+    fetch(
+      `${apiUrl}/v1/public/features/cost-per-outcome-lifetime?featureSlug=${slug}`,
+      { headers, next: { revalidate: 300 } },
+    ),
+    fetch(
+      `${apiUrl}/v1/public/features/workflow-cost-per-outcome?featureSlug=${slug}&objective=positiveReply`,
+      { headers, next: { revalidate: 300 } },
+    ),
+  ]);
+
+  if (!lifeRes.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/cost-per-outcome-lifetime failed: ${lifeRes.status}`,
+    );
+  }
+  if (!wfRes.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/workflow-cost-per-outcome failed: ${wfRes.status}`,
+    );
+  }
+
+  const life = (await lifeRes.json()) as LifetimeCostResponse;
+  const wf = (await wfRes.json()) as WorkflowCostResponse;
+  const avg = life.avgCostPerOutcomeByObjective;
+  const cpc = numericOrNull(avg?.websiteVisit);
+
+  if (cpc === null) {
+    throw new Error(
+      "[landing] cost-per-outcome-lifetime missing websiteVisit (CPC headline)",
+    );
+  }
+
+  // Best model = lowest cost-per-positive-reply among models that actually
+  // produced a positive reply. Zero-data models carry a projected default cost
+  // (identical across many rows) — excluding them keeps "best" honest.
+  const backed = wf.workflows.filter(
+    (w) =>
+      numericOrNull(w.costPerOutcomeUsd) !== null &&
+      (w.observedPositiveReplies ?? 0) >= 1,
+  );
+  if (backed.length === 0) {
+    throw new Error(
+      "[landing] no backed workflow with an observed positive reply for best-model cost",
+    );
+  }
+  const best = backed.reduce((a, b) =>
+    (b.costPerOutcomeUsd as number) < (a.costPerOutcomeUsd as number) ? b : a,
+  );
+
+  const reply = numericOrNull(avg?.positiveReply);
+  const meeting = numericOrNull(avg?.meetingBooked);
+  const signup = numericOrNull(avg?.signup);
+  const brands = numericOrNull(life.brandCount);
+  const clicks = numericOrNull(life.totalClicks);
+
+  return {
+    cpc: usd2(cpc),
+    costPerReply: reply !== null ? usdWhole(reply) : FALLBACK_V2_TICKER.costPerReply,
+    costPerMeeting:
+      meeting !== null ? usdWhole(meeting) : FALLBACK_V2_TICKER.costPerMeeting,
+    costPerSignup:
+      signup !== null ? usdWhole(signup) : FALLBACK_V2_TICKER.costPerSignup,
+    bestReplyCost: usd2(best.costPerOutcomeUsd as number),
+    bestModelName: shortModelName(
+      best.workflowDynastyName ?? FALLBACK_V2_TICKER.bestModelName,
+    ),
+    brandCount:
+      brands !== null ? String(Math.round(brands)) : FALLBACK_V2_TICKER.brandCount,
+    totalClicks:
+      clicks !== null ? String(Math.round(clicks)) : FALLBACK_V2_TICKER.totalClicks,
+  };
+}
+
+async function resolveV2TickerMetrics(): Promise<V2TickerMetrics> {
+  try {
+    return await fetchV2TickerMetrics();
+  } catch (error) {
+    console.error(
+      "[landing] v2 ticker metrics unavailable, using fallback values",
+      error,
+    );
+    return FALLBACK_V2_TICKER;
+  }
+}
+
+async function withV2TickerMetrics(html: string) {
+  if (!html.includes(V2_TICKER_TOKENS.cpc)) return html;
+
+  const m = await resolveV2TickerMetrics();
+  return html
+    .replaceAll(V2_TICKER_TOKENS.cpc, m.cpc)
+    .replaceAll(V2_TICKER_TOKENS.costPerReply, m.costPerReply)
+    .replaceAll(V2_TICKER_TOKENS.costPerMeeting, m.costPerMeeting)
+    .replaceAll(V2_TICKER_TOKENS.costPerSignup, m.costPerSignup)
+    .replaceAll(V2_TICKER_TOKENS.bestReplyCost, m.bestReplyCost)
+    .replaceAll(V2_TICKER_TOKENS.bestModelName, m.bestModelName)
+    .replaceAll(V2_TICKER_TOKENS.brandCount, m.brandCount)
+    .replaceAll(V2_TICKER_TOKENS.totalClicks, m.totalClicks);
+}
+
 export async function staticResponse(fileName: string) {
-  const html = await withLivePerformanceMetrics(staticHtml(fileName));
+  const html = await withV2TickerMetrics(
+    await withLivePerformanceMetrics(staticHtml(fileName)),
+  );
 
   return new Response(html, {
     headers: {
