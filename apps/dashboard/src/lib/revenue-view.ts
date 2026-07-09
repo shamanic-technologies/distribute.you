@@ -74,6 +74,17 @@ export interface ConversionLead {
   /** ISO timestamp of first positive reply (email-gateway firstRepliedAt); null
    *  when none / unknown. The sales_meetings-goal digest's "time ago" source. */
   repliedPositiveAt?: string | null;
+  /** Per-lead REALIZED outcomes (features-service#476 conversion-tracker attribution):
+   *  boolean + first-occurrence timestamp. `undefined` (not just false) until the
+   *  producer reaches prod → the Leads page hides the matching outcome tab until then. */
+  signup?: boolean;
+  signupAt?: string | null;
+  formSubmission?: boolean;
+  formSubmissionAt?: string | null;
+  meetingBooked?: boolean;
+  meetingBookedAt?: string | null;
+  purchased?: boolean;
+  purchasedAt?: string | null;
   /** Firmographics (features-service#441), null when upstream enrichment had no
    *  value. `orgEmployeeCount` is a RAW headcount — the consumer bands it. */
   title?: string | null;
@@ -236,6 +247,12 @@ export interface Spend {
   /** REAL cost per form submission, USD cents = committed spend ÷ `formSubmissionsCount`.
    *  null when `formSubmissionsCount` is 0 (no denominator) → the CPFS card renders "—". */
   cpfsCents?: number | null;
+  /** REAL tracked purchase (paid-client close) count for the purchase goal
+   *  (features-service#476). Additive/optional; absent → the Purchases card renders "—". */
+  purchasesCount?: number;
+  /** REAL cost per purchase, USD cents = committed spend ÷ `purchasesCount`.
+   *  null when `purchasesCount` is 0 → the CPP card renders "—". */
+  cppCents?: number | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */

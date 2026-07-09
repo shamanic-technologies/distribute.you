@@ -25,13 +25,32 @@ import type { BrandOptimizationGoal } from "@/lib/api";
  * visit / reply IS the outcome, already surfaced by its signal step.
  */
 
-/** Leads-page tab key for a lead-signal step. */
+/** Leads-page tab key for a lead-signal step (engagement signals). */
 export type LeadTab = "outreach" | "clicks" | "positive-replies";
+/** Leads-page tab key for a realized-outcome step (per-lead conversion). */
+export type OutcomeTab = "signups" | "meetings" | "form-submissions" | "purchases";
+/** Any Leads-page tab. */
+export type AnyLeadTab = LeadTab | OutcomeTab;
+/**
+ * Per-lead realized-outcome field names on the features-service `/revenue` `leads[]`
+ * rows (features-service#476). The dashboard buckets an outcome tab by the boolean
+ * and sorts/dates it by the timestamp.
+ */
+export type OutcomeLeadField = "signup" | "meetingBooked" | "formSubmission" | "purchased";
+export type OutcomeLeadDateField =
+  | "signupAt"
+  | "meetingBookedAt"
+  | "formSubmissionAt"
+  | "purchasedAt";
 /** Activity-chart metric key for a step with a daily series. */
 export type ChartMetricKey = "outreach" | "clicks" | "repliedPositive" | "formSubmissions";
 /** Aggregate count/cost fields on the features-service `/revenue` `spend` block. */
-type SpendCountField = "signupsCount" | "salesMeetingsCount" | "formSubmissionsCount";
-type SpendCostField = "cpsCents" | "cpsmCents" | "cpfsCents";
+type SpendCountField =
+  | "signupsCount"
+  | "salesMeetingsCount"
+  | "formSubmissionsCount"
+  | "purchasesCount";
+type SpendCostField = "cpsCents" | "cpsmCents" | "cpfsCents" | "cppCents";
 
 export interface GoalStep {
   /** Stable step id (also the outcome key). */
@@ -62,6 +81,16 @@ export interface GoalStep {
     countField: SpendCountField | null;
     costField: SpendCostField | null;
     costLabel: string;
+    /**
+     * Realized-outcome Leads-page tab for this step (features-service#476 per-lead
+     * attribution). When present, the Leads page prepends this tab — leftmost +
+     * default — ONLY when the `/revenue` join actually serves `leadField` for the
+     * brand (else the tab is hidden; no empty tab pre-attribution). `leadField` /
+     * `dateField` name the per-lead boolean + timestamp on the `/revenue` row.
+     */
+    tab: OutcomeTab;
+    leadField: OutcomeLeadField;
+    dateField: OutcomeLeadDateField;
   };
 }
 
@@ -93,13 +122,27 @@ const SIGNUPS_OUTCOME: GoalStep = {
   key: "signups",
   label: "Signups",
   color: "#7c3aed",
-  outcome: { countField: "signupsCount", costField: "cpsCents", costLabel: "CPS" },
+  outcome: {
+    countField: "signupsCount",
+    costField: "cpsCents",
+    costLabel: "CPS",
+    tab: "signups",
+    leadField: "signup",
+    dateField: "signupAt",
+  },
 };
 const MEETINGS_OUTCOME: GoalStep = {
   key: "sales_meetings",
   label: "Sales Meetings",
   color: "#7c3aed",
-  outcome: { countField: "salesMeetingsCount", costField: "cpsmCents", costLabel: "CPSM" },
+  outcome: {
+    countField: "salesMeetingsCount",
+    costField: "cpsmCents",
+    costLabel: "CPSM",
+    tab: "meetings",
+    leadField: "meetingBooked",
+    dateField: "meetingBookedAt",
+  },
 };
 // Form submissions have a brand-level aggregate (stat card) AND a daily series
 // (features-service serves `metrics.formSubmissions`, so the activity graph plots a
@@ -110,15 +153,27 @@ const FORM_OUTCOME: GoalStep = {
   label: "Form submissions",
   color: "#7c3aed",
   chartKey: "formSubmissions",
-  outcome: { countField: "formSubmissionsCount", costField: "cpfsCents", costLabel: "CPFS" },
+  outcome: {
+    countField: "formSubmissionsCount",
+    costField: "cpfsCents",
+    costLabel: "CPFS",
+    tab: "form-submissions",
+    leadField: "formSubmission",
+    dateField: "formSubmissionAt",
+  },
 };
-// Purchases are attributed per-lead upstream but have no brand-level aggregate
-// count/cost on the wire yet → the card renders "—" until features-service exposes it.
 const PURCHASE_OUTCOME: GoalStep = {
   key: "purchases",
   label: "Purchases",
   color: "#7c3aed",
-  outcome: { countField: null, costField: null, costLabel: "CPP" },
+  outcome: {
+    countField: "purchasesCount",
+    costField: "cppCents",
+    costLabel: "CPP",
+    tab: "purchases",
+    leadField: "purchased",
+    dateField: "purchasedAt",
+  },
 };
 
 /** Ordered funnel steps (base → outcome) for a brand's optimization goal. */
@@ -171,4 +226,24 @@ export function goalChartMetricKeys(goal: BrandOptimizationGoal): ChartMetricKey
  */
 export function goalOutcomeStep(goal: BrandOptimizationGoal): GoalStep | null {
   return goalSteps(goal).find((s) => s.outcome !== undefined) ?? null;
+}
+
+/**
+ * The goal's realized-outcome Leads-page tab (features-service#476 per-lead
+ * attribution) — `{ tab, label, leadField, dateField }` — or null for a 1-step goal
+ * whose outcome IS its engagement signal (website_visits / positive_replies; already
+ * a tab via `goalLeadTabs`). The Leads page prepends this tab leftmost + default,
+ * gated on the `/revenue` join actually serving `leadField` for the brand.
+ */
+export function goalOutcomeTab(
+  goal: BrandOptimizationGoal,
+): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } | null {
+  const step = goalOutcomeStep(goal);
+  if (!step?.outcome) return null;
+  return {
+    tab: step.outcome.tab,
+    label: step.label,
+    leadField: step.outcome.leadField,
+    dateField: step.outcome.dateField,
+  };
 }
