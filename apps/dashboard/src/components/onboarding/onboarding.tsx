@@ -58,6 +58,8 @@ import {
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
+import { MaturityBadge } from "@/components/maturity-badge";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import {
   formatLocaleInteger,
@@ -84,7 +86,7 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 // the tab, auto-cleared on close → no stale cross-session bleed. Bump VERSION to bust
 // an incompatible shape after a flow change. Cleared on genuine completion (launch()).
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
-const ONBOARDING_STATE_VERSION = 3;
+const ONBOARDING_STATE_VERSION = 4;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
@@ -110,21 +112,31 @@ type Step =
   | "bonus"
   | "launching";
 
-// The two sales goals (Kevin): Signups or Sales Meetings. Each maps to a
-// projection count so the budget cards show the chosen unit, never "closes".
-type Outcome = "signups" | "meetings";
-const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string }[] = [
-  { key: "signups", label: "Signups", unit: "signups", desc: "Maximize free signups / trial starts." },
-  { key: "meetings", label: "Sales meetings", unit: "meetings", desc: "Maximize booked sales meetings." },
+// The sales goal drives the projection count so the budget cards show the chosen
+// unit, never "closes". Outcome IS the BrandOptimizationGoal — every downstream
+// helper (salesObjectiveForOptimizationGoal, workflowOutcomeUnitCost, goalSteps)
+// already handles all six goals; the funnel just wires the chosen one through.
+// Labels use Google Ads' conversion-goal category names ("version Google Ads").
+// `beta` goals show only to beta users for now (Kevin): only the two current
+// goals (Sign-ups / Book appointments) are ungated in the funnel.
+type Outcome = BrandOptimizationGoal;
+const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?: boolean }[] = [
+  { key: "signups", label: "Sign-ups", unit: "sign-ups", desc: "Maximize free signups / trial starts." },
+  { key: "sales_meetings", label: "Book appointments", unit: "appointments", desc: "Maximize booked sales meetings." },
+  { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits.", beta: true },
+  { key: "positive_replies", label: "Contacts", unit: "contacts", desc: "Maximize positive replies from prospects.", beta: true },
+  { key: "form_submissions", label: "Submit lead forms", unit: "lead forms", desc: "Maximize lead-form submissions.", beta: true },
+  { key: "purchase", label: "Purchases", unit: "purchases", desc: "Maximize direct purchases.", beta: true },
 ];
 
+// Outcome === BrandOptimizationGoal, so this is identity — kept as a named seam so
+// the many call sites read intent (goal for the chosen outcome).
 function optimizationGoalForOutcome(outcome: Outcome): BrandOptimizationGoal {
-  return outcome === "signups" ? "signups" : "sales_meetings";
+  return outcome;
 }
 
-// Each goal needs exactly ONE conversion rate. Signups → website-visit→signup;
-// meetings → positive-reply→meeting.
-type RateKey = "ltv" | "v2s" | "s2c" | "v2m" | "r2m" | "m2c";
+// Conversion-rate fields, mirroring brand-sales-economics-card's PctKey set.
+type RateKey = "ltv" | "v2s" | "s2c" | "v2m" | "r2m" | "m2c" | "v2p" | "r2p" | "v2f" | "f2p";
 const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: string }> = {
   ltv: { label: "Lifetime revenue / paid client", suffix: "$", hint: "Average revenue a customer brings over their lifetime." },
   v2s: { label: "Website visits to signup rate", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
@@ -132,9 +144,21 @@ const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: strin
   v2m: { label: "Website visit → sales meeting", suffix: "%", hint: "Only set this above 0 if prospects can book a meeting directly from your website. If every meeting needs a reply first, use 0%." },
   r2m: { label: "Positive reply → sales meeting", suffix: "%", hint: "Of prospects who reply with real buying interest, the share that become a booked meeting after your follow-up or calendar link." },
   m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
+  v2p: { label: "Website visit → paid client", suffix: "%", hint: "Of leads who click through to your website, the share that become paying customers." },
+  r2p: { label: "Positive reply → paid client", suffix: "%", hint: "Of leads who reply positively, the share that become paying customers." },
+  v2f: { label: "Website visit → form submission", suffix: "%", hint: "Of leads who visit your website, the share that submit a form." },
+  f2p: { label: "Form submission → paid client", suffix: "%", hint: "Of leads who submit a form, the share that become paying customers." },
 };
-// The rate fields each goal asks for.
-const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = { signups: ["v2s"], meetings: ["r2m", "v2m"] };
+// The rate fields each goal asks for (mirrors REQUIRED_FIELDS_BY_GOAL). The two
+// current goals are unchanged; the beta goals ask for their own conversion step(s).
+const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = {
+  signups: ["v2s"],
+  sales_meetings: ["r2m", "v2m"],
+  website_visits: ["v2p"],
+  positive_replies: ["r2p"],
+  form_submissions: ["v2f", "f2p"],
+  purchase: ["v2s", "s2c"],
+};
 
 // ── Rate-input formatting ────────────────────────────────────────────
 // Number fields render as TEXT (not <input type="number">) so we can show
@@ -356,7 +380,7 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     typeof parsed.orgId !== "string" ||
     typeof parsed.brandUrl !== "string" ||
     typeof parsed.hostname !== "string" ||
-    (parsed.outcome !== "signups" && parsed.outcome !== "meetings") ||
+    !OUTCOMES.some((o) => o.key === parsed.outcome) ||
     typeof parsed.budgetUsd !== "number" ||
     typeof parsed.workflowSlug !== "string" ||
     typeof parsed.checkoutAmountCents !== "number" ||
@@ -423,12 +447,12 @@ function normalizeServices(value: unknown): string[] {
 
 function isRateRecord(value: unknown): value is Record<RateKey, number> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c"];
+  const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c", "v2p", "r2p", "v2f", "f2p"];
   return keys.every((k) => typeof (value as Record<string, unknown>)[k] === "number");
 }
 function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c"];
+  const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c", "v2p", "r2p", "v2f", "f2p"];
   return keys.every((k) => typeof (value as Record<string, unknown>)[k] === "string");
 }
 const ALL_STEPS: Step[] = [
@@ -443,7 +467,7 @@ function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
     (p.flowKey !== "signup" && p.flowKey !== "add" && p.flowKey !== "new") ||
     typeof p.step !== "string" || !ALL_STEPS.includes(p.step as Step) ||
     typeof p.url !== "string" ||
-    (p.outcome !== "signups" && p.outcome !== "meetings") ||
+    !OUTCOMES.some((o) => o.key === p.outcome) ||
     !isRateRecord(p.rates) || !isRateTextRecord(p.rateText) ||
     !isStringList(p.services) || typeof p.clickDestinationUrl !== "string" || !isProfileRecord(p.profile) ||
     !(p.selectedCount === null || typeof p.selectedCount === "number") ||
@@ -555,8 +579,9 @@ export function Onboarding() {
   const [busy, setBusy] = useState(false);
 
   const [outcome, setOutcome] = useState<Outcome>(() => restored?.outcome ?? "signups");
-  const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25 });
-  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25" });
+  const isBeta = useIsBetaUser();
+  const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25, v2p: 1, r2p: 5, v2f: 5, f2p: 10 });
+  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25", v2p: "1", r2p: "5", v2f: "5", f2p: "10" });
   const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
   const [serviceDraft, setServiceDraft] = useState("");
   // Page outreach clicks land on. "" means "use the brand domain" (the default
@@ -829,6 +854,14 @@ export function Onboarding() {
         v2m: round1(e.visitToMeetingPct),
         r2m: round1(e.replyToMeetingPct),
         m2c: round1(e.meetingToClosePct),
+        // The effective economics carry only the signup/meeting funnel + the derived
+        // visit→close. Seed website_visits' visit→paid from visitToClosePct (same grain);
+        // the reply/form beta rates have no effective-econ source → keep the seeded
+        // defaults (the user tweaks them on the rates step).
+        v2p: round1(e.visitToClosePct),
+        r2p: rates.r2p,
+        v2f: rates.v2f,
+        f2p: rates.f2p,
       };
       setRates(loaded);
       setRateText(Object.fromEntries((Object.keys(loaded) as RateKey[]).map((k) => [k, rateToText(loaded[k])])) as Record<RateKey, string>);
@@ -1059,6 +1092,13 @@ export function Onboarding() {
         meetingToClosePct: nextRates.m2c,
         visitToSignupPct: nextRates.v2s,
         signupToPaidClientPct: nextRates.s2c,
+        // Beta-goal conversion steps (partial-update, optional on the wire): the
+        // single-step goals (website_visits/positive_replies) + form_submissions
+        // need their own rates so the server computes cost-per-outcome / ROI.
+        visitToPaidClientPct: nextRates.v2p,
+        replyToPaidClientPct: nextRates.r2p,
+        visitToFormSubmissionPct: nextRates.v2f,
+        formSubmissionToPaidClientPct: nextRates.f2p,
         optimizationGoal: optimizationGoalForOutcome(outcome),
       });
       // Refresh the projection BEST-EFFORT — never block the step on it. The
@@ -1672,9 +1712,20 @@ export function Onboarding() {
           <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
           <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {OUTCOMES.map((o) => (
-              <ChoiceCard key={o.key} active={outcome === o.key} onClick={() => setOutcome(o.key)} title={o.label} desc={o.desc} />
-            ))}
+            {OUTCOMES
+              // Beta goals show only to beta users — but never hide the currently
+              // selected goal (a beta teammate's restored pick stays visible for all).
+              .filter((o) => !o.beta || isBeta || o.key === outcome)
+              .map((o) => (
+                <ChoiceCard
+                  key={o.key}
+                  active={outcome === o.key}
+                  onClick={() => setOutcome(o.key)}
+                  title={o.label}
+                  desc={o.desc}
+                  badge={o.beta ? <MaturityBadge level="beta" /> : undefined}
+                />
+              ))}
           </div>
       </StepShell>
     );
@@ -1691,7 +1742,7 @@ export function Onboarding() {
         <h2 className="font-display text-2xl font-bold text-gray-900">Your conversion rates.</h2>
         <p className="mt-2 mb-6 text-gray-500">We pre-filled this from your profile. An estimate is fine — tweak anytime.</p>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        {outcome === "meetings" ? (
+        {rateKeys.length > 1 ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {rateKeys.map((k) => (
               <div key={k} className="flex flex-col gap-4 rounded-xl border border-gray-200 p-4">
@@ -2328,12 +2379,12 @@ function NextButton({ onClick, disabled = false, busy = false, label = "Continue
   );
 }
 
-function ChoiceCard({ active, onClick, title, desc, check = false }: { active: boolean; onClick: () => void; title: string; desc: string; check?: boolean }) {
+function ChoiceCard({ active, onClick, title, desc, check = false, badge }: { active: boolean; onClick: () => void; title: string; desc: string; check?: boolean; badge?: ReactNode }) {
   return (
     <button onClick={onClick} className={`flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
       <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-2 ${check ? "rounded-md" : "rounded-full"} ${active ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}>{active && <CheckIcon className="h-3 w-3" />}</span>
-      <span>
-        <span className="block text-sm font-semibold text-gray-900">{title}</span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">{title}{badge}</span>
         <span className="mt-0.5 block text-xs leading-5 text-gray-500">{desc}</span>
       </span>
     </button>

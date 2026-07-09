@@ -16,7 +16,7 @@ describe("Beta onboarding resume persistence", () => {
 
   it("persists to a versioned sessionStorage snapshot key", () => {
     expect(src).toContain('ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state"');
-    expect(src).toContain("ONBOARDING_STATE_VERSION = 3");
+    expect(src).toContain("ONBOARDING_STATE_VERSION = 4");
     expect(src).toContain("window.sessionStorage.setItem(ONBOARDING_STATE_KEY");
   });
 
