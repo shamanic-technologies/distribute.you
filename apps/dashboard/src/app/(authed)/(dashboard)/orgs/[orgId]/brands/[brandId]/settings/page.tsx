@@ -7,13 +7,10 @@ import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-econo
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
 import { BrandClickDestinationCard } from "@/components/settings/brand-click-destination-card";
 import { BrandConversionTrackingCard } from "@/components/settings/brand-conversion-tracking-card";
-import { MaturityBadge } from "@/components/maturity-badge";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 
 export default function BrandSettingsPage() {
   const params = useParams();
   const brandId = params.brandId as string;
-  const isBeta = useIsBetaUser();
 
   return (
     <DashboardPage width="wide">
@@ -41,17 +38,12 @@ export default function BrandSettingsPage() {
         <BrandSalesEconomicsCard brandId={brandId} />
       </section>
 
-      {isBeta && (
-        <section id="conversion-tracking" className="mb-10 scroll-mt-24">
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            Conversion Tracking
-            <MaturityBadge level="beta" />
-          </h2>
-          <div className="rounded-xl border border-gray-200 bg-white">
-            <BrandConversionTrackingCard brandId={brandId} />
-          </div>
-        </section>
-      )}
+      <section id="conversion-tracking" className="mb-10 scroll-mt-24">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900">Conversion Tracking</h2>
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <BrandConversionTrackingCard brandId={brandId} />
+        </div>
+      </section>
     </DashboardPage>
   );
 }

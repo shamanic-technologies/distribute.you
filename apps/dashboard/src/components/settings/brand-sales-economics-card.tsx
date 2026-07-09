@@ -122,7 +122,7 @@ const OPTIMIZATION_GOALS: {
   { value: "sales_meetings", label: "# Sales Meetings" },
   { value: "website_visits", label: "# Website visits" },
   { value: "positive_replies", label: "# Positive Replies" },
-  { value: "form_submissions", label: "# Form submissions", beta: true },
+  { value: "form_submissions", label: "# Form submissions" },
   { value: "purchase", label: "# Purchases", beta: true },
 ];
 
