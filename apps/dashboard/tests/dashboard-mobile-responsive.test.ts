@@ -57,8 +57,8 @@ describe("Dashboard mobile responsiveness", () => {
 
   it("stacks billing controls instead of squeezing two-column forms", () => {
     expect(billingPage).toContain("flex max-w-2xl flex-col gap-3 sm:flex-row");
-    expect(billingPage).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2");
-    expect(billingPage).toContain("mt-3 grid grid-cols-1 gap-3 sm:ml-7 sm:grid-cols-2");
+    // Add-credits presets wrap on narrow screens (no fixed multi-column grid to squeeze).
+    expect(billingPage).toContain("flex flex-wrap gap-2 mb-4");
     expect(billingPage).toContain("w-full rounded-lg bg-brand-600");
   });
 

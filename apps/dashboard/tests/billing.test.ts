@@ -297,25 +297,39 @@ describe("Billing page", () => {
     expect(content).toContain("handleTopup");
   });
 
-  it("should show editable auto-topup section when already configured", () => {
-    expect(content).toContain("editingTopup");
-    expect(content).toContain("handleSaveTopup");
+  it("should show a READ-ONLY next-charge status when auto-topup is configured (no editable amount/threshold — derived server-side)", () => {
+    // Auto-topup amount + credit-line floor are DERIVED (billing-service tier
+    // ladder), so the page shows the upcoming charge, not editable inputs.
+    expect(content).toContain("Next charge");
+    expect(content).toContain("spentSinceChargeCents");
+    expect(content).toContain("creditLineCents");
+    expect(content).toContain("chargePct");
+    expect(content).toContain("nextChargeDate");
     expect(content).toContain("handleDisableTopup");
-    expect(content).toContain("Save changes");
     expect(content).toContain("Disable auto-topup");
+    // The old editable-config UI is gone.
+    expect(content).not.toContain("editingTopup");
+    expect(content).not.toContain("handleSaveTopup");
+    expect(content).not.toContain("Save changes");
   });
 
-  it("should integrate auto-topup as a checkbox inside the Add Credits card", () => {
+  it("should show the month-end sweep guarantee date on the next-charge line", () => {
+    expect(content).toContain("lastDayOfMonthLabel");
+    expect(content).toContain("or on ");
+  });
+
+  it("should integrate auto-topup as a checkbox (no amount/threshold inputs) inside the Add Credits card", () => {
     expect(content).toContain("enableAutoTopup");
     expect(content).toContain("Enable auto-topup");
-    expect(content).toContain("topupAmount");
-    expect(content).toContain("topupThreshold");
+    // Amount + threshold are derived server-side — no user-editable input STATE
+    // remains (the derived display value topupAmountCents is fine).
+    expect(content).not.toContain("setTopupAmount");
+    expect(content).not.toContain("setTopupThreshold");
+    expect(content).not.toContain("topupThreshold");
   });
 
-  it("should pre-select auto-topup with $25 amount and $5 threshold by default", () => {
+  it("should default the auto-topup checkbox to on", () => {
     expect(content).toContain("useState(true)");
-    expect(content).toContain('useState("25")');
-    expect(content).toContain('useState("5")');
   });
 
   it("should only save auto-topup before checkout when payment method exists", () => {
@@ -333,25 +347,11 @@ describe("Billing page", () => {
     expect(content).toContain("configureAutoTopup(topupCents, thresholdCents)");
   });
 
-  it("should show inline error on blur when threshold is below $5", () => {
-    expect(content).toContain("handleThresholdBlur");
-    expect(content).toContain("Minimum threshold is $5.");
-    expect(content).toContain("thresholdError");
-    expect(content).toContain("onBlur={handleThresholdBlur}");
-  });
-
-  it("should reset threshold to $5 when left empty on blur", () => {
-    expect(content).toContain('setTopupThreshold("5")');
-  });
-
-  it("should reset top-up amount to selected value when left empty on blur", () => {
-    expect(content).toContain("handleTopupAmountBlur");
-    expect(content).toContain("onBlur={handleTopupAmountBlur}");
-  });
-
-  it("should show inline error on blur when top-up amount is below $10", () => {
-    expect(content).toContain("topupAmountError");
-    expect(content).toContain("Minimum top-up amount is $10.");
+  it("should NOT have auto-topup amount/threshold blur validators (fields removed — derived server-side)", () => {
+    expect(content).not.toContain("handleThresholdBlur");
+    expect(content).not.toContain("handleTopupAmountBlur");
+    expect(content).not.toContain("thresholdError");
+    expect(content).not.toContain("topupAmountError");
   });
 
   it("should show inline error on blur when custom amount is below $10", () => {
@@ -365,14 +365,16 @@ describe("Billing page", () => {
     expect(content).toContain("hasValidationError");
   });
 
-  it("should sync top-up amount when selecting a preset amount", () => {
+  it("should select a one-off top-up amount via handleSelectTopup", () => {
     expect(content).toContain("handleSelectTopup");
-    expect(content).toContain("setTopupAmount");
+    expect(content).toContain("setTopupSelected");
   });
 
-  it("should default auto-topup threshold to $5 (500 cents)", () => {
-    // Fallback threshold when not set by user
-    expect(content).toContain(": 500");
+  it("should arm the auto-topup enabled flag with fixed derived-tier placeholder values", () => {
+    // The stored amount/threshold are only the "enabled" flag; the real values
+    // are derived server-side, so the page sends fixed placeholders.
+    expect(content).toContain("AUTO_TOPUP_ENABLE_AMOUNT_CENTS");
+    expect(content).toContain("AUTO_TOPUP_ENABLE_THRESHOLD_CENTS");
   });
 
   it("should redirect to Stripe checkout via createCheckoutSession", () => {
