@@ -1516,7 +1516,7 @@ export interface CachedField {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
-  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. List each as a short phrase." },
+  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. Said differently, what package / product / service customers will pay for when they think about it. If one offering, list one. If different offerings appear in the content provided, list all. List each as a short phrase." },
   { key: "companyOverview", description: "Company overview" },
   { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
