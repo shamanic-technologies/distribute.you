@@ -292,24 +292,24 @@ async function withLivePerformanceMetrics(html: string) {
 // substitutions stay independent.
 // ─────────────────────────────────────────────────────────────────────────
 interface V2TickerMetrics {
-  cpc: string; // websiteVisit — cost per click, the stable headline
-  costPerReply: string; // positiveReply
-  costPerMeeting: string; // meetingBooked
-  costPerSignup: string; // signup
+  cpc: string; // websiteVisit cost per click, 100-outcome moving avg (headline)
+  costPerReply: string; // positiveReply, 100-outcome moving avg
+  costPerMeeting: string; // meetingBooked, 100-outcome moving avg
+  costPerSignup: string; // signup, 100-outcome moving avg
   bestReplyCost: string; // min cost-per-positive-reply of any backed model
   bestModelName: string; // that model's short name ("Ballad")
   brandCount: string;
   totalClicks: string;
 }
 
-// Last-known-good (live values observed 2026-07-09). Used only when the public
-// metrics API is unreachable, so a build-time prerender never aborts the deploy
-// and the page never ships raw __V2_*__ tokens.
+// Last-known-good 100-outcome moving-average prices (observed 2026-07-09). Used
+// only when the public metrics API is unreachable, so a build-time prerender
+// never aborts the deploy and the page never ships raw __V2_*__ tokens.
 const FALLBACK_V2_TICKER: V2TickerMetrics = {
-  cpc: "$6.35",
-  costPerReply: "$152",
-  costPerMeeting: "$54",
-  costPerSignup: "$115",
+  cpc: "$0.72",
+  costPerReply: "$145",
+  costPerMeeting: "$5.25",
+  costPerSignup: "$18",
   bestReplyCost: "$18.82",
   bestModelName: "Ballad",
   brandCount: "21",
@@ -351,6 +351,46 @@ function usd2(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
+// Sub-$10 keeps two decimals (a click can cost cents); $10+ rounds to whole.
+function usdSmart(value: number): string {
+  return value < 10 ? usd2(value) : usdWhole(value);
+}
+
+interface TrendPoint {
+  costPerOutcomeUsd: number | null;
+}
+interface TrendResponse {
+  points: TrendPoint[];
+}
+
+// The "price" is the latest backed point of the trailing 100-outcome moving avg.
+function latestTrendPrice(points: TrendPoint[]): number | null {
+  for (let i = points.length - 1; i >= 0; i--) {
+    const v = numericOrNull(points[i]?.costPerOutcomeUsd);
+    if (v !== null) return v;
+  }
+  return null;
+}
+
+async function fetchTrendPrice(
+  apiUrl: string,
+  headers: Record<string, string>,
+  slug: string,
+  objective: string,
+): Promise<number | null> {
+  const res = await fetch(
+    `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}`,
+    { headers, next: { revalidate: 300 } },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/cost-per-outcome-trend ${objective} failed: ${res.status}`,
+    );
+  }
+  const data = (await res.json()) as TrendResponse;
+  return latestTrendPrice(data.points ?? []);
+}
+
 function numericOrNull(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -365,7 +405,15 @@ async function fetchV2TickerMetrics(): Promise<V2TickerMetrics> {
   const apiUrl = resolvePublicApiUrl();
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
-  const [lifeRes, wfRes] = await Promise.all([
+
+  // Every headline number is the trailing 100-outcome moving average (the
+  // "price"), read per objective from the trend endpoint. Lifetime is kept only
+  // for the cumulative counts (brands, clicks); workflow for the best model.
+  const [cpc, reply, meeting, signup, lifeRes, wfRes] = await Promise.all([
+    fetchTrendPrice(apiUrl, headers, slug, "websiteVisit"),
+    fetchTrendPrice(apiUrl, headers, slug, "positiveReply"),
+    fetchTrendPrice(apiUrl, headers, slug, "meetingBooked"),
+    fetchTrendPrice(apiUrl, headers, slug, "signup"),
     fetch(
       `${apiUrl}/v1/public/features/cost-per-outcome-lifetime?featureSlug=${slug}`,
       { headers, next: { revalidate: 300 } },
@@ -376,6 +424,11 @@ async function fetchV2TickerMetrics(): Promise<V2TickerMetrics> {
     ),
   ]);
 
+  if (cpc === null) {
+    throw new Error(
+      "[landing] cost-per-outcome-trend websiteVisit returned no backed price (CPC headline)",
+    );
+  }
   if (!lifeRes.ok) {
     throw new Error(
       `[landing] /v1/public/features/cost-per-outcome-lifetime failed: ${lifeRes.status}`,
@@ -389,18 +442,10 @@ async function fetchV2TickerMetrics(): Promise<V2TickerMetrics> {
 
   const life = (await lifeRes.json()) as LifetimeCostResponse;
   const wf = (await wfRes.json()) as WorkflowCostResponse;
-  const avg = life.avgCostPerOutcomeByObjective;
-  const cpc = numericOrNull(avg?.websiteVisit);
-
-  if (cpc === null) {
-    throw new Error(
-      "[landing] cost-per-outcome-lifetime missing websiteVisit (CPC headline)",
-    );
-  }
 
   // Best model = lowest cost-per-positive-reply among models that actually
   // produced a positive reply. Zero-data models carry a projected default cost
-  // (identical across many rows) — excluding them keeps "best" honest.
+  // (identical across many rows), so excluding them keeps "best" honest.
   const backed = wf.workflows.filter(
     (w) =>
       numericOrNull(w.costPerOutcomeUsd) !== null &&
@@ -415,19 +460,16 @@ async function fetchV2TickerMetrics(): Promise<V2TickerMetrics> {
     (b.costPerOutcomeUsd as number) < (a.costPerOutcomeUsd as number) ? b : a,
   );
 
-  const reply = numericOrNull(avg?.positiveReply);
-  const meeting = numericOrNull(avg?.meetingBooked);
-  const signup = numericOrNull(avg?.signup);
   const brands = numericOrNull(life.brandCount);
   const clicks = numericOrNull(life.totalClicks);
 
   return {
-    cpc: usd2(cpc),
-    costPerReply: reply !== null ? usdWhole(reply) : FALLBACK_V2_TICKER.costPerReply,
+    cpc: usdSmart(cpc),
+    costPerReply: reply !== null ? usdSmart(reply) : FALLBACK_V2_TICKER.costPerReply,
     costPerMeeting:
-      meeting !== null ? usdWhole(meeting) : FALLBACK_V2_TICKER.costPerMeeting,
+      meeting !== null ? usdSmart(meeting) : FALLBACK_V2_TICKER.costPerMeeting,
     costPerSignup:
-      signup !== null ? usdWhole(signup) : FALLBACK_V2_TICKER.costPerSignup,
+      signup !== null ? usdSmart(signup) : FALLBACK_V2_TICKER.costPerSignup,
     bestReplyCost: usd2(best.costPerOutcomeUsd as number),
     bestModelName: shortModelName(
       best.workflowDynastyName ?? FALLBACK_V2_TICKER.bestModelName,
