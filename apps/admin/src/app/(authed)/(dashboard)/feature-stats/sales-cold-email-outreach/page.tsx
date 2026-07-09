@@ -112,13 +112,16 @@ function growth7d(points: CrossOrgTrendPoint[] | undefined): number | null {
   return (a - b) / b;
 }
 
-/** Stock-style change badge: ▲ green when up, ▼ red when down (per the ticker convention). */
+/**
+ * Cost-change badge: arrow shows direction (▲ up / ▼ down); color is
+ * cost-semantic — a rising cost is bad (red), a falling cost is good (green).
+ */
 function GrowthBadge({ growth }: { growth: number | null }) {
   if (growth === null || growth === 0) {
     return <span className="text-xs text-gray-400">—</span>;
   }
   const up = growth > 0;
-  const cls = up ? "text-green-600" : "text-red-600";
+  const cls = up ? "text-red-600" : "text-green-600";
   const arrow = up ? "▲" : "▼";
   const pct = (Math.abs(growth) * 100).toFixed(1);
   return (
@@ -134,7 +137,8 @@ function Sparkline({ points, growth }: { points: CrossOrgTrendPoint[]; growth: n
   if (data.length < 2) {
     return <div className="h-10 flex items-center text-[10px] text-gray-300">no trend yet</div>;
   }
-  const stroke = growth === null || growth === 0 ? "#94a3b8" : growth > 0 ? "#16a34a" : "#dc2626";
+  // Cost-semantic: rising cost red, falling cost green.
+  const stroke = growth === null || growth === 0 ? "#94a3b8" : growth > 0 ? "#dc2626" : "#16a34a";
   return (
     <div className="h-10">
       <ResponsiveContainer width="100%" height="100%">
@@ -339,8 +343,9 @@ export default function SalesColdEmailOutreachStatsPage() {
         </div>
         <p className="text-xs text-gray-400">
           Price = the current 100-outcome moving average; all-time avg = the lifetime pooled average
-          (both features-service, cross-org). 7-day change compares the price to a week ago,
-          stock-ticker style (▲ up green, ▼ down red). A blank means no cross-org outcomes yet.
+          (both features-service, cross-org). 7-day change compares the price to a week ago; the
+          arrow shows direction (▲ up / ▼ down) and the color is cost-semantic — a falling cost is
+          green (good), a rising cost is red. A blank means no cross-org outcomes yet.
         </p>
       </section>
 
