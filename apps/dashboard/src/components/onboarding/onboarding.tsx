@@ -566,6 +566,18 @@ export function Onboarding() {
   const [clickDestinationUrl, setClickDestinationUrl] = useState<string>(
     () => restored?.clickDestinationUrl ?? subpageDestinationFromUrl(restored?.url ?? searchParams.get("url")?.trim() ?? ""),
   );
+  // Which destination radio is active: "home" (brand domain) or "custom" (a
+  // specific sub-page). Kept as its OWN flag — an empty custom input would
+  // otherwise be indistinguishable from "home". Seeded to "custom" when a
+  // sub-page arrives in the incoming URL (so it pre-selects, matching the seed
+  // above), else "home".
+  const [destinationMode, setDestinationMode] = useState<"home" | "custom">(
+    () =>
+      (restored?.clickDestinationUrl ??
+        subpageDestinationFromUrl(restored?.url ?? searchParams.get("url")?.trim() ?? ""))
+        ? "custom"
+        : "home",
+  );
   const [profile, setProfile] = useState<Record<string, string | string[]>>(() => restored?.profile ?? {});
   // Outcome-count budget selection. selectedCount drives the derived $/day; budget
   // is the $/day value sent to the campaign. Tiers are derived from a STABLE base
@@ -913,7 +925,11 @@ export function Onboarding() {
     // step (e.g. acme.com/pricing) — same as the landing ?url= prefill, but for a URL
     // entered inside onboarding rather than carried in at mount. Preserve an
     // already-customized value (|| keeps a user-set destination; a bare domain → "").
-    setClickDestinationUrl((prev) => prev || subpageDestinationFromUrl(url));
+    setClickDestinationUrl((prev) => {
+      const next = prev || subpageDestinationFromUrl(url);
+      if (next) setDestinationMode("custom");
+      return next;
+    });
     setError(null);
     setStep("loading");
     resetLoadingProgress();
@@ -1301,6 +1317,7 @@ export function Onboarding() {
     setRateText(state.rateText);
     setServices(state.services);
     setClickDestinationUrl(state.clickDestinationUrl);
+    setDestinationMode(state.clickDestinationUrl.trim() ? "custom" : "home");
     setProfile(state.profile);
     setSelectedCount(state.selectedCount);
     setCustomCount(state.customCount);
@@ -1576,7 +1593,13 @@ export function Onboarding() {
   }
 
   if (step === "destination") {
-    const usingDefault = clickDestinationUrl.trim() === "";
+    // Two homogeneous radio cards: "home" (brand domain) vs "custom" (a specific
+    // sub-page). Card selection is styled identically; the custom card reveals its
+    // URL input inside the same bordered box when active.
+    const cardClass = (active: boolean) =>
+      `rounded-xl border transition ${active ? "border-brand-300 bg-brand-50 ring-1 ring-brand-300" : "border-gray-200 hover:border-gray-300"}`;
+    const radioDot = (active: boolean) =>
+      `mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${active ? "border-brand-500 bg-brand-500" : "border-gray-300"}`;
     return (
       <StepShell
         header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
@@ -1585,28 +1608,47 @@ export function Onboarding() {
           <BackButton onClick={() => setStep("services")} />
           <h2 className="font-display text-2xl font-bold text-gray-900">Where should clicks go?</h2>
           <p className="mt-2 mb-6 text-gray-500">When a prospect clicks the link in your email, this is the page they land on. We use your homepage by default.</p>
-          <button
-            type="button"
-            onClick={() => setClickDestinationUrl("")}
-            className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition ${usingDefault ? "border-brand-300 bg-brand-50 ring-1 ring-brand-300" : "border-gray-200 hover:border-gray-300"}`}
-          >
-            <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${usingDefault ? "border-brand-500 bg-brand-500" : "border-gray-300"}`} />
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-gray-900">Your homepage</span>
-              <span className="block break-words text-sm text-gray-500">{defaultDestinationUrl || hostname}</span>
-            </span>
-          </button>
-          <div className="mt-4">
-            <label htmlFor="ob-destination" className="block text-sm font-medium text-gray-700">Or send clicks to a specific page</label>
-            <input
-              id="ob-destination"
-              type="url"
-              inputMode="url"
-              value={clickDestinationUrl}
-              onChange={(e) => setClickDestinationUrl(e.target.value)}
-              placeholder="https://yoursite.com/pricing"
-              className="mt-2 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
-            />
+          <div className="space-y-3">
+            <div className={cardClass(destinationMode === "home")}>
+              <button
+                type="button"
+                onClick={() => { setDestinationMode("home"); setClickDestinationUrl(""); }}
+                className="flex w-full items-start gap-3 p-4 text-left"
+              >
+                <span className={radioDot(destinationMode === "home")} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-gray-900">Your homepage</span>
+                  <span className="block break-words text-sm text-gray-500">{defaultDestinationUrl || hostname}</span>
+                </span>
+              </button>
+            </div>
+            <div className={cardClass(destinationMode === "custom")}>
+              <button
+                type="button"
+                onClick={() => setDestinationMode("custom")}
+                className="flex w-full items-start gap-3 p-4 text-left"
+              >
+                <span className={radioDot(destinationMode === "custom")} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-gray-900">A specific page</span>
+                  <span className="block text-sm text-gray-500">Send clicks to a sub-page instead of the homepage.</span>
+                </span>
+              </button>
+              {destinationMode === "custom" && (
+                <div className="px-4 pb-4">
+                  <input
+                    id="ob-destination"
+                    type="url"
+                    inputMode="url"
+                    autoFocus
+                    value={clickDestinationUrl}
+                    onChange={(e) => setClickDestinationUrl(e.target.value)}
+                    placeholder="https://yoursite.com/pricing"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  />
+                </div>
+              )}
+            </div>
           </div>
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </StepShell>
