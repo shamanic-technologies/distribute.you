@@ -2029,12 +2029,18 @@ function OnboardingAudiences({
     }
     setErr(null);
     setLoading(true);
-    onCandidatesChange(null);
-    onSelectedAudienceIdsChange([]);
+    // Preserve already-selected candidates across a re-fetch — keep them selected,
+    // visible during load, and merged ahead of the new results. Editing the prompt
+    // and re-fetching ADDS to the prior picks, it does not wipe them.
+    const keep = (candidates ?? []).filter((c) => selectedAudienceIdSet.has(c.audienceId));
+    onCandidatesChange(keep.length ? keep : null);
     try {
       const res = await suggestAudiences(brandId, nl);
-      onCandidatesChange(res.candidates);
-      if (res.candidates.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+      const keepIds = new Set(keep.map((c) => c.audienceId));
+      const merged = [...keep, ...res.candidates.filter((c) => !keepIds.has(c.audienceId))];
+      onCandidatesChange(merged);
+      if (res.candidates.length === 0 && keep.length === 0)
+        setErr("No audiences matched that description. Try rephrasing.");
     } catch (e) {
       console.error("[dashboard] suggestAudiences failed:", e);
       setErr("We couldn't generate audiences right now. Try again.");
