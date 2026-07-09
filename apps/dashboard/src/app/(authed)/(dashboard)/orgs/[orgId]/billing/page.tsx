@@ -151,9 +151,6 @@ export default function BillingPage() {
   // Auto-topup toggle (arms the flag; amount/threshold are derived) — on by default
   const [enableAutoTopup, setEnableAutoTopup] = useState(true);
 
-  // Disable-auto-topup in-flight state
-  const [disablingTopup, setDisablingTopup] = useState(false);
-
   // Portal state
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -303,20 +300,6 @@ export default function BillingPage() {
     }
   }
 
-  async function handleDisableTopup() {
-    setDisablingTopup(true);
-    setError(null);
-    try {
-      const { disableAutoTopup } = await import("@/lib/api");
-      await disableAutoTopup();
-      queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disable auto-topup");
-    } finally {
-      setDisablingTopup(false);
-    }
-  }
-
   if (accountLoading) {
     return (
       <DashboardPage width="standard">
@@ -325,8 +308,8 @@ export default function BillingPage() {
           <p className="text-gray-600">Manage your credits and payment method.</p>
         </div>
         <div className="space-y-4 max-w-2xl animate-pulse">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 h-32" />
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-48" />
+          <div className="bg-white rounded-xl border border-gray-200 p-5 h-16" />
           <div className="bg-white rounded-xl border border-gray-200 p-5 h-64" />
         </div>
       </DashboardPage>
@@ -370,7 +353,9 @@ export default function BillingPage() {
       )}
 
       <div className="space-y-6 max-w-2xl">
-        {/* Credit Balance */}
+        {/* Credits — balance + breakdown + (when configured) the postpaid auto-topup
+            next-charge status folded in as a compact footer. One consolidated card;
+            the auto-topup status is dynamic subtext, not its own card. */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           {isDepleted && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-center gap-2">
@@ -381,33 +366,14 @@ export default function BillingPage() {
             </div>
           )}
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm text-gray-500">Available</p>
-                <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
-              </div>
-              <p className={`text-3xl font-bold mt-1 ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.balance_cents ?? "0")}
-              </p>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm text-gray-500">Available</p>
+              <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
             </div>
-            <div className="sm:text-right">
-              <div className="flex items-center gap-1.5 sm:justify-end">
-                <div className={`w-2 h-2 rounded-full ${account?.has_payment_method ? "bg-green-500" : "bg-gray-300"}`} />
-                <span className="text-sm text-gray-500">
-                  {account?.has_payment_method ? "Card connected" : "No card"}
-                </span>
-              </div>
-              {account?.has_payment_method && (
-                <button
-                  onClick={handleManagePayment}
-                  disabled={portalLoading}
-                  className="mt-1 text-xs text-brand-600 hover:text-brand-700 font-medium disabled:opacity-50"
-                >
-                  {portalLoading ? "Opening..." : "Manage payment method"}
-                </button>
-              )}
-            </div>
+            <p className={`text-3xl font-bold mt-1 ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
+              {formatBillingCents(account?.balance_cents ?? "0")}
+            </p>
           </div>
 
           {/* Breakdown — reconciles to Available so the numbers stop contradicting each other.
@@ -458,56 +424,61 @@ export default function BillingPage() {
               </dd>
             </div>
           </dl>
-        </div>
 
-        {/* Auto-Topup — read-only next-charge status (postpaid tier).
-            Amount + threshold are DERIVED server-side, so this surface shows the
-            upcoming charge instead of editable inputs. */}
-        {hasAutoTopup ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <h2 className="text-lg font-medium text-gray-900">Auto-topup</h2>
-              <span className="text-xs text-green-600 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Active
-              </span>
-            </div>
-
-            {/* Next charge: spend since the last charge, against the credit line
-                that triggers the next one. */}
-            <div>
-              <div className="flex items-baseline justify-between gap-3">
+          {/* Auto-topup next-charge — dynamic subtext folded into the Credits card. */}
+          {hasAutoTopup && (
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm text-gray-500">Next charge</p>
-                  <InfoTooltip tip="We let your balance run on credit, then charge a fixed amount once your spend reaches the line below. The line grows as your account builds a payment history." />
+                  <div className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-sm font-medium text-gray-700">Auto-topup on</span>
+                  <InfoTooltip tip="We let your balance run on credit, then charge a fixed amount once your spend reaches the line. The line grows as your account builds a payment history." />
                 </div>
-                <p className="text-sm font-medium text-gray-900">
+                <span className="text-xs text-gray-500">
                   {formatCentsAsUsd(spentSinceChargeCents, 2)} / {formatCentsAsUsd(creditLineCents, 2)} spent
-                </p>
+                </span>
               </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
                 <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${chargePct}%` }} />
               </div>
               <p className="mt-2 text-xs text-gray-500">
-                We charge {formatCentsAsUsd(topupAmountCents, 0)} once you&apos;ve spent {formatCentsAsUsd(creditLineCents, 0)}, or on {nextChargeDate}.
+                Next charge {formatCentsAsUsd(topupAmountCents, 0)} once you&apos;ve spent {formatCentsAsUsd(creditLineCents, 0)}, or on {nextChargeDate}.
               </p>
             </div>
+          )}
+        </div>
 
-            <div className="mt-4 border-t border-gray-100 pt-3">
-              <button
-                onClick={handleDisableTopup}
-                disabled={disablingTopup}
-                className="text-sm font-medium text-red-600 transition hover:text-red-700 disabled:opacity-50"
-              >
-                {disablingTopup ? "Disabling..." : "Disable auto-topup"}
-              </button>
+        {/* Payment method — short dedicated section (linked funding source). */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Payment method</p>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <div className={`w-2 h-2 rounded-full ${account?.has_payment_method ? "bg-green-500" : "bg-gray-300"}`} />
+                  <span className="text-xs text-gray-500">
+                    {account?.has_payment_method ? "Card connected" : "No card yet, added at your first top-up"}
+                  </span>
+                </div>
+              </div>
             </div>
+            {account?.has_payment_method && (
+              <button
+                onClick={handleManagePayment}
+                disabled={portalLoading}
+                className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
+              >
+                {portalLoading ? "Opening..." : "Manage"}
+              </button>
+            )}
           </div>
-        ) : (
-          /* Add Credits + enable Auto-Topup (when not yet configured) */
+        </div>
+
+        {/* Add Credits + enable Auto-Topup — only until auto-topup is configured */}
+        {!hasAutoTopup && (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Add Credits</h2>
             <div className="flex flex-wrap gap-2 mb-4">

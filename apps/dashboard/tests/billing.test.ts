@@ -305,12 +305,26 @@ describe("Billing page", () => {
     expect(content).toContain("creditLineCents");
     expect(content).toContain("chargePct");
     expect(content).toContain("nextChargeDate");
-    expect(content).toContain("handleDisableTopup");
-    expect(content).toContain("Disable auto-topup");
-    // The old editable-config UI is gone.
+    // The old editable-config UI + the Disable button are gone (auto-topup is
+    // mandatory for a recurring subscription; amount/threshold are derived).
     expect(content).not.toContain("editingTopup");
     expect(content).not.toContain("handleSaveTopup");
     expect(content).not.toContain("Save changes");
+    expect(content).not.toContain("handleDisableTopup");
+    expect(content).not.toContain("Disable auto-topup");
+  });
+
+  it("should fold the auto-topup status into the Credits card as compact subtext (one consolidated card, not a separate auto-topup card)", () => {
+    // Best-practice consolidation: the balance + next-charge status live in one
+    // card; auto-topup is dynamic subtext, gated on hasAutoTopup.
+    expect(content).toContain("Auto-topup on");
+    expect(content).toContain("{hasAutoTopup && (");
+  });
+
+  it("should show a short dedicated Payment method section", () => {
+    expect(content).toContain("Payment method");
+    expect(content).toContain("handleManagePayment");
+    expect(content).toContain("Card connected");
   });
 
   it("should show the month-end sweep guarantee date on the next-charge line", () => {
@@ -382,9 +396,9 @@ describe("Billing page", () => {
     expect(content).toContain("session.url");
   });
 
-  it("should have a manage payment method button", () => {
+  it("should have a manage payment method button in the Payment method section", () => {
     expect(content).toContain("handleManagePayment");
-    expect(content).toContain("Manage payment method");
+    expect(content).toContain("Payment method");
     expect(content).toContain("createPortalSession");
   });
 
