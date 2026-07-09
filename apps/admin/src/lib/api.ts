@@ -5020,3 +5020,41 @@ export async function getCrossOrgWorkflowCostPerOutcome(
   }
   return parsed.data;
 }
+
+/**
+ * Cross-org (fleet-wide) LIFETIME (all-history) pooled average cost-per-outcome
+ * for every objective in one call. Total fleet spend ÷ total fleet outcomes —
+ * the window→∞ limit of the moving-average trend. Each objective is `null` when
+ * unbacked (render "—", never a false $0). Backend-computed (features-service).
+ */
+const CrossOrgLifetimeSchema = z.object({
+  featureSlug: z.string(),
+  avgCostPerOutcomeByObjective: z.object({
+    websiteVisit: z.coerce.number().nullable(),
+    positiveReply: z.coerce.number().nullable(),
+    signup: z.coerce.number().nullable(),
+    formSubmission: z.coerce.number().nullable(),
+    meetingBooked: z.coerce.number().nullable(),
+    purchase: z.coerce.number().nullable(),
+  }),
+  totalSpentUsd: z.coerce.number(),
+  totalClicks: z.coerce.number(),
+  totalPositiveReplies: z.coerce.number(),
+  brandCount: z.coerce.number(),
+});
+export type CrossOrgLifetime = z.infer<typeof CrossOrgLifetimeSchema>;
+
+export async function getCrossOrgLifetimeCostPerOutcome(
+  featureSlug: string,
+): Promise<CrossOrgLifetime> {
+  const query = new URLSearchParams({ featureSlug });
+  const raw = await apiCall<unknown>(`/public/features/cost-per-outcome-lifetime?${query.toString()}`);
+  const parsed = CrossOrgLifetimeSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getCrossOrgLifetimeCostPerOutcome: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getCrossOrgLifetimeCostPerOutcome: invalid response shape");
+  }
+  return parsed.data;
+}

@@ -14,6 +14,7 @@ import {
 import {
   getCrossOrgCostProjection,
   getCrossOrgCostPerOutcomeTrend,
+  getCrossOrgLifetimeCostPerOutcome,
   getCrossOrgWorkflowCostPerOutcome,
   type CrossOrgObjective,
   type CrossOrgTrendPoint,
@@ -218,6 +219,15 @@ export default function SalesColdEmailOutreachStatsPage() {
     ...pollOptionsSlower,
   });
 
+  // Lifetime (all-history) cross-org average per objective — one call, all 6.
+  // Fails soft to "—" per objective (no false $0) while it or the gateway route
+  // is still deploying.
+  const lifetime = useQuery({
+    queryKey: ["crossOrgLifetime", FEATURE_SLUG],
+    queryFn: () => getCrossOrgLifetimeCostPerOutcome(FEATURE_SLUG),
+    ...pollOptionsSlower,
+  });
+
   // One moving-average series per objective. Same queryKey + params as the
   // Details section's trend query, so the selected objective's fetch dedupes.
   const trends = useQueries({
@@ -238,6 +248,7 @@ export default function SalesColdEmailOutreachStatsPage() {
       points: pts,
       price: latestCost(q.data?.points),
       growth: growth7d(q.data?.points),
+      allTime: lifetime.data?.avgCostPerOutcomeByObjective[o.key] ?? null,
     };
   });
 
@@ -298,8 +309,14 @@ export default function SalesColdEmailOutreachStatsPage() {
                   className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
                 >
                   <td className="px-4 py-3 text-gray-800">{s.objective.label}</td>
-                  {/* All-time avg is not a features-service field yet (Wave 2) — render "—", never a false value. */}
-                  <td className="px-4 py-3 text-right text-gray-400">—</td>
+                  {/* Lifetime cross-org avg (features-service); "—" while it loads / is unbacked, never a false $0. */}
+                  <td className="px-4 py-3 text-right text-gray-600">
+                    {lifetime.isPending ? (
+                      <Skeleton className="h-4 w-14 ml-auto" />
+                    ) : (
+                      fmtStock(s.allTime)
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">
                     {s.pending ? <Skeleton className="h-4 w-14 ml-auto" /> : fmtStock(s.price)}
                   </td>
@@ -321,9 +338,9 @@ export default function SalesColdEmailOutreachStatsPage() {
           </table>
         </div>
         <p className="text-xs text-gray-400">
-          Price = the current 100-outcome moving average (features-service, cross-org). 7-day change
-          compares it to a week ago, stock-ticker style (▲ up green, ▼ down red). All-time average
-          populates once features-service serves it.
+          Price = the current 100-outcome moving average; all-time avg = the lifetime pooled average
+          (both features-service, cross-org). 7-day change compares the price to a week ago,
+          stock-ticker style (▲ up green, ▼ down red). A blank means no cross-org outcomes yet.
         </p>
       </section>
 
