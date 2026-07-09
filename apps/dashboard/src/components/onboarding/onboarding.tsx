@@ -907,8 +907,15 @@ export function Onboarding() {
     if (serviceValue != null) {
       const nextServices = normalizeServices(serviceValue);
       if (nextServices.length > 0) {
-        setProfile((prev) => ({ ...prev, services: nextServices }));
-        setServices(nextServices);
+        // Never clobber services the user edited on the services step. A same-brand
+        // re-analyze (edit-brand → url → analyze) keeps servicesEditedRef true here
+        // (the brand-switch reset above only fires when the brandId actually changes),
+        // so mirror hydrateOnboardingInBackground's guard and keep the user's edits.
+        setProfile((prev) => ({
+          ...prev,
+          services: servicesEditedRef.current ? prev.services ?? nextServices : nextServices,
+        }));
+        if (!servicesEditedRef.current) setServices(nextServices);
       }
     }
     fetchDoneRef.current = true;
