@@ -4,6 +4,7 @@ import {
   goalLeadTabs,
   goalChartMetricKeys,
   goalOutcomeStep,
+  goalOutcomeTab,
 } from "../src/lib/goal-steps";
 import type { BrandOptimizationGoal } from "../src/lib/api";
 
@@ -76,27 +77,60 @@ describe("goal-steps: stat-card outcome step", () => {
     expect(goalOutcomeStep("positive_replies")).toBeNull();
   });
   it("multi-step goals bind the correct aggregate count/cost fields", () => {
-    expect(goalOutcomeStep("signups")?.outcome).toEqual({
+    expect(goalOutcomeStep("signups")?.outcome).toMatchObject({
       countField: "signupsCount",
       costField: "cpsCents",
       costLabel: "CPS",
     });
-    expect(goalOutcomeStep("sales_meetings")?.outcome).toEqual({
+    expect(goalOutcomeStep("sales_meetings")?.outcome).toMatchObject({
       countField: "salesMeetingsCount",
       costField: "cpsmCents",
       costLabel: "CPSM",
     });
-    expect(goalOutcomeStep("form_submissions")?.outcome).toEqual({
+    expect(goalOutcomeStep("form_submissions")?.outcome).toMatchObject({
       countField: "formSubmissionsCount",
       costField: "cpfsCents",
       costLabel: "CPFS",
     });
   });
-  it("purchase has an outcome step but no aggregate on the wire yet (renders '—')", () => {
+  it("purchase binds its aggregate count/cost (features-service#476)", () => {
     const step = goalOutcomeStep("purchase");
     expect(step?.label).toBe("Purchases");
-    expect(step?.outcome?.countField).toBeNull();
-    expect(step?.outcome?.costField).toBeNull();
+    expect(step?.outcome?.countField).toBe("purchasesCount");
+    expect(step?.outcome?.costField).toBe("cppCents");
+  });
+});
+
+describe("goal-steps: realized-outcome Leads tab (per-lead #476)", () => {
+  it("1-step goals have no separate outcome tab (visit/reply IS the outcome tab)", () => {
+    expect(goalOutcomeTab("website_visits")).toBeNull();
+    expect(goalOutcomeTab("positive_replies")).toBeNull();
+  });
+  it("multi-step goals map the outcome tab to the correct per-lead field + timestamp", () => {
+    expect(goalOutcomeTab("signups")).toEqual({
+      tab: "signups",
+      label: "Signups",
+      leadField: "signup",
+      dateField: "signupAt",
+    });
+    expect(goalOutcomeTab("sales_meetings")).toEqual({
+      tab: "meetings",
+      label: "Sales Meetings",
+      leadField: "meetingBooked",
+      dateField: "meetingBookedAt",
+    });
+    expect(goalOutcomeTab("form_submissions")).toEqual({
+      tab: "form-submissions",
+      label: "Form submissions",
+      leadField: "formSubmission",
+      dateField: "formSubmissionAt",
+    });
+    expect(goalOutcomeTab("purchase")).toEqual({
+      tab: "purchases",
+      label: "Purchases",
+      leadField: "purchased",
+      dateField: "purchasedAt",
+    });
   });
 });
 

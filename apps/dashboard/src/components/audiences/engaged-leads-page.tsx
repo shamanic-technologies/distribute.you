@@ -9,6 +9,8 @@ import {
   listBrandLeads,
   getLeadConsolidatedStatus,
   getBrandSalesEconomics,
+  getFeatureRevenue,
+  keepLastGoodFeatureRevenue,
   getLeadEmail,
   listAudiences,
   type Lead,
@@ -16,7 +18,15 @@ import {
   type LeadEmailGeneration,
   type AudienceWire,
 } from "@/lib/api";
-import { goalLeadTabs, type LeadTab } from "@/lib/goal-steps";
+import {
+  goalLeadTabs,
+  goalOutcomeTab,
+  type AnyLeadTab,
+  type OutcomeTab,
+} from "@/lib/goal-steps";
+import { isRevenueFeature } from "@/lib/revenue-feature";
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
 import { buildLeadsCsv } from "@/lib/leads-csv";
 import { CsvDownloadButton } from "@/components/report/csv-button";
 import { EntitySearchBar } from "@/components/entity-search-bar";
@@ -25,11 +35,23 @@ import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 
 // Labels for the goal-driven Leads tabs (goal-steps returns the ordered keys).
-const LEAD_TAB_LABEL: Record<LeadTab, string> = {
+const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
   "positive-replies": "Positive replies",
   clicks: "Website Visits",
   outreach: "Outreach",
+  signups: "Signups",
+  meetings: "Meetings",
+  "form-submissions": "Form submissions",
+  purchases: "Purchases",
 };
+
+const OUTCOME_TABS: ReadonlySet<string> = new Set<OutcomeTab>([
+  "signups",
+  "meetings",
+  "form-submissions",
+  "purchases",
+]);
+const isOutcomeTab = (tab: string): tab is OutcomeTab => OUTCOME_TABS.has(tab);
 
 const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "replied",
@@ -48,7 +70,7 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
 // "all" is NOT a rendered tab — it's an internal sort-mode (base "most-recent
 // activity" ordering for `sortedLeads` + `leadDateForTab`). The All UI tab was
 // removed; the funnel tabs are the four below.
-type Tab = "positive-replies" | "clicks" | "outreach" | "all";
+type Tab = "positive-replies" | "clicks" | "outreach" | "all" | OutcomeTab;
 
 // The Date column + sort key are PER-TAB: each tab shows the first-occurrence
 // timestamp of the engagement that tab is about (Clicks → first click,
@@ -71,6 +93,10 @@ function leadDateForTab(lead: Lead, tab: Tab): string | null {
       if (ats.length === 0) return null;
       return ats.reduce((latest, a) => (new Date(a).getTime() > new Date(latest).getTime() ? a : latest));
     }
+    // Outcome tabs (signups/meetings/form-submissions/purchases): the date is the
+    // realized-outcome timestamp on the /revenue join, not on the lead-service row —
+    // resolved separately via `outcomeDates` in the table + grouping.
+    default: return null;
   }
 }
 
@@ -483,7 +509,7 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, forceContacted }: {
+function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, forceContacted, outcomeDates }: {
   leads: Lead[];
   tab: Tab;
   selectedLead: Lead | null;
@@ -494,6 +520,9 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   // "Contacted" tag on all rows rather than each lead's most-advanced status
   // (those leads also surface under Clicks/Replies with their real status).
   forceContacted?: boolean;
+  // Realized-outcome timestamp per leadId (from the /revenue join) — the Date column
+  // for an outcome tab reads this, since the lead-service row carries no outcome date.
+  outcomeDates?: Map<string, string | null>;
 }) {
   if (leads.length === 0) {
     return (
@@ -551,7 +580,9 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={forceContacted ? "contacted" : statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {(() => {
-                    const at = leadDateForTab(lead, tab);
+                    const at = isOutcomeTab(tab)
+                      ? outcomeDates?.get(lead.id) ?? null
+                      : leadDateForTab(lead, tab);
                     return at ? (
                       <span className="text-xs text-gray-500" title={new Date(at).toLocaleString()}>{timeAgo(at)}</span>
                     ) : (
@@ -592,6 +623,48 @@ export function EngagedLeadsPage() {
     {},
   );
   const optimizationGoal = econData?.salesEconomics?.optimizationGoal ?? null;
+  const goal = optimizationGoal ?? "sales_meetings";
+
+  // Realized per-lead OUTCOMES (features-service#476 conversion-tracker attribution)
+  // live on the /revenue `leads[]` rows, NOT the lead-service `listBrandLeads` row —
+  // so fetch /revenue (same query key as the stat cards → React Query dedupes to one
+  // poll) and join by the lead IDENTITY (`lead.leadId` ↔ `ConversionLead.leadId`, not
+  // the leads_campaigns row `id`). The outcome tab (Signups/Meetings/Form submissions/
+  // Purchases) buckets on the join boolean + dates on its timestamp.
+  const featureSlug = useSoleFeatureSlug();
+  const revenueEnabled = isRevenueFeature(featureSlug);
+  const { data: revenueData } = useAuthQuery(
+    ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId),
+    {
+      enabled: revenueEnabled,
+      refetchInterval: POLL_INTERVAL,
+      structuralSharing: (prev, next) =>
+        keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
+    },
+  );
+  const outcomeByLeadId = useMemo(() => {
+    const m = new Map<string, ConversionLead>();
+    for (const l of revenueData?.leads ?? []) m.set(l.leadId, l);
+    return m;
+  }, [revenueData]);
+
+  const outcomeTab = goalOutcomeTab(goal);
+  // The outcome tab shows ONLY once the /revenue join actually serves its per-lead
+  // field — absent (all `undefined`) on a pre-#476-prod payload → hidden (no empty tab).
+  const outcomeAvailable =
+    !!outcomeTab &&
+    (revenueData?.leads ?? []).some((l) => l[outcomeTab.leadField] !== undefined);
+  // Realized-outcome timestamp per lead-ROW id (LeadsTable's Date column reads it).
+  const outcomeDates = useMemo(() => {
+    const m = new Map<string, string | null>();
+    if (!outcomeTab) return m;
+    for (const lead of leads) {
+      const cl = lead.leadId ? outcomeByLeadId.get(lead.leadId) : undefined;
+      m.set(lead.id, cl?.[outcomeTab.dateField] ?? null);
+    }
+    return m;
+  }, [leads, outcomeByLeadId, outcomeTab]);
 
   // Audience per lead — read straight off the lead row. lead-service serves
   // `lead.audience` ({id,name,avatarUrl}) from the leads_campaigns attribution,
@@ -647,9 +720,25 @@ export function EngagedLeadsPage() {
     groups.set("positive-replies", sortByTabDate(positive, "positive-replies"));
     groups.set("clicks", sortByTabDate(clicks, "clicks"));
     groups.set("outreach", sortByTabDate(outreach, "outreach"));
+    // Realized-outcome bucket: leads the /revenue join flags for the goal's outcome,
+    // sorted desc by the outcome timestamp. Only leads present in the join AND flagged
+    // true qualify (null/undefined = not reached).
+    if (outcomeTab) {
+      const field = outcomeTab.leadField;
+      const reached = leads.filter((lead) => {
+        const cl = lead.leadId ? outcomeByLeadId.get(lead.leadId) : undefined;
+        return cl?.[field] === true;
+      });
+      reached.sort((a, b) => {
+        const at = outcomeDates.get(a.id);
+        const bt = outcomeDates.get(b.id);
+        return (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+      });
+      groups.set(outcomeTab.tab, reached);
+    }
     return groups;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads, sortedLeads]);
+  }, [leads, sortedLeads, outcomeTab, outcomeByLeadId, outcomeDates]);
 
   // Open, once (after leads + the sales-economics query have settled), the leftmost
   // on-path tab that has leads, in the goal's OUTCOME-FIRST order (goal-steps single
@@ -658,14 +747,21 @@ export function EngagedLeadsPage() {
   // lands on an empty tab; default to the last (Outreach) when all empty. User manual
   // switches latch the ref and are never overridden by a later poll. Gate on `econData`
   // (not `optimizationGoal`, which is null both while loading AND when unset).
+  // Visible tabs, left→right: the realized-outcome tab FIRST (when the /revenue join
+  // serves it), then the goal's engagement tabs (outcome-first), Outreach last.
+  const visibleTabs: Tab[] = [
+    ...(outcomeAvailable && outcomeTab ? [outcomeTab.tab] : []),
+    ...goalLeadTabs(goal),
+  ];
+
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
     if (sortedLeads.length === 0 || econData === undefined) return;
     hasAutoSelectedTab.current = true;
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
-    const order: Tab[] = goalLeadTabs(optimizationGoal ?? "sales_meetings");
-    setActiveTab(order.find((t) => count(t) > 0) ?? order[order.length - 1] ?? "outreach");
-  }, [sortedLeads.length, econData, optimizationGoal, groupedByTab]);
+    setActiveTab(visibleTabs.find((t) => count(t) > 0) ?? visibleTabs[visibleTabs.length - 1] ?? "outreach");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedLeads.length, econData, optimizationGoal, groupedByTab, outcomeAvailable]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
@@ -682,14 +778,11 @@ export function EngagedLeadsPage() {
     });
   }, [activeList, search]);
 
-  // Tabs = the goal's on-path steps only, outcome-first (goal-steps single source),
-  // so a website_visits/signups brand never shows a Positive-replies tab and a
-  // positive_replies brand never shows a Website-Visits tab (off-funnel steps dropped).
-  const tabs: { key: Tab; label: string; count: number }[] = goalLeadTabs(
-    optimizationGoal ?? "sales_meetings",
-  ).map((key) => ({
+  // Tabs = the realized-outcome tab (when available) + the goal's on-path engagement
+  // steps, outcome-first (goal-steps single source), off-funnel steps dropped.
+  const tabs: { key: Tab; label: string; count: number }[] = visibleTabs.map((key) => ({
     key,
-    label: LEAD_TAB_LABEL[key],
+    label: LEAD_TAB_LABEL[key as AnyLeadTab],
     count: groupedByTab.get(key)?.length ?? 0,
   }));
 
@@ -782,7 +875,7 @@ export function EngagedLeadsPage() {
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} />
+              <LeadsTable leads={filteredLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} outcomeDates={outcomeDates} />
             )}
           </>
         )}

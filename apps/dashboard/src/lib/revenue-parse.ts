@@ -49,6 +49,19 @@ const RevenueLeadSchema = z.object({
   // the goal's signal (signups → clickedAt, sales_meetings → repliedPositiveAt).
   clickedAt: z.string().nullish(),
   repliedPositiveAt: z.string().nullish(),
+  // Per-lead REALIZED outcomes (features-service#476 conversion-tracker attribution):
+  // boolean + first-occurrence timestamp for signup / form submission / meeting booked
+  // / purchase. `.optional()`/`.nullish()` decouple the backend rollout — absent (all
+  // undefined) until features-service reaches prod, so the Leads page hides the
+  // matching outcome tab until then (no empty tab pre-attribution).
+  signup: z.boolean().optional(),
+  signupAt: z.string().nullish(),
+  formSubmission: z.boolean().optional(),
+  formSubmissionAt: z.string().nullish(),
+  meetingBooked: z.boolean().optional(),
+  meetingBookedAt: z.string().nullish(),
+  purchased: z.boolean().optional(),
+  purchasedAt: z.string().nullish(),
   // Per-lead firmographics (features-service#441). Additive `.nullish()` so the
   // parse succeeds before + after that producer reaches prod; each is null when the
   // upstream enrichment never resolved a value (no synthesis). `orgEmployeeCount` is
@@ -153,6 +166,10 @@ const SpendSchema = z.object({
   // cpsCents. Optional for rollout tolerance; cpfsCents null when the count is 0.
   formSubmissionsCount: z.coerce.number().optional(),
   cpfsCents: z.coerce.number().nullable().optional(),
+  // REAL tracked purchase (paid-client close) count + cost-per-purchase for the
+  // purchase goal (features-service#476). Same rollout tolerance; cppCents null at 0.
+  purchasesCount: z.coerce.number().optional(),
+  cppCents: z.coerce.number().nullable().optional(),
 });
 
 const FeatureRevenueResponseSchema = z.object({
