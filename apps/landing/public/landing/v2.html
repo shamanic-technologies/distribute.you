@@ -291,57 +291,39 @@
       70% { box-shadow: 0 0 0 7px oklch(0.72 0.17 152 / 0); }
       100% { box-shadow: 0 0 0 0 oklch(0.72 0.17 152 / 0); }
     }
-    .ticker-board { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 1rem; margin-top: 2.25rem; }
+    .ticker-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 2.25rem; }
     .tkr {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: 1.5rem 1.5rem 1.25rem;
-      display: flex; flex-direction: column; gap: 0.4rem;
-      box-shadow: var(--shadow-card); position: relative; overflow: hidden;
+      border-radius: var(--r-lg); padding: 1.35rem 1.35rem 1.1rem;
+      display: flex; flex-direction: column; gap: 0.55rem;
+      box-shadow: var(--shadow-card);
     }
-    .tkr.headline { border-color: var(--accent-brd); background: linear-gradient(165deg, var(--accent-dim) 0%, var(--surface) 55%); }
     .tkr-sym {
       font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs);
-      font-weight: 700; letter-spacing: 0.08em; color: var(--muted);
+      font-weight: 600; letter-spacing: 0.04em; color: var(--sub);
       display: flex; align-items: center; gap: 0.5rem;
     }
     .tkr-sym .tkr-chip {
       background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-brd);
-      border-radius: var(--r-pill); padding: 0.05rem 0.45rem; font-size: 0.6rem;
+      border-radius: var(--r-pill); padding: 0.05rem 0.45rem; font-size: 0.6rem; font-weight: 700;
     }
+    .tkr-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
     .tkr-price {
       font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text);
-      font-size: 2rem; line-height: 1.1;
+      font-size: 1.7rem; line-height: 1.1;
     }
-    .tkr.headline .tkr-price { font-size: 3rem; color: var(--accent); }
-    .tkr-lbl { font-size: var(--fs-sm); color: var(--sub); }
-    .tkr-sub { font-size: var(--fs-xs); color: var(--muted); font-family: 'JetBrains Mono', monospace; }
-    .tkr-tape {
-      display: flex; align-items: flex-end; gap: 3px; height: 26px; margin-top: 0.35rem; opacity: 0.55;
-    }
-    .tkr-tape span { flex: 1; background: var(--accent); border-radius: 1.5px; }
-    .tkr.headline .tkr-tape { opacity: 0.7; }
-
-    /* Best-model callout */
-    .best-model {
-      margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between;
-      gap: 1.25rem; flex-wrap: wrap;
-      background: var(--green-dim); border: 1px solid var(--green-brd);
-      border-radius: var(--r-lg); padding: 1.25rem 1.5rem;
-    }
-    .best-model-txt { font-size: var(--fs-sm); color: var(--text); max-width: 40rem; }
-    .best-model-txt strong { color: var(--green); }
-    .best-model-price {
-      font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.9rem; color: var(--green);
-      white-space: nowrap;
-    }
-    @media (max-width: 900px) {
+    .tkr-chg { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); font-weight: 600; }
+    .tkr-chg.up { color: var(--red, #dc2626); }
+    .tkr-chg.down { color: var(--green); }
+    .tkr-chg.flat { color: var(--muted); }
+    .tkr-chg .tkr-wk { color: var(--muted); font-weight: 400; }
+    .tkr-spark { display: block; width: 100%; height: 34px; margin-top: 0.15rem; }
+    .tkr-spark-empty { height: 34px; }
+    @media (max-width: 760px) {
       .ticker-board { grid-template-columns: 1fr 1fr; }
-      .tkr.headline { grid-column: span 2; }
     }
-    @media (max-width: 560px) {
+    @media (max-width: 420px) {
       .ticker-board { grid-template-columns: 1fr; }
-      .tkr.headline { grid-column: span 1; }
-      .tkr.headline .tkr-price { font-size: 2.5rem; }
     }
 
     /* ═══ Per-outcome / channel-agnostic explainer rows ═══ */
@@ -641,43 +623,12 @@
 <section class="s-ticker" id="main-content">
   <div class="wrap">
     <div class="sec-intro r" id="ticker">
-      <span class="ticker-live"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE · last 100 outcomes</span>
+      <span class="ticker-live"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE · observed prices</span>
       <h2 class="t-h2">The going rate for outcomes</h2>
-      <p class="t-body">Real numbers from __V2_BRANDS__ brands running distribute right now. There is no fixed price list. You buy outcomes at the market rate, and the rate keeps dropping as our models get sharper.</p>
+      <p class="t-body">Nobody pays a fixed rate. These are the average prices our campaigns are actually paying right now, across every brand we run. You pay what the outcome costs, and it moves.</p>
     </div>
 
-    <div class="ticker-board">
-      <div class="tkr headline r d1">
-        <div class="tkr-sym"><span class="tkr-chip">CPC</span> cost per click</div>
-        <div class="tkr-price">__V2_CPC__</div>
-        <div class="tkr-lbl">What a click from your ideal buyer costs today.</div>
-        <div class="tkr-tape" aria-hidden="true"><span style="height:70%"></span><span style="height:55%"></span><span style="height:62%"></span><span style="height:44%"></span><span style="height:50%"></span><span style="height:36%"></span><span style="height:40%"></span><span style="height:28%"></span></div>
-        <div class="tkr-sub">__V2_CLICKS__ clicks measured · __V2_BRANDS__ brands</div>
-      </div>
-      <div class="tkr r d2">
-        <div class="tkr-sym"><span class="tkr-chip">RPL</span> positive reply</div>
-        <div class="tkr-price">__V2_CPR__</div>
-        <div class="tkr-lbl">Per interested prospect who replies.</div>
-        <div class="tkr-sub">100-outcome avg</div>
-      </div>
-      <div class="tkr r d3">
-        <div class="tkr-sym"><span class="tkr-chip">MTG</span> meeting booked</div>
-        <div class="tkr-price">__V2_CPM__</div>
-        <div class="tkr-lbl">Per meeting on your calendar.</div>
-        <div class="tkr-sub">100-outcome avg</div>
-      </div>
-      <div class="tkr r d1">
-        <div class="tkr-sym"><span class="tkr-chip">SGN</span> signup</div>
-        <div class="tkr-price">__V2_CPS__</div>
-        <div class="tkr-lbl">Per prospect who signs up on their own.</div>
-        <div class="tkr-sub">100-outcome avg</div>
-      </div>
-    </div>
-
-    <div class="best-model r">
-      <div class="best-model-txt">You start on <strong>__V2_BEST_MODEL__</strong>, our best-performing model right now. Its cost per positive reply runs well under the market average, so every new campaign begins there and only moves if something beats it.</div>
-      <div class="best-model-price">__V2_BEST_REPLY__<span style="font-size:var(--fs-xs);color:var(--muted);display:block;text-align:right;font-weight:600">per reply · __V2_BEST_MODEL__</span></div>
-    </div>
+    __V2_TICKER_BOARD__
   </div>
 </section>
 
@@ -1318,8 +1269,8 @@ Marcus</span>
               <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">__V2_CPM__</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:0.87rem;color:var(--muted)">Best model, per reply</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">__V2_BEST_REPLY__</span>
+              <span style="font-size:0.87rem;color:var(--muted)">Cost per reply</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">__V2_CPR__</span>
             </div>
           </div>
           <div style="padding:1.1rem 1.25rem 1.5rem;border-top:1px solid var(--border)">
