@@ -43,6 +43,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "features", "feature", "brand", "brands", "campaign", "campaigns",
       "featureStats", "campaignStats", "billingAccount", "platformPrices",
       "workflow", "workflows",
+      "crossOrgCostProjection", "crossOrgLifetime", "crossOrgTrend", "crossOrgWorkflowCost",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(true);
     }

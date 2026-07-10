@@ -73,6 +73,15 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Small stat counters (plain numbers — cheap to serialize even when polled)
   "featureStats",
   "campaignStats",
+  // Cross-org feature-stats aggregates (feature-stats/* pages) — small,
+  // slow-changing (30s poll, cross-org rollups: a projection number, 6 lifetime
+  // averages, a ~90-day trend series per objective, a short per-workflow list).
+  // Same class as featureStats/campaignStats above → persist for SWR-instant
+  // paint on return (no cold skeleton), never a big/volatile list root.
+  "crossOrgCostProjection",
+  "crossOrgLifetime",
+  "crossOrgTrend",
+  "crossOrgWorkflowCost",
   // Google CRM connect-state — a tiny {email,status} list, config-like (high
   // instant-return value: paints "connected" without a cold round-trip). The
   // CRM MESSAGE + CONTACT lists are deliberately NOT persisted — they are entity
