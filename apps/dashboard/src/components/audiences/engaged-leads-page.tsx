@@ -8,6 +8,7 @@ import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import {
   listBrandLeads,
   getLeadConsolidatedStatus,
+  leadSequenceLabel,
   getBrandSalesEconomics,
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
@@ -308,6 +309,15 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
+// Outreach-tab Status cell: which email of the sequence actually went out
+// (Initial / Follow-up N) from the backend `sentCount`. Falls back to the
+// generic "Contacted" badge while the producers haven't shipped the field.
+function OutreachSequenceBadge({ lead }: { lead: Lead }) {
+  const label = leadSequenceLabel(lead.sentCount);
+  if (label === null) return <StatusBadge status="contacted" />;
+  return <span className="text-xs px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 text-gray-600">{label}</span>;
+}
+
 // A single merged timeline entry: a delivery EVENT (dot + label + date) or the
 // actual EMAIL we sent (subject + body, expandable), interleaved chronologically.
 type TimelineEntry =
@@ -577,7 +587,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={forceContacted ? "contacted" : statusOf(lead)} /></td>
+                <td className="px-4 py-3 hidden sm:table-cell">{forceContacted ? <OutreachSequenceBadge lead={lead} /> : <StatusBadge status={statusOf(lead)} />}</td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {(() => {
                     const at = isOutcomeTab(tab)
