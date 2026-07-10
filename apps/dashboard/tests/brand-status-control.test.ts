@@ -16,10 +16,10 @@ describe("brand overview status control", () => {
     expect(page).not.toContain("/campaigns/new");
   });
 
-  it("shows optimization goal labels with sales meetings as the unset default", () => {
+  it("shows optimization goal labels with positive replies as the unset default", () => {
     expect(control).toContain("Maximising signups conversions");
     expect(control).toContain("Maximising sales meetings");
-    expect(control).toContain('?? "sales_meetings"');
+    expect(control).toContain('?? "positive_replies"');
   });
 
   it("uses brand-level pause, daily budget, and sales economics data", () => {
