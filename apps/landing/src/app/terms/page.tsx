@@ -122,7 +122,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     id: "pricing",
-    title: "4. Pricing, Credits, and Auto-Reload",
+    title: "4. Pricing, Billing, and Payment Thresholds",
     body: (
       <>
         <p>
@@ -141,32 +141,33 @@ const SECTIONS: SectionDef[] = [
           It does not constitute a binding offer or a guarantee of price. The
           authoritative price for any unit of consumption is the price shown
           live in your dashboard at the moment that unit is consumed and the
-          price actually charged against your credit balance. By using the
+          price actually charged to your payment method. By using the
           Service you accept that the live dashboard price (and the
-          corresponding debit) is the only price that governs.
+          corresponding charge) is the only price that governs.
         </p>
         <p>
-          <strong>Credits.</strong> The Service operates on prepaid credits.
-          You purchase credits in advance; we debit credits as you consume
-          units. Credits are denominated in USD cents, are non-refundable
-          except where required by law, are not transferable between accounts,
-          and have no cash value outside the Service.
+          <strong>Billing.</strong> The Service operates on post-paid billing.
+          You add a payment method and set a daily budget; we run outreach on
+          your behalf and you pay for consumption after it occurs, not in
+          advance. Accrued usage is denominated in USD cents.
         </p>
         <p>
-          <strong>Auto-reload.</strong> You may enable auto-reload, which
-          authorizes us to charge your saved payment method (via our payment
-          processor, Stripe) for a configured top-up amount whenever your
-          balance falls below a configured threshold. By enabling auto-reload
-          you authorize recurring charges of variable amounts without further
-          confirmation, up to and including the limits you configure. You can
-          disable auto-reload at any time in the dashboard; disabling stops
-          future top-ups but does not refund previously-charged amounts.
+          <strong>Payment thresholds.</strong> We charge your saved payment
+          method (via our payment processor, Stripe) whenever your accrued
+          unpaid usage reaches a billing threshold, or at the end of each
+          billing month if the threshold has not been reached, whichever comes
+          first. Thresholds start small and may increase over time as your
+          account builds payment history. By adding a payment method you
+          authorize these recurring charges of variable amounts without further
+          confirmation. You can adjust your daily budget or pause anytime in the
+          dashboard; pausing stops future usage but does not waive amounts
+          already accrued.
         </p>
         <p>
           <strong>Welcome credits and promotions.</strong> Welcome credits,
           referral credits, and promotional credits are granted at our sole
-          discretion, have no cash value, may expire, and may be revoked for
-          abuse.
+          discretion, offset charges rather than paying out in cash, have no
+          cash value, may expire, and may be revoked for abuse.
         </p>
         <p>
           <strong>Taxes.</strong> Prices exclude applicable taxes, duties, and
@@ -535,8 +536,8 @@ const SECTIONS: SectionDef[] = [
           after a reasonable retention period.
         </p>
         <p>
-          You may stop using the Service at any time by ceasing usage and
-          disabling auto-reload. Sections that by their nature should
+          You may stop using the Service at any time by pausing or ceasing
+          usage; you remain responsible for amounts already accrued. Sections that by their nature should
           survive termination (Sections 4&ndash;6, 10&ndash;16, 19&ndash;20)
           will survive.
         </p>
@@ -627,7 +628,7 @@ export default function TermsPage() {
             </p>
             <p className="dy-body mt-6 text-base">
               These Terms govern your use of {SERVICE}. Please read them
-              carefully — sections 4 (Pricing &amp; Auto-Reload), 5 (Outreach
+              carefully. Sections 4 (Pricing &amp; Billing), 5 (Outreach
               on Your Behalf), and 6 (Public Performance Data) describe how
               the platform actually works and what you are agreeing to.
             </p>
