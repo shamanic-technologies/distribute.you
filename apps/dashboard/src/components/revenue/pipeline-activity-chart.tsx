@@ -126,6 +126,25 @@ function buildDailyCountMap(series: SignalSeries | undefined): Map<string, numbe
   return new Map((series?.daily ?? []).map((d) => [d.date, finite(d.count)] as const));
 }
 
+/** Earliest date with any actual signal across every series (the brand's data start). */
+function earliestActualDate(
+  pipelineActualSeries: PipelineActualSeries | undefined,
+): string | undefined {
+  let earliest: string | undefined;
+  for (const series of Object.values(pipelineActualSeries ?? {})) {
+    for (const d of series?.daily ?? []) {
+      if (d.date && (!earliest || d.date < earliest)) earliest = d.date;
+    }
+  }
+  return earliest;
+}
+
+/** Inclusive day span between two ISO dates (from…today), min 1. */
+function daySpan(from: string, to: string): number {
+  const ms = dateObject(to).getTime() - dateObject(from).getTime();
+  return Math.max(1, Math.floor(ms / 86_400_000) + 1);
+}
+
 const METRIC_BY_KEY: Record<ChartMetricKey, MetricDef> = {
   outreach: OUTREACH,
   clicks: CLICKS,
@@ -277,6 +296,17 @@ export function PipelineActivityChart({
   const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(7);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Only offer a window the brand has enough data to fill: 30 needs >7 days of
+  // actuals, 90 needs >30. availableDays = span from the first actual signal to today.
+  const availableDays = useMemo(() => {
+    const today = data.days.find((day) => day.isToday)?.date ?? formatIsoDate(new Date());
+    const earliest = earliestActualDate(pipelineActualSeries);
+    return earliest ? daySpan(earliest, today) : 1;
+  }, [data, pipelineActualSeries]);
+  const visibleRanges = RANGES.filter(
+    (days) => days === 7 || (days === 30 && availableDays > 7) || (days === 90 && availableDays > 30),
+  );
+
   const chartData = useMemo(
     () => buildChartData({ data, pipelineActualSeries, rangeDays, optimizationGoal }),
     [data, pipelineActualSeries, rangeDays, optimizationGoal],
@@ -315,8 +345,9 @@ export function PipelineActivityChart({
             </span>
           ))}
         </div>
+        {visibleRanges.length > 1 && (
         <div className="inline-flex w-fit rounded-lg border border-gray-200 bg-gray-50 p-1">
-          {RANGES.map((days) => (
+          {visibleRanges.map((days) => (
             <button
               key={days}
               type="button"
@@ -331,6 +362,7 @@ export function PipelineActivityChart({
             </button>
           ))}
         </div>
+        )}
       </div>
 
       <div ref={scrollRef} className="overflow-x-auto">
