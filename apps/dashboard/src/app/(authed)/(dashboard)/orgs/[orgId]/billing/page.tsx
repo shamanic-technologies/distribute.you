@@ -21,6 +21,7 @@ import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { Skeleton } from "@/components/skeleton";
 
 
 // Friendly label for a credit grant's `reason` (pure display lookup, no metric).
@@ -90,14 +91,18 @@ export default function BillingPage() {
   const pendingThreshold = searchParams.get("pending_threshold");
 
   // Data fetching
-  const { data: account, isLoading: accountLoading } = useAuthQuery<BillingAccount>(
+  // Gate the page on isPending (not isLoading): during Clerk org-settle useAuthQuery
+  // disables the query → isLoading:false while account is still undefined → the page
+  // would render $0 numbers + hide the discount banner for the settle window. isPending
+  // stays true through settle, so we skeleton instead. Warm persisted cache → instant.
+  const { data: account, isPending: accountPending } = useAuthQuery<BillingAccount>(
     ["billingAccount"],
     () => getBillingAccount(),
     pollOptions,
   );
 
   // Credit grants ("gifts received") — the org's own free-credit ledger.
-  const { data: grantsData } = useAuthQuery<{ grants: CreditGrant[] }>(
+  const { data: grantsData, isPending: grantsPending } = useAuthQuery<{ grants: CreditGrant[] }>(
     ["creditGrants"],
     () => getCreditGrants(),
   );
@@ -307,7 +312,7 @@ export default function BillingPage() {
     }
   }
 
-  if (accountLoading) {
+  if (accountPending) {
     return (
       <DashboardPage width="standard">
         <div className="mb-6">
@@ -592,7 +597,22 @@ export default function BillingPage() {
           </div>
           <p className="text-xs text-gray-500 mb-4">Free credits we added to your account.</p>
 
-          {grants.length === 0 ? (
+          {grantsPending && grants.length === 0 ? (
+            // Static-shell reveal: card frame + title/subtitle stay; skeleton the list
+            // while genuinely pending so the "No gifts yet." empty-state never flashes
+            // before the fetch settles. Warm persisted cache → instant, no skeleton.
+            <div className="space-y-2.5">
+              {[0, 1].map((i) => (
+                <div key={i} className="flex items-center justify-between gap-3 py-0.5">
+                  <div className="min-w-0 space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-14" />
+                </div>
+              ))}
+            </div>
+          ) : grants.length === 0 ? (
             <p className="text-sm text-gray-500">No gifts yet.</p>
           ) : (
             <ul className="divide-y divide-gray-100">

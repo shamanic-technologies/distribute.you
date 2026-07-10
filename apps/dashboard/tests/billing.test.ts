@@ -404,7 +404,7 @@ describe("Billing page", () => {
 
   it("should have loading skeleton state", () => {
     expect(content).toContain("animate-pulse");
-    expect(content).toContain("accountLoading");
+    expect(content).toContain("accountPending");
   });
 });
 
