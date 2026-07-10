@@ -245,34 +245,34 @@
         <div class="calc-top">
           <span class="calc-card-label">Daily budget</span>
           <div class="calc-quick" role="group" aria-label="Quick budget amounts">
-            <button class="calc-qbtn" data-budget="1">$1</button>
-            <button class="calc-qbtn active" data-budget="5">$5</button>
-            <button class="calc-qbtn" data-budget="20">$20</button>
-            <button class="calc-qbtn" data-budget="50">$50</button>
+            <button class="calc-qbtn" data-budget="5">$5</button>
+            <button class="calc-qbtn active" data-budget="50">$50</button>
+            <button class="calc-qbtn" data-budget="200">$200</button>
+            <button class="calc-qbtn" data-budget="500">$500</button>
           </div>
         </div>
 
         <div class="calc-budget-row">
-          <div class="calc-budget-val" id="calc-budget">$5</div>
+          <div class="calc-budget-val" id="calc-budget">$50</div>
           <div class="calc-budget-per">/ day</div>
         </div>
 
         <div class="calc-slider-wrap">
           <input
             type="range" class="calc-slider" id="calc-slider"
-            min="1" max="100" value="5" step="1"
+            min="1" max="500" value="50" step="1"
             aria-label="Daily budget"
           >
         </div>
 
         <div class="calc-metrics" role="region" aria-label="Estimated monthly results">
           <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-clicks">170</div>
+            <div class="calc-metric-num" id="calc-clicks">1.7k</div>
             <div class="calc-metric-name">website visits / month</div>
             <div class="calc-metric-rate">__TICKER_CPC__ each</div>
           </div>
           <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-convos">1</div>
+            <div class="calc-metric-num" id="calc-convos">9</div>
             <div class="calc-metric-name">positive replies for a meeting / month</div>
             <div class="calc-metric-rate">__TICKER_CPR__ each</div>
           </div>
@@ -511,7 +511,7 @@
     });
   });
 
-  update(5);
+  update(50);
 })();
 </script>
 
