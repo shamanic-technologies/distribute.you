@@ -22,7 +22,7 @@
   <meta name="twitter:image" content="https://distribute.you/opengraph-image">
   <link rel="icon" href="/landing/logo/logo-distribute.svg" type="image/svg+xml">
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"distribute","legalName":"Shamanic Technologies","url":"https://distribute.you","logo":"https://distribute.you/landing/logo/logo-distribute.svg","image":"https://distribute.you/landing/logo/logo-distribute.svg","sameAs":["https://github.com/distribute-you","https://twitter.com/distribute_you"],"contactPoint":{"@type":"ContactPoint","email":"support@distribute.you","contactType":"customer service"}},{"@type":"SoftwareApplication","name":"distribute","description":"Done-for-you cold email outreach priced per outcome. Set a daily budget from $1, we run the outreach from our own inboxes and you pay for clicks, replies, and meetings.","url":"https://distribute.you","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"1","priceCurrency":"USD","description":"From $1/day. First $25 matched. No setup."}}]}</script>
-  <link rel="stylesheet" href="css/styles.css?v=6">
+  <link rel="stylesheet" href="css/styles.css?v=7">
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('dt')||'light')</script>
   <style>
     /* ═══ Illustrated step cards ═══ */
@@ -648,6 +648,17 @@
 
     __TICKER_BOARD__
     <p class="ticker-legend"><b>Website visits</b> and <b>positive replies</b> we measure ourselves, from our own sending inboxes. <b>Meetings</b> and <b>signups</b> are reported by each client from their own funnel, so they move more from one brand to the next.</p>
+
+    <div class="pricing-card r" style="margin-top:2.5rem;text-align:center;">
+      <span class="t-lbl pricing-eyebrow">Your numbers</span>
+      <h2 class="t-h2 pricing-h">See your own cost per outcome.</h2>
+      <p class="t-body pricing-body">Drop your site, pick a goal, enter your rates. We price it at our best-performing playbook, no signup needed.</p>
+      <form class="pricing-form" id="pricing-form">
+        <input type="text" id="pricing-url" class="pricing-input" placeholder="yourcompany.com" autocomplete="url" aria-label="Your website" />
+        <button type="submit" class="btn btn-p btn-lg" id="pricing-cta">Get my custom pricing →</button>
+      </form>
+      <p class="pricing-hint">$25 in free credits. We match your first $25 spent.</p>
+    </div>
   </div>
 </section>
 
@@ -1387,6 +1398,6 @@ Marcus</span>
 </section>
 
 <div id="site-footer"></div>
-<script src="js/main.js" defer></script>
+<script src="js/main.js?v=1" defer></script>
 </body>
 </html>
