@@ -296,7 +296,15 @@
       border-radius: var(--r-lg); padding: 1.35rem 1.35rem 1.1rem;
       display: flex; flex-direction: column; gap: 0.55rem;
       box-shadow: var(--shadow-card);
+      text-decoration: none; color: inherit;
+      transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
     }
+    a.tkr:hover { border-color: var(--accent-brd); transform: translateY(-2px); }
+    .tkr-more {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+      color: var(--accent); opacity: 0; transition: opacity 0.12s;
+    }
+    a.tkr:hover .tkr-more { opacity: 1; }
     .tkr-sym {
       font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs);
       font-weight: 600; letter-spacing: 0.04em; color: var(--sub);
