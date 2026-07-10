@@ -330,21 +330,25 @@ export default function BillingPage() {
           <h1 className="font-display text-2xl font-bold text-gray-800">Billing</h1>
           <p className="text-gray-600">Manage your credits and payment method.</p>
         </div>
-        <button
-          onClick={() => showPaymentRequired({
-            balance_cents: account?.balance_cents,
-            autoReloadSupported,
-            // Size the modal presets to the same org daily burn the page uses, so
-            // the modal shows the same amounts ($150/$450/…) + $450 default.
-            brandDailyBudgetCents: orgDailyBurnCents || null,
-          })}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 sm:w-auto"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Top Up Credits
-        </button>
+        {/* Manual "Top Up Credits" only when auto-topup is NOT armed — once it's on
+            and functional the balance refills itself, so the button is redundant/confusing. */}
+        {!hasAutoTopup && (
+          <button
+            onClick={() => showPaymentRequired({
+              balance_cents: account?.balance_cents,
+              autoReloadSupported,
+              // Size the modal presets to the same org daily burn the page uses, so
+              // the modal shows the same amounts ($150/$450/…) + $450 default.
+              brandDailyBudgetCents: orgDailyBurnCents || null,
+            })}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 sm:w-auto"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Top Up Credits
+          </button>
+        )}
       </div>
 
       {showSuccess && (
