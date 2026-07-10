@@ -206,14 +206,12 @@ export default function BillingPage() {
   const chargePct = creditLineCents > 0 ? Math.min(100, (spentSinceChargeCents / creditLineCents) * 100) : 0;
   const nextChargeDate = lastDayOfMonthLabel();
 
-  // Per-org usage discount (frozen upstream at cost-declaration). The account numbers are
-  // already NET, so we only READ the rate to render a positive banner + a struck-through
-  // gross next to the net next-charge figure. gross = net / (1 - pct/100).
+  // Per-org usage discount (frozen upstream at cost-declaration). Every account number
+  // is already NET, so we only READ the rate to render the positive banner. We do NOT
+  // reconstruct a gross price for the next-charge figure — with the frozen-net approach
+  // the shown amount IS what gets charged, so a struck-through gross would be misleading.
   const usageDiscountPct = account?.usage_discount_pct ?? null;
   const hasUsageDiscount = typeof usageDiscountPct === "number" && usageDiscountPct > 0 && usageDiscountPct < 100;
-  const nextChargeGrossCents = hasUsageDiscount
-    ? topupAmountCents / (1 - usageDiscountPct / 100)
-    : topupAmountCents;
 
   // Depleted = AVAILABLE (spendable, net of provisioned holds) at/below zero AND no auto-topup
   // to cover it. Keys on balance_cents — the value spending is actually blocked on — not the
@@ -466,15 +464,7 @@ export default function BillingPage() {
                 <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${chargePct}%` }} />
               </div>
               <p className="mt-2 text-xs text-gray-500">
-                Next charge{" "}
-                {hasUsageDiscount ? (
-                  <>
-                    <span className="text-gray-400 line-through">{formatCentsAsUsd(nextChargeGrossCents, 0)}</span>{" "}
-                    <span className="font-medium text-green-600">{formatCentsAsUsd(topupAmountCents, 0)}</span>
-                  </>
-                ) : (
-                  formatCentsAsUsd(topupAmountCents, 0)
-                )}{" "}
+                Next charge {formatCentsAsUsd(topupAmountCents, 0)}{" "}
                 once you&apos;ve spent {formatCentsAsUsd(creditLineCents, 0)}, or on {nextChargeDate}.
               </p>
             </div>
