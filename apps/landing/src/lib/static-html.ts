@@ -294,11 +294,15 @@ async function withLivePerformanceMetrics(html: string) {
 // feature-stats page reads. `__V2_CPC__`/`__V2_CPR__`/`__V2_CPM__` scalars feed
 // the pricing card / mockup that reuse the same figures.
 // ─────────────────────────────────────────────────────────────────────────
+// `measuredByUs`: website visits (clicks) + positive replies are OBSERVED by
+// distribute (email-gateway tracking); meetings + signups are client-reported
+// (derived from each brand's conversion, not measured by us) — surfaced as a
+// per-card source tag + a legend under the board.
 const V2_OBJECTIVES = [
-  { key: "websiteVisit", sym: "CPC", label: "cost per click" },
-  { key: "positiveReply", sym: "RPL", label: "positive reply for a meeting" },
-  { key: "meetingBooked", sym: "MTG", label: "meeting booked" },
-  { key: "signup", sym: "SGN", label: "signup" },
+  { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true },
+  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true },
+  { key: "meetingBooked", sym: "MEE", label: "Meeting booked", measuredByUs: false },
+  { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false },
 ] as const;
 
 const V2_BOARD_TOKEN = "__V2_TICKER_BOARD__";
@@ -385,7 +389,7 @@ function sparklineSvg(points: SeriesPoint[], stroke: string): string {
 }
 
 function tickerCard(
-  cfg: { sym: string; label: string },
+  cfg: { sym: string; label: string; measuredByUs: boolean },
   points: SeriesPoint[],
 ): string {
   const price = points.length ? points[points.length - 1].v : null;
@@ -399,7 +403,10 @@ function tickerCard(
     const pct = (Math.abs(g) * 100).toFixed(1);
     chg = `<span class="tkr-chg ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${pct}% <span class="tkr-wk">wk</span></span>`;
   }
-  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke(g))}</div>`;
+  const src = cfg.measuredByUs
+    ? `<span class="tkr-src tkr-src-us">measured by us</span>`
+    : `<span class="tkr-src tkr-src-client">client-reported</span>`;
+  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke(g))}${src}</div>`;
 }
 
 function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
