@@ -263,7 +263,17 @@ export default function SalesColdEmailOutreachStatsPage() {
     ...pollOptionsSlower,
   });
 
-  const rows = workflows.data?.workflows ?? [];
+  // Always sorted by the recent moving-average (100-avg) cost-per-outcome
+  // ascending — cheapest workflow first — regardless of the selected objective
+  // tab. Rows whose 100-avg is null (unbacked window / producer not yet live)
+  // sink to the bottom. Pure display sort over a server field.
+  const rows = [...(workflows.data?.workflows ?? [])].sort((a, b) => {
+    const av = a.movingAvgCostPerOutcomeUsd;
+    const bv = b.movingAvgCostPerOutcomeUsd;
+    if (av === null || av === undefined) return bv === null || bv === undefined ? 0 : 1;
+    if (bv === null || bv === undefined) return -1;
+    return av - bv;
+  });
   const points = trend.data?.points ?? [];
   const currentAvg = latestCost(trend.data?.points);
 
@@ -435,11 +445,12 @@ export default function SalesColdEmailOutreachStatsPage() {
 
         {/* Per-workflow split. */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
                 <th className="px-4 py-3 font-medium">Workflow</th>
-                <th className="px-4 py-3 font-medium text-right">{active.label}</th>
+                <th className="px-4 py-3 font-medium text-right">{active.label} avg</th>
+                <th className="px-4 py-3 font-medium text-right">{active.label} 100-avg</th>
                 <th className="px-4 py-3 font-medium text-right">Spend</th>
                 <th className="px-4 py-3 font-medium text-right">Clicks</th>
                 <th className="px-4 py-3 font-medium text-right">Positive replies</th>
@@ -449,20 +460,20 @@ export default function SalesColdEmailOutreachStatsPage() {
               {workflows.isPending ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-50">
-                    <td className="px-4 py-3" colSpan={5}>
+                    <td className="px-4 py-3" colSpan={6}>
                       <Skeleton className="h-4 w-full rounded" />
                     </td>
                   </tr>
                 ))
               ) : workflows.isError ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={5}>
+                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={6}>
                     Couldn&apos;t load the workflow split (the cross-org query is slow). Retry shortly.
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={5}>
+                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={6}>
                     No workflow data yet.
                   </td>
                 </tr>
@@ -473,8 +484,13 @@ export default function SalesColdEmailOutreachStatsPage() {
                     className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
                   >
                     <td className="px-4 py-3 text-gray-800">{row.workflowDynastyName}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
+                    {/* avg = lifetime pooled cost-per-outcome. */}
+                    <td className="px-4 py-3 text-right text-gray-600">
                       {fmtUsd(row.costPerOutcomeUsd)}
+                    </td>
+                    {/* 100-avg = recent trailing-window moving average (features-service). */}
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">
+                      {fmtUsd(row.movingAvgCostPerOutcomeUsd)}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmtUsd(row.spentUsd)}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{num(row.observedClicks)}</td>
@@ -488,9 +504,10 @@ export default function SalesColdEmailOutreachStatsPage() {
           </table>
         </div>
         <p className="text-xs text-gray-400">
-          Cost-per-outcome and spend come straight from features-service (cross-org, all brands).
-          Values populate once a workflow has spend; a blank means no cross-org outcomes of that
-          type yet.
+          Both cost columns come straight from features-service (cross-org, all brands): avg = the
+          lifetime pooled rate, 100-avg = the recent trailing-window moving average. Rows are sorted
+          by 100-avg ascending (cheapest first), on every objective tab. Values populate once a
+          workflow has spend; a blank means no cross-org outcomes of that type yet.
         </p>
       </section>
     </div>
