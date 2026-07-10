@@ -5030,11 +5030,11 @@ const CrossOrgWorkflowCostRowSchema = z.object({
   observedPositiveReplies: z.coerce.number(),
   // Lifetime pooled cost-per-outcome (the "avg" / all-time column).
   costPerOutcomeUsd: z.coerce.number().nullable(),
-  // Recent trailing-window moving-average cost-per-outcome (the "100-avg"
-  // column), features-service-owned. `.nullish()` for a decoupled rollout —
-  // renders "—" until the producer field is live in prod; conform the exact
-  // name to the deployed shape (api-registry) once features-service ships.
-  movingAvgCostPerOutcomeUsd: z.coerce.number().nullish(),
+  // Recent trailing-window (~100 base outcomes = the endpoint's default
+  // windowOutcomes) moving-average cost-per-outcome — the "100-avg" column,
+  // features-service-owned (features PR #521). `.nullish()` keeps the rollout
+  // decoupled: renders "—" until the producer field reaches prod.
+  recentCostPerOutcomeUsd: z.coerce.number().nullish(),
 });
 const CrossOrgWorkflowCostSchema = z.object({
   featureSlug: z.string(),
