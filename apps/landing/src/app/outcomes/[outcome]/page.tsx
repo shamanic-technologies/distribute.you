@@ -6,6 +6,7 @@ import { OUTCOMES, getOutcome, type OutcomeDef } from "@/lib/outcomes/outcomes";
 import {
   fetchOutcomeStats,
   type OutcomeStats,
+  type OutcomeDistribution,
   type TrendPoint,
 } from "@/lib/outcomes/fetch-outcome";
 
@@ -100,6 +101,59 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
           low {fmtUsd(min)} · high {fmtUsd(max)}
         </span>
         <span>{fmtDate(data[data.length - 1].date)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Inline SVG histogram (cross-brand price spread) ──────────────────────────
+function Histogram({
+  dist,
+  noun,
+}: {
+  dist: OutcomeDistribution;
+  noun: string;
+}) {
+  const W = 640;
+  const H = 200;
+  const padB = 22;
+  const maxCount = Math.max(...dist.buckets.map((b) => b.count), 1);
+  const n = dist.buckets.length;
+  const gap = 4;
+  const barW = (W - gap * (n - 1)) / n;
+  return (
+    <div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        className="h-52 w-full"
+        role="img"
+        aria-label={`Distribution of cost per ${noun} across brands`}
+      >
+        {dist.buckets.map((b, i) => {
+          const h = (b.count / maxCount) * (H - padB - 6);
+          const x = i * (barW + gap);
+          return (
+            <rect
+              key={i}
+              x={x.toFixed(1)}
+              y={(H - padB - h).toFixed(1)}
+              width={barW.toFixed(1)}
+              height={Math.max(h, 1).toFixed(1)}
+              rx="2"
+              fill="#6366f1"
+              opacity={0.85}
+            />
+          );
+        })}
+      </svg>
+      <div className="mt-1 flex justify-between text-xs text-gray-400">
+        <span>{fmtUsd(dist.min)}</span>
+        <span>
+          {dist.brandCount} brands · median {fmtUsd(dist.median)} · mean{" "}
+          {fmtUsd(dist.mean)}
+        </span>
+        <span>{fmtUsd(dist.max)}</span>
       </div>
     </div>
   );
@@ -217,16 +271,24 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
         </div>
       </section>
 
-      {/* Distribution histogram — slot for the cross-org price spread (publishing shortly). */}
-      <section className="mt-6 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6">
+      {/* Distribution histogram — cross-brand price spread. */}
+      <section className="mt-6 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">
           Price spread across brands
         </h2>
-        <p className="mt-2 text-sm text-gray-500">
-          We are publishing the full distribution here shortly, so you can see
-          how the price is spread around the average, not just the average
-          itself.
+        <p className="mt-1 text-xs text-gray-500">
+          Each brand pays its own rate. This is how the cost per {def.noun} is
+          spread across the brands we run, not just the average.
         </p>
+        <div className="mt-4">
+          {stats.distribution ? (
+            <Histogram dist={stats.distribution} noun={def.noun} />
+          ) : (
+            <p className="py-6 text-sm text-gray-400">
+              Not enough brands yet to show the full spread.
+            </p>
+          )}
+        </div>
       </section>
 
       {/* Best model — per-workflow cost, cheapest first */}
