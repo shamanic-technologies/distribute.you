@@ -268,8 +268,8 @@ export default function SalesColdEmailOutreachStatsPage() {
   // tab. Rows whose 100-avg is null (unbacked window / producer not yet live)
   // sink to the bottom. Pure display sort over a server field.
   const rows = [...(workflows.data?.workflows ?? [])].sort((a, b) => {
-    const av = a.movingAvgCostPerOutcomeUsd;
-    const bv = b.movingAvgCostPerOutcomeUsd;
+    const av = a.recentCostPerOutcomeUsd;
+    const bv = b.recentCostPerOutcomeUsd;
     if (av === null || av === undefined) return bv === null || bv === undefined ? 0 : 1;
     if (bv === null || bv === undefined) return -1;
     return av - bv;
@@ -490,7 +490,7 @@ export default function SalesColdEmailOutreachStatsPage() {
                     </td>
                     {/* 100-avg = recent trailing-window moving average (features-service). */}
                     <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {fmtUsd(row.movingAvgCostPerOutcomeUsd)}
+                      {fmtUsd(row.recentCostPerOutcomeUsd)}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmtUsd(row.spentUsd)}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{num(row.observedClicks)}</td>
