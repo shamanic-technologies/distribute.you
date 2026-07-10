@@ -3302,6 +3302,10 @@ export interface BillingAccount {
   auto_reload_supported?: boolean;
   auto_reload_unsupported_reason?: string | null;
   card_country?: string | null;
+  // Per-org usage discount rate (integer 0-100), frozen upstream at cost-declaration so
+  // the balance/usage/next-charge numbers above are ALREADY net of it. null = no discount.
+  // Absent on older billing deploys.
+  usage_discount_pct?: number | null;
   created_at: string;
   updated_at: string;
 }
