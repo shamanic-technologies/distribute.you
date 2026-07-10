@@ -318,6 +318,17 @@
     .tkr-chg .tkr-wk { color: var(--muted); font-weight: 400; }
     .tkr-spark { display: block; width: 100%; height: 34px; margin-top: 0.15rem; }
     .tkr-spark-empty { height: 34px; }
+    .tkr-src {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.03em; text-transform: uppercase;
+      border-radius: var(--r-pill); padding: 0.1rem 0.5rem; align-self: flex-start;
+    }
+    .tkr-src-us { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-brd); }
+    .tkr-src-client { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    .ticker-legend {
+      margin-top: 1rem; font-size: var(--fs-xs); color: var(--muted); line-height: 1.6;
+    }
+    .ticker-legend b { color: var(--sub); font-weight: 600; }
     @media (max-width: 760px) {
       .ticker-board { grid-template-columns: 1fr 1fr; }
     }
@@ -628,6 +639,7 @@
     </div>
 
     __V2_TICKER_BOARD__
+    <p class="ticker-legend"><b>Website visits</b> and <b>positive replies</b> we measure ourselves, from our own sending inboxes. <b>Meetings</b> and <b>signups</b> are reported by each client from their own funnel, so they move more from one brand to the next.</p>
   </div>
 </section>
 
