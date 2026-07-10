@@ -54,19 +54,8 @@ export default function OrgOverviewPage() {
 
       {/* Brands Summary */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center mb-4">
           <h2 className="text-lg font-medium text-gray-900">Brands</h2>
-          {brands.length > 0 && (
-            <button
-              onClick={() => router.push("/onboarding?from=add")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add brand
-            </button>
-          )}
         </div>
         {brands.length === 0 ? (
           <div className="text-center py-4">
@@ -83,6 +72,17 @@ export default function OrgOverviewPage() {
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto">
+            <button
+              onClick={() => router.push("/onboarding?from=add")}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:text-gray-900 transition min-w-0 shrink-0"
+            >
+              <span className="flex items-center justify-center h-6 w-6 rounded-full border border-dashed border-gray-300 text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </span>
+              <span className="text-sm font-medium truncate">Add a brand</span>
+            </button>
             {brands.slice(0, 4).map((brand) => (
               <Link
                 key={brand.id}
