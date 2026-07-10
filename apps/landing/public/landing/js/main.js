@@ -296,10 +296,10 @@ if (tocLinks.length) {
   // used only if the endpoint is cold / unreachable (marketing estimate,
   // never $0).
   var GOALS = [
-    { key: 'signups', objective: 'signup', fallback: 32.85, label: 'Sign-ups', unit: 'sign-ups', unitOne: 'sign-up', desc: 'Maximize free signups and trial starts.' },
     { key: 'website_visits', objective: 'websiteVisit', fallback: 0.90, label: 'Website visits', unit: 'website visits', unitOne: 'website visit', desc: 'Maximize qualified website visits.' },
-    { key: 'positive_replies', objective: 'positiveReply', fallback: 151, label: 'Positive replies', unit: 'positive replies', unitOne: 'positive reply', desc: 'Maximize positive replies from prospects.' },
-    { key: 'form_submissions', objective: 'formSubmission', fallback: 45, label: 'Form submissions', unit: 'form submissions', unitOne: 'form submission', desc: 'Maximize lead-form submissions.' }
+    { key: 'signups', objective: 'signup', fallback: 32.85, label: 'Sign-ups', unit: 'sign-ups', unitOne: 'sign-up', desc: 'Maximize free signups and trial starts.' },
+    { key: 'form_submissions', objective: 'formSubmission', fallback: 45, label: 'Form submissions', unit: 'form submissions', unitOne: 'form submission', desc: 'Maximize lead-form submissions.' },
+    { key: 'positive_replies', objective: 'positiveReply', fallback: 151, label: 'Positive replies', unit: 'positive replies', unitOne: 'positive reply', desc: 'Maximize positive replies for a sales meeting from prospects.' }
   ];
   var COUNT_TIERS = [5, 25, 125];
   var TIER_LABELS = ['Starter', 'Recommended', 'Growth'];
