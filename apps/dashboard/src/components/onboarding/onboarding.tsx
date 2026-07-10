@@ -117,15 +117,16 @@ type Step =
 // helper (salesObjectiveForOptimizationGoal, workflowOutcomeUnitCost, goalSteps)
 // already handles all six goals; the funnel just wires the chosen one through.
 // Labels use Google Ads' conversion-goal category names ("version Google Ads").
-// `beta` goals show only to beta users for now (Kevin): only the two current
-// goals (Sign-ups / Book appointments) are ungated in the funnel.
+// `beta` goals show only to beta users for now (Kevin): Purchases and Book
+// appointments (sales meetings) are gated; Sign-ups / Page views / Contacts /
+// Submit lead forms are ungated in the funnel.
 type Outcome = BrandOptimizationGoal;
 const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?: boolean }[] = [
   { key: "signups", label: "Sign-ups", unit: "sign-ups", desc: "Maximize free signups / trial starts." },
-  { key: "sales_meetings", label: "Book appointments", unit: "appointments", desc: "Maximize booked sales meetings." },
-  { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits.", beta: true },
-  { key: "positive_replies", label: "Contacts", unit: "contacts", desc: "Maximize positive replies from prospects.", beta: true },
-  { key: "form_submissions", label: "Submit lead forms", unit: "lead forms", desc: "Maximize lead-form submissions.", beta: true },
+  { key: "sales_meetings", label: "Book appointments", unit: "appointments", desc: "Maximize booked sales meetings.", beta: true },
+  { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits." },
+  { key: "positive_replies", label: "Contacts", unit: "contacts", desc: "Maximize positive replies for a sales meeting from prospects." },
+  { key: "form_submissions", label: "Submit lead forms", unit: "lead forms", desc: "Maximize lead-form submissions." },
   { key: "purchase", label: "Purchases", unit: "purchases", desc: "Maximize direct purchases.", beta: true },
 ];
 

@@ -289,13 +289,17 @@ if (tocLinks.length) {
   var API = 'https://api.distribute.you/v1/public/features';
   var SLUG = 'sales-cold-email-outreach';
 
-  // Public visitors see the two non-beta onboarding goals. `objective`
-  // maps to the features-service cost-per-outcome objective; `fallback`
-  // is a last-known-good BEST cost-per-outcome (USD), used only if the
-  // endpoint is cold / unreachable (marketing estimate, never $0).
+  // Public visitors see the four non-beta onboarding goals. Purchases and
+  // booked meetings are beta (gated in onboarding/dashboard), so they are
+  // absent here. `objective` maps to the features-service cost-per-outcome
+  // objective; `fallback` is a last-known-good BEST cost-per-outcome (USD),
+  // used only if the endpoint is cold / unreachable (marketing estimate,
+  // never $0).
   var GOALS = [
+    { key: 'website_visits', objective: 'websiteVisit', fallback: 0.90, label: 'Website visits', unit: 'website visits', unitOne: 'website visit', desc: 'Maximize qualified website visits.' },
     { key: 'signups', objective: 'signup', fallback: 32.85, label: 'Sign-ups', unit: 'sign-ups', unitOne: 'sign-up', desc: 'Maximize free signups and trial starts.' },
-    { key: 'meetings', objective: 'meetingBooked', fallback: 16.96, label: 'Booked meetings', unit: 'meetings', unitOne: 'meeting', desc: 'Maximize booked sales meetings.' }
+    { key: 'form_submissions', objective: 'formSubmission', fallback: 45, label: 'Form submissions', unit: 'form submissions', unitOne: 'form submission', desc: 'Maximize lead-form submissions.' },
+    { key: 'positive_replies', objective: 'positiveReply', fallback: 151, label: 'Positive replies', unit: 'positive replies', unitOne: 'positive reply', desc: 'Maximize positive replies for a sales meeting from prospects.' }
   ];
   var COUNT_TIERS = [5, 25, 125];
   var TIER_LABELS = ['Starter', 'Recommended', 'Growth'];
