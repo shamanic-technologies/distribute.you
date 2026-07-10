@@ -2347,6 +2347,10 @@ export interface BillingAccount {
   topup_threshold_cents: number | null;
   has_payment_method: boolean;
   has_auto_topup: boolean;
+  // Per-org usage discount rate (integer 0-100), frozen upstream at cost-declaration
+  // so the balance/usage/next-charge numbers above are ALREADY net of it. null = no
+  // discount. Absent on older billing deploys.
+  usage_discount_pct?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -2436,6 +2440,35 @@ export async function grantCredits(
     method: "POST",
     body: { amountCents, note, idempotencyKey: globalThis.crypto.randomUUID() },
   });
+}
+
+// Staff-only per-org usage discount (api-service staff-gated proxy → billing-service).
+// Acts on the ORG-IN-CONTEXT (the org the staff user currently has active via god-mode).
+// `discountPct` is an integer 0-100, or null when no discount is set.
+export interface UsageDiscount {
+  orgId: string;
+  discountPct: number | null;
+  setBy: string | null;
+  setAt: string | null;
+}
+
+// Read the active org's usage discount.
+export async function getUsageDiscount(token?: string): Promise<UsageDiscount> {
+  return apiCall<UsageDiscount>("/billing/usage-discount", { token });
+}
+
+// Set/replace the active org's usage discount (integer 0-100).
+export async function setUsageDiscount(discountPct: number, token?: string): Promise<UsageDiscount> {
+  return apiCall<UsageDiscount>("/billing/usage-discount", {
+    token,
+    method: "PUT",
+    body: { discountPct },
+  });
+}
+
+// Remove the active org's usage discount (discountPct → null).
+export async function removeUsageDiscount(token?: string): Promise<UsageDiscount> {
+  return apiCall<UsageDiscount>("/billing/usage-discount", { token, method: "DELETE" });
 }
 
 // Grants made to the currently-active org.

@@ -11,9 +11,13 @@ import {
   grantCredits,
   listOrgCreditGrants,
   listAllCreditGrants,
+  getUsageDiscount,
+  setUsageDiscount,
+  removeUsageDiscount,
   type BillingAccount,
   type OrgRun,
   type CreditGrant,
+  type UsageDiscount,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents } from "@/lib/format-number";
@@ -88,6 +92,61 @@ export default function BillingPage() {
       setGrantError(err instanceof Error ? err.message : "Failed to grant credits");
     } finally {
       setGrantLoading(false);
+    }
+  }
+
+  // Usage discount (staff-only) — acts on the org-in-context.
+  const { data: usageDiscount } = useAuthQuery<UsageDiscount>(
+    ["usageDiscount"],
+    () => getUsageDiscount(),
+  );
+  const currentDiscountPct = usageDiscount?.discountPct ?? account?.usage_discount_pct ?? null;
+
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountRemoving, setDiscountRemoving] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountSuccess, setDiscountSuccess] = useState<string | null>(null);
+
+  function invalidateDiscountQueries() {
+    queryClient.invalidateQueries({ queryKey: ["usageDiscount"] });
+    queryClient.invalidateQueries({ queryKey: ["billingAccount"] });
+  }
+
+  async function handleSetDiscount() {
+    const pct = Math.round(parseFloat(discountInput));
+    if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+      setDiscountError("Enter a whole number between 0 and 100.");
+      return;
+    }
+    setDiscountLoading(true);
+    setDiscountError(null);
+    setDiscountSuccess(null);
+    try {
+      await setUsageDiscount(pct);
+      setDiscountInput("");
+      setDiscountSuccess(`Usage discount set to ${pct}%.`);
+      invalidateDiscountQueries();
+    } catch (err) {
+      setDiscountError(err instanceof Error ? err.message : "Failed to set usage discount");
+    } finally {
+      setDiscountLoading(false);
+    }
+  }
+
+  async function handleRemoveDiscount() {
+    setDiscountRemoving(true);
+    setDiscountError(null);
+    setDiscountSuccess(null);
+    try {
+      await removeUsageDiscount();
+      setDiscountInput("");
+      setDiscountSuccess("Usage discount removed.");
+      invalidateDiscountQueries();
+    } catch (err) {
+      setDiscountError(err instanceof Error ? err.message : "Failed to remove usage discount");
+    } finally {
+      setDiscountRemoving(false);
     }
   }
 
@@ -685,6 +744,65 @@ export default function BillingPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Usage discount (staff-only) — applied to every declared cost for this org */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-lg font-medium text-gray-900 mb-1">Usage discount</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Percentage off every usage charge for this org. Frozen at cost-declaration, so all
+            balance and next-charge numbers above are already net of it.
+          </p>
+
+          <div className="mb-4 flex items-center gap-2">
+            <span className="text-sm text-gray-500">Current:</span>
+            <span className={`text-sm font-semibold ${currentDiscountPct ? "text-green-600" : "text-gray-400"}`}>
+              {currentDiscountPct ? `${currentDiscountPct}% off` : "None"}
+            </span>
+          </div>
+
+          {discountSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg mb-3 text-sm">
+              {discountSuccess}
+            </div>
+          )}
+          {discountError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg mb-3 text-sm">
+              {discountError}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Discount (%)</label>
+              <input
+                type="number"
+                value={discountInput}
+                onChange={(e) => { setDiscountInput(e.target.value); setDiscountError(null); }}
+                placeholder="e.g. 25"
+                min="0"
+                max="100"
+                step="1"
+                className="w-28 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+              />
+            </div>
+            <button
+              onClick={handleSetDiscount}
+              disabled={discountLoading || !discountInput}
+              className="bg-brand-600 text-white px-6 py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-50 text-sm font-medium transition"
+            >
+              {discountLoading ? "Saving..." : "Set discount"}
+            </button>
+            {currentDiscountPct !== null && (
+              <button
+                onClick={handleRemoveDiscount}
+                disabled={discountRemoving}
+                className="ml-auto text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50 transition"
+              >
+                {discountRemoving ? "Removing..." : "Remove discount"}
+              </button>
             )}
           </div>
         </div>

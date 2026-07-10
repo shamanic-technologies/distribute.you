@@ -206,6 +206,15 @@ export default function BillingPage() {
   const chargePct = creditLineCents > 0 ? Math.min(100, (spentSinceChargeCents / creditLineCents) * 100) : 0;
   const nextChargeDate = lastDayOfMonthLabel();
 
+  // Per-org usage discount (frozen upstream at cost-declaration). The account numbers are
+  // already NET, so we only READ the rate to render a positive banner + a struck-through
+  // gross next to the net next-charge figure. gross = net / (1 - pct/100).
+  const usageDiscountPct = account?.usage_discount_pct ?? null;
+  const hasUsageDiscount = typeof usageDiscountPct === "number" && usageDiscountPct > 0 && usageDiscountPct < 100;
+  const nextChargeGrossCents = hasUsageDiscount
+    ? topupAmountCents / (1 - usageDiscountPct / 100)
+    : topupAmountCents;
+
   // Depleted = AVAILABLE (spendable, net of provisioned holds) at/below zero AND no auto-topup
   // to cover it. Keys on balance_cents — the value spending is actually blocked on — not the
   // gross actual balance (which hid open holds and let the warning never fire while blocked).
@@ -353,6 +362,21 @@ export default function BillingPage() {
       )}
 
       <div className="space-y-6 max-w-2xl">
+        {/* Usage discount — positive banner, shown only while a discount is active */}
+        {hasUsageDiscount && (
+          <div className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-green-800">You have {usageDiscountPct}% off all usage</p>
+              <p className="mt-0.5 text-xs text-green-700">
+                This discount comes off every charge automatically. There is nothing to set up.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Credits — balance + breakdown + (when configured) the postpaid auto-topup
             next-charge status folded in as a compact footer. One consolidated card;
             the auto-topup status is dynamic subtext, not its own card. */}
@@ -442,7 +466,16 @@ export default function BillingPage() {
                 <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${chargePct}%` }} />
               </div>
               <p className="mt-2 text-xs text-gray-500">
-                Next charge {formatCentsAsUsd(topupAmountCents, 0)} once you&apos;ve spent {formatCentsAsUsd(creditLineCents, 0)}, or on {nextChargeDate}.
+                Next charge{" "}
+                {hasUsageDiscount ? (
+                  <>
+                    <span className="text-gray-400 line-through">{formatCentsAsUsd(nextChargeGrossCents, 0)}</span>{" "}
+                    <span className="font-medium text-green-600">{formatCentsAsUsd(topupAmountCents, 0)}</span>
+                  </>
+                ) : (
+                  formatCentsAsUsd(topupAmountCents, 0)
+                )}{" "}
+                once you&apos;ve spent {formatCentsAsUsd(creditLineCents, 0)}, or on {nextChargeDate}.
               </p>
             </div>
           )}
