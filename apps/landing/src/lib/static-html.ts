@@ -291,23 +291,23 @@ async function withLivePerformanceMetrics(html: string) {
 // cost is good = green ▼, a rising cost is bad = red ▲), and an inline SVG
 // sparkline. Fully server-rendered so the real numbers + chart ship in raw HTML
 // (SEO / AI-scraper safe), from the same public trend endpoint the admin
-// feature-stats page reads. `__V2_CPC__`/`__V2_CPR__`/`__V2_CPM__` scalars feed
+// feature-stats page reads. `__TICKER_CPC__`/`__TICKER_CPR__`/`__TICKER_CPM__` scalars feed
 // the pricing card / mockup that reuse the same figures.
 // ─────────────────────────────────────────────────────────────────────────
 // `measuredByUs`: website visits (clicks) + positive replies are OBSERVED by
 // distribute (email-gateway tracking); meetings + signups are client-reported
 // (derived from each brand's conversion, not measured by us) — surfaced as a
 // per-card source tag + a legend under the board.
-const V2_OBJECTIVES = [
+const TICKER_OBJECTIVES = [
   { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true, slug: "website-visits" },
   { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
   { key: "meetingBooked", sym: "MEE", label: "Meeting booked", measuredByUs: false, slug: "meetings-booked" },
   { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false, slug: "signups" },
 ] as const;
 
-const V2_BOARD_TOKEN = "__V2_TICKER_BOARD__";
+const BOARD_TOKEN = "__TICKER_BOARD__";
 
-interface V2Ticker {
+interface TickerMetrics {
   board: string; // server-rendered <div class="ticker-board">…</div>
   cpc: string; // scalars for the reused pricing card / mockup / compare rows
   cpr: string;
@@ -410,7 +410,7 @@ function tickerCard(
 }
 
 function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
-  const cards = V2_OBJECTIVES.map((o) =>
+  const cards = TICKER_OBJECTIVES.map((o) =>
     tickerCard(o, seriesByObjective[o.key] ?? []),
   ).join("");
   return `<div class="ticker-board">${cards}</div>`;
@@ -426,7 +426,7 @@ function fallbackSeries(end: number): SeriesPoint[] {
     { date: "2026-07-09", v: end },
   ];
 }
-function buildFallbackTicker(): V2Ticker {
+function buildFallbackTicker(): TickerMetrics {
   const series: Record<string, SeriesPoint[]> = {
     websiteVisit: fallbackSeries(0.88),
     positiveReply: fallbackSeries(151),
@@ -449,7 +449,7 @@ async function fetchTrendSeries(
 ): Promise<SeriesPoint[]> {
   // Bound each call so a slow/hanging cold endpoint can't blow the homepage's
   // 60s build-time prerender budget — a timeout throws, propagates through the
-  // Promise.all, and resolveV2Ticker falls back to the last-known-good board.
+  // Promise.all, and resolveTicker falls back to the last-known-good board.
   const res = await fetch(
     `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=90`,
     { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
@@ -466,13 +466,13 @@ async function fetchTrendSeries(
   });
 }
 
-async function fetchV2Ticker(): Promise<V2Ticker> {
+async function fetchTicker(): Promise<TickerMetrics> {
   const apiUrl = resolvePublicApiUrl();
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
 
   const [visit, reply, meeting, signup] = await Promise.all(
-    V2_OBJECTIVES.map((o) => fetchTrendSeries(apiUrl, headers, slug, o.key)),
+    TICKER_OBJECTIVES.map((o) => fetchTrendSeries(apiUrl, headers, slug, o.key)),
   );
 
   if (!visit.length && !reply.length && !meeting.length && !signup.length) {
@@ -497,38 +497,38 @@ async function fetchV2Ticker(): Promise<V2Ticker> {
   };
 }
 
-async function resolveV2Ticker(): Promise<V2Ticker> {
+async function resolveTicker(): Promise<TickerMetrics> {
   try {
-    return await fetchV2Ticker();
+    return await fetchTicker();
   } catch (error) {
     console.error(
-      "[landing] v2 ticker unavailable, using fallback values",
+      "[landing] ticker unavailable, using fallback values",
       error,
     );
     return buildFallbackTicker();
   }
 }
 
-async function withV2TickerMetrics(html: string) {
+async function withTickerMetrics(html: string) {
   // Fire on the ticker board OR any of the live cost-per-outcome scalars, so
   // scalar-only pages (e.g. /pricing, which has no board) still get real rates.
   const needsMetrics =
-    html.includes(V2_BOARD_TOKEN) ||
-    html.includes("__V2_CPC__") ||
-    html.includes("__V2_CPR__") ||
-    html.includes("__V2_CPM__");
+    html.includes(BOARD_TOKEN) ||
+    html.includes("__TICKER_CPC__") ||
+    html.includes("__TICKER_CPR__") ||
+    html.includes("__TICKER_CPM__");
   if (!needsMetrics) return html;
 
-  const t = await resolveV2Ticker();
+  const t = await resolveTicker();
   return html
-    .replaceAll(V2_BOARD_TOKEN, t.board)
-    .replaceAll("__V2_CPC__", t.cpc)
-    .replaceAll("__V2_CPR__", t.cpr)
-    .replaceAll("__V2_CPM__", t.cpm);
+    .replaceAll(BOARD_TOKEN, t.board)
+    .replaceAll("__TICKER_CPC__", t.cpc)
+    .replaceAll("__TICKER_CPR__", t.cpr)
+    .replaceAll("__TICKER_CPM__", t.cpm);
 }
 
 export async function staticResponse(fileName: string) {
-  const html = await withV2TickerMetrics(
+  const html = await withTickerMetrics(
     await withLivePerformanceMetrics(staticHtml(fileName)),
   );
 
