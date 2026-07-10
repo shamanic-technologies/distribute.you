@@ -227,7 +227,7 @@
     <div class="wrap">
       <div class="px-eyebrow">Pricing</div>
       <h1 class="t-hero">From $1 a day.<br>Real outcomes.</h1>
-      <p class="px-hero-sub">Move the slider to set a daily budget from $1. See the monthly clicks and meetings it buys at distribute's real, live cost per outcome. No monthly fee.</p>
+      <p class="px-hero-sub">Move the slider to set a daily budget from $1. See the monthly website visits and positive replies it buys at distribute's real, live cost per outcome. No monthly fee.</p>
       <form class="pricing-form" id="pricing-form" style="margin-top:2rem">
         <input type="text" id="pricing-url" class="pricing-input" placeholder="yourcompany.com" autocomplete="url" aria-label="Your website" />
         <button type="submit" class="btn btn-p btn-lg" id="pricing-cta">Get my custom pricing →</button>
@@ -253,7 +253,7 @@
 
         <div class="calc-budget-row">
           <div class="calc-budget-val" id="calc-budget">$5</div>
-          <div class="calc-budget-per">/ day &nbsp;·&nbsp; <span id="calc-monthly">≈ $150 / month</span></div>
+          <div class="calc-budget-per">/ day</div>
         </div>
 
         <div class="calc-slider-wrap">
@@ -267,20 +267,20 @@
         <div class="calc-metrics" role="region" aria-label="Estimated monthly results">
           <div class="calc-metric">
             <div class="calc-metric-num" id="calc-clicks">170</div>
-            <div class="calc-metric-name">clicks / month</div>
+            <div class="calc-metric-name">website visits / month</div>
             <div class="calc-metric-rate">__V2_CPC__ each</div>
           </div>
           <div class="calc-metric">
-            <div class="calc-metric-num" id="calc-convos">26</div>
-            <div class="calc-metric-name">meetings / month</div>
-            <div class="calc-metric-rate">__V2_CPM__ each</div>
+            <div class="calc-metric-num" id="calc-convos">1</div>
+            <div class="calc-metric-name">positive replies / month</div>
+            <div class="calc-metric-rate">__V2_CPR__ each</div>
           </div>
         </div>
 
         <div class="calc-footer">
           <div class="calc-stats">
-            <span>Cost per click: <b>__V2_CPC__</b></span>
-            <span>Cost per meeting: <b>__V2_CPM__</b></span>
+            <span>Cost per website visit: <b>__V2_CPC__</b></span>
+            <span>Cost per positive reply: <b>__V2_CPR__</b></span>
           </div>
           <div style="display:flex; gap:0.625rem; flex-wrap:wrap;">
             <a href="/sign-up" class="btn btn-p">Get $25 free credits</a>
@@ -290,8 +290,8 @@
 
         <p class="calc-disclaimer">
           Monthly estimate from your daily budget at distribute's current live cost
-          per click and per meeting, observed across active campaigns. Your real cost
-          shows up live as your own campaign runs and varies by industry and offer.
+          per website visit and per positive reply, observed across active campaigns.
+          Your real cost shows up live as your own campaign runs and varies by industry and offer.
         </p>
 
       </div>
@@ -460,14 +460,13 @@
     var n = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
     return n > 0 ? n : fallback;
   }
-  var CPC  = rate('__V2_CPC__', 0.88);   // cost per click
-  var CPM  = rate('__V2_CPM__', 5.68);   // cost per meeting
+  var CPC  = rate('__V2_CPC__', 0.88);   // cost per website visit (click)
+  var CPR  = rate('__V2_CPR__', 151);    // cost per positive reply
   var DAYS = 30;                          // daily budget -> monthly outcomes
   var MIN = 1, MAX = 100;
 
   var slider    = document.getElementById('calc-slider');
   var budgetEl  = document.getElementById('calc-budget');
-  var monthlyEl = document.getElementById('calc-monthly');
   var clicksEl  = document.getElementById('calc-clicks');
   var convosEl  = document.getElementById('calc-convos');
 
@@ -480,10 +479,9 @@
   function update(daily) {
     var monthly = daily * DAYS;
     var clicks  = Math.floor(monthly / CPC);
-    var convos  = Math.floor(monthly / CPM);
+    var convos  = Math.floor(monthly / CPR);
 
     budgetEl.textContent  = '$' + daily;
-    monthlyEl.textContent = '≈ $' + monthly.toLocaleString('en-US') + ' / month';
     clicksEl.textContent  = fmt(clicks);
     convosEl.textContent  = convos > 0 ? fmt(convos) : 1;
 
