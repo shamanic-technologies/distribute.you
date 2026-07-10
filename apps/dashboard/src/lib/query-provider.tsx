@@ -19,6 +19,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   PERSIST_GC_TIME_MS,
   PERSIST_MAX_AGE_MS,
+  coldRestorablePairs,
   persistCacheVersion,
   persisterStorageKey,
   isPersistableQueryKey,
@@ -64,6 +65,47 @@ const idbStorage = {
   // JSON we wrote, so the idb-keyval `IDBValidKey`/`any` tuple is safe to narrow.
   entries: () => idbEntries() as Promise<[string, string][]>,
 };
+
+/**
+ * Re-seed COLD (memory-empty) queries from THIS org's on-disk snapshot on every
+ * org-scoped navigation — NOT only on provider mount. The per-query persister
+ * self-restores a query from disk only when it FETCHES (i.e. `enabled`), and the mount
+ * seed (`persister.restoreQueries`) is one-shot; so a page entered while the
+ * org-consistency gate is momentarily CLOSED (Clerk active-org still settling → every
+ * `useAuthQuery` disabled → never fetches), or a sub-page whose memory was GC'd, paints a
+ * SKELETON even though its stale snapshot is on disk. Backend-healthy hides it (the
+ * network answers eventually); backend-DOWN turns it into a STUCK skeleton — the "5-min
+ * skeleton on a page I open 10×/day" report. Painting the disk snapshot is the whole
+ * point of a local-first cache: backend down MUST degrade to stale, never to a skeleton.
+ *
+ * READ-ONLY (pure `setQueryData`, zero network → no cross-org request → DIS-143 gate
+ * untouched), ORG-PREFIXED, BUSTER-checked, and COLD-GUARDED (never overwrites fresher
+ * in-memory data — see coldRestorablePairs). Best-effort: never throws into render.
+ */
+async function reseedColdQueriesFromDisk(
+  client: QueryClient,
+  orgId: string,
+): Promise<void> {
+  try {
+    const all = (await idbEntries()) as [string, string][];
+    const pairs = coldRestorablePairs(
+      all,
+      persisterStorageKey(orgId),
+      persistCacheVersion(),
+      (queryKey) => client.getQueryData(queryKey) !== undefined,
+    );
+    for (const { queryKey, data, updatedAt } of pairs) {
+      client.setQueryData(
+        queryKey,
+        data,
+        updatedAt != null ? { updatedAt } : undefined,
+      );
+    }
+  } catch {
+    // IndexedDB can throw in private-mode / locked-down contexts — non-fatal, the
+    // enabled-query self-restore + mount seed still cover the common paths.
+  }
+}
 
 /**
  * One QueryClient per org mount. The PER-QUERY persister (not the whole-client one)
@@ -136,6 +178,9 @@ function OrgScopedQueryClientProvider({
   // Created once per mount; the component is keyed by orgId upstream, so this runs
   // fresh per org and the persister prefix can never point at another org's keys.
   const [{ client, persister }] = useState(() => makeQueryClient(orgId));
+  const pathname = usePathname();
+  // Only re-seed on org-scoped routes (nothing to gate / restore off `/orgs/…`).
+  const isOrgScopedRoute = !!pathname && /\/orgs\/[^/]+/.test(pathname);
 
   // HARD-REFRESH INSTANT PAINT. On a cold load the in-memory cache is empty AND
   // Clerk's active org is still resolving, so every org-scoped `useAuthQuery` is
@@ -153,6 +198,17 @@ function OrgScopedQueryClientProvider({
     // Run once per org-scoped mount (keyed by orgId upstream).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // NAV RESEED. The mount seed above is one-shot and the per-query self-restore only
+  // fires for an ENABLED (fetching) query, so a page reached while the org gate is
+  // closed — or a sub-page whose memory was GC'd — cold-skeletons even though its disk
+  // snapshot exists, and a DOWN backend makes that skeleton stick. Re-seed cold queries
+  // from disk on every org-scoped route change so the local-first cache always paints
+  // its stale content instead of a skeleton. COLD-GUARDED (never stomps fresher memory)
+  // and org-prefixed, so re-running it on each navigation is safe and cheap.
+  useEffect(() => {
+    if (orgId && isOrgScopedRoute) void reseedColdQueriesFromDisk(client, orgId);
+  }, [pathname, isOrgScopedRoute, orgId, client]);
 
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }

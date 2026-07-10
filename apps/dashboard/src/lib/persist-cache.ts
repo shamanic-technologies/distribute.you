@@ -215,3 +215,66 @@ const PERSIST_CACHE_VERSION = "1";
 export function persistCacheVersion(): string {
   return PERSIST_CACHE_VERSION;
 }
+
+/** Shape of a value written by the per-query persister (`serialize({state, queryKey, queryHash, buster})`). */
+export interface StoredQuerySnapshot {
+  queryKey: readonly unknown[];
+  buster?: string;
+  state?: { data?: unknown; dataUpdatedAt?: number };
+}
+
+export interface ColdRestore {
+  queryKey: readonly unknown[];
+  data: unknown;
+  updatedAt: number | undefined;
+}
+
+/**
+ * From raw IndexedDB `[key, value]` entries, pick the query snapshots that should be
+ * seeded into a COLD (memory-empty) query — the payload of the nav-time reseed in
+ * query-provider.tsx (`reseedColdQueriesFromDisk`).
+ *
+ * WHY this exists on top of the persister's own restore paths: the per-query persister
+ * self-restores a query from disk ONLY when that query FETCHES (i.e. `enabled`), and the
+ * mount seed (`persister.restoreQueries`) is one-shot per provider mount. So a page
+ * entered while the org-consistency gate is momentarily CLOSED (Clerk active-org still
+ * settling → every `useAuthQuery` disabled → never fetches → never self-restores), or an
+ * in-app nav to a sub-page whose memory was GC'd, paints a SKELETON even though its stale
+ * snapshot sits on disk. Backend-healthy hides it (the network eventually answers);
+ * backend-DOWN turns the transient into a STUCK skeleton — the reported bug. Re-seeding
+ * cold queries from disk on every org-scoped navigation closes that window.
+ *
+ * Three guards keep it safe:
+ *  - PREFIX: only this org's keys (`${prefix}-…`) — never bleed another org (DIS-143).
+ *  - BUSTER: skip a snapshot whose `buster` ≠ the current version (incompatible shape;
+ *    the persister GCs it on its own restore) — never paint stale-shaped data.
+ *  - COLD-GUARD: `hasData(queryKey)` — skip a query that ALREADY holds in-memory data, so
+ *    a reseed can never STOMP a fresher live value with an older disk snapshot.
+ *
+ * Pure (no React / IndexedDB) so it unit-tests in plain node, like the rest of this file.
+ */
+export function coldRestorablePairs(
+  entries: readonly (readonly [string, string])[],
+  prefix: string,
+  buster: string,
+  hasData: (queryKey: readonly unknown[]) => boolean,
+): ColdRestore[] {
+  const out: ColdRestore[] = [];
+  const keyPrefix = `${prefix}-`;
+  for (const [key, value] of entries) {
+    if (typeof key !== "string" || !key.startsWith(keyPrefix)) continue;
+    let snap: StoredQuerySnapshot;
+    try {
+      snap = JSON.parse(value) as StoredQuerySnapshot;
+    } catch {
+      continue; // corrupt entry — the persister removes it on its own restore/GC pass
+    }
+    if (!snap || !Array.isArray(snap.queryKey)) continue;
+    if ((snap.buster ?? "") !== buster) continue; // busted → don't paint incompatible data
+    const data = snap.state?.data;
+    if (data === undefined) continue; // nothing was ever painted → nothing to seed
+    if (hasData(snap.queryKey)) continue; // COLD-GUARD: never overwrite fresher memory
+    out.push({ queryKey: snap.queryKey, data, updatedAt: snap.state?.dataUpdatedAt });
+  }
+  return out;
+}
