@@ -163,6 +163,14 @@ describe("brand-tools removal", () => {
       expect(src).toContain("lead.clicked");
     });
 
+    it("audiences leads sort has a deterministic tiebreak (poll-stable order)", () => {
+      // Equal/null engagement timestamps must not fall back to the unsorted
+      // backend array order (reshuffles on poll / after a follow-up UPDATE).
+      const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
+      const src = fs.readFileSync(p, "utf-8");
+      expect(src).toContain("a.id.localeCompare(b.id)");
+    });
+
     it("feature emails page uses listBrandEmails (brand-level filter)", () => {
       const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx");
       const src = fs.readFileSync(p, "utf-8");

@@ -678,7 +678,13 @@ export function EngagedLeadsPage() {
     [...arr].sort((a, b) => {
       const at = leadDateForTab(a, tab);
       const bt = leadDateForTab(b, tab);
-      return (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+      const d = (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+      // Deterministic tiebreak: leads sharing a timestamp (batch send → same
+      // firstContactedAt) or both-null dates would otherwise fall back to the
+      // backend array order, which lead-service does not sort (physical/heap
+      // order shifts when a row is UPDATED — e.g. on a follow-up send), so they
+      // reshuffle on the 30s poll. Freeze ties by lead id.
+      return d !== 0 ? d : a.id.localeCompare(b.id);
     });
   const sortedLeads = useMemo(() => sortByTabDate(leads, "all"), [leads]);
 
@@ -732,7 +738,10 @@ export function EngagedLeadsPage() {
       reached.sort((a, b) => {
         const at = outcomeDates.get(a.id);
         const bt = outcomeDates.get(b.id);
-        return (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+        const d = (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
+        // Same deterministic tiebreak as sortByTabDate — freeze equal/null
+        // outcome timestamps by lead id so the tab order is poll-stable.
+        return d !== 0 ? d : a.id.localeCompare(b.id);
       });
       groups.set(outcomeTab.tab, reached);
     }
