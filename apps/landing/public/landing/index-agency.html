@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>distribute: Outbound client pipeline for agencies | ~$90/meeting</title>
-  <meta name="description" content="Drop your URL and a daily budget. We find your ideal clients, write the emails, and send them. Meetings and new clients land in your inbox. First $25 matched.">
+  <title>distribute: Buy customers by the outcome | from $1/day</title>
+  <meta name="description" content="Set a daily budget from $1. Pay per outcome, not per seat. We run the whole outreach from our own inboxes and you discover your real cost per click and per meeting. No setup, no retainer, cancel anytime.">
   <link rel="canonical" href="https://distribute.you/">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:site_name" content="distribute">
   <meta property="og:url" content="https://distribute.you/">
-  <meta property="og:title" content="distribute: Outbound client pipeline for agencies | ~$90/meeting">
-  <meta property="og:description" content="Drop your URL and a daily budget. We find your ideal clients, write the emails, and send them. Meetings and new clients land in your inbox. First $25 matched.">
+  <meta property="og:title" content="distribute: Buy customers by the outcome | from $1/day">
+  <meta property="og:description" content="Set a daily budget from $1. Pay per outcome, not per seat. We run the outreach from our own inboxes. Discover your real cost per click and per meeting. No setup, cancel anytime.">
   <meta property="og:image" content="https://distribute.you/opengraph-image">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@distribute_you">
-  <meta name="twitter:title" content="distribute: Outbound client pipeline for agencies | ~$90/meeting">
-  <meta name="twitter:description" content="Drop your URL and a daily budget. We find your ideal clients, write the emails, and send them. Meetings land in your inbox. First $25 matched.">
+  <meta name="twitter:title" content="distribute: Buy customers by the outcome | from $1/day">
+  <meta name="twitter:description" content="Set a daily budget from $1. Pay per outcome. We run the outreach from our own inboxes. No setup, cancel anytime.">
   <meta name="twitter:image" content="https://distribute.you/opengraph-image">
   <link rel="icon" href="/landing/logo/logo-distribute.svg" type="image/svg+xml">
-  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"distribute","legalName":"Shamanic Technologies","url":"https://distribute.you","logo":"https://distribute.you/landing/logo/logo-distribute.svg","image":"https://distribute.you/landing/logo/logo-distribute.svg","sameAs":["https://github.com/distribute-you","https://twitter.com/distribute_you"],"contactPoint":{"@type":"ContactPoint","email":"support@distribute.you","contactType":"customer service"}},{"@type":"SoftwareApplication","name":"distribute","description":"Cold email automation for agencies and B2B service providers. Drop a URL, set a budget, get meetings and clients.","url":"https://distribute.you","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"First $25 matched. No setup."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"distribute","legalName":"Shamanic Technologies","url":"https://distribute.you","logo":"https://distribute.you/landing/logo/logo-distribute.svg","image":"https://distribute.you/landing/logo/logo-distribute.svg","sameAs":["https://github.com/distribute-you","https://twitter.com/distribute_you"],"contactPoint":{"@type":"ContactPoint","email":"support@distribute.you","contactType":"customer service"}},{"@type":"SoftwareApplication","name":"distribute","description":"Done-for-you cold email outreach priced per outcome. Set a daily budget from $1, we run the outreach from our own inboxes and you pay for clicks, replies, and meetings.","url":"https://distribute.you","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"1","priceCurrency":"USD","description":"From $1/day. First $25 matched. No setup."}}]}</script>
   <link rel="stylesheet" href="css/styles.css?v=6">
   <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('dt')||'light')</script>
   <style>
@@ -273,6 +273,88 @@
     .tweet-xi     { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
     .tweet-body   { font-size: var(--fs-sm); color: var(--sub); line-height: 1.6; }
     .tweet-ft     { font-size: var(--fs-xs); color: var(--muted); display: flex; align-items: center; gap: 0.35rem; }
+
+    /* ═══ Cost-per-outcome ticker board ═══ */
+    .s-ticker { padding: 4.5rem 0 1rem; }
+    .ticker-live {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs);
+      color: var(--green); font-weight: 600; letter-spacing: 0.04em;
+    }
+    .ticker-live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 0 0 var(--green-brd); animation: tkr-pulse 2s infinite;
+    }
+    @keyframes tkr-pulse {
+      0% { box-shadow: 0 0 0 0 oklch(0.72 0.17 152 / 0.5); }
+      70% { box-shadow: 0 0 0 7px oklch(0.72 0.17 152 / 0); }
+      100% { box-shadow: 0 0 0 0 oklch(0.72 0.17 152 / 0); }
+    }
+    .ticker-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 2.25rem; }
+    .tkr {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 1.35rem 1.35rem 1.1rem;
+      display: flex; flex-direction: column; gap: 0.55rem;
+      box-shadow: var(--shadow-card);
+    }
+    .tkr-sym {
+      font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs);
+      font-weight: 600; letter-spacing: 0.04em; color: var(--sub);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .tkr-sym .tkr-chip {
+      background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-brd);
+      border-radius: var(--r-pill); padding: 0.05rem 0.45rem; font-size: 0.6rem; font-weight: 700;
+    }
+    .tkr-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+    .tkr-price {
+      font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text);
+      font-size: 1.7rem; line-height: 1.1;
+    }
+    .tkr-chg { font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); font-weight: 600; }
+    .tkr-chg.up { color: var(--red, #dc2626); }
+    .tkr-chg.down { color: var(--green); }
+    .tkr-chg.flat { color: var(--muted); }
+    .tkr-chg .tkr-wk { color: var(--muted); font-weight: 400; }
+    .tkr-spark { display: block; width: 100%; height: 34px; margin-top: 0.15rem; }
+    .tkr-spark-empty { height: 34px; }
+    @media (max-width: 760px) {
+      .ticker-board { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 420px) {
+      .ticker-board { grid-template-columns: 1fr; }
+    }
+
+    /* ═══ Per-outcome / channel-agnostic explainer rows ═══ */
+    .s-vision { padding: 4.5rem 0; }
+    .vision-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 2.5rem; }
+    .vision-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+      padding: 1.75rem; display: flex; flex-direction: column; gap: 0.6rem; box-shadow: var(--shadow-card);
+    }
+    .vision-ic {
+      width: 38px; height: 38px; border-radius: 10px; background: var(--accent-dim);
+      border: 1px solid var(--accent-brd); color: var(--accent);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;
+    }
+    .vision-title { font-size: var(--fs-base); font-weight: 700; color: var(--text); line-height: 1.3; }
+    .vision-desc { font-size: var(--fs-sm); color: var(--sub); line-height: 1.6; }
+    .vision-tag {
+      font-family: 'JetBrains Mono', monospace; font-size: var(--fs-xs); color: var(--accent);
+      font-weight: 600; margin-top: 0.15rem;
+    }
+    @media (max-width: 900px) { .vision-grid { grid-template-columns: 1fr; } }
+
+    /* ═══ Channel row ═══ */
+    .channel-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem; }
+    .channel-pill {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      border-radius: var(--r-pill); padding: 0.45rem 0.9rem;
+      font-size: var(--fs-sm); font-weight: 600;
+      background: var(--bg-alt); border: 1px solid var(--border); color: var(--muted);
+    }
+    .channel-pill.on { background: var(--accent-dim); border-color: var(--accent-brd); color: var(--accent); }
+    .channel-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   </style>
 </head>
 <body>
@@ -292,22 +374,22 @@
     <div class="hero-content">
       <div class="hero-eyebrow t-lbl a1">
         <span class="hero-dot" aria-hidden="true"></span>
-        For agencies and B2B service providers
+        Outreach, priced like ad spend
       </div>
 
       <h1 class="t-hero a2">
-        10 new client meetings.<br>Every month. On autopilot.
+        Buy customers.<br>By the outcome.
       </h1>
 
       <p class="hero-sub a3">
-        We find decision-makers at your ideal companies, write the emails, and send from our agency domains. Only interested prospects reply. You close.
+        Set a daily budget from $1. We run the whole outreach from our own inboxes and spend every dollar chasing your cheapest outcome. You watch your real cost per click and per meeting show up, live.
       </p>
 
       <div class="hero-actions a4">
         <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Get your free $25</a>
-        <a href="/pricing" class="btn btn-g btn-lg">See pricing</a>
+        <a href="#ticker" class="btn btn-g btn-lg">See live rates</a>
       </div>
-      <p class="hero-note a4">No setup. Cancel anytime. Launch in 5 minutes.</p>
+      <p class="hero-note a4">From $1/day. No setup, no retainer. Cancel anytime.</p>
     </div>
   </div>
 
@@ -480,7 +562,7 @@
               <div class="uid-roi-divider"></div>
               <div class="uid-roi-section">
                 <div class="uid-roi-lbl">Cost / meeting</div>
-                <div class="uid-roi-val" style="color:var(--purple)">~$90</div>
+                <div class="uid-roi-val" style="color:var(--purple)">__V2_CPM__</div>
                 <div class="uid-roi-meta">avg. per meeting booked</div>
               </div>
             </div>
@@ -537,30 +619,17 @@
 <!-- ════════════════════════════════════════════
      STATS
 ════════════════════════════════════════════ -->
-<div class="stats-band" id="main-content">
+<section class="s-ticker" id="main-content">
   <div class="wrap">
-    <div class="stats-card">
-      <div class="stats-inner">
-        <div class="stat">
-          <span class="stat-val accent">~8</span>
-          <span class="stat-lbl">new client meetings per month</span>
-        </div>
-        <div class="stat">
-          <span class="stat-val">$90</span>
-          <span class="stat-lbl">average per meeting booked</span>
-        </div>
-        <div class="stat">
-          <span class="stat-val">$120</span>
-          <span class="stat-lbl">per new client</span>
-        </div>
-        <div class="stat">
-          <span class="stat-val">1.2x ~4x</span>
-          <span class="stat-lbl">avg. ROI</span>
-        </div>
-      </div>
+    <div class="sec-intro r" id="ticker">
+      <span class="ticker-live"><span class="ticker-live-dot" aria-hidden="true"></span>LIVE · observed prices</span>
+      <h2 class="t-h2">The going rate for outcomes</h2>
+      <p class="t-body">Nobody pays a fixed rate. These are the average prices our campaigns are actually paying right now, across every brand we run. You pay what the outcome costs, and it moves.</p>
     </div>
+
+    __V2_TICKER_BOARD__
   </div>
-</div>
+</section>
 
 
 <!-- ════════════════════════════════════════════
@@ -570,8 +639,8 @@
   <div class="wrap">
     <div class="sec-intro r">
       <span class="t-lbl">How it works</span>
-      <h2 class="t-h2">Three steps to a full client pipeline</h2>
-      <p class="t-body">No tool to learn. No SDR to hire. No email sequences to manage.</p>
+      <h2 class="t-h2">From a URL to paid outcomes</h2>
+      <p class="t-body">No tool to learn, no inbox to warm, no SDR to hire. You fund it, we run it, outcomes show up.</p>
     </div>
 
     <div class="steps-bento">
@@ -625,7 +694,7 @@
               <div>
                 <div style="font-size:0.7rem;color:var(--muted);font-weight:500;margin-bottom:0.35rem">Daily budget</div>
                 <div style="background:var(--bg-alt);border:1px solid var(--accent-brd);border-radius:6px;padding:0.4rem 0.7rem;font-size:var(--fs-sm);color:var(--text);font-weight:600;display:flex;justify-content:space-between;align-items:center">
-                  <span>$50 / day</span>
+                  <span>$5 / day</span>
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted)"><path d="M4 6l4 4 4-4"/></svg>
                 </div>
               </div>
@@ -655,7 +724,7 @@
         <div class="step-body">
           <span class="step-num-pill">step 02</span>
           <h3 class="step-title">Set a daily budget</h3>
-          <p class="step-desc">Tell us how much to spend per day and what you want: meetings booked or direct signups. We write the emails and handle everything else.</p>
+          <p class="step-desc">Start at $1 a day and pick what you are buying: clicks, meetings, or signups. We spend the whole budget chasing that outcome at the lowest cost we can find.</p>
         </div>
       </div>
 
@@ -710,10 +779,56 @@
         <div class="step-body">
           <span class="step-num-pill">step 03</span>
           <h3 class="step-title">Clients land in your inbox</h3>
-          <p class="step-desc">Every reply goes through AI qualification. Interested prospects reach you directly. Noise stays out. Direct signups happen on their own.</p>
+          <p class="step-desc">Every message goes out from our own inboxes. We screen the replies, forward the interested buyers to your Gmail, and keep the noise out. Nothing to set up on your side.</p>
         </div>
       </div>
 
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════════════════════════════════
+     WHY IT WORKS — Ads-vision pillars
+════════════════════════════════════════════ -->
+<section class="s-vision">
+  <div class="wrap">
+    <div class="sec-intro r">
+      <span class="t-lbl">Why it works</span>
+      <h2 class="t-h2">Spend like an ad platform, not an agency</h2>
+      <p class="t-body">Google and Meta never sold you a seat or a retainer. You set a budget, you get outcomes, and you learn your real cost by running it. distribute works the same way, for outbound.</p>
+    </div>
+
+    <div class="vision-grid">
+      <div class="vision-card r d1">
+        <div class="vision-ic">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1.5v13M11 4.2H6.6a2 2 0 000 4h2.8a2 2 0 010 4H5"/></svg>
+        </div>
+        <div class="vision-title">You pay per outcome</div>
+        <div class="vision-desc">No seats, no retainer, no commitment. Set a daily budget from $1 and we put all of it into the cheapest path to the outcome you picked. You learn your real cost per click and per meeting by running it, not from a rate card.</div>
+        <div class="vision-tag">from $1/day</div>
+      </div>
+      <div class="vision-card r d2">
+        <div class="vision-ic" style="background:var(--purple-dim);border-color:var(--purple-brd);color:var(--purple)">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4l6 5 6-5"/><rect x="2" y="4" width="12" height="9" rx="1.5"/></svg>
+        </div>
+        <div class="vision-title">Done for you, from our inboxes</div>
+        <div class="vision-desc">Give us your URL. That is the whole setup. No domains to buy, no inboxes to warm, no accounts to connect. Every prospect is contacted from our own agency inboxes and social accounts, and we pitch your service on your behalf.</div>
+        <div class="vision-tag" style="color:var(--purple)">just drop a URL</div>
+      </div>
+      <div class="vision-card r d3">
+        <div class="vision-ic" style="background:var(--green-dim);border-color:var(--green-brd);color:var(--green)">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12.5" r="2"/><path d="M4 6v1.5a2 2 0 002 2h4a2 2 0 002-2V6"/><path d="M8 9.5v1"/></svg>
+        </div>
+        <div class="vision-title">Whatever gets the cheapest lead</div>
+        <div class="vision-desc">Email today. Ads, calls, and social next. We are channel agnostic: the job is to hand you the lead at the lowest cost per click or per meeting, whatever it takes. Right now cold email wins on scale, cost, and profit, so that is where we run.</div>
+        <div class="channel-row">
+          <span class="channel-pill on"><span class="dot" aria-hidden="true"></span>Cold email</span>
+          <span class="channel-pill"><span class="dot" aria-hidden="true"></span>Ads</span>
+          <span class="channel-pill"><span class="dot" aria-hidden="true"></span>Calls</span>
+          <span class="channel-pill"><span class="dot" aria-hidden="true"></span>Social</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -990,7 +1105,7 @@ Marcus</span>
       <!-- Card 4: Cost comparison (wide) -->
       <div class="feat-card wide r d1" style="flex-direction:row;align-items:center;gap:2.5rem">
         <div style="flex:1;min-width:0">
-          <h3 class="feat-title">~$90 avg. cost per meeting</h3>
+          <h3 class="feat-title">__V2_CPM__ avg. cost per meeting</h3>
           <p class="feat-desc" style="margin-top:0.5rem">Most outbound tools charge by seat or by email sent. We charge by outcome. One meeting booked, full sequence included.</p>
         </div>
         <div class="feat-illu" style="flex:1;min-width:0;height:auto;padding-top:2rem;padding-bottom:2rem" aria-hidden="true">
@@ -998,7 +1113,7 @@ Marcus</span>
             <div style="display:flex;align-items:center;gap:10px">
               <span style="font-size:0.65rem;color:var(--muted);min-width:80px">distribute</span>
               <div style="flex:1;height:7px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:var(--accent);width:6%"></div></div>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;font-weight:700;color:var(--accent);min-width:44px;text-align:right">~$90</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;font-weight:700;color:var(--accent);min-width:44px;text-align:right">__V2_CPM__</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
               <span style="font-size:0.65rem;color:var(--muted);min-width:80px">Cold email avg</span>
@@ -1085,7 +1200,7 @@ Marcus</span>
           <li><span class="cmp-icon">✓</span><span>Drop your URL. We figure out the audience.</span></li>
           <li><span class="cmp-icon">✓</span><span>Set a daily budget you control.</span></li>
           <li><span class="cmp-icon">✓</span><span>Meetings land in your calendar. Purchases in your bank account.</span></li>
-          <li><span class="cmp-icon">✓</span><span>~$90/meeting avg. No seat fees.</span></li>
+          <li><span class="cmp-icon">✓</span><span>__V2_CPM__ avg per meeting. No seat fees.</span></li>
         </ul>
         <div class="cmp-foot">
           <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p">Get your free $25</a>
@@ -1108,9 +1223,9 @@ Marcus</span>
       <div>
         <span class="t-lbl" style="color: var(--accent); display: block; margin-bottom: 0.875rem;">Pricing</span>
         <h2 class="t-h2" style="margin-bottom: 1rem;">You set the goal. We deliver the outcome.</h2>
-        <p class="t-body" style="color: var(--sub); margin-bottom: 0.875rem;">No seats, no retainer. Set a daily budget and an objective: meetings booked or direct signups. We find the contacts, write the emails, and turn replies into clients. Stop anytime.</p>
+        <p class="t-body" style="color: var(--sub); margin-bottom: 0.875rem;">No seats, no retainer, no commitment. Set a daily budget from $1 and pick your outcome: clicks, meetings, or signups. We find the contacts, run the outreach from our own inboxes, and turn replies into clients. Stop anytime.</p>
         <div class="price-checks">
-          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">No tools to configure. No sequences to manage. No setup.</span></div>
+          <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">From $1 a day. No tools to configure, no sequences to manage, no setup.</span></div>
           <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">AI reads every reply. Only buyers reach your inbox.</span></div>
           <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">We match your first deposit, dollar for dollar, up to $25 free.</span></div>
           <div class="price-check"><span class="price-check-icon">✓</span><span class="price-check-text">Pause or stop anytime. Unused budget stays in your account.</span></div>
@@ -1126,7 +1241,7 @@ Marcus</span>
               </span>
               <div>
                 <div style="font-size:0.9rem;font-weight:700;color:var(--text)">Your agency campaign</div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted)">$50/day · live</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted)">$5/day · live</div>
               </div>
             </div>
             <span style="display:flex;align-items:center;gap:0.35rem;font-size:0.65rem;font-weight:600;color:var(--green)">
@@ -1145,22 +1260,22 @@ Marcus</span>
           </div>
           <div style="padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:0.75rem">
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:0.87rem;color:var(--muted)">Avg. cost per meeting</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--accent)">~$90</span>
+              <span style="font-size:0.87rem;color:var(--muted)">Cost per click</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--accent)">__V2_CPC__</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:0.87rem;color:var(--muted)">Avg. cost per new client</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">$120</span>
+              <span style="font-size:0.87rem;color:var(--muted)">Cost per meeting</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">__V2_CPM__</span>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <span style="font-size:0.87rem;color:var(--muted)">Avg. ROI</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">1.2x–4x</span>
+              <span style="font-size:0.87rem;color:var(--muted)">Cost per reply</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;font-weight:700;color:var(--green)">__V2_CPR__</span>
             </div>
           </div>
           <div style="padding:1.1rem 1.25rem 1.5rem;border-top:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem">
               <span style="font-size:1rem;color:var(--muted)">Budget used today</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent)">$11 / $50</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--accent)">$2 / $5</span>
             </div>
             <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
               <div style="height:100%;width:22%;background:var(--accent);border-radius:3px"></div>
@@ -1192,7 +1307,7 @@ Marcus</span>
       </details>
       <details class="guide-faq-item">
         <summary><span class="guide-faq-q">How does the $25 match work?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
-        <p class="guide-faq-a">Add a card, drop your URL, and start sending. For every $1 you spend, we credit $1 back — up to $25, so your first $25 is matched. After that, you pay as you go — ~$90/meeting avg.</p>
+        <p class="guide-faq-a">Add a card, drop your URL, and start. For every $1 you spend we credit $1 back, up to $25, so your first $25 is matched. After that you pay as you go, at whatever your outcomes cost.</p>
       </details>
       <details class="guide-faq-item">
         <summary><span class="guide-faq-q">What happens when a prospect replies?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
@@ -1206,6 +1321,22 @@ Marcus</span>
         <summary><span class="guide-faq-q">Do you handle deliverability and email warm-up?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
         <p class="guide-faq-a">We handle everything. Domain setup, email warm-up, sending infrastructure, bounce management, and deliverability monitoring. You don't need to touch any of it.</p>
       </details>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">How does per-outcome pricing work?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">You never pay per seat or per email. You set a daily budget and choose the outcome you want: a click, a meeting, or a signup. We spend the budget getting that outcome as cheaply as we can, and your real cost per outcome shows up live as the campaign runs.</p>
+      </details>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">What is the smallest budget I can start with?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">One dollar a day. No minimum contract, no retainer. Raise it, lower it, or pause it whenever you want.</p>
+      </details>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">Do you send from my domain?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">No. Every message goes out from our own agency inboxes and accounts, so your domain reputation is never at risk and there is nothing to warm up. We pitch your service to prospects on your behalf, and forward the interested ones to your Gmail.</p>
+      </details>
+      <details class="guide-faq-item">
+        <summary><span class="guide-faq-q">Is distribute only cold email?</span><svg class="guide-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></summary>
+        <p class="guide-faq-a">Cold email is where we run today because it is the most scalable, cheapest, and most profitable channel right now. We are channel agnostic underneath: ads, calls, and social come next, always aimed at handing you the lead at the lowest cost.</p>
+      </details>
     </div>
   </div>
 </section>
@@ -1217,8 +1348,8 @@ Marcus</span>
 <section class="s-cta">
   <div class="wrap">
     <div class="r">
-      <h2 class="t-hero">Get your first<br>10 clients. Try free.</h2>
-      <p>First $25 matched. No setup. Results in days, not months.</p>
+      <h2 class="t-hero">Fund a day.<br>Meet your buyers.</h2>
+      <p>From $1/day. First $25 matched. No setup, cancel anytime.</p>
       <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Get your free $25</a>
     </div>
   </div>

@@ -285,7 +285,7 @@ async function withLivePerformanceMetrics(html: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// /v2 landing — cross-org cost-per-outcome stock-ticker board.
+// Homepage — cross-org cost-per-outcome stock-ticker board.
 // Four equal cards (cost per click / positive reply / meeting / signup), each
 // with the observed average price, a cost-semantic weekly change (a falling
 // cost is good = green ▼, a rising cost is bad = red ▲), and an inline SVG
