@@ -296,7 +296,7 @@ async function withLivePerformanceMetrics(html: string) {
 // ─────────────────────────────────────────────────────────────────────────
 const V2_OBJECTIVES = [
   { key: "websiteVisit", sym: "CPC", label: "cost per click" },
-  { key: "positiveReply", sym: "RPL", label: "positive reply" },
+  { key: "positiveReply", sym: "RPL", label: "positive reply for a meeting" },
   { key: "meetingBooked", sym: "MTG", label: "meeting booked" },
   { key: "signup", sym: "SGN", label: "signup" },
 ] as const;
@@ -409,7 +409,7 @@ function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
   return `<div class="ticker-board">${cards}</div>`;
 }
 
-// Last-known-good (observed 2026-07-09) — synthetic descending series per
+// Last-known-good (observed 2026-07-10) — synthetic descending series per
 // objective so the fallback board still renders prices + a green ▼ + sparkline
 // when the public API is unreachable (a build-time prerender must never abort).
 function fallbackSeries(end: number): SeriesPoint[] {
@@ -421,16 +421,16 @@ function fallbackSeries(end: number): SeriesPoint[] {
 }
 function buildFallbackTicker(): V2Ticker {
   const series: Record<string, SeriesPoint[]> = {
-    websiteVisit: fallbackSeries(0.72),
-    positiveReply: fallbackSeries(145),
-    meetingBooked: fallbackSeries(5.25),
-    signup: fallbackSeries(18),
+    websiteVisit: fallbackSeries(0.88),
+    positiveReply: fallbackSeries(151),
+    meetingBooked: fallbackSeries(5.68),
+    signup: fallbackSeries(22),
   };
   return {
     board: tickerBoard(series),
-    cpc: "$0.72",
-    cpr: "$145",
-    cpm: "$5.25",
+    cpc: "$0.88",
+    cpr: "$151",
+    cpm: "$5.68",
   };
 }
 
