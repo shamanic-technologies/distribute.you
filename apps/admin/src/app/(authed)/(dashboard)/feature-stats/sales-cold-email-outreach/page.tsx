@@ -18,6 +18,7 @@ import {
   getCrossOrgWorkflowCostPerOutcome,
   type CrossOrgObjective,
   type CrossOrgTrendPoint,
+  type CrossOrgWorkflowCostRow,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { ScoreCard } from "@/components/visibility/score-card";
@@ -42,8 +43,14 @@ const TREND_DAYS = 90;
 // The stock-style weekly change window.
 const GROWTH_DAYS = 7;
 
+/**
+ * The ONE currency format for this whole page: 2 decimals under $10 ($5.78),
+ * rounded whole dollars at/above $10 ($12).
+ */
 const usd2 = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  n < 10
+    ? n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const num = (n: number) => Math.round(n).toLocaleString("en-US");
 
 /** USD from a backend USD number; "—" when null (never a false $0). */
@@ -52,15 +59,61 @@ function fmtUsd(value: number | null | undefined): string {
   return usd2(value);
 }
 
-/**
- * Stock-ticker price format: 2 decimals under $10 ($5.78), rounded whole dollars
- * at/above $10 ($12). "—" when null (never a false $0).
- */
-function fmtStock(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "—";
-  return value < 10
-    ? value.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+/** Alias of fmtUsd — the whole page shares one currency format now. */
+const fmtStock = fmtUsd;
+
+type SortDir = "asc" | "desc";
+
+/** Comparator that always sinks null/undefined to the bottom, then orders by dir. */
+function cmpValues(
+  a: number | string | null | undefined,
+  b: number | string | null | undefined,
+  dir: SortDir,
+): number {
+  const an = a === null || a === undefined;
+  const bn = b === null || b === undefined;
+  if (an && bn) return 0;
+  if (an) return 1;
+  if (bn) return -1;
+  const d =
+    typeof a === "string" || typeof b === "string"
+      ? String(a).localeCompare(String(b))
+      : (a as number) - (b as number);
+  return dir === "asc" ? d : -d;
+}
+
+/** Clickable table header — click to sort by this column, click again to flip direction. */
+function SortableTh({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  align = "right",
+  className = "",
+}: {
+  label: string;
+  sortKey: string;
+  sort: { key: string; dir: SortDir } | null;
+  onSort: (key: string) => void;
+  align?: "left" | "right";
+  className?: string;
+}) {
+  const isActive = sort?.key === sortKey;
+  const arrow = !isActive ? "↕" : sort!.dir === "asc" ? "▲" : "▼";
+  return (
+    <th className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : ""} ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`inline-flex items-center gap-1 select-none hover:text-gray-700 ${
+          align === "right" ? "flex-row-reverse" : ""
+        }`}
+      >
+        <span>{label}</span>
+        <span className={`text-[10px] ${isActive ? "text-brand-600" : "text-gray-300"}`}>{arrow}</span>
+      </button>
+    </th>
+  );
 }
 
 function formatDateShort(iso: string): string {
@@ -263,17 +316,41 @@ export default function SalesColdEmailOutreachStatsPage() {
     ...pollOptionsSlower,
   });
 
-  // Always sorted by the recent moving-average (100-avg) cost-per-outcome
-  // ascending — cheapest workflow first — regardless of the selected objective
-  // tab. Rows whose 100-avg is null (unbacked window / producer not yet live)
-  // sink to the bottom. Pure display sort over a server field.
-  const rows = [...(workflows.data?.workflows ?? [])].sort((a, b) => {
-    const av = a.recentCostPerOutcomeUsd;
-    const bv = b.recentCostPerOutcomeUsd;
-    if (av === null || av === undefined) return bv === null || bv === undefined ? 0 : 1;
-    if (bv === null || bv === undefined) return -1;
-    return av - bv;
-  });
+  // Per-workflow table sort — DEFAULT 100-avg (recent) ascending, cheapest first;
+  // nulls sink to the bottom. Every header is clickable to re-sort / flip.
+  const [wfSort, setWfSort] = useState<{ key: string; dir: SortDir }>({ key: "recent", dir: "asc" });
+  // Summary table sort — default is the natural outcome order (null = unsorted);
+  // headers are clickable to sort.
+  const [sumSort, setSumSort] = useState<{ key: string; dir: SortDir } | null>(null);
+  const toggle =
+    (cur: { key: string; dir: SortDir } | null, set: (v: { key: string; dir: SortDir }) => void) =>
+    (key: string) =>
+      set(cur && cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
+  const onWfSort = toggle(wfSort, setWfSort);
+  const onSumSort = toggle(sumSort, setSumSort);
+
+  const wfKey: Record<string, (r: CrossOrgWorkflowCostRow) => number | string | null | undefined> = {
+    name: (r) => r.workflowDynastyName,
+    recent: (r) => r.recentCostPerOutcomeUsd,
+    avg: (r) => r.costPerOutcomeUsd,
+    spend: (r) => r.spentUsd,
+    clicks: (r) => r.observedClicks,
+    replies: (r) => r.observedPositiveReplies,
+  };
+  const rows = [...(workflows.data?.workflows ?? [])].sort((a, b) =>
+    cmpValues(wfKey[wfSort.key](a), wfKey[wfSort.key](b), wfSort.dir),
+  );
+
+  const sumKey: Record<string, (s: (typeof summaries)[number]) => number | string | null | undefined> = {
+    outcome: (s) => s.objective.label,
+    allTime: (s) => s.allTime,
+    price: (s) => s.price,
+    growth: (s) => s.growth,
+  };
+  const sortedSummaries = sumSort
+    ? [...summaries].sort((a, b) => cmpValues(sumKey[sumSort.key](a), sumKey[sumSort.key](b), sumSort.dir))
+    : summaries;
+
   const points = trend.data?.points ?? [];
   const currentAvg = latestCost(trend.data?.points);
 
@@ -309,15 +386,15 @@ export default function SalesColdEmailOutreachStatsPage() {
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
-                <th className="px-4 py-3 font-medium">Outcome</th>
-                <th className="px-4 py-3 font-medium text-right">All-time avg</th>
-                <th className="px-4 py-3 font-medium text-right">100-avg</th>
-                <th className="px-4 py-3 font-medium text-right">7-day change</th>
+                <SortableTh label="Outcome" sortKey="outcome" sort={sumSort} onSort={onSumSort} align="left" />
+                <SortableTh label="All-time avg" sortKey="allTime" sort={sumSort} onSort={onSumSort} />
+                <SortableTh label="100-avg" sortKey="price" sort={sumSort} onSort={onSumSort} />
+                <SortableTh label="7-day change" sortKey="growth" sort={sumSort} onSort={onSumSort} />
                 <th className="px-4 py-3 font-medium">Trend</th>
               </tr>
             </thead>
             <tbody>
-              {summaries.map((s) => (
+              {sortedSummaries.map((s) => (
                 <tr
                   key={s.objective.key}
                   className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
@@ -448,12 +525,12 @@ export default function SalesColdEmailOutreachStatsPage() {
           <table className="w-full min-w-[820px] text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
-                <th className="px-4 py-3 font-medium">Workflow</th>
-                <th className="px-4 py-3 font-medium text-right">{active.label} avg</th>
-                <th className="px-4 py-3 font-medium text-right">{active.label} 100-avg</th>
-                <th className="px-4 py-3 font-medium text-right">Spend</th>
-                <th className="px-4 py-3 font-medium text-right">Clicks</th>
-                <th className="px-4 py-3 font-medium text-right">Positive replies</th>
+                <SortableTh label="Workflow" sortKey="name" sort={wfSort} onSort={onWfSort} align="left" />
+                <SortableTh label={`${active.label} 100-avg`} sortKey="recent" sort={wfSort} onSort={onWfSort} />
+                <SortableTh label={`${active.label} avg`} sortKey="avg" sort={wfSort} onSort={onWfSort} />
+                <SortableTh label="Spend" sortKey="spend" sort={wfSort} onSort={onWfSort} />
+                <SortableTh label="Clicks" sortKey="clicks" sort={wfSort} onSort={onWfSort} />
+                <SortableTh label="Positive replies" sortKey="replies" sort={wfSort} onSort={onWfSort} />
               </tr>
             </thead>
             <tbody>
@@ -484,13 +561,13 @@ export default function SalesColdEmailOutreachStatsPage() {
                     className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
                   >
                     <td className="px-4 py-3 text-gray-800">{row.workflowDynastyName}</td>
+                    {/* 100-avg = recent trailing-window moving average (features-service) — the primary sort column, shown first. */}
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">
+                      {fmtUsd(row.recentCostPerOutcomeUsd)}
+                    </td>
                     {/* avg = lifetime pooled cost-per-outcome. */}
                     <td className="px-4 py-3 text-right text-gray-600">
                       {fmtUsd(row.costPerOutcomeUsd)}
-                    </td>
-                    {/* 100-avg = recent trailing-window moving average (features-service). */}
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {fmtUsd(row.recentCostPerOutcomeUsd)}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">{fmtUsd(row.spentUsd)}</td>
                     <td className="px-4 py-3 text-right text-gray-600">{num(row.observedClicks)}</td>
@@ -504,10 +581,10 @@ export default function SalesColdEmailOutreachStatsPage() {
           </table>
         </div>
         <p className="text-xs text-gray-400">
-          Both cost columns come straight from features-service (cross-org, all brands): avg = the
-          lifetime pooled rate, 100-avg = the recent trailing-window moving average. Rows are sorted
-          by 100-avg ascending (cheapest first), on every objective tab. Values populate once a
-          workflow has spend; a blank means no cross-org outcomes of that type yet.
+          Both cost columns come straight from features-service (cross-org, all brands): 100-avg =
+          the recent trailing-window moving average, avg = the lifetime pooled rate. Default sort is
+          100-avg ascending (cheapest first); click any header to re-sort or flip direction. Values
+          populate once a workflow has spend; a blank means no cross-org outcomes of that type yet.
         </p>
       </section>
     </div>
