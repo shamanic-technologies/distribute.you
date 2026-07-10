@@ -139,20 +139,16 @@ const BrandsResponseSchema = z.object({
   }).passthrough()),
 });
 
-// Brand optimization goal — selects the outcome signal: signups → website clicks,
-// sales_meetings (server default when unset) → screened positive replies. The wire
-// can carry legacy aliases (booked_meetings / sales); all non-signups → sales_meetings.
+// Brand optimization goal — selects the outcome signal: visit-driven goals →
+// website clicks, everything else (server default when unset) → screened positive
+// replies. The wire keeps adding goals (form_submissions, purchase, legacy aliases
+// booked_meetings/sales); a strict union throws `invalid_union` on any new value and
+// SKIPS the brand's digest, so this stays an open `z.string()` and the visit-vs-reply
+// mapping is decided in fetchBrandGoal against the settled VISIT_DRIVEN_GOALS set.
 const BrandGoalResponseSchema = z.object({
   salesEconomics: z
     .object({
-      optimizationGoal: z.union([
-        z.literal("signups"),
-        z.literal("sales_meetings"),
-        z.literal("booked_meetings"),
-        z.literal("sales"),
-        z.literal("website_visits"),
-        z.literal("positive_replies"),
-      ]),
+      optimizationGoal: z.string(),
     })
     .nullable(),
 });
@@ -175,10 +171,54 @@ export function verifyOutcomeDigestCronRequest(req: Request): boolean {
   return req.headers.get("authorization") === `Bearer ${cronSecret}`;
 }
 
+// Fleet-scan concurrency. The scan is dominated by cold Neon-backed /revenue calls
+// (one per brand) — a sequential walk of every org × brand blew the Vercel 300s cron
+// ceiling before a single email was sent. Bounded parallelism keeps the whole scan
+// well under budget; nested caps mean at most ORG × BRAND in-flight revenue fetches
+// (kept modest so a burst doesn't hammer the scale-to-zero 0.25 CU compute).
+const ORG_CONCURRENCY = 4;
+const BRAND_CONCURRENCY = 4;
+
+/** Invoked with a brand's prepared sends the moment that brand qualifies — lets
+ *  sendOutcomeDigestEmails INTERLEAVE the send into the scan, so a 300s timeout only
+ *  loses the un-scanned tail instead of every email (the scan used to fully finish
+ *  before any send). Absent in collect-only mode. */
+type BrandSendSink = (sends: PreparedDigestSend[]) => Promise<void>;
+
+/** Run `fn` over `items` with at most `limit` in flight. Resolves when all settle. */
+async function mapWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+}
+
 export async function collectOutcomeDigestSends(
   input: OutcomeDigestRuntimeConfig,
 ): Promise<OutcomeDigestCollection> {
-  const fetchFn = input.fetchFn ?? fetch;
+  return scanFleet(input, input.fetchFn ?? fetch);
+}
+
+/**
+ * The single fleet-scan path shared by collect (no sink) and send (sink fires per
+ * brand). Bounded-parallel over orgs, then bounded-parallel over each org's brands.
+ * Per-org and per-brand isolation is preserved: one failed fetch logs loud and skips
+ * only that unit, never aborting the fleet.
+ */
+async function scanFleet(
+  input: OutcomeDigestRuntimeConfig,
+  fetchFn: DigestFetch,
+  sink?: BrandSendSink,
+): Promise<OutcomeDigestCollection> {
   // Digest reports on the UTC calendar day that just closed (cron runs 01:00 UTC),
   // independent of the exact run hour.
   const targetDay = previousUtcDay();
@@ -186,58 +226,69 @@ export async function collectOutcomeDigestSends(
   const preparedSends: PreparedDigestSend[] = [];
   let eligibleUsers = 0;
 
-  for (const org of orgs) {
-    // Per-ORG isolation: one org's failed fetch (cold sibling, bad page) must not
-    // abort the whole fleet scan — log loud (fail-loud is preserved as a signal),
-    // skip this org, keep every other org's digest.
+  await mapWithConcurrency(orgs, ORG_CONCURRENCY, async (org) => {
     try {
       const users = await listApiUsersForOrg(input, fetchFn, org.id);
       // Every customer receives the digest — the recipient is the real org user;
       // staff are blind-copied (STAFF_BCC_EMAILS) on the send.
       const recipients = users.filter((u): u is ApiUser & { email: string } => !!u.email);
       eligibleUsers += recipients.length;
-      if (recipients.length === 0) continue;
+      if (recipients.length === 0) return;
 
       // One email PER BRAND, sent only when that brand recorded at least one outcome
-      // (click for a signups goal, positive reply for a sales-meetings goal) on the day.
+      // (click for a visit-driven goal, positive reply otherwise) on the day.
       const brands = await listBrandsForOrg(input, fetchFn, org.id);
-      for (const brand of brands) {
-        // Per-BRAND isolation: a heavy/slow /revenue for one brand must not skip the
-        // rest of the org's brands.
-        try {
-          const revenue = await fetchBrandRevenue(input, fetchFn, org.id, brand.id);
-          if (revenue.organizations.length === 0) continue;
-
-          const goal = await fetchBrandGoal(input, fetchFn, org.id, brand.id);
-          const outcome = outcomeOnDay(revenue, goal, targetDay);
-          if (outcome.count === 0) continue;
-
-          const summary = toDigestBrandSummary(brand, revenue, goal);
-          const metadata = digestMetadataForBrand(summary, outcome.count, outcome.label);
-          for (const user of recipients) {
-            preparedSends.push({
-              orgId: org.id,
-              orgName: org.name ?? org.id,
-              brandId: brand.id,
-              brandName: summary.brandName,
-              userExternalId: user.externalId,
-              recipientEmail: user.email,
-              metadata,
-            });
-          }
-        } catch (err) {
-          console.error(
-            `[dashboard-outcome-digest] skipped brand ${brand.id} (org ${org.id}) after error:`,
-            err,
-          );
-        }
-      }
+      await mapWithConcurrency(brands, BRAND_CONCURRENCY, async (brand) => {
+        const sends = await collectBrandSends(input, fetchFn, targetDay, org, recipients, brand);
+        if (sends.length === 0) return;
+        preparedSends.push(...sends);
+        // Send this brand's emails now (interleaved) when running in send mode.
+        if (sink) await sink(sends);
+      });
     } catch (err) {
       console.error(`[dashboard-outcome-digest] skipped org ${org.id} after error:`, err);
     }
-  }
+  });
 
   return { scannedOrgs: orgs.length, eligibleUsers, preparedSends };
+}
+
+/** Prepared sends for ONE brand on `targetDay`, or [] when it recorded no outcome.
+ *  Per-BRAND isolation: a heavy/slow /revenue must not skip the rest of the org. */
+async function collectBrandSends(
+  input: OutcomeDigestRuntimeConfig,
+  fetchFn: DigestFetch,
+  targetDay: string,
+  org: ClerkOrganization,
+  recipients: (ApiUser & { email: string })[],
+  brand: BrandSummary,
+): Promise<PreparedDigestSend[]> {
+  try {
+    const revenue = await fetchBrandRevenue(input, fetchFn, org.id, brand.id);
+    if (revenue.organizations.length === 0) return [];
+
+    const goal = await fetchBrandGoal(input, fetchFn, org.id, brand.id);
+    const outcome = outcomeOnDay(revenue, goal, targetDay);
+    if (outcome.count === 0) return [];
+
+    const summary = toDigestBrandSummary(brand, revenue, goal);
+    const metadata = digestMetadataForBrand(summary, outcome.count, outcome.label);
+    return recipients.map((user) => ({
+      orgId: org.id,
+      orgName: org.name ?? org.id,
+      brandId: brand.id,
+      brandName: summary.brandName,
+      userExternalId: user.externalId,
+      recipientEmail: user.email,
+      metadata,
+    }));
+  } catch (err) {
+    console.error(
+      `[dashboard-outcome-digest] skipped brand ${brand.id} (org ${org.id}) after error:`,
+      err,
+    );
+    return [];
+  }
 }
 
 /** The UTC calendar day before today (YYYY-MM-DD). */
@@ -275,24 +326,27 @@ export async function sendOutcomeDigestEmails(
   input: OutcomeDigestRuntimeConfig,
 ): Promise<OutcomeDigestSendResult> {
   const fetchFn = input.fetchFn ?? fetch;
-  const collection = await collectOutcomeDigestSends({ ...input, fetchFn });
   let sent = 0;
   let deduplicated = 0;
 
-  for (const item of collection.preparedSends) {
-    // Per-SEND isolation: a single failed email (transient send error, bad address)
-    // must not abort the remaining sends.
-    try {
-      const result = await sendDigestEmail(input, fetchFn, item);
-      if (result.sent) sent += 1;
-      if (result.deduplicated === true) deduplicated += 1;
-    } catch (err) {
-      console.error(
-        `[dashboard-outcome-digest] send failed for ${item.recipientEmail} (brand ${item.brandId}):`,
-        err,
-      );
+  // Send each brand's emails as the scan qualifies it (interleaved via the sink), so
+  // a 300s cron kill only loses the un-scanned tail rather than every email.
+  const collection = await scanFleet({ ...input, fetchFn }, fetchFn, async (sends) => {
+    for (const item of sends) {
+      // Per-SEND isolation: a single failed email (transient send error, bad address)
+      // must not abort the remaining sends.
+      try {
+        const result = await sendDigestEmail(input, fetchFn, item);
+        if (result.sent) sent += 1;
+        if (result.deduplicated === true) deduplicated += 1;
+      } catch (err) {
+        console.error(
+          `[dashboard-outcome-digest] send failed for ${item.recipientEmail} (brand ${item.brandId}):`,
+          err,
+        );
+      }
     }
-  }
+  });
 
   return { ...collection, sent, deduplicated };
 }
@@ -463,13 +517,22 @@ async function fetchBrandGoal(
     BrandGoalResponseSchema,
     "fetchBrandGoal",
   );
-  // Visit-driven goals (signups, website_visits) track website clicks; reply-driven
-  // (sales_meetings/booked_meetings/sales, positive_replies) track positive replies.
+  // Visit-driven goals track website clicks; every other goal (incl. the server
+  // default when unset) tracks screened positive replies. Mirrors the dashboard's
+  // settled `isVisitDrivenGoal` (api.ts) so the digest never diverges from it.
   const goal = data.salesEconomics?.optimizationGoal;
-  return goal === "signups" || goal === "website_visits"
-    ? "signups"
-    : "sales_meetings";
+  return goal && VISIT_DRIVEN_GOALS.has(goal) ? "signups" : "sales_meetings";
 }
+
+// The click-driven optimization goals — kept byte-equal with `isVisitDrivenGoal`
+// in api.ts. Any goal NOT in this set (sales_meetings, positive_replies, legacy
+// booked_meetings/sales, and any future reply-driven goal) maps to positive replies.
+const VISIT_DRIVEN_GOALS = new Set([
+  "signups",
+  "website_visits",
+  "form_submissions",
+  "purchase",
+]);
 
 async function listBrandsForOrg(
   config: EnvConfig,
