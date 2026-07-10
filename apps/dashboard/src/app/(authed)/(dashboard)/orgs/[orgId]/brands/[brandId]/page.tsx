@@ -69,7 +69,7 @@ function FirstClickReassuranceBanner() {
         <div className="min-w-0">
           <p className="font-medium text-slate-900">Your campaign is running.</p>
           <p className="mt-0.5 leading-6">
-            We are sending and learning from the first leads. It can take a day or two before
+            We are sending and learning from the first leads. It can take a week or two before
             the first website clicks appear here.
           </p>
         </div>
