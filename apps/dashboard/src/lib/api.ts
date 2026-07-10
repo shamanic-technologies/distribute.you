@@ -2376,23 +2376,7 @@ export interface Lead {
   // runtime; typed optional so a not-yet-attributed lead renders "-".
   audienceId?: string | null;
   audience?: { id: string; name: string; avatarUrl: string | null } | null;
-  // Number of emails actually sent to this lead in the outreach sequence,
-  // forwarded from email-gateway's delivery-status scope by lead-service.
-  // 1 = initial, 2 = first follow-up, 3 = second follow-up, … Drives the
-  // Outreach-tab Status column (Initial / Follow-up N). Optional: absent until
-  // the producers ship it; `.passthrough()` keeps it at runtime; the column
-  // falls back to the "Contacted" badge while undefined. #audiences-leads-sequence
-  sentCount?: number | null;
   lead: FullLead | null;
-}
-
-// Map the number of emails sent in the sequence to its human label.
-// 1 → "Initial", 2 → "Follow-up 1", 3 → "Follow-up 2", n → "Follow-up (n-1)".
-// null/undefined/≤0 → null (caller falls back to the "Contacted" badge).
-export function leadSequenceLabel(sentCount: number | null | undefined): string | null {
-  if (sentCount == null || sentCount <= 0) return null;
-  if (sentCount === 1) return "Initial";
-  return `Follow-up ${sentCount - 1}`;
 }
 
 export type LeadConsolidatedStatus = "replied" | "clicked" | "delivered" | "sent" | "bounced" | "unsubscribed" | "contacted" | "served" | "skipped" | "claimed" | "buffered";
