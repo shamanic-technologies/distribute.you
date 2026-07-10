@@ -87,7 +87,7 @@ function defaultForm(): FormState {
     replyToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.replyToPaidClientPct)),
     visitToFormSubmissionPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToFormSubmissionPct)),
     formSubmissionToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.formSubmissionToPaidClientPct)),
-    optimizationGoal: "sales_meetings",
+    optimizationGoal: "positive_replies",
   };
 }
 
@@ -119,7 +119,7 @@ const OPTIMIZATION_GOALS: {
   beta?: boolean;
 }[] = [
   { value: "signups", label: "# Signups" },
-  { value: "sales_meetings", label: "# Sales Meetings" },
+  { value: "sales_meetings", label: "# Sales Meetings", beta: true },
   { value: "website_visits", label: "# Website visits" },
   { value: "positive_replies", label: "# Positive Replies" },
   { value: "form_submissions", label: "# Form submissions" },

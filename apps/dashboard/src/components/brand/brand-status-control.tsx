@@ -72,6 +72,7 @@ const GOAL_OPTIONS: {
     value: "sales_meetings",
     label: "# Sales Meetings",
     description: "Optimize outreach toward booked sales conversations.",
+    beta: true,
   },
   {
     value: "website_visits",
@@ -148,7 +149,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   const featureSlug = useSoleFeatureSlug();
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] =
-    useState<BrandOptimizationGoal>("sales_meetings");
+    useState<BrandOptimizationGoal>("positive_replies");
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [selectedCount, setSelectedCount] = useState<number | null>(null);
   const [customCount, setCustomCount] = useState("");
@@ -171,9 +172,9 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   const goal =
     econ === undefined
       ? null
-      : econ.salesEconomics?.optimizationGoal ?? "sales_meetings";
+      : econ.salesEconomics?.optimizationGoal ?? "positive_replies";
   const budget = budgetLabel(budgetData?.dailyBudgetCents ?? null);
-  const goalForBudget = goal ?? "sales_meetings";
+  const goalForBudget = goal ?? "positive_replies";
 
   const { data: projection, isPending: projectionPending, error: projectionError } =
     useAuthQuery(
