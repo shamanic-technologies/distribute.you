@@ -299,10 +299,10 @@ async function withLivePerformanceMetrics(html: string) {
 // (derived from each brand's conversion, not measured by us) — surfaced as a
 // per-card source tag + a legend under the board.
 const V2_OBJECTIVES = [
-  { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true },
-  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true },
-  { key: "meetingBooked", sym: "MEE", label: "Meeting booked", measuredByUs: false },
-  { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false },
+  { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true, slug: "website-visits" },
+  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
+  { key: "meetingBooked", sym: "MEE", label: "Meeting booked", measuredByUs: false, slug: "meetings-booked" },
+  { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false, slug: "signups" },
 ] as const;
 
 const V2_BOARD_TOKEN = "__V2_TICKER_BOARD__";
@@ -389,7 +389,7 @@ function sparklineSvg(points: SeriesPoint[], stroke: string): string {
 }
 
 function tickerCard(
-  cfg: { sym: string; label: string; measuredByUs: boolean },
+  cfg: { sym: string; label: string; measuredByUs: boolean; slug: string },
   points: SeriesPoint[],
 ): string {
   const price = points.length ? points[points.length - 1].v : null;
@@ -406,7 +406,7 @@ function tickerCard(
   const src = cfg.measuredByUs
     ? `<span class="tkr-src tkr-src-us">measured by us</span>`
     : `<span class="tkr-src tkr-src-client">client-reported</span>`;
-  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke(g))}${src}</div>`;
+  return `<a class="tkr" href="/outcomes/${cfg.slug}"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke(g))}${src}<span class="tkr-more">See the price detail →</span></a>`;
 }
 
 function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
