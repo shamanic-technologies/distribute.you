@@ -6,6 +6,7 @@
   <title>distribute: pricing, pay per outcome | from $1/day</title>
   <meta name="description" content="Set a daily budget from $1. We run the cold outreach from our own inboxes and you pay per outcome: clicks, meetings, signups. Research, copywriting, sending, and reply qualification included. $25 free credits to start.">
   <link rel="canonical" href="https://distribute.you/pricing">
+  <link rel="icon" href="/landing/logo/logo-distribute.svg" type="image/svg+xml">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:site_name" content="distribute">
@@ -268,19 +269,19 @@
           <div class="calc-metric">
             <div class="calc-metric-num" id="calc-clicks">170</div>
             <div class="calc-metric-name">website visits / month</div>
-            <div class="calc-metric-rate">__V2_CPC__ each</div>
+            <div class="calc-metric-rate">__TICKER_CPC__ each</div>
           </div>
           <div class="calc-metric">
             <div class="calc-metric-num" id="calc-convos">1</div>
             <div class="calc-metric-name">positive replies for a meeting / month</div>
-            <div class="calc-metric-rate">__V2_CPR__ each</div>
+            <div class="calc-metric-rate">__TICKER_CPR__ each</div>
           </div>
         </div>
 
         <div class="calc-footer">
           <div class="calc-stats">
-            <span>Cost per website visit: <b>__V2_CPC__</b></span>
-            <span>Cost per positive reply for a meeting: <b>__V2_CPR__</b></span>
+            <span>Cost per website visit: <b>__TICKER_CPC__</b></span>
+            <span>Cost per positive reply for a meeting: <b>__TICKER_CPR__</b></span>
           </div>
           <div style="display:flex; gap:0.625rem; flex-wrap:wrap;">
             <a href="/sign-up" class="btn btn-p">Get $25 free credits</a>
@@ -362,7 +363,7 @@
           <tbody>
             <tr>
               <td>Cost per click</td>
-              <td class="td-dist td-win">__V2_CPC__</td>
+              <td class="td-dist td-win">__TICKER_CPC__</td>
               <td>$8–25</td>
               <td>$50–150</td>
             </tr>
@@ -460,8 +461,8 @@
     var n = parseFloat(String(raw).replace(/[^0-9.]/g, ''));
     return n > 0 ? n : fallback;
   }
-  var CPC  = rate('__V2_CPC__', 0.88);   // cost per website visit (click)
-  var CPR  = rate('__V2_CPR__', 151);    // cost per positive reply
+  var CPC  = rate('__TICKER_CPC__', 0.88);   // cost per website visit (click)
+  var CPR  = rate('__TICKER_CPR__', 151);    // cost per positive reply
   var DAYS = 30;                          // daily budget -> monthly outcomes
   var MIN = 1, MAX = 100;
 
