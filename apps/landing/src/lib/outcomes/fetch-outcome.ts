@@ -45,6 +45,22 @@ export interface WorkflowCostRow {
   costPerOutcomeUsd: number | null;
 }
 
+export interface HistogramBucket {
+  minUsd: number;
+  maxUsd: number;
+  count: number;
+}
+export interface OutcomeDistribution {
+  brandCount: number;
+  buckets: HistogramBucket[];
+  mean: number | null;
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  p25: number | null;
+  p75: number | null;
+}
+
 export interface OutcomeStats {
   /** Lifetime pooled average (all history), null when unbacked. */
   lifetimeAvgUsd: number | null;
@@ -56,6 +72,8 @@ export interface OutcomeStats {
   trend: TrendPoint[];
   /** Per-workflow cost, cheapest first = our best model. */
   workflows: WorkflowCostRow[];
+  /** Cross-brand price spread (histogram). Null until the endpoint is live. */
+  distribution: OutcomeDistribution | null;
 }
 
 function numOrNull(v: unknown): number | null {
@@ -74,7 +92,7 @@ async function fetchOutcomeStatsUncached(
   objective: OutcomeObjective,
 ): Promise<OutcomeStats> {
   const slug = encodeURIComponent(FEATURE_SLUG);
-  const [lifetime, trendRaw, workflowRaw] = await Promise.all([
+  const [lifetime, trendRaw, workflowRaw, distRaw] = await Promise.all([
     getJson<{
       avgCostPerOutcomeByObjective?: Record<string, unknown>;
       brandCount?: unknown;
@@ -92,7 +110,41 @@ async function fetchOutcomeStatsUncached(
     }>(
       `/v1/public/features/workflow-cost-per-outcome?featureSlug=${slug}&objective=${objective}`,
     ),
+    getJson<{
+      brandCount?: unknown;
+      buckets?: Array<{ minUsd?: unknown; maxUsd?: unknown; count?: unknown }>;
+      mean?: unknown;
+      median?: unknown;
+      min?: unknown;
+      max?: unknown;
+      p25?: unknown;
+      p75?: unknown;
+    }>(
+      `/v1/public/features/cost-per-outcome-distribution?featureSlug=${slug}&objective=${objective}&buckets=12`,
+    ),
   ]);
+
+  const distBuckets = (distRaw?.buckets ?? []).flatMap((b) => {
+    const min = numOrNull(b?.minUsd);
+    const max = numOrNull(b?.maxUsd);
+    const count = numOrNull(b?.count);
+    return min !== null && max !== null && count !== null
+      ? [{ minUsd: min, maxUsd: max, count }]
+      : [];
+  });
+  const distribution: OutcomeDistribution | null =
+    distRaw && distBuckets.length > 0
+      ? {
+          brandCount: numOrNull(distRaw.brandCount) ?? 0,
+          buckets: distBuckets,
+          mean: numOrNull(distRaw.mean),
+          median: numOrNull(distRaw.median),
+          min: numOrNull(distRaw.min),
+          max: numOrNull(distRaw.max),
+          p25: numOrNull(distRaw.p25),
+          p75: numOrNull(distRaw.p75),
+        }
+      : null;
 
   const trend: TrendPoint[] = (trendRaw?.points ?? []).flatMap((p) =>
     typeof p?.date === "string"
@@ -127,6 +179,7 @@ async function fetchOutcomeStatsUncached(
     brandCount: numOrNull(lifetime?.brandCount),
     trend,
     workflows,
+    distribution,
   };
 }
 
