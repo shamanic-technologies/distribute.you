@@ -440,9 +440,12 @@ async function fetchTrendSeries(
   slug: string,
   objective: string,
 ): Promise<SeriesPoint[]> {
+  // Bound each call so a slow/hanging cold endpoint can't blow the homepage's
+  // 60s build-time prerender budget — a timeout throws, propagates through the
+  // Promise.all, and resolveV2Ticker falls back to the last-known-good board.
   const res = await fetch(
     `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=90`,
-    { headers, next: { revalidate: 300 } },
+    { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
   );
   if (!res.ok) {
     throw new Error(
