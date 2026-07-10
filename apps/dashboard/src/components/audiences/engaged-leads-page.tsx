@@ -104,7 +104,7 @@ function leadDateForTab(lead: Lead, tab: Tab): string | null {
 function leadStatusLabel(status: LeadConsolidatedStatus): string {
   switch (status) {
     case "replied": return "Replied";
-    case "clicked": return "Clicked";
+    case "clicked": return "Website visit";
     case "delivered": return "Delivered";
     case "sent": return "Sent";
     case "bounced": return "Bounced";
@@ -345,7 +345,7 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     { kind: "event", label: "Contacted", at: lead.firstContactedAt ?? "", dot: "bg-gray-400" },
     { kind: "event", label: "Sent", at: lead.firstSentAt ?? "", dot: "bg-blue-400" },
     { kind: "event", label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
-    { kind: "event", label: "Clicked", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
+    { kind: "event", label: "Website visit", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
     {
       kind: "event",
       label: lead.replyClassification ? `Replied (${lead.replyClassification})` : "Replied",
@@ -400,7 +400,7 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     if (l.startsWith("Replied")) return 9;
     if (l === "Unsubscribed") return 8;
     if (l === "Bounced") return 8;
-    if (l === "Clicked") return 7;
+    if (l === "Website visit") return 7;
     if (l === "Delivered") return 5;
     if (l === "Sent") return 4;
     if (l === "Contacted") return 2;
