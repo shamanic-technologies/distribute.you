@@ -6,11 +6,31 @@ import {
   isPersistableQueryKey,
   persisterStorageKey,
   persistCacheVersion,
+  coldRestorablePairs,
   PERSIST_MAX_AGE_MS,
   PERSIST_GC_TIME_MS,
   SENSITIVE_QUERY_ROOTS,
   type PersistableQuery,
 } from "../src/lib/persist-cache";
+
+const PREFIX = persisterStorageKey("org_1");
+const V = persistCacheVersion();
+
+/** Serialize a disk entry the way the per-query persister writes it. */
+function entry(
+  queryKey: readonly unknown[],
+  data: unknown,
+  opts: { buster?: string; dataUpdatedAt?: number; prefix?: string } = {},
+): [string, string] {
+  const prefix = opts.prefix ?? PREFIX;
+  const key = `${prefix}-${JSON.stringify(queryKey)}`;
+  const value = JSON.stringify({
+    queryKey,
+    buster: opts.buster ?? V,
+    state: { data, dataUpdatedAt: opts.dataUpdatedAt ?? 1000 },
+  });
+  return [key, value];
+}
 
 const q = (status: string, key: readonly unknown[]): PersistableQuery => ({
   state: { status },
@@ -209,5 +229,69 @@ describe("cache retention durations", () => {
 
   it("gcTime is 30 min — bounds MEMORY only (disk is independent via per-query persister)", () => {
     expect(PERSIST_GC_TIME_MS).toBe(30 * 60 * 1000);
+  });
+});
+
+describe("coldRestorablePairs — nav-time reseed picks only cold, current, this-org snapshots", () => {
+  const noneWarm = () => false; // nothing in memory → every eligible entry is cold
+
+  it("restores a current-buster, data-bearing snapshot when the query is cold", () => {
+    const pairs = coldRestorablePairs(
+      [entry(["brand", "b1"], { brand: { id: "b1" } }, { dataUpdatedAt: 1234 })],
+      PREFIX,
+      V,
+      noneWarm,
+    );
+    expect(pairs).toEqual([
+      { queryKey: ["brand", "b1"], data: { brand: { id: "b1" } }, updatedAt: 1234 },
+    ]);
+  });
+
+  it("COLD-GUARD: skips a query that already holds in-memory data (never stomps fresher memory)", () => {
+    const warm = (key: readonly unknown[]) => key[0] === "brand"; // brand is live in memory
+    const pairs = coldRestorablePairs(
+      [
+        entry(["brand", "b1"], { brand: { id: "STALE" } }),
+        entry(["audiences", "b1"], [{ id: "a1" }]),
+      ],
+      PREFIX,
+      V,
+      warm,
+    );
+    expect(pairs.map((p) => p.queryKey[0])).toEqual(["audiences"]); // brand skipped
+  });
+
+  it("skips a busted (wrong-version) snapshot — never paints stale-shaped data", () => {
+    const pairs = coldRestorablePairs(
+      [entry(["brand", "b1"], { brand: {} }, { buster: "OLD" })],
+      PREFIX,
+      V,
+      noneWarm,
+    );
+    expect(pairs).toEqual([]);
+  });
+
+  it("skips an entry under a DIFFERENT org's prefix — cross-org isolation (DIS-143)", () => {
+    const otherPrefix = persisterStorageKey("org_2");
+    const pairs = coldRestorablePairs(
+      [entry(["brand", "b1"], { brand: {} }, { prefix: otherPrefix })],
+      PREFIX,
+      V,
+      noneWarm,
+    );
+    expect(pairs).toEqual([]);
+  });
+
+  it("skips a snapshot with undefined data and a corrupt (unparseable) value", () => {
+    const pairs = coldRestorablePairs(
+      [
+        entry(["brand", "b1"], undefined),
+        [`${PREFIX}-["brandPause","b1"]`, "{not-json"],
+      ],
+      PREFIX,
+      V,
+      noneWarm,
+    );
+    expect(pairs).toEqual([]);
   });
 });
