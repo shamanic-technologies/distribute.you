@@ -503,7 +503,14 @@ async function resolveV2Ticker(): Promise<V2Ticker> {
 }
 
 async function withV2TickerMetrics(html: string) {
-  if (!html.includes(V2_BOARD_TOKEN)) return html;
+  // Fire on the ticker board OR any of the live cost-per-outcome scalars, so
+  // scalar-only pages (e.g. /pricing, which has no board) still get real rates.
+  const needsMetrics =
+    html.includes(V2_BOARD_TOKEN) ||
+    html.includes("__V2_CPC__") ||
+    html.includes("__V2_CPR__") ||
+    html.includes("__V2_CPM__");
+  if (!needsMetrics) return html;
 
   const t = await resolveV2Ticker();
   return html
