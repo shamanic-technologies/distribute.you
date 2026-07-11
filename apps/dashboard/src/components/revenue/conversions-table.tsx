@@ -11,10 +11,11 @@ import type { ConversionDetail } from "@/components/revenue/conversion-detail-pa
 
 // ── formatting ──────────────────────────────────────────────────────────────
 function formatUsd(n: number): string {
-  // A positive amount that rounds down to $0 reads as "free" — show "<$1"
-  // instead so a sub-dollar expected revenue isn't mistaken for nothing.
-  if (n > 0 && Math.round(n) === 0) return "<$1";
-  return `$${Math.round(n).toLocaleString("en-US")}`;
+  // <$10 → cents ($X.XX), ≥$10 → whole dollars ($X). Dashboard-wide rule.
+  // A positive sub-cent amount reads as "free" — show "<$0.01" instead.
+  if (n > 0 && n < 0.01) return "<$0.01";
+  const decimals = Math.abs(n) < 10 ? 2 : 0;
+  return `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 function formatDate(iso: string | null): string {
   if (!iso) return "—";

@@ -79,6 +79,24 @@ export function formatCentsAsUsd(cents: number | string, decimals = 2): string {
 }
 
 /**
+ * Adaptive USD for the user dashboard: amounts under $10 show cents ($4.27),
+ * amounts $10 and above show whole dollars rounded, with thousand separators
+ * ($1,240). This is the standard currency display across every user-dashboard
+ * page. The billing pages deliberately keep the explicit-decimal `formatUsd` /
+ * `formatCentsAsUsd` / `formatBillingCents` above (exact charged amounts).
+ */
+export function formatUsdAdaptive(usd: number): string {
+  const decimals = Math.abs(usd) < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+}
+
+/** Cents variant of {@link formatUsdAdaptive}. */
+export function formatCentsAsUsdAdaptive(cents: number | string): string {
+  const usd = (typeof cents === "string" ? parseFloat(cents) : cents) / 100;
+  return formatUsdAdaptive(usd);
+}
+
+/**
  * Format billing cents (fractional, full-precision decimal string from billing-service)
  * as USD, ceiling to the next whole cent so the user is never under-charged in display.
  * Accepts string ("100.4200000000") or number; both are rounded UP per cent.

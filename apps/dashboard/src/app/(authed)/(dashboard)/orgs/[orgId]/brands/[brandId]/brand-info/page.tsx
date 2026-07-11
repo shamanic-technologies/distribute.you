@@ -70,7 +70,9 @@ function formatCost(cents: string | null | undefined): string | null {
   if (isNaN(val) || val === 0) return null;
   const usd = val / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  // <$10 → cents ($X.XX), ≥$10 → whole dollars ($X). Dashboard-wide rule.
+  const decimals = usd < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 function formatDuration(startedAt: string, completedAt: string | null): string | null {

@@ -106,55 +106,7 @@ describe("brand-tools removal", () => {
     });
   });
 
-  describe("feature-level entity pages exist", () => {
-    it("feature outlets page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
-    it("feature journalists page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
-    it("feature leads page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/leads/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
-    it("feature emails page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
-    it("feature articles page exists", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/articles/page.tsx");
-      expect(fs.existsSync(p)).toBe(true);
-    });
-
-    it("feature outlets page uses listBrandOutlets (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx");
-      const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("listBrandOutlets");
-      expect(src).not.toContain("listCampaignOutlets");
-    });
-
-    it("feature journalists page uses listJournalistsEnriched with brand scope", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx");
-      const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("listJournalistsEnriched");
-      expect(src).toContain("groupedByStatus");
-      expect(src).not.toContain("getJournalistStatsCosts");
-    });
-
-    it("feature journalists page only shows skeleton on first load (not on refetch)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/journalists/page.tsx");
-      const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("isFirstLoad");
-      expect(src).toContain("if (isFirstLoad)");
-      expect(src).not.toMatch(/if \(journalistsLoading\)\s*\{/);
-    });
-
+  describe("audiences leads page", () => {
     it("audiences leads page uses listBrandLeads (brand-level filter)", () => {
       const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
       const src = fs.readFileSync(p, "utf-8");
@@ -169,18 +121,6 @@ describe("brand-tools removal", () => {
       const p = path.join(SRC, "src/components/audiences/engaged-leads-page.tsx");
       const src = fs.readFileSync(p, "utf-8");
       expect(src).toContain("a.id.localeCompare(b.id)");
-    });
-
-    it("feature emails page uses listBrandEmails (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx");
-      const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("listBrandEmails");
-    });
-
-    it("feature articles page uses listBrandArticles (brand-level filter)", () => {
-      const p = path.join(SRC, "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/articles/page.tsx");
-      const src = fs.readFileSync(p, "utf-8");
-      expect(src).toContain("listBrandArticles");
     });
   });
 

@@ -15,8 +15,10 @@ export function formatStatValue(value: number | null | undefined, entry: StatsRe
       return `${(value * 100).toFixed(1)}%`;
     case "currency": {
       if (value === 0) return "\u2014";
+      // <$10 \u2192 cents ($X.XX), \u2265$10 \u2192 whole dollars ($X). Dashboard-wide rule.
       const usd = value / 100;
-      return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const decimals = Math.abs(usd) < 10 ? 2 : 0;
+      return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
     }
     default:
       return String(value);

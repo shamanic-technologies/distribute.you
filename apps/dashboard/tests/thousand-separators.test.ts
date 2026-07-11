@@ -4,6 +4,8 @@ import {
   formatUsd,
   formatCentsAsUsd,
   formatCentsAsUsdOrNull,
+  formatUsdAdaptive,
+  formatCentsAsUsdAdaptive,
   formatLocaleInteger,
   formatLocaleNumberInputValue,
   parseLocaleNumberInput,
@@ -34,6 +36,27 @@ describe("formatCentsAsUsd", () => {
   it("converts cents to dollars with thousand separators", () => {
     expect(formatCentsAsUsd(123456)).toBe("$1,234.56");
     expect(formatCentsAsUsd("100000000")).toBe("$1,000,000.00");
+  });
+});
+
+describe("formatUsdAdaptive", () => {
+  it("keeps cents below $10", () => {
+    expect(formatUsdAdaptive(0)).toBe("$0.00");
+    expect(formatUsdAdaptive(4.2)).toBe("$4.20");
+    expect(formatUsdAdaptive(9.99)).toBe("$9.99");
+  });
+  it("drops cents at $10 and above, with thousand separators", () => {
+    expect(formatUsdAdaptive(10)).toBe("$10");
+    expect(formatUsdAdaptive(12.5)).toBe("$13");
+    expect(formatUsdAdaptive(1234.56)).toBe("$1,235");
+  });
+});
+
+describe("formatCentsAsUsdAdaptive", () => {
+  it("applies the <$10 / ≥$10 rule from cents", () => {
+    expect(formatCentsAsUsdAdaptive(999)).toBe("$9.99");
+    expect(formatCentsAsUsdAdaptive(1000)).toBe("$10");
+    expect(formatCentsAsUsdAdaptive("123456")).toBe("$1,235");
   });
 });
 

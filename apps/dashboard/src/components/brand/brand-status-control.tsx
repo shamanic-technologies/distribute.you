@@ -97,13 +97,19 @@ const GOAL_OPTIONS: {
   },
 ];
 
+// <$10 → cents ($X.XX), ≥$10 → whole dollars ($X). Dashboard-wide rule.
+function fmtUsdAdaptive(n: number): string {
+  const decimals = Math.abs(n) < 10 ? 2 : 0;
+  return `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+}
+
 function budgetLabel(cents: number | null): string | null {
   if (cents === null || cents <= 0) return null;
-  return `$${(cents / 100).toLocaleString("en-US")}/day`;
+  return `${fmtUsdAdaptive(cents / 100)}/day`;
 }
 
 function fmtUsd0(n: number): string {
-  return `$${Math.round(n).toLocaleString("en-US")}`;
+  return fmtUsdAdaptive(n);
 }
 
 function fmtCount(n: number): string {

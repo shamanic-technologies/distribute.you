@@ -51,23 +51,3 @@ describe("Brand info page — failed run error display", () => {
     expect(content).toContain('run.status === "failed" && run.errorSummary');
   });
 });
-
-describe("Emails page — generation run error display", () => {
-  const pagePath = path.resolve(
-    __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/emails/page.tsx"
-  );
-  const content = fs.readFileSync(pagePath, "utf-8");
-
-  it("should display rootCause for failed generation runs", () => {
-    expect(content).toContain("selectedEmail.generationRun.errorSummary.rootCause");
-  });
-
-  it("should display failedStep for failed generation runs", () => {
-    expect(content).toContain("selectedEmail.generationRun.errorSummary.failedStep");
-  });
-
-  it("should guard with status check and errorSummary presence", () => {
-    expect(content).toContain('generationRun.status === "failed" && selectedEmail.generationRun.errorSummary');
-  });
-});

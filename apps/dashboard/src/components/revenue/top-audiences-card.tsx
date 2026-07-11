@@ -16,9 +16,11 @@ function formatCents(cents: number | null): string {
   if (cents <= 0) return "<$0.01";
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
+  // <$10 → cents ($X.XX), ≥$10 → whole dollars ($X). Dashboard-wide rule.
+  const decimals = usd < 10 ? 2 : 0;
   return `$${usd.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   })}`;
 }
 

@@ -21,8 +21,10 @@ function formatCount(n: number): string {
 // usable denominator / spend basis) → "—", never a false $0.
 function formatCostCents(cents: number | null | undefined): string {
   if (cents == null) return "—";
+  // <$10 → cents ($X.XX), ≥$10 → whole dollars ($X). Dashboard-wide rule.
   const usd = cents / 100;
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const decimals = Math.abs(usd) < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 // Each card is a fixed-min-width flex item so the whole set stays on ONE strict
