@@ -370,7 +370,8 @@ export function BillingGuardProvider({ children }: { children: ReactNode }) {
               info.required_cents !== undefined && (
                 <div className="bg-brand-50 border border-brand-100 rounded-lg p-3 mb-4 flex justify-between items-center text-sm">
                   <span className="text-brand-700">Brand daily budget cap</span>
-                  <span className="font-semibold text-brand-900">{formatBillingCents(info.required_cents)} <span className="font-normal text-brand-600">/ day</span></span>
+                  {/* Daily budget always renders as whole dollars (no cents). */}
+                  <span className="font-semibold text-brand-900">${Math.round(toCentsNumber(info.required_cents) / 100).toLocaleString("en-US")} <span className="font-normal text-brand-600">/ day</span></span>
                 </div>
               )
             ) : (

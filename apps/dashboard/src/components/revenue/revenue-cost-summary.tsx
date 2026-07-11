@@ -46,9 +46,9 @@ function formatUsdWithCents(cents: number): string {
   })}`;
 }
 
+// Daily budget always renders as whole dollars (no cents), regardless of magnitude.
 function formatBudgetCents(cents: number): string {
-  if (cents % 100 === 0) return formatUsd(cents / 100);
-  return formatUsdWithCents(cents);
+  return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 }
 
 export function RevenueCostSummary({

@@ -103,11 +103,17 @@ function fmtUsdAdaptive(n: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-function budgetLabel(cents: number | null): string | null {
-  if (cents === null || cents <= 0) return null;
-  return `${fmtUsdAdaptive(cents / 100)}/day`;
+// Daily budgets always render as whole dollars (no cents), regardless of magnitude.
+function fmtUsdWhole(n: number): string {
+  return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
+function budgetLabel(cents: number | null): string | null {
+  if (cents === null || cents <= 0) return null;
+  return `${fmtUsdWhole(cents / 100)}/day`;
+}
+
+// Unit cost per outcome keeps the adaptive rule (cents under $10).
 function fmtUsd0(n: number): string {
   return fmtUsdAdaptive(n);
 }
@@ -554,7 +560,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                       </div>
                       <div className="text-xs text-gray-500">{outcomeUnit} / mo</div>
                       <div className="mt-2 text-xs text-gray-400">
-                        {b != null ? `~${fmtUsd0(b)} / day` : "-"}
+                        {b != null ? `~${fmtUsdWhole(b)} / day` : "-"}
                       </div>
                     </button>
                   );
@@ -592,7 +598,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                         {outcomeUnit} / mo
                       </div>
                       <div className="mt-2 text-xs text-gray-400">
-                        {b != null ? `~${fmtUsd0(b)} / day` : "-"}
+                        {b != null ? `~${fmtUsdWhole(b)} / day` : "-"}
                       </div>
                     </div>
                   );
@@ -603,7 +609,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
             {selectedBudget != null && (
               <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                 Daily budget:{" "}
-                <strong className="text-gray-900">{fmtUsd0(selectedBudget)} / day</strong>
+                <strong className="text-gray-900">{fmtUsdWhole(selectedBudget)} / day</strong>
                 {unitCost != null && (
                   <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline">
                     {" "}
