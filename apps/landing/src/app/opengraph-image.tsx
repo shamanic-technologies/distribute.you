@@ -28,8 +28,8 @@ export default async function OG() {
               width: 14,
               height: 14,
               borderRadius: 999,
-              background: "#22d3ee",
-              boxShadow: "0 0 24px #22d3ee",
+              background: "#45e38e",
+              boxShadow: "0 0 24px #45e38e",
             }}
           />
           <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5 }}>
@@ -40,9 +40,9 @@ export default async function OG() {
               fontSize: 14,
               padding: "3px 10px",
               borderRadius: 999,
-              background: "rgba(34, 211, 238, 0.15)",
+              background: "rgba(69, 227, 142, 0.15)",
               color: "#67e8f9",
-              border: "1px solid rgba(34, 211, 238, 0.4)",
+              border: "1px solid rgba(69, 227, 142, 0.4)",
             }}
           >
             BETA
