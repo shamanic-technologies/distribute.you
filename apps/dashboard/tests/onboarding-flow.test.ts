@@ -37,10 +37,10 @@ describe("Onboarding direct checkout launch", () => {
     expect(content).toContain("Continue to checkout");
   });
 
-  it("states the brand-level daily budget and direct checkout launch", () => {
-    expect(content).toContain("brand daily budget");
-    expect(content).toContain("Checkout loads credits first");
-    expect(content).toContain("auto-topup reloads the same daily amount whenever the balance drops below $5");
+  it("states the brand-level daily budget cap with post-paid copy", () => {
+    expect(content).toContain("brand daily budget cap");
+    expect(content).toContain("You pay as you go for what we");
+    expect(content).toContain("never more than this per day");
   });
 
   it("uses first-day payment checkout, configures auto-topup, and launches after return", () => {
