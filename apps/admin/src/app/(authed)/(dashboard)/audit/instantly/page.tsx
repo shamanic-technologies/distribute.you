@@ -25,6 +25,7 @@ import {
   QueueDistributionChart,
   type QueueDistributionBin,
 } from "@/components/audit/queue-distribution-chart";
+import { ProviderLogo, InstantlyLogo } from "@/components/audit/provider-logo";
 
 function StatCard({
   label,
@@ -103,17 +104,16 @@ function LifecycleBadge({ status }: { status: string }) {
 
 // Sortable columns. `queueSize`/`sentToday`/`dailyLimit`/`warmupScore` are numeric
 // (nulls sort last regardless of direction); the rest are string.
+// Merged layout: Account carries the provider logo (Type folded in); Lifecycle
+// absorbs the active/inactive Status; Health merges the Health Score + Inbox
+// placement (sorts by Health Score). Domain is dropped as a column (still searchable).
 const COLUMNS = [
   { key: "email", label: "Account", numeric: false, align: "left" },
-  { key: "domain", label: "Domain", numeric: false, align: "left" },
-  { key: "status", label: "Status", numeric: false, align: "left" },
   { key: "lifecycleStatus", label: "Lifecycle", numeric: false, align: "left" },
-  { key: "warmupScore", label: "Health score", numeric: true, align: "right" },
-  { key: "inboxPlacement", label: "Inbox placement", numeric: true, align: "right" },
+  { key: "warmupScore", label: "Health", numeric: true, align: "left" },
   { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
   { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
   { key: "queueSize", label: "Queued", numeric: true, align: "right" },
-  { key: "accountType", label: "Type", numeric: false, align: "left" },
 ] as const;
 
 type SortKey = (typeof COLUMNS)[number]["key"];
@@ -124,14 +124,11 @@ function compareRows(
   key: SortKey,
   dir: "asc" | "desc",
 ): number {
-  // Inbox placement is an object; rank it by inbox %, nulls (untested) last.
-  if (key === "inboxPlacement") {
-    const ap = a.inboxPlacement?.inboxPct ?? null;
-    const bp = b.inboxPlacement?.inboxPct ?? null;
-    if (ap === null && bp === null) return 0;
-    if (ap === null) return 1;
-    if (bp === null) return -1;
-    return dir === "asc" ? ap - bp : bp - ap;
+  // Lifecycle sorts by the derived status key (matches the tab / badge), so a
+  // null lifecycleStatus doesn't sort separately from its "in_production" default.
+  if (key === "lifecycleStatus") {
+    const r = statusKey(a).localeCompare(statusKey(b));
+    return dir === "asc" ? r : -r;
   }
   const av = a[key];
   const bv = b[key];
@@ -190,7 +187,7 @@ function InboxPlacementCell({
   });
   return (
     <span
-      className="inline-flex flex-col items-end gap-0.5"
+      className="inline-flex flex-col items-start gap-0.5"
       title={`Inbox placement test as of ${tested} UTC`}
     >
       <span
@@ -493,7 +490,7 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[1120px] w-full text-sm">
+              <table className="min-w-[760px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
@@ -528,32 +525,31 @@ function AccountHealthSection() {
                   ) : (
                     rows.map((r) => (
                       <tr key={r.email} className="border-b border-gray-100 last:border-0">
-                        <td className="py-2.5 px-3 font-medium text-gray-900">{r.email}</td>
-                        <td className="py-2.5 px-3 text-gray-700">{r.domain ?? "—"}</td>
+                        {/* Account: provider logo + email (Type folded in). */}
                         <td className="py-2.5 px-3">
-                          <span
-                            className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${
-                              r.status === "active"
-                                ? "bg-gray-100 text-gray-700"
-                                : "bg-gray-100 text-gray-400"
-                            }`}
-                          >
-                            {r.status}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <ProviderLogo type={r.accountType} />
+                            <span className="font-medium text-gray-900">{r.email}</span>
+                          </div>
                         </td>
+                        {/* Lifecycle: send-state badge + reason + active/inactive Status. */}
                         <td className="py-2.5 px-3">
                           <LifecycleBadge status={statusKey(r)} />
-                          {r.lifecycleReason && (
-                            <span className="mt-0.5 block text-[10px] text-gray-400">
-                              {r.lifecycleReason}
-                            </span>
-                          )}
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-gray-400">
+                            {r.lifecycleReason && <span>{r.lifecycleReason}</span>}
+                            {r.lifecycleReason && <span aria-hidden>·</span>}
+                            <span>{r.status}</span>
+                          </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <ScoreBadge score={r.warmupScore} />
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <InboxPlacementCell placement={r.inboxPlacement} />
+                        {/* Health: Instantly Health Score + inbox placement. */}
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <InstantlyLogo />
+                            <ScoreBadge score={r.warmupScore} />
+                          </div>
+                          <div className="mt-0.5">
+                            <InboxPlacementCell placement={r.inboxPlacement} />
+                          </div>
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
@@ -564,7 +560,6 @@ function AccountHealthSection() {
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.queueSize)}
                         </td>
-                        <td className="py-2.5 px-3 text-gray-700">{r.accountType ?? "—"}</td>
                       </tr>
                     ))
                   )}
