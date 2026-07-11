@@ -86,7 +86,7 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 // the tab, auto-cleared on close → no stale cross-session bleed. Bump VERSION to bust
 // an incompatible shape after a flow change. Cleared on genuine completion (launch()).
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
-const ONBOARDING_STATE_VERSION = 4;
+const ONBOARDING_STATE_VERSION = 5;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
@@ -226,8 +226,9 @@ const TAG_TONES = [
   "bg-violet-50 text-violet-700 border-violet-200",
 ];
 
-// Outcome-count budget tiers (per month). "Other" is a custom count.
-const COUNT_TIERS = [5, 25, 125];
+// Outcome-count tiers (per month) — each maps to a $/day via the projection unit
+// cost, shown as the tier's primary $/day. "Other" is a custom $/day.
+const COUNT_TIERS = [25, 50, 100];
 
 
 const fmtUsd0 = (n: number) => "$" + formatLocaleInteger(n);
@@ -278,8 +279,10 @@ type PersistedOnboardingState = {
   // User-chosen page outreach clicks land on. "" = the brand domain default.
   clickDestinationUrl: string;
   profile: Record<string, string | string[]>;
-  selectedCount: number | null;
-  customCount: string;
+  // Canonical selection = the $/day budget (primary value). customBudget is the
+  // "Other" custom $ text; the equivalent outcomes/mo is derived for display only.
+  selectedBudget: number | null;
+  customBudget: string;
   checkoutBudgetUsd: number | null;
   audiencePrompt: string;
   audienceCandidates: AudienceCandidate[] | null;
@@ -471,8 +474,8 @@ function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
     !OUTCOMES.some((o) => o.key === p.outcome) ||
     !isRateRecord(p.rates) || !isRateTextRecord(p.rateText) ||
     !isStringList(p.services) || typeof p.clickDestinationUrl !== "string" || !isProfileRecord(p.profile) ||
-    !(p.selectedCount === null || typeof p.selectedCount === "number") ||
-    typeof p.customCount !== "string" ||
+    !(p.selectedBudget === null || typeof p.selectedBudget === "number") ||
+    typeof p.customBudget !== "string" ||
     !(p.checkoutBudgetUsd === null || typeof p.checkoutBudgetUsd === "number") ||
     typeof p.audiencePrompt !== "string" ||
     !(p.audienceCandidates === null || isAudienceCandidateList(p.audienceCandidates)) ||
@@ -605,12 +608,12 @@ export function Onboarding() {
         : "home",
   );
   const [profile, setProfile] = useState<Record<string, string | string[]>>(() => restored?.profile ?? {});
-  // Outcome-count budget selection. selectedCount drives the derived $/day; budget
-  // is the $/day value sent to the campaign. Tiers are derived from a STABLE base
-  // (the projection unit cost), never from the selection — so clicking a card never
-  // reshuffles the cards (the old $/day-tier bug).
-  const [selectedCount, setSelectedCount] = useState<number | null>(() => restored?.selectedCount ?? null);
-  const [customCount, setCustomCount] = useState(() => restored?.customCount ?? "");
+  // Budget selection. selectedBudget IS the $/day sent to the campaign (the primary
+  // value shown). Tier $/day is derived from a STABLE base (the projection unit cost),
+  // never from the selection — so clicking a card never reshuffles the cards. The
+  // equivalent outcomes/mo is derived for the secondary label only.
+  const [selectedBudget, setSelectedBudget] = useState<number | null>(() => restored?.selectedBudget ?? null);
+  const [customBudget, setCustomBudget] = useState(() => restored?.customBudget ?? "");
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(() => restored?.checkoutBudgetUsd ?? null);
   const [audiencePrompt, setAudiencePrompt] = useState(() => restored?.audiencePrompt ?? "");
   const [audienceCandidates, setAudienceCandidates] = useState<AudienceCandidate[] | null>(() => restored?.audienceCandidates ?? null);
@@ -709,8 +712,8 @@ export function Onboarding() {
       services,
       clickDestinationUrl,
       profile,
-      selectedCount,
-      customCount,
+      selectedBudget,
+      customBudget,
       checkoutBudgetUsd: opts?.checkoutBudgetUsd ?? checkoutBudgetUsd,
       audiencePrompt,
       audienceCandidates,
@@ -731,7 +734,7 @@ export function Onboarding() {
   useEffect(() => {
     if (searchParams.get("launch_checkout") === "success") return;
     writeOnboardingState(buildOnboardingState());
-  }, [step, url, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedCount, customCount, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion]);
+  }, [step, url, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -1367,8 +1370,8 @@ export function Onboarding() {
     setClickDestinationUrl(state.clickDestinationUrl);
     setDestinationMode(state.clickDestinationUrl.trim() ? "custom" : "home");
     setProfile(state.profile);
-    setSelectedCount(state.selectedCount);
-    setCustomCount(state.customCount);
+    setSelectedBudget(state.selectedBudget);
+    setCustomBudget(state.customBudget);
     setCheckoutBudgetUsd(state.checkoutBudgetUsd);
     setAudiencePrompt(state.audiencePrompt);
     setAudienceCandidates(state.audienceCandidates);
@@ -1478,14 +1481,16 @@ export function Onboarding() {
     return Math.max(1, Math.round((n * uc) / 30));
   }
 
-  // The $/day for the current selection (or null if nothing usable yet).
+  // Outcomes / month a `$b`/day budget buys (inverse of budgetForCount). Display only.
+  function countForBudget(b: number): number | null {
+    const uc = outcomeUnitCost();
+    if (uc == null || uc <= 0) return null;
+    return Math.max(0, Math.round((b * 30) / uc));
+  }
+
+  // The $/day for the current selection (or null if nothing selected yet).
   function derivedBudget(): number | null {
-    if (selectedCount == null) return null;
-    const b = budgetForCount(selectedCount);
-    if (b != null) return b;
-    // Degenerate projection — fall back to the recommended budget so launch works.
-    const rec = projectionRef.current?.recommendedBudgetUsd;
-    return rec && rec > 0 ? Math.round(rec) : null;
+    return selectedBudget;
   }
 
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
@@ -1915,88 +1920,87 @@ export function Onboarding() {
     );
   }
 
-  // pricing — outcome-count budget
-  const unitCost = outcomeUnitCost();
-  const selectedBudget = derivedBudget() ?? checkoutBudgetUsd;
+  // pricing — daily-budget selection ($/day is the primary value; outcomes/mo secondary)
+  const displayBudget = derivedBudget() ?? checkoutBudgetUsd;
+  const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   return (
     <StepShell
       header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
       footer={
-        <button onClick={() => setStep("bonus")} disabled={selectedBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        <button onClick={() => setStep("bonus")} disabled={displayBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
           Continue <ArrowRightIcon className="h-4 w-4" />
         </button>
       }
     >
       <BackButton onClick={() => setStep("consent")} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Your monthly target.</h2>
-      <p className="mt-2 mb-5 text-gray-500">Pick how many <strong>{outcomeMeta.unit}</strong> you want each month — we set the daily budget to hit it.</p>
+      <h2 className="font-display text-2xl font-bold text-gray-900">Your daily budget.</h2>
+      <p className="mt-2 mb-5 text-gray-500">Pick your <strong>daily budget</strong>. We show the {outcomeMeta.unit} it buys each month.</p>
       {cancelNotice && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{cancelNotice}</div>}
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
         <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-sm leading-6 text-brand-800">
-          This is the <strong>brand daily budget cap</strong>. Checkout loads credits first,
-          then auto-topup reloads the same daily amount whenever the balance drops below $5.
+          This is your <strong>brand daily budget cap</strong>. You pay as you go for what we
+          actually spend, never more than this per day. Cancel anytime.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {COUNT_TIERS.map((n, i) => {
           const b = budgetForCount(n);
-          const active = selectedCount === n;
+          const active = b != null && selectedBudget === b;
           return (
-            <button key={n} onClick={() => setSelectedCount(n)} className={`rounded-xl border-2 p-4 text-left transition ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+            <button key={n} disabled={b == null} onClick={() => { if (b != null) setSelectedBudget(b); }} className={`rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
               {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
-              <div className="text-xl font-bold text-gray-950">{fmtCount(n)}</div>
-              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
-              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
+              <div className="text-xl font-bold text-gray-950">{b != null ? `~${fmtUsd0(b)}` : "—"}<span className="text-sm font-normal text-gray-500"> / day</span></div>
+              <div className="text-xs text-gray-500">{fmtCount(n)} {outcomeMeta.unit} / mo</div>
             </button>
           );
         })}
-        {/* Other — custom count */}
+        {/* Other — custom $/day */}
         {(() => {
-          const parsedCustomN = parseLocaleNumberInput(customCount);
-          const customN = parsedCustomN === null ? null : Math.round(parsedCustomN);
-          const isCustom = customN !== null && customN > 0;
-          const active = isCustom && selectedCount === customN;
-          const b = isCustom ? budgetForCount(customN) : null;
-          const selectCustomCount = () => {
-            if (isCustom) setSelectedCount(customN);
-          };
+          const parsed = parseLocaleNumberInput(customBudget);
+          const customB = parsed === null ? null : Math.round(parsed);
+          const isCustom = customB !== null && customB > 0;
+          const active = isCustom && selectedBudget === customB;
+          const cnt = isCustom ? countForBudget(customB) : null;
           return (
             <div
-              onClick={selectCustomCount}
+              onClick={() => { if (isCustom) setSelectedBudget(customB); }}
               className={`rounded-xl border-2 p-4 transition ${isCustom ? "cursor-pointer" : ""} ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}
             >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={customCount}
-                onChange={(e) => {
-                  setCustomCount(e.target.value);
-                  const v = parseLocaleNumberInput(e.target.value);
-                  setSelectedCount(v !== null && v > 0 ? Math.round(v) : null);
-                }}
-                onBlur={() => {
-                  const v = parseLocaleNumberInput(customCount);
-                  if (v !== null) setCustomCount(formatLocaleInteger(v));
-                }}
-                placeholder="Custom"
-                className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
-              />
-              <div className="text-xs text-gray-500">{outcomeMeta.unit} / mo</div>
-              <div className="mt-2 text-xs text-gray-400">{b != null ? `~${fmtUsd0(b)} / day` : "—"}</div>
+              <div className="flex items-baseline">
+                <span className="text-xl font-bold text-gray-950">$</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={customBudget}
+                  onChange={(e) => {
+                    setCustomBudget(e.target.value);
+                    const v = parseLocaleNumberInput(e.target.value);
+                    setSelectedBudget(v !== null && v > 0 ? Math.round(v) : null);
+                  }}
+                  onBlur={() => {
+                    const v = parseLocaleNumberInput(customBudget);
+                    if (v !== null) setCustomBudget(formatLocaleInteger(v));
+                  }}
+                  placeholder="Custom"
+                  className="min-w-0 flex-1 bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+                />
+                <span className="text-sm font-normal text-gray-500"> / day</span>
+              </div>
+              <div className="text-xs text-gray-500">{cnt != null ? `${fmtCount(cnt)} ${outcomeMeta.unit} / mo` : `${outcomeMeta.unit} / mo`}</div>
             </div>
           );
         })()}
       </div>
 
-      {selectedBudget != null && (
+      {displayBudget != null && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          Daily budget: <strong className="text-gray-900">{fmtUsd0(selectedBudget)} / day</strong>
-          {unitCost != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> ~{fmtUsd0(unitCost)} / {outcomeMeta.unit.replace(/s$/, "")}</span>}
+          Daily budget: <strong className="text-gray-900">{fmtUsd0(displayBudget)} / day</strong>
+          {displayCount != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> ~{fmtCount(displayCount)} {outcomeMeta.unit} / mo</span>}
         </div>
       )}
 
