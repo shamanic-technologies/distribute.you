@@ -13,6 +13,7 @@ import {
   ChevronLeftIcon,
   CreditCardIcon,
   GiftIcon,
+  InformationCircleIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   PencilSquareIcon,
@@ -232,6 +233,8 @@ const COUNT_TIERS = [25, 50, 100];
 
 // Default conversion rates + their display text. Shared by the useState seeds and
 // the minimal checkout-state reconstruction (a version bump that lands mid-checkout).
+// Shown on the (i) beside each tier's outcomes/mo — the count is a projection, not a guarantee.
+const ESTIMATE_TOOLTIP = "Estimated conversion based on your provided information and the outcomes of our current client database.";
 const DEFAULT_RATES: Record<RateKey, number> = { ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25, v2p: 1, r2p: 5, v2f: 5, f2p: 10 };
 const DEFAULT_RATE_TEXT: Record<RateKey, string> = { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25", v2p: "1", r2p: "5", v2f: "5", f2p: "10" };
 
@@ -2013,8 +2016,11 @@ export function Onboarding() {
           return (
             <button key={n} disabled={b == null} onClick={() => { if (b != null) setSelectedBudget(b); }} className={`rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
               {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
-              <div className="text-xl font-bold text-gray-950">{b != null ? `~${fmtUsd0(b)}` : "—"}<span className="text-sm font-normal text-gray-500"> / day</span></div>
-              <div className="text-xs text-gray-500">{fmtCount(n)} {outcomeMeta.unit} / mo</div>
+              <div className="text-xl font-bold text-gray-950">{b != null ? fmtUsd0(b) : "—"}<span className="text-sm font-normal text-gray-500"> / day</span></div>
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <span>{fmtCount(n)} {outcomeMeta.unit} / mo</span>
+                <span title={ESTIMATE_TOOLTIP} className="inline-flex cursor-help"><InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" /></span>
+              </div>
             </button>
           );
         })}
@@ -2032,7 +2038,7 @@ export function Onboarding() {
             >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
               <div className="flex items-baseline">
-                <span className="text-xl font-bold text-gray-950">$</span>
+                <span className="shrink-0 text-xl font-bold text-gray-950">$</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -2046,12 +2052,22 @@ export function Onboarding() {
                     const v = parseLocaleNumberInput(customBudget);
                     if (v !== null) setCustomBudget(formatLocaleInteger(v));
                   }}
-                  placeholder="Custom"
-                  className="min-w-0 flex-1 bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+                  placeholder="0"
+                  className="w-full min-w-0 flex-1 bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
                 />
-                <span className="text-sm font-normal text-gray-500"> / day</span>
+                <span className="shrink-0 text-sm font-normal text-gray-500"> / day</span>
               </div>
-              <div className="text-xs text-gray-500">{cnt != null ? `${fmtCount(cnt)} ${outcomeMeta.unit} / mo` : `${outcomeMeta.unit} / mo`}</div>
+              {/* Secondary count hidden until a valid amount is entered (nbsp keeps card height). */}
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                {cnt != null ? (
+                  <>
+                    <span>{fmtCount(cnt)} {outcomeMeta.unit} / mo</span>
+                    <span title={ESTIMATE_TOOLTIP} className="inline-flex cursor-help"><InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" /></span>
+                  </>
+                ) : (
+                  " "
+                )}
+              </div>
             </div>
           );
         })()}
@@ -2060,7 +2076,7 @@ export function Onboarding() {
       {displayBudget != null && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
           Daily budget: <strong className="text-gray-900">{fmtUsd0(displayBudget)} / day</strong>
-          {displayCount != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> ~{fmtCount(displayCount)} {outcomeMeta.unit} / mo</span>}
+          {displayCount != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> {fmtCount(displayCount)} {outcomeMeta.unit} / mo estimated</span>}
         </div>
       )}
 
