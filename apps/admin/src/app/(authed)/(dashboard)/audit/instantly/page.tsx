@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getInstantlySendingForecast,
@@ -112,28 +112,30 @@ const COLUMNS = [
   { key: "email", label: "Account", numeric: false, align: "left" },
   { key: "lifecycleStatus", label: "Lifecycle", numeric: false, align: "left" },
   { key: "warmupScore", label: "Health", numeric: true, align: "left" },
-  { key: "warmupLimit", label: "Daily warmup send", numeric: true, align: "right" },
   { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
   { key: "sentYesterday", label: "Sent D-1", numeric: true, align: "right" },
   { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
-  { key: "queueSize", label: "Queued steps", numeric: true, align: "right" },
-  { key: "queuedSequences", label: "Queued seq", numeric: true, align: "right" },
-  { key: "queuedFirstUnsent", label: "Queued 1st", numeric: true, align: "right" },
-  { key: "queuedNextToday", label: "Queued today", numeric: true, align: "right" },
+  { key: "queuedToday", label: "Queued today", numeric: true, align: "right" },
   { key: "queuedNextTomorrow", label: "Queued tomorrow", numeric: true, align: "right" },
   { key: "queuedNextLater", label: "Queued later", numeric: true, align: "right" },
+  // DEBUG (temporary): backend Queued steps (queueSize) + a ✅/❌ reconciliation vs
+  // the sum of the visible queue columns (Initial + Followups + tomorrow + later).
+  { key: "queuedTotal", label: "Queued total", numeric: true, align: "right" },
 ] as const;
 
-// Header tooltips clarifying the two queue granularities (steps vs sequences) and
-// the projected-date buckets.
+// Header tooltips. Two columns are merged composites:
+//   Daily max send = dailyLimit (+ warmupLimit shown as a grey sub-line)
+//   Queued today   = queuedFirstUnsent (Initial) + queuedNextToday (Followups)
+// Queued steps (queueSize) + Queued seq (queuedSequences) are no longer columns —
+// they live in the row detail panel.
 const COLUMN_HINT: Partial<Record<SortKey, string>> = {
-  queueSize: "Un-sent STEPS queued to Instantly = 1st + today + tomorrow + later",
-  queuedSequences:
-    "Total queued SEQUENCES (leads) — distinct granularity, NOT the bucket sum",
-  queuedFirstUnsent: "Steps of sequences whose 1st email is not sent yet",
-  queuedNextToday: "Steps whose projected send date is today (UTC) or overdue",
+  dailyLimit: "Per-account daily max send limit (+ daily warmup send volume)",
+  queuedToday:
+    "Un-sent STEPS due today = Initial (1st email unsent) + Followups (projected today/overdue)",
   queuedNextTomorrow: "Steps projected tomorrow (UTC)",
   queuedNextLater: "Steps projected after tomorrow",
+  queuedTotal:
+    "DEBUG — backend Queued steps (queueSize). ✅ green when it equals Initial + Followups + tomorrow + later.",
 };
 
 type SortKey = (typeof COLUMNS)[number]["key"];
@@ -166,8 +168,18 @@ function compareRows(
     if (byInbox !== 0) return byInbox;
     return level(a.warmupScore, b.warmupScore);
   }
-  const av = a[key];
-  const bv = b[key];
+  // Merged "Queued today" = Initial (1st unsent) + Followups (next step today).
+  if (key === "queuedToday") {
+    const av = a.queuedFirstUnsent + a.queuedNextToday;
+    const bv = b.queuedFirstUnsent + b.queuedNextToday;
+    return dir === "asc" ? av - bv : bv - av;
+  }
+  // DEBUG "Queued total" sorts on the backend Queued steps (queueSize) total.
+  if (key === "queuedTotal") {
+    return dir === "asc" ? a.queueSize - b.queueSize : b.queueSize - a.queueSize;
+  }
+  const av = (a as unknown as Record<string, unknown>)[key];
+  const bv = (b as unknown as Record<string, unknown>)[key];
   const aNull = av === null || av === undefined || av === "";
   const bNull = bv === null || bv === undefined || bv === "";
   if (aNull && bNull) return 0;
@@ -330,6 +342,111 @@ function CapacityHistorySection() {
   );
 }
 
+// Right-hand slide-over recapping every field for one account row — including the
+// fields dropped from the table (Queued steps, Queued seq, domain, lifecycle
+// timing, inbox placement).
+function AccountDetailPanel({
+  row,
+  onClose,
+}: {
+  row: InstantlyAccountHealthRow;
+  onClose: () => void;
+}) {
+  const num = (n: number | null) => (n === null ? "—" : n.toLocaleString("en-US"));
+  const utc = (iso: string | null) =>
+    iso ? `${new Date(iso).toLocaleString("en-US", { timeZone: "UTC" })} UTC` : "—";
+
+  const Row = ({ label, children }: { label: string; children: ReactNode }) => (
+    <div className="flex items-start justify-between gap-4 py-2">
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-right text-sm tabular-nums text-gray-900">{children}</span>
+    </div>
+  );
+  const Group = ({ title, children }: { title: string; children: ReactNode }) => (
+    <div className="border-t border-gray-100 pt-3">
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/20"
+      />
+      <div className="relative flex h-full w-full max-w-md flex-col overflow-y-auto bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-5">
+          <div className="flex items-center gap-2">
+            <ProviderLogo type={row.accountType} />
+            <div>
+              <p className="text-sm font-semibold text-gray-900 break-all">{row.email}</p>
+              <p className="text-xs text-gray-400">{row.domain ?? "—"}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Close panel"
+          >
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+              <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 p-5">
+          <Group title="Lifecycle">
+            <Row label="State">
+              <LifecycleBadge status={statusKey(row)} />
+            </Row>
+            <Row label="Status">{row.status}</Row>
+            <Row label="Reason">{row.lifecycleReason ?? "—"}</Row>
+            <Row label="Block reason">{row.blockReason ?? "—"}</Row>
+            <Row label="Last transition">{utc(row.lifecycleUpdatedAt)}</Row>
+          </Group>
+
+          <Group title="Health">
+            <Row label="Health Score">
+              <ScoreBadge score={row.warmupScore} />
+            </Row>
+            <Row label="Inbox placement">
+              <InboxPlacementCell placement={row.inboxPlacement} />
+            </Row>
+          </Group>
+
+          <Group title="Send limits">
+            <Row label="Daily max send">{num(row.dailyLimit)}</Row>
+            <Row label="Daily warmup send">{num(row.warmupLimit)}</Row>
+          </Group>
+
+          <Group title="Sent">
+            <Row label="Sent D-1">{num(row.sentYesterday)}</Row>
+            <Row label="Sent today">{num(row.sentToday)}</Row>
+          </Group>
+
+          <Group title="Queue">
+            <Row label="Queued steps">{num(row.queueSize)}</Row>
+            <Row label="Queued sequences">{num(row.queuedSequences)}</Row>
+            <Row label="Queued today (Initial + Followups)">
+              {num(row.queuedFirstUnsent + row.queuedNextToday)}
+            </Row>
+            <Row label="— Initial (1st unsent)">{num(row.queuedFirstUnsent)}</Row>
+            <Row label="— Followups (today/overdue)">{num(row.queuedNextToday)}</Row>
+            <Row label="Queued tomorrow">{num(row.queuedNextTomorrow)}</Row>
+            <Row label="Queued later">{num(row.queuedNextLater)}</Row>
+          </Group>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AccountHealthSection() {
   const { data, isPending, isError, error } = useAuthQuery<InstantlyAccountHealth>(
     ["instantlyAccountHealth"],
@@ -359,6 +476,7 @@ function AccountHealthSection() {
   const [sortKey, setSortKey] = useState<SortKey>("warmupScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<InstantlyAccountHealthRow | null>(null);
 
   const activeTab = tab && tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key ?? null;
 
@@ -526,7 +644,7 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[1440px] w-full text-sm">
+              <table className="min-w-[1200px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
@@ -561,7 +679,11 @@ function AccountHealthSection() {
                     </tr>
                   ) : (
                     rows.map((r) => (
-                      <tr key={r.email} className="border-b border-gray-100 last:border-0">
+                      <tr
+                        key={r.email}
+                        onClick={() => setSelected(r)}
+                        className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
+                      >
                         {/* Account: provider logo + email (Type folded in). */}
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2">
@@ -588,11 +710,16 @@ function AccountHealthSection() {
                             <InboxPlacementCell placement={r.inboxPlacement} />
                           </div>
                         </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
-                          {r.warmupLimit === null ? "—" : num(r.warmupLimit)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
-                          {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
+                        {/* Daily max send: dailyLimit + warmup send as a grey sub-line. */}
+                        <td className="py-2.5 px-3 text-right">
+                          <div className="tabular-nums text-gray-700">
+                            {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
+                          </div>
+                          {r.warmupLimit !== null && r.warmupLimit > 0 && (
+                            <div className="text-[10px] tabular-nums text-gray-400">
+                              + {num(r.warmupLimit)} daily warmup send
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.sentYesterday)}
@@ -600,23 +727,48 @@ function AccountHealthSection() {
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.sentToday)}
                         </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
-                          {num(r.queueSize)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums font-medium text-gray-900">
-                          {num(r.queuedSequences)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
-                          {num(r.queuedFirstUnsent)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
-                          {num(r.queuedNextToday)}
+                        {/* Queued today: Initial (1st unsent) + Followups (next step today). */}
+                        <td className="py-2.5 px-3 text-right">
+                          <div className="tabular-nums font-medium text-gray-900">
+                            {num(r.queuedFirstUnsent + r.queuedNextToday)}
+                          </div>
+                          <div className="text-[10px] tabular-nums text-gray-400">
+                            Initial: {num(r.queuedFirstUnsent)}
+                          </div>
+                          <div className="text-[10px] tabular-nums text-gray-400">
+                            Followups: {num(r.queuedNextToday)}
+                          </div>
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.queuedNextTomorrow)}
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.queuedNextLater)}
+                        </td>
+                        {/* DEBUG: backend Queued steps (queueSize) + reconciliation ✅/❌ vs visible cols. */}
+                        <td className="py-2.5 px-3 text-right">
+                          {(() => {
+                            const visibleSum =
+                              r.queuedFirstUnsent +
+                              r.queuedNextToday +
+                              r.queuedNextTomorrow +
+                              r.queuedNextLater;
+                            const ok = r.queueSize === visibleSum;
+                            return (
+                              <span
+                                className={`inline-flex items-center gap-1 tabular-nums ${
+                                  ok ? "text-emerald-700" : "text-red-700"
+                                }`}
+                                title={
+                                  ok
+                                    ? "Matches Initial + Followups + tomorrow + later"
+                                    : `Mismatch: backend queueSize ${num(r.queueSize)} vs visible sum ${num(visibleSum)}`
+                                }
+                              >
+                                {num(r.queueSize)} {ok ? "✅" : "❌"}
+                              </span>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))
@@ -627,6 +779,9 @@ function AccountHealthSection() {
                 As of {new Date(data.asOf).toLocaleString("en-US", { timeZone: "UTC" })} UTC.
               </p>
             </div>
+            {selected && (
+              <AccountDetailPanel row={selected} onClose={() => setSelected(null)} />
+            )}
           </>
         )}
       </div>
