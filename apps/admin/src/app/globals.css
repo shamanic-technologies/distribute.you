@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -7,19 +7,23 @@
 
 /* ── Theme ────────────────────────────────────────────────────────── */
 @theme {
-  --color-brand-50: #fdf2f8;
-  --color-brand-100: #fce7f3;
-  --color-brand-200: #fbcfe8;
-  --color-brand-300: #f9a8d4;
-  --color-brand-400: #f472b6;
-  --color-brand-500: #ec4899;
-  --color-brand-600: #db2777;
-  --color-brand-700: #be185d;
-  --color-brand-800: #9d174d;
-  --color-brand-900: #831843;
+  /* Brand = the new landing charter accent (signal GREEN, OKLCH hue 158;
+   * index-v1 landing's --green is #45e38e). Byte-equal with apps/dashboard.
+   * Migrated off the legacy pink (#ec4899) + Fredoka look. */
+  --color-brand-50: oklch(97% 0.02 158);
+  --color-brand-100: oklch(94% 0.05 158);
+  --color-brand-200: oklch(88% 0.09 158);
+  --color-brand-300: oklch(80% 0.14 158);
+  --color-brand-400: oklch(72% 0.17 158);
+  --color-brand-500: oklch(64% 0.17 158);
+  --color-brand-600: oklch(54% 0.16 158);
+  --color-brand-700: oklch(47% 0.14 158);
+  --color-brand-800: oklch(41% 0.115 158);
+  --color-brand-900: oklch(35% 0.09 158);
 
-  --font-display: "Fredoka", system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* ── Type scale — compressed one more step (round 2) ───────────────
    * #1297 kept body at the 14/12 floor and pulled only headings down.
@@ -74,6 +78,8 @@ body {
 
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 @utility text-balance {
@@ -138,8 +144,8 @@ html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3); }
 /* Ring colors */
 html.dark .ring-gray-200 { --tw-ring-color: #334155; }
 html.dark .ring-gray-300 { --tw-ring-color: #475569; }
-html.dark .focus\:ring-brand-500:focus { --tw-ring-color: #db2777; }
-html.dark .focus\:border-brand-500:focus { border-color: #db2777; }
+html.dark .focus\:ring-brand-500:focus { --tw-ring-color: oklch(74% 0.17 158); }
+html.dark .focus\:border-brand-500:focus { border-color: oklch(74% 0.17 158); }
 
 /* Placeholder text — bumped to slate-400 (#94a3b8) so search/form
  * placeholders are visible against the slate-800 input background. */
@@ -167,8 +173,8 @@ html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.08); }
 html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.15); }
 
 /* Brand accent (tool call blocks) dark overrides */
-html.dark .text-brand-700 { color: #f9a8d4; }
-html.dark .text-brand-800 { color: #fbcfe8; }
+html.dark .text-brand-700 { color: oklch(85% 0.13 158); }
+html.dark .text-brand-800 { color: oklch(89% 0.08 158); }
 html.dark .border-brand-300 { border-color: rgba(219, 39, 119, 0.25); }
 
 /* White/70 backgrounds (PrettyJSON) — ensure dark-readable */
