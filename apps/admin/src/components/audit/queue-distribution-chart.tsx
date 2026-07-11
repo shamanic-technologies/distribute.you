@@ -27,7 +27,7 @@ function DistributionTooltip({
   const bin = payload[0].payload;
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
-      <p className="text-gray-500">Queue size {bin.label}</p>
+      <p className="text-gray-500">Queued today {bin.label}</p>
       <p className="mt-1 text-gray-700">
         <span className="font-medium">{bin.pct.toFixed(1)}%</span> of allowed accounts
       </p>
