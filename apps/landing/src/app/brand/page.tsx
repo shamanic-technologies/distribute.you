@@ -90,7 +90,10 @@ const CSS = `
 .bp-meta{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line)}
 .bp-meta .nm{font-size:14px;font-weight:500}
 .bp-meta .nt{font-size:12px;color:var(--faint);margin-top:2px}
-.bp-dl{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--green);white-space:nowrap;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.bp-dls{display:flex;gap:8px}
+.bp-dl{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--green);white-space:nowrap;border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none}
+.bp-dl:hover{border-color:var(--green);background:rgba(69,227,142,.08)}
+.bp-favi{margin-top:16px;display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted);flex-wrap:wrap}
 .bp-swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .bp-sw{border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .bp-sw .chip{height:82px;display:flex;align-items:flex-end;padding:10px;font-family:'IBM Plex Mono',monospace;font-size:12px}
@@ -120,9 +123,14 @@ function AssetCard({ a }: { a: Asset }) {
           <div className="nm">{a.name}</div>
           {a.note ? <div className="nt">{a.note}</div> : null}
         </div>
-        <a className="bp-dl" href={`/brand/${a.file}`} download>
-          SVG ↓
-        </a>
+        <div className="bp-dls">
+          <a className="bp-dl" href={`/brand/${a.file}`} download>
+            SVG
+          </a>
+          <a className="bp-dl" href={`/brand/${a.file.replace(/\.svg$/, ".png")}`} download>
+            PNG
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -178,6 +186,15 @@ export default function BrandPage() {
               <AssetCard key={a.file} a={a} />
             ))}
           </div>
+          <div className="bp-favi">
+            <span>Favicon files:</span>
+            <a className="bp-dl" href="/brand/favicon.ico" download>
+              favicon.ico
+            </a>
+            <a className="bp-dl" href="/brand/apple-icon.png" download>
+              apple-icon.png (180)
+            </a>
+          </div>
         </section>
 
         <section className="bp-sec">
@@ -190,9 +207,14 @@ export default function BrandPage() {
               </div>
               <div className="bp-meta">
                 <div className="nm">Banner, 1200 x 630</div>
-                <a className="bp-dl" href="/brand/banner.svg" download>
-                  SVG ↓
-                </a>
+                <div className="bp-dls">
+                  <a className="bp-dl" href="/brand/banner.svg" download>
+                    SVG
+                  </a>
+                  <a className="bp-dl" href="/brand/banner.png" download>
+                    PNG
+                  </a>
+                </div>
               </div>
             </div>
           </div>
