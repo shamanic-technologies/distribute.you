@@ -1,357 +1,265 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PROD_URLS } from "@/lib/env-urls";
-import { fetchFeatureBenchmark } from "@/lib/benchmarks/fetch-benchmark";
+import { BRAND_LOGO_URL, TWITTER_HANDLE } from "@/lib/seo";
+import { OUTCOMES, type OutcomeDef } from "@/lib/outcomes/outcomes";
 import {
-  BrandLeaderboard,
-  WorkflowLeaderboard,
-} from "@/components/performance/leaderboard-table";
-import {
-  formatCostCents,
-  formatCostCentsWhole,
-  formatCostDollars,
-  formatPercent,
-} from "@/lib/performance/fetch-leaderboard";
-import { getBenchmarkContent } from "@/data/benchmarks-content";
-import { ExternalStudiesSection } from "@/components/benchmarks/external-studies-section";
-import { BenchmarkCTA } from "@/components/benchmarks/benchmark-cta";
-import { WhyMattersSection } from "@/components/benchmarks/why-matters-section";
-import { ValueRecap } from "@/components/benchmarks/value-recap";
-import {
-  buildBenchmarkTitle,
-  buildBenchmarkDescription,
-} from "@/lib/benchmarks/seo";
-import {
-  BENCHMARKS_OG_IMAGE_PATH,
-  BRAND_LOGO_URL,
-  TWITTER_HANDLE,
-} from "@/lib/seo";
+  fetchOutcomeStats,
+  type OutcomeStats,
+  type TrendPoint,
+} from "@/lib/outcomes/fetch-outcome";
 
 export const revalidate = 300;
 
-// The only GA product. Benchmarks is a single static page (no per-feature
-// dynamic route) because other channels stay alpha (dashboard-only).
-const FEATURE_SLUG = "sales-cold-email-outreach";
 const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
+const PAGE_TITLE = "What outcomes cost | distribute";
+const PAGE_DESCRIPTION =
+  "The live going rate for B2B outbound outcomes, averaged across every brand distribute runs: cost per website visit, positive reply, booked meeting, and signup.";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const data = await fetchFeatureBenchmark(FEATURE_SLUG);
-  const name = data?.feature.name ?? "Sales Cold Email Outreach";
-  const featureDescription =
-    data?.feature.description ??
-    "Real cold email performance from every brand running distribute.";
-  const title = buildBenchmarkTitle(name);
-  const description = buildBenchmarkDescription(name, featureDescription);
+export const metadata: Metadata = {
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  alternates: { canonical: PAGE_URL },
+  openGraph: {
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+    url: PAGE_URL,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+    site: TWITTER_HANDLE,
+  },
+};
 
-  return {
-    // `absolute` so the final title stays under Google's ~60-char limit.
-    title: { absolute: title },
-    description,
-    keywords: [
-      `${name.toLowerCase()} benchmarks`,
-      `${name.toLowerCase()} performance`,
-      `${name.toLowerCase()} cost per reply`,
-      `${name.toLowerCase()} reply rate`,
-      "cold email performance",
-      "cold email benchmarks",
-    ],
-    openGraph: {
-      title,
-      description,
-      url: PAGE_URL,
-      images: [
-        { url: BENCHMARKS_OG_IMAGE_PATH, width: 1200, height: 630, alt: title },
-      ],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [BENCHMARKS_OG_IMAGE_PATH],
-      creator: TWITTER_HANDLE,
-    },
-    alternates: { canonical: PAGE_URL },
-    robots: { index: true, follow: true },
-  };
+// ── Formatting ───────────────────────────────────────────────────────────────
+function fmtUsd(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "—";
+  return v < 10
+    ? `$${v.toFixed(2)}`
+    : `$${Math.round(v).toLocaleString("en-US")}`;
 }
 
-function HeroStat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+// Mini trend sparkline (theme-independent, emerald stroke). Server-rendered SVG
+// so the chart ships in raw HTML (SEO / AI-scraper safe).
+function Sparkline({ points }: { points: TrendPoint[] }) {
+  const vals = points
+    .map((p) => p.costPerOutcomeUsd)
+    .filter((v): v is number => v !== null);
+  if (vals.length < 2) {
+    return <div className="h-9 w-full" aria-hidden="true" />;
+  }
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const span = max - min || 1;
+  const W = 140;
+  const H = 36;
+  const pad = 3;
+  const coords = vals
+    .map((v, i) => {
+      const x = (i / (vals.length - 1)) * W;
+      const y = pad + (1 - (v - min) / span) * (H - 2 * pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
   return (
-    <div className="dy-card p-5">
-      <div className="dy-mono text-xs uppercase tracking-wider text-[var(--dy-muted)]">
-        {label}
-      </div>
-      <div className="mt-1 text-2xl font-bold text-[var(--dy-text)] md:text-3xl">
-        {value}
-      </div>
-      {hint && <div className="mt-1 text-xs text-[var(--dy-muted)]">{hint}</div>}
-    </div>
+    <svg
+      className="h-9 w-full"
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <polyline
+        points={coords}
+        fill="none"
+        stroke="#059669"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
-function formatRevenueUsd(value: number | null | undefined): string {
-  if (value == null) return "—";
-  if (value === 0) return "$0";
-  if (value < 100) return `$${value.toFixed(2)}`;
-  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
-
-function formatRoi(value: number | null | undefined): string {
-  return value == null ? "—" : `${value.toFixed(1)}×`;
+async function safeStats(def: OutcomeDef): Promise<OutcomeStats | null> {
+  // Build-time prerender must stay shippable: a slow/failed public metric must
+  // not abort the whole landing deploy (CLAUDE.md build-time fetch rule).
+  try {
+    return await fetchOutcomeStats(def.objective);
+  } catch (error) {
+    console.error(`[benchmarks] outcome stats unavailable for ${def.slug}`, error);
+    return null;
+  }
 }
 
 export default async function BenchmarksPage() {
-  // Resolved at build time (PROD_URLS = resolveUrls("")); preview/staging
-  // deployments link to prod dashboard sign-up. Trade-off for ISR static
-  // prerender, which requires no per-request headers().
-  const signUpUrl = PROD_URLS.signUp;
-
-  const data = await fetchFeatureBenchmark(FEATURE_SLUG);
-  const content = getBenchmarkContent(FEATURE_SLUG);
-
-  if (!data) {
-    return (
-      <main className="dy-page">
-        <section className="dy-section">
-          <div className="dy-shell text-center">
-            <h1 className="dy-title mb-3 text-3xl">
-              Cold Email Benchmarks
-            </h1>
-            <p className="dy-body">
-              Performance data is loading. Check back soon.
-            </p>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  const { feature, brands, workflows, aggregate, updatedAt } = data;
-  // BrandLeaderboard is the only client component that receives `brands`, and it
-  // never renders the per-brand `timeline` (the trajectory sparkline section is
-  // not mounted on this page). Serializing it shipped ~2.2MB of unused daily
-  // points to the browser (12.5k points across 6 brands). Drop it before the
-  // server→client boundary so the page stays lean.
-  const brandsForTable = brands.map(({ timeline: _timeline, ...rest }) => rest);
-  const title = `${feature.name} Benchmarks & Statistics (2026)`;
-  const description = `${feature.description} Sortable leaderboard updated hourly.`;
+  const stats = await Promise.all(OUTCOMES.map(safeStats));
+  const rows = OUTCOMES.map((def, i) => ({ def, stats: stats[i] }));
 
   const datasetJsonLd = {
     "@context": "https://schema.org",
     "@type": "Dataset",
-    name: title,
-    description,
+    name: "distribute cost-per-outcome benchmarks",
+    description: PAGE_DESCRIPTION,
     url: PAGE_URL,
-    license: "https://creativecommons.org/licenses/by/4.0/",
     creator: {
       "@type": "Organization",
       name: "distribute",
       url: PROD_URLS.landing,
       logo: BRAND_LOGO_URL,
     },
-    publisher: {
-      "@type": "Organization",
-      name: "distribute",
-      url: PROD_URLS.landing,
-      logo: BRAND_LOGO_URL,
-    },
-    temporalCoverage: "all-time",
-    dateModified: updatedAt,
-    variableMeasured: [
-      { "@type": "PropertyValue", name: "Open Rate", unitText: "percent" },
-      { "@type": "PropertyValue", name: "Click Rate", unitText: "percent" },
-      { "@type": "PropertyValue", name: "Positive Reply Rate", unitText: "percent" },
-      { "@type": "PropertyValue", name: "Cost Per Positive Reply", unitText: "USD cents" },
-    ],
+    variableMeasured: OUTCOMES.map((o) => ({
+      "@type": "PropertyValue",
+      name: `Cost per ${o.noun}`,
+      unitText: "USD",
+    })),
   };
 
   return (
-    <main className="dy-page">
+    <main className="bg-white">
       <script
         type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
       />
 
       {/* Hero */}
-      <section className="dy-section">
-        <div className="dy-shell-wide">
-          <div className="dy-eyebrow mb-6">
-            <span className="dy-dot" />
-            Open dataset
-          </div>
-          <h1 className="dy-title mb-4 max-w-4xl text-4xl md:text-6xl">
-            {feature.name}{" "}
-            <span className="text-[var(--dy-accent-hi)]">Benchmarks &amp; Statistics</span>{" "}
-            <span className="font-normal text-[var(--dy-muted)]">(2026)</span>
-          </h1>
-          <p className="dy-body mb-8 max-w-3xl text-base md:text-lg">
-            {feature.description}
-          </p>
+      <section className="mx-auto max-w-5xl px-6 pt-20 pb-10 sm:pt-28">
+        <div className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-emerald-600">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          Live · observed prices
+        </div>
+        <h1 className="mt-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+          What outcomes actually cost.
+        </h1>
+        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-gray-600">
+          Nobody pays a fixed rate. These are the average prices our campaigns
+          are paying right now, across every brand we run. The further down the
+          funnel, the more each outcome costs.
+        </p>
+      </section>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
-            <HeroStat
-              label="Brands tracked"
-              value={aggregate.participatingBrands.toLocaleString()}
-            />
-            <HeroStat
-              label="Workflows tracked"
-              value={aggregate.participatingWorkflows.toLocaleString()}
-            />
-            <HeroStat
-              label="Emails sent"
-              value={aggregate.emailsSent.toLocaleString()}
-              hint="all-time"
-            />
-            <HeroStat
-              label="$ spent"
-              value={formatCostDollars(aggregate.totalCostUsdCents)}
-              hint="all-time"
-            />
-            <HeroStat
-              label="Expected revenue"
-              value={formatRevenueUsd(aggregate.expectedRevenueUsd)}
-              hint="from brands with revenue"
-            />
-            <HeroStat
-              label="ROI"
-              value={formatRoi(aggregate.roiMultiple)}
-              hint="expected revenue / spend"
-            />
-          </div>
+      {/* The distribute outcome funnel */}
+      <section className="mx-auto max-w-5xl px-6 pb-4">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">
+          The distribute outcome funnel
+        </h2>
+        <p className="mb-6 text-sm text-gray-500">
+          One budget, four outcomes. Pick the result you want the campaign to
+          pursue; the cost climbs as the outcome moves closer to revenue.
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+          {rows.map(({ def, stats }, i) => (
+            <div key={def.slug} className="flex flex-1 items-stretch gap-3">
+              <Link
+                href={`/outcomes/${def.slug}`}
+                className="group flex flex-1 flex-col justify-between rounded-xl border border-gray-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-sm"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-emerald-700">
+                      {def.sym}
+                    </span>
+                    <span className="text-xs text-gray-500">{i + 1}</span>
+                  </div>
+                  <div className="mt-2 text-sm font-medium text-gray-900">
+                    {def.label}
+                  </div>
+                </div>
+                <div className="mt-3 text-2xl font-bold tracking-tight text-gray-900">
+                  {fmtUsd(stats?.currentAvgUsd)}
+                </div>
+                <div className="mt-1 text-[11px] uppercase tracking-wide text-gray-400">
+                  {def.measuredByUs ? "measured by us" : "client-reported"}
+                </div>
+              </Link>
+              {i < rows.length - 1 && (
+                <div
+                  className="hidden shrink-0 items-center text-gray-300 sm:flex"
+                  aria-hidden="true"
+                >
+                  →
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Why this feature matters — feature-specific narrative */}
-      {content && <WhyMattersSection data={content.whyMatters} />}
+      {/* Detail cards — cost + trend, link into each outcome page */}
+      <section className="mx-auto max-w-5xl px-6 py-12">
+        <h2 className="mb-6 text-sm font-semibold text-gray-900">
+          Every outcome, in detail
+        </h2>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {rows.map(({ def, stats }) => (
+            <Link
+              key={def.slug}
+              href={`/outcomes/${def.slug}`}
+              className="group rounded-xl border border-gray-200 bg-white p-6 transition hover:border-emerald-300 hover:shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-base font-semibold text-gray-900">
+                    Cost per {def.noun}
+                  </div>
+                  <p className="mt-1 max-w-xs text-sm text-gray-500">
+                    {def.tagline}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold tracking-tight text-gray-900">
+                    {fmtUsd(stats?.currentAvgUsd)}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wide text-gray-400">
+                    avg / {def.noun}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Sparkline points={stats?.trend ?? []} />
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-[11px] uppercase tracking-wide text-gray-400">
+                  {def.measuredByUs ? "measured by us" : "client-reported"}
+                </span>
+                <span className="text-sm font-medium text-emerald-600 group-hover:underline">
+                  See the price detail →
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+        <p className="mt-6 max-w-3xl text-xs leading-relaxed text-gray-400">
+          Website visits and positive replies we measure ourselves, from our own
+          sending inboxes. Meetings and signups are reported by each client from
+          their own funnel, so they vary more between brands. Observed prices are
+          not guarantees; your cost depends on targeting, offer, geography, copy,
+          and downstream conversion.
+        </p>
+      </section>
 
-      {/* External industry studies — sourced from established providers */}
-      {content && (
-        <ExternalStudiesSection studies={content.studies} featureName={feature.name} />
-      )}
-
-      {/* Platform averages — our open dataset */}
-      <section className="dy-section-tight border-y border-[var(--dy-border)] bg-[var(--dy-bg-alt)]">
-        <div className="dy-shell-wide">
-          <p className="dy-mono mb-2 text-xs uppercase tracking-wider text-[var(--dy-muted)]">
-            From the distribute open dataset
-          </p>
-          <h2 className="dy-h2 mb-2 text-xl md:text-2xl">
-            Platform averages
+      {/* CTA */}
+      <section className="border-t border-gray-200 bg-gray-50">
+        <div className="mx-auto max-w-5xl px-6 py-16 text-center">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+            See your own cost per outcome.
           </h2>
-          <p className="dy-body mb-6 text-sm">
-            Aggregated across every campaign run through {feature.name} — every
-            brand, every workflow. Updated hourly.
+          <p className="mx-auto mt-3 max-w-xl text-gray-600">
+            Drop your website, pick the outcome you want, set a daily budget.
+            distribute runs the outreach and reports the real cost per outcome in
+            your dashboard.
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-            <HeroStat label="Open rate" value={formatPercent(aggregate.openRate)} />
-            <HeroStat label="Click rate" value={formatPercent(aggregate.clickRate)} />
-            <HeroStat
-              label="Positive reply rate"
-              value={formatPercent(aggregate.replyRate)}
-            />
-            <HeroStat label="$ / open" value={formatCostCents(aggregate.costPerOpenCents)} />
-            <HeroStat label="$ / click" value={formatCostCents(aggregate.costPerClickCents)} />
-            <HeroStat
-              label="$ / positive reply"
-              value={formatCostCentsWhole(aggregate.costPerReplyCents)}
-            />
-          </div>
+          <a
+            href={PROD_URLS.signUp}
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700"
+          >
+            Start free →
+          </a>
         </div>
       </section>
-
-      {/* Value recap #1 → CTA primary, right before brand leaderboard */}
-      {content && content.valueRecaps[0] && (
-        <ValueRecap data={content.valueRecaps[0]} eyebrow="Why distribute" />
-      )}
-      {content && (
-        <BenchmarkCTA copy={content.ctaPrimary} signUpUrl={signUpUrl} variant="primary" />
-      )}
-
-      {/* Brand leaderboard */}
-      <section className="dy-section-tight">
-        <div className="dy-shell-wide">
-          <div className="flex items-end justify-between mb-4">
-            <div>
-              <h2 className="dy-h2 text-xl md:text-2xl">
-                Brand leaderboard
-              </h2>
-              <p className="dy-body mt-1 text-sm">
-                Every brand that has run {feature.name} through distribute.
-                Click column headers to sort.
-              </p>
-            </div>
-            <span className="dy-mono hidden text-xs text-[var(--dy-muted)] md:block">
-              {brands.length.toLocaleString()} brands
-            </span>
-          </div>
-          {brands.length > 0 ? (
-            <div className="dy-card overflow-hidden">
-              <BrandLeaderboard brands={brandsForTable} />
-            </div>
-          ) : (
-            <div className="dy-card py-12 text-center">
-              <p className="dy-body">
-                No campaign data for {feature.name} yet. Check back soon.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Value recap #2 — interleaved between leaderboards */}
-      {content && content.valueRecaps[1] && (
-        <ValueRecap data={content.valueRecaps[1]} eyebrow="How it works" />
-      )}
-
-      {/* Workflow leaderboard */}
-      <section className="dy-section-tight border-y border-[var(--dy-border)] bg-[var(--dy-bg-alt)]">
-        <div className="dy-shell-wide">
-          <div className="flex items-end justify-between mb-4">
-            <div>
-              <h2 className="dy-h2 text-xl md:text-2xl">
-                Workflow leaderboard
-              </h2>
-              <p className="dy-body mt-1 text-sm">
-                Every workflow that runs {feature.name} — ranked by cost per
-                positive reply.
-              </p>
-            </div>
-            <span className="dy-mono hidden text-xs text-[var(--dy-muted)] md:block">
-              {workflows.length.toLocaleString()} workflows
-            </span>
-          </div>
-          {workflows.length > 0 ? (
-            <div className="dy-card overflow-hidden">
-              <WorkflowLeaderboard workflows={workflows} inSection />
-            </div>
-          ) : (
-            <div className="dy-card py-12 text-center">
-              <p className="dy-body">No workflow data yet.</p>
-            </div>
-          )}
-          <p className="dy-mono mt-4 text-xs text-[var(--dy-muted)]">
-            Updated {new Date(updatedAt).toLocaleString()}. Methodology is open
-            source.
-          </p>
-        </div>
-      </section>
-
-      {/* Value recap #3 — last reminder before closing CTA */}
-      {content && content.valueRecaps[2] && (
-        <ValueRecap data={content.valueRecaps[2]} eyebrow="What you get" />
-      )}
-
-      {/* Closing CTA */}
-      {content && (
-        <BenchmarkCTA copy={content.ctaClosing} signUpUrl={signUpUrl} variant="closing" />
-      )}
     </main>
   );
 }

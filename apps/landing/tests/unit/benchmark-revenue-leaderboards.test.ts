@@ -29,10 +29,7 @@ describe("benchmark revenue leaderboards", () => {
     expect(tableContent).toContain("formatRoi(wf.roiMultiple)");
   });
 
-  it("shows benchmark-level expected revenue and ROI totals", () => {
-    expect(pageContent).toContain('label="Expected revenue"');
-    expect(pageContent).toContain("formatRevenueUsd(aggregate.expectedRevenueUsd)");
-    expect(pageContent).toContain('label="ROI"');
-    expect(pageContent).toContain("formatRoi(aggregate.roiMultiple)");
-  });
+  // NOTE: the benchmark-level revenue/ROI totals were removed when /benchmarks
+  // was repurposed into the cost-per-outcome overview (funnel + outcome cards).
+  // The workflow leaderboard component + types above still power /performance.
 });
