@@ -126,7 +126,7 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?
   { key: "sales_meetings", label: "Book appointments", unit: "appointments", desc: "Maximize booked sales meetings.", beta: true },
   { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits." },
   { key: "positive_replies", label: "Positive replies for sales meetings", unit: "contacts", desc: "Maximize positive replies for a sales meeting from prospects." },
-  { key: "form_submissions", label: "Submit lead forms", unit: "lead forms", desc: "Maximize lead-form submissions." },
+  { key: "form_submissions", label: "Form submissions", unit: "lead forms", desc: "Maximize form submissions." },
   { key: "purchase", label: "Purchases", unit: "purchases", desc: "Maximize direct purchases.", beta: true },
 ];
 
