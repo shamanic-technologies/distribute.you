@@ -199,9 +199,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("Set up your org wallet.");
   });
 
-  it("lets a filled Other budget card be reselected after choosing another tier", () => {
-    expect(src).toContain("const selectCustomCount = () =>");
-    expect(src).toContain("if (isCustom) setSelectedCount(customN)");
-    expect(src).toContain("onClick={selectCustomCount}");
+  it("shows $/day as the primary value with outcomes/mo secondary; Other is a custom $/day", () => {
+    // Canonical selection is the $/day budget, not the outcome count.
+    expect(src).toContain("setSelectedBudget");
+    expect(src).toContain("countForBudget");
+    // Other card: custom $ input drives selectedBudget, reselectable after another tier.
+    expect(src).toContain("const active = isCustom && selectedBudget === customB");
+    expect(src).toContain("if (isCustom) setSelectedBudget(customB)");
   });
 });
