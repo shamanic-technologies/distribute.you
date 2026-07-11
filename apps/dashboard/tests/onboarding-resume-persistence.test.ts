@@ -98,6 +98,23 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain('throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");');
   });
 
+  it("survives a version bump mid-checkout: reconstructs state from top-level fields instead of nuking the brand", () => {
+    // The nested onboardingState is version-guarded; a bump landing while the user is at
+    // checkout must NOT throw away the whole blob (brand + budget live at the top level).
+    // selectedAudienceIds is lifted to the top level so even the audience gate survives.
+    expect(src).toContain("selectedAudienceIds: string[];"); // on PendingCheckoutLaunch
+    expect(src).toContain("selectedAudienceIds: launchAudienceIds,"); // written at checkout
+    expect(src).toContain("function reconstructCheckoutOnboardingState");
+    // strict reader reconstructs rather than throwing on a stale nested state
+    const reader = src.slice(
+      src.indexOf("function readPendingCheckoutLaunch("),
+      src.indexOf("// Coerce a stored profile field"),
+    );
+    expect(reader).toContain("onboardingState = reconstructCheckoutOnboardingState(parsed, selectedAudienceIds);");
+    // launch audience gate reads the top-level field first
+    expect(src).toContain("storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds");
+  });
+
   it("does not double-resume on a Stripe checkout return (generic resume no-ops)", () => {
     // The dedicated checkout effect owns ?launch_checkout=success|cancelled. The
     // generic resume must NOT also fire (it would re-hydrate the brand and land on
