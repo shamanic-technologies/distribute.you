@@ -86,7 +86,7 @@ const CSS = `
 .bp-preview.light{background:#f2f5f7}
 .bp-preview.checker{background:#0b0f15;background-image:linear-gradient(45deg,#151b25 25%,transparent 25%),linear-gradient(-45deg,#151b25 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#151b25 75%),linear-gradient(-45deg,transparent 75%,#151b25 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
 .bp-preview img{max-width:100%;max-height:100%}
-.bp-preview.checker img{width:72px;height:72px}
+.bp-preview.checker img{width:72px;height:72px;border-radius:16px}
 .bp-meta{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line)}
 .bp-meta .nm{font-size:14px;font-weight:500}
 .bp-meta .nt{font-size:12px;color:var(--faint);margin-top:2px}
