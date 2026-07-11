@@ -4502,7 +4502,14 @@ export interface InstantlyAccountHealthRow {
   inboxPlacement: InstantlyAccountInboxPlacement | null; // BSG history; always null in v1
   sentYesterday: number; // real emails sent the previous full UTC day; honest 0, never null
   sentToday: number; // real emails sent today (UTC); honest 0, never null
-  queueSize: number; // emails queued to Instantly but not yet sent; honest 0, never null
+  queueSize: number; // un-sent STEPS queued to Instantly for this account; honest 0, never null
+  // Queue partitioned by SEQUENCES (leads), by the projected next-step date.
+  // queuedSequences === queuedFirstUnsent + queuedNextToday + queuedNextTomorrow + queuedNextLater.
+  queuedSequences: number; // total queued sequences (leads) attributed to this account
+  queuedFirstUnsent: number; // 1st email not yet sent
+  queuedNextToday: number; // next step projected today (UTC) or overdue
+  queuedNextTomorrow: number; // next step projected tomorrow (UTC)
+  queuedNextLater: number; // next step projected after tomorrow
   accountType: string | null; // "google" | "microsoft" | "imap"; null when unknown
 }
 
@@ -4541,6 +4548,11 @@ const InstantlyAccountHealthRowSchema = z.object({
   sentYesterday: z.number(),
   sentToday: z.number(),
   queueSize: z.number(),
+  queuedSequences: z.number(),
+  queuedFirstUnsent: z.number(),
+  queuedNextToday: z.number(),
+  queuedNextTomorrow: z.number(),
+  queuedNextLater: z.number(),
   accountType: z.string().nullable(),
 });
 const InstantlyAccountHealthSchema = z.object({

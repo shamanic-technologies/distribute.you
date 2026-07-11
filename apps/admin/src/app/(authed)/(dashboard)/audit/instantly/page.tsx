@@ -116,8 +116,25 @@ const COLUMNS = [
   { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
   { key: "sentYesterday", label: "Sent D-1", numeric: true, align: "right" },
   { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
-  { key: "queueSize", label: "Queued", numeric: true, align: "right" },
+  { key: "queueSize", label: "Queued steps", numeric: true, align: "right" },
+  { key: "queuedSequences", label: "Queued seq", numeric: true, align: "right" },
+  { key: "queuedFirstUnsent", label: "Queued 1st", numeric: true, align: "right" },
+  { key: "queuedNextToday", label: "Queued today", numeric: true, align: "right" },
+  { key: "queuedNextTomorrow", label: "Queued tomorrow", numeric: true, align: "right" },
+  { key: "queuedNextLater", label: "Queued later", numeric: true, align: "right" },
 ] as const;
+
+// Header tooltips clarifying the two queue granularities (steps vs sequences) and
+// the projected-date buckets.
+const COLUMN_HINT: Partial<Record<SortKey, string>> = {
+  queueSize: "Un-sent STEPS queued to Instantly for this account",
+  queuedSequences:
+    "Total queued SEQUENCES (leads) = 1st + today + tomorrow + later",
+  queuedFirstUnsent: "Sequences whose 1st email is not sent yet",
+  queuedNextToday: "Next step projected today (UTC) or overdue",
+  queuedNextTomorrow: "Next step projected tomorrow (UTC)",
+  queuedNextLater: "Next step projected after tomorrow",
+};
 
 type SortKey = (typeof COLUMNS)[number]["key"];
 
@@ -509,7 +526,7 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[980px] w-full text-sm">
+              <table className="min-w-[1440px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
@@ -520,6 +537,7 @@ function AccountHealthSection() {
                         <button
                           type="button"
                           onClick={() => onSort(c.key)}
+                          title={COLUMN_HINT[c.key]}
                           className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-gray-700"
                         >
                           {c.label}
@@ -584,6 +602,21 @@ function AccountHealthSection() {
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.queueSize)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums font-medium text-gray-900">
+                          {num(r.queuedSequences)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {num(r.queuedFirstUnsent)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {num(r.queuedNextToday)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {num(r.queuedNextTomorrow)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {num(r.queuedNextLater)}
                         </td>
                       </tr>
                     ))
