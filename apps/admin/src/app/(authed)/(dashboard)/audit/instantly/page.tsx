@@ -106,7 +106,8 @@ function LifecycleBadge({ status }: { status: string }) {
 // (nulls sort last regardless of direction); the rest are string.
 // Merged layout: Account carries the provider logo (Type folded in); Lifecycle
 // absorbs the active/inactive Status; Health merges the Health Score + Inbox
-// placement (sorts by Health Score). Domain is dropped as a column (still searchable).
+// placement (sorts by inbox-placement % first, Health Score as tiebreak). Domain
+// is dropped as a column (still searchable).
 const COLUMNS = [
   { key: "email", label: "Account", numeric: false, align: "left" },
   { key: "lifecycleStatus", label: "Lifecycle", numeric: false, align: "left" },
@@ -129,6 +130,22 @@ function compareRows(
   if (key === "lifecycleStatus") {
     const r = statusKey(a).localeCompare(statusKey(b));
     return dir === "asc" ? r : -r;
+  }
+  // Health is a composite: primary = inbox-placement (test-deliver) inbox %,
+  // secondary tiebreak = Health Score. Nulls sort last on each level regardless
+  // of direction.
+  if (key === "warmupScore") {
+    const level = (av: number | null, bv: number | null): number => {
+      const aN = av === null;
+      const bN = bv === null;
+      if (aN && bN) return 0;
+      if (aN) return 1; // nulls always last
+      if (bN) return -1;
+      return dir === "asc" ? av! - bv! : bv! - av!;
+    };
+    const byInbox = level(a.inboxPlacement?.inboxPct ?? null, b.inboxPlacement?.inboxPct ?? null);
+    if (byInbox !== 0) return byInbox;
+    return level(a.warmupScore, b.warmupScore);
   }
   const av = a[key];
   const bv = b[key];

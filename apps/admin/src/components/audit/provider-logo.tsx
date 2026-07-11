@@ -65,11 +65,26 @@ export function ProviderLogo({ type }: { type: string | null }) {
   );
 }
 
+const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_TOKEN;
+
 /**
- * Small Instantly mark, shown next to the Health Score to signal the score is
- * sourced from Instantly. Purple rounded square + white paper plane (approx brand).
+ * Small Instantly logo, shown next to the Health Score to signal the score is
+ * sourced from Instantly. Real brand logo via logo.dev (instantly.ai); falls back
+ * to an inline purple paper-plane mark when the logo.dev token is not configured.
  */
 export function InstantlyLogo() {
+  if (LOGO_DEV_TOKEN) {
+    return (
+      <img
+        src={`https://img.logo.dev/instantly.ai?token=${LOGO_DEV_TOKEN}&size=32`}
+        alt="Instantly"
+        title="Health Score from Instantly"
+        width={16}
+        height={16}
+        className="h-4 w-4 shrink-0 rounded"
+      />
+    );
+  }
   return (
     <span
       title="Health Score from Instantly"
