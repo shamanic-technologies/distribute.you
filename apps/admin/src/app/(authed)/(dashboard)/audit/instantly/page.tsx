@@ -153,16 +153,14 @@ function compareRows(
     return dir === "asc" ? r : -r;
   }
   // Health is a composite: primary = inbox-placement (test-deliver) inbox %,
-  // secondary tiebreak = Health Score. Nulls sort last on each level regardless
-  // of direction.
+  // secondary tiebreak = Health Score. A null (no delivery test yet) counts as
+  // worse than 0 — asc surfaces untested accounts first, desc sinks them last.
   if (key === "warmupScore") {
     const level = (av: number | null, bv: number | null): number => {
-      const aN = av === null;
-      const bN = bv === null;
-      if (aN && bN) return 0;
-      if (aN) return 1; // nulls always last
-      if (bN) return -1;
-      return dir === "asc" ? av! - bv! : bv! - av!;
+      if (av === null && bv === null) return 0;
+      const aN = av ?? -Infinity; // null = worse than 0
+      const bN = bv ?? -Infinity;
+      return dir === "asc" ? aN - bN : bN - aN;
     };
     const byInbox = level(a.inboxPlacement?.inboxPct ?? null, b.inboxPlacement?.inboxPct ?? null);
     if (byInbox !== 0) return byInbox;
