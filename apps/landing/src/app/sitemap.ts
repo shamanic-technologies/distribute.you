@@ -49,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     // Per-outcome price detail pages (src/app/outcomes/[outcome]/page.tsx).
-    ...["website-visits", "positive-replies", "meetings-booked", "signups"].map(
+    ...["website-visits", "positive-replies", "signups"].map(
       (slug) => ({
         url: `${baseUrl}/outcomes/${slug}`,
         lastModified: new Date(),

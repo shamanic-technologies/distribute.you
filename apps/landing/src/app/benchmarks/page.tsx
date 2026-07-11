@@ -151,7 +151,7 @@ export default async function BenchmarksPage() {
           The distribute outcome funnel
         </h2>
         <p className="mb-6 text-sm text-gray-500">
-          One budget, four outcomes. Pick the result you want the campaign to
+          One budget, three outcomes. Pick the result you want the campaign to
           pursue; the cost climbs as the outcome moves closer to revenue.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
@@ -238,8 +238,8 @@ export default async function BenchmarksPage() {
         </div>
         <p className="mt-6 max-w-3xl text-xs leading-relaxed text-gray-400">
           Website visits and positive replies we measure ourselves, from our own
-          sending inboxes. Meetings and signups are reported by each client from
-          their own funnel, so they vary more between brands. Observed prices are
+          sending inboxes. Signups are reported by each client from their own
+          funnel, so they vary more between brands. Observed prices are
           not guarantees; your cost depends on targeting, offer, geography, copy,
           and downstream conversion.
         </p>

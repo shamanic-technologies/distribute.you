@@ -52,20 +52,9 @@ export const OUTCOMES: OutcomeDef[] = [
     howWeTrack:
       "We measure this ourselves. Replies land in our inboxes first. We read and qualify every one, and only count it as positive when the prospect shows real buying interest.",
   },
-  {
-    slug: "meetings-booked",
-    objective: "meetingBooked",
-    sym: "MEE",
-    label: "Meeting booked",
-    noun: "meeting",
-    nounPlural: "meetings",
-    measuredByUs: false,
-    tagline: "What a booked sales meeting costs.",
-    howItWorks:
-      "A booked meeting is a prospect on your calendar, ready for a sales call. It is the outcome closest to revenue, and it depends on your offer and your sales follow-up as much as on the outreach.",
-    howWeTrack:
-      "This one is reported by you. A meeting is booked in your calendar and your CRM, not in our inbox, so the number comes from your funnel. Expect it to move more from one brand to the next than the outcomes we measure directly.",
-  },
+  // "meetings-booked" is beta-gated — removed from the public landing (ticker,
+  // /benchmarks, /outcomes). Keep the "meetingBooked" objective in the union
+  // above for the legacy __TICKER_CPM__ scalar. Re-add here to expose it again.
   {
     slug: "signups",
     objective: "signup",
