@@ -79,22 +79,23 @@ describe("Conversion events show lead photos (item 5)", () => {
   });
 });
 
-describe("Sub-dollar expected revenue shows <$1 (item 7)", () => {
+describe("Adaptive currency: <$10 keeps cents, ≥$10 whole dollars", () => {
   const conversions = read("components/revenue/conversions-table.tsx");
 
-  it("formatUsd guards a positive amount that rounds to $0", () => {
-    expect(conversions).toContain('if (n > 0 && Math.round(n) === 0) return "<$1";');
+  it("formatUsd guards a positive sub-cent amount", () => {
+    expect(conversions).toContain('if (n > 0 && n < 0.01) return "<$0.01";');
   });
 
-  it("formatUsd logic: <$1 for sub-dollar, $0 for true zero", () => {
+  it("formatUsd logic: cents under $10, whole dollars from $10", () => {
     const formatUsd = (n: number): string => {
-      if (n > 0 && Math.round(n) === 0) return "<$1";
-      return `$${Math.round(n).toLocaleString("en-US")}`;
+      if (n > 0 && n < 0.01) return "<$0.01";
+      const decimals = Math.abs(n) < 10 ? 2 : 0;
+      return `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
     };
-    expect(formatUsd(0)).toBe("$0");
-    expect(formatUsd(0.4)).toBe("<$1");
-    expect(formatUsd(0.01)).toBe("<$1");
-    expect(formatUsd(0.6)).toBe("$1");
+    expect(formatUsd(0)).toBe("$0.00");
+    expect(formatUsd(0.4)).toBe("$0.40");
+    expect(formatUsd(0.001)).toBe("<$0.01");
+    expect(formatUsd(9.99)).toBe("$9.99");
     expect(formatUsd(1234)).toBe("$1,234");
   });
 });

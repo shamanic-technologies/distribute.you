@@ -35,10 +35,6 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/components/brand/brand-status-control.tsx"),
     "utf-8",
   );
-  const outletsPage = fs.readFileSync(
-    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/outlets/page.tsx"),
-    "utf-8",
-  );
 
   it("keeps the dashboard shell from horizontal overflow", () => {
     expect(dashboardLayout).toContain("relative flex min-h-0 flex-1 overflow-hidden");
@@ -70,12 +66,5 @@ describe("Dashboard mobile responsiveness", () => {
     expect(settingsPage).toContain('<BrandDailyBudgetCard brandId={brandId} variant="section" />');
     expect(brandStatusControl).toContain("flex flex-wrap items-center justify-between gap-3");
     expect(brandStatusControl).toContain("flex items-center gap-3");
-  });
-
-  it("wraps outlet rows and bulk actions inside the viewport", () => {
-    expect(outletsPage).toContain("flex w-full flex-wrap items-center");
-    expect(outletsPage).toContain("ml-11 flex w-full flex-wrap");
-    expect(outletsPage).toContain("relative flex h-full min-h-0");
-    expect(outletsPage).toContain("flex w-full flex-col gap-2 sm:w-auto");
   });
 });

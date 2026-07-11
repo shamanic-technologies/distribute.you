@@ -25,8 +25,9 @@ describe("formatStatValue", () => {
     expect(formatStatValue(0, { type: "rate", label: "Rate" })).toBe("\u2014");
   });
 
-  it("formats currency from cents to dollars", () => {
-    expect(formatStatValue(1250, { type: "currency", label: "Cost" })).toBe("$12.50");
+  it("formats currency adaptively: <$10 keeps cents, ≥$10 whole dollars", () => {
+    expect(formatStatValue(1250, { type: "currency", label: "Cost" })).toBe("$13");
+    expect(formatStatValue(999, { type: "currency", label: "Cost" })).toBe("$9.99");
     expect(formatStatValue(5, { type: "currency", label: "Cost" })).toBe("$0.05");
   });
 

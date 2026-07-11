@@ -30,13 +30,14 @@ import {
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 
-/** Cents → "$X.XX" / "-" / "<$0.01". Mirrors top-audiences-card. */
+/** Cents → adaptive "$X.XX" (<$10) / "$X" (≥$10) / "-" / "<$0.01". Mirrors top-audiences-card. */
 function formatCents(cents: number | null): string {
   if (cents == null) return "-";
   if (cents <= 0) return "$0.00";
   const usd = cents / 100;
   if (usd < 0.01) return "<$0.01";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const decimals = usd < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "formSubmissions" | "cpfs" | "outreach" | "remaining" | "size";

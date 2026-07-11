@@ -55,11 +55,12 @@ function cpprFromRow(row: WorkflowProjectionRow | null | undefined): number | nu
   return block?.unitCosts.costPerPositiveReplyUsd ?? null;
 }
 
-/** USD number → whole dollars "$X" (no cents) / "—". */
+/** USD number → adaptive "$X.XX" (<$10) / "$X" (≥$10) / "-". */
 function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
   if (usd <= 0) return "$0";
-  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  const decimals = Math.abs(usd) < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 /**
@@ -72,15 +73,17 @@ function formatUsd(usd: number | null | undefined): string {
 function formatUsdFloor(usd: number | null | undefined, _floored: boolean): string {
   if (usd == null) return "-";
   if (usd <= 0) return "$0";
-  return `$${usd.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  const decimals = Math.abs(usd) < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-/** USD render for cost-per-click — always two decimals "$X.XX" / "$0.00" / "-". CPC is a
- *  small figure ($1–$7) where whole-dollar rounding loses the meaningful cents. */
+/** USD render for cost-per-click — adaptive "$X.XX" (<$10) / "$X" (≥$10) / "$0.00" / "-".
+ *  CPC is usually a small figure ($1–$7) where the cents matter. */
 function formatUsdCents(usd: number | null | undefined): string {
   if (usd == null) return "-";
   if (usd <= 0) return "$0.00";
-  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const decimals = Math.abs(usd) < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
 /** A percentage value already in % units → "X%" / "X.Y%" (one decimal, trailing zero dropped) / "—". */

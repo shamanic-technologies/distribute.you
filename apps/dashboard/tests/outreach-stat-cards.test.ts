@@ -96,9 +96,10 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain("Coming soon");
   });
 
-  it("formats cost-per metrics with two decimal places", () => {
-    expect(cards).toContain("minimumFractionDigits: 2");
-    expect(cards).toContain("maximumFractionDigits: 2");
+  it("formats cost-per metrics adaptively (<$10 keeps cents, ≥$10 whole)", () => {
+    expect(cards).toContain("Math.abs(usd) < 10 ? 2 : 0");
+    expect(cards).toContain("minimumFractionDigits: decimals");
+    expect(cards).toContain("maximumFractionDigits: decimals");
   });
 
   it("passes optimizationGoal from both overview call sites", () => {
