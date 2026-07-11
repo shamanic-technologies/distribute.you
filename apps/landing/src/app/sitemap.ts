@@ -76,9 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // public/landing/**.html set when adding/removing a static page.
   const STATIC_SEO_PATHS: { path: string; priority: number }[] = [
     { path: "/pro", priority: 0.8 },
-    // NOTE: /agency intentionally omitted — it serves the same index-agency.html
-    // as "/" and canonicals to "/", so listing it here would advertise a
-    // non-canonical URL in the sitemap. "/" (above) is the canonical entry.
+    { path: "/brand", priority: 0.5 },
     { path: "/how-it-works", priority: 0.8 },
     { path: "/use-cases", priority: 0.8 },
     { path: "/privacy", priority: 0.3 },

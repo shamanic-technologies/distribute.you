@@ -15,7 +15,7 @@ const landingDir = path.resolve(__dirname, "../../public/landing");
 
 const staticHtml = fs.readFileSync(staticHtmlPath, "utf-8");
 const salesLandingPage = fs.readFileSync(salesLandingPagePath, "utf-8");
-const staticPageSource = ["index.html", "performance.html"]
+const staticPageSource = ["index-v1.html", "performance.html"]
   .map((fileName) => fs.readFileSync(path.join(landingDir, fileName), "utf-8"))
   .join("\n");
 
@@ -124,7 +124,7 @@ describe("Static landing live performance values", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const indexResponse = await staticResponse("index.html");
+    const indexResponse = await staticResponse("index-v1.html");
     const performanceResponse = await staticResponse("performance.html");
     const indexHtml = await indexResponse.text();
     const performanceHtml = await performanceResponse.text();

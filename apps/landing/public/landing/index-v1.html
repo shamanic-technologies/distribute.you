@@ -722,7 +722,33 @@
     @media(prefers-reduced-motion:reduce){
       *{scroll-behavior:auto!important;animation:none!important;transition:none!important}
     }
-  </style>
+      /* live outcomes ticker (#outcomes) — server-rendered real cost-per-outcome */
+    .ticker-live{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--green)}
+    .ticker-live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(69,227,142,.9);animation:tkrpulse 2s ease-in-out infinite}
+    @keyframes tkrpulse{0%,100%{opacity:1}50%{opacity:.35}}
+    .ticker-board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:34px}
+    .tkr{display:flex;flex-direction:column;gap:9px;padding:18px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel);text-decoration:none;color:var(--text);transition:border-color .15s,transform .15s}
+    .tkr:hover{border-color:var(--green-line);transform:translateY(-2px)}
+    .tkr-sym{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);line-height:1.3}
+    .tkr-chip{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--green);background:var(--green-dim);border:1px solid var(--green-line);border-radius:5px;padding:2px 6px}
+    .tkr-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+    .tkr-price{font-family:var(--display);font-size:26px;font-weight:600;letter-spacing:-.5px}
+    .tkr-chg{font-family:var(--mono);font-size:11px;font-weight:600}
+    .tkr-chg.down{color:var(--green)}
+    .tkr-chg.up{color:var(--red)}
+    .tkr-chg.flat{color:var(--faint)}
+    .tkr-wk{color:var(--faint);font-weight:400}
+    .tkr-spark{display:block;width:100%;height:34px}
+    .tkr-spark-empty{height:34px}
+    .tkr-src{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border-radius:5px;padding:3px 7px;align-self:flex-start}
+    .tkr-src-us{background:var(--green-dim);color:var(--green);border:1px solid var(--green-line)}
+    .tkr-src-client{background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
+    .tkr-more{font-size:11px;color:var(--faint)}
+    .ticker-legend{margin-top:22px;color:var(--faint);font-size:13px;line-height:1.7;max-width:70ch}
+    .ticker-legend b{color:var(--muted);font-weight:500}
+    @media(max-width:860px){.ticker-board{grid-template-columns:1fr 1fr}}
+    @media(max-width:520px){.ticker-board{grid-template-columns:1fr}}
+</style>
 
   <script type="application/ld+json">
   {
@@ -1039,6 +1065,18 @@
       </div>
     </section>
 
+    <section id="outcomes">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="ticker-live"><span class="ticker-live-dot" aria-hidden="true"></span>Live · observed prices</span>
+          <h2 style="margin-top:14px">The going rate for outcomes.</h2>
+          <p class="section-copy">Nobody pays a fixed price. These are the average prices our campaigns are paying right now, across every brand we run. Set a daily budget and the outcomes start flowing.</p>
+        </div>
+        __TICKER_BOARD__
+        <p class="ticker-legend"><b>Website visits</b> and <b>positive replies</b> we measure ourselves, from our own sending inboxes. <b>Meetings</b> and <b>signups</b> are reported by each client from their own funnel, so they vary more between brands.</p>
+      </div>
+    </section>
+
     <hr class="divider">
 
     <!-- PRODUCT OWNER NOTE: This pricing copy intentionally states only the facts shared by both possible billing models. Before publishing a stronger "pay only per outcome" or "metered usage" claim, align the homepage, dashboard, and Terms of Service. -->
@@ -1253,6 +1291,7 @@
           <h4>Legal</h4>
           <a href="https://distribute.you/terms">Terms</a>
           <a href="https://distribute.you/privacy">Privacy</a>
+          <a href="https://distribute.you/brand">Brand</a>
           <a href="mailto:support@distribute.you">Support</a>
         </div>
       </div>

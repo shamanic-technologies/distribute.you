@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" role="img" aria-label="distribute">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&amp;display=swap');</style>
+  <circle cx="26" cy="40" r="8" fill="#f2f5f7"/>
+  <text x="48" y="52" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="600" font-size="40" letter-spacing="-1" fill="#f2f5f7">distribute</text>
+</svg>
