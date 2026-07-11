@@ -301,7 +301,8 @@ async function withLivePerformanceMetrics(html: string) {
 const TICKER_OBJECTIVES = [
   { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true, slug: "website-visits" },
   { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
-  { key: "meetingBooked", sym: "MEE", label: "Meeting booked", measuredByUs: false, slug: "meetings-booked" },
+  // meetingBooked is beta-gated out of the public board; the __TICKER_CPM__
+  // scalar (legacy /v0 homepage) is still computed from a separate fetch below.
   { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false, slug: "signups" },
 ] as const;
 
@@ -430,7 +431,6 @@ function buildFallbackTicker(): TickerMetrics {
   const series: Record<string, SeriesPoint[]> = {
     websiteVisit: fallbackSeries(0.88),
     positiveReply: fallbackSeries(151),
-    meetingBooked: fallbackSeries(5.68),
     signup: fallbackSeries(22),
   };
   return {
@@ -471,18 +471,23 @@ async function fetchTicker(): Promise<TickerMetrics> {
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
 
-  const [visit, reply, meeting, signup] = await Promise.all(
+  const [visit, reply, signup] = await Promise.all(
     TICKER_OBJECTIVES.map((o) => fetchTrendSeries(apiUrl, headers, slug, o.key)),
   );
+  // meetingBooked is beta-gated out of the public board, but the __TICKER_CPM__
+  // scalar still feeds the legacy /v0 homepage — fetch it on its own so a
+  // failure can't blank the board.
+  const meeting = await fetchTrendSeries(apiUrl, headers, slug, "meetingBooked").catch(
+    () => [] as SeriesPoint[],
+  );
 
-  if (!visit.length && !reply.length && !meeting.length && !signup.length) {
+  if (!visit.length && !reply.length && !signup.length) {
     throw new Error("[landing] cost-per-outcome-trend returned no backed series");
   }
 
   const series: Record<string, SeriesPoint[]> = {
     websiteVisit: visit,
     positiveReply: reply,
-    meetingBooked: meeting,
     signup,
   };
   const last = (s: SeriesPoint[]): string | null =>
