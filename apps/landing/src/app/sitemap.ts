@@ -77,7 +77,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const STATIC_SEO_PATHS: { path: string; priority: number }[] = [
     { path: "/pro", priority: 0.8 },
     { path: "/brand", priority: 0.5 },
-    { path: "/how-it-works", priority: 0.8 },
     { path: "/use-cases", priority: 0.8 },
     { path: "/privacy", priority: 0.3 },
     // NOTE: /performance/brands + /performance/models are 308-redirected to

@@ -147,6 +147,26 @@ h1, h2, h3, .font-display {
   --dy-teal-brd:    oklch(48%   0.180 190 / 0.22);
 }
 
+/* Force the DARK dy tokens on a subtree even though <html data-theme="light">.
+   Used to wrap /benchmarks + /outcomes so the shared dy-nav + footer match the
+   new dark landing skin (closest-ancestor wins for custom properties). */
+.dy-dark-scope {
+  --dy-bg:          oklch(7.5%  0.010 158);
+  --dy-bg-alt:      oklch(10%   0.012 158);
+  --dy-surface:     oklch(12%   0.012 158);
+  --dy-surface-hi:  oklch(15%   0.014 158);
+  --dy-border:      oklch(100%  0     0   / 0.07);
+  --dy-border-hi:   oklch(100%  0     0   / 0.12);
+  --dy-text:        oklch(96%   0.005 158);
+  --dy-sub:         oklch(68%   0.016 158);
+  --dy-muted:       oklch(52%   0.016 158);
+  --dy-accent:      oklch(74%   0.17 158);
+  --dy-accent-hi:   oklch(80%   0.15 158);
+  --dy-accent-dim:  oklch(74%   0.17 158 / 0.12);
+  --dy-accent-brd:  oklch(74%   0.17 158 / 0.28);
+  --dy-nav-bg:      oklch(8%    0.010 158 / 0.88);
+}
+
 /* Scope DS body styling to the home page (.dy-root) so other landing pages keep their look */
 .dy-root {
   font-family: 'Inter', system-ui, sans-serif;

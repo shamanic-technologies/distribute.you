@@ -30,15 +30,6 @@ const COLUMNS: FooterColumn[] = [
     ],
   },
   {
-    title: "Developers",
-    links: [
-      { label: "Documentation", href: URLS.docs, external: true },
-      { label: "API reference", href: URLS.apiDocs, external: true },
-      { label: "MCP server", href: URLS.mcp, external: true },
-      { label: "GitHub", href: URLS.github, external: true },
-    ],
-  },
-  {
     title: "Company",
     links: [
       { label: "Investors", href: "/investors" },

@@ -7,7 +7,7 @@ export default function OutcomeLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <div className="dy-dark-scope">
       <Navbar />
       {children}
       <Footer
@@ -18,6 +18,6 @@ export default function OutcomeLayout({
           </>
         }
       />
-    </>
+    </div>
   );
 }

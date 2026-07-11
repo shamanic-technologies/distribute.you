@@ -1,7 +1,8 @@
-import { staticResponse } from "@/lib/static-html";
+import { NextResponse } from "next/server";
 
-export const revalidate = 300;
-
-export function GET() {
-  return staticResponse("how-it-works.html");
+// The standalone /how-it-works page was retired — the homepage "How it works"
+// section (/#how) is the live source. 308-redirect so inbound links + the SEO
+// history land on the section instead of an outdated page.
+export function GET(request: Request) {
+  return NextResponse.redirect(new URL("/#how", request.url), 308);
 }
