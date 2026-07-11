@@ -230,6 +230,11 @@ const TAG_TONES = [
 // cost, shown as the tier's primary $/day. "Other" is a custom $/day.
 const COUNT_TIERS = [25, 50, 100];
 
+// Default conversion rates + their display text. Shared by the useState seeds and
+// the minimal checkout-state reconstruction (a version bump that lands mid-checkout).
+const DEFAULT_RATES: Record<RateKey, number> = { ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25, v2p: 1, r2p: 5, v2f: 5, f2p: 10 };
+const DEFAULT_RATE_TEXT: Record<RateKey, string> = { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25", v2p: "1", r2p: "5", v2f: "5", f2p: "10" };
+
 
 const fmtUsd0 = (n: number) => "$" + formatLocaleInteger(n);
 const fmtCount = (n: number) => formatLocaleInteger(n);
@@ -257,6 +262,9 @@ type PendingCheckoutLaunch = {
   featureInputs?: Record<string, string>;
   profile?: Record<string, string | string[]>;
   services?: string[];
+  // Lifted to the top level (version-independent) so a checkout return survives a
+  // stale/incompatible nested onboardingState — the launch + audience gate keep working.
+  selectedAudienceIds: string[];
   onboardingState: PersistedOnboardingState;
   createdAt: string;
 };
@@ -371,13 +379,50 @@ function isWorkflowProjectionResponse(value: unknown): value is WorkflowProjecti
   );
 }
 
+// Rebuild a minimal, CURRENT-version onboarding snapshot from the pending blob's
+// version-INDEPENDENT top-level fields. Used when the nested onboardingState fails to
+// parse (an ONBOARDING_STATE_VERSION bump landed while the user was at checkout) — the
+// brand/budget/outcome/audiences all live at the top level, so a cancel return still
+// lands on pricing with the brand intact instead of nuking the whole flow.
+function reconstructCheckoutOnboardingState(
+  p: Partial<PendingCheckoutLaunch>,
+  selectedAudienceIds: string[],
+): PersistedOnboardingState {
+  const budget = typeof p.budgetUsd === "number" ? p.budgetUsd : null;
+  return {
+    version: ONBOARDING_STATE_VERSION,
+    flowKey: "signup",
+    step: "pricing",
+    url: (p.brandUrl ?? "").replace(/^https?:\/\//i, ""),
+    outcome: p.outcome as Outcome,
+    rates: { ...DEFAULT_RATES },
+    rateText: { ...DEFAULT_RATE_TEXT },
+    services: p.services ?? [],
+    clickDestinationUrl: "",
+    profile: p.profile ?? {},
+    selectedBudget: budget,
+    customBudget: "",
+    checkoutBudgetUsd: budget,
+    audiencePrompt: "",
+    audienceCandidates: null,
+    selectedAudienceIds,
+    workflowProjection: null,
+    salesInputs: [],
+    launchFeatureInputs: p.featureInputs ?? null,
+    brandId: p.brandId ?? null,
+    orgId: p.orgId ?? null,
+    servicesEdited: false,
+    ratesEdited: false,
+  };
+}
+
 function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   const raw = window.sessionStorage.getItem(CHECKOUT_PENDING_KEY);
   if (!raw) {
     throw new Error("Checkout returned, but the pending launch state is missing. Campaign was not launched.");
   }
   const parsed = JSON.parse(raw) as Partial<PendingCheckoutLaunch>;
-  const onboardingState = parseOnboardingState(parsed.onboardingState);
+  // Top-level fields are version-independent and are the source of truth for a launch.
   if (
     parsed.version !== 1 ||
     typeof parsed.brandId !== "string" ||
@@ -393,12 +438,26 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     (parsed.featureInputs !== undefined && !isStringRecord(parsed.featureInputs)) ||
     (parsed.profile !== undefined && !isProfileRecord(parsed.profile)) ||
     (parsed.services !== undefined && !isStringList(parsed.services)) ||
-    !onboardingState ||
     typeof parsed.createdAt !== "string"
   ) {
     throw new Error("Checkout returned with an invalid pending launch state. Campaign was not launched.");
   }
-  return { ...parsed, onboardingState } as PendingCheckoutLaunch;
+  // selectedAudienceIds is lifted to the top level; older blobs may lack it (default []).
+  const selectedAudienceIds = isStringList(parsed.selectedAudienceIds)
+    ? parsed.selectedAudienceIds
+    : parseOnboardingState(parsed.onboardingState)?.selectedAudienceIds ?? [];
+  // The nested onboardingState only re-renders the deeper wizard. If it fails to parse
+  // (a version bump landed mid-checkout), reconstruct a minimal current-version state
+  // from the top-level fields — the brand + budget survive; the user re-picks nothing
+  // that the top level already holds. Log loud (keep-resolved, not a silent fallback).
+  let onboardingState = parseOnboardingState(parsed.onboardingState);
+  if (!onboardingState) {
+    console.error(
+      "[dashboard] pending checkout onboardingState stale/invalid — reconstructing minimal state from top-level fields",
+    );
+    onboardingState = reconstructCheckoutOnboardingState(parsed, selectedAudienceIds);
+  }
+  return { ...parsed, selectedAudienceIds, onboardingState } as PendingCheckoutLaunch;
 }
 
 // Opportunistic recovery read: callers fall back to current state when this
@@ -584,8 +643,8 @@ export function Onboarding() {
 
   const [outcome, setOutcome] = useState<Outcome>(() => restored?.outcome ?? "signups");
   const isBeta = useIsBetaUser();
-  const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25, v2p: 1, r2p: 5, v2f: 5, f2p: 10 });
-  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25", v2p: "1", r2p: "5", v2f: "5", f2p: "10" });
+  const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ...DEFAULT_RATES });
+  const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ...DEFAULT_RATE_TEXT });
   const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
   const [serviceDraft, setServiceDraft] = useState("");
   // Page outreach clicks land on. "" means "use the brand domain" (the default
@@ -1289,7 +1348,7 @@ export function Onboarding() {
       // falling back to the resumed snapshot (same precedence as budget above).
       const launchAudienceIds = selectedAudienceIds.length
         ? selectedAudienceIds
-        : storedPending?.onboardingState.selectedAudienceIds ?? [];
+        : storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds ?? [];
       if (launchAudienceIds.length === 0) {
         throw new Error("Pick at least one audience before launching — go back to the audience step.");
       }
@@ -1316,6 +1375,7 @@ export function Onboarding() {
         featureInputs: storedPending?.featureInputs,
         profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
         services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
+        selectedAudienceIds: launchAudienceIds,
         onboardingState: checkoutState,
         createdAt: new Date().toISOString(),
       };
