@@ -118,7 +118,7 @@ const COLUMNS = [
   { key: "queuedToday", label: "Queued today", numeric: true, align: "right" },
   { key: "queuedNextTomorrow", label: "Queued tomorrow", numeric: true, align: "right" },
   { key: "queuedNextLater", label: "Queued later", numeric: true, align: "right" },
-  // DEBUG (temporary): backend queuedSequences total + a ✅/❌ reconciliation vs
+  // DEBUG (temporary): backend Queued steps (queueSize) + a ✅/❌ reconciliation vs
   // the sum of the visible queue columns (Initial + Followups + tomorrow + later).
   { key: "queuedTotal", label: "Queued total", numeric: true, align: "right" },
 ] as const;
@@ -131,11 +131,11 @@ const COLUMNS = [
 const COLUMN_HINT: Partial<Record<SortKey, string>> = {
   dailyLimit: "Per-account daily max send limit (+ daily warmup send volume)",
   queuedToday:
-    "Sequences queued for today = Initial (1st email unsent) + Followups (next step projected today/overdue)",
-  queuedNextTomorrow: "Next step projected tomorrow (UTC)",
-  queuedNextLater: "Next step projected after tomorrow",
+    "Un-sent STEPS due today = Initial (1st email unsent) + Followups (projected today/overdue)",
+  queuedNextTomorrow: "Steps projected tomorrow (UTC)",
+  queuedNextLater: "Steps projected after tomorrow",
   queuedTotal:
-    "DEBUG — backend queuedSequences total. ✅ green when it equals Initial + Followups + tomorrow + later.",
+    "DEBUG — backend Queued steps (queueSize). ✅ green when it equals Initial + Followups + tomorrow + later.",
 };
 
 type SortKey = (typeof COLUMNS)[number]["key"];
@@ -174,11 +174,9 @@ function compareRows(
     const bv = b.queuedFirstUnsent + b.queuedNextToday;
     return dir === "asc" ? av - bv : bv - av;
   }
-  // DEBUG "Queued total" sorts on the backend queuedSequences total.
+  // DEBUG "Queued total" sorts on the backend Queued steps (queueSize) total.
   if (key === "queuedTotal") {
-    return dir === "asc"
-      ? a.queuedSequences - b.queuedSequences
-      : b.queuedSequences - a.queuedSequences;
+    return dir === "asc" ? a.queueSize - b.queueSize : b.queueSize - a.queueSize;
   }
   const av = (a as unknown as Record<string, unknown>)[key];
   const bv = (b as unknown as Record<string, unknown>)[key];
@@ -747,7 +745,7 @@ function AccountHealthSection() {
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.queuedNextLater)}
                         </td>
-                        {/* DEBUG: backend total + reconciliation ✅/❌ vs visible cols. */}
+                        {/* DEBUG: backend Queued steps (queueSize) + reconciliation ✅/❌ vs visible cols. */}
                         <td className="py-2.5 px-3 text-right">
                           {(() => {
                             const visibleSum =
@@ -755,7 +753,7 @@ function AccountHealthSection() {
                               r.queuedNextToday +
                               r.queuedNextTomorrow +
                               r.queuedNextLater;
-                            const ok = r.queuedSequences === visibleSum;
+                            const ok = r.queueSize === visibleSum;
                             return (
                               <span
                                 className={`inline-flex items-center gap-1 tabular-nums ${
@@ -764,10 +762,10 @@ function AccountHealthSection() {
                                 title={
                                   ok
                                     ? "Matches Initial + Followups + tomorrow + later"
-                                    : `Mismatch: backend ${num(r.queuedSequences)} vs visible sum ${num(visibleSum)}`
+                                    : `Mismatch: backend queueSize ${num(r.queueSize)} vs visible sum ${num(visibleSum)}`
                                 }
                               >
-                                {num(r.queuedSequences)} {ok ? "✅" : "❌"}
+                                {num(r.queueSize)} {ok ? "✅" : "❌"}
                               </span>
                             );
                           })()}

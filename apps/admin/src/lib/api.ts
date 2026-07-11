@@ -4503,13 +4503,15 @@ export interface InstantlyAccountHealthRow {
   sentYesterday: number; // real emails sent the previous full UTC day; honest 0, never null
   sentToday: number; // real emails sent today (UTC); honest 0, never null
   queueSize: number; // un-sent STEPS queued to Instantly for this account; honest 0, never null
-  // Queue partitioned by SEQUENCES (leads), by the projected next-step date.
-  // queuedSequences === queuedFirstUnsent + queuedNextToday + queuedNextTomorrow + queuedNextLater.
+  // The four date-buckets partition the un-sent STEPS by each step's projected
+  // send date (chained real per-step delays), so:
+  // queueSize === queuedFirstUnsent + queuedNextToday + queuedNextTomorrow + queuedNextLater.
+  // queuedSequences (leads) is a DISTINCT granularity — NOT the bucket sum.
   queuedSequences: number; // total queued sequences (leads) attributed to this account
-  queuedFirstUnsent: number; // 1st email not yet sent
-  queuedNextToday: number; // next step projected today (UTC) or overdue
-  queuedNextTomorrow: number; // next step projected tomorrow (UTC)
-  queuedNextLater: number; // next step projected after tomorrow
+  queuedFirstUnsent: number; // steps of sequences whose 1st email is not sent yet
+  queuedNextToday: number; // steps whose projected send date is today (UTC) or overdue
+  queuedNextTomorrow: number; // steps projected tomorrow (UTC)
+  queuedNextLater: number; // steps projected after tomorrow
   accountType: string | null; // "google" | "microsoft" | "imap"; null when unknown
 }
 
