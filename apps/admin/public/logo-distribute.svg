@@ -6,8 +6,7 @@
       <stop offset="100%" stop-color="#45e38e" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="750" height="750" rx="150" fill="#06060f"/>
-  <rect x="3" y="3" width="744" height="744" rx="147" fill="none" stroke="#45e38e" stroke-opacity="0.22" stroke-width="4"/>
+  <rect width="750" height="750" fill="#06060f"/>
   <circle cx="375" cy="375" r="235" fill="url(#glow)"/>
   <circle cx="375" cy="375" r="118" fill="#45e38e"/>
 </svg>
