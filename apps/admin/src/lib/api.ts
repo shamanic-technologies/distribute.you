@@ -4490,6 +4490,7 @@ export interface InstantlyAccountHealthRow {
   domain: string | null; // part after @, null if malformed
   status: string; // "active" when Instantly status > 0, else "inactive"
   warmupScore: number | null; // Instantly Health Score (0-100), null if unknown
+  warmupLimit: number | null; // per-account daily WARMUP send volume, null if unknown
   dailyLimit: number | null; // per-account daily send limit, null if unknown
   blocked: boolean; // true when NOT send-eligible (lifecycleStatus !== 'in_production')
   // When blocked, the lifecycle_status behind it, or "unclassified" if never
@@ -4499,6 +4500,7 @@ export interface InstantlyAccountHealthRow {
   lifecycleReason: string | null; // machine reason for the current lifecycle state
   lifecycleUpdatedAt: string | null; // ISO8601 of the last lifecycle transition
   inboxPlacement: InstantlyAccountInboxPlacement | null; // BSG history; always null in v1
+  sentYesterday: number; // real emails sent the previous full UTC day; honest 0, never null
   sentToday: number; // real emails sent today (UTC); honest 0, never null
   queueSize: number; // emails queued to Instantly but not yet sent; honest 0, never null
   accountType: string | null; // "google" | "microsoft" | "imap"; null when unknown
@@ -4514,6 +4516,7 @@ const InstantlyAccountHealthRowSchema = z.object({
   domain: z.string().nullable(),
   status: z.string(),
   warmupScore: z.number().nullable(),
+  warmupLimit: z.number().nullable(),
   dailyLimit: z.number().nullable(),
   blocked: z.boolean(),
   blockReason: z.string().nullable(),
@@ -4535,6 +4538,7 @@ const InstantlyAccountHealthRowSchema = z.object({
       testedAt: z.string(),
     })
     .nullable(),
+  sentYesterday: z.number(),
   sentToday: z.number(),
   queueSize: z.number(),
   accountType: z.string().nullable(),

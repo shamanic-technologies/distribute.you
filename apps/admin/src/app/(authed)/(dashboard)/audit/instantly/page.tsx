@@ -112,7 +112,9 @@ const COLUMNS = [
   { key: "email", label: "Account", numeric: false, align: "left" },
   { key: "lifecycleStatus", label: "Lifecycle", numeric: false, align: "left" },
   { key: "warmupScore", label: "Health", numeric: true, align: "left" },
+  { key: "warmupLimit", label: "Daily warmup send", numeric: true, align: "right" },
   { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
+  { key: "sentYesterday", label: "Sent D-1", numeric: true, align: "right" },
   { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
   { key: "queueSize", label: "Queued", numeric: true, align: "right" },
 ] as const;
@@ -507,7 +509,7 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[760px] w-full text-sm">
+              <table className="min-w-[980px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
@@ -569,7 +571,13 @@ function AccountHealthSection() {
                           </div>
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {r.warmupLimit === null ? "—" : num(r.warmupLimit)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                          {num(r.sentYesterday)}
                         </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
                           {num(r.sentToday)}
