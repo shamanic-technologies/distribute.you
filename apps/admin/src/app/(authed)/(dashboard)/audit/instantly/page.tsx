@@ -127,13 +127,13 @@ const COLUMNS = [
 // Header tooltips clarifying the two queue granularities (steps vs sequences) and
 // the projected-date buckets.
 const COLUMN_HINT: Partial<Record<SortKey, string>> = {
-  queueSize: "Un-sent STEPS queued to Instantly for this account",
+  queueSize: "Un-sent STEPS queued to Instantly = 1st + today + tomorrow + later",
   queuedSequences:
-    "Total queued SEQUENCES (leads) = 1st + today + tomorrow + later",
-  queuedFirstUnsent: "Sequences whose 1st email is not sent yet",
-  queuedNextToday: "Next step projected today (UTC) or overdue",
-  queuedNextTomorrow: "Next step projected tomorrow (UTC)",
-  queuedNextLater: "Next step projected after tomorrow",
+    "Total queued SEQUENCES (leads) — distinct granularity, NOT the bucket sum",
+  queuedFirstUnsent: "Steps of sequences whose 1st email is not sent yet",
+  queuedNextToday: "Steps whose projected send date is today (UTC) or overdue",
+  queuedNextTomorrow: "Steps projected tomorrow (UTC)",
+  queuedNextLater: "Steps projected after tomorrow",
 };
 
 type SortKey = (typeof COLUMNS)[number]["key"];
