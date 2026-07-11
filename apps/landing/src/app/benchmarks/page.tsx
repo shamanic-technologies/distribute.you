@@ -12,7 +12,11 @@ import {
 export const revalidate = 300;
 
 const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
-const PAGE_TITLE = "What outcomes cost | distribute";
+// Bare title for the <title> tag — the root layout template already appends
+// "| distribute", so don't double the brand here. OG/twitter carry the full
+// brand form (no template applies to them).
+const PAGE_TITLE = "What outcomes cost";
+const PAGE_TITLE_SOCIAL = "What outcomes cost | distribute";
 const PAGE_DESCRIPTION =
   "The live going rate for B2B outbound outcomes, averaged across every brand distribute runs: cost per website visit, positive reply, booked meeting, and signup.";
 
@@ -21,14 +25,14 @@ export const metadata: Metadata = {
   description: PAGE_DESCRIPTION,
   alternates: { canonical: PAGE_URL },
   openGraph: {
-    title: PAGE_TITLE,
+    title: PAGE_TITLE_SOCIAL,
     description: PAGE_DESCRIPTION,
     url: PAGE_URL,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: PAGE_TITLE,
+    title: PAGE_TITLE_SOCIAL,
     description: PAGE_DESCRIPTION,
     site: TWITTER_HANDLE,
   },
