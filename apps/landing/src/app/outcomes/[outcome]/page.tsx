@@ -37,6 +37,40 @@ export async function generateMetadata({
   };
 }
 
+// Scoped dark-charter remap — matches the new (dark) landing skin without the
+// dy-token washout: an .op wrapper sets the dark page, and the Tailwind
+// utilities the JSX already uses are remapped to charter values inside it
+// (same mechanism as the dashboard html.dark layer). Space Grotesk + IBM Plex
+// Mono; indigo → signal green.
+const OP_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+.op{background:#070a0f;color:#f2f5f7;min-height:100vh;font-family:'Inter',system-ui,sans-serif;
+  background-image:radial-gradient(circle at 78% -2%,rgba(69,227,142,.08),transparent 30rem)}
+.op h1,.op h2{font-family:'Space Grotesk','Inter',sans-serif}
+.op [class*="font-mono"]{font-family:'IBM Plex Mono',monospace}
+.op .bg-white{background:#10151d !important}
+.op .text-gray-900{color:#f2f5f7 !important}
+.op .text-gray-800{color:#dbe0e7 !important}
+.op .text-gray-700,.op .text-gray-600{color:#99a4b6 !important}
+.op .text-gray-500,.op .text-gray-400,.op .text-gray-300,.op .text-gray-200{color:#657184 !important}
+.op .text-white{color:#f2f5f7 !important}
+.op .border-gray-200,.op .border-gray-100,.op .border-gray-50,.op .border-gray-600{border-color:#26303d !important}
+.op .bg-indigo-600{background:#45e38e !important;color:#082314 !important}
+.op .text-indigo-700{color:#8af6bc !important}
+.op .bg-indigo-50{background:rgba(69,227,142,.1) !important}
+.op .ring-indigo-200{--tw-ring-color:rgba(69,227,142,.28) !important}
+.op .hover\\:border-indigo-300:hover{border-color:rgba(69,227,142,.4) !important}
+.op .bg-gray-100,.op .bg-gray-50{background:#151b25 !important}
+.op .ring-gray-200{--tw-ring-color:#26303d !important}
+.op .bg-green-50{background:rgba(69,227,142,.12) !important}
+.op .text-green-700{color:#8af6bc !important}
+.op .ring-green-200{--tw-ring-color:rgba(69,227,142,.3) !important}
+.op .bg-gray-900{background:#10151d !important;border:1px solid #26303d}
+.op .bg-white.text-gray-900{background:#45e38e !important;color:#082314 !important}
+.op .hover\\:bg-gray-100:hover{background:#8af6bc !important}
+.op .hover\\:bg-gray-800:hover{background:#1a222e !important}
+`;
+
 // ── Formatting ──────────────────────────────────────────────────────────────
 function fmtUsd(v: number | null | undefined): string {
   if (v === null || v === undefined) return "—";
@@ -85,11 +119,11 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
         role="img"
         aria-label="Cost per outcome over time"
       >
-        <polygon points={area} fill="#eef2ff" />
+        <polygon points={area} fill="rgba(69,227,142,0.12)" />
         <polyline
           points={line.join(" ")}
           fill="none"
-          stroke="#6366f1"
+          stroke="#45e38e"
           strokeWidth={2}
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -141,7 +175,7 @@ function Histogram({
               width={barW.toFixed(1)}
               height={Math.max(h, 1).toFixed(1)}
               rx="2"
-              fill="#6366f1"
+              fill="#45e38e"
               opacity={0.85}
             />
           );
@@ -189,7 +223,9 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
+    <div className="op">
+      <style dangerouslySetInnerHTML={{ __html: OP_CSS }} />
+      <main className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -391,7 +427,8 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
           ))}
         </div>
       </section>
-    </main>
+      </main>
+    </div>
   );
 }
 

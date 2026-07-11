@@ -38,6 +38,33 @@ export const metadata: Metadata = {
   },
 };
 
+// Scoped dark-charter remap (matches the new landing skin + the /outcomes
+// detail pages): a .bm wrapper sets the dark page, and the Tailwind utilities
+// the JSX uses are remapped to charter values inside it. Space Grotesk + IBM
+// Plex Mono; emerald → signal green.
+const BM_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+.bm{background:#070a0f;color:#f2f5f7;min-height:100vh;font-family:'Inter',system-ui,sans-serif;
+  background-image:radial-gradient(circle at 78% -2%,rgba(69,227,142,.08),transparent 32rem)}
+.bm h1,.bm h2{font-family:'Space Grotesk','Inter',sans-serif}
+.bm [class*="font-mono"]{font-family:'IBM Plex Mono',monospace}
+.bm .bg-white{background:#10151d !important}
+.bm .text-gray-900{color:#f2f5f7 !important}
+.bm .text-gray-600,.bm .text-gray-700{color:#99a4b6 !important}
+.bm .text-gray-500,.bm .text-gray-400{color:#657184 !important}
+.bm .text-white{color:#082314 !important}
+.bm .border-gray-200{border-color:#26303d !important}
+.bm .text-emerald-600{color:#45e38e !important}
+.bm .text-emerald-700{color:#8af6bc !important}
+.bm .bg-emerald-500{background:#45e38e !important}
+.bm .bg-emerald-50{background:rgba(69,227,142,.1) !important}
+.bm .border-emerald-200{border-color:rgba(69,227,142,.28) !important}
+.bm .hover\\:border-emerald-300:hover{border-color:rgba(69,227,142,.4) !important}
+.bm .bg-emerald-600{background:#45e38e !important}
+.bm .hover\\:bg-emerald-700:hover{background:#8af6bc !important}
+.bm .bg-gray-50{background:#0b0f15 !important}
+`;
+
 // ── Formatting ───────────────────────────────────────────────────────────────
 function fmtUsd(v: number | null | undefined): string {
   if (v === null || v === undefined) return "—";
@@ -78,7 +105,7 @@ function Sparkline({ points }: { points: TrendPoint[] }) {
       <polyline
         points={coords}
         fill="none"
-        stroke="#059669"
+        stroke="#45e38e"
         strokeWidth="1.5"
         strokeLinejoin="round"
         strokeLinecap="round"
@@ -122,7 +149,8 @@ export default async function BenchmarksPage() {
   };
 
   return (
-    <main className="bg-white">
+    <main className="bm">
+      <style dangerouslySetInnerHTML={{ __html: BM_CSS }} />
       <script
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
