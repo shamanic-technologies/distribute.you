@@ -399,11 +399,13 @@ export default function BillingPage() {
 
           <div>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm text-gray-500">Available</p>
+              {/* A negative available balance = postpaid usage running on credit; frame it
+                  positively as "Usage" with the absolute amount in green, not a red deficit. */}
+              <p className="text-sm text-gray-500">{availableCents < 0 ? "Usage" : "Available"}</p>
               <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
             </div>
-            <p className={`text-3xl font-bold mt-1 ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
-              {formatBillingCents(account?.balance_cents ?? "0")}
+            <p className={`text-3xl font-bold mt-1 ${availableCents < 0 ? "text-green-600" : availableCents === 0 ? "text-red-600" : "text-gray-900"}`}>
+              {formatBillingCents(availableCents < 0 ? Math.abs(availableCents) : account?.balance_cents ?? "0")}
             </p>
           </div>
 
@@ -447,11 +449,11 @@ export default function BillingPage() {
 
             <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
               <dt className="flex items-center gap-1.5 font-medium text-gray-700">
-                Available
+                {availableCents < 0 ? "Usage" : "Available"}
                 <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
               </dt>
-              <dd className={`font-semibold ${availableCents <= 0 ? "text-red-600" : "text-gray-900"}`}>
-                {formatBillingCents(account?.balance_cents ?? "0")}
+              <dd className={`font-semibold ${availableCents < 0 ? "text-green-600" : availableCents === 0 ? "text-red-600" : "text-gray-900"}`}>
+                {formatBillingCents(availableCents < 0 ? Math.abs(availableCents) : account?.balance_cents ?? "0")}
               </dd>
             </div>
           </dl>
