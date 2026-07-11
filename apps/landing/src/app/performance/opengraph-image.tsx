@@ -28,8 +28,8 @@ export default async function OG() {
               width: 14,
               height: 14,
               borderRadius: 999,
-              background: "#22d3ee",
-              boxShadow: "0 0 24px #22d3ee",
+              background: "#45e38e",
+              boxShadow: "0 0 24px #45e38e",
             }}
           />
           <div style={{ fontSize: 28, fontWeight: 700 }}>
