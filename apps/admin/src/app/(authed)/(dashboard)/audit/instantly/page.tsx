@@ -112,9 +112,9 @@ const COLUMNS = [
   { key: "email", label: "Account", numeric: false, align: "left" },
   { key: "lifecycleStatus", label: "Lifecycle", numeric: false, align: "left" },
   { key: "warmupScore", label: "Health", numeric: true, align: "left" },
-  { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
   { key: "sentYesterday", label: "Sent D-1", numeric: true, align: "right" },
   { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
+  { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
   { key: "queuedToday", label: "Queued today", numeric: true, align: "right" },
   { key: "queuedNextTomorrow", label: "Queued tomorrow", numeric: true, align: "right" },
   { key: "queuedNextLater", label: "Queued later", numeric: true, align: "right" },
@@ -191,15 +191,15 @@ function compareRows(
   return dir === "asc" ? r : -r;
 }
 
-// Queue-size histogram bins for the Allowed distribution. `0` is standalone so
-// an empty queue reads distinctly from a small one.
+// Queued-today histogram bins for the Allowed distribution (Initial + Followups
+// due today/overdue per account). `0` is standalone so an empty queue reads
+// distinctly from a small one.
 const QUEUE_BINS: { label: string; lo: number; hi: number }[] = [
   { label: "0", lo: 0, hi: 0 },
-  { label: "1–40", lo: 1, hi: 40 },
-  { label: "41–80", lo: 41, hi: 80 },
-  { label: "81–120", lo: 81, hi: 120 },
-  { label: "121–160", lo: 121, hi: 160 },
-  { label: "161+", lo: 161, hi: Infinity },
+  { label: "1–50", lo: 1, hi: 50 },
+  { label: "51–100", lo: 51, hi: 100 },
+  { label: "101–150", lo: 101, hi: 150 },
+  { label: "151+", lo: 151, hi: Infinity },
 ];
 
 function ScoreBadge({ score }: { score: number | null }) {
@@ -490,7 +490,10 @@ function AccountHealthSection() {
     ? allowed.reduce((s, r) => s + r.queueSize, 0) / allowed.length
     : 0;
   const queueBins: QueueDistributionBin[] = QUEUE_BINS.map((b) => {
-    const count = allowed.filter((r) => r.queueSize >= b.lo && r.queueSize <= b.hi).length;
+    const count = allowed.filter((r) => {
+      const queuedToday = r.queuedFirstUnsent + r.queuedNextToday;
+      return queuedToday >= b.lo && queuedToday <= b.hi;
+    }).length;
     return {
       label: b.label,
       count,
@@ -586,7 +589,7 @@ function AccountHealthSection() {
               </div>
               <div className="mt-4">
                 <p className="text-xs font-medium text-gray-500">
-                  Queue-size distribution (% of in-production accounts)
+                  Queued-today distribution (% of in-production accounts)
                 </p>
                 <div className="mt-2">
                   {allowed.length === 0 ? (
@@ -644,13 +647,13 @@ function AccountHealthSection() {
 
             {/* Table */}
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-[1200px] w-full text-sm">
-                <thead>
+              <table className="min-w-[1024px] w-full text-sm">
+                <thead className="sticky top-0 z-10">
                   <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                     {COLUMNS.map((c) => (
                       <th
                         key={c.key}
-                        className={`py-2 px-3 font-medium ${c.align === "right" ? "text-right" : ""}`}
+                        className={`bg-white py-2 px-2 font-medium ${c.align === "right" ? "text-right" : ""}`}
                       >
                         <button
                           type="button"
@@ -685,14 +688,14 @@ function AccountHealthSection() {
                         className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
                       >
                         {/* Account: provider logo + email (Type folded in). */}
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-2">
                           <div className="flex items-center gap-2">
                             <ProviderLogo type={r.accountType} />
                             <span className="font-medium text-gray-900">{r.email}</span>
                           </div>
                         </td>
                         {/* Lifecycle: send-state badge + reason + active/inactive Status. */}
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-2">
                           <LifecycleBadge status={statusKey(r)} />
                           <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-gray-400">
                             {r.lifecycleReason && <span>{r.lifecycleReason}</span>}
@@ -701,7 +704,7 @@ function AccountHealthSection() {
                           </span>
                         </td>
                         {/* Health: Instantly Health Score + inbox placement. */}
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-2">
                           <div className="flex items-center gap-2">
                             <InstantlyLogo />
                             <ScoreBadge score={r.warmupScore} />
@@ -710,8 +713,14 @@ function AccountHealthSection() {
                             <InboxPlacementCell placement={r.inboxPlacement} />
                           </div>
                         </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
+                          {num(r.sentYesterday)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
+                          {num(r.sentToday)}
+                        </td>
                         {/* Daily max send: dailyLimit + warmup send as a grey sub-line. */}
-                        <td className="py-2.5 px-3 text-right">
+                        <td className="py-2.5 px-2 text-right">
                           <div className="tabular-nums text-gray-700">
                             {r.dailyLimit === null ? "—" : num(r.dailyLimit)}
                           </div>
@@ -721,32 +730,41 @@ function AccountHealthSection() {
                             </div>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
-                          {num(r.sentYesterday)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
-                          {num(r.sentToday)}
-                        </td>
-                        {/* Queued today: Initial (1st unsent) + Followups (next step today). */}
-                        <td className="py-2.5 px-3 text-right">
-                          <div className="tabular-nums font-medium text-gray-900">
-                            {num(r.queuedFirstUnsent + r.queuedNextToday)}
-                          </div>
-                          <div className="text-[10px] tabular-nums text-gray-400">
-                            Initial: {num(r.queuedFirstUnsent)}
-                          </div>
-                          <div className="text-[10px] tabular-nums text-gray-400">
-                            Followups: {num(r.queuedNextToday)}
-                          </div>
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                        {/* Queued today: Initial (1st unsent) + Followups (next step today).
+                            Green when the day's queued volume is within the account's daily
+                            max send, red when it exceeds it (gray when no limit is known). */}
+                        {(() => {
+                          const queuedToday = r.queuedFirstUnsent + r.queuedNextToday;
+                          const overLimit =
+                            r.dailyLimit !== null && queuedToday > r.dailyLimit;
+                          const valueClass =
+                            r.dailyLimit === null
+                              ? "text-gray-900"
+                              : overLimit
+                                ? "text-red-600"
+                                : "text-emerald-600";
+                          return (
+                            <td className="py-2.5 px-2 text-right">
+                              <div className={`tabular-nums font-medium ${valueClass}`}>
+                                {num(queuedToday)}
+                              </div>
+                              <div className="text-[10px] tabular-nums text-gray-400">
+                                Initial: {num(r.queuedFirstUnsent)}
+                              </div>
+                              <div className="text-[10px] tabular-nums text-gray-400">
+                                Followups: {num(r.queuedNextToday)}
+                              </div>
+                            </td>
+                          );
+                        })()}
+                        <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
                           {num(r.queuedNextTomorrow)}
                         </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">
+                        <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
                           {num(r.queuedNextLater)}
                         </td>
                         {/* DEBUG: backend Queued steps (queueSize) + reconciliation ✅/❌ vs visible cols. */}
-                        <td className="py-2.5 px-3 text-right">
+                        <td className="py-2.5 px-2 text-right">
                           {(() => {
                             const visibleSum =
                               r.queuedFirstUnsent +
