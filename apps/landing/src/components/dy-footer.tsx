@@ -25,14 +25,6 @@ export function DyFooter() {
             </ul>
           </div>
           <div className="dy-ft-col">
-            <h4>Developers</h4>
-            <ul>
-              <li><a href={PROD_URLS.docs}>Documentation</a></li>
-              <li><a href={PROD_URLS.apiDocs}>API reference</a></li>
-              <li><a href={PROD_URLS.github}>GitHub</a></li>
-            </ul>
-          </div>
-          <div className="dy-ft-col">
             <h4>Company</h4>
             <ul>
               <li><Link href="/investors">Investors</Link></li>

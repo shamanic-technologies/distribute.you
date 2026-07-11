@@ -20,7 +20,7 @@ export default function BenchmarksLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <div className="dy-dark-scope">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
@@ -37,6 +37,6 @@ export default function BenchmarksLayout({
           </>
         }
       />
-    </>
+    </div>
   );
 }

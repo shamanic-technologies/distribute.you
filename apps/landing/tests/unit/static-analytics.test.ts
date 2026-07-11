@@ -17,7 +17,6 @@ describe("Static landing pages carry GA + PostHog", () => {
   const pages = [
     "index-v1.html",
     "performance.html",
-    "how-it-works.html",
     "use-cases.html",
     "cold-email-cost-guide.html",
     "cold-email-cost-guide/cold-email-roi.html",

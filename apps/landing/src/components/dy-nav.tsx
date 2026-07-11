@@ -18,7 +18,6 @@ export function DyNav() {
             <li><Link href="/pricing">Pricing</Link></li>
             <li><Link href="/performance">Performance</Link></li>
             <li><Link href="/benchmarks">Benchmarks</Link></li>
-            <li><Link href={PROD_URLS.docs}>Docs</Link></li>
           </ul>
           <div className="dy-nav-right">
             <DyThemeToggle />
