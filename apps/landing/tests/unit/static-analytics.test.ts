@@ -15,7 +15,7 @@ describe("Static landing pages carry GA + PostHog", () => {
   });
 
   const pages = [
-    "index.html",
+    "index-v1.html",
     "performance.html",
     "how-it-works.html",
     "use-cases.html",
@@ -47,7 +47,7 @@ describe("Static landing pages carry GA + PostHog", () => {
 
   it("omits the PostHog snippet when no token is configured", () => {
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = "";
-    const html = staticHtml("index.html");
+    const html = staticHtml("index-v1.html");
     expect(html).toContain("googletagmanager.com/gtag/js?id=G-YJHNGLEJPP");
     expect(html).not.toContain("posthog.init(");
     process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = "phc_test_token";

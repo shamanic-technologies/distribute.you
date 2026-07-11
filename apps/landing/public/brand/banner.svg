@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="distribute — Turn your website into B2B outbound">
+  <defs>
+    <radialGradient id="glow" cx="72%" cy="8%" r="60%">
+      <stop offset="0%" stop-color="#45e38e" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#45e38e" stop-opacity="0"/>
+    </radialGradient>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap');</style>
+  </defs>
+  <rect width="1200" height="630" fill="#070a0f"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <circle cx="424" cy="250" r="26" fill="#45e38e" opacity="0.26"/>
+  <circle cx="424" cy="250" r="15" fill="#45e38e"/>
+  <text x="462" y="266" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="700" font-size="76" letter-spacing="-2" fill="#f2f5f7">distribute</text>
+  <text x="424" y="356" font-family="'Space Grotesk','Segoe UI',sans-serif" font-weight="500" font-size="40" letter-spacing="-1" fill="#99a4b6" text-anchor="middle">Turn your website into B2B outbound.</text>
+  <text x="424" y="404" font-family="'IBM Plex Mono',monospace" font-weight="500" font-size="20" letter-spacing="1" fill="#45e38e" text-anchor="middle">LIVE IN UNDER 5 MINUTES</text>
+</svg>
