@@ -1913,7 +1913,7 @@ export function Onboarding() {
             </span>
             <h2 className="font-display text-2xl font-bold text-gray-900">Your first $25 is on us.</h2>
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
-              Spend $25 and we match it, $1 for $1. The credits unlock the moment your spend reaches $25.
+              Once you spend $25, we gift you $25 in free credits, $1 for $1. Pay as you go, the gift lands the moment your spend reaches $25.
             </p>
           </div>
       </StepShell>
