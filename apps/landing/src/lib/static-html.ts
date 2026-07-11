@@ -250,7 +250,15 @@ export function staticHtml(fileName: string) {
       `href="${URLS.github}"`,
     );
 
-  return rewritten.replace("</head>", `${analyticsHead()}</head>`);
+  // Favicon: the statically-served HTML bypasses Next's file-convention
+  // <head> machinery, so the green icon.svg / apple-icon are never linked and
+  // the browser's default /favicon.ico request 404s (no favicon shows). Inject
+  // the links here so every static page carries the charter favicon.
+  const faviconHead =
+    '<link rel="icon" href="/icon.svg" type="image/svg+xml">' +
+    '<link rel="apple-touch-icon" href="/apple-icon.png">';
+
+  return rewritten.replace("</head>", `${faviconHead}${analyticsHead()}</head>`);
 }
 
 async function withLivePerformanceMetrics(html: string) {
