@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Turn your website into a live B2B outbound campaign in under five minutes. distribute finds prospects, writes and sends personalized cold emails, filters replies, and forwards interested buyers.">
+  <meta name="theme-color" content="#080b10">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="distribute — Turn your website into B2B outbound">
+  <meta property="og:description" content="Drop your website, approve the buyers, and set the budget. distribute handles prospecting, research, cold email, follow-ups, and reply filtering.">
+  <meta property="og:url" content="https://distribute.you/">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>distribute — Turn your website into B2B outbound</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#070a0f;
+      --bg-soft:#0b0f15;
+      --panel:#10151d;
+      --panel-2:#151b25;
+      --panel-3:#1a222e;
+      --line:#26303d;
+      --line-soft:#1c2430;
+      --text:#f2f5f7;
+      --muted:#99a4b6;
+      --faint:#657184;
+      --green:#45e38e;
+      --green-bright:#8af6bc;
+      --green-dark:#082314;
+      --green-dim:rgba(69,227,142,.105);
+      --green-line:rgba(69,227,142,.26);
+      --amber:#f2c96d;
+      --red:#ff786c;
+      --red-dim:rgba(255,120,108,.09);
+      --display:'Space Grotesk',sans-serif;
+      --body:'Inter',sans-serif;
+      --mono:'IBM Plex Mono',monospace;
+      --radius:15px;
+      --radius-sm:9px;
+      --shadow:0 34px 100px rgba(0,0,0,.42);
+      --max:1160px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;scroll-padding-top:92px}
+    body{
+      min-width:320px;
+      background:
+        radial-gradient(circle at 72% 4%,rgba(69,227,142,.09),transparent 27rem),
+        radial-gradient(circle at 11% 32%,rgba(65,104,255,.045),transparent 30rem),
+        var(--bg);
+      color:var(--text);
+      font-family:var(--body);
+      line-height:1.55;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+    }
+    a{color:inherit;text-decoration:none}
+    button,input{font:inherit}
+    button{color:inherit}
+    svg{display:block}
+    .wrap{width:min(var(--max),calc(100% - 48px));margin:0 auto}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    ::selection{background:var(--green);color:#031008}
+    :focus-visible{outline:2px solid var(--green);outline-offset:3px}
+
+    .announcement{
+      border-bottom:1px solid var(--line-soft);
+      background:#05070b;
+    }
+    .announcement-inner{
+      min-height:38px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      color:var(--muted);
+      font-family:var(--mono);
+      font-size:11px;
+      text-align:center;
+      letter-spacing:.01em;
+    }
+    .announcement b{color:var(--green);font-weight:600}
+    .announcement a{color:var(--text);border-bottom:1px solid var(--line)}
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:60;
+      background:rgba(7,10,15,.78);
+      border-bottom:1px solid rgba(38,48,61,.76);
+      backdrop-filter:blur(18px);
+      -webkit-backdrop-filter:blur(18px);
+    }
+    nav{
+      min-height:70px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:24px;
+    }
+    .logo{
+      display:inline-flex;
+      align-items:center;
+      gap:9px;
+      font-family:var(--display);
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:-.02em;
+    }
+    .logo-mark{
+      width:9px;
+      height:9px;
+      border-radius:50%;
+      background:var(--green);
+      box-shadow:0 0 18px rgba(69,227,142,.8);
+    }
+    .beta{
+      margin-left:2px;
+      color:var(--faint);
+      font-family:var(--mono);
+      font-size:8px;
+      font-weight:500;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .nav-links{display:flex;align-items:center;gap:28px;color:var(--muted);font-size:13px}
+    .nav-links a:hover{color:var(--text)}
+    .nav-actions{display:flex;align-items:center;gap:10px}
+    .login-link{font-size:12.5px;color:var(--muted)}
+    .login-link:hover{color:var(--text)}
+    .nav-toggle{
+      display:none;
+      width:40px;
+      height:40px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:var(--panel);
+      cursor:pointer;
+    }
+    .nav-toggle span,.nav-toggle::before,.nav-toggle::after{
+      content:'';
+      display:block;
+      width:17px;
+      height:1px;
+      margin:4px auto;
+      background:var(--text);
+      transition:transform .18s ease,opacity .18s ease;
+    }
+    .nav-toggle[aria-expanded="true"] span{opacity:0}
+    .nav-toggle[aria-expanded="true"]::before{transform:translateY(5px) rotate(45deg)}
+    .nav-toggle[aria-expanded="true"]::after{transform:translateY(-5px) rotate(-45deg)}
+
+    .button{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:9px;
+      min-height:47px;
+      padding:0 20px;
+      border:1px solid transparent;
+      border-radius:8px;
+      font-weight:600;
+      font-size:14px;
+      line-height:1;
+      transition:transform .18s ease,background .18s ease,border-color .18s ease,color .18s ease;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .button svg{width:15px;height:15px}
+    .button.primary{background:var(--green);color:#04120a}
+    .button.primary:hover{background:var(--green-bright);transform:translateY(-1px)}
+    .button.secondary{border-color:var(--line);background:rgba(16,21,29,.68);color:var(--text)}
+    .button.secondary:hover{border-color:#3a4657;background:var(--panel-2)}
+    .button.small{min-height:39px;padding:0 15px;font-size:12px}
+
+    .hero{padding:94px 0 66px;overflow:hidden}
+    .hero-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1.04fr) minmax(420px,.96fr);
+      gap:66px;
+      align-items:center;
+    }
+    .category-label{
+      display:inline-flex;
+      align-items:center;
+      gap:9px;
+      margin-bottom:22px;
+      color:var(--green);
+      font-family:var(--mono);
+      font-size:11px;
+      letter-spacing:.115em;
+      text-transform:uppercase;
+    }
+    .category-label::before{content:'';width:18px;height:1px;background:var(--green)}
+    h1,h2,h3,h4{font-family:var(--display)}
+    h1{
+      max-width:740px;
+      font-size:clamp(46px,6.2vw,76px);
+      font-weight:600;
+      line-height:.98;
+      letter-spacing:-.05em;
+    }
+    .accent{color:var(--green)}
+    .hero-copy{
+      max-width:670px;
+      margin-top:25px;
+      color:var(--muted);
+      font-size:17.5px;
+      line-height:1.72;
+    }
+    .hero-copy strong{color:var(--text);font-weight:500}
+    .url-form{
+      display:flex;
+      max-width:650px;
+      margin-top:31px;
+      padding:5px;
+      border:1px solid var(--line);
+      border-radius:11px;
+      background:rgba(13,18,25,.84);
+      box-shadow:0 18px 45px rgba(0,0,0,.18);
+    }
+    .url-form:focus-within{border-color:rgba(69,227,142,.52);box-shadow:0 0 0 3px rgba(69,227,142,.07)}
+    .url-form input{
+      flex:1;
+      min-width:0;
+      min-height:50px;
+      padding:0 16px;
+      border:0;
+      outline:0;
+      background:transparent;
+      color:var(--text);
+      font-family:var(--mono);
+      font-size:13px;
+    }
+    .url-form input::placeholder{color:#596476}
+    .hero-links{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:15px}
+    .microcopy{color:var(--faint);font-family:var(--mono);font-size:10.5px;line-height:1.65}
+    .inline-link{color:var(--muted);font-size:12px;border-bottom:1px solid var(--line)}
+    .inline-link:hover{color:var(--text);border-color:var(--faint)}
+    .trust-strip{display:flex;flex-wrap:wrap;gap:17px 22px;margin-top:29px;color:var(--muted);font-size:12.5px}
+    .trust-strip span{display:flex;align-items:center;gap:8px}
+    .trust-strip span::before{content:'✓';color:var(--green);font-weight:700}
+
+    .console{
+      position:relative;
+      border:1px solid var(--line);
+      border-radius:17px;
+      background:linear-gradient(180deg,var(--panel-2),#0e131a);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .console::before{
+      content:'';
+      position:absolute;
+      inset:-1px;
+      pointer-events:none;
+      background:linear-gradient(130deg,rgba(69,227,142,.12),transparent 25%,transparent 76%,rgba(69,227,142,.04));
+    }
+    .console-top{
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+      padding:13px 16px;
+      border-bottom:1px solid var(--line);
+      color:var(--faint);
+      font-family:var(--mono);
+      font-size:10px;
+    }
+    .window-dots{display:flex;gap:6px}
+    .window-dots i{display:block;width:7px;height:7px;border-radius:50%;background:#3a4452}
+    .preview-label{display:flex;align-items:center;gap:7px}
+    .preview-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--amber)}
+    .console-body{position:relative;padding:20px}
+    .console-url{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:13px 14px;
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:#0a0e14;
+      font-family:var(--mono);
+      font-size:11.5px;
+    }
+    .console-url strong{color:var(--green);font-weight:500}
+    .analysis-card{
+      margin-top:13px;
+      border:1px solid var(--line-soft);
+      border-radius:10px;
+      background:rgba(7,10,15,.54);
+      overflow:hidden;
+    }
+    .analysis-row{
+      display:grid;
+      grid-template-columns:118px 1fr;
+      gap:14px;
+      padding:11px 13px;
+      border-top:1px solid var(--line-soft);
+      font-size:11.5px;
+    }
+    .analysis-row:first-child{border-top:0}
+    .analysis-row span{color:var(--faint)}
+    .analysis-row b{font-weight:500;color:var(--text)}
+    .flow-label{margin:18px 0 10px;color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+    .flow{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:7px;
+      align-items:center;
+    }
+    .flow-step{
+      position:relative;
+      min-height:72px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+      padding:8px 5px;
+      border:1px solid var(--line);
+      border-radius:8px;
+      background:#0b1016;
+      text-align:center;
+      color:var(--muted);
+      font-size:8.5px;
+      line-height:1.3;
+    }
+    .flow-step:not(:last-child)::after{
+      content:'';
+      position:absolute;
+      z-index:2;
+      top:50%;
+      right:-8px;
+      width:8px;
+      height:1px;
+      background:var(--green-line);
+    }
+    .flow-icon{
+      width:24px;
+      height:24px;
+      display:grid;
+      place-items:center;
+      border-radius:6px;
+      background:var(--green-dim);
+      color:var(--green);
+      font-family:var(--mono);
+      font-size:8px;
+    }
+    .console-bottom{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:13px;
+    }
+    .console-metric{
+      padding:13px;
+      border:1px solid var(--line);
+      border-radius:9px;
+      background:#0a0e14;
+    }
+    .console-metric span{display:block;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+    .console-metric b{display:block;margin-top:6px;font-family:var(--mono);font-size:17px;font-weight:500}
+    .console-foot{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-top:15px;
+      padding-top:15px;
+      border-top:1px solid var(--line);
+    }
+    .console-foot small{max-width:220px;color:var(--faint);font-size:9.5px;line-height:1.55}
+
+    .proof-rail{
+      border-top:1px solid var(--line-soft);
+      border-bottom:1px solid var(--line-soft);
+      background:#06090d;
+    }
+    .proof-rail-grid{display:grid;grid-template-columns:repeat(4,1fr)}
+    .proof-rail-item{
+      min-height:91px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      padding:16px 25px;
+      border-left:1px solid var(--line-soft);
+    }
+    .proof-rail-item:first-child{border-left:0;padding-left:0}
+    .proof-rail-item:last-child{padding-right:0}
+    .proof-rail-item b{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--text)}
+    .proof-rail-item span{margin-top:5px;color:var(--faint);font-size:10.5px;line-height:1.45}
+    .proof-rail-item a:hover b{color:var(--green)}
+
+    section{padding:102px 0}
+    .section-head{max-width:760px;margin-bottom:47px}
+    .eyebrow{color:var(--green);font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase}
+    h2{
+      margin-top:14px;
+      font-size:clamp(32px,4.5vw,50px);
+      font-weight:600;
+      line-height:1.08;
+      letter-spacing:-.04em;
+    }
+    .section-copy{margin-top:17px;color:var(--muted);font-size:16px;line-height:1.75}
+    .divider{height:1px;border:0;background:var(--line-soft)}
+
+    .model-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
+    .model-card{
+      min-height:258px;
+      display:flex;
+      flex-direction:column;
+      padding:23px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:var(--panel);
+    }
+    .model-card.highlight{
+      border-color:var(--green-line);
+      background:linear-gradient(180deg,rgba(69,227,142,.09),var(--panel));
+      box-shadow:0 20px 55px rgba(0,0,0,.18);
+    }
+    .model-type{color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.09em;text-transform:uppercase}
+    .model-card.highlight .model-type{color:var(--green)}
+    .model-card h3{margin-top:20px;font-size:19px;line-height:1.2}
+    .model-card p{margin-top:11px;color:var(--muted);font-size:13px;line-height:1.65}
+    .model-bottom{margin-top:auto;padding-top:20px;border-top:1px solid var(--line-soft);color:var(--faint);font-family:var(--mono);font-size:10px}
+    .model-card.highlight .model-bottom{color:var(--green)}
+    .category-definition{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:30px;
+      align-items:center;
+      margin-top:22px;
+      padding:27px 29px;
+      border:1px solid var(--green-line);
+      border-radius:var(--radius);
+      background:var(--green-dim);
+    }
+    .category-definition h3{font-size:22px}
+    .category-definition p{max-width:760px;margin-top:7px;color:var(--muted);font-size:13.5px;line-height:1.65}
+    .category-formula{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+    .formula-chip{padding:7px 9px;border:1px solid rgba(69,227,142,.24);border-radius:6px;background:rgba(7,10,15,.43);color:var(--green);font-family:var(--mono);font-size:9.5px}
+    .formula-plus{color:var(--faint);font-family:var(--mono);font-size:11px}
+
+    .steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    .step-card{
+      min-height:306px;
+      padding:25px;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:var(--panel);
+    }
+    .step-top{display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .step-num{color:var(--green);font-family:var(--mono);font-size:10px}
+    .step-time{color:var(--faint);font-family:var(--mono);font-size:8.5px}
+    .step-card h3{margin-top:39px;font-size:20px;line-height:1.25}
+    .step-card p{margin-top:12px;color:var(--muted);font-size:13.5px;line-height:1.7}
+    .step-note{margin-top:22px;padding-top:17px;border-top:1px solid var(--line-soft);color:var(--faint);font-size:10.5px;line-height:1.55}
+
+    .included-section{
+      border-top:1px solid var(--line-soft);
+      border-bottom:1px solid var(--line-soft);
+      background:linear-gradient(180deg,#0b1017,#080c12);
+    }
+    .included-grid{display:grid;grid-template-columns:.86fr 1.14fr;gap:58px;align-items:start}
+    .included-statement{
+      position:sticky;
+      top:116px;
+    }
+    .included-statement .section-copy{max-width:500px}
+    .included-list{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden}
+    .included-row{
+      display:grid;
+      grid-template-columns:54px 1fr auto;
+      gap:19px;
+      align-items:center;
+      padding:20px 22px;
+      border-top:1px solid var(--line-soft);
+    }
+    .included-row:first-child{border-top:0}
+    .included-icon{
+      width:38px;
+      height:38px;
+      display:grid;
+      place-items:center;
+      border:1px solid var(--green-line);
+      border-radius:9px;
+      background:var(--green-dim);
+      color:var(--green);
+      font-family:var(--mono);
+      font-size:9px;
+    }
+    .included-row h3{font-size:15px}
+    .included-row p{margin-top:5px;color:var(--muted);font-size:12.5px;line-height:1.55}
+    .included-status{color:var(--green);font-family:var(--mono);font-size:9.5px;text-transform:uppercase}
+
+    .proof-layout{display:grid;grid-template-columns:1.05fr .95fr;gap:22px}
+    .proof-main,.proof-side{
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:var(--panel);
+    }
+    .proof-main{padding:31px}
+    .proof-kicker{color:var(--green);font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase}
+    .proof-main h3{max-width:620px;margin-top:18px;font-size:30px;line-height:1.14;letter-spacing:-.025em}
+    .proof-main>p{max-width:650px;margin-top:13px;color:var(--muted);font-size:14px;line-height:1.7}
+    .proof-links{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:27px}
+    .proof-link{
+      min-height:132px;
+      padding:17px;
+      border:1px solid var(--line-soft);
+      border-radius:10px;
+      background:#0b1016;
+      transition:border-color .18s ease,transform .18s ease;
+    }
+    .proof-link:hover{border-color:var(--green-line);transform:translateY(-1px)}
+    .proof-link span{color:var(--faint);font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.08em}
+    .proof-link b{display:block;margin-top:14px;font-family:var(--display);font-size:15px;font-weight:600;line-height:1.3}
+    .proof-link small{display:block;margin-top:8px;color:var(--muted);font-size:10.5px;line-height:1.5}
+    .proof-side{padding:27px;background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+    .snapshot-label{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--faint);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+    .snapshot-label span:last-child{color:var(--amber)}
+    .snapshot-list{margin-top:19px}
+    .snapshot-row{display:flex;align-items:baseline;justify-content:space-between;gap:20px;padding:16px 0;border-top:1px solid var(--line-soft)}
+    .snapshot-row:first-child{border-top:0}
+    .snapshot-row span{color:var(--muted);font-size:12.5px}
+    .snapshot-row b{font-family:var(--mono);font-size:20px;font-weight:500}
+    .snapshot-note{margin-top:18px;padding-top:17px;border-top:1px solid var(--line);color:var(--faint);font-size:10.5px;line-height:1.6}
+
+    .economics-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px;align-items:stretch}
+    .price-card{
+      padding:33px;
+      border:1px solid var(--green-line);
+      border-radius:17px;
+      background:linear-gradient(180deg,rgba(69,227,142,.09),var(--panel));
+    }
+    .price-card h3{font-size:24px}
+    .price{
+      margin-top:25px;
+      color:var(--green);
+      font-family:var(--mono);
+      font-size:54px;
+      line-height:1;
+    }
+    .price span{color:var(--muted);font-size:12px}
+    .price-list{list-style:none;margin-top:26px;display:flex;flex-direction:column;gap:13px}
+    .price-list li{display:flex;gap:11px;color:var(--muted);font-size:13.5px}
+    .price-list li::before{content:'✓';color:var(--green);font-weight:700}
+    .price-card .button{width:100%;margin-top:27px}
+    .credit-note{margin-top:12px;color:var(--faint);font-size:9.5px;line-height:1.55;text-align:center}
+    .billing-card{padding:27px;border:1px solid var(--line);border-radius:17px;background:var(--panel)}
+    .billing-card h3{font-size:20px}
+    .billing-card>p{margin-top:9px;color:var(--muted);font-size:13px;line-height:1.65}
+    .billing-steps{margin-top:20px}
+    .billing-row{display:grid;grid-template-columns:34px 1fr;gap:15px;padding:17px 0;border-top:1px solid var(--line-soft)}
+    .billing-row:first-child{border-top:0}
+    .billing-num{width:28px;height:28px;display:grid;place-items:center;border-radius:7px;background:var(--green-dim);color:var(--green);font-family:var(--mono);font-size:9px}
+    .billing-row h4{font-size:14px}
+    .billing-row p{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55}
+    .billing-clarifier{margin-top:18px;padding:15px 16px;border-left:2px solid var(--amber);background:rgba(242,201,109,.05);color:var(--muted);font-size:11.5px;line-height:1.65}
+    .billing-clarifier strong{color:var(--text);font-weight:500}
+
+    .fit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}
+    .fit-card{padding:25px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel)}
+    .fit-card h3{font-size:19px}
+    .fit-card p{margin-top:10px;color:var(--muted);font-size:13.5px;line-height:1.65}
+    .fit-list{list-style:none;margin-top:18px;display:flex;flex-direction:column;gap:9px;color:var(--faint);font-size:11.5px}
+    .fit-list li::before{content:'→';margin-right:8px;color:var(--green)}
+    .not-fit{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:16px;
+      align-items:start;
+      margin-top:18px;
+      padding:20px 22px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#0b1016;
+    }
+    .not-fit-mark{color:var(--red);font-family:var(--mono);font-size:11px}
+    .not-fit h3{font-size:15px}
+    .not-fit p{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.6}
+
+    .agency-band{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:35px;
+      align-items:center;
+      padding:35px;
+      border:1px solid var(--line);
+      border-radius:17px;
+      background:linear-gradient(120deg,var(--panel-2),var(--panel));
+    }
+    .agency-band h3{font-size:27px;line-height:1.15}
+    .agency-band p{max-width:710px;margin-top:10px;color:var(--muted);font-size:13.5px;line-height:1.7}
+    .agency-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+    .agency-tag{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#0c1118;color:var(--faint);font-family:var(--mono);font-size:9px}
+
+    .faq{max-width:850px}
+    details{padding:22px 0;border-top:1px solid var(--line)}
+    details:first-of-type{border-top:0}
+    summary{
+      cursor:pointer;
+      list-style:none;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:22px;
+      font-family:var(--display);
+      font-size:16px;
+      font-weight:600;
+    }
+    summary::-webkit-details-marker{display:none}
+    summary::after{content:'+';color:var(--faint);font-size:22px;font-weight:400}
+    details[open] summary::after{content:'−'}
+    details p{max-width:760px;margin-top:14px;color:var(--muted);font-size:13.5px;line-height:1.75}
+    details a{color:var(--text);border-bottom:1px solid var(--line)}
+
+    .closing{padding:108px 0;text-align:center}
+    .closing-box{
+      position:relative;
+      overflow:hidden;
+      padding:65px 30px;
+      border:1px solid var(--green-line);
+      border-radius:19px;
+      background:linear-gradient(180deg,rgba(69,227,142,.09),rgba(16,21,29,.78));
+    }
+    .closing-box::before{
+      content:'';
+      position:absolute;
+      width:460px;
+      height:460px;
+      top:-330px;
+      left:50%;
+      transform:translateX(-50%);
+      border-radius:50%;
+      background:rgba(69,227,142,.12);
+      filter:blur(40px);
+    }
+    .closing .eyebrow,.closing h2,.closing p,.closing .closing-actions,.closing .microcopy{position:relative}
+    .closing h2{max-width:780px;margin:14px auto 0}
+    .closing p{max-width:620px;margin:18px auto 0;color:var(--muted);font-size:15.5px;line-height:1.7}
+    .closing-actions{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:30px}
+    .closing .microcopy{margin-top:14px}
+
+    footer{border-top:1px solid var(--line-soft);padding:35px 0;color:var(--faint);font-size:11px}
+    .footer-grid{display:grid;grid-template-columns:1.1fr repeat(3,.7fr);gap:36px}
+    .footer-brand p{max-width:360px;margin-top:11px;color:var(--faint);font-size:11px;line-height:1.65}
+    .footer-col h4{color:var(--muted);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.09em}
+    .footer-col a{display:block;margin-top:10px;color:var(--faint)}
+    .footer-col a:hover{color:var(--muted)}
+    .footer-bottom{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-top:35px;padding-top:22px;border-top:1px solid var(--line-soft)}
+
+    @media(max-width:1030px){
+      .hero-grid{grid-template-columns:1fr;gap:46px}
+      .hero-copy{max-width:760px}
+      .console{max-width:720px}
+      .model-grid,.steps-grid{grid-template-columns:1fr 1fr}
+      .included-grid{grid-template-columns:1fr;gap:38px}
+      .included-statement{position:static}
+      .proof-layout,.economics-grid{grid-template-columns:1fr}
+      .footer-grid{grid-template-columns:1.3fr repeat(3,.7fr)}
+    }
+    @media(max-width:820px){
+      .nav-links{display:none;position:absolute;top:70px;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;padding:10px 24px 18px;border-bottom:1px solid var(--line);background:rgba(7,10,15,.97)}
+      .nav-links[data-open="true"]{display:flex}
+      .nav-links a{width:100%;padding:12px 0;border-top:1px solid var(--line-soft)}
+      .nav-links a:first-child{border-top:0}
+      .nav-toggle{display:block}
+      .login-link{display:none}
+      .proof-rail-grid{grid-template-columns:1fr 1fr}
+      .proof-rail-item:nth-child(3){border-left:0}
+      .proof-rail-item:nth-child(n+3){border-top:1px solid var(--line-soft)}
+      .category-definition{grid-template-columns:1fr}
+      .category-formula{justify-content:flex-start}
+      .fit-grid{grid-template-columns:1fr}
+      .agency-band{grid-template-columns:1fr}
+      .agency-band .button{justify-self:start}
+      .footer-grid{grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:620px){
+      .wrap{width:min(var(--max),calc(100% - 30px))}
+      .announcement-inner{padding:8px 0;font-size:9.5px}
+      .nav-actions>.button{display:none}
+      .hero{padding:67px 0 50px}
+      h1{font-size:44px}
+      .hero-copy{font-size:15.5px}
+      .url-form{display:block;padding:5px}
+      .url-form input{width:100%}
+      .url-form .button{width:100%}
+      .flow{grid-template-columns:1fr 1fr}
+      .flow-step{min-height:62px}
+      .flow-step:not(:last-child)::after{display:none}
+      .flow-step:last-child{grid-column:1/-1}
+      .console-bottom{grid-template-columns:1fr}
+      .console-foot{align-items:flex-start;flex-direction:column}
+      .proof-rail-grid{grid-template-columns:1fr}
+      .proof-rail-item{padding:17px 0;border-left:0;border-top:1px solid var(--line-soft)}
+      .proof-rail-item:first-child{border-top:0}
+      section{padding:76px 0}
+      .model-grid,.steps-grid{grid-template-columns:1fr}
+      .model-card,.step-card{min-height:0}
+      .proof-links{grid-template-columns:1fr}
+      .included-row{grid-template-columns:44px 1fr}
+      .included-status{grid-column:2}
+      .price-card,.billing-card,.proof-main,.proof-side{padding:23px}
+      .agency-band{padding:25px}
+      .closing{padding:78px 0}
+      .closing-box{padding:50px 20px}
+      .closing-actions{flex-direction:column}
+      .closing-actions .button{width:100%}
+      .footer-grid{grid-template-columns:1fr}
+    }
+    @media(prefers-reduced-motion:reduce){
+      *{scroll-behavior:auto!important;animation:none!important;transition:none!important}
+    }
+  </style>
+
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"SoftwareApplication",
+    "name":"distribute",
+    "applicationCategory":"BusinessApplication",
+    "operatingSystem":"Web",
+    "url":"https://distribute.you/",
+    "description":"Done-for-you B2B cold email outreach. Add your website, confirm the buyers, set a daily budget, and distribute handles prospecting, research, personalized sending, follow-ups, reply filtering, and reporting.",
+    "offers":{
+      "@type":"Offer",
+      "price":"1",
+      "priceCurrency":"USD",
+      "description":"Campaign budgets can start from $1 per day. Actual cost per measured result varies by campaign and is shown in the dashboard."
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="announcement">
+    <div class="wrap announcement-inner">
+      <span><b>New accounts:</b> up to $25 in matched campaign credits. Eligibility and terms apply.</span>
+      <a href="https://dashboard.distribute.you/sign-up">Start</a>
+    </div>
+  </div>
+
+  <header>
+    <div class="wrap">
+      <nav aria-label="Main navigation">
+        <a href="#top" class="logo" aria-label="distribute home">
+          <span class="logo-mark" aria-hidden="true"></span>
+          distribute
+          <span class="beta">beta</span>
+        </a>
+
+        <div class="nav-links" id="nav-links" data-open="false">
+          <a href="#category">Why distribute</a>
+          <a href="#how">How it works</a>
+          <a href="#proof">Proof</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+        </div>
+
+        <div class="nav-actions">
+          <a class="login-link" href="https://dashboard.distribute.you/sign-in">Log in</a>
+          <a class="button primary small" href="https://dashboard.distribute.you/sign-up">Launch campaign</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Open navigation"><span></span></button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="category-label">Outbound without the outbound department</div>
+          <h1>Your B2B outbound campaign. <span class="accent">Live in under 5 minutes.</span></h1>
+          <p class="hero-copy">
+            Drop your website. distribute finds the right prospects, researches them, writes and sends personalized cold emails from managed inboxes, and filters every reply. <strong>You approve the audience and budget. Then you only handle interested conversations.</strong>
+          </p>
+
+          <form class="url-form" id="campaign-form" novalidate>
+            <label class="sr-only" for="website-url">Your company website</label>
+            <input id="website-url" name="url" type="url" inputmode="url" autocomplete="url" placeholder="https://yourcompany.com" aria-describedby="form-note" required>
+            <button class="button primary" type="submit">
+              Launch from my website
+              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 8h9M9 4.5 12.5 8 9 11.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </form>
+
+          <div class="hero-links" id="form-note">
+            <span class="microcopy">Website in · buyers confirmed · daily budget set · done</span>
+            <a class="inline-link" href="https://distribute.you/#outcomes">See live campaign rates</a>
+          </div>
+
+          <div class="trust-strip" aria-label="Key product facts">
+            <span>No lead list to buy</span>
+            <span>No emails to write</span>
+            <span>No inboxes to warm</span>
+            <span>No SDR to manage</span>
+          </div>
+        </div>
+
+        <div class="console" aria-label="Illustrative distribute campaign preview">
+          <div class="console-top">
+            <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="preview-label">your five-minute setup</div>
+          </div>
+          <div class="console-body">
+            <div class="console-url"><span>yourcompany.com</span><strong>analyzed ✓</strong></div>
+
+            <div class="analysis-card">
+              <div class="analysis-row"><span>Offer</span><b>B2B implementation service</b></div>
+              <div class="analysis-row"><span>Likely buyers</span><b>Founders · COOs · Heads of Growth</b></div>
+              <div class="analysis-row"><span>Campaign angle</span><b>Remove a costly operating bottleneck</b></div>
+            </div>
+
+            <div class="flow-label">What distribute handles</div>
+            <div class="flow" aria-label="Campaign execution flow">
+              <div class="flow-step"><span class="flow-icon">URL</span><span>Website brief</span></div>
+              <div class="flow-step"><span class="flow-icon">ICP</span><span>Target market</span></div>
+              <div class="flow-step"><span class="flow-icon">RCH</span><span>Research</span></div>
+              <div class="flow-step"><span class="flow-icon">SND</span><span>Outreach</span></div>
+              <div class="flow-step"><span class="flow-icon">INT</span><span>Reply filtering</span></div>
+            </div>
+
+            <div class="console-bottom">
+              <div class="console-metric"><span>Daily spend cap</span><b>$10 / day</b></div>
+              <div class="console-metric"><span>Primary objective</span><b>Positive replies</b></div>
+            </div>
+
+            <div class="console-foot">
+              <small>Review the audience and angle before anything is sent.</small>
+              <a class="button primary small" href="https://dashboard.distribute.you/sign-up">Launch</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="proof-rail" aria-label="Proof and transparency">
+      <div class="wrap proof-rail-grid">
+        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>23k+</b><span>emails logged in the public dataset</span></a></div>
+        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>25</b><span>outreach workflows tracked publicly</span></a></div>
+        <div class="proof-rail-item"><a href="https://distribute.you/#outcomes"><b>Live</b><span>observed campaign rates you can inspect</span></a></div>
+        <div class="proof-rail-item"><a href="https://github.com/shamanic-technologies/distribute.you"><b>Open source</b><span>code and methodology available to inspect</span></a></div>
+      </div>
+    </div>
+
+    <section id="category">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">A different way to buy outbound</div>
+          <h2>Software gives you tools. AI SDRs give you an agent. Agencies give you a vendor. distribute runs the campaign.</h2>
+          <p class="section-copy">You keep three decisions: what you sell, who should hear it, and how much to spend. distribute handles everything between your website and an interested reply.</p>
+        </div>
+
+        <div class="model-grid">
+          <article class="model-card">
+            <div class="model-type">Cold email software</div>
+            <h3>You get tools</h3>
+            <p>You still source data, connect inboxes, write sequences, protect deliverability, and read every reply.</p>
+            <div class="model-bottom">You operate the system</div>
+          </article>
+
+          <article class="model-card">
+            <div class="model-type">AI SDR platform</div>
+            <h3>You get an agent</h3>
+            <p>You configure it, connect systems, define playbooks, monitor the output, and carry the subscription.</p>
+            <div class="model-bottom">You manage the agent</div>
+          </article>
+
+          <article class="model-card">
+            <div class="model-type">Lead generation agency</div>
+            <h3>You get a vendor</h3>
+            <p>You attend onboarding, approve the work, pay a retainer, and wait through the ramp before seeing results.</p>
+            <div class="model-bottom">You manage the vendor</div>
+          </article>
+
+          <article class="model-card highlight">
+            <div class="model-type">distribute</div>
+            <h3>You get a running campaign</h3>
+            <p>Your website becomes the brief. You approve the buyers and angle. distribute handles prospecting, sending, follow-ups, filtering, and reporting.</p>
+            <div class="model-bottom">You handle interested buyers</div>
+          </article>
+        </div>
+
+        <div class="category-definition">
+          <div>
+            <h3>Outbound without operating outbound</h3>
+            <p>Your website becomes the brief. Your budget controls the pace. You only step in when someone is interested. No sequencer to learn, database to search, or vendor to manage.</p>
+          </div>
+          <div class="category-formula" aria-label="Campaign launch formula">
+            <span class="formula-chip">WEBSITE</span><span class="formula-plus">+</span>
+            <span class="formula-chip">APPROVAL</span><span class="formula-plus">+</span>
+            <span class="formula-chip">DAILY BUDGET</span><span class="formula-plus">=</span>
+            <span class="formula-chip">CAMPAIGN LIVE</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <section id="how">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">The five-minute setup</div>
+          <h2>Three decisions from you. Everything else from distribute.</h2>
+          <p class="section-copy">Drop the website, confirm the buyers, and choose the budget. The setup takes minutes. distribute handles the work between your offer and the first serious reply.</p>
+        </div>
+
+        <div class="steps-grid">
+          <article class="step-card">
+            <div class="step-top"><span class="step-num">01 / WEBSITE</span><span class="step-time">about 1 minute</span></div>
+            <h3>Drop your URL</h3>
+            <p>distribute reads your offer, the problem it solves, and the language already used on your website.</p>
+            <div class="step-note">No onboarding call. No long campaign brief.</div>
+          </article>
+
+          <article class="step-card">
+            <div class="step-top"><span class="step-num">02 / AUDIENCE</span><span class="step-time">about 2 minutes</span></div>
+            <h3>Confirm the buyers</h3>
+            <p>Review the companies, job roles, and campaign angle distribute proposes. Change the direction before anything is sent.</p>
+            <div class="step-note">You control who gets contacted and why.</div>
+          </article>
+
+          <article class="step-card">
+            <div class="step-top"><span class="step-num">03 / BUDGET</span><span class="step-time">from $1/day</span></div>
+            <h3>Set the daily limit</h3>
+            <p>Choose the campaign objective and the maximum daily spend. Raise it, lower it, or pause future activity from the dashboard.</p>
+            <div class="step-note">No monthly software subscription or seat fee.</div>
+          </article>
+
+          <article class="step-card">
+            <div class="step-top"><span class="step-num">RESULT / BUYERS</span><span class="step-time">campaign running</span></div>
+            <h3>Take the conversation</h3>
+            <p>distribute runs the outreach and classifies incoming replies. Interested prospects reach you with the contact and conversation context attached.</p>
+            <div class="step-note">You step in when a human conversation matters.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="included-section">
+      <div class="wrap included-grid">
+        <div class="included-statement">
+          <div class="eyebrow">You do not build the stack</div>
+          <h2>Everything you would normally have to buy, learn, and manage.</h2>
+          <p class="section-copy">No separate lead database, email writer, sending platform, warmed inbox setup, deliverability tool, or reply-triage process. distribute operates the complete campaign.</p>
+        </div>
+
+        <div class="included-list">
+          <div class="included-row">
+            <div class="included-icon">ICP</div>
+            <div><h3>Build the prospect list</h3><p>Companies and contacts are sourced, filtered, verified, and matched to the audience you approved.</p></div>
+            <span class="included-status">handled</span>
+          </div>
+          <div class="included-row">
+            <div class="included-icon">RCH</div>
+            <div><h3>Research every prospect</h3><p>Company context is analyzed before each message is generated. This is more than a first-name mail merge.</p></div>
+            <span class="included-status">handled</span>
+          </div>
+          <div class="included-row">
+            <div class="included-icon">INF</div>
+            <div><h3>Handle domains and inboxes</h3><p>Campaigns run from inboxes managed by distribute. You do not need to connect or warm your main company domain.</p></div>
+            <span class="included-status">handled</span>
+          </div>
+          <div class="included-row">
+            <div class="included-icon">SEQ</div>
+            <div><h3>Write, send, and follow up</h3><p>Personalized messages, follow-ups, pacing, and bounce handling run inside the platform.</p></div>
+            <span class="included-status">handled</span>
+          </div>
+          <div class="included-row">
+            <div class="included-icon">INT</div>
+            <div><h3>Read and filter the replies</h3><p>Interested replies are surfaced. Out-of-office messages, clear rejections, and opt-outs are classified inside the workflow.</p></div>
+            <span class="included-status">handled</span>
+          </div>
+          <div class="included-row">
+            <div class="included-icon">DAT</div>
+            <div><h3>Show what the campaign costs</h3><p>Track activity and your resulting cost per visit, positive reply, meeting, or signup when those events are available.</p></div>
+            <span class="included-status">included</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="proof">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">Proof without the theatre</div>
+          <h2>Do not trust a perfect screenshot. Check the live data.</h2>
+          <p class="section-copy">Outbound results change by market, offer, message, and sales process. distribute publishes real campaign data and its methodology so you can see what works, what fails, and what it costs.</p>
+        </div>
+
+        <div class="proof-layout">
+          <div class="proof-main">
+            <div class="proof-kicker">The transparent alternative</div>
+            <h3>Live results. Public benchmarks. Open-source code.</h3>
+            <p>See aggregate campaign results, compare outreach workflows, and inspect how the product is built. The numbers move because the campaigns are real.</p>
+
+            <div class="proof-links">
+              <a class="proof-link" href="https://distribute.you/#outcomes">
+                <span>Production data</span>
+                <b>Live rates</b>
+                <small>Aggregate campaign results and real funnel behavior.</small>
+              </a>
+              <a class="proof-link" href="https://distribute.you/benchmarks">
+                <span>Open dataset</span>
+                <b>Benchmarks</b>
+                <small>Workflow-level opens, clicks, replies, and unit costs.</small>
+              </a>
+              <a class="proof-link" href="https://github.com/shamanic-technologies/distribute.you">
+                <span>Public repository</span>
+                <b>Methodology</b>
+                <small>Source code, architecture, and implementation details.</small>
+              </a>
+            </div>
+          </div>
+
+          <aside class="proof-side" aria-label="Example campaign snapshot">
+            <div class="snapshot-label"><span>One campaign snapshot</span><span>not a guarantee</span></div>
+            <div class="snapshot-list">
+              <div class="snapshot-row"><span>Approx. spend</span><b>€90</b></div>
+              <div class="snapshot-row"><span>Prospects contacted</span><b>700</b></div>
+              <div class="snapshot-row"><span>Website visits</span><b>44</b></div>
+              <div class="snapshot-row"><span>Implied cost per visit</span><b>≈ €2</b></div>
+            </div>
+            <div class="snapshot-note">A campaign example, not a platform-wide average. Your cost depends on targeting, offer, geography, copy, deliverability, and downstream conversion.</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- PRODUCT OWNER NOTE: This pricing copy intentionally states only the facts shared by both possible billing models. Before publishing a stronger "pay only per outcome" or "metered usage" claim, align the homepage, dashboard, and Terms of Service. -->
+    <section id="pricing">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">Budget like an ad campaign</div>
+          <h2>Set the budget. See what every result costs.</h2>
+          <p class="section-copy">No seats, no retainer, no separate tool bill. Choose the result you want the campaign to pursue and set the maximum daily spend. distribute runs the outreach and reports the actual cost per visit, positive reply, meeting, or signup.</p>
+        </div>
+
+        <div class="economics-grid">
+          <div class="price-card">
+            <h3>Start with one day. Learn what your market costs.</h3>
+            <div class="price">$1 <span>/ day minimum campaign budget</span></div>
+            <ul class="price-list">
+              <li>No monthly software subscription</li>
+              <li>No seat fee</li>
+              <li>No agency retainer</li>
+              <li>Prospecting, copy, sending, and filtering included</li>
+              <li>Live cost per measured result</li>
+              <li>Change the budget or pause anytime</li>
+            </ul>
+            <a class="button primary" href="https://dashboard.distribute.you/sign-up">Launch my first campaign →</a>
+            <div class="credit-note">New accounts are currently offered up to $25 in matched campaign credits. Eligibility and promotional terms apply.</div>
+          </div>
+
+          <div class="billing-card">
+            <h3>What happens after you launch</h3>
+            <p>You choose the goal and spending limit. distribute handles the campaign.</p>
+
+            <div class="billing-steps">
+              <div class="billing-row">
+                <div class="billing-num">01</div>
+                <div><h4>Choose the result</h4><p>Website visits, positive replies, meetings, or signups. Pick the result that matters to your funnel.</p></div>
+              </div>
+              <div class="billing-row">
+                <div class="billing-num">02</div>
+                <div><h4>Set the daily budget</h4><p>Choose the maximum pace. Raise it, lower it, or pause the campaign from the dashboard.</p></div>
+              </div>
+              <div class="billing-row">
+                <div class="billing-num">03</div>
+                <div><h4>distribute runs the work</h4><p>Prospect research, personalized messages, managed inboxes, follow-ups, and reply filtering happen inside the campaign.</p></div>
+              </div>
+              <div class="billing-row">
+                <div class="billing-num">04</div>
+                <div><h4>See the real cost</h4><p>The dashboard shows what the campaign produced and the resulting cost per measured outcome. Scale, adjust, or stop.</p></div>
+              </div>
+            </div>
+
+            <div class="billing-clarifier"><strong>No fake certainty:</strong> observed prices are not guarantees. distribute measures website visits and positive replies directly. Meetings and signups depend on client reporting and the client’s own funnel.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">Best fit</div>
+          <h2>For B2B offers where one good conversation is worth chasing.</h2>
+          <p class="section-copy">The model works best when you can identify the buyer, solve a specific business problem, and earn enough from one customer to justify targeted outreach.</p>
+        </div>
+
+        <div class="fit-grid">
+          <article class="fit-card">
+            <h3>Agencies</h3>
+            <p>Build your own pipeline or operate isolated client campaigns without rebuilding the outbound stack for every account.</p>
+            <ul class="fit-list"><li>Marketing and growth</li><li>Creative and development</li><li>Recruiting and specialist services</li></ul>
+          </article>
+          <article class="fit-card">
+            <h3>Consultants</h3>
+            <p>Test a defined offer against named decision-makers without hiring an SDR or carrying several software subscriptions.</p>
+            <ul class="fit-list"><li>Fractional leaders</li><li>Operations and finance</li><li>Strategy and implementation</li></ul>
+          </article>
+          <article class="fit-card">
+            <h3>B2B products and services</h3>
+            <p>Reach companies that fit before they actively search, then see which segments and messages create interested replies.</p>
+            <ul class="fit-list"><li>B2B SaaS</li><li>Professional services</li><li>Specialist vendors</li></ul>
+          </article>
+        </div>
+
+        <div class="not-fit">
+          <div class="not-fit-mark">NOT FOR</div>
+          <div><h3>Low-ticket consumer products, unclear offers, or anyone demanding guaranteed meetings.</h3><p>distribute cannot create product-market fit or force a prospect to buy. It gives a credible B2B offer a fast, measurable path into a defined market.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <div class="agency-band">
+          <div>
+            <div class="eyebrow">For agencies and operators</div>
+            <h3>Run your own pipeline and client campaigns from one account.</h3>
+            <p>Give each brand its own website, audience, budget, and reporting. Use the dashboard directly or connect programmatic workflows through the API and MCP integrations.</p>
+            <div class="agency-tags"><span class="agency-tag">MULTI-CAMPAIGN</span><span class="agency-tag">SEPARATE BUDGETS</span><span class="agency-tag">API</span><span class="agency-tag">MCP</span><span class="agency-tag">EXPORTS</span></div>
+          </div>
+          <a class="button secondary" href="https://docs.distribute.you/">Read the docs →</a>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <section id="faq">
+      <div class="wrap faq">
+        <div class="section-head">
+          <div class="eyebrow">Before you launch</div>
+          <h2>Questions serious buyers should ask.</h2>
+        </div>
+
+        <details open>
+          <summary>What is distribute, in one sentence?</summary>
+          <p>distribute is done-for-you B2B cold email outreach. Give it your website, confirm who you want to reach, choose the campaign objective, and set a daily limit. distribute handles prospecting, research, writing, sending, follow-ups, reply filtering, and reporting.</p>
+        </details>
+
+        <details>
+          <summary>Is this just another cold email tool?</summary>
+          <p>No. A cold email tool gives you software to operate. distribute runs the campaign on your behalf. You review the audience and angle, then handle the interested conversations.</p>
+        </details>
+
+        <details>
+          <summary>How does pricing work?</summary>
+          <p>You choose the result the campaign should pursue and set a maximum daily budget. distribute runs the campaign and shows the actual cost per measured visit, positive reply, meeting, or signup. Rates vary by market and campaign. There is no guaranteed fixed result price.</p>
+        </details>
+
+        <details>
+          <summary>Can I really set this up in under five minutes?</summary>
+          <p>The basic setup is designed to take only a few minutes: add your website, review the proposed audience and campaign angle, choose the objective, and set the daily limit. Actual sending can still depend on review, compliance checks, workflow availability, and campaign capacity.</p>
+        </details>
+
+        <details>
+          <summary>Does distribute send from my company domain?</summary>
+          <p>No. Campaign messages are sent through inboxes managed by distribute or its partners. Your primary company domain does not need to be connected or warmed. Delivery and inbox placement are still not guaranteed.</p>
+        </details>
+
+        <details>
+          <summary>Can I review the campaign before it sends?</summary>
+          <p>You can review and adjust the proposed target audience and campaign direction before launch. Approval settings for generated content can vary by workflow and configuration.</p>
+        </details>
+
+        <details>
+          <summary>What reaches my inbox?</summary>
+          <p>Replies are classified by intent. Positive interest can be forwarded with the relevant contact and conversation context. Out-of-office replies, clear rejections, bounces, and opt-outs are handled inside the campaign workflow. Classification can make mistakes, so the dashboard remains the complete record.</p>
+        </details>
+
+        <details>
+          <summary>Who owns and can export the campaign data?</summary>
+          <p>You retain ownership of the data you submit. Campaign records available in your account can be exported for CRM use and lawful follow-up. Data retention after account termination is governed by the current <a href="https://distribute.you/terms">Terms of Service</a> and <a href="https://distribute.you/privacy">Privacy Policy</a>.</p>
+        </details>
+
+        <details>
+          <summary>Is cold outreach automatically GDPR or CAN-SPAM compliant?</summary>
+          <p>No platform can make every campaign lawful by default. distribute handles working opt-outs and suppression workflows, but you remain responsible for lawful targeting, a valid business purpose or other legal basis, truthful claims, and the rules that apply in each recipient's jurisdiction.</p>
+        </details>
+
+        <details>
+          <summary>Are results guaranteed?</summary>
+          <p>No. Market size, offer quality, targeting, geography, copy, deliverability, website conversion, and sales execution all affect results. distribute publishes performance data so you can evaluate real economics rather than rely on a promise.</p>
+        </details>
+
+        <details>
+          <summary>How do the welcome credits work?</summary>
+          <p>Eligible new accounts may receive promotional credits that offset usage charges, currently advertised up to $25. Credits have no cash value and can be subject to eligibility, expiry, anti-abuse rules, and changing promotional terms.</p>
+        </details>
+
+        <details>
+          <summary>Can agencies run campaigns for clients?</summary>
+          <p>Yes. Separate campaigns can use different URLs, audiences, budgets, and reporting. Review the current account permissions and any resale or white-label restrictions in the Terms before offering the service to clients.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="closing">
+      <div class="wrap">
+        <div class="closing-box">
+          <div class="eyebrow">Your website is enough to start</div>
+          <h2>Five minutes to launch. Then distribute runs the campaign.</h2>
+          <p>Drop your URL, approve the buyers, and set the budget. distribute handles the prospecting, emails, follow-ups, and reply filtering. You step in when someone is interested.</p>
+          <div class="closing-actions">
+            <a class="button primary" href="https://dashboard.distribute.you/sign-up">Launch my campaign →</a>
+            <a class="button secondary" href="https://distribute.you/#outcomes">See public performance</a>
+          </div>
+          <div class="microcopy">Under 5-minute setup · from $1/day · no seats · pause anytime</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#top" class="logo"><span class="logo-mark" aria-hidden="true"></span>distribute <span class="beta">beta</span></a>
+          <p>Done-for-you B2B outbound. Your website in. Interested buyers out.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <a href="https://distribute.you/how-it-works">How it works</a>
+          <a href="https://distribute.you/pricing">Pricing</a>
+          <a href="https://distribute.you/#outcomes">Live rates</a>
+          <a href="https://distribute.you/benchmarks">Benchmarks</a>
+        </div>
+        <div class="footer-col">
+          <h4>Developers</h4>
+          <a href="https://docs.distribute.you/">Documentation</a>
+          <a href="https://github.com/shamanic-technologies/distribute.you">GitHub</a>
+          <a href="https://docs.distribute.you/">API and MCP</a>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <a href="https://distribute.you/terms">Terms</a>
+          <a href="https://distribute.you/privacy">Privacy</a>
+          <a href="mailto:support@distribute.you">Support</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 distribute</span>
+        <span>Built by Shamanic Technologies. Open-source components available under their stated licenses.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function(){
+      const toggle=document.querySelector('.nav-toggle');
+      const links=document.getElementById('nav-links');
+      if(toggle&&links){
+        toggle.addEventListener('click',function(){
+          const open=toggle.getAttribute('aria-expanded')==='true';
+          toggle.setAttribute('aria-expanded',String(!open));
+          toggle.setAttribute('aria-label',open?'Open navigation':'Close navigation');
+          links.dataset.open=String(!open);
+        });
+        links.querySelectorAll('a').forEach(function(link){
+          link.addEventListener('click',function(){
+            toggle.setAttribute('aria-expanded','false');
+            toggle.setAttribute('aria-label','Open navigation');
+            links.dataset.open='false';
+          });
+        });
+      }
+
+      const form=document.getElementById('campaign-form');
+      const input=document.getElementById('website-url');
+      if(form&&input){
+        form.addEventListener('submit',function(event){
+          event.preventDefault();
+          let value=input.value.trim();
+          if(value&&!/^https?:\/\//i.test(value)){value='https://'+value;}
+          try{
+            const parsed=new URL(value);
+            if(!parsed.hostname.includes('.')){throw new Error('Invalid host');}
+            window.location.href='https://dashboard.distribute.you/sign-up?url='+encodeURIComponent(parsed.href);
+          }catch(error){
+            input.setCustomValidity('Enter a valid company website, for example https://yourcompany.com');
+            input.reportValidity();
+          }
+        });
+        input.addEventListener('input',function(){input.setCustomValidity('');});
+      }
+    })();
+  </script>
+</body>
+</html>
