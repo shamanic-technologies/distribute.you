@@ -52,6 +52,17 @@ describe("Audiences page", () => {
     expect(src).toContain("const defaultSortCol");
   });
 
+  it("hides the signup + form-submission outcome columns until the conversion tracker is set up", () => {
+    // No tracker → no signups/form-submissions to attribute, so the columns would only
+    // ever show 0 / "-". Gate them on lead-service's tracker liveness (live_waiting|live).
+    expect(src).toContain("getBrandConversionToken");
+    expect(src).toContain('conversionTokenData?.status === "live"');
+    expect(src).toContain('conversionTokenData?.status === "live_waiting"');
+    expect(src).toContain("const trackerSetUp");
+    expect(src).toContain('optimizationGoal === "signups" && trackerSetUp');
+    expect(src).toContain('optimizationGoal === "form_submissions" && trackerSetUp');
+  });
+
   it("hides the CPC + Website Visits columns for the positive_replies goal", () => {
     // Single-step reply→paid goal: clicks aren't in the funnel, so both the header and
     // body cells for CPC + Website Visits are gated off (CPPR columns stay).
