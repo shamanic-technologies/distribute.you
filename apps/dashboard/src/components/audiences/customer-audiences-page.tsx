@@ -18,6 +18,7 @@ import { pollOptions } from "@/lib/query-options";
 import {
   fetchFeatureAudienceStats,
   generateAudienceAvatar,
+  getBrandConversionToken,
   getBrandSalesEconomics,
   isVisitDrivenGoal,
   listAudiences,
@@ -247,6 +248,20 @@ export function CustomerAudiencesPage() {
   );
   const optimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+  // Conversion-tracker liveness (lead-service pixel). status: "not_set_up" (no ping,
+  // no event) | "live_waiting" (tag pinging, no conversion yet) | "live" (real
+  // conversions). Signup + form-submission outcomes only exist once the brand's site
+  // has the tracker installed — so their columns are gated on the tracker being set up
+  // (live_waiting OR live). Hidden until the query resolves (undefined → not set up)
+  // so a not-set-up brand never flashes empty outcome columns.
+  const { data: conversionTokenData } = useAuthQuery(
+    ["brandConversionToken", brandId],
+    () => getBrandConversionToken(brandId),
+    pollOptions,
+  );
+  const trackerSetUp =
+    conversionTokenData?.status === "live" ||
+    conversionTokenData?.status === "live_waiting";
   const audienceStatsGoal: FeatureAudienceStatsGoal =
     optimizationGoal === "form_submissions"
       ? "formSubmission"
@@ -262,13 +277,14 @@ export function CustomerAudiencesPage() {
   const isPositiveReplies = optimizationGoal === "positive_replies";
   // signups goal → surface the REAL per-audience signup outcome: "Cost per signup"
   // (CPS) + "Signups" columns FIRST (after Audience, before the website-visit funnel),
-  // default sort CPS asc. Backend fields are optional — renders "-" until features-service
-  // ships evidence.signups / metrics.cpsCents. (website_visits stays visit-only, no CPS.)
-  const showSignupCols = optimizationGoal === "signups";
+  // default sort CPS asc. Gated on the conversion tracker being set up — with no tracker
+  // there are no signups to attribute, so the columns would only ever show 0 / "-".
+  // (website_visits stays visit-only, no CPS.)
+  const showSignupCols = optimizationGoal === "signups" && trackerSetUp;
   // form_submissions goal → surface the real per-audience outcome: "Cost per form
   // submission" (CPFS) + "Form submissions" columns FIRST (before the website-visit
-  // funnel), default sort CPFS asc. Backend already serves these.
-  const showFormSubmissionCols = optimizationGoal === "form_submissions";
+  // funnel), default sort CPFS asc. Also gated on the tracker being set up.
+  const showFormSubmissionCols = optimizationGoal === "form_submissions" && trackerSetUp;
   // Seed the initial sort column from the brand goal once it resolves — cheapest
   // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), else CPC
   // (website visits) — until the user picks a column manually.
