@@ -1,13 +1,9 @@
-import { formatPercent, formatCostCents, formatCostCentsWhole, type FeatureGroupStats } from "@/lib/performance/fetch-leaderboard";
+import { formatPercent, formatCostCentsWhole, type FeatureGroupStats } from "@/lib/performance/fetch-leaderboard";
 
 export function StatsBar({ stats }: { stats: FeatureGroupStats }) {
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm py-3 px-4 bg-gray-50 rounded-lg border border-gray-200">
       <span className="text-xs font-semibold uppercase tracking-wider text-brand-600">Best</span>
-      <Divider />
-      <Stat label="Open Rate" value={formatPercent(stats.openRate)} />
-      <Divider />
-      <Stat label="$/Open" value={formatCostCents(stats.costPerOpenCents)} />
       <Divider />
       <Stat label="Positive Reply Rate" value={formatPercent(stats.replyRate)} />
       <Divider />

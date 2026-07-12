@@ -34,7 +34,6 @@ describe("Static landing live performance values", () => {
   it("does not keep the old positive-reply cost hardcoded in static page source", () => {
     expect(staticPageSource).toContain("__BEST_POSITIVE_REPLY_COST__");
     expect(staticPageSource).toContain("__BEST_POSITIVE_REPLY_COST_NUMERIC__");
-    expect(staticPageSource).toContain("__OPEN_RATE__");
     expect(staticPageSource).toContain("__POSITIVE_REPLY_RATE__");
     expect(staticPageSource).toContain("__EMAILS_SENT__");
     expect(staticPageSource).not.toContain("$1.42");
@@ -98,7 +97,6 @@ describe("Static landing live performance values", () => {
     // best-positive-reply cost ($X.XX/reply) is injected on the performance page only.
     expect(performanceHtml).toContain("$32.00");
     expect(performanceHtml).toContain('data-n="32.00"');
-    expect(performanceHtml).toContain("38.0%");
     expect(performanceHtml).toContain("2.0%");
     expect(performanceHtml).toContain("100");
     expect(performanceHtml).toContain("emails sent tracked");

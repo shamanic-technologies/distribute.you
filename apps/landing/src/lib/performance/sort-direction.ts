@@ -1,6 +1,6 @@
-export type SortKey = "openRate" | "clickRate" | "replyRate" | "costPerOpenCents" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "expectedRevenueUsd" | "roiMultiple" | "runCount";
+export type SortKey = "clickRate" | "replyRate" | "costPerClickCents" | "costPerReplyCents" | "emailsSent" | "totalCostUsdCents" | "expectedRevenueUsd" | "roiMultiple" | "runCount";
 
-const COST_KEYS: Set<SortKey> = new Set(["costPerOpenCents", "costPerClickCents", "costPerReplyCents"]);
+const COST_KEYS: Set<SortKey> = new Set(["costPerClickCents", "costPerReplyCents"]);
 
 export const defaultDir = (key: SortKey): "asc" | "desc" => COST_KEYS.has(key) ? "asc" : "desc";
 

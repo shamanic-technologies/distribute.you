@@ -194,14 +194,12 @@ interface RawBrandTimelinePoint {
   date: string;
   cumulativePipelineUsd?: number | null;
   emailsSent?: number | null;
-  emailsOpened?: number | null;
   emailsClicked?: number | null;
   emailsReplied?: number | null;
 }
 
 function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
-  const opened = num(item.stats, "recipientsOpened");
   const clicked = num(item.stats, "recipientsClicked");
   const replied = num(item.stats, "recipientsRepliesPositive");
   const cost = num(item.stats, "totalCostInUsdCents");
@@ -213,14 +211,11 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
     expectedRevenueUsd: null,
     roiMultiple: null,
     emailsSent: sent,
-    emailsOpened: opened,
     emailsClicked: clicked,
     emailsReplied: replied,
     totalCostUsdCents: cost,
-    openRate: sent > 0 ? opened / sent : 0,
     clickRate: sent > 0 ? clicked / sent : 0,
     replyRate: sent > 0 ? replied / sent : 0,
-    costPerOpenCents: opened > 0 ? cost / opened : null,
     costPerClickCents: clicked > 0 ? cost / clicked : null,
     costPerReplyCents: replied > 0 ? cost / replied : null,
   };
@@ -228,7 +223,6 @@ function mapBrandEntry(item: BrandRankedItem): BrandLeaderboardEntry {
 
 function mapWorkflowEntry(item: WorkflowRankedItem): WorkflowLeaderboardEntry {
   const sent = num(item.stats, "recipientsSent");
-  const opened = num(item.stats, "recipientsOpened");
   const clicked = num(item.stats, "recipientsClicked");
   const replied = num(item.stats, "recipientsRepliesPositive");
   const cost = num(item.stats, "totalCostInUsdCents");
@@ -245,14 +239,11 @@ function mapWorkflowEntry(item: WorkflowRankedItem): WorkflowLeaderboardEntry {
     roiMultiple: null,
     runCount: num(item.stats, "completedRuns"),
     emailsSent: sent,
-    emailsOpened: opened,
     emailsClicked: clicked,
     emailsReplied: replied,
     totalCostUsdCents: cost,
-    openRate: sent > 0 ? opened / sent : 0,
     clickRate: sent > 0 ? clicked / sent : 0,
     replyRate: sent > 0 ? replied / sent : 0,
-    costPerOpenCents: opened > 0 ? cost / opened : null,
     costPerClickCents: clicked > 0 ? cost / clicked : null,
     costPerReplyCents: replied > 0 ? cost / replied : null,
   };
@@ -262,13 +253,10 @@ export interface BenchmarkAggregateStats {
   totalRuns: number;
   totalCostUsdCents: number;
   emailsSent: number;
-  emailsOpened: number;
   emailsClicked: number;
   emailsReplied: number;
-  openRate: number;
   clickRate: number;
   replyRate: number;
-  costPerOpenCents: number | null;
   costPerClickCents: number | null;
   costPerReplyCents: number | null;
   participatingBrands: number;
@@ -435,7 +423,6 @@ async function _fetchFeatureBenchmarkUncached(
   });
 
   const sent = workflows.reduce((s, w) => s + w.emailsSent, 0);
-  const opened = workflows.reduce((s, w) => s + w.emailsOpened, 0);
   const clicked = workflows.reduce((s, w) => s + w.emailsClicked, 0);
   const replied = workflows.reduce((s, w) => s + w.emailsReplied, 0);
   const cost = workflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
@@ -450,13 +437,10 @@ async function _fetchFeatureBenchmarkUncached(
     totalRuns: runs,
     totalCostUsdCents: cost,
     emailsSent: sent,
-    emailsOpened: opened,
     emailsClicked: clicked,
     emailsReplied: replied,
-    openRate: sent > 0 ? opened / sent : 0,
     clickRate: sent > 0 ? clicked / sent : 0,
     replyRate: sent > 0 ? replied / sent : 0,
-    costPerOpenCents: opened > 0 ? cost / opened : null,
     costPerClickCents: clicked > 0 ? cost / clicked : null,
     costPerReplyCents: replied > 0 ? cost / replied : null,
     participatingBrands: brands.length,

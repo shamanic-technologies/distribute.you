@@ -97,14 +97,11 @@ export interface BrandLeaderboardEntry {
   expectedRevenueUsd: number | null;
   roiMultiple: number | null;
   emailsSent: number;
-  emailsOpened: number;
   emailsClicked: number;
   emailsReplied: number;
   totalCostUsdCents: number;
-  openRate: number;
   clickRate: number;
   replyRate: number;
-  costPerOpenCents: number | null;
   costPerClickCents: number | null;
   costPerReplyCents: number | null;
 }
@@ -113,7 +110,6 @@ export interface BrandTimelinePoint {
   date: string;
   cumulativePipelineUsd: number | null;
   emailsSent: number | null;
-  emailsOpened: number | null;
   emailsClicked: number | null;
   emailsReplied: number | null;
 }
@@ -129,31 +125,24 @@ export interface WorkflowLeaderboardEntry {
   roiMultiple: number | null;
   runCount: number;
   emailsSent: number;
-  emailsOpened: number;
   emailsClicked: number;
   emailsReplied: number;
   totalCostUsdCents: number;
-  openRate: number;
   clickRate: number;
   replyRate: number;
-  costPerOpenCents: number | null;
   costPerClickCents: number | null;
   costPerReplyCents: number | null;
 }
 
 export interface HeroStats {
-  bestCostPerOpen: { brandDomain: string | null; costPerOpenCents: number } | null;
   bestCostPerReply: { brandDomain: string | null; costPerReplyCents: number } | null;
 }
 
 export interface FeatureGroupStats {
   emailsSent: number;
-  emailsOpened: number;
   emailsReplied: number;
   totalCostUsdCents: number;
-  openRate: number;
   replyRate: number;
-  costPerOpenCents: number | null;
   costPerReplyCents: number | null;
 }
 
@@ -198,7 +187,6 @@ async function fetchWorkflowRanked(
 
   return data.results.map((r) => {
     const sent = num(r.stats, "recipientsSent");
-    const opened = num(r.stats, "recipientsOpened");
     const clicked = num(r.stats, "recipientsClicked");
     const replied = num(r.stats, "recipientsRepliesPositive");
     const cost = num(r.stats, "totalCostInUsdCents");
@@ -214,14 +202,11 @@ async function fetchWorkflowRanked(
       roiMultiple: null,
       runCount: num(r.stats, "completedRuns"),
       emailsSent: sent,
-      emailsOpened: opened,
       emailsClicked: clicked,
       emailsReplied: replied,
       totalCostUsdCents: cost,
-      openRate: sent > 0 ? opened / sent : 0,
       clickRate: sent > 0 ? clicked / sent : 0,
       replyRate: sent > 0 ? replied / sent : 0,
-      costPerOpenCents: opened > 0 ? cost / opened : null,
       costPerClickCents: clicked > 0 ? cost / clicked : null,
       costPerReplyCents: replied > 0 ? cost / replied : null,
     };
@@ -247,7 +232,6 @@ async function fetchBrandRanked(
 
   return data.results.map((r) => {
     const sent = num(r.stats, "recipientsSent");
-    const opened = num(r.stats, "recipientsOpened");
     const clicked = num(r.stats, "recipientsClicked");
     const replied = num(r.stats, "recipientsRepliesPositive");
     const cost = num(r.stats, "totalCostInUsdCents");
@@ -260,14 +244,11 @@ async function fetchBrandRanked(
       expectedRevenueUsd: null,
       roiMultiple: null,
       emailsSent: sent,
-      emailsOpened: opened,
       emailsClicked: clicked,
       emailsReplied: replied,
       totalCostUsdCents: cost,
-      openRate: sent > 0 ? opened / sent : 0,
       clickRate: sent > 0 ? clicked / sent : 0,
       replyRate: sent > 0 ? replied / sent : 0,
-      costPerOpenCents: opened > 0 ? cost / opened : null,
       costPerClickCents: clicked > 0 ? cost / clicked : null,
       costPerReplyCents: replied > 0 ? cost / replied : null,
     };
@@ -279,7 +260,6 @@ async function fetchBrandRanked(
 function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeaderboardEntry[] {
   const byId = new Map<string, {
     sent: number;
-    opened: number;
     clicked: number;
     replied: number;
     cost: number;
@@ -295,7 +275,6 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
       const existing = byId.get(b.brandId);
       if (existing) {
         existing.sent += b.emailsSent;
-        existing.opened += b.emailsOpened;
         existing.clicked += b.emailsClicked;
         existing.replied += b.emailsReplied;
         existing.cost += b.totalCostUsdCents;
@@ -310,7 +289,6 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
       } else {
         byId.set(b.brandId, {
           sent: b.emailsSent,
-          opened: b.emailsOpened,
           clicked: b.emailsClicked,
           replied: b.emailsReplied,
           cost: b.totalCostUsdCents,
@@ -331,14 +309,11 @@ function aggregateBrands(brandsByFeature: BrandLeaderboardEntry[][]): BrandLeade
     expectedRevenueUsd: b.expectedRevenueUsd,
     roiMultiple: b.roiMultiple,
     emailsSent: b.sent,
-    emailsOpened: b.opened,
     emailsClicked: b.clicked,
     emailsReplied: b.replied,
     totalCostUsdCents: b.cost,
-    openRate: b.sent > 0 ? b.opened / b.sent : 0,
     clickRate: b.sent > 0 ? b.clicked / b.sent : 0,
     replyRate: b.sent > 0 ? b.replied / b.sent : 0,
-    costPerOpenCents: b.opened > 0 ? b.cost / b.opened : null,
     costPerClickCents: b.clicked > 0 ? b.cost / b.clicked : null,
     costPerReplyCents: b.replied > 0 ? b.cost / b.replied : null,
   }));
@@ -371,7 +346,6 @@ function buildFeatureGroups(
     const brands = aggregateBrands(allBrandArrays);
 
     const sent = allWorkflows.reduce((s, w) => s + w.emailsSent, 0);
-    const opened = allWorkflows.reduce((s, w) => s + w.emailsOpened, 0);
     const replied = allWorkflows.reduce((s, w) => s + w.emailsReplied, 0);
     const cost = allWorkflows.reduce((s, w) => s + w.totalCostUsdCents, 0);
 
@@ -380,12 +354,9 @@ function buildFeatureGroups(
       label: group.label,
       stats: {
         emailsSent: sent,
-        emailsOpened: opened,
         emailsReplied: replied,
         totalCostUsdCents: cost,
-        openRate: sent > 0 ? opened / sent : 0,
         replyRate: sent > 0 ? replied / sent : 0,
-        costPerOpenCents: opened > 0 ? cost / opened : null,
         costPerReplyCents: replied > 0 ? cost / replied : null,
       },
       workflows: allWorkflows,
@@ -469,12 +440,8 @@ export const fetchLeaderboard = unstable_cache(
     // Step 8: Build hero stats
     let hero: HeroStats | null = null;
     if (bestData) {
-      const openRecord = bestData.best["recipientsOpened"] ?? null;
       const replyRecord = bestData.best["recipientsRepliesPositive"] ?? null;
       hero = {
-        bestCostPerOpen: openRecord
-          ? { brandDomain: null, costPerOpenCents: openRecord.value }
-          : null,
         bestCostPerReply: replyRecord
           ? { brandDomain: null, costPerReplyCents: replyRecord.value }
           : null,
