@@ -37,7 +37,7 @@ export async function generateMetadata({
   };
 }
 
-// Scoped dark-charter remap — matches the new (dark) landing skin without the
+// Scoped dark-charter remap, matches the new (dark) landing skin without the
 // dy-token washout: an .op wrapper sets the dark page, and the Tailwind
 // utilities the JSX already uses are remapped to charter values inside it
 // (same mechanism as the dashboard html.dark layer). Space Grotesk + IBM Plex
@@ -307,7 +307,7 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
         </div>
       </section>
 
-      {/* Distribution histogram — cross-brand price spread. */}
+      {/* Distribution histogram, cross-brand price spread. */}
       <section className="mt-6 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">
           Price spread across brands
@@ -327,7 +327,7 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
         </div>
       </section>
 
-      {/* Best model — per-workflow cost, cheapest first */}
+      {/* Best model, per-workflow cost, cheapest first */}
       <section className="mt-6 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">
           Our best models

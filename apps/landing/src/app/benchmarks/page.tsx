@@ -12,7 +12,7 @@ import {
 export const revalidate = 300;
 
 const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
-// Bare title for the <title> tag — the root layout template already appends
+// Bare title for the <title> tag, the root layout template already appends
 // "| distribute", so don't double the brand here. OG/twitter carry the full
 // brand form (no template applies to them).
 const PAGE_TITLE = "What outcomes cost";
@@ -220,7 +220,7 @@ export default async function BenchmarksPage() {
         </div>
       </section>
 
-      {/* Detail cards — cost + trend, link into each outcome page */}
+      {/* Detail cards, cost + trend, link into each outcome page */}
       <section className="mx-auto max-w-5xl px-6 py-12">
         <h2 className="mb-6 text-sm font-semibold text-gray-900">
           Every outcome, in detail
