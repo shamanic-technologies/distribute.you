@@ -69,8 +69,6 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
             <th className="dy-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dy-muted)]">
               Brand
             </th>
-            <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-            <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Clicks" sortKey="clickRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
             <SortHeader label="% Positive Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -103,8 +101,6 @@ export function BrandLeaderboard({ brands, maxEntries }: { brands: BrandLeaderbo
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{brand.emailsSent > 0 ? formatPercent(brand.openRate) : "—"}</td>
-              <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{formatCostCents(brand.costPerOpenCents)}</td>
               <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{brand.emailsSent > 0 ? formatPercent(brand.clickRate) : "—"}</td>
               <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{formatCostCents(brand.costPerClickCents)}</td>
               <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{brand.emailsSent > 0 ? formatPercent(brand.replyRate) : "—"}</td>
@@ -159,8 +155,6 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
               <th className="dy-mono px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--dy-muted)]">
                 Workflow
               </th>
-              <SortHeader label="% Opens" sortKey="openRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-              <SortHeader label="$/Open" sortKey="costPerOpenCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
               <SortHeader label="% Clicks" sortKey="clickRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
               <SortHeader label="$/Click" sortKey="costPerClickCents" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
               <SortHeader label="% Positive Replies" sortKey="replyRate" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
@@ -190,8 +184,6 @@ export function WorkflowLeaderboard({ workflows, inSection = false, maxEntries }
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"}</td>
-                <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{formatCostCents(wf.costPerOpenCents)}</td>
                 <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"}</td>
                 <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{formatCostCents(wf.costPerClickCents)}</td>
                 <td className="px-4 py-4 text-sm text-[var(--dy-sub)]">{wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"}</td>
@@ -236,7 +228,6 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
           <div>
             <h4 className="dy-mono mb-3 text-xs font-medium uppercase tracking-wider text-[var(--dy-muted)]">Rates</h4>
             <div className="space-y-2">
-              <DetailRow label="Open Rate" value={wf.emailsSent > 0 ? formatPercent(wf.openRate) : "—"} sub={`${wf.emailsOpened.toLocaleString()} opens`} />
               <DetailRow label="Click Rate" value={wf.emailsSent > 0 ? formatPercent(wf.clickRate) : "—"} sub={`${wf.emailsClicked.toLocaleString()} clicks`} />
               <DetailRow label="Positive Reply Rate" value={wf.emailsSent > 0 ? formatPercent(wf.replyRate) : "—"} sub={`${wf.emailsReplied.toLocaleString()} positive replies`} />
             </div>
@@ -245,7 +236,6 @@ function WorkflowDetailPanel({ workflow: wf, onClose }: { workflow: WorkflowLead
           <div>
             <h4 className="dy-mono mb-3 text-xs font-medium uppercase tracking-wider text-[var(--dy-muted)]">Cost per Action</h4>
             <div className="space-y-2">
-              <DetailRow label="$/Open" value={formatCostCents(wf.costPerOpenCents)} />
               <DetailRow label="$/Click" value={formatCostCents(wf.costPerClickCents)} />
               <DetailRow label="$/Positive Reply" value={formatCostCentsWhole(wf.costPerReplyCents)} />
             </div>

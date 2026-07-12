@@ -1322,7 +1322,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
 .funnel-label   { font-size: var(--fs-base); font-weight: 600; color: var(--text); }
 .funnel-pct     { font-family: 'IBM Plex Mono', monospace; font-size: var(--fs-sm); font-weight: 600; }
 .funnel-pct.sent              { color: var(--accent); }
-.funnel-pct.opened            { color: var(--purple); }
+.funnel-pct.clicked           { color: var(--purple); }
 .funnel-pct.replied,
 .funnel-pct.you-read          { color: var(--green); }
 .funnel-bar-track { height: 0.5rem; background: var(--surface-hi); border-radius: var(--r-pill); overflow: hidden; }
@@ -1331,7 +1331,7 @@ footer    { border-top: 1px solid var(--border); padding: 3.5rem 0 0; background
   transition: width 1.1s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .funnel-bar-fill.sent              { background: var(--accent); }
-.funnel-bar-fill.opened            { background: var(--purple); }
+.funnel-bar-fill.clicked           { background: var(--purple); }
 .funnel-bar-fill.replied,
 .funnel-bar-fill.you-read          { background: var(--green); }
 .funnel-desc                       { font-family: 'IBM Plex Mono', monospace; font-size: var(--fs-sm); color: var(--muted); }
