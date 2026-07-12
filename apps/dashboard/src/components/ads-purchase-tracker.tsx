@@ -13,19 +13,26 @@ import { useSearchParams } from "next/navigation";
  * The AW tag (config in app/layout.tsx) reads the `_gcl_aw` gclid cookie that the
  * landing set on `.distribute.you` for cross-subdomain attribution.
  *
- * Conversion VALUE: the checkout `success_url` carries `pending_topup` (the top-up
- * amount in cents — set by billing-guard + the billing page). We forward it as
- * `value` (dollars) + `currency` so the campaign's "Maximize conversion value"
- * bidding optimizes on real revenue, not a flat per-conversion default. The Ads
- * conversion action must be set to "Use different values for each conversion" or
- * the sent value is ignored. When the amount is absent/zero we fire without a
- * value rather than reporting $0.
+ * Conversion VALUE + FIRE GATE: we fire the conversion ONLY after a real payment
+ * succeeded, and the value is the payment amount. Two payment-mode redirect
+ * checkouts reach this success_url:
+ *  - onboarding launch → carries `daily_budget` (the 1-day budget in DOLLARS the
+ *    user picked); value = that recurring per-day commitment.
+ *  - billing top-up → carries `paid_amount` (the amount charged in CENTS).
+ * Both params only exist on a payment-mode checkout whose success_url was reached,
+ * i.e. the payment went through. If NEITHER positive value is present, this is not
+ * a completed purchase (e.g. a $0 card-add / setup return) and we do NOT fire.
+ * The billing-guard card-capture uses an EMBEDDED checkout (inline onComplete, no
+ * `?success=true` redirect), so it never reaches this tracker.
  *
- * Fire-only: it does NOT strip the param — the launch pages / billing page already
+ * We forward `value` + `currency` so the campaign's "Maximize conversion value"
+ * bidding optimizes on real revenue. The Ads conversion action must be set to
+ * "Use different values for each conversion" or the sent value is ignored.
+ *
+ * Fire-only: it does NOT strip the params — the launch pages / billing page already
  * read `pending_topup` and strip the params to arm auto-topup, and stripping here
- * would race that logic. A per-session
- * sessionStorage latch keyed on the return query prevents a refresh from
- * re-firing the conversion.
+ * would race that logic. A per-session sessionStorage latch keyed on the return
+ * query prevents a refresh from re-firing the conversion.
  */
 const FIRED_KEY_PREFIX = "distribute_ads_purchase_fired";
 
@@ -37,20 +44,30 @@ export function AdsPurchaseTracker() {
     if (fired.current) return;
     if (searchParams.get("success") !== "true") return;
 
+    // Resolve the payment value. daily_budget is DOLLARS (onboarding launch, the
+    // 1-day budget); paid_amount is CENTS (billing top-up). Their presence proves
+    // a payment-mode checkout succeeded.
+    const dailyBudget = Number(searchParams.get("daily_budget"));
+    const paidCents = Number(searchParams.get("paid_amount"));
+    const value =
+      Number.isFinite(dailyBudget) && dailyBudget > 0
+        ? dailyBudget
+        : Number.isFinite(paidCents) && paidCents > 0
+          ? paidCents / 100
+          : null;
+
+    // No positive payment value → not a completed purchase (e.g. a card-add /
+    // setup return). Fire ONLY after a real payment.
+    if (value === null) return;
+
     const dedupKey = `${FIRED_KEY_PREFIX}:${searchParams.toString()}`;
     if (sessionStorage.getItem(dedupKey)) return;
 
     fired.current = true;
     sessionStorage.setItem(dedupKey, "1");
 
-    const cents = Number(searchParams.get("pending_topup"));
-    const valueParams =
-      Number.isFinite(cents) && cents > 0
-        ? { value: cents / 100, currency: "USD" }
-        : undefined;
-
     const gtag = (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag;
-    gtag?.("event", "manual_event_PURCHASE", valueParams);
+    gtag?.("event", "manual_event_PURCHASE", { value, currency: "USD" });
   }, [searchParams]);
 
   return null;

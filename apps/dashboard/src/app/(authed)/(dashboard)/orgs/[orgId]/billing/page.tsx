@@ -296,6 +296,10 @@ export default function BillingPage() {
       // Build success URL — if no payment method yet, pass the pending enable flag
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
+      // Google Ads PURCHASE conversion value = the amount actually charged (cents).
+      // The checkout is always payment-mode, so hitting this success_url means the
+      // payment succeeded; AdsPurchaseTracker reads paid_amount on return.
+      successUrl.searchParams.set("paid_amount", String(amountCents));
       if (enableAutoTopup && !account?.has_payment_method) {
         successUrl.searchParams.set("pending_topup", String(AUTO_TOPUP_ENABLE_AMOUNT_CENTS));
         successUrl.searchParams.set("pending_threshold", String(AUTO_TOPUP_ENABLE_THRESHOLD_CENTS));

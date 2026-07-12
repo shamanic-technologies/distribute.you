@@ -1387,6 +1387,11 @@ export function Onboarding() {
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
       successUrl.searchParams.set("launch_checkout", "success");
+      // Google Ads PURCHASE conversion value = the 1-day budget the user picked
+      // (dollars). Read on the checkout RETURN (payment succeeded) by
+      // AdsPurchaseTracker. Reflects the recurring per-day commitment, not the
+      // one-off charge amount.
+      successUrl.searchParams.set("daily_budget", String(budget));
       const cancelUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       cancelUrl.searchParams.set("launch_checkout", "cancelled");
 
