@@ -156,8 +156,9 @@ export default function BillingPage() {
   // Auto-topup toggle (arms the flag; amount/threshold are derived) — on by default
   const [enableAutoTopup, setEnableAutoTopup] = useState(true);
 
-  // Portal state
-  const [portalLoading, setPortalLoading] = useState(false);
+  // Portal state — track WHICH button opened the portal so only that button
+  // shows the spinner (both buttons open the same Stripe portal session).
+  const [portalLoadingSource, setPortalLoadingSource] = useState<"manage" | "invoices" | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -257,8 +258,8 @@ export default function BillingPage() {
     setCustomAmount("");
   }
 
-  async function handleManagePayment() {
-    setPortalLoading(true);
+  async function handleManagePayment(source: "manage" | "invoices") {
+    setPortalLoadingSource(source);
     setError(null);
     try {
       const { url } = await createPortalSession(
@@ -267,7 +268,7 @@ export default function BillingPage() {
       window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to open payment portal");
-      setPortalLoading(false);
+      setPortalLoadingSource(null);
     }
   }
 
@@ -501,11 +502,11 @@ export default function BillingPage() {
             </div>
             {account?.has_payment_method && (
               <button
-                onClick={handleManagePayment}
-                disabled={portalLoading}
+                onClick={() => handleManagePayment("manage")}
+                disabled={portalLoadingSource !== null}
                 className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
               >
-                {portalLoading ? "Opening..." : "Manage"}
+                {portalLoadingSource === "manage" ? "Opening..." : "Manage"}
               </button>
             )}
           </div>
@@ -527,11 +528,11 @@ export default function BillingPage() {
                 </div>
               </div>
               <button
-                onClick={handleManagePayment}
-                disabled={portalLoading}
+                onClick={() => handleManagePayment("invoices")}
+                disabled={portalLoadingSource !== null}
                 className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
               >
-                {portalLoading ? "Opening..." : "View invoices"}
+                {portalLoadingSource === "invoices" ? "Opening..." : "View invoices"}
               </button>
             </div>
           </div>
