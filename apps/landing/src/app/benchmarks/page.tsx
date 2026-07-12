@@ -114,6 +114,33 @@ function Sparkline({ points }: { points: TrendPoint[] }) {
   );
 }
 
+type OutcomeRow = { def: OutcomeDef; stats: OutcomeStats | null };
+
+// One outcome card (badge + label + live cost + source tag), links to its
+// detail page. Used inside the two motion tracks.
+function OutcomeMini({ row }: { row: OutcomeRow }) {
+  const { def, stats } = row;
+  return (
+    <Link
+      href={`/outcomes/${def.slug}`}
+      className="group flex flex-1 flex-col justify-between rounded-lg border border-gray-200 bg-gray-50 p-4 transition hover:border-emerald-300 hover:shadow-sm"
+    >
+      <div>
+        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-emerald-700">
+          {def.sym}
+        </span>
+        <div className="mt-2 text-sm font-medium text-gray-900">{def.label}</div>
+      </div>
+      <div className="mt-3 text-2xl font-bold tracking-tight text-gray-900">
+        {fmtUsd(stats?.currentAvgUsd)}
+      </div>
+      <div className="mt-1 text-[11px] uppercase tracking-wide text-gray-400">
+        {def.measuredByUs ? "measured by us" : "client-reported"}
+      </div>
+    </Link>
+  );
+}
+
 async function safeStats(def: OutcomeDef): Promise<OutcomeStats | null> {
   // Build-time prerender must stay shippable: a slow/failed public metric must
   // not abort the whole landing deploy (CLAUDE.md build-time fetch rule).
@@ -127,7 +154,11 @@ async function safeStats(def: OutcomeDef): Promise<OutcomeStats | null> {
 
 export default async function BenchmarksPage() {
   const stats = await Promise.all(OUTCOMES.map(safeStats));
-  const rows = OUTCOMES.map((def, i) => ({ def, stats: stats[i] }));
+  const rows: OutcomeRow[] = OUTCOMES.map((def, i) => ({ def, stats: stats[i] }));
+  const bySlug = (slug: string) => rows.find((r) => r.def.slug === slug);
+  const reply = bySlug("positive-replies");
+  const visit = bySlug("website-visits");
+  const signup = bySlug("signups");
 
   const datasetJsonLd = {
     "@context": "https://schema.org",
@@ -168,55 +199,43 @@ export default async function BenchmarksPage() {
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-gray-600">
           Nobody pays a fixed rate. These are the average prices our campaigns
-          are paying right now, across every brand we run. The further down the
-          funnel, the more each outcome costs.
+          are paying right now, across every brand we run — for the two outcomes
+          that matter: a positive reply for a sales meeting, or a self-serve
+          signup.
         </p>
       </section>
 
-      {/* The distribute outcome funnel */}
+      {/* Two outcome motions — sales (positive reply) vs self-serve (visit → signup) */}
       <section className="mx-auto max-w-5xl px-6 pb-4">
         <h2 className="mb-1 text-sm font-semibold text-gray-900">
-          The distribute outcome funnel
+          Two ways to buy outcomes
         </h2>
         <p className="mb-6 text-sm text-gray-500">
-          One budget, three outcomes. Pick the result you want the campaign to
-          pursue; the cost climbs as the outcome moves closer to revenue.
+          Pick the motion that fits your product: book a sales meeting, or drive
+          self-serve signups. Each outcome is priced on its own.
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-          {rows.map(({ def, stats }, i) => (
-            <div key={def.slug} className="flex flex-1 items-stretch gap-3">
-              <Link
-                href={`/outcomes/${def.slug}`}
-                className="group flex flex-1 flex-col justify-between rounded-xl border border-gray-200 bg-white p-4 transition hover:border-emerald-300 hover:shadow-sm"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-emerald-700">
-                      {def.sym}
-                    </span>
-                    <span className="text-xs text-gray-500">{i + 1}</span>
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-gray-900">
-                    {def.label}
-                  </div>
-                </div>
-                <div className="mt-3 text-2xl font-bold tracking-tight text-gray-900">
-                  {fmtUsd(stats?.currentAvgUsd)}
-                </div>
-                <div className="mt-1 text-[11px] uppercase tracking-wide text-gray-400">
-                  {def.measuredByUs ? "measured by us" : "client-reported"}
-                </div>
-              </Link>
-              {i < rows.length - 1 && (
-                <div
-                  className="hidden shrink-0 items-center text-gray-300 sm:flex"
-                  aria-hidden="true"
-                >
-                  →
-                </div>
-              )}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
+              Book a sales meeting
             </div>
-          ))}
+            {reply && <OutcomeMini row={reply} />}
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
+              Or drive self-serve signups
+            </div>
+            <div className="flex items-stretch gap-3">
+              {visit && <OutcomeMini row={visit} />}
+              <div
+                className="hidden shrink-0 items-center text-gray-300 sm:flex"
+                aria-hidden="true"
+              >
+                →
+              </div>
+              {signup && <OutcomeMini row={signup} />}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -226,7 +245,7 @@ export default async function BenchmarksPage() {
           Every outcome, in detail
         </h2>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {rows.map(({ def, stats }) => (
+          {[reply, visit, signup].filter((r): r is OutcomeRow => Boolean(r)).map(({ def, stats }) => (
             <Link
               key={def.slug}
               href={`/outcomes/${def.slug}`}
