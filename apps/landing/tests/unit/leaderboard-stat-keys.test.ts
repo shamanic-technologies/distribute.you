@@ -13,8 +13,8 @@ describe("Leaderboard fetch reads recipient-based stat keys (matches features-se
     expect(content).toContain('"recipientsSent"');
   });
 
-  it('reads "recipientsOpened"', () => {
-    expect(content).toContain('"recipientsOpened"');
+  it('does not read deprecated "recipientsOpened" stat key (opens deprecated)', () => {
+    expect(content).not.toContain('"recipientsOpened"');
   });
 
   it('reads "recipientsClicked"', () => {

@@ -14,12 +14,9 @@ export function computeBestStats(
     const withEmails = workflows.filter((w) => w.emailsSent > 0);
     return {
       emailsSent: 0,
-      emailsOpened: 0,
       emailsReplied: 0,
       totalCostUsdCents: 0,
-      openRate: withEmails.length > 0 ? Math.max(...withEmails.map((e) => e.openRate)) : 0,
       replyRate: withEmails.length > 0 ? Math.max(...withEmails.map((e) => e.replyRate)) : 0,
-      costPerOpenCents: minPositive(workflows.map((e) => e.costPerOpenCents)),
       costPerReplyCents: minPositive(workflows.map((e) => e.costPerReplyCents)),
     };
   }
@@ -27,12 +24,9 @@ export function computeBestStats(
   const withEmails = brands.filter((b) => b.emailsSent > 0);
   return {
     emailsSent: 0,
-    emailsOpened: 0,
     emailsReplied: 0,
     totalCostUsdCents: 0,
-    openRate: withEmails.length > 0 ? Math.max(...withEmails.map((e) => e.openRate)) : 0,
     replyRate: withEmails.length > 0 ? Math.max(...withEmails.map((e) => e.replyRate)) : 0,
-    costPerOpenCents: minPositive(brands.map((e) => e.costPerOpenCents)),
     costPerReplyCents: minPositive(brands.map((e) => e.costPerReplyCents)),
   };
 }

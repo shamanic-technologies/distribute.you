@@ -39,10 +39,8 @@ export function PerformancePreview({ data }: { data: FeatureBenchmarkData }) {
         Platform averages — every brand, every workflow
       </p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
-        <Stat label="Open rate" value={formatPercent(aggregate.openRate)} />
         <Stat label="Click rate" value={formatPercent(aggregate.clickRate)} />
         <Stat label="Positive reply rate" value={formatPercent(aggregate.replyRate)} />
-        <Stat label="$ / open" value={formatCostCents(aggregate.costPerOpenCents)} />
         <Stat label="$ / click" value={formatCostCents(aggregate.costPerClickCents)} />
         <Stat label="$ / positive reply" value={formatCostCentsWhole(aggregate.costPerReplyCents)} />
       </div>

@@ -24,12 +24,8 @@ interface RankedWorkflowResponse {
 interface LivePerformanceMetrics {
   costPerPositiveReplyLabel: string;
   costPerPositiveReplyNumeric: string;
-  openRateLabel: string;
-  openRateNumeric: string;
   positiveReplyRateLabel: string;
   positiveReplyRateNumeric: string;
-  openedPerHundredLabel: string;
-  openedPerHundredNumeric: string;
   positiveRepliesPerHundredLabel: string;
   positiveRepliesPerHundredNumeric: string;
   positiveRepliesPerHundredRangeLabel: string;
@@ -48,12 +44,8 @@ const BEST_POSITIVE_REPLY_KEY = "recipientsRepliesPositive";
 const FALLBACK_LIVE_PERFORMANCE_METRICS: LivePerformanceMetrics = {
   costPerPositiveReplyLabel: "$1.42",
   costPerPositiveReplyNumeric: "1.42",
-  openRateLabel: "38%",
-  openRateNumeric: "38",
   positiveReplyRateLabel: "2.1%",
   positiveReplyRateNumeric: "2.1",
-  openedPerHundredLabel: "38",
-  openedPerHundredNumeric: "38",
   positiveRepliesPerHundredLabel: "2",
   positiveRepliesPerHundredNumeric: "2.1",
   positiveRepliesPerHundredRangeLabel: "1-2",
@@ -63,12 +55,8 @@ const FALLBACK_LIVE_PERFORMANCE_METRICS: LivePerformanceMetrics = {
 };
 const BEST_POSITIVE_REPLY_COST_LABEL = "__BEST_POSITIVE_REPLY_COST__";
 const BEST_POSITIVE_REPLY_COST_NUMERIC = "__BEST_POSITIVE_REPLY_COST_NUMERIC__";
-const OPEN_RATE_LABEL = "__OPEN_RATE__";
-const OPEN_RATE_NUMERIC = "__OPEN_RATE_NUMERIC__";
 const POSITIVE_REPLY_RATE_LABEL = "__POSITIVE_REPLY_RATE__";
 const POSITIVE_REPLY_RATE_NUMERIC = "__POSITIVE_REPLY_RATE_NUMERIC__";
-const OPENED_PER_HUNDRED_LABEL = "__OPENED_PER_HUNDRED__";
-const OPENED_PER_HUNDRED_NUMERIC = "__OPENED_PER_HUNDRED_NUMERIC__";
 const POSITIVE_REPLIES_PER_HUNDRED_LABEL = "__POSITIVE_REPLIES_PER_HUNDRED__";
 const POSITIVE_REPLIES_PER_HUNDRED_NUMERIC = "__POSITIVE_REPLIES_PER_HUNDRED_NUMERIC__";
 const POSITIVE_REPLIES_PER_HUNDRED_RANGE_LABEL = "__POSITIVE_REPLIES_PER_HUNDRED_RANGE__";
@@ -144,11 +132,10 @@ async function fetchLivePerformanceMetrics(): Promise<LivePerformanceMetrics> {
   const totals = rankedData.results.reduce(
     (acc, item) => {
       acc.sent += num(item.stats, "recipientsSent");
-      acc.opened += num(item.stats, "recipientsOpened");
       acc.positiveReplies += num(item.stats, "recipientsRepliesPositive");
       return acc;
     },
-    { sent: 0, opened: 0, positiveReplies: 0 },
+    { sent: 0, positiveReplies: 0 },
   );
 
   if (totals.sent <= 0) {
@@ -158,9 +145,7 @@ async function fetchLivePerformanceMetrics(): Promise<LivePerformanceMetrics> {
   }
 
   const dollars = record.value / 100;
-  const openRate = totals.opened / totals.sent;
   const positiveReplyRate = totals.positiveReplies / totals.sent;
-  const openedPerHundred = openRate * 100;
   const positiveRepliesPerHundred = positiveReplyRate * 100;
   const positiveRepliesRounded = Math.round(positiveRepliesPerHundred);
   const positiveRepliesRange =
@@ -171,12 +156,8 @@ async function fetchLivePerformanceMetrics(): Promise<LivePerformanceMetrics> {
   return {
     costPerPositiveReplyLabel: formatCostCents(record.value),
     costPerPositiveReplyNumeric: dollars.toFixed(2),
-    openRateLabel: formatPercent(openRate),
-    openRateNumeric: (openRate * 100).toFixed(1),
     positiveReplyRateLabel: formatPercent(positiveReplyRate),
     positiveReplyRateNumeric: (positiveReplyRate * 100).toFixed(1),
-    openedPerHundredLabel: formatCount(openedPerHundred),
-    openedPerHundredNumeric: openedPerHundred.toFixed(1),
     positiveRepliesPerHundredLabel: formatCount(positiveRepliesPerHundred),
     positiveRepliesPerHundredNumeric: positiveRepliesPerHundred.toFixed(1),
     positiveRepliesPerHundredRangeLabel: positiveRepliesRange,
@@ -264,7 +245,6 @@ export function staticHtml(fileName: string) {
 async function withLivePerformanceMetrics(html: string) {
   if (
     !html.includes(BEST_POSITIVE_REPLY_COST_LABEL) &&
-    !html.includes(OPEN_RATE_LABEL) &&
     !html.includes(POSITIVE_REPLY_RATE_LABEL) &&
     !html.includes("$1.42")
   ) {
@@ -276,12 +256,8 @@ async function withLivePerformanceMetrics(html: string) {
   return html
     .replaceAll(BEST_POSITIVE_REPLY_COST_NUMERIC, liveMetrics.costPerPositiveReplyNumeric)
     .replaceAll(BEST_POSITIVE_REPLY_COST_LABEL, liveMetrics.costPerPositiveReplyLabel)
-    .replaceAll(OPEN_RATE_NUMERIC, liveMetrics.openRateNumeric)
-    .replaceAll(OPEN_RATE_LABEL, liveMetrics.openRateLabel)
     .replaceAll(POSITIVE_REPLY_RATE_NUMERIC, liveMetrics.positiveReplyRateNumeric)
     .replaceAll(POSITIVE_REPLY_RATE_LABEL, liveMetrics.positiveReplyRateLabel)
-    .replaceAll(OPENED_PER_HUNDRED_NUMERIC, liveMetrics.openedPerHundredNumeric)
-    .replaceAll(OPENED_PER_HUNDRED_LABEL, liveMetrics.openedPerHundredLabel)
     .replaceAll(POSITIVE_REPLIES_PER_HUNDRED_NUMERIC, liveMetrics.positiveRepliesPerHundredNumeric)
     .replaceAll(POSITIVE_REPLIES_PER_HUNDRED_LABEL, liveMetrics.positiveRepliesPerHundredLabel)
     .replaceAll(POSITIVE_REPLIES_PER_HUNDRED_RANGE_LABEL, liveMetrics.positiveRepliesPerHundredRangeLabel)

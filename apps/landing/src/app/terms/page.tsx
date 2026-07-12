@@ -212,7 +212,7 @@ const SECTIONS: SectionDef[] = [
           infrastructure is shared across customers, the conduct of other
           customers and the conduct of recipients can affect deliverability,
           inbox placement, blacklisting, and account suspension on third-party
-          platforms. We do not guarantee delivery, open rates, reply rates,
+          platforms. We do not guarantee delivery, reply rates,
           inbox placement, or any specific outcome. We may pause, throttle,
           re-route, or suspend any outreach (including yours) at any time if
           we determine, in our sole discretion, that doing so is necessary to
@@ -264,7 +264,7 @@ const SECTIONS: SectionDef[] = [
           -readable feeds (sitemap, JSON-LD, API endpoints such as
           /v1/public/features/ranked). Published data may include, without
           limitation: your brand name, brand domain, brand logo; campaign
-          counts; emails sent, opened, clicked, and replied; positive-reply
+          counts; emails sent, clicked, and replied; positive-reply
           counts and rates; cost-per-action metrics in aggregate or per
           campaign; ranked and unranked comparisons against other customers;
           and the categories, features, workflows, and AI models you use.
