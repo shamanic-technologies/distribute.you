@@ -283,8 +283,10 @@ async function withLivePerformanceMetrics(html: string) {
 // (derived from each brand's conversion, not measured by us) — surfaced as a
 // per-card source tag + a legend under the board.
 const TICKER_OBJECTIVES = [
-  { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true, slug: "website-visits" },
+  // Headline metrics, in order: (1) positive reply for a sales meeting, then
+  // (2) website visits — the two vedette outcomes; signup is tertiary.
   { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
+  { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true, slug: "website-visits" },
   // meetingBooked is beta-gated out of the public board; the __TICKER_CPM__
   // scalar (legacy /v0 homepage) is still computed from a separate fetch below.
   { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false, slug: "signups" },
@@ -455,7 +457,8 @@ async function fetchTicker(): Promise<TickerMetrics> {
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
 
-  const [visit, reply, signup] = await Promise.all(
+  // Destructure follows TICKER_OBJECTIVES order (positiveReply, websiteVisit, signup).
+  const [reply, visit, signup] = await Promise.all(
     TICKER_OBJECTIVES.map((o) => fetchTrendSeries(apiUrl, headers, slug, o.key)),
   );
   // meetingBooked is beta-gated out of the public board, but the __TICKER_CPM__
