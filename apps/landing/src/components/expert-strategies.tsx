@@ -11,19 +11,19 @@ const EXPERT_CATEGORIES = [
         name: "Ryan Deiss",
         title: "DigitalMarketer",
         photo: "/experts/ryan-deiss.jpg",
-        strategy: "Indoctrination Sequence — a multi-step welcome flow that turns new subscribers into engaged buyers within 48 hours.",
+        strategy: "Indoctrination Sequence, a multi-step welcome flow that turns new subscribers into engaged buyers within 48 hours.",
       },
       {
         name: "Pat Flynn",
         title: "Smart Passive Income",
         photo: "/experts/pat-flynn.jpg",
-        strategy: "Value-first onboarding — lead with free wins and quick results before any pitch, building trust through generosity.",
+        strategy: "Value-first onboarding, lead with free wins and quick results before any pitch, building trust through generosity.",
       },
       {
         name: "André Chaperon",
         title: "AutoResponder Madness",
         photo: "/experts/andre-chaperon.jpg",
-        strategy: "Story-based email sequences — narrative-driven emails that create emotional investment and dramatically increase engagement.",
+        strategy: "Story-based email sequences, narrative-driven emails that create emotional investment and dramatically increase engagement.",
       },
     ],
   },
@@ -37,19 +37,19 @@ const EXPERT_CATEGORIES = [
         name: "Alex Hormozi",
         title: "$100M Leads",
         photo: "/experts/alex-hormozi.jpg",
-        strategy: "Volume meets value — high-volume outreach with irresistible offers that make prospects feel stupid saying no.",
+        strategy: "Volume meets value, high-volume outreach with irresistible offers that make prospects feel stupid saying no.",
       },
       {
         name: "Patrick Dang",
         title: "Sales Psychology",
         photo: "/experts/patrick-dang.jpg",
-        strategy: "Consultative cold email — open with genuine curiosity about the prospect's challenges, then position as the natural solution.",
+        strategy: "Consultative cold email, open with genuine curiosity about the prospect's challenges, then position as the natural solution.",
       },
       {
         name: "Kyle Coleman",
         title: "CMO @ Copy.ai",
         photo: "/experts/kyle-coleman.jpg",
-        strategy: "Hyper-personalized B2B outreach — use signals and intent data to craft emails that feel like they were written just for that person.",
+        strategy: "Hyper-personalized B2B outreach, use signals and intent data to craft emails that feel like they were written just for that person.",
       },
     ],
   },
@@ -63,19 +63,19 @@ const EXPERT_CATEGORIES = [
         name: "Russell Brunson",
         title: "ClickFunnels",
         photo: "/experts/russell-brunson.jpg",
-        strategy: "The Perfect Webinar — a proven framework that generated $14M in its first year through structured storytelling and stack offers.",
+        strategy: "The Perfect Webinar, a proven framework that generated $14M in its first year through structured storytelling and stack offers.",
       },
       {
         name: "Amy Porterfield",
         title: "Digital Course Academy",
         photo: "/experts/amy-porterfield.jpg",
-        strategy: "List-to-launch webinars — nurture your audience with value-packed live sessions that naturally convert into course enrollments.",
+        strategy: "List-to-launch webinars, nurture your audience with value-packed live sessions that naturally convert into course enrollments.",
       },
       {
         name: "Jeff Walker",
         title: "Product Launch Formula",
         photo: "/experts/jeff-walker.jpg",
-        strategy: "Sideways sales letter — a multi-day launch sequence that builds anticipation, delivers value, and creates urgency through scarcity.",
+        strategy: "Sideways sales letter, a multi-day launch sequence that builds anticipation, delivers value, and creates urgency through scarcity.",
       },
     ],
   },
@@ -90,7 +90,7 @@ export function ExpertStrategies() {
         </h2>
         <p className="text-gray-500 text-lg max-w-2xl mx-auto leading-relaxed">
           Our workflows encode the best strategies from industry leaders.
-          You get access to world-class playbooks — automatically, at the cost of
+          You get access to world-class playbooks, automatically, at the cost of
           raw AI.
         </p>
       </div>
@@ -141,7 +141,7 @@ export function ExpertStrategies() {
       <div className="text-center mt-10">
         <p className="text-sm text-gray-400">
           Each strategy is encoded into competing AI workflows.
-          The best-performing one runs automatically — or you can choose.
+          The best-performing one runs automatically, or you can choose.
         </p>
       </div>
     </div>

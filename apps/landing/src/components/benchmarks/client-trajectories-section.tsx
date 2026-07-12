@@ -86,8 +86,8 @@ function MiniRevenueChart({
       <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full" role="img" aria-label="Pipeline revenue over time">
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+            <stop offset="0%" stopColor="#45e38e" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#45e38e" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0, 0.5, 1].map((ratio) => {
@@ -103,11 +103,11 @@ function MiniRevenueChart({
           {formatUsdShort(min)}
         </text>
         <polygon points={fillPoints} fill={`url(#${gradientId})`} />
-        <polyline points={points} fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={points} fill="none" stroke="#45e38e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {points.split(" ").map((point, index) => {
           if (index !== values.length - 1) return null;
           const [cx, cy] = point.split(",");
-          return <circle key={point} cx={cx} cy={cy} r="3.5" fill="#2563eb" />;
+          return <circle key={point} cx={cx} cy={cy} r="3.5" fill="#45e38e" />;
         })}
         {firstDate && (
           <text x={plotLeft} y={height - 4} className="fill-gray-400 text-[10px]">

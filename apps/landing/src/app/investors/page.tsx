@@ -20,7 +20,7 @@ export const revalidate = 86400;
 
 const INVESTORS_URL = `${PROD_URLS.landing}/investors`;
 const PAGE_DESCRIPTION =
-  "Live platform metrics, growth data, infrastructure, and SAFE-round details for distribute. Public investor page — updated on every load.";
+  "Live platform metrics, growth data, infrastructure, and SAFE-round details for distribute. Public investor page, updated on every load.";
 
 export const metadata: Metadata = {
   title: "Investor Information",
@@ -39,13 +39,13 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: INVESTORS_URL,
     siteName: "distribute Investors",
-    title: "distribute — Investor Information",
+    title: "distribute, Investor Information",
     description: PAGE_DESCRIPTION,
     images: [{ url: INVESTORS_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute Investor Information" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute — Investor Information",
+    title: "distribute, Investor Information",
     description: PAGE_DESCRIPTION,
     images: [INVESTORS_OG_IMAGE_PATH],
     creator: TWITTER_HANDLE,
@@ -108,7 +108,7 @@ export default function InvestorsPage() {
             </div>
             <p className="text-xl text-gray-600 mb-2">Investor Information</p>
             <p className="text-sm text-gray-500">
-              Live data — updated on every page load
+              Live data, updated on every page load
             </p>
           </div>
         </section>
@@ -123,17 +123,17 @@ export default function InvestorsPage() {
           </div>
         </section>
 
-        {/* Product — AI Cold Email */}
+        {/* Product, AI Cold Email */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-2 text-gray-900">
-              Product — AI Cold Email, Done For You
+              Product, AI Cold Email, Done For You
             </h2>
             <p className="text-sm text-gray-500 mb-6">
               One priced outbound surface: cold email. A builder drops a URL and sets a
               daily budget. We find the prospects, write a personalized email for each,
               send, qualify every reply, and forward only the buyers worth their time.
-              Every unit cost — prospect, email, reply qualification — is metered and
+              Every unit cost, prospect, email, reply qualification, is metered and
               published live. They only pay for executions that run.
             </p>
 
@@ -164,11 +164,11 @@ export default function InvestorsPage() {
           </div>
         </section>
 
-        {/* Who We Serve — ICP #1 */}
+        {/* Who We Serve: ICP #1 */}
         <section className="pb-12">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl font-bold mb-2 text-gray-900">
-              Who We Serve — ICP #1
+              Who We Serve: ICP #1
             </h2>
             <p className="text-sm text-gray-500 mb-6">
               The Serial Builder. The single user persona we optimize the product, pricing, and roadmap for.
@@ -179,17 +179,17 @@ export default function InvestorsPage() {
                 &quot;16-40 years old. CEO-founder, mostly solo. I always have several SaaS in bench.
                 I have no time between newsletter, content, distribute.you campaigns, meetings,
                 monitoring, replies, and refining the ICP of my own campaigns. I want someone close
-                to me — founder reachable, bugs fixed fast, features shipped fast.&quot;
+                to me, founder reachable, bugs fixed fast, features shipped fast.&quot;
               </blockquote>
 
-              <div className="rounded-lg bg-gradient-to-br from-brand-500/10 to-violet-500/10 border border-brand-500/30 p-4">
+              <div className="rounded-lg bg-gradient-to-br from-brand-500/10 to-emerald-500/10 border border-brand-500/30 p-4">
                 <p className="text-[10px] uppercase tracking-wider text-brand-700 font-semibold mb-2">
                   The dream
                 </p>
                 <p className="text-gray-900 italic">
                   &quot;One of my products is going to take off. I need to monitor closely the
                   CAC because I am looking for my marketing channel to scale. distribute.you is
-                  the lever that makes that math actionable — whether I stay 1 person or grow
+                  the lever that makes that math actionable, whether I stay 1 person or grow
                   to 10.&quot;
                 </p>
               </div>
@@ -267,7 +267,7 @@ export default function InvestorsPage() {
               <div>
                 <h3 className="text-gray-900 font-semibold text-base mb-3">Founder proximity</h3>
                 <p className="text-gray-600">
-                  Wants the founder reachable. Twitter DM, GitHub issue, direct email —
+                  Wants the founder reachable. Twitter DM, GitHub issue, direct email , 
                   all acceptable. Bug fixed fast, feature shipped fast, roadmap public.
                   No enterprise support, no ticketing system.
                 </p>
