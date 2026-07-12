@@ -29,10 +29,27 @@ describe("Audiences page", () => {
       expect(src).toContain(header);
     }
     expect(src).not.toContain(">Opens<");
-    // Signups / cost-per-signup have no audience-stats source — dropped.
-    expect(src).not.toContain("Cost per signup");
     expect(src).toContain('audience.status === "paused"');
     expect(src).toContain("Paused");
+  });
+
+  it("leads with the outcome columns (cost then count) for the signups + form_submissions goals", () => {
+    // signups goal → "Cost per signup" + "Signups" render FIRST (after Audience,
+    // before the website-visit funnel), default sort CPS asc. Backend fields are
+    // optional on the wire (renders "-" until features-service ships them).
+    expect(src).toContain("const showSignupCols");
+    expect(src).toContain("Cost per signup");
+    expect(src).toContain('col="cps"');
+    expect(src).toContain('col="signups"');
+    expect(src).toContain("stats.metrics.cpsCents");
+    expect(src).toContain("stats.evidence.signups");
+    // form_submissions goal → "Cost per form submission" + "Form submissions" lead too.
+    expect(src).toContain("const showFormSubmissionCols");
+    expect(src).toContain("Cost per form submission");
+    expect(src).toContain('col="cpfs"');
+    expect(src).toContain('col="formSubmissions"');
+    // Default sort is the cheapest-outcome column per goal (CPS / CPFS / CPPR / CPC).
+    expect(src).toContain("const defaultSortCol");
   });
 
   it("hides the CPC + Website Visits columns for the positive_replies goal", () => {
