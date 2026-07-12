@@ -40,7 +40,7 @@ function formatCents(cents: number | null): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "formSubmissions" | "cpfs" | "outreach" | "remaining" | "size";
+type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "outreach" | "remaining" | "size";
 
 /**
  * Sort key for an audience row under a given column. `audience` sorts by name
@@ -63,6 +63,10 @@ function sortValue(
       return stats?.metrics.cpcCents ?? null;
     case "clicks":
       return stats?.evidence.websiteClicks ?? null;
+    case "signups":
+      return stats?.evidence.signups ?? null;
+    case "cps":
+      return stats?.metrics.cpsCents ?? null;
     case "formSubmissions":
       return stats?.evidence.formSubmissions ?? null;
     case "cpfs":
@@ -256,16 +260,30 @@ export function CustomerAudiencesPage() {
   // funnel, so hide the "Cost per website visit" (CPC) + "Website Visits" columns. The CPPR +
   // Positive replies columns (showMeetingCols) stay, and the sort default is already CPPR-asc.
   const isPositiveReplies = optimizationGoal === "positive_replies";
-  // form_submissions goal → surface the real per-audience outcome: extra "Form
-  // submissions" + "CPFS" columns (right of Website Visits). Sorts stay on CPC.
+  // signups goal → surface the REAL per-audience signup outcome: "Cost per signup"
+  // (CPS) + "Signups" columns FIRST (after Audience, before the website-visit funnel),
+  // default sort CPS asc. Backend fields are optional — renders "-" until features-service
+  // ships evidence.signups / metrics.cpsCents. (website_visits stays visit-only, no CPS.)
+  const showSignupCols = optimizationGoal === "signups";
+  // form_submissions goal → surface the real per-audience outcome: "Cost per form
+  // submission" (CPFS) + "Form submissions" columns FIRST (before the website-visit
+  // funnel), default sort CPFS asc. Backend already serves these.
   const showFormSubmissionCols = optimizationGoal === "form_submissions";
-  // Seed the initial sort column from the brand goal once it resolves — CPPR for
-  // meetings, CPC for signup — until the user picks a column manually.
+  // Seed the initial sort column from the brand goal once it resolves — cheapest
+  // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), else CPC
+  // (website visits) — until the user picks a column manually.
+  const defaultSortCol: SortCol = showMeetingCols
+    ? "cppr"
+    : showSignupCols
+      ? "cps"
+      : showFormSubmissionCols
+        ? "cpfs"
+        : "cpc";
   useEffect(() => {
     if (hasUserSorted) return;
-    setSortCol(showMeetingCols ? "cppr" : "cpc");
+    setSortCol(defaultSortCol);
     setSortDir("asc");
-  }, [showMeetingCols, hasUserSorted]);
+  }, [defaultSortCol, hasUserSorted]);
 
   // Per-audience outreach / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed
@@ -478,7 +496,7 @@ export function CustomerAudiencesPage() {
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${isPositiveReplies ? "min-w-[820px]" : showMeetingCols || showFormSubmissionCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            <table className={`${isPositiveReplies ? "min-w-[820px]" : showMeetingCols || showFormSubmissionCols || showSignupCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
@@ -495,8 +513,37 @@ export function CustomerAudiencesPage() {
                       />
                     </>
                   )}
-                  {/* positive_replies: clicks aren't in the reply→paid funnel — hide CPC + Website
-                      Visits (and, for the sibling form_submissions goal, its outcome columns). */}
+                  {/* signups goal: the outcome columns lead (cost then count), before the
+                      website-visit funnel. Cost per signup is the default sort (cheapest first). */}
+                  {showSignupCols && (
+                    <>
+                      <SortHeader
+                        label="Cost per signup"
+                        col="cps"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Cost per signup — audience-scoped spend divided by signups. Lower is better."
+                      />
+                      <SortHeader label="Signups" col="signups" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                    </>
+                  )}
+                  {/* form_submissions goal: outcome columns lead (cost then count), before the
+                      website-visit funnel. Cost per form submission is the default sort. */}
+                  {showFormSubmissionCols && (
+                    <>
+                      <SortHeader
+                        label="Cost per form submission"
+                        col="cpfs"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Cost per form submission — audience-scoped spend divided by form submissions. Lower is better."
+                      />
+                      <SortHeader label="Form submissions" col="formSubmissions" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                    </>
+                  )}
+                  {/* positive_replies: clicks aren't in the reply→paid funnel — hide CPC + Website Visits. */}
                   {!isPositiveReplies && (
                     <>
                       <SortHeader
@@ -508,19 +555,6 @@ export function CustomerAudiencesPage() {
                         info="Cost per website visit — audience-scoped spend divided by website visits. Lower is better."
                       />
                       <SortHeader label="Website Visits" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
-                      {showFormSubmissionCols && (
-                        <>
-                          <SortHeader label="Form submissions" col="formSubmissions" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
-                          <SortHeader
-                            label="CPFS"
-                            col="cpfs"
-                            sortCol={sortCol}
-                            sortDir={sortDir}
-                            onSort={onSort}
-                            info="Cost per form submission — audience-scoped spend divided by form submissions. Lower is better."
-                          />
-                        </>
-                      )}
                     </>
                   )}
                   <SortHeader label="Outreach" col="outreach" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
@@ -586,8 +620,55 @@ export function CustomerAudiencesPage() {
                           </td>
                         </>
                       )}
+                      {/* signups outcome cells (cost then count), before the website-visit funnel.
+                          Signup fields are optional on the wire — render "-" until the producer ships. */}
+                      {showSignupCols && (
+                        <>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats?.metrics.cpsCents != null ? (
+                              formatCents(stats.metrics.cpsCents)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-10" />
+                            ) : stats?.evidence.signups != null ? (
+                              stats.evidence.signups.toLocaleString("en-US")
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </>
+                      )}
+                      {/* form_submissions outcome cells (cost then count), before the website-visit funnel. */}
+                      {showFormSubmissionCols && (
+                        <>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats?.metrics.cpfsCents != null ? (
+                              formatCents(stats.metrics.cpfsCents)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-10" />
+                            ) : stats?.evidence.formSubmissions != null ? (
+                              stats.evidence.formSubmissions.toLocaleString("en-US")
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </>
+                      )}
                       {/* positive_replies: clicks aren't in the reply→paid funnel — hide the CPC +
-                          Website Visits cells (and the sibling form_submissions outcome cells). */}
+                          Website Visits cells. */}
                       {!isPositiveReplies && (
                         <>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
@@ -608,28 +689,6 @@ export function CustomerAudiencesPage() {
                               "-"
                             )}
                           </td>
-                          {showFormSubmissionCols && (
-                            <>
-                              <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                                {statsLoading ? (
-                                  <Skeleton className="ml-auto h-4 w-10" />
-                                ) : stats?.evidence.formSubmissions != null ? (
-                                  stats.evidence.formSubmissions.toLocaleString("en-US")
-                                ) : (
-                                  "-"
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                                {statsLoading ? (
-                                  <Skeleton className="ml-auto h-4 w-12" />
-                                ) : stats ? (
-                                  formatCents(stats.metrics.cpfsCents ?? null)
-                                ) : (
-                                  "-"
-                                )}
-                              </td>
-                            </>
-                          )}
                         </>
                       )}
                       <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">

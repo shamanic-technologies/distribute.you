@@ -1798,6 +1798,11 @@ export interface FeatureAudienceStatsRow {
     /** REAL per-audience form-submission conversions (attributed, deduped). Present
      *  ONLY for the form_submissions goal; absent otherwise — never a fabricated 0. */
     formSubmissions?: number;
+    /** REAL per-audience signup conversions (attributed by audience-member-email ∩
+     *  signup-converted-lead emails, deduped). Present ONLY for the signups goal;
+     *  absent otherwise / when the signup emails weren't served — never a fabricated
+     *  0. Optional to decouple the rollout: renders "-" until features-service ships. */
+    signups?: number;
   };
   metrics: {
     cpcCents: number | null;
@@ -1805,6 +1810,9 @@ export interface FeatureAudienceStatsRow {
     /** REAL cost per form submission = spend ÷ formSubmissions. Null when 0/absent
      *  (not the form_submissions goal, or emails not served). Never a false $0. */
     cpfsCents?: number | null;
+    /** REAL cost per signup = spend ÷ signups. Null when 0/absent (not the signups
+     *  goal, or emails not served). Never a false $0. Optional until the producer ships. */
+    cpsCents?: number | null;
   };
 }
 
@@ -1836,11 +1844,13 @@ const FeatureAudienceStatsRowSchema = z.object({
     websiteClicks: z.number(),
     positiveReplies: z.number(),
     formSubmissions: z.number().optional(),
+    signups: z.number().optional(),
   }),
   metrics: z.object({
     cpcCents: z.number().nullable(),
     cpprCents: z.number().nullable(),
     cpfsCents: z.number().nullable().optional(),
+    cpsCents: z.number().nullable().optional(),
   }),
 });
 
