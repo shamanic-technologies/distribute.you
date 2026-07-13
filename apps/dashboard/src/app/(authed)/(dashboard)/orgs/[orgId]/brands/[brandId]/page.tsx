@@ -12,6 +12,7 @@ import {
   getBrandSalesEconomics,
   getBrandDailyBudget,
   getBrandPause,
+  getBrandConversionToken,
   getFeaturePipelineActivity,
   fetchFeatureAudienceStats,
   listAudiences,
@@ -231,6 +232,20 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
   const isBrandPaused = pauseData?.paused === true;
+
+  // Conversion-tracker liveness (lead-service pixel). Shares the outreach-stat-cards
+  // + settings-card query key → one cache entry, no extra network. The Outreach-
+  // activity graph's Form-submissions bar is hidden until the tracker is live
+  // (live_waiting/live), mirroring the audiences column gate (#2646). Undefined
+  // (unresolved) → not set up → hidden.
+  const { data: conversionTokenData } = useAuthQuery(
+    ["brandConversionToken", brandId],
+    () => getBrandConversionToken(brandId),
+    { enabled, ...pollOptions },
+  );
+  const trackerSetUp =
+    conversionTokenData?.status === "live" ||
+    conversionTokenData?.status === "live_waiting";
   const monthlyBudgetUsd =
     budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
       ? (budgetData.dailyBudgetCents / 100) * 30
@@ -394,6 +409,7 @@ export default function BrandOverviewPage() {
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
         optimizationGoal={optimizationGoal}
+        trackerSetUp={trackerSetUp}
         visitToMeetingPct={visitToMeetingPct}
         visitToSignupPct={visitToSignupPct}
         revenuePending={!revenueRevealed}

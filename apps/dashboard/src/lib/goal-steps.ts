@@ -220,6 +220,21 @@ export function goalChartMetricKeys(goal: BrandOptimizationGoal): ChartMetricKey
 }
 
 /**
+ * Chart metric keys that come from a downstream tracker OUTCOME step (the daily
+ * series only carries data once the brand's site fires the conversion pixel) — so
+ * these bars are hidden until the conversion tracker is live, mirroring the
+ * signup/form-submission column gate in the audiences table (#2646). Today this is
+ * the Form-submissions bar; any future outcome step that gains a `chartKey`
+ * inherits the gate automatically. Engagement-signal bars (outreach/clicks/
+ * repliedPositive) are NEVER tracker-dependent.
+ */
+export const TRACKER_DEPENDENT_CHART_KEYS: ReadonlySet<ChartMetricKey> = new Set(
+  [SIGNUPS_OUTCOME, MEETINGS_OUTCOME, FORM_OUTCOME, PURCHASE_OUTCOME]
+    .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
+    .map((s) => s.chartKey),
+);
+
+/**
  * The goal's downstream OUTCOME step for the stat card (Signups / Sales Meetings /
  * Form submissions / Purchases), or null for a 1-step goal whose outcome IS its
  * signal (website_visits, positive_replies) — those render no separate outcome card.

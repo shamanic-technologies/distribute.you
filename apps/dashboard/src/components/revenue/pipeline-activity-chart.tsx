@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { goalChartMetricKeys } from "@/lib/goal-steps";
+import { goalChartMetricKeys, TRACKER_DEPENDENT_CHART_KEYS } from "@/lib/goal-steps";
 import type {
   BrandOptimizationGoal,
   PipelineActivityMetric,
@@ -157,8 +157,18 @@ const METRIC_BY_KEY: Record<ChartMetricKey, MetricDef> = {
 // [Form submissions] bar (features-service serves the daily FS series); positive_replies
 // → [Outreach, Positive replies]; sales_meetings → [Outreach, Website Visits, Positive
 // replies] (both on its click→reply→meeting path).
-function activeMetrics(optimizationGoal: BrandOptimizationGoal): MetricDef[] {
-  return goalChartMetricKeys(optimizationGoal).map((k) => METRIC_BY_KEY[k]);
+// Tracker-outcome bars (Form submissions) only carry data once the brand's site
+// fires the conversion pixel, so they are dropped until the tracker is live
+// (`trackerSetUp` false → hidden), mirroring the audiences signup/form-submission
+// column gate (#2646). Engagement-signal bars (outreach/clicks/repliedPositive)
+// are never gated.
+function activeMetrics(
+  optimizationGoal: BrandOptimizationGoal,
+  trackerSetUp: boolean,
+): MetricDef[] {
+  return goalChartMetricKeys(optimizationGoal)
+    .filter((k) => trackerSetUp || !TRACKER_DEPENDENT_CHART_KEYS.has(k))
+    .map((k) => METRIC_BY_KEY[k]);
 }
 
 function forecastExpected(
@@ -174,14 +184,16 @@ function buildChartData({
   pipelineActualSeries,
   rangeDays,
   optimizationGoal,
+  trackerSetUp,
 }: {
   data: PipelineActivityResponse;
   pipelineActualSeries: PipelineActualSeries | undefined;
   rangeDays: number;
   optimizationGoal: BrandOptimizationGoal;
+  trackerSetUp: boolean;
 }): ChartDatum[] {
   const today = data.days.find((day) => day.isToday)?.date ?? formatIsoDate(new Date());
-  const metrics = activeMetrics(optimizationGoal);
+  const metrics = activeMetrics(optimizationGoal, trackerSetUp);
   const maps: Partial<Record<ChartMetricKey, Map<string, number>>> = {};
   for (const metric of metrics) {
     maps[metric.key] = buildDailyCountMap(pipelineActualSeries?.[metric.key]);
@@ -284,15 +296,22 @@ export function PipelineActivityChart({
   data,
   pipelineActualSeries,
   optimizationGoal,
+  trackerSetUp = false,
 }: {
   data: PipelineActivityResponse;
   pipelineActualSeries?: PipelineActualSeries;
   optimizationGoal: BrandOptimizationGoal;
+  /**
+   * Conversion-tracker liveness (lead-service pixel). When false, tracker-outcome
+   * bars (Form submissions) are hidden — they carry no data until the tracker
+   * fires. Defaults to hidden so an unresolved query never flashes an empty bar.
+   */
+  trackerSetUp?: boolean;
   /** Kept for call-site compatibility; projection no longer happens client-side. */
   visitToMeetingPct?: number | null;
   visitToSignupPct?: number | null;
 }) {
-  const metrics = activeMetrics(optimizationGoal);
+  const metrics = activeMetrics(optimizationGoal, trackerSetUp);
   const [rangeDays, setRangeDays] = useState<(typeof RANGES)[number]>(7);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -308,8 +327,8 @@ export function PipelineActivityChart({
   );
 
   const chartData = useMemo(
-    () => buildChartData({ data, pipelineActualSeries, rangeDays, optimizationGoal }),
-    [data, pipelineActualSeries, rangeDays, optimizationGoal],
+    () => buildChartData({ data, pipelineActualSeries, rangeDays, optimizationGoal, trackerSetUp }),
+    [data, pipelineActualSeries, rangeDays, optimizationGoal, trackerSetUp],
   );
 
   // Keep the live edge (today + forecast) in view — wider windows would otherwise
