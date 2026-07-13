@@ -38,6 +38,7 @@ export function RevenueOverviewSection({
   todayCostPending = false,
   hideHeader = false,
   conversions,
+  trackerSetUp = false,
 }: {
   data?: RevenueOverview;
   pipelineActivity?: PipelineActivityResponse;
@@ -82,6 +83,9 @@ export function RevenueOverviewSection({
   /** Replace the default Organizations/Leads conversion tabs (the Signups page
    *  supplies its own engaged-leads table: clicked / signed up). */
   conversions?: ReactNode;
+  /** Conversion-tracker liveness — gates the Form-submissions bar in the
+   *  Outreach-activity graph (hidden until the tracker fires). */
+  trackerSetUp?: boolean;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
@@ -169,6 +173,7 @@ export function RevenueOverviewSection({
             data={pipelineActivity}
             pipelineActualSeries={pipelineActualSeries}
             optimizationGoal={optimizationGoal}
+            trackerSetUp={trackerSetUp}
             visitToMeetingPct={visitToMeetingPct}
             visitToSignupPct={visitToSignupPct}
           />

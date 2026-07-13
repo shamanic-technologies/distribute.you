@@ -119,6 +119,24 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(api).toContain('"repliedPositive"');
   });
 
+  it("hides tracker-outcome bars (Form submissions) until the conversion tracker is live (#2646)", () => {
+    const goalSteps = read("lib/goal-steps.ts");
+    // Derived set of chart keys sourced from an outcome step (tracker-dependent).
+    expect(goalSteps).toContain("TRACKER_DEPENDENT_CHART_KEYS");
+    // Chart filters those keys out unless the tracker is set up.
+    expect(chart).toContain("TRACKER_DEPENDENT_CHART_KEYS");
+    expect(chart).toContain("trackerSetUp || !TRACKER_DEPENDENT_CHART_KEYS.has(k)");
+    // Defaults to hidden so an unresolved query never flashes an empty bar.
+    expect(chart).toContain("trackerSetUp = false");
+    // Section threads the flag to the chart.
+    expect(section).toContain("trackerSetUp={trackerSetUp}");
+    // Page derives it from the shared conversion-token query (live / live_waiting).
+    expect(page).toContain('["brandConversionToken", brandId]');
+    expect(page).toContain('conversionTokenData?.status === "live"');
+    expect(page).toContain('conversionTokenData?.status === "live_waiting"');
+    expect(page).toContain("trackerSetUp={trackerSetUp}");
+  });
+
   it("still computes the goal-specific expected monthly outcome for projections without showing it in the footer", () => {
     expect(page).toContain("getWorkflowProjection");
     expect(page).toContain('"overview-outcome"');
