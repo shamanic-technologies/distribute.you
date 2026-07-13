@@ -134,7 +134,9 @@ describe("feature pages adopt the coordinated body reveal", () => {
     // The cost card's spend block now rides the SAME features-service /revenue
     // payload (server-computed Total spent / sources), so it reveals WITH revenue
     // — there's no separate runs-service cost-breakdown chain to gate it on.
-    expect(src).toMatch(/useCoordinatedReveal\(\[data !== undefined\]\)/);
+    // Revenue reveals on SETTLE (resolved OR errored) so a transient /revenue
+    // failure never eternally skeletons the section (see overview-reveal-on-settle).
+    expect(src).toMatch(/useCoordinatedReveal\(\[revenueSettled\]\)/);
     expect(src).toContain("const costRevealed = revenueRevealed;");
     // No stale runs-service cost-breakdown query / latch survives.
     expect(src).not.toContain("costData");

@@ -109,7 +109,7 @@ export default function BrandOverviewPage() {
   );
   const brand = brandData?.brand ?? null;
 
-  const { data } = useAuthQuery(
+  const { data, isError: revenueIsError } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
     {
@@ -125,7 +125,7 @@ export default function BrandOverviewPage() {
     },
   );
 
-  const { data: pipelineActivity } = useAuthQuery(
+  const { data: pipelineActivity, isError: pipelineIsError } = useAuthQuery(
     ["featurePipelineActivity", brandId, featureSlug, timezone],
     () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
     { enabled, ...pollOptions },
@@ -193,7 +193,7 @@ export default function BrandOverviewPage() {
 
   // Feature-level stats (Impressions / Clicks / CPC cards). Shares the Campaigns
   // page's query key + 5s cadence so both observers refetch one cache entry.
-  const { data: featureStatsData } = useAuthQuery(
+  const { data: featureStatsData, isError: featureStatsIsError } = useAuthQuery(
     ["featureStats", featureSlug, brandId],
     () => fetchFeatureStats(featureSlug, { brandId }),
     { enabled, ...pollOptions },
@@ -202,7 +202,7 @@ export default function BrandOverviewPage() {
   const totalWebsiteClicks = featureStats.recipientsClicked ?? 0;
 
   // Brand goal config → goal-specific stat card copy.
-  const { data: economicsData } = useAuthQuery(
+  const { data: economicsData, isError: economicsIsError } = useAuthQuery(
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
     { enabled, ...pollOptions },
@@ -216,7 +216,7 @@ export default function BrandOverviewPage() {
   const audienceStatsGoal = isVisitDrivenGoal(optimizationGoal) ? "signup" : "meetingBooked";
   const audienceStatsMetric = audienceStatsGoal === "signup" ? "cpc" : "cppr";
 
-  const { data: budgetData } = useAuthQuery(
+  const { data: budgetData, isError: budgetIsError } = useAuthQuery(
     ["brandDailyBudget", brandId],
     () => getBrandDailyBudget(brandId),
     { enabled, ...pollOptions },
@@ -236,7 +236,7 @@ export default function BrandOverviewPage() {
       ? (budgetData.dailyBudgetCents / 100) * 30
       : null;
 
-  const { data: outcomeProjection } = useAuthQuery(
+  const { data: outcomeProjection, isError: outcomeIsError } = useAuthQuery(
     [
       "workflowProjection",
       brandId,
@@ -303,7 +303,7 @@ export default function BrandOverviewPage() {
 
   // Real audience-level cost evidence from features-service. This replaces the
   // old provider-cost-source list; no dashboard-side mock/hash audience split.
-  const { data: audienceStatsData } = useAuthQuery(
+  const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
     ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
     () => fetchFeatureAudienceStats(featureSlug, {
       brandId,
@@ -313,7 +313,7 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
-  const { data: audiencesData } = useAuthQuery(
+  const { data: audiencesData, isError: audiencesIsError } = useAuthQuery(
     ["audiences", brandId],
     () => listAudiences(brandId),
     { enabled, ...pollOptions },
@@ -323,27 +323,41 @@ export default function BrandOverviewPage() {
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
   // total/today spend (runs-service) are separate cold chains — gate each on its
   // own query so the fast cost figures aren't held by the slower revenue call.
-  const revenueRevealed = useCoordinatedReveal([data !== undefined]);
+  //
+  // Reveal on SETTLE (resolved OR errored), never success-only. `/revenue` is the
+  // slowest cold chain and intermittently FAILS on a cold backend (features →
+  // downstream Neon scale-to-zero). Gating on `data !== undefined` alone left the
+  // whole section skeletoned FOREVER after a transient error — no error UI, no
+  // recovery. Settling on `isError` paints "—"/stale instead; the error still logs
+  // loud (React Query + `getFeatureRevenue` safeParse throw), and the monotonic
+  // latch keeps the section revealed while the next 30s poll recovers real data.
+  // A query disabled by the org-consistency gate has isError:false → NOT settled,
+  // so cross-org isolation is unchanged (reseed-from-disk covers that case).
+  const revenueSettled = data !== undefined || revenueIsError;
+  const revenueRevealed = useCoordinatedReveal([revenueSettled]);
   // Graph reveals with revenue too — its actual outreach series is sourced from
-  // `/revenue` (mergedPipelineActivity), so it must wait for `data` to avoid a
-  // backend-then-/revenue flip on the outreach bar.
+  // `/revenue` (mergedPipelineActivity), which cleanly falls back to the
+  // pipeline-activity actuals when `data` is absent, so an errored `/revenue`
+  // must not hold the chart.
   const activityRevealed = useCoordinatedReveal([
-    pipelineActivity !== undefined,
-    economicsData !== undefined,
-    data !== undefined,
+    pipelineActivity !== undefined || pipelineIsError,
+    economicsData !== undefined || economicsIsError,
+    revenueSettled,
   ]);
   // The cost card's spend block rides the `/revenue` payload now → it reveals
   // with revenue (was its own runs-service cost-breakdown chain).
   const costRevealed = revenueRevealed;
-  const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
+  const statsRevealed = useCoordinatedReveal([
+    featureStatsData !== undefined || featureStatsIsError,
+  ]);
   const audienceStatsRevealed = useCoordinatedReveal([
-    audienceStatsData !== undefined,
-    audiencesData !== undefined,
+    audienceStatsData !== undefined || audienceStatsIsError,
+    audiencesData !== undefined || audiencesIsError,
   ]);
   const outcomeRevealed = useCoordinatedReveal([
-    budgetData !== undefined,
-    economicsData !== undefined,
-    monthlyBudgetUsd == null || outcomeProjection !== undefined,
+    budgetData !== undefined || budgetIsError,
+    economicsData !== undefined || economicsIsError,
+    monthlyBudgetUsd == null || outcomeProjection !== undefined || outcomeIsError,
   ]);
   const showFirstClickReassurance =
     statsRevealed && totalWebsiteClicks < 1 && !isBrandPaused;
