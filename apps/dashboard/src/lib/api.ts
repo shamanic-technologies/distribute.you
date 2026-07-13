@@ -1941,6 +1941,12 @@ export async function fetchFeatureAudienceStats(
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
   if (params.statuses) query.set("statuses", params.statuses);
+  // pricing=net → per-audience MONEY metrics (metrics.cpcCents / cpprCents /
+  // cpfsCents / cpsCents) reflect the org's FROZEN post-usage-discount cost, so the
+  // Top-audiences card + Audiences ranking match the net brand-overview cost cards.
+  // Ranking order is unchanged (uniform scale) and net == gross for a non-discounted
+  // org. Frozen server-side — no client discount math.
+  query.set("pricing", "net");
   const raw = await apiCall<unknown>(`/features/${featureSlug}/audience-stats?${query.toString()}`, { token });
   const parsed = FeatureAudienceStatsResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -1984,6 +1990,15 @@ export async function getFeatureRevenue(
 ): Promise<RevenueOverview> {
   const query = new URLSearchParams({ brandId });
   if (campaignId) query.set("campaignId", campaignId);
+  // pricing=net → every MONEY metric (spend block, costEconomics actualCostUsd,
+  // CAC, ROI, cps/cpsm/cpfs) reflects the org's FROZEN post-usage-discount cost
+  // (frozen at cost-write in runs-service; features-service does NOT recompute the
+  // discount — never multiply client-side). Coherent with the NET-paced campaign
+  // budget so "Budget spent today / <budget>" can't exceed 100% for a discounted
+  // brand. net == gross for a non-discounted org, so this is a no-op there. Every
+  // consumer of the shared `["featureRevenue", …]` key gets net → the dedupe stays
+  // consistent (do not make it a per-caller toggle).
+  query.set("pricing", "net");
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   return parseFeatureRevenue(raw, "getFeatureRevenue");
 }
