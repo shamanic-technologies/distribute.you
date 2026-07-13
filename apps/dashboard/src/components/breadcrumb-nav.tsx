@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   useOrganization,
@@ -95,6 +95,12 @@ function OrgAvatar({
 
 export function BreadcrumbNav() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // `?new=1` = the "create a NEW org" onboarding flow → there is no target org
+  // yet and the Clerk active org is a DIFFERENT org, so it must NOT stand in as
+  // the crumb. `?from=add` (new BRAND) reuses the existing active org → its name
+  // IS the right crumb. Only the new-brand flow gets the active-org fallback.
+  const isNewOrgFlow = searchParams.get("new") === "1";
   const router = useRouter();
   const { organization } = useOrganization();
   const { userMemberships, setActive } = useOrganizationList({
@@ -165,7 +171,16 @@ export function BreadcrumbNav() {
     ? orgDisplayCacheRef.current[orgId] ??
       allOrgs.find((o) => o.id === orgId) ??
       userMemberships?.data?.find((m) => m.organization.id === orgId)?.organization
-    : undefined;
+    : // Off the /orgs/ tree (the onboarding create flow: `/onboarding?from=add`),
+      // there is no URL org to key on, so fall back to Clerk's active org — the
+      // add-BRAND flow reuses the existing active org, so its name is the right
+      // crumb label. The add-ORG flow (`?new=1`) is EXCLUDED: it targets a brand-
+      // new org that isn't the active one, so the active-org name would mislead —
+      // it keeps the neutral "Dashboard" placeholder + the org switcher.
+      // Sanctioned by CLAUDE.md: `useOrganization()` may feed off-/orgs/ fallbacks.
+      isNewOrgFlow
+      ? undefined
+      : organization ?? undefined;
   const displayOrgName = displayOrg?.name || "Dashboard";
   const displayOrgImageUrl = displayOrg?.imageUrl;
   const displayOrgHasImage =
