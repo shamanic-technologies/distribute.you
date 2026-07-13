@@ -89,10 +89,12 @@ export function RevenueOverviewSection({
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
-  // `revenueLoading` folds `revenuePending` with a defensive `!data` guard — it
-  // drives every region fed by features-service `/revenue`; the Total-spent figure
-  // (runs-service) reveals on its own `costPending` so it never waits on revenue.
-  const revenueLoading = revenuePending || !data;
+  // `revenueLoading` tracks `revenuePending` ALONE — no defensive `!data` re-guard.
+  // The page reveals-on-settle (success OR error), so on an errored `/revenue`
+  // `revenuePending` is false while `data` is undefined; re-guarding on `!data`
+  // here would re-lock the whole section into an eternal skeleton. Every region is
+  // null-safe (`data?.spend`, `spend?.…` → "—"), so absent data renders dashes.
+  const revenueLoading = revenuePending;
   const activityLoading = activityPending || !pipelineActivity;
   // The "Outcome" card's single cumulative line tracks the brand's goal signal:
   // website clicks for a signups brand, positive replies for a meetings brand.
