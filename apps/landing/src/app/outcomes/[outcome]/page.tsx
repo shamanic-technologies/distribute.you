@@ -345,10 +345,9 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
                   <th className="py-2 pr-4 font-medium">Model</th>
-                  <th className="py-2 pr-4 font-medium text-right">
+                  <th className="py-2 font-medium text-right">
                     Cost per {def.noun}
                   </th>
-                  <th className="py-2 font-medium text-right">Spend</th>
                 </tr>
               </thead>
               <tbody>
@@ -365,11 +364,8 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
                       )}
                       {w.workflowDynastyName}
                     </td>
-                    <td className="py-2 pr-4 text-right font-medium text-gray-900">
+                    <td className="py-2 text-right font-medium text-gray-900">
                       {fmtUsd(w.costPerOutcomeUsd)}
-                    </td>
-                    <td className="py-2 text-right text-gray-600">
-                      {fmtUsd(w.spentUsd)}
                     </td>
                   </tr>
                 ))}
