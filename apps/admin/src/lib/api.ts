@@ -4583,6 +4583,49 @@ export async function getInstantlyAccountHealth(
 }
 
 // ---------------------------------------------------------------------------
+// Full raw Instantly account config for ONE account (staff-only, platform view,
+// no org). The account-health list row is a CURATED subset; this returns the
+// entire raw Instantly account object so staff can audit every mailbox setting
+// (warmup {limit, increment, advanced:{…}}, enable_slow_ramp, daily_limit,
+// provider_code, tracking domain, timestamps, all flags). The shape is
+// intentionally OPEN — we render whatever keys Instantly actually sends, so the
+// value is validated only as an object of arbitrary keys, never a field
+// whitelist.
+// ---------------------------------------------------------------------------
+export interface InstantlyAccountDetail {
+  account: Record<string, unknown>;
+}
+
+const InstantlyAccountDetailSchema = z.object({
+  account: z.record(z.string(), z.unknown()),
+});
+
+/**
+ * Full raw Instantly config for a single account, keyed by email. Staff-only,
+ * platform-scoped (no org). safeParse converts wire-rot into a caught fetch
+ * error instead of a render crash; the `account` object itself is left open so
+ * the panel renders every key Instantly returns.
+ */
+export async function getInstantlyAccountDetail(
+  email: string,
+  token?: string,
+): Promise<InstantlyAccountDetail> {
+  const raw = await apiCall<unknown>(
+    `/instantly/audit/account-detail?email=${encodeURIComponent(email)}`,
+    { token },
+  );
+  const parsed = InstantlyAccountDetailSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getInstantlyAccountDetail: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] getInstantlyAccountDetail: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ---------------------------------------------------------------------------
 // Sending-capacity over time (staff-only, platform-scoped, no org). One point
 // per UTC calendar day: the fleet's `in_production` daily send capacity
 // (Σ daily_limit over accounts whose as-of-that-day lifecycle is in_production)
