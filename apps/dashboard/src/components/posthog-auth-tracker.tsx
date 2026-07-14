@@ -66,6 +66,27 @@ export function PostHogAuthTracker() {
           }),
         }).catch(() => {});
       }
+
+      // Partnero affiliate attribution — if this signup came via a partner
+      // referral link, the partner key was captured on the landing and
+      // forwarded to the dashboard (?via=), persisted in the `partnero_via`
+      // cookie by `PartneroViaCapture`. Register the customer with Partnero
+      // server-to-server so the partner gets credited (their lifetime
+      // commission tracks off this customer's Stripe purchases).
+      // Fire-and-forget: a failed report must never block the signup flow.
+      const via = document.cookie.match(/(?:^|; )partnero_via=([^;]+)/)?.[1];
+      if (via && email && userId) {
+        void fetch("/api/partnero/customer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            via: decodeURIComponent(via),
+            key: userId,
+            email,
+            name: user?.fullName ?? undefined,
+          }),
+        }).catch(() => {});
+      }
     }
   }, [isSignedIn, orgId, user, userId]);
 

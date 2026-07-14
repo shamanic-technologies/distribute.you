@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
+import { PartneroViaCapture } from "@/components/partnero-via-capture";
 import "./globals.css";
 
 const SITE_URL = "https://dashboard.distribute.you";
@@ -114,6 +115,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <PartneroViaCapture />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
