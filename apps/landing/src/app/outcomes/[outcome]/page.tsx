@@ -141,6 +141,10 @@ function TrendChart({ points }: { points: TrendPoint[] }) {
 }
 
 // ── Inline SVG histogram (cross-brand price spread) ──────────────────────────
+// Server-rendered, scraper-safe, no client JS. Equal-width bins over each
+// brand's cost per outcome. Every bin slot is drawn (faint track) so the
+// intervals stay legible even when a bin is empty; $ edge labels sit under the
+// boundaries and each populated bar carries its brand count.
 function Histogram({
   dist,
   noun,
@@ -148,46 +152,127 @@ function Histogram({
   dist: OutcomeDistribution;
   noun: string;
 }) {
-  const W = 640;
-  const H = 200;
-  const padB = 22;
-  const maxCount = Math.max(...dist.buckets.map((b) => b.count), 1);
+  const W = 680;
+  const H = 250;
+  const padL = 8;
+  const padR = 8;
+  const padTop = 24; // count labels
+  const padBottom = 40; // $ edge labels
+  const chartTop = padTop;
+  const chartBottom = H - padBottom;
+  const chartH = chartBottom - chartTop;
+  const innerW = W - padL - padR;
+
   const n = dist.buckets.length;
-  const gap = 4;
-  const barW = (W - gap * (n - 1)) / n;
+  const gap = 12;
+  const barW = (innerW - gap * (n - 1)) / n;
+  const maxCount = Math.max(...dist.buckets.map((b) => b.count), 1);
+
+  const barX = (i: number) => padL + i * (barW + gap);
+  // n+1 boundary edges: each bin's min, plus the last bin's max.
+  const edges: { x: number; v: number; anchor: "start" | "middle" | "end" }[] = [
+    ...dist.buckets.map((b, i) => ({
+      x: barX(i),
+      v: b.minUsd,
+      anchor: (i === 0 ? "start" : "middle") as "start" | "middle" | "end",
+    })),
+    {
+      x: barX(n - 1) + barW,
+      v: dist.buckets[n - 1].maxUsd,
+      anchor: "end" as const,
+    },
+  ];
+
   return (
     <div>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="h-52 w-full"
+        className="w-full"
         role="img"
         aria-label={`Distribution of cost per ${noun} across brands`}
       >
+        {/* baseline axis */}
+        <line
+          x1={padL}
+          y1={chartBottom}
+          x2={W - padR}
+          y2={chartBottom}
+          stroke="#26303d"
+          strokeWidth={1}
+        />
         {dist.buckets.map((b, i) => {
-          const h = (b.count / maxCount) * (H - padB - 6);
-          const x = i * (barW + gap);
+          const x = barX(i);
+          const h = b.count > 0 ? Math.max((b.count / maxCount) * chartH, 4) : 0;
+          const barY = chartBottom - h;
           return (
-            <rect
-              key={i}
-              x={x.toFixed(1)}
-              y={(H - padB - h).toFixed(1)}
-              width={barW.toFixed(1)}
-              height={Math.max(h, 1).toFixed(1)}
-              rx="2"
-              fill="#45e38e"
-              opacity={0.85}
-            />
+            <g key={i}>
+              <title>
+                {`${fmtUsd(b.minUsd)}–${fmtUsd(b.maxUsd)}: ${b.count} ${
+                  b.count === 1 ? "brand" : "brands"
+                }`}
+              </title>
+              {/* faint slot so empty intervals stay visible */}
+              <rect
+                x={x.toFixed(1)}
+                y={chartTop}
+                width={barW.toFixed(1)}
+                height={chartH}
+                rx="3"
+                fill="#45e38e"
+                opacity={0.06}
+              />
+              {b.count > 0 && (
+                <>
+                  <rect
+                    x={x.toFixed(1)}
+                    y={barY.toFixed(1)}
+                    width={barW.toFixed(1)}
+                    height={h.toFixed(1)}
+                    rx="3"
+                    fill="#45e38e"
+                    opacity={0.9}
+                  />
+                  <text
+                    x={(x + barW / 2).toFixed(1)}
+                    y={(barY - 8).toFixed(1)}
+                    textAnchor="middle"
+                    fontSize={13}
+                    fontWeight={600}
+                    fill="#8af6bc"
+                  >
+                    {b.count}
+                  </text>
+                </>
+              )}
+            </g>
           );
         })}
+        {/* $ boundary labels + ticks */}
+        {edges.map((e, i) => (
+          <g key={`e${i}`}>
+            <line
+              x1={e.x}
+              y1={chartBottom}
+              x2={e.x}
+              y2={chartBottom + 5}
+              stroke="#26303d"
+              strokeWidth={1}
+            />
+            <text
+              x={e.x.toFixed(1)}
+              y={chartBottom + 20}
+              textAnchor={e.anchor}
+              fontSize={12}
+              fill="#657184"
+            >
+              {fmtUsd(e.v)}
+            </text>
+          </g>
+        ))}
       </svg>
-      <div className="mt-1 flex justify-between text-xs text-gray-400">
-        <span>{fmtUsd(dist.min)}</span>
-        <span>
-          {dist.brandCount} brands · median {fmtUsd(dist.median)} · mean{" "}
-          {fmtUsd(dist.mean)}
-        </span>
-        <span>{fmtUsd(dist.max)}</span>
+      <div className="mt-3 text-center text-xs text-gray-400">
+        {dist.brandCount} brands · median {fmtUsd(dist.median)} · mean{" "}
+        {fmtUsd(dist.mean)} · each bar = brands in that price range
       </div>
     </div>
   );
