@@ -219,6 +219,16 @@ export default function BillingPage() {
   const usageDiscountPct = account?.usage_discount_pct ?? null;
   const hasUsageDiscount = typeof usageDiscountPct === "number" && usageDiscountPct > 0 && usageDiscountPct < 100;
 
+  // A negative available balance = postpaid usage running on credit. Frame it as "Balance"
+  // (label) with the absolute amount in green, and align the tooltip to that meaning — the
+  // "what you can spend right now" copy is wrong once the balance is negative. Both the big
+  // number and the breakdown footer read from these so they never drift apart.
+  const isNegativeBalance = availableCents < 0;
+  const balanceLabel = isNegativeBalance ? "Balance" : "Available";
+  const balanceTip = isNegativeBalance
+    ? "Your usage running on credit. This is covered automatically by your next top-up charge."
+    : "What you can spend right now: total credits minus confirmed and provisioned charges.";
+
   // Depleted = AVAILABLE (spendable, net of provisioned holds) at/below zero AND no auto-topup
   // to cover it. Keys on balance_cents — the value spending is actually blocked on — not the
   // gross actual balance (which hid open holds and let the warning never fire while blocked).
@@ -405,9 +415,9 @@ export default function BillingPage() {
           <div>
             <div className="flex items-center gap-1.5">
               {/* A negative available balance = postpaid usage running on credit; frame it
-                  positively as "Usage" with the absolute amount in green, not a red deficit. */}
-              <p className="text-sm text-gray-500">{availableCents < 0 ? "Usage" : "Available"}</p>
-              <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+                  positively as "Balance" with the absolute amount in green, not a red deficit. */}
+              <p className="text-sm text-gray-500">{balanceLabel}</p>
+              <InfoTooltip tip={balanceTip} />
             </div>
             <p className={`text-3xl font-bold mt-1 ${availableCents < 0 ? "text-green-600" : availableCents === 0 ? "text-red-600" : "text-gray-900"}`}>
               {formatBillingCents(availableCents < 0 ? Math.abs(availableCents) : account?.balance_cents ?? "0")}
@@ -454,8 +464,8 @@ export default function BillingPage() {
 
             <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
               <dt className="flex items-center gap-1.5 font-medium text-gray-700">
-                {availableCents < 0 ? "Usage" : "Available"}
-                <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+                {balanceLabel}
+                <InfoTooltip tip={balanceTip} />
               </dt>
               <dd className={`font-semibold ${availableCents < 0 ? "text-green-600" : availableCents === 0 ? "text-red-600" : "text-gray-900"}`}>
                 {formatBillingCents(availableCents < 0 ? Math.abs(availableCents) : account?.balance_cents ?? "0")}
