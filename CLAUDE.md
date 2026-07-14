@@ -90,14 +90,20 @@ No `release.sh hotfix` here (that targets Railway semver services). Vercel deplo
 # 1. Token — use $HOME, NOT a hardcoded /Users/<name> (path is per-machine: adam vs kevinlourd)
 VTOK=$(python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/Library/Application Support/com.vercel.cli/auth.json')))['token'])")
 
-# 2. Latest READY *production* deploy (prj_Bk1opzmyy6hBaYaDx3yz2849L2C2)
+# 2. READY *production* deploy CARRYING THE MERGED COMMIT (prj_Bk1opzmyy6hBaYaDx3yz2849L2C2)
 #    MUST filter target=='production' — the latest READY deploy is often the PR PREVIEW
 #    (target null, your feature branch); promoting a preview returns 422 unprocessable_entity.
-#    Right after a merge the production build may still be BUILDING — wait for it (retry until a
-#    main/production deploy is READY), then promote THAT uid.
-DEPLOY=$(curl -s "https://api.vercel.com/v6/deployments?projectId=prj_Bk1opzmyy6hBaYaDx3yz2849L2C2&teamId=blooming-generation&limit=10" \
+#    ⚠️ MUST ALSO match meta.githubCommitSha to the SQUASH-MERGE sha on main
+#    (`git rev-parse origin/main`) — do NOT take the first READY production deploy. Right after a
+#    merge the PRE-MERGE production deploy is STILL READY, so "first READY production" picks the
+#    OLD build → the promote 409s "already the current production deployment" (a NO-OP) while prod
+#    stays stale (Spend column / old page persist). The NEW deploy is QUEUED→BUILDING for ~1-2min;
+#    poll until the deploy whose githubCommitSha == main-sha reaches READY, then promote THAT uid.
+#    (Vercel usually auto-promotes it anyway, but verify by content, never trust the promote call.)
+SHA=$(git rev-parse origin/main)
+DEPLOY=$(curl -s "https://api.vercel.com/v6/deployments?projectId=prj_Bk1opzmyy6hBaYaDx3yz2849L2C2&teamId=blooming-generation&limit=15" \
   -H "Authorization: Bearer $VTOK" | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); r=[x for x in d['deployments'] if x['state']=='READY' and x.get('target')=='production']; print(r[0]['uid'] if r else 'NONE')")
+  python3 -c "import sys,json,os; d=json.load(sys.stdin); s=os.environ['SHA'][:12]; r=[x for x in d['deployments'] if x['state']=='READY' and x.get('target')=='production' and x.get('meta',{}).get('githubCommitSha','').startswith(s)]; print(r[0]['uid'] if r else 'NONE')")
 
 # 3. Promote (409 conflict = already prod = still OK)
 curl -sX POST "https://api.vercel.com/v10/projects/prj_Bk1opzmyy6hBaYaDx3yz2849L2C2/promote/$DEPLOY?teamId=blooming-generation" \
