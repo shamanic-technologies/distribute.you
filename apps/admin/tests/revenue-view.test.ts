@@ -64,7 +64,8 @@ describe("Revenue metrics view — wiring", () => {
     expect(revenueView).toContain("Avg revenue per unique visitor");
     expect(revenueView).toContain("Avg revenue per signup");
     expect(revenueView).toContain("Avg revenue per paid client");
-    expect(revenueView).toContain("average of the monthly averages");
+    expect(revenueView).toContain("last complete month");
+    expect(revenueView).not.toContain("average of the monthly averages");
     // The bar charts come from the shared signups chart (current-period pencil + growth line).
     expect(revenueView).toContain("PeriodCompoundChart");
   });
@@ -129,6 +130,8 @@ describe("Revenue bucket derivations", () => {
     const perVisitor = avgPerSeries(revenueByMonth, visitorsByMonth);
     // per-visitor: 100/100=1, 200/100=2, 400/200=2
     expect(perVisitor.buckets.map((b) => b.value)).toEqual([1, 2, 2]);
+    // pooled since inception (concluded May+June) = (100+200)/(100+100) = 1.5
+    expect(perVisitor.pooledUsd).toBe(1.5);
     // snapshot = latest CONCLUDED month (June) = 2; avg of avg over May+June = (1+2)/2 = 1.5
     expect(perVisitor.snapshotUsd).toBe(2);
     expect(perVisitor.avgOfAvgUsd).toBe(1.5);
@@ -145,6 +148,8 @@ describe("Revenue bucket derivations", () => {
     const series = avgPerSeries(revenueByMonth, byClient);
     // 100/10=10, 200/20=10, 400/40=10
     expect(series.buckets.map((b) => b.value)).toEqual([10, 10, 10]);
+    // pooled since inception (concluded May+June) = (100+200)/(10+20) = 10
+    expect(series.pooledUsd).toBe(10);
     expect(series.snapshotUsd).toBe(10);
   });
 });
