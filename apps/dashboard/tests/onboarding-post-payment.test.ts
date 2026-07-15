@@ -22,6 +22,7 @@ const apiSrc = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf-8
 
 describe("post-payment step wiring in onboarding.tsx", () => {
   it("adds the phone / ltr / offer steps to the Step union", () => {
+    expect(onboardingSrc).toContain('| "celebrate"');
     expect(onboardingSrc).toContain('| "phone"');
     expect(onboardingSrc).toContain('| "ltr"');
     expect(onboardingSrc).toContain('| "offer"');
@@ -29,17 +30,17 @@ describe("post-payment step wiring in onboarding.tsx", () => {
     expect(onboardingSrc).toContain('| "launching"');
   });
 
-  it("routes the checkout SUCCESS first-paint to phone, not launching", () => {
-    expect(onboardingSrc).toContain('searchParams.get("launch_checkout") === "success"\n        ? "phone"');
+  it("routes the checkout SUCCESS first-paint to the celebrate step, not launching", () => {
+    expect(onboardingSrc).toContain('searchParams.get("launch_checkout") === "success"\n        ? "celebrate"');
   });
 
-  it("defers the launch: resume stashes the pending blob and lands on phone", () => {
+  it("defers the launch: resume stashes the pending blob and lands on celebrate", () => {
     const resume = onboardingSrc.slice(
       onboardingSrc.indexOf("async function resumeCheckoutLaunch"),
       onboardingSrc.indexOf("// ── Post-payment steps"),
     );
     expect(resume).toContain("pendingCheckoutRef.current = pending;");
-    expect(resume).toContain('setStep("phone");');
+    expect(resume).toContain('setStep("celebrate");');
     // the launch itself must NOT run at the checkout return anymore
     expect(resume).not.toContain("await completeLaunchAfterCheckout(pending);");
   });
