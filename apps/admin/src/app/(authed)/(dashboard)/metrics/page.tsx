@@ -3,12 +3,14 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
+import { SignupPeriodChart } from "@/components/signup-period-chart";
 import {
   fetchPublicStatsSummary,
   type DailyFunnelPoint,
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
+import { dailySignups, monthlySignups, weeklySignups } from "@/lib/signup-buckets";
 import { formatCount } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
@@ -153,6 +155,29 @@ function SignupView({
         <StatCard label="Total signups" value={formatCount(totalUsers)} detail="Clerk /users/count total" accent="bg-brand-500" />
         <StatCard label="Tracked signup events" value={formatCount(signupEvents)} detail="PostHog signup_completed events" accent="bg-sky-500" />
         <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by unique visitors" accent="bg-emerald-500" />
+      </section>
+      <section className="grid gap-6 lg:grid-cols-3">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Monthly signups</h2>
+          <p className="mt-1 text-sm text-gray-500">Signups per month with month-on-month growth.</p>
+          <div className="mt-5">
+            <SignupPeriodChart data={monthlySignups(timeline)} growthLabel="MoM growth" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Weekly signups</h2>
+          <p className="mt-1 text-sm text-gray-500">Signups per week with week-on-week growth.</p>
+          <div className="mt-5">
+            <SignupPeriodChart data={weeklySignups(timeline)} growthLabel="WoW growth" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Daily signups</h2>
+          <p className="mt-1 text-sm text-gray-500">Signups per day with day-on-day growth.</p>
+          <div className="mt-5">
+            <SignupPeriodChart data={dailySignups(timeline)} growthLabel="DoD growth" />
+          </div>
+        </div>
       </section>
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
