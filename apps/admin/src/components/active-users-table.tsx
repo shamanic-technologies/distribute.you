@@ -2,7 +2,58 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { ActiveUserRow, ActiveUsersByUser } from "@/lib/api";
+import type { ActiveUserRow, ActiveUsersByUser, AuditAccounts } from "@/lib/api";
+
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+
+/** The org's domain when its Clerk name is domain-shaped (onboarding sets
+ *  `name: <brand domain>`), else null → falls back to the initial. */
+function orgDomainFromName(name?: string | null): string | null {
+  if (!name) return null;
+  const candidate = name.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
+  return /^[^\s]+\.[^\s]+$/.test(candidate) ? candidate : null;
+}
+
+type OrgMeta = { name: string; imageUrl: string; hasImage: boolean };
+
+/** A small logo.dev / Clerk-upload / initial avatar (mirrors breadcrumb-nav's
+ *  OrgAvatar). Used for both the org logo (Clerk upload → org-domain logo.dev →
+ *  initial) and the brand logo (brand-domain logo.dev → initial). */
+function Avatar({
+  label,
+  domain,
+  imageUrl,
+  hasImage,
+}: {
+  label: string;
+  domain?: string | null;
+  imageUrl?: string | null;
+  hasImage?: boolean;
+}) {
+  const [broken, setBroken] = useState(false);
+  const src =
+    hasImage && imageUrl
+      ? imageUrl
+      : domain
+        ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}`
+        : null;
+  if (src && !broken) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={src}
+        alt={label}
+        onError={() => setBroken(true)}
+        className="h-6 w-6 flex-shrink-0 rounded bg-brand-100 object-cover"
+      />
+    );
+  }
+  return (
+    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-100">
+      <span className="text-[11px] font-semibold text-brand-600">{label?.[0]?.toUpperCase() || "?"}</span>
+    </div>
+  );
+}
 
 // ── Pure label + axis helpers ────────────────────────────────────────────────
 
@@ -114,19 +165,22 @@ function useOrgNames(rows: ActiveUserRow[]) {
     return [...set].sort();
   }, [rows]);
 
-  const { data } = useQuery<Record<string, string>>({
+  const { data } = useQuery<{ names: Record<string, string>; orgs: Record<string, OrgMeta> }>({
     queryKey: ["adminOrgNames", ids],
     queryFn: async () => {
       const res = await fetch(`/api/admin/orgs/names?ids=${encodeURIComponent(ids.join(","))}`);
       if (!res.ok) throw new Error(`org name resolve failed (${res.status})`);
-      const json = (await res.json()) as { names: Record<string, string> };
-      return json.names;
+      const json = (await res.json()) as {
+        names: Record<string, string>;
+        orgs?: Record<string, OrgMeta>;
+      };
+      return { names: json.names, orgs: json.orgs ?? {} };
     },
     enabled: ids.length > 0,
     staleTime: 5 * 60_000,
   });
 
-  return data ?? {};
+  return { names: data?.names ?? {}, orgs: data?.orgs ?? {} };
 }
 
 function userLabel(row: ActiveUserRow, names: Record<string, string>): string {
@@ -159,6 +213,7 @@ function BucketGrid({ cells }: { cells: Array<{ key: string; label: string; acti
 function RightPanel({
   row,
   names,
+  orgs,
   fleetMinMonth,
   fleetMinWeek,
   fleetMinDay,
@@ -169,6 +224,7 @@ function RightPanel({
 }: {
   row: ActiveUserRow;
   names: Record<string, string>;
+  orgs: Record<string, OrgMeta>;
   fleetMinMonth: string;
   fleetMinWeek: string;
   fleetMinDay: string;
@@ -209,11 +265,19 @@ function RightPanel({
   return (
     <aside className="w-full shrink-0 rounded-lg border border-gray-200 bg-white p-5 lg:w-[26rem]">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <Avatar
+            label={userLabel(row, names)}
+            domain={row.orgExternalId ? orgDomainFromName(orgs[row.orgExternalId]?.name) : null}
+            imageUrl={row.orgExternalId ? orgs[row.orgExternalId]?.imageUrl : null}
+            hasImage={row.orgExternalId ? orgs[row.orgExternalId]?.hasImage : false}
+          />
+          <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-950">{userLabel(row, names)}</p>
           <p className="mt-0.5 text-xs text-gray-500">
             {row.retentionWeeks} week{row.retentionWeeks === 1 ? "" : "s"} retention · {row.activeMonths.length} active months
           </p>
+          </div>
         </div>
         <button
           type="button"
@@ -261,30 +325,67 @@ function RightPanel({
 
 // ── Table + tabs ─────────────────────────────────────────────────────────────
 
-type TabId = "week" | "month" | "all";
+type TabId = "current" | "week" | "month" | "all";
 
-export function ActiveUsersTable({ data }: { data: ActiveUsersByUser }) {
-  const [tab, setTab] = useState<TabId>("week");
+/** Whole-dollar daily budget, e.g. `$40/day`. Null budget → "—". */
+function budgetLabel(usd: number | null): string {
+  if (usd === null || usd <= 0) return "—";
+  return `$${Math.round(usd).toLocaleString("en-US")}/day`;
+}
+
+export function ActiveUsersTable({
+  data,
+  accounts,
+}: {
+  data: ActiveUsersByUser;
+  accounts: AuditAccounts | null;
+}) {
+  const [tab, setTab] = useState<TabId>("current");
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
-  const names = useOrgNames(data.users);
+  const { names, orgs } = useOrgNames(data.users);
+
+  // Join the live accounts snapshot (per org×brand status + configured daily
+  // budget) onto each user (org) by orgId. A user is "current"ly active when it
+  // owns ≥1 ACTIVE brand — the same verdict as the Active-users stat card. The
+  // budget column sums the configured daily budget across the org's brands.
+  const orgMeta = useMemo(() => {
+    const map = new Map<string, { active: boolean; dailyBudgetUsd: number | null }>();
+    for (const row of accounts?.rows ?? []) {
+      const prev = map.get(row.orgId) ?? { active: false, dailyBudgetUsd: null };
+      const active = prev.active || row.status === "active";
+      const budget =
+        row.dailyBudgetUsd === null
+          ? prev.dailyBudgetUsd
+          : (prev.dailyBudgetUsd ?? 0) + row.dailyBudgetUsd;
+      map.set(row.orgId, { active, dailyBudgetUsd: budget });
+    }
+    return map;
+  }, [accounts]);
 
   const fleetMinMonth = minStr(data.users.map((u) => u.firstActiveMonth)) ?? data.currentMonth;
   const fleetMinWeek = minStr(data.users.map((u) => u.firstActiveWeek)) ?? data.currentWeek;
   const fleetMinDay = minStr(data.users.map((u) => u.firstActiveDay)) ?? data.asOf.slice(0, 10);
   const currentDay = data.asOf.slice(0, 10);
 
+  const currentCount = useMemo(
+    () => data.users.filter((u) => orgMeta.get(u.orgId)?.active).length,
+    [data.users, orgMeta],
+  );
+
   const tabs: Array<{ id: TabId; label: string; count: number }> = [
+    { id: "current", label: "Current", count: currentCount },
     { id: "week", label: "Current week", count: data.stats.activeThisWeekCount },
     { id: "month", label: "Current month", count: data.stats.activeThisMonthCount },
     { id: "all", label: "All", count: data.stats.totalUsers },
   ];
 
   const rows = useMemo(() => {
+    if (tab === "current") return data.users.filter((u) => orgMeta.get(u.orgId)?.active);
     if (tab === "week") return data.users.filter((u) => u.activeThisWeek);
     if (tab === "month") return data.users.filter((u) => u.activeThisMonth);
     return data.users;
-  }, [tab, data.users]);
+  }, [tab, data.users, orgMeta]);
 
   const selected = selectedOrgId ? data.users.find((u) => u.orgId === selectedOrgId) ?? null : null;
 
@@ -318,6 +419,7 @@ export function ActiveUsersTable({ data }: { data: ActiveUsersByUser }) {
             <thead>
               <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                 <th className="py-2 pr-4 font-medium">User</th>
+                <th className="py-2 px-4 font-medium">Daily budget</th>
                 <th className="py-2 px-4 font-medium">First month</th>
                 <th className="py-2 px-4 font-medium">Last month</th>
                 <th className="py-2 px-4 font-medium">First week</th>
@@ -335,8 +437,26 @@ export function ActiveUsersTable({ data }: { data: ActiveUsersByUser }) {
                   }`}
                 >
                   <td className="py-2.5 pr-4">
-                    <div className="font-medium text-gray-900">{userLabel(row, names)}</div>
-                    {row.ownerEmail && <div className="text-xs text-gray-400">{row.ownerEmail}</div>}
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-shrink-0 items-center gap-1">
+                        <Avatar
+                          label={userLabel(row, names)}
+                          domain={row.orgExternalId ? orgDomainFromName(orgs[row.orgExternalId]?.name) : null}
+                          imageUrl={row.orgExternalId ? orgs[row.orgExternalId]?.imageUrl : null}
+                          hasImage={row.orgExternalId ? orgs[row.orgExternalId]?.hasImage : false}
+                        />
+                        {row.brands.slice(0, 2).map((b) => (
+                          <Avatar key={b.brandId} label={b.brandName || b.brandDomain || "B"} domain={b.brandDomain} />
+                        ))}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-gray-900">{userLabel(row, names)}</div>
+                        {row.ownerEmail && <div className="truncate text-xs text-gray-400">{row.ownerEmail}</div>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-2.5 px-4 font-medium tabular-nums text-gray-700">
+                    {budgetLabel(orgMeta.get(row.orgId)?.dailyBudgetUsd ?? null)}
                   </td>
                   <td className="py-2.5 px-4 text-gray-700">{monthLabel(row.firstActiveMonth)}</td>
                   <td className="py-2.5 px-4 text-gray-700">{monthLabel(row.lastActiveMonth)}</td>
@@ -347,7 +467,7 @@ export function ActiveUsersTable({ data }: { data: ActiveUsersByUser }) {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="py-8 text-center text-sm text-gray-400">
                     No users in this tab.
                   </td>
                 </tr>
@@ -360,6 +480,7 @@ export function ActiveUsersTable({ data }: { data: ActiveUsersByUser }) {
           <RightPanel
             row={selected}
             names={names}
+            orgs={orgs}
             fleetMinMonth={fleetMinMonth}
             fleetMinWeek={fleetMinWeek}
             fleetMinDay={fleetMinDay}

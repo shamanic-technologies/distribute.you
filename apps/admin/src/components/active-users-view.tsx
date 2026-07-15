@@ -206,7 +206,7 @@ export function ActiveUsersView() {
           <Skeleton className="h-64 w-full rounded" />
         </section>
       ) : byUser ? (
-        <ActiveUsersTable data={byUser} />
+        <ActiveUsersTable data={byUser} accounts={data ?? null} />
       ) : null}
     </>
   );
