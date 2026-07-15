@@ -395,8 +395,8 @@
       min-height:91px;
       display:flex;
       flex-direction:column;
-      justify-content:center;
-      padding:16px 25px;
+      justify-content:flex-start;
+      padding:18px 25px;
       border-left:1px solid var(--line-soft);
     }
     .proof-rail-item:first-child{border-left:0;padding-left:0}
@@ -404,11 +404,13 @@
     .proof-rail-item b{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--text)}
     .proof-rail-item span{margin-top:5px;color:var(--faint);font-size:10.5px;line-height:1.45}
     .proof-rail-item a:hover b{color:var(--green)}
-    /* compact non-clickable live-rate stat (positive reply / website visits) */
+    /* compact non-clickable live-rate stat (positive reply / website visits).
+       Price is the lead figure, top-aligned with the Live / Open source words. */
     .proof-rail-stat .prs-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-    .prs-price{font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:-.4px;color:var(--text)}
-    .prs-spark{display:block;width:100%;max-width:132px;height:20px;margin:6px 0 1px}
-    .proof-rail-stat span{margin-top:4px}
+    .prs-price{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1;color:var(--text)}
+    .prs-spark{display:block;width:100%;max-width:132px;height:18px;margin:8px 0 2px}
+    .proof-rail-stat span{margin-top:2px}
+    .prs-note{margin-top:3px;color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.03em;line-height:1.4}
 
     section{padding:102px 0}
     .section-head{max-width:760px;margin-bottom:47px}
