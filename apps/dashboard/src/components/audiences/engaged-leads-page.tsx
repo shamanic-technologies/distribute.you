@@ -635,6 +635,7 @@ export function EngagedLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("positive-replies");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
   const hasAutoSelectedTab = useRef(false);
 
   const { data, isPending, isPlaceholderData } = useAuthQuery(
@@ -817,6 +818,21 @@ export function EngagedLeadsPage() {
     });
   }, [activeList, search]);
 
+  // Paginate the active-tab (post-search) list at 50/page. Pure display slice —
+  // the tab count badge + CSV export stay whole-list. Reset to page 0 whenever the
+  // tab or search changes (else you land on an out-of-range page after the subset
+  // shrinks). Clamp defensively in case a poll shrinks the list under the cursor.
+  const PAGE_SIZE = 50;
+  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedLeads = useMemo(
+    () => filteredLeads.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE),
+    [filteredLeads, safePage],
+  );
+  useEffect(() => {
+    setPage(0);
+  }, [activeTab, search]);
+
   // Tabs = the realized-outcome tab (when available) + the goal's on-path engagement
   // steps, outcome-first (goal-steps single source), off-funnel steps dropped.
   const tabs: { key: Tab; label: string; count: number }[] = visibleTabs.map((key) => ({
@@ -914,7 +930,35 @@ export function EngagedLeadsPage() {
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} outcomeDates={outcomeDates} />
+              <>
+                <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} outcomeDates={outcomeDates} />
+                {filteredLeads.length > PAGE_SIZE && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-sm text-gray-500">
+                      {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filteredLeads.length)} of {filteredLeads.length.toLocaleString("en-US")}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        disabled={safePage === 0}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-sm text-gray-500">Page {safePage + 1} of {pageCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                        disabled={safePage >= pageCount - 1}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
