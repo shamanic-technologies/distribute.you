@@ -4781,6 +4781,34 @@ export async function getAuditAccounts(token?: string): Promise<AuditAccounts> {
   return apiCall<AuditAccounts>(`/features/audit/accounts`, { token });
 }
 
+// ── Active users history (staff) ─────────────────────────────────────────────
+// Cross-org, fleet-wide HISTORY of active users (distinct orgs with an active,
+// funded, non-paused cold-email brand) bucketed monthly / weekly / daily, each
+// with a period-over-period growth rate, plus the live current total. Aggregate
+// counts only. Producer-owned shape (features-service /internal/stats/active-users).
+export interface ActiveUsersBucket {
+  period: string; // "YYYY-MM" | "YYYY-Www" | "YYYY-MM-DD"
+  periodStart: string; // UTC start of the bucket, "YYYY-MM-DD" (month 1st / week Monday / day)
+  activeUsers: number;
+  growthPct: number | null; // period-over-period %, null on the first bucket
+}
+
+export interface ActiveUsersHistory {
+  currentTotal: number; // live distinct active-user count (matches the accounts snapshot)
+  monthly: ActiveUsersBucket[];
+  weekly: ActiveUsersBucket[];
+  daily: ActiveUsersBucket[];
+  asOf: string;
+}
+
+/**
+ * Fleet-wide active-users history (monthly/weekly/daily + growth). Staff-gated
+ * platform view. Transparent proxy to features-service GET /internal/stats/active-users.
+ */
+export async function getActiveUsersHistory(token?: string): Promise<ActiveUsersHistory> {
+  return apiCall<ActiveUsersHistory>(`/features/audit/active-users`, { token });
+}
+
 // ── Google CRM (staff console) ───────────────────────────────────────────────
 // Typed rows from google-service via the api-service gateway. The clean typed
 // fields (fromEmail/subject/…, displayName/primaryEmail/…) are an ADDITIVE
