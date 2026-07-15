@@ -5,13 +5,16 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getAuditAccounts,
   getActiveUsersHistory,
+  getActiveUsersByUser,
   type AuditAccounts,
   type ActiveUsersBucket,
   type ActiveUsersHistory,
+  type ActiveUsersByUser,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { PeriodBarGrowthChart, type PeriodBarGrowthPoint } from "@/components/period-bar-growth-chart";
+import { ActiveUsersTable } from "@/components/active-users-table";
 
 const num = (n: number) => n.toLocaleString("en-US");
 
@@ -86,6 +89,13 @@ export function ActiveUsersView() {
     isError: historyError,
     error: historyErr,
   } = useAuthQuery<ActiveUsersHistory>(["activeUsersHistory"], () => getActiveUsersHistory(), pollOptionsSlower);
+
+  const {
+    data: byUser,
+    isPending: byUserPending,
+    isError: byUserError,
+    error: byUserErr,
+  } = useAuthQuery<ActiveUsersByUser>(["activeUsersByUser"], () => getActiveUsersByUser(), pollOptionsSlower);
 
   const s = data?.stats;
 
@@ -173,6 +183,19 @@ export function ActiveUsersView() {
           </div>
         </section>
       )}
+
+      {byUserError ? (
+        <section className="rounded-lg border border-red-200 bg-white p-6">
+          <p className="text-sm font-medium text-red-700">Couldn&apos;t load users.</p>
+          <p className="mt-1 text-xs text-red-500">{byUserErr?.message ?? "Unknown error"}</p>
+        </section>
+      ) : byUserPending ? (
+        <section className="rounded-lg border border-gray-200 bg-white p-6">
+          <Skeleton className="h-64 w-full rounded" />
+        </section>
+      ) : byUser ? (
+        <ActiveUsersTable data={byUser} />
+      ) : null}
     </>
   );
 }
