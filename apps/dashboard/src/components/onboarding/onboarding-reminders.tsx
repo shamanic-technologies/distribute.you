@@ -15,10 +15,32 @@ import { useBillingGuard } from "@/lib/billing-guard";
 import { pollOptions } from "@/lib/query-options";
 import { REMINDER_COPY } from "@/lib/onboarding-content";
 import {
+  audienceNudge,
   nextReminder,
   reminderDismissKey,
+  type AudienceNudge,
   type ReminderKind,
 } from "@/lib/onboarding-reminders";
+
+/** Pick the audience-reminder copy for the current health tier. `low-remaining`
+ *  interpolates the best remaining percentage into its body. */
+function audienceReminderCopy(nudge: AudienceNudge): {
+  title: string;
+  body: string;
+  cta: string;
+} {
+  if (nudge.tier === "exhausted") return REMINDER_COPY.audienceExhausted;
+  if (nudge.tier === "low-remaining") {
+    return {
+      ...REMINDER_COPY.audienceLowRemaining,
+      body: REMINDER_COPY.audienceLowRemaining.body.replace(
+        "{pct}",
+        String(nudge.remainingPct ?? 0),
+      ),
+    };
+  }
+  return REMINDER_COPY.audience;
+}
 
 /**
  * State-based reminder modals shown after the welcome tour (or immediately for
@@ -50,9 +72,7 @@ export function OnboardingReminders() {
 
   if (!brandId || !account || !audiencesData) return null;
 
-  const activeAudienceCount = audiencesData.audiences.filter(
-    (a) => a.status === "active",
-  ).length;
+  const nudge = audienceNudge(audiencesData.audiences);
 
   const topupDismissed =
     typeof window !== "undefined" &&
@@ -73,7 +93,7 @@ export function OnboardingReminders() {
     hasAutoTopup: account.has_auto_topup,
     autoReloadSupported,
     outOfCredit,
-    activeAudienceCount,
+    audienceNudge: nudge,
     topupDismissed,
     audienceDismissed,
   });
@@ -97,9 +117,11 @@ export function OnboardingReminders() {
   // For an auto-reload-blocked brand the topup reminder is a one-time recharge,
   // never an "enable auto-topup" ask (which is impossible for their card).
   const copy =
-    kind === "topup" && !autoReloadSupported
-      ? REMINDER_COPY.topupRecharge
-      : REMINDER_COPY[kind];
+    kind === "topup"
+      ? !autoReloadSupported
+        ? REMINDER_COPY.topupRecharge
+        : REMINDER_COPY.topup
+      : audienceReminderCopy(nudge);
 
   return (
     <div
