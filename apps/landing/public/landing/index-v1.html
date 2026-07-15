@@ -404,6 +404,11 @@
     .proof-rail-item b{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--text)}
     .proof-rail-item span{margin-top:5px;color:var(--faint);font-size:10.5px;line-height:1.45}
     .proof-rail-item a:hover b{color:var(--green)}
+    /* compact non-clickable live-rate stat (positive reply / website visits) */
+    .proof-rail-stat .prs-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+    .prs-price{font-family:var(--display);font-size:22px;font-weight:600;letter-spacing:-.4px;color:var(--text)}
+    .prs-spark{display:block;width:100%;max-width:132px;height:20px;margin:6px 0 1px}
+    .proof-rail-stat span{margin-top:4px}
 
     section{padding:102px 0}
     .section-head{max-width:760px;margin-bottom:47px}
@@ -829,7 +834,7 @@
 
           <div class="hero-links" id="form-note">
             <span class="microcopy">Website in · buyers confirmed · daily budget set · done</span>
-            <a class="inline-link" href="https://distribute.you/#outcomes">See live campaign rates</a>
+            <a class="inline-link" href="https://distribute.you/benchmarks">See live campaign rates</a>
           </div>
 
           <div class="trust-strip" aria-label="Key product facts">
@@ -879,9 +884,9 @@
 
     <div class="proof-rail" aria-label="Proof and transparency">
       <div class="wrap proof-rail-grid">
-        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>23k+</b><span>emails logged in the public dataset</span></a></div>
-        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>25</b><span>outreach workflows tracked publicly</span></a></div>
-        <div class="proof-rail-item"><a href="https://distribute.you/#outcomes"><b>Live</b><span>observed campaign rates you can inspect</span></a></div>
+        __HERO_POS__
+        __HERO_WEB__
+        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>Live</b><span>observed campaign rates you can inspect</span></a></div>
         <div class="proof-rail-item"><a href="https://github.com/shamanic-technologies/distribute.you"><b>Open source</b><span>code and methodology available to inspect</span></a></div>
       </div>
     </div>
@@ -1039,7 +1044,7 @@
             <p>See aggregate campaign results, compare outreach workflows, and inspect how the product is built. The numbers move because the campaigns are real.</p>
 
             <div class="proof-links">
-              <a class="proof-link" href="https://distribute.you/#outcomes">
+              <a class="proof-link" href="https://distribute.you/benchmarks">
                 <span>Production data</span>
                 <b>Live rates</b>
                 <small>Aggregate campaign results and real funnel behavior.</small>
@@ -1068,18 +1073,6 @@
             <div class="snapshot-note">A campaign example, not a platform-wide average. Your cost depends on targeting, offer, geography, copy, deliverability, and downstream conversion.</div>
           </aside>
         </div>
-      </div>
-    </section>
-
-    <section id="outcomes">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="ticker-live"><span class="ticker-live-dot" aria-hidden="true"></span>Live · observed prices</span>
-          <h2 style="margin-top:14px">The going rate for outcomes.</h2>
-          <p class="section-copy">Nobody pays a fixed price. These are the average prices our campaigns are paying right now, across every brand we run. Set a daily budget and the outcomes start flowing.</p>
-        </div>
-        __TICKER_BOARD__
-        <p class="ticker-legend"><b>Website visits</b> and <b>positive replies</b> we measure ourselves, from our own sending inboxes. <b>Signups</b> are reported by each client from their own funnel, so they vary more between brands.</p>
       </div>
     </section>
 
@@ -1264,7 +1257,7 @@
           <p>Drop your URL, approve the buyers, and set the budget. distribute handles the prospecting, emails, follow-ups, and reply filtering. You step in when someone is interested.</p>
           <div class="closing-actions">
             <a class="button primary" href="https://dashboard.distribute.you/sign-up">Launch my campaign →</a>
-            <a class="button secondary" href="https://distribute.you/#outcomes">See public performance</a>
+            <a class="button secondary" href="https://distribute.you/benchmarks">See public performance</a>
           </div>
           <div class="microcopy">Under 30-second setup · from $1/day · no seats · pause anytime</div>
         </div>
@@ -1283,7 +1276,7 @@
           <h4>Product</h4>
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
-          <a href="#outcomes">Live rates</a>
+          <a href="https://distribute.you/benchmarks">Live rates</a>
           <a href="https://distribute.you/benchmarks">Benchmarks</a>
         </div>
         <div class="footer-col">
