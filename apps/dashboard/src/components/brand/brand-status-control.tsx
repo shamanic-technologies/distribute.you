@@ -218,8 +218,18 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
   const { mutate: setPaused, isPending: savingPause } = useMutation({
     mutationFn: (next: boolean) => setBrandPause(brandId, next),
-    onSuccess: (res) => {
+    onSuccess: (res, next) => {
       queryClient.setQueryData(["brandPause", brandId], res);
+      // Notify the user (staff BCC'd) that the brand just switched state.
+      // Fire-and-forget: a failed send never blocks the toggle. `next` is the
+      // NEW paused value (true = just paused, false = just resumed).
+      void fetch("/api/brand-status-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brandId, paused: next }),
+      }).catch((err) =>
+        console.error("[brand-status-email] notify failed", err),
+      );
     },
   });
   const {

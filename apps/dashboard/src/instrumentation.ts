@@ -134,6 +134,42 @@ export const EMAIL_TEMPLATES = [
       </p>`),
     textBody: `You're live. Your first {{outcomeNoun}} are on the way.\n\nYour campaign is running. We're finding the decision-makers at the companies you want, writing the emails, and sending them from our own domains, on your behalf.\n\nOnly interested prospects come back to you. Watch your {{outcomeNoun}} land from the dashboard as they come in.\n\nOpen your dashboard: ${DASHBOARD_URL}`,
   },
+  // Brand status switch — sent when the user flips Pause / Restart on a brand.
+  // Recipient is the org user; staff are BCC'd on the send (brand-status-email
+  // route). Positive, reassuring tone for BOTH directions. Vars: {{firstName}}
+  // {{brandName}}.
+  {
+    name: "brand-paused",
+    subject: "{{brandName}} is paused",
+    htmlBody: emailLayout(`
+      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">{{brandName}} is on pause.</h1>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
+        Hi {{firstName}}, we've paused outreach for {{brandName}}. Nothing is lost. Your audiences, your credits, and your setup stay exactly as they are.
+      </p>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
+        Flip it back on whenever you're ready and we pick up right where we left off.
+      </p>
+      <p style="margin:0;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
+      </p>`),
+    textBody: `{{brandName}} is on pause.\n\nHi {{firstName}}, we've paused outreach for {{brandName}}. Nothing is lost. Your audiences, your credits, and your setup stay exactly as they are.\n\nFlip it back on whenever you're ready and we pick up right where we left off.\n\nOpen your dashboard: ${DASHBOARD_URL}`,
+  },
+  {
+    name: "brand-resumed",
+    subject: "{{brandName}} is live again",
+    htmlBody: emailLayout(`
+      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">{{brandName}} is back on.</h1>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
+        Hi {{firstName}}, outreach for {{brandName}} is running again. We're back to finding the right people, writing the emails, and sending them from our own domains, on your behalf.
+      </p>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
+        Positive replies land straight in your dashboard as they come in.
+      </p>
+      <p style="margin:0;">
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
+      </p>`),
+    textBody: `{{brandName}} is back on.\n\nHi {{firstName}}, outreach for {{brandName}} is running again. We're back to finding the right people, writing the emails, and sending them from our own domains, on your behalf.\n\nPositive replies land straight in your dashboard as they come in.\n\nOpen your dashboard: ${DASHBOARD_URL}`,
+  },
 
   // ── Admin notifications (plain, no layout) ──
   {
