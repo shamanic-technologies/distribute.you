@@ -14,7 +14,7 @@ import {
   type TrafficSource,
 } from "@/lib/public-stats";
 import { cmgrSummary, monthlySignups, weeklySignups, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
-import { formatCount } from "@/lib/format-number";
+import { formatCount, formatPctAdaptive } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
@@ -39,8 +39,8 @@ interface StatCardProps {
 }
 
 function pct(numerator: number, denominator: number): string {
-  if (denominator === 0) return "0.0%";
-  return `${((numerator / denominator) * 100).toFixed(1)}%`;
+  if (denominator === 0) return "0%";
+  return formatPctAdaptive((numerator / denominator) * 100);
 }
 
 function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
@@ -105,7 +105,7 @@ function SourcesTable({ sources }: { sources: TrafficSource[] }) {
               </div>
             </div>
             <p className="text-sm font-semibold text-gray-950 sm:text-right">{formatCount(source.visitors)}</p>
-            <p className="text-xs text-gray-500 sm:text-right">{source.sharePct.toFixed(1)}%</p>
+            <p className="text-xs text-gray-500 sm:text-right">{formatPctAdaptive(source.sharePct)}</p>
           </div>
         ))}
       </div>

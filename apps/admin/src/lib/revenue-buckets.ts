@@ -87,16 +87,34 @@ export function revenueCmgrSummary(buckets: RevenueBucket[]): { latestPct: numbe
   return { latestPct, avgPct };
 }
 
-/** Daily MRR-over-time line points (realized fleet spend per day since inception). */
-export interface DailyLinePoint {
-  label: string;
-  value: number;
+// ── MRR / ARR (VC run-rate) ──────────────────────────────────────────────────
+// MRR = monthly recurring revenue, ARR = annual run-rate = MRR × 12. Standard VC
+// convention: annualize each period by its natural multiple, MRR = ARR / 12.
+//   monthly bucket → ARR = revenue × 12,  MRR = revenue
+//   weekly  bucket → ARR = revenue × 52,  MRR = revenue × 52/12
+// Scaling every bucket's value by a constant leaves the growth% and CMGR/CWGR%
+// UNCHANGED (a ratio is scale-invariant) — so MRR/ARR reuse the revenue buckets'
+// derived growth, only the bar magnitude changes.
+const MONTHS_PER_YEAR = 12;
+const WEEKS_PER_YEAR = 52;
+
+export const MRR_FACTOR = { month: 1, week: WEEKS_PER_YEAR / MONTHS_PER_YEAR } as const;
+export const ARR_FACTOR = { month: MONTHS_PER_YEAR, week: WEEKS_PER_YEAR } as const;
+
+/** Scale a bucket series' values by a constant; growth/CMGR are preserved. */
+export function scaleBuckets(buckets: RevenueBucket[], factor: number): RevenueBucket[] {
+  if (factor === 1) return buckets;
+  return buckets.map((b) => ({ ...b, value: Number((b.value * factor).toFixed(2)) }));
 }
 
-export function dailyRevenueLine(buckets: FleetRevenueBucket[]): DailyLinePoint[] {
-  return [...buckets]
-    .sort((a, b) => a.period.localeCompare(b.period))
-    .map((b) => ({ label: bucketLabel(b.periodStart, "day"), value: b.revenueUsd }));
+/** Distinct weeks tracked since the first billed day (7-day blocks). */
+export function trackedWeeks(sinceInceptionDaily: FleetRevenueBucket[]): number {
+  return Math.ceil(sinceInceptionDaily.length / 7);
+}
+
+/** Map derived revenue buckets into the shared PeriodCompoundChart point shape. */
+export function toCompoundPoints(buckets: RevenueBucket[], withGrowth = true) {
+  return buckets.map((b) => ({ label: b.label, value: b.value, cmgrPct: withGrowth ? b.cmgrPct : null }));
 }
 
 // ── Average-revenue-per-X series ─────────────────────────────────────────────

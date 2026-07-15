@@ -4,7 +4,10 @@ import path from "path";
 import {
   revenueBuckets,
   revenueCmgrSummary,
-  dailyRevenueLine,
+  scaleBuckets,
+  trackedWeeks,
+  MRR_FACTOR,
+  ARR_FACTOR,
   monthlyRevenueByKey,
   monthlyTimelineTotals,
   monthlyActiveUsersByKey,
@@ -47,15 +50,23 @@ describe("Revenue metrics view — wiring", () => {
   it("renders every requested revenue surface", () => {
     expect(revenueView).toContain("Total revenue");
     expect(revenueView).toContain("Current MRR");
+    expect(revenueView).toContain("Tracked revenue weeks");
     expect(revenueView).toContain("Monthly revenue");
-    expect(revenueView).toContain("CMGR since inception");
     expect(revenueView).toContain("Weekly revenue");
+    expect(revenueView).toContain("CMGR since inception");
     expect(revenueView).toContain("CWGR since inception");
-    expect(revenueView).toContain("MRR over time");
+    // MRR / ARR card pairs replace the old daily MRR line.
+    expect(revenueView).toContain("Monthly MRR");
+    expect(revenueView).toContain("Weekly MRR");
+    expect(revenueView).toContain("Monthly ARR");
+    expect(revenueView).toContain("Weekly ARR");
+    expect(revenueView).not.toContain("MRR over time");
     expect(revenueView).toContain("Avg revenue per unique visitor");
     expect(revenueView).toContain("Avg revenue per signup");
     expect(revenueView).toContain("Avg revenue per paid client");
     expect(revenueView).toContain("average of the monthly averages");
+    // The bar charts come from the shared signups chart (current-period pencil + growth line).
+    expect(revenueView).toContain("PeriodCompoundChart");
   });
 });
 
@@ -84,13 +95,26 @@ describe("Revenue bucket derivations", () => {
     expect(avgPct).toBe(100);
   });
 
-  it("daily line preserves order and amounts", () => {
-    const daily: FleetRevenueBucket[] = [
-      { period: "2026-07-02", periodStart: "2026-07-02", revenueUsd: 20 },
-      { period: "2026-07-01", periodStart: "2026-07-01", revenueUsd: 10 },
-    ];
-    const line = dailyRevenueLine(daily);
-    expect(line.map((p) => p.value)).toEqual([10, 20]);
+  it("MRR/ARR scale the value but leave growth + CMGR unchanged (ratio-invariant)", () => {
+    const rev = revenueBuckets(monthly, "month");
+    const arr = scaleBuckets(rev, ARR_FACTOR.month); // × 12
+    expect(arr.map((b) => b.value)).toEqual([1200, 2400, 4800]);
+    // growth% and cmgr% identical to the revenue series
+    expect(arr.map((b) => b.growthPct)).toEqual(rev.map((b) => b.growthPct));
+    expect(arr.map((b) => b.cmgrPct)).toEqual(rev.map((b) => b.cmgrPct));
+    // monthly MRR is unscaled; weekly MRR/ARR annualize by 52
+    expect(MRR_FACTOR.month).toBe(1);
+    expect(ARR_FACTOR.week).toBe(52);
+    expect(MRR_FACTOR.week).toBeCloseTo(52 / 12, 5);
+  });
+
+  it("trackedWeeks counts 7-day blocks since the first billed day", () => {
+    const days: FleetRevenueBucket[] = Array.from({ length: 126 }, (_, i) => ({
+      period: `d${i}`,
+      periodStart: "2026-03-12",
+      revenueUsd: 1,
+    }));
+    expect(trackedWeeks(days)).toBe(18);
   });
 
   it("avg-per-X aligns revenue and denominators by month, excludes zero-denominator months from headline", () => {

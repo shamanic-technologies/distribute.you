@@ -37,3 +37,22 @@ export function formatCentsAsUsdOrNull(cents: string | number | null | undefined
 export function formatCount(n: number): string {
   return n.toLocaleString("en-US");
 }
+
+/**
+ * Adaptive percent: 1 decimal below 10% (`2.7%`), whole percent at or above
+ * (`45%`, not `45.2%`). Unsigned — for shares / conversions.
+ */
+export function formatPctAdaptive(value: number): string {
+  const decimals = Math.abs(value) < 10 ? 1 : 0;
+  return `${value.toFixed(decimals)}%`;
+}
+
+/**
+ * Adaptive SIGNED growth percent: leading `+` for positive, 1 decimal below 10%
+ * (`+2.7%`), whole percent at or above (`+139%`, not `+138.5%`). For growth /
+ * CMGR / CWGR figures.
+ */
+export function formatGrowthPct(value: number): string {
+  const decimals = Math.abs(value) < 10 ? 1 : 0;
+  return `${value > 0 ? "+" : ""}${value.toFixed(decimals)}%`;
+}
