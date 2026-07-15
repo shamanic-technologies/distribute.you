@@ -18,6 +18,7 @@ import {
   PaperAirplaneIcon,
   PencilSquareIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -122,6 +123,7 @@ type Step =
   // then walk the offer levers (one screen each). Never persisted to the resume
   // snapshot (the persist effect skips on ?launch_checkout=success), so they are
   // intentionally NOT in ALL_STEPS and need no ONBOARDING_STATE_VERSION bump.
+  | "celebrate"
   | "phone"
   | "ltr"
   | "offer"
@@ -651,12 +653,12 @@ export function Onboarding() {
     restored
       ? // A Stripe checkout SUCCESS return is owned by the dedicated checkout effect
         // (resumeCheckoutLaunch → the post-payment steps); land on the first
-        // post-payment step ("phone") on first paint so the budget step never
+        // post-payment step ("celebrate") on first paint so the budget step never
         // flashes before that effect runs. The launching loader is deferred until
         // the user finishes the post-payment steps. A cancelled return still
         // resolves to its snapshot step (pricing).
         searchParams.get("launch_checkout") === "success"
-        ? "phone"
+        ? "celebrate"
         : resolveResumeStep(restored.step, restored.brandId)
       : resumeBrandIdParam && searchParams.get("launch_checkout") === null
         ? // Cross-session brand resume: show the loading screen immediately (no URL
@@ -1504,12 +1506,12 @@ export function Onboarding() {
     try {
       const pending = readPendingCheckoutLaunch();
       pendingCheckoutRef.current = pending;
-      applyRestoredOnboardingState(pending.onboardingState, { step: "phone" });
+      applyRestoredOnboardingState(pending.onboardingState, { step: "celebrate" });
       setCheckoutBudgetUsd(pending.budgetUsd);
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
       setLaunchStep(0);
       setOfferIndex(0);
-      setStep("phone");
+      setStep("celebrate");
       setBusy(false);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "checkout_return" });
@@ -2116,6 +2118,26 @@ export function Onboarding() {
     );
   }
 
+  if (step === "celebrate") {
+    return (
+      <StepShell
+        maxWidth="sm:max-w-2xl"
+        footer={<NextButton onClick={() => setStep("phone")} label="Let's optimize" />}
+      >
+        <ConfettiBurst />
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 text-brand-600">
+            <SparklesIcon className="h-8 w-8" />
+          </div>
+          <h1 className="mt-6 font-display text-4xl font-bold leading-tight text-gray-950">You're in. Welcome aboard.</h1>
+          <p className="mt-3 max-w-md text-base leading-7 text-gray-500">
+            Your outreach is funded and ready to launch. Now a few quick details so we get the most value out of every dollar you put in. It takes under a minute.
+          </p>
+        </div>
+      </StepShell>
+    );
+  }
+
   if (step === "phone") {
     return (
       <StepShell
@@ -2700,6 +2722,39 @@ function BrandStepHeader({ domain, hostname, onEdit }: { domain: string | null; 
 // and only on the few steps too tall to fit. `svh` (not `dvh`) so the iOS Safari
 // address bar can't push the pinned CTA off-screen. On `sm+` it reverts to the prior
 // floating card: centered, max-width-capped, rounded border + shadow, natural flow.
+// One-shot confetti burst on mount (post-payment celebration). Dynamic-imports
+// canvas-confetti so it stays out of the initial onboarding bundle, and guards
+// against SSR (window absent). Renders nothing.
+function ConfettiBurst() {
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const confetti = (await import("canvas-confetti")).default;
+        if (cancelled) return;
+        const fire = (particleRatio: number, opts: Record<string, unknown>) =>
+          confetti({
+            origin: { y: 0.6 },
+            particleCount: Math.floor(200 * particleRatio),
+            ...opts,
+          });
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2, { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+        fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+        fire(0.1, { spread: 120, startVelocity: 45 });
+      } catch (err) {
+        // Confetti is pure delight — never block the (already paid) flow on it.
+        console.error("[dashboard] onboarding: confetti failed to load", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return null;
+}
+
 function StepShell({
   header,
   footer,
