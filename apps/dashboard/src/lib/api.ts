@@ -1191,16 +1191,29 @@ const SuggestAudiencesResponseSchema = z.object({
  * one or more, which are ACTIVATED via `setAudienceStatus(audienceId, "active")`.
  * Unpicked candidates remain suggested/inactive.
  */
+// Cold human-service (audience suggest) + brand-service (ICP) calls can HANG,
+// not just fail — a backend 502/partial-failure that never closes the socket
+// leaves the request PENDING forever. The onboarding audience step's loaders
+// (the prewarm `.finally`, `runSuggest`'s `finally`) only clear on settle, and a
+// hang never settles → eternal "Generating…" spinner. Bounding the request turns
+// a hang into a rejection so the existing catch/finally clears the loader + shows
+// the error. 2 min is generous for a slow cold suggest but finite.
+const SUGGEST_TIMEOUT_MS = 120_000;
+
 export async function suggestAudiences(
   brandId: string,
   nlPrompt: string,
   token?: string,
 ): Promise<{ candidates: AudienceCandidate[] }> {
-  const raw = await apiCall<unknown>(`/orgs/audiences/suggest`, {
-    token,
-    method: "POST",
-    body: { brandId, nlPrompt },
-  });
+  const raw = await withTimeout(
+    apiCall<unknown>(`/orgs/audiences/suggest`, {
+      token,
+      method: "POST",
+      body: { brandId, nlPrompt },
+    }),
+    SUGGEST_TIMEOUT_MS,
+    "suggestAudiences",
+  );
   const parsed = SuggestAudiencesResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] suggestAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
@@ -1403,11 +1416,17 @@ export async function suggestBrandIcp(
   existingIcps?: string[],
   token?: string,
 ): Promise<{ icp: string }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
-    token,
-    method: "POST",
-    body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
-  });
+  // Same hang class as suggestAudiences — the prewarm awaits this FIRST, so a
+  // hung ICP call stalls the audience prewarm before suggestAudiences even runs.
+  const raw = await withTimeout(
+    apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
+      token,
+      method: "POST",
+      body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
+    }),
+    SUGGEST_TIMEOUT_MS,
+    "suggestBrandIcp",
+  );
   const parsed = SuggestBrandIcpResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] suggestBrandIcp: response shape mismatch", { issues: parsed.error.issues, raw });
