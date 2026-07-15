@@ -124,9 +124,9 @@ function PeriodCard({
 function AvgHeadline({ series }: { series: AvgSeries }) {
   return (
     <div>
-      <p className="text-2xl font-semibold text-gray-950">{series.snapshotUsd === null ? "—" : usdFull(series.snapshotUsd)}</p>
+      <p className="text-2xl font-semibold text-gray-950">{series.pooledUsd === null ? "—" : usdFull(series.pooledUsd)}</p>
       <p className="mt-0.5 text-xs text-gray-400">
-        {series.avgOfAvgUsd === null ? "—" : usdFull(series.avgOfAvgUsd)} average of the monthly averages
+        {series.snapshotUsd === null ? "—" : usdFull(series.snapshotUsd)} last complete month
       </p>
     </div>
   );
@@ -336,22 +336,22 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
       <section className="grid gap-6 lg:grid-cols-3">
         <AvgCard
           title="Avg revenue per unique visitor"
-          subtitle="Monthly revenue divided by unique website visitors."
-          series={derived?.perVisitor ?? { buckets: [], snapshotUsd: null, avgOfAvgUsd: null }}
+          subtitle="Total revenue divided by total unique website visitors, since inception."
+          series={derived?.perVisitor ?? { buckets: [], pooledUsd: null, snapshotUsd: null, avgOfAvgUsd: null }}
           valueLabel="per visitor"
           pending={isPending || !derived}
         />
         <AvgCard
           title="Avg revenue per signup"
-          subtitle="Monthly revenue divided by signups."
-          series={derived?.perSignup ?? { buckets: [], snapshotUsd: null, avgOfAvgUsd: null }}
+          subtitle="Total revenue divided by total signups, since inception."
+          series={derived?.perSignup ?? { buckets: [], pooledUsd: null, snapshotUsd: null, avgOfAvgUsd: null }}
           valueLabel="per signup"
           pending={isPending || !derived}
         />
         <AvgCard
           title="Avg revenue per paid client"
-          subtitle="Monthly revenue divided by active paying clients."
-          series={derived?.perPaidClient ?? { buckets: [], snapshotUsd: null, avgOfAvgUsd: null }}
+          subtitle="Total revenue divided by total active paying clients, since inception."
+          series={derived?.perPaidClient ?? { buckets: [], pooledUsd: null, snapshotUsd: null, avgOfAvgUsd: null }}
           valueLabel="per client"
           pending={isPending || !derived}
         />

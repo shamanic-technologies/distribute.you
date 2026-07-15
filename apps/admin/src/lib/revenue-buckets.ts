@@ -150,6 +150,8 @@ export function monthlyActiveUsersByKey(buckets: ActiveUsersBucket[]): Map<strin
 
 export interface AvgSeries {
   buckets: RevenueBucket[];
+  /** Pooled avg-per-X since inception: Σrevenue ÷ Σcount over all concluded, defined months. */
+  pooledUsd: number | null;
   /** Latest CONCLUDED month's avg-per-X (the current run-rate snapshot). */
   snapshotUsd: number | null;
   /** Mean of every concluded month's avg-per-X ("avg of the avg", discrete). */
@@ -172,16 +174,20 @@ export function avgPerSeries(
     const count = countByMonth.get(key) ?? 0;
     const defined = count > 0;
     const value = defined ? Number((revenue / count).toFixed(2)) : 0;
-    return { key, label: monthLabelFromKey(key), value, defined };
+    return { key, label: monthLabelFromKey(key), revenue, count, value, defined };
   });
 
   const buckets = withDerived(rows.map((r) => ({ key: r.key, label: r.label, value: r.value })));
 
   const concludedDefined = rows.slice(0, -1).filter((r) => r.defined);
+  const pooledCount = concludedDefined.reduce((sum, r) => sum + r.count, 0);
+  const pooledUsd = pooledCount
+    ? Number((concludedDefined.reduce((sum, r) => sum + r.revenue, 0) / pooledCount).toFixed(2))
+    : null;
   const snapshotUsd = concludedDefined.length ? concludedDefined[concludedDefined.length - 1].value : null;
   const avgOfAvgUsd = concludedDefined.length
     ? Number((concludedDefined.reduce((sum, r) => sum + r.value, 0) / concludedDefined.length).toFixed(2))
     : null;
 
-  return { buckets, snapshotUsd, avgOfAvgUsd };
+  return { buckets, pooledUsd, snapshotUsd, avgOfAvgUsd };
 }
