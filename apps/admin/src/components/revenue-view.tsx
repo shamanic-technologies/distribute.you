@@ -17,8 +17,7 @@ import type { DailyFunnelPoint } from "@/lib/public-stats";
 import {
   revenueBuckets,
   revenueCmgrSummary,
-  mrrRunRateBuckets,
-  toArr,
+  committedBuckets,
   toCompoundPoints,
   trackedWeeks,
   monthlyRevenueByKey,
@@ -185,9 +184,13 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
     const monthly = revenueBuckets(data.monthly, "month");
     const weekly = revenueBuckets(data.weekly, "week");
 
-    // MRR = realized run-rate (avg daily spend × 30) from the per-day line; ARR = × 12.
-    const monthlyMrr = mrrRunRateBuckets(data.sinceInceptionDaily, "month");
-    const weeklyMrr = mrrRunRateBuckets(data.sinceInceptionDaily, "week");
+    // MRR/ARR = COMMITTED run-rate (active daily budget × 30), snapshotted daily by
+    // features-service. Current-period point == the live Current MRR card.
+    const cm = data.committedMrr;
+    const monthlyMrr = committedBuckets(cm.monthly, "mrrUsd", "month");
+    const weeklyMrr = committedBuckets(cm.weekly, "mrrUsd", "week");
+    const monthlyArr = committedBuckets(cm.monthly, "arrUsd", "month");
+    const weeklyArr = committedBuckets(cm.weekly, "arrUsd", "week");
 
     const revenueByMonth = monthlyRevenueByKey(data.monthly);
     const visitorsByMonth = monthlyTimelineTotals(timeline, "landingVisitors");
@@ -199,8 +202,8 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
       weekly,
       monthlyMrr,
       weeklyMrr,
-      monthlyArr: toArr(monthlyMrr),
-      weeklyArr: toArr(weeklyMrr),
+      monthlyArr,
+      weeklyArr,
       monthlyCmgr: revenueCmgrSummary(monthly),
       weeklyCmgr: revenueCmgrSummary(weekly),
       // ARR = MRR × 12 → same growth, so MRR & ARR share these.
@@ -282,7 +285,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
       <section className="grid gap-6 md:grid-cols-2">
         <PeriodCard
           title="Monthly MRR"
-          subtitle="Realized monthly run-rate: that month's average daily spend × 30."
+          subtitle="Committed run-rate: active daily budgets × 30, recorded daily (current period = live MRR)."
           cmgrLabel="CMGR"
           cmgrUnit="monthly"
           latestPct={mmc?.latestPct ?? null}
@@ -294,7 +297,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
         />
         <PeriodCard
           title="Weekly MRR"
-          subtitle="Realized monthly run-rate: that week's average daily spend × 30."
+          subtitle="Committed run-rate: active daily budgets × 30, recorded weekly (current period = live MRR)."
           cmgrLabel="CWGR"
           cmgrUnit="weekly"
           latestPct={wmc?.latestPct ?? null}
@@ -309,7 +312,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
       <section className="grid gap-6 md:grid-cols-2">
         <PeriodCard
           title="Monthly ARR"
-          subtitle="Realized annual run-rate from each month (MRR × 12)."
+          subtitle="Committed annual run-rate: MRR × 12, recorded monthly."
           cmgrLabel="CMGR"
           cmgrUnit="monthly"
           latestPct={mmc?.latestPct ?? null}
@@ -321,7 +324,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
         />
         <PeriodCard
           title="Weekly ARR"
-          subtitle="Realized annual run-rate from each week (MRR × 12)."
+          subtitle="Committed annual run-rate: MRR × 12, recorded weekly."
           cmgrLabel="CWGR"
           cmgrUnit="weekly"
           latestPct={wmc?.latestPct ?? null}

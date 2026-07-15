@@ -1,4 +1,4 @@
-import type { ActiveUsersBucket, FleetRevenueBucket } from "@/lib/api";
+import type { ActiveUsersBucket, CommittedMrrBucket, FleetRevenueBucket } from "@/lib/api";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 
 /**
@@ -87,67 +87,21 @@ export function revenueCmgrSummary(buckets: RevenueBucket[]): { latestPct: numbe
   return { latestPct, avgPct };
 }
 
-// ── MRR / ARR (realized run-rate) ────────────────────────────────────────────
-// MRR is a monthly RUN-RATE (a rate), NOT a period revenue total — so it reads in
-// the same units as the "Current MRR" card (active daily budget × 30). We compute
-// the REALIZED run-rate from the per-day realized-spend line:
-//   MRR[period] = (average daily realized spend in the period) × 30
-//              = (Σ revenue in period / days in period) × 30
-// Dividing by the ACTUAL day count (from the daily series) makes the current,
-// still-partial period extrapolate to a full-month rate instead of showing a
-// half-month total. ARR = MRR × 12 (scale-invariant → same growth/CMGR).
-//
-// This is the REALIZED run-rate (actual spend); the "Current MRR" card is the
-// COMMITTED run-rate (active daily budget × 30). Realized ≤ committed, so the
-// latest realized point sits a little under the card — the real spend-vs-budget
-// gap. Committed history isn't reconstructable (only current budget is known).
-const MRR_DAYS = 30;
-const MONTHS_PER_YEAR = 12;
-
-function isoWeekKeyLabel(date: Date): { key: string; label: string } {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay() || 7; // Sunday -> 7
-  const monday = new Date(d);
-  monday.setUTCDate(monday.getUTCDate() - (day - 1));
-  d.setUTCDate(d.getUTCDate() + 4 - day); // Thursday of this ISO week
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  const ww = String(week).padStart(2, "0");
-  const label = monday.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-  return { key: `${d.getUTCFullYear()}-W${ww}`, label };
-}
-
-function monthKeyLabel(date: Date): { key: string; label: string } {
-  const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-  return { key, label: monthLabelFromKey(key) };
-}
-
-/**
- * Realized MRR run-rate per period from the per-day realized-spend series:
- * MRR = (Σ revenue in period / days in period) × 30. Growth/CMGR derived on the
- * run-rate itself.
- */
-export function mrrRunRateBuckets(daily: FleetRevenueBucket[], granularity: "month" | "week"): RevenueBucket[] {
-  const groups = new Map<string, { label: string; sum: number; days: number }>();
-  for (const d of daily) {
-    const date = new Date(`${d.periodStart}T00:00:00.000Z`);
-    const { key, label } = granularity === "month" ? monthKeyLabel(date) : isoWeekKeyLabel(date);
-    const g = groups.get(key) ?? { label, sum: 0, days: 0 };
-    g.sum += d.revenueUsd;
-    g.days += 1;
-    groups.set(key, g);
-  }
-  const raw = [...groups.entries()].map(([key, g]) => ({
-    key,
-    label: g.label,
-    value: g.days > 0 ? Number(((g.sum / g.days) * MRR_DAYS).toFixed(2)) : 0,
-  }));
-  return withDerived(raw);
-}
-
-/** ARR run-rate = MRR × 12 (scale-invariant → growth/CMGR preserved). */
-export function toArr(mrrBuckets: RevenueBucket[]): RevenueBucket[] {
-  return mrrBuckets.map((b) => ({ ...b, value: Number((b.value * MONTHS_PER_YEAR).toFixed(2)) }));
+// ── MRR / ARR (committed run-rate) ───────────────────────────────────────────
+// MRR/ARR are the COMMITTED run-rate (active daily budget × 30), snapshotted daily
+// by features-service — a point-in-time value, NOT derivable from realized spend
+// (spend underspends budget, and a backward average of a growing fleet always
+// understates the current snapshot). We render the backend committed series; the
+// current-period point equals the live Current MRR card. CMGR/CWGR are derived
+// here from the committed value series (a display annotation, same as revenue).
+export function committedBuckets(
+  buckets: CommittedMrrBucket[],
+  field: "mrrUsd" | "arrUsd",
+  granularity: Granularity,
+): RevenueBucket[] {
+  return withDerived(
+    buckets.map((b) => ({ key: b.period, label: bucketLabel(b.periodStart, granularity), value: b[field] })),
+  );
 }
 
 /** Distinct weeks tracked since the first billed day (7-day blocks). */

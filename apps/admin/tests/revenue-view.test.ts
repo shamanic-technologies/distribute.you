@@ -4,15 +4,14 @@ import path from "path";
 import {
   revenueBuckets,
   revenueCmgrSummary,
-  mrrRunRateBuckets,
-  toArr,
+  committedBuckets,
   trackedWeeks,
   monthlyRevenueByKey,
   monthlyTimelineTotals,
   monthlyActiveUsersByKey,
   avgPerSeries,
 } from "../src/lib/revenue-buckets";
-import type { FleetRevenueBucket, ActiveUsersBucket } from "../src/lib/api";
+import type { FleetRevenueBucket, ActiveUsersBucket, CommittedMrrBucket } from "../src/lib/api";
 import type { DailyFunnelPoint } from "../src/lib/public-stats";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
@@ -44,6 +43,9 @@ describe("Revenue metrics view — wiring", () => {
     expect(api).toContain("/features/audit/revenue");
     expect(api).toContain("totalRevenueUsd");
     expect(api).toContain("currentMrrUsd");
+    // committed MRR/ARR over-time series (daily snapshots) — separate from realized.
+    expect(api).toContain("committedMrr");
+    expect(api).toContain("CommittedMrrBucket");
   });
 
   it("renders every requested revenue surface", () => {
@@ -59,6 +61,9 @@ describe("Revenue metrics view — wiring", () => {
     expect(revenueView).toContain("Weekly MRR");
     expect(revenueView).toContain("Monthly ARR");
     expect(revenueView).toContain("Weekly ARR");
+    // MRR/ARR are the COMMITTED run-rate from the backend snapshot series.
+    expect(revenueView).toContain("committedBuckets");
+    expect(revenueView).toContain("Committed run-rate");
     expect(revenueView).not.toContain("MRR over time");
     expect(revenueView).toContain("Avg revenue per unique visitor");
     expect(revenueView).toContain("Avg revenue per signup");
@@ -95,32 +100,17 @@ describe("Revenue bucket derivations", () => {
     expect(avgPct).toBe(100);
   });
 
-  it("MRR = realized run-rate (avg daily spend × 30), a rate not a period total", () => {
-    // 30 days at $10/day realized → run-rate = $10 × 30 = $300/mo (NOT the $300 total by coincidence);
-    // a HALF month (15 days) at $10/day still reads $300 MRR — extrapolated, not $150.
-    const full: FleetRevenueBucket[] = Array.from({ length: 30 }, (_, i) => ({
-      period: `2026-06-${String(i + 1).padStart(2, "0")}`,
-      periodStart: `2026-06-${String(i + 1).padStart(2, "0")}`,
-      revenueUsd: 10,
-    }));
-    const partial: FleetRevenueBucket[] = Array.from({ length: 15 }, (_, i) => ({
-      period: `2026-07-${String(i + 1).padStart(2, "0")}`,
-      periodStart: `2026-07-${String(i + 1).padStart(2, "0")}`,
-      revenueUsd: 10,
-    }));
-    const mrr = mrrRunRateBuckets([...full, ...partial], "month");
-    expect(mrr.map((b) => b.value)).toEqual([300, 300]); // partial month extrapolates to the same rate
-  });
-
-  it("ARR = MRR × 12 (scale-invariant → growth/CMGR preserved)", () => {
-    const days: FleetRevenueBucket[] = Array.from({ length: 60 }, (_, i) => {
-      const month = i < 30 ? "06" : "07";
-      const day = String((i % 30) + 1).padStart(2, "0");
-      return { period: `2026-${month}-${day}`, periodStart: `2026-${month}-${day}`, revenueUsd: i < 30 ? 10 : 20 };
-    });
-    const mrr = mrrRunRateBuckets(days, "month");
-    const arr = toArr(mrr);
-    expect(arr.map((b) => b.value)).toEqual(mrr.map((b) => b.value * 12));
+  it("committedBuckets render the backend committed MRR/ARR snapshot series with derived growth", () => {
+    const committed: CommittedMrrBucket[] = [
+      { period: "2026-06", periodStart: "2026-06-01", mrrUsd: 1000, arrUsd: 12000, growthPct: null },
+      { period: "2026-07", periodStart: "2026-07-01", mrrUsd: 3090, arrUsd: 37080, growthPct: 209 },
+    ];
+    const mrr = committedBuckets(committed, "mrrUsd", "month");
+    const arr = committedBuckets(committed, "arrUsd", "month");
+    // values come straight from the backend snapshot (no client run-rate math)
+    expect(mrr.map((b) => b.value)).toEqual([1000, 3090]);
+    expect(arr.map((b) => b.value)).toEqual([12000, 37080]);
+    // ARR = MRR × 12 → identical derived growth (scale-invariant)
     expect(arr.map((b) => b.cmgrPct)).toEqual(mrr.map((b) => b.cmgrPct));
     expect(arr.map((b) => b.growthPct)).toEqual(mrr.map((b) => b.growthPct));
   });

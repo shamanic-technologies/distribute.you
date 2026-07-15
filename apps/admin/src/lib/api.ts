@@ -5033,13 +5033,34 @@ export interface FleetRevenueBucket {
   revenueUsd: number; // realized cold-email revenue billed in this bucket (USD)
 }
 
+// COMMITTED MRR/ARR over time — the point-in-time run-rate (active daily budget ×
+// 30), snapshotted daily by features-service. Each bucket's point = the last
+// recorded snapshot in the period; the CURRENT period's point = the live
+// currentMrrUsd (reconciles with the accounts audit). No historical backfill —
+// the series starts at the first snapshot and lengthens each day.
+export interface CommittedMrrBucket {
+  period: string; // "YYYY-MM" (monthly) | "YYYY-Www" (weekly)
+  periodStart: string; // UTC bucket start "YYYY-MM-DD"
+  mrrUsd: number; // committed MRR as of this period (USD)
+  arrUsd: number; // committed ARR = mrrUsd × 12 (USD)
+  growthPct: number | null; // period-over-period %, null on the first/zero-prev bucket
+}
+
+export interface CommittedMrr {
+  currentMrrUsd: number; // live committed MRR (= FleetRevenue.currentMrrUsd)
+  currentArrUsd: number; // live committed ARR = currentMrrUsd × 12
+  monthly: CommittedMrrBucket[];
+  weekly: CommittedMrrBucket[];
+}
+
 export interface FleetRevenue {
   totalRevenueUsd: number; // cumulative realized cold-email revenue since inception (USD)
   currentMrrUsd: number; // live fleet active daily budget × 30 (USD)
-  monthly: FleetRevenueBucket[]; // trailing calendar-month buckets
-  weekly: FleetRevenueBucket[]; // trailing ISO-week buckets
-  daily: FleetRevenueBucket[]; // trailing UTC-day buckets (windowed, default 90d)
-  sinceInceptionDaily: FleetRevenueBucket[]; // per-day line, first billed day → today (the MRR-over-time series)
+  monthly: FleetRevenueBucket[]; // trailing calendar-month buckets (realized)
+  weekly: FleetRevenueBucket[]; // trailing ISO-week buckets (realized)
+  daily: FleetRevenueBucket[]; // trailing UTC-day buckets (realized, windowed default 90d)
+  sinceInceptionDaily: FleetRevenueBucket[]; // per-day realized line, first billed day → today
+  committedMrr: CommittedMrr; // committed MRR/ARR run-rate over time (daily snapshots)
   asOf: string;
 }
 
