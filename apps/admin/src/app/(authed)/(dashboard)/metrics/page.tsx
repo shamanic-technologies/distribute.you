@@ -6,6 +6,7 @@ import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
 import { PeriodCompoundChart } from "@/components/period-compound-chart";
 import { CmgrStat } from "@/components/cmgr-stat";
 import { ActiveUsersView } from "@/components/active-users-view";
+import { RevenueView } from "@/components/revenue-view";
 import {
   fetchPublicStatsSummary,
   type DailyFunnelPoint,
@@ -23,6 +24,7 @@ const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
   { id: "signups", label: "Signups", href: "/metrics?view=signups" },
   { id: "cards", label: "Paid users", href: "/metrics?view=cards" },
   { id: "active-users", label: "Active users", href: "/metrics?view=active-users" },
+  { id: "revenue", label: "Revenue", href: "/metrics?view=revenue" },
 ];
 
 interface PageProps {
@@ -43,7 +45,7 @@ function pct(numerator: number, denominator: number): string {
 
 function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === "signups" || value === "cards" || value === "active-users") return value;
+  if (value === "signups" || value === "cards" || value === "active-users" || value === "revenue") return value;
   return "landing";
 }
 
@@ -348,6 +350,7 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           />
         )}
         {view === "active-users" && <ActiveUsersView />}
+        {view === "revenue" && stats && <RevenueView timeline={stats.timeline} />}
         {view === "cards" && stats && (
           <CardsView cardsAdded={stats.cardsAdded} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
         )}

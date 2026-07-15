@@ -68,7 +68,7 @@ export type UsersStats = z.infer<typeof usersStatsSchema>;
 export type BillingStats = z.infer<typeof billingStatsSchema>;
 export type RunsStats = z.infer<typeof runsStatsSchema>;
 
-export type PublicAnalyticsView = "landing" | "signups" | "active-users" | "cards";
+export type PublicAnalyticsView = "landing" | "signups" | "active-users" | "cards" | "revenue";
 
 export interface DailyFunnelPoint {
   date: string;

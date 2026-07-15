@@ -40,6 +40,7 @@ describe("Context sidebar", () => {
     expect(content).toContain("Unique visitors");
     expect(content).toContain("Signups");
     expect(content).toContain("Paid users");
+    expect(content).toContain("Revenue");
     expect(content).toContain("/metrics?view=landing");
     expect(content).not.toContain('href: `/features/${f.slug}`');
   });
