@@ -2,6 +2,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import { BillingGuardProvider } from "@/lib/billing-guard";
 import { OnboardingCreditGate } from "@/components/onboarding/onboarding-credit-gate";
 import { OnboardingTopChrome } from "@/components/onboarding/onboarding-top-chrome";
+import { SupportButton } from "@/components/support/support-button";
 
 export default function OnboardingLayout({
   children,
@@ -31,6 +32,8 @@ export default function OnboardingLayout({
               <OnboardingCreditGate>{children}</OnboardingCreditGate>
             </div>
           </div>
+          {/* raised: lifts above the bottom-pinned StepShell CTA on mobile. */}
+          <SupportButton raised />
         </div>
       </BillingGuardProvider>
     </QueryProvider>
