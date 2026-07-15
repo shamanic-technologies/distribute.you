@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PROD_URLS } from "@/lib/env-urls";
+import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
@@ -221,7 +222,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <SupportWhatsAppButton />
+      </body>
     </html>
   );
 }
