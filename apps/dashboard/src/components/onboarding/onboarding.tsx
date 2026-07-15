@@ -24,6 +24,7 @@ import {
 import posthog from "posthog-js";
 import {
   upsertBrand,
+  getBrand,
   extractBrandFields,
   SALES_PROFILE_FIELDS,
   getBrandProfile,
@@ -624,6 +625,15 @@ export function Onboarding() {
   // skip the welcome hero and land straight on the URL step. Same flow otherwise.
   const fromAdd = searchParams.get("from") === "add";
   const flowKey: OnboardingFlowKey = fromAdd ? "add" : forceNew ? "new" : "signup";
+  // Cross-session resume of a never-finished brand. The per-brand setup gate
+  // (`BrandSetupGate`) redirects a brand that has no campaign (= onboarding
+  // abandoned before the terminal launch) back here as `?from=add&brandId=<id>`.
+  // Same-tab resume already works via the sessionStorage snapshot; this param is
+  // the CROSS-session path (the snapshot is gone), so we re-hydrate the brand from
+  // backend and drop the user back on the goal step (everything before it prefilled).
+  // Only used when there's no snapshot to restore — a live snapshot wins (it lands
+  // straight on the step the user left, e.g. pricing).
+  const resumeBrandIdParam = searchParams.get("brandId");
 
   // Resume snapshot (refresh / back). Read ONCE, synchronously, before first paint —
   // a `useRef` lazy-init seeds every field below so `url`/`outcome`/`rates`/etc. are
@@ -648,9 +658,14 @@ export function Onboarding() {
         searchParams.get("launch_checkout") === "success"
         ? "phone"
         : resolveResumeStep(restored.step, restored.brandId)
-      : fromAdd
-        ? "url"
-        : "welcome",
+      : resumeBrandIdParam && searchParams.get("launch_checkout") === null
+        ? // Cross-session brand resume: show the loading screen immediately (no URL
+          // flash) while the param-resume effect re-hydrates the brand, then it lands
+          // on the goal step.
+          "loading"
+        : fromAdd
+          ? "url"
+          : "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -824,11 +839,11 @@ export function Onboarding() {
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
   // user back on the exact step they were on. The brand already exists → idempotent.
-  async function runResume(target: Step): Promise<void> {
+  async function runResume(target: Step, urlOverride?: string): Promise<void> {
     setStep("loading");
     resetLoadingProgress();
     try {
-      await createBrandAndFetchServices({ isResume: true });
+      await createBrandAndFetchServices({ isResume: true, urlOverride });
       setStep(target);
     } catch (err) {
       if (isInsufficientCredit(err)) {
@@ -852,6 +867,44 @@ export function Onboarding() {
       return;
     }
     void runResume(resumeTargetRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cross-session brand resume (?brandId=, no snapshot): the per-brand setup gate
+  // redirected a never-finished brand here. Fetch it to seed the URL, then replay the
+  // loading-screen hydration (idempotent upsert + services/economics/projection/
+  // audience prewarm from backend) and land on the goal step — the user re-confirms
+  // goal → rates → audiences → consent → budget with everything before it prefilled.
+  // We stop at the goal step (not budget) because the pre-terminal audience picks +
+  // budget tier live only in the sessionStorage snapshot, which is gone cross-session
+  // — so the user must re-pick those, but nothing typed earlier is lost (it's saved
+  // in backend and re-hydrated). A live snapshot (same tab) wins and skips this.
+  const paramResumeStartedRef = useRef(false);
+  useEffect(() => {
+    if (paramResumeStartedRef.current) return;
+    if (!resumeBrandIdParam || restored || searchParams.get("launch_checkout")) return;
+    paramResumeStartedRef.current = true;
+    void (async () => {
+      try {
+        const res = await getBrand(resumeBrandIdParam);
+        const b = res?.brand;
+        const seededUrl = b ? b.url ?? (b.domain ? `https://${b.domain}` : "") : "";
+        if (!seededUrl) {
+          // Brand vanished / has no URL — fall back to the URL step rather than trap
+          // the user on a stuck loading screen.
+          setStep("url");
+          return;
+        }
+        setUrl(seededUrl);
+        setBrandId(resumeBrandIdParam);
+        brandIdRef.current = resumeBrandIdParam;
+        if (organization?.id) orgIdRef.current = organization.id;
+        await runResume("objective", seededUrl);
+      } catch (err) {
+        console.error("[dashboard] onboarding brand-param resume failed:", err);
+        setStep("url");
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -968,9 +1021,12 @@ export function Onboarding() {
   // On a RESUME (refresh after the brand was already created) the org + brand already
   // exist: force org reuse so we never spin up a duplicate org, and the idempotent
   // upsertBrand below returns the same brandId.
-  async function createBrandAndFetchServices(opts?: { isResume?: boolean }): Promise<void> {
+  async function createBrandAndFetchServices(opts?: { isResume?: boolean; urlOverride?: string }): Promise<void> {
     const isResume = opts?.isResume ?? false;
-    const trimmed = url.trim();
+    // `urlOverride` — the cross-session param-resume seeds the brand URL and calls
+    // runResume in the SAME tick, so `url` state is still stale in this closure;
+    // the override carries the freshly-fetched URL to the idempotent upsert below.
+    const trimmed = (opts?.urlOverride ?? url).trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     const workspaceStartedAt = performance.now();
     const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
