@@ -419,7 +419,10 @@ function heroStatCard(
     chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
   }
   const spark = sparklineSvg(points, trendStroke(), "prs-spark");
-  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-price">${priceStr}</span>${chg}</div>${spark}<span>${cfg.label}</span></div>`;
+  // Make the price the lead figure; the note makes clear it's the current
+  // measured cost = the trailing moving average over the last ~100 outcomes
+  // (features-service cost-per-outcome-trend windowOutcomes default = 100).
+  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-price">${priceStr}</span>${chg}</div>${spark}<span>${cfg.label}</span><small class="prs-note">Live measured cost · avg. of the last 100 outcomes</small></div>`;
 }
 
 function tickerCard(
