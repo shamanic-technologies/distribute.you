@@ -8,6 +8,7 @@ import {
   type CustomerSuccessBoard,
   type CustomerRow,
   type CustomerOptimizationGoal,
+  type CustomerDashboardReturnFrequency,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
@@ -58,6 +59,30 @@ const GRAIN_LABEL: Record<"crossOrg" | "brand" | "audience", string> = {
   brand: "Brand",
   audience: "Audience",
 };
+
+// ── Dashboard engagement (per-org dashboard-return signal) ───────────────────
+
+/** Human last-seen from daysSinceLastSeen: null -> "-", 0 -> "Today". */
+function lastSeenText(d: CustomerDashboardReturnFrequency): string {
+  if (d.daysSinceLastSeen === null) return DASH;
+  if (d.daysSinceLastSeen <= 0) return "Today";
+  return `${d.daysSinceLastSeen} day${d.daysSinceLastSeen === 1 ? "" : "s"} ago`;
+}
+
+/** A customer is flagged disengaged when they had zero dashboard sessions in 7d. */
+function isDisengaged(d: CustomerDashboardReturnFrequency): boolean {
+  return d.sessions7d === 0;
+}
+
+/** Compact table cell: sessions 7d / 30d, muted when disengaged. Null -> "-". */
+function DashEngagementCell({ d }: { d: CustomerDashboardReturnFrequency | null }) {
+  if (!d) return <span className="text-gray-400">{DASH}</span>;
+  return (
+    <span className={`tabular-nums ${isDisengaged(d) ? "text-gray-400" : "text-gray-900"}`}>
+      {count(d.sessions7d)} / {count(d.sessions30d)}
+    </span>
+  );
+}
 
 // ── Health badge ─────────────────────────────────────────────────────────────
 
@@ -356,9 +381,33 @@ function RightPanel({ row, names, onClose }: { row: CustomerRow; names: Record<s
         <PanelRow label="Active this month" value={row.activeThisMonth ? "Yes" : "No"} />
       </PanelSection>
 
+      <PanelSection title="Dashboard engagement">
+        {row.notTrackedYet.dashboardReturnFrequency ? (
+          (() => {
+            const d = row.notTrackedYet.dashboardReturnFrequency;
+            const disengaged = isDisengaged(d);
+            return (
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <PanelRow label="Sessions (7d)" value={count(d.sessions7d)} muted={disengaged} />
+                <PanelRow label="Sessions (30d)" value={count(d.sessions30d)} />
+                <PanelRow label="Pageviews (7d)" value={count(d.pageviews7d)} muted={disengaged} />
+                <PanelRow label="Pageviews (30d)" value={count(d.pageviews30d)} />
+                <PanelRow label="Last seen" value={lastSeenText(d)} muted={disengaged} />
+                {disengaged && (
+                  <p className="mt-2 text-xs font-medium text-amber-700">
+                    No dashboard sessions in the last 7 days. Consider reaching out.
+                  </p>
+                )}
+              </div>
+            );
+          })()
+        ) : (
+          <p className="text-sm text-gray-400">No dashboard activity data yet.</p>
+        )}
+      </PanelSection>
+
       <PanelSection title="Not tracked yet">
         <div className="space-y-1">
-          <PanelRow label="Dashboard return frequency" value="Not tracked yet" muted />
           <PanelRow label="Daily-budget history" value="Not tracked yet" muted />
           <PanelRow label="Pause history" value="Not tracked yet" muted />
         </div>
@@ -385,7 +434,7 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
 
       <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 overflow-x-auto">
-          <table className="min-w-[900px] w-full text-sm">
+          <table className="min-w-[1020px] w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                 <th className="py-2 pr-3 font-medium">Health</th>
@@ -398,6 +447,7 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
                 <th className="py-2 px-3 text-right font-medium">% CAC</th>
                 <th className="py-2 px-3 text-right font-medium">Aud. % used</th>
                 <th className="py-2 px-3 text-right font-medium">Aud. remaining</th>
+                <th className="py-2 px-3 text-right font-medium">Sessions 7d/30d</th>
                 <th className="py-2 pl-3 text-right font-medium">Retention</th>
               </tr>
             </thead>
@@ -430,6 +480,9 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
                     <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">{pct(row.currentEconomics.cacPct)}</td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">{pct(row.audiences.pctUsed)}</td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-gray-700">{count(row.audiences.totalRemaining)}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      <DashEngagementCell d={row.notTrackedYet.dashboardReturnFrequency} />
+                    </td>
                     <td className="py-2.5 pl-3 text-right tabular-nums text-gray-950">
                       {row.retentionWeeks === null ? DASH : `${row.retentionWeeks}w`}
                     </td>
@@ -438,7 +491,7 @@ function CustomerTable({ data }: { data: CustomerSuccessBoard }) {
               })}
               {data.customers.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="py-8 text-center text-sm text-gray-400">
+                  <td colSpan={12} className="py-8 text-center text-sm text-gray-400">
                     No customers yet.
                   </td>
                 </tr>
