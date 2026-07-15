@@ -40,6 +40,8 @@ import {
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
+  getWorkflowProjectionLadder,
+  type WorkflowProjectionLadderResponse,
   getFeature,
   prefillFeatureInputs,
   prefillToStringMap,
@@ -60,7 +62,15 @@ import {
   workflowProjectionMatchesOutcomeRates,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
-import { outcomeNounPlural } from "@/lib/strategy-model";
+import {
+  outcomeNounPlural,
+  objectiveForOptimizationGoal,
+  pickBestBrandRow,
+  isRowFloored,
+  modelAvatar,
+} from "@/lib/strategy-model";
+import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
+import { Skeleton } from "@/components/skeleton";
 import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
 import { POST_PAYMENT_OFFER_LEVERS } from "./offer-levers";
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
@@ -126,6 +136,7 @@ type Step =
   | "celebrate"
   | "phone"
   | "ltr"
+  | "model"
   | "offer"
   | "launching";
 
@@ -727,6 +738,22 @@ export function Onboarding() {
   const [phone, setPhone] = useState<PhoneValue>(EMPTY_PHONE);
   const [offerIndex, setOfferIndex] = useState(0);
   const pendingCheckoutRef = useRef<PendingCheckoutLaunch | null>(null);
+  // Best-model step (post-payment, after LTR). The 3-grain workflow-projection
+  // LADDER — the SAME endpoint + pick the Strategy page uses, so the numbers match
+  // byte-for-byte. Prewarmed at the celebrate step, refetched after the LTR save
+  // (the entered lifetime revenue changes the projected CAC / ROI). `null` = still
+  // loading; the step shows a skeleton until it lands.
+  const [bestModelLadder, setBestModelLadder] = useState<WorkflowProjectionLadderResponse | null>(null);
+  const bestModelFetchRef = useRef<Promise<void> | null>(null);
+  // Aggressive parallel launch. The whole launch (audiences, auto-topup, budget,
+  // campaign create, onboarding-complete) is kicked off in the BACKGROUND the moment
+  // the checkout returns — while the user fills the optional post-payment steps — so
+  // "Opening your dashboard" is near-instant, and the campaign is created even if the
+  // user quits before reaching the dashboard. `backgroundLaunchRef` holds the single
+  // in-flight promise (fire once); `launchError` surfaces a background failure at the
+  // terminal launching screen with a retry.
+  const backgroundLaunchRef = useRef<Promise<{ campaignId: string }> | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   // Loading-sequence + real fetch coordination. The visible checks follow real
   // client milestones: org ready, brand upserted, then service extraction.
@@ -1327,7 +1354,14 @@ export function Onboarding() {
     return featureInputs;
   }
 
-  async function completeLaunchAfterCheckout(pending: PendingCheckoutLaunch) {
+  // The real launch work — audiences, auto-topup, budget, campaign create,
+  // onboarding-complete. Run in the BACKGROUND right after checkout (see
+  // startBackgroundLaunch), so it can complete even if the user quits before the
+  // dashboard. Does NOT navigate or clear the resume snapshot — the terminal
+  // (finalizePostPaymentAndLaunch) owns that, so a mid-flow refresh can still resume
+  // the optional post-payment steps. Uses the as-of-checkout profile; the terminal
+  // re-saves any offer-lever edits on top. Returns the created campaign id.
+  async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<{ campaignId: string }> {
     if (pending.profile && pending.services) {
       await saveBrandProfileVersion(pending.brandId, {
         ...pending.profile,
@@ -1397,10 +1431,6 @@ export function Onboarding() {
     // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
     // JWT loops the next navigation back to /onboarding (DIS-111).
     await session?.getToken({ skipCache: true }).catch(() => {});
-    window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
-    // Flow genuinely finished — drop the resume snapshot so the next onboarding (a new
-    // brand/org in the same tab) starts clean instead of resuming this completed one.
-    clearOnboardingState();
     setLaunchStep(5);
     // Email 2 — the post-payment "your <goal> is on the way" welcome. Fired here (not
     // at signup, where no brand/goal exists yet) so it can name the brand's chosen
@@ -1409,7 +1439,44 @@ export function Onboarding() {
     sendAuthNotification("goal_launched", undefined, {
       outcomeNoun: outcomeNounPlural(pending.outcome),
     }).catch(() => {});
-    router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
+    return { campaignId: campaign.id };
+  }
+
+  // Fire the full launch ONCE, in the background, the moment checkout returns. Idempotent
+  // via `backgroundLaunchRef` (never creates two campaigns). A failure is surfaced at the
+  // terminal launching screen (launchError) with a retry; the fire-site swallow keeps it
+  // from becoming an unhandled rejection while the user is still on an earlier step.
+  function startBackgroundLaunch(): Promise<{ campaignId: string }> {
+    if (backgroundLaunchRef.current) return backgroundLaunchRef.current;
+    const pending = pendingCheckoutRef.current;
+    if (!pending) {
+      return Promise.reject(new Error("Your checkout session was lost. Refresh to finish launching."));
+    }
+    const promise = runLaunchWork(pending);
+    backgroundLaunchRef.current = promise;
+    promise.catch((err) => {
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "background_launch" });
+      const detail = err instanceof Error ? err.message : "unknown error";
+      setLaunchError(`Launch could not finish: ${detail}`);
+      // Allow a retry from the terminal screen to re-run the work.
+      backgroundLaunchRef.current = null;
+    });
+    return promise;
+  }
+
+  // Fetch the best-model projection LADDER (same endpoint + pick as the Strategy page,
+  // so the numbers match). Prewarmed at the celebrate step, refetched after the LTR save.
+  function fetchBestModelLadder(id: string, outcomeArg: Outcome): Promise<void> {
+    const objective = objectiveForOptimizationGoal(optimizationGoalForOutcome(outcomeArg));
+    const p = getWorkflowProjectionLadder({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective })
+      .then((ladder) => {
+        setBestModelLadder(ladder);
+      })
+      .catch((e) => {
+        console.error("[dashboard] onboarding: best-model ladder fetch failed", e);
+      });
+    bestModelFetchRef.current = p;
+    return p;
   }
 
   async function beginCheckoutAndLaunch() {
@@ -1513,6 +1580,13 @@ export function Onboarding() {
       setOfferIndex(0);
       setStep("celebrate");
       setBusy(false);
+      // Kick the whole launch in the BACKGROUND right now — while the user fills the
+      // optional post-payment steps — so the dashboard opens near-instantly and the
+      // campaign is created even if they quit before reaching it. Also prewarm the
+      // best-model projection (refetched after the LTR save) so the model step is warm.
+      startBackgroundLaunch().catch(() => {});
+      const prewarmId = pending.brandId;
+      if (prewarmId) void fetchBestModelLadder(prewarmId, pending.outcome);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "checkout_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
@@ -1557,34 +1631,39 @@ export function Onboarding() {
     setRates(nextRates);
     setRateText((t) => ({ ...t, ltv: rateToText(ltv) }));
     if (id) {
-      setBusy(true);
-      try {
-        await saveBrandSalesEconomics(id, {
-          lifetimeRevenueUsd: nextRates.ltv,
-          replyToMeetingPct: nextRates.r2m,
-          visitToMeetingPct: nextRates.v2m,
-          meetingToClosePct: nextRates.m2c,
-          visitToSignupPct: nextRates.v2s,
-          signupToPaidClientPct: nextRates.s2c,
-          visitToPaidClientPct: nextRates.v2p,
-          replyToPaidClientPct: nextRates.r2p,
-          visitToFormSubmissionPct: nextRates.v2f,
-          formSubmissionToPaidClientPct: nextRates.f2p,
-          optimizationGoal: optimizationGoalForOutcome(outcome),
-        });
-      } catch (err) {
-        console.error("[dashboard] onboarding: failed to save lifetime revenue; advancing", err);
-      } finally {
-        setBusy(false);
-      }
+      // Fire-and-forget the economics save, THEN refetch the best-model projection
+      // with the new lifetime revenue — never block the button on the cold write. We
+      // advance immediately; the model step shows the celebrate-prewarmed numbers
+      // (or a skeleton if the prewarm hasn't landed yet) and swaps to the updated
+      // projection when the refetch resolves — no reset, so no skeleton flash.
+      void (async () => {
+        try {
+          await saveBrandSalesEconomics(id, {
+            lifetimeRevenueUsd: nextRates.ltv,
+            replyToMeetingPct: nextRates.r2m,
+            visitToMeetingPct: nextRates.v2m,
+            meetingToClosePct: nextRates.m2c,
+            visitToSignupPct: nextRates.v2s,
+            signupToPaidClientPct: nextRates.s2c,
+            visitToPaidClientPct: nextRates.v2p,
+            replyToPaidClientPct: nextRates.r2p,
+            visitToFormSubmissionPct: nextRates.v2f,
+            formSubmissionToPaidClientPct: nextRates.f2p,
+            optimizationGoal: optimizationGoalForOutcome(outcome),
+          });
+        } catch (err) {
+          console.error("[dashboard] onboarding: failed to save lifetime revenue; advancing", err);
+        }
+        await fetchBestModelLadder(id, outcome);
+      })();
     }
     setOfferIndex(0);
-    setStep("offer");
+    setStep("model");
   }
 
   // Offer-lever step Continue: advance to the next lever, or (on the last one)
-  // finalize the launch. Lever edits live in `profile` state and are committed to
-  // brand-service inside completeLaunchAfterCheckout via the stashed pending blob.
+  // finalize the launch. Lever edits live in `profile` state and are saved on top of
+  // the background launch's as-of-checkout profile by finalizePostPaymentAndLaunch.
   function continueOffer() {
     if (offerIndex < POST_PAYMENT_OFFER_LEVERS.length - 1) {
       setOfferIndex((i) => i + 1);
@@ -1593,30 +1672,41 @@ export function Onboarding() {
     void finalizePostPaymentAndLaunch();
   }
 
-  // Terminal commit: run the real launch (audiences, topup, budget, campaign,
-  // onboarding-complete, redirect) with the profile the user just edited. Mirrors
-  // the old resumeCheckoutLaunch tail, moved here so it runs after the
-  // post-payment steps.
+  // Terminal: the launch is (usually) already done in the background — here we just
+  // persist the offer-lever edits, await the background launch, then clean up + redirect.
+  // The background launch was fired at checkout return; awaiting it here is near-instant
+  // when the user spent time on the post-payment steps. A background failure surfaces via
+  // launchError with a retry.
   async function finalizePostPaymentAndLaunch() {
-    const pending = pendingCheckoutRef.current;
-    if (!pending) {
-      setError("Your checkout session was lost. Refresh to finish launching.");
-      setStep("pricing");
-      return;
-    }
-    setBusy(true);
-    setError(null);
+    setLaunchError(null);
+    setStep("launching");
     try {
-      setStep("launching");
-      setLaunchStep(0);
-      // Carry the levers the user just edited into the profile save.
-      await completeLaunchAfterCheckout({ ...pending, profile });
+      // Persist the offer-lever edits on top of the background launch's as-of-checkout
+      // profile (best-effort — never block the already-paid launch on it).
+      const id = brandIdRef.current ?? pendingCheckoutRef.current?.brandId ?? null;
+      const svcs = pendingCheckoutRef.current?.services;
+      if (id && svcs) {
+        await saveBrandProfileVersion(id, {
+          ...profile,
+          services: svcs,
+          consentedChannels: ["email"],
+          agencyConsentAt: new Date().toISOString(),
+        }).catch((e) =>
+          console.error("[dashboard] onboarding: offer-lever profile save failed; continuing", e),
+        );
+      }
+      const result = await startBackgroundLaunch();
+      // Cleanup + redirect happen ONLY at the terminal (not in the background work) so a
+      // mid-flow refresh can still resume the optional post-payment steps.
+      window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
+      clearOnboardingState();
+      const pending = pendingCheckoutRef.current;
+      const orgId = pending?.orgId ?? orgIdRef.current;
+      router.push(`/orgs/${orgId}/brands/${id}?launched=${result.campaignId}`);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "post_payment_finalize" });
       const detail = err instanceof Error ? err.message : "unknown error";
-      setError(`Launch could not finish: ${detail}`);
-      setStep("pricing");
-      setBusy(false);
+      setLaunchError(`Launch could not finish: ${detail}`);
     }
   }
 
@@ -2198,6 +2288,58 @@ export function Onboarding() {
     );
   }
 
+  if (step === "model") {
+    const goal = optimizationGoalForOutcome(outcome);
+    const rows = bestModelLadder?.rows ?? [];
+    const brandRow = pickBestBrandRow(rows, bestModelLadder?.recommendedWorkflowDynastySlug ?? null);
+    const resolved = brandRow?.resolved ?? null;
+    const bestName =
+      brandRow?.workflow.workflowDynastyName ?? brandRow?.workflow.workflowDynastySlug ?? "-";
+    const bestSlug = brandRow?.workflow.workflowDynastySlug ?? null;
+    const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
+    const pending = bestModelLadder === null;
+    return (
+      <StepShell
+        maxWidth="sm:max-w-2xl"
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={() => setStep("offer")} label="Continue" />}
+      >
+        <BackButton onClick={() => setStep("ltr")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Your best model.</h2>
+        <p className="mt-2 mb-6 text-gray-500">
+          Based on your numbers, here is the model we will run for you and what each outcome should cost. These are the same projections you will see on your Strategy page.
+        </p>
+        {pending ? (
+          <div className="space-y-4">
+            <Skeleton className="h-14 w-full" />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
+            </div>
+          </div>
+        ) : resolved ? (
+          <div className="space-y-5">
+            <BestModelStats
+              resolved={resolved}
+              bestName={bestName}
+              brandGrain={resolved.grain}
+              avatar={avatar}
+              roiMultiple={resolved.roiMultiple}
+              floored={brandRow ? isRowFloored(brandRow) : false}
+              cppr={cpprFromRow(brandRow)}
+              goal={goal}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            We are still crunching your projections. You can continue; the full numbers appear on your dashboard.
+          </p>
+        )}
+      </StepShell>
+    );
+  }
+
   if (step === "offer") {
     const lever = POST_PAYMENT_OFFER_LEVERS[offerIndex];
     const raw = profile[lever.key];
@@ -2208,7 +2350,7 @@ export function Onboarding() {
         header={<BrandStepHeader domain={domain} hostname={hostname} />}
         footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
       >
-        <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("ltr"))} />
+        <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("model"))} />
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
           Your offer · {offerIndex + 1} of {POST_PAYMENT_OFFER_LEVERS.length}
         </div>
@@ -2232,6 +2374,20 @@ export function Onboarding() {
       <StepShell header={<BrandStepHeader domain={brand.domain} hostname={brand.hostname} />}>
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">Launching your campaign...</div>
           <p className="mb-6 text-center text-sm text-gray-500">Keep this tab open while we finish setup.</p>
+          {launchError && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p>{launchError}</p>
+              <button
+                onClick={() => {
+                  setLaunchError(null);
+                  void finalizePostPaymentAndLaunch();
+                }}
+                className="mt-2 font-semibold underline hover:text-red-800"
+              >
+                Try again
+              </button>
+            </div>
+          )}
           <div className="space-y-2">
             {LAUNCH_STEPS.map((s, i) => {
               const isDone = i < launchStep;

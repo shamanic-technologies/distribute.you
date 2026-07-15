@@ -34,22 +34,44 @@ describe("post-payment step wiring in onboarding.tsx", () => {
     expect(onboardingSrc).toContain('searchParams.get("launch_checkout") === "success"\n        ? "celebrate"');
   });
 
-  it("defers the launch: resume stashes the pending blob and lands on celebrate", () => {
+  it("starts the launch in the BACKGROUND at checkout return (parallel with post-payment steps)", () => {
     const resume = onboardingSrc.slice(
       onboardingSrc.indexOf("async function resumeCheckoutLaunch"),
       onboardingSrc.indexOf("// ── Post-payment steps"),
     );
     expect(resume).toContain("pendingCheckoutRef.current = pending;");
     expect(resume).toContain('setStep("celebrate");');
-    // the launch itself must NOT run at the checkout return anymore
-    expect(resume).not.toContain("await completeLaunchAfterCheckout(pending);");
+    // The whole launch is fired in the background right away (aggressive parallel launch),
+    // so the campaign is created even if the user quits before reaching the dashboard.
+    expect(resume).toContain("startBackgroundLaunch()");
   });
 
-  it("finalizes only at the last offer step, with the edited profile", () => {
+  it("fires the launch work exactly once, guarded by backgroundLaunchRef", () => {
+    expect(onboardingSrc).toContain("async function runLaunchWork(pending: PendingCheckoutLaunch)");
+    expect(onboardingSrc).toContain("function startBackgroundLaunch()");
+    expect(onboardingSrc).toContain("if (backgroundLaunchRef.current) return backgroundLaunchRef.current;");
+    // onboarding-complete must be set by the background work so a quit-before-dashboard
+    // still lands on a complete dashboard next visit.
+    expect(onboardingSrc).toContain('await fetch("/api/onboarding/complete", { method: "POST" })');
+  });
+
+  it("finalizes at the last offer step by awaiting the background launch", () => {
     expect(onboardingSrc).toContain("function finalizePostPaymentAndLaunch");
-    expect(onboardingSrc).toContain("await completeLaunchAfterCheckout({ ...pending, profile });");
+    expect(onboardingSrc).toContain("await startBackgroundLaunch();");
     // launching loader still shown by the terminal commit
     expect(onboardingSrc).toContain('setStep("launching");');
+    // cleanup + redirect happen only at the terminal (so a mid-flow refresh can resume)
+    expect(onboardingSrc).toContain("window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);");
+  });
+
+  it("introduces the best model after LTR (same ladder + pick as the Strategy page)", () => {
+    expect(onboardingSrc).toContain('| "model"');
+    expect(onboardingSrc).toContain('if (step === "model")');
+    expect(onboardingSrc).toContain("getWorkflowProjectionLadder");
+    expect(onboardingSrc).toContain("pickBestBrandRow");
+    expect(onboardingSrc).toContain("<BestModelStats");
+    // LTR advances to the model step (not straight to offer)
+    expect(onboardingSrc).toContain('setStep("model");');
   });
 
   it("saves lifetime revenue via sales-economics and the phone via savePhoneNumber", () => {

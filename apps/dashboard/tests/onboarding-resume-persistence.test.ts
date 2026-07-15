@@ -131,8 +131,8 @@ describe("Beta onboarding resume persistence", () => {
     // "No active audience yet" blocker). completeLaunchAfterCheckout activates the
     // selected audiences idempotently before campaign create; fail-loud if none.
     const launch = src.slice(
-      src.indexOf("async function completeLaunchAfterCheckout"),
-      src.indexOf("async function generateActiveAudienceAvatars"),
+      src.indexOf("async function runLaunchWork"),
+      src.indexOf("function startBackgroundLaunch"),
     );
     expect(launch).toContain("const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];");
     expect(launch).toContain('await setAudienceStatus(audienceId, "active");');
