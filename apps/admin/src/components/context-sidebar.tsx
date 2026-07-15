@@ -255,6 +255,12 @@ const ExternalLinkIcon = () => (
   </svg>
 );
 
+const HealthIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12h-4l-3 9L9 3l-3 9H2" />
+  </svg>
+);
+
 // Features that expose the public client report. Generic across features
 // once a backend public-proxy lands; gated for now. The pr-expert-quote-*
 // family is matched via isExpertQuoteFeature (not listed here) so a workflow
@@ -359,6 +365,13 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         item={{ id: "organizations", label: "Organizations", href: "/orgs", icon: <OrgIcon /> }}
         isActive={pathname === "/orgs"}
       />
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Customer Success</h4>
+        <SidebarLink
+          item={{ id: "customer-success", label: "Customer Success", href: "/customer-success", icon: <HealthIcon /> }}
+          isActive={pathname === "/customer-success"}
+        />
+      </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Dashboard</h4>
         {analyticsItems.map((item) => (

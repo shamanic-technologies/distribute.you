@@ -4858,6 +4858,151 @@ export async function getActiveUsersByUser(token?: string): Promise<ActiveUsersB
   return apiCall<ActiveUsersByUser>(`/features/audit/active-users-by-user`, { token });
 }
 
+// ── Customer Success health board (staff) ────────────────────────────────────
+// Cross-org, fleet-wide "Customer Success" board: one ready-composed row per
+// cold-email customer (org × brand), currently-active first, each with a
+// green/yellow/red health badge + value/economics metrics. Every number is
+// computed + owned by features-service; the admin renders only (no browser math).
+// Producer-owned shape (features-service GET /internal/stats/customer-health),
+// proxied staff-gated at api-service as GET /features/audit/customer-success.
+
+export type CustomerOptimizationGoal =
+  | "signup"
+  | "meetingBooked"
+  | "purchase"
+  | "websiteVisit"
+  | "positiveReply"
+  | "formSubmission";
+
+export interface CustomerConversionTracker {
+  needed: boolean;
+  observedConversions: number | null;
+  firing: boolean | null; // inferred: observedConversions > 0
+  inferred: true;
+}
+
+export interface CustomerEconomics {
+  lifetimeRevenueUsd: number;
+  replyToMeetingPct: number;
+  visitToMeetingPct: number;
+  meetingToClosePct: number;
+  visitToSignupPct: number;
+  signupToPaidClientPct: number;
+  visitToClosePct: number;
+  // The last four are only present for some goals — declared optional.
+  visitToPaidClientPct?: number;
+  replyToPaidClientPct?: number;
+  visitToFormSubmissionPct?: number;
+  formSubmissionToPaidClientPct?: number;
+}
+
+export interface CustomerCurrentEconomics {
+  realizedSpendUsd: number | null;
+  expectedPipelineUsd: number | null;
+  currentCacUsd: number | null;
+  roiMultiple: number | null; // LTR / CAC = pipeline / spend; ≥ 1 ⟺ below breakeven
+  cacPct: number | null; // CAC as a share of LTR, percent
+}
+
+export interface CustomerAudiencesRollup {
+  count: number;
+  totalSize: number;
+  totalRemaining: number;
+  pctUsed: number | null;
+}
+
+export interface CustomerBestAudience {
+  audienceId: string;
+  name: string;
+  cacUsd: number | null;
+  size: number;
+  remaining: number;
+  pctRemaining: number | null;
+}
+
+export interface CustomerBestWorkflow {
+  workflowDynastySlug: string;
+  name: string | null;
+  cacUsd: number;
+  grain: "crossOrg" | "brand" | "audience";
+}
+
+export interface CustomerHealth {
+  badge: "green" | "yellow" | "red";
+  inputs: {
+    active: boolean;
+    hasBudget: boolean;
+    roiMultiple: number | null;
+    roiHealthy: boolean;
+    audiencePctUsed: number | null;
+    audienceNearExhausted: boolean;
+    audienceNearExhaustedThresholdPct: number;
+  };
+}
+
+export interface CustomerNotTrackedYet {
+  dashboardReturnFrequency: null;
+  budgetChangeHistory: null;
+  pauseHistory: null;
+}
+
+export interface CustomerRow {
+  orgId: string;
+  orgExternalId: string | null; // Clerk org id, resolves the name client-side
+  ownerEmail: string | null;
+  brandId: string;
+  brandName: string | null;
+  brandDomain: string | null;
+  featureSlug: string | null;
+  firstActiveDay: string | null; // YYYY-MM-DD
+  lastActiveDay: string | null;
+  retentionWeeks: number | null;
+  activeThisWeek: boolean;
+  activeThisMonth: boolean;
+  activeDays: string[]; // YYYY-MM-DD, ascending
+  status: "active" | "paused" | "inactive";
+  dailyBudgetUsd: number | null;
+  orgBalanceUsd: number; // spendable
+  orgActualBalanceUsd: number; // actual (active-verdict figure)
+  autoTopupEnabled: boolean;
+  optimizationGoal: CustomerOptimizationGoal | null;
+  conversionTracker: CustomerConversionTracker;
+  breakevenCacUsd: number | null; // = brand LTR
+  ltrUsd: number | null;
+  economics: CustomerEconomics | null;
+  currentEconomics: CustomerCurrentEconomics;
+  audiences: CustomerAudiencesRollup;
+  bestAudience: CustomerBestAudience | null;
+  bestWorkflow: CustomerBestWorkflow | null;
+  health: CustomerHealth;
+  notTrackedYet: CustomerNotTrackedYet;
+}
+
+export interface CustomerSuccessFleetStats {
+  totalCustomers: number;
+  activeCount: number;
+  pausedCount: number;
+  inactiveCount: number;
+  greenCount: number;
+  yellowCount: number;
+  redCount: number;
+}
+
+export interface CustomerSuccessBoard {
+  customers: CustomerRow[];
+  stats: CustomerSuccessFleetStats;
+  asOf: string; // ISO timestamp
+}
+
+/**
+ * Fleet-wide customer-success health board (staff). Transparent proxy to
+ * features-service GET /internal/stats/customer-health. Rows arrive
+ * currently-active-first; render only, never compute a metric client-side.
+ */
+export async function getCustomerSuccess(token?: string): Promise<CustomerSuccessBoard> {
+  return apiCall<CustomerSuccessBoard>(`/features/audit/customer-success`, { token });
+}
+
 // ── Fleet revenue history (staff) ────────────────────────────────────────────
 // Cross-org, fleet-wide REALIZED revenue history — the SAME per-day actualized
 // cold-email spend signal the active-users history is reconstructed from, summed
