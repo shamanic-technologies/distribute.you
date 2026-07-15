@@ -36,10 +36,10 @@ function ChartTooltip({
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: BAR_COLOR }} />
         {bucket.signups.toLocaleString("en-US")} signups
       </p>
-      {bucket.growthPct !== null && (
+      {bucket.cmgrPct !== null && (
         <p className="mt-1 flex items-center gap-2 font-semibold text-gray-900">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: LINE_COLOR }} />
-          {formatGrowth(bucket.growthPct)} growth
+          {formatGrowth(bucket.cmgrPct)} since inception
         </p>
       )}
     </div>
@@ -90,7 +90,7 @@ export function SignupPeriodChart({ data, growthLabel }: { data: SignupBucket[];
           <Line
             yAxisId="growth"
             type="monotone"
-            dataKey="growthPct"
+            dataKey="cmgrPct"
             name={growthLabel}
             dot={false}
             activeDot={{ r: 4 }}

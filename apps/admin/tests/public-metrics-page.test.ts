@@ -31,8 +31,8 @@ describe("cross-org build-in-public metrics page", () => {
   it("lives at /metrics and is reached from the header logo", () => {
     expect(metricsPage).toContain("distribute public metrics");
     expect(metricsPage).toContain('href="/orgs"');
-    // Logo points at the metrics page.
-    expect(header).toContain('href="/metrics"');
+    // Header logo points at the app root, which forwards to /orgs.
+    expect(header).toContain('href="/"');
     // Bare root just forwards to /orgs.
     expect(rootPage).toContain('redirect("/orgs")');
     expect(rootPage).not.toContain("distribute public metrics");
@@ -73,9 +73,19 @@ describe("cross-org build-in-public metrics page", () => {
     expect(metricsPage).toContain("Signup to card conversion over time");
   });
 
+  it("shows compound growth (CMGR/CWGR) on the monthly and weekly signup charts, no daily chart", () => {
+    expect(metricsPage).toContain("CMGR since inception");
+    expect(metricsPage).toContain("CWGR since inception");
+    expect(metricsPage).toContain("CmgrStat");
+    // The daily signup chart was removed (its bucket call + day-on-day line are gone).
+    expect(metricsPage).not.toContain("dailySignups");
+    expect(metricsPage).not.toContain("day-on-day");
+    expect(metricsPage).not.toContain("DoD growth");
+  });
+
   it("exposes the focused analytics navigation in the app-level sidebar", () => {
     expect(sidebar).toContain("Unique visitors");
-    expect(sidebar).toContain("Signup conversions");
+    expect(sidebar).toContain("Signups");
     expect(sidebar).toContain("Cards added");
     expect(sidebar).toContain("/metrics?view=landing");
     expect(sidebar).not.toContain('href="/?view=landing"');

@@ -9,6 +9,12 @@ export interface SignupBucket {
   signups: number;
   /** Period-over-period growth vs the previous bucket, in percent. Null for the first bucket. */
   growthPct: number | null;
+  /**
+   * Compound growth rate from inception to this bucket, in percent (CMGR / CWGR).
+   * Anchored on the first bucket with signups > 0; null for that anchor and any
+   * leading zero buckets. `((v_i / v_base) ^ (1/n) - 1) * 100`, n = periods since anchor.
+   */
+  cmgrPct: number | null;
 }
 
 function isoWeekKey(date: Date): { key: string; label: string } {
@@ -38,16 +44,47 @@ function dayLabel(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-function withGrowth(buckets: Array<{ key: string; label: string; signups: number }>): SignupBucket[] {
+function withDerived(buckets: Array<{ key: string; label: string; signups: number }>): SignupBucket[] {
   const sorted = [...buckets].sort((a, b) => a.key.localeCompare(b.key));
+  // Anchor the compound rate on the first bucket with real signups — a zero (or
+  // near-zero) base makes the ratio explode / divide by zero.
+  const baseIndex = sorted.findIndex((bucket) => bucket.signups > 0);
+  const baseSignups = baseIndex >= 0 ? sorted[baseIndex].signups : 0;
+
   return sorted.map((bucket, index) => {
     const prev = sorted[index - 1];
     const growthPct =
       prev && prev.signups > 0
         ? Number((((bucket.signups - prev.signups) / prev.signups) * 100).toFixed(1))
         : null;
-    return { ...bucket, growthPct };
+
+    // CMGR/CWGR from the anchor to this bucket: ((v_i / v_base) ^ (1/n) - 1) * 100.
+    const periods = baseIndex >= 0 ? index - baseIndex : -1;
+    const cmgrPct =
+      baseSignups > 0 && periods >= 1
+        ? Number(((Math.pow(bucket.signups / baseSignups, 1 / periods) - 1) * 100).toFixed(1))
+        : null;
+
+    return { ...bucket, growthPct, cmgrPct };
   });
+}
+
+/**
+ * Headline + average compound growth rate for a bucket series, excluding the
+ * current (still-in-progress, partial) period.
+ * - `latestPct` — CMGR/CWGR up to the last CONCLUDED period (second-to-last bucket).
+ * - `avgPct` — mean of every plotted CMGR/CWGR point, excluding the current period.
+ */
+export function cmgrSummary(buckets: SignupBucket[]): { latestPct: number | null; avgPct: number | null } {
+  if (buckets.length < 2) return { latestPct: null, avgPct: null };
+  const concluded = buckets.slice(0, -1); // drop the current partial period
+  const latestPct = concluded[concluded.length - 1]?.cmgrPct ?? null;
+  const points = concluded.map((b) => b.cmgrPct).filter((v): v is number => v !== null);
+  const avgPct =
+    points.length > 0
+      ? Number((points.reduce((sum, v) => sum + v, 0) / points.length).toFixed(1))
+      : null;
+  return { latestPct, avgPct };
 }
 
 function aggregate(
@@ -62,7 +99,7 @@ function aggregate(
     if (existing) existing.signups += point.signups;
     else map.set(key, { key, label, signups: point.signups });
   }
-  return withGrowth([...map.values()]);
+  return withDerived([...map.values()]);
 }
 
 export function monthlySignups(points: DailyFunnelPoint[]): SignupBucket[] {
