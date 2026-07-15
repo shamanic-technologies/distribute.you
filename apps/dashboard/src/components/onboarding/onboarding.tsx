@@ -45,6 +45,7 @@ import {
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
   salesObjectiveForOptimizationGoal,
+  sendAuthNotification,
   type BrandOptimizationGoal,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
@@ -56,6 +57,7 @@ import {
   workflowProjectionMatchesOutcomeRates,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
+import { outcomeNounPlural } from "@/lib/strategy-model";
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
@@ -1321,6 +1323,13 @@ export function Onboarding() {
     // brand/org in the same tab) starts clean instead of resuming this completed one.
     clearOnboardingState();
     setLaunchStep(5);
+    // Email 2 — the post-payment "your <goal> is on the way" welcome. Fired here (not
+    // at signup, where no brand/goal exists yet) so it can name the brand's chosen
+    // optimization goal. Routed to the user server-side (not an admin event); repeatable
+    // per launch. Fire-and-forget — never block the redirect.
+    sendAuthNotification("goal_launched", undefined, {
+      outcomeNoun: outcomeNounPlural(pending.outcome),
+    }).catch(() => {});
     router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
   }
 

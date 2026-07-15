@@ -86,6 +86,25 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
   }
 }
 
+/** Plural human noun for the brand's objective — used in copy like
+ *  "Your first {{outcomeNoun}} are on the way" (the goal_launched email). */
+export function outcomeNounPlural(goal: BrandOptimizationGoal): string {
+  switch (goal) {
+    case "signups":
+      return "signups";
+    case "website_visits":
+      return "website visits";
+    case "positive_replies":
+      return "replies";
+    case "form_submissions":
+      return "form submissions";
+    case "purchase":
+      return "sales";
+    default:
+      return "meetings";
+  }
+}
+
 /** The workflow-projection objective for the brand's saved goal.
  *  Sends features-service's NATIVE objective per goal so the server computes the right
  *  funnel: website_visits + positive_replies are SINGLE-STEP (visit→paid / reply→paid),
