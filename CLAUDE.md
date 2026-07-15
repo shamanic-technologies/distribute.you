@@ -28,6 +28,8 @@ pnpm --filter @distribute/<package> test tests/unit/specific.test.ts  # single f
 
 **Run `pnpm --filter @distribute/dashboard test` before pushing a dashboard change — `tsc` alone misses source-substring guards** (many tests assert a page contains a literal expression/copy string). `tsc` stays green while the guard goes red in CI and silently blocks auto-merge. Run it (~3s, source-only) and update the matching guard in the same commit. (#1252)
 
+**`apps/admin` tests are NOT a CI merge gate — only `apps/dashboard`'s are (`.github/workflows/test.yml` = build + `--filter @distribute/dashboard test` + lint; NO `--filter admin test` job).** So admin source-substring guards ROT SILENTLY: a rename/nav change that doesn't update the matching admin test ships red and nothing blocks it (#2689's Signups-tab rename left 4 stale assertions across `public-metrics-page.test.ts` + `context-sidebar.test.ts` + `last-brand.test.ts`, all red on main). Because there's no gate, you MUST run `pnpm --filter @distribute/admin test` locally before pushing an admin change and update every matching guard in the same commit — CI will not catch it for you. When editing an admin test file, also fix any pre-existing red assertions in THAT file (they're this same rot); sibling test files reading code you didn't touch are follow-ups, not scope. (#2698)
+
 ## `apps/admin` is the STAFF GOD-MODE console (admin.distribute.you) — a dashboard fork, NOT a customer surface
 
 `apps/admin` is the dashboard cloned for internal staff. Two load-bearing facts before touching it:
