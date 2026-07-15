@@ -306,11 +306,11 @@ async function withLivePerformanceMetrics(html: string) {
 const TICKER_OBJECTIVES = [
   // Headline metrics, in order: (1) positive reply for a sales meeting, then
   // (2) website visits — the two vedette outcomes; signup is tertiary.
-  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
-  { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true, slug: "website-visits" },
+  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", unit: "per positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
+  { key: "websiteVisit", sym: "WEB", label: "Website visits", unit: "per website visit", measuredByUs: true, slug: "website-visits" },
   // meetingBooked is beta-gated out of the public board; the __TICKER_CPM__
   // scalar (legacy /v0 homepage) is still computed from a separate fetch below.
-  { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false, slug: "signups" },
+  { key: "signup", sym: "SIG", label: "Signup", unit: "per signup", measuredByUs: false, slug: "signups" },
 ] as const;
 
 const BOARD_TOKEN = "__TICKER_BOARD__";
@@ -407,7 +407,7 @@ function sparklineSvg(
 // price + green ▲ growth + micro sparkline + label. No link, no detail page —
 // the homepage board section was removed; these two live below the hero.
 function heroStatCard(
-  cfg: { label: string },
+  cfg: { label: string; unit: string },
   points: SeriesPoint[],
 ): string {
   const price = points.length ? points[points.length - 1].v : null;
@@ -419,10 +419,11 @@ function heroStatCard(
     chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
   }
   const spark = sparklineSvg(points, trendStroke(), "prs-spark");
-  // Make the price the lead figure; the note makes clear it's the current
-  // measured cost = the trailing moving average over the last ~100 outcomes
+  // Big white lead reads as a full phrase ("$200 per positive reply for a sales
+  // meeting"), the price emphasised; the grey note clarifies it's the current
+  // rate = trailing moving average over the last ~100 outcomes
   // (features-service cost-per-outcome-trend windowOutcomes default = 100).
-  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-price">${priceStr}</span>${chg}</div>${spark}<span>${cfg.label}</span><small class="prs-note">Live measured cost · avg. of the last 100 outcomes</small></div>`;
+  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-lead"><span class="prs-price">${priceStr}</span> ${cfg.unit}</span>${chg}</div>${spark}<small class="prs-note">Current rate · avg. of the last 100 outcomes</small></div>`;
 }
 
 function tickerCard(
