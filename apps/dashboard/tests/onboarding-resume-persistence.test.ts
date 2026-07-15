@@ -59,8 +59,8 @@ describe("Beta onboarding resume persistence", () => {
   });
 
   it("replays the loading screen once to re-hydrate before landing on a deep step", () => {
-    expect(src).toContain("async function runResume(target: Step)");
-    expect(src).toContain("createBrandAndFetchServices({ isResume: true })");
+    expect(src).toContain("async function runResume(target: Step, urlOverride?: string)");
+    expect(src).toContain("createBrandAndFetchServices({ isResume: true, urlOverride })");
     expect(src).toContain("resumeStartedRef");
   });
 
