@@ -6,9 +6,12 @@ interface CsvButtonProps {
   filename: string;
   csv: string;
   isEmpty?: boolean;
+  // Idle-state button label (default "Download CSV"). The leads page overrides
+  // it to "Export leads"; the loading label stays "Preparing…".
+  label?: string;
 }
 
-export function CsvDownloadButton({ filename, csv, isEmpty }: CsvButtonProps) {
+export function CsvDownloadButton({ filename, csv, isEmpty, label = "Download CSV" }: CsvButtonProps) {
   const [loading, setLoading] = useState(false);
 
   const onClick = useCallback(() => {
@@ -45,7 +48,7 @@ export function CsvDownloadButton({ filename, csv, isEmpty }: CsvButtonProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
       )}
-      {loading ? "Preparing…" : "Download CSV"}
+      {loading ? "Preparing…" : label}
     </button>
   );
 }

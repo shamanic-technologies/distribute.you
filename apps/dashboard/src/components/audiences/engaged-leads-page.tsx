@@ -304,6 +304,36 @@ function AudienceSection({
   );
 }
 
+// Right-panel email: click to copy to clipboard. Shows a transient "Copied!"
+// ack for ~1.5s, then reverts to the address.
+function CopyableEmail({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(email).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      (err) => console.error("Failed to copy email to clipboard", err),
+    );
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Click to copy"
+      className="font-medium text-left inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 hover:underline break-all cursor-pointer"
+    >
+      <span>{email}</span>
+      {copied ? (
+        <span className="text-xs text-green-600 shrink-0">Copied!</span>
+      ) : (
+        <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+      )}
+    </button>
+  );
+}
+
 function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
@@ -851,7 +881,7 @@ export function EngagedLeadsPage() {
             )}
           </h1>
           {!loading && (
-            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={leads.length === 0} />
+            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={leads.length === 0} label="Export leads" />
           )}
         </div>
 
@@ -906,7 +936,8 @@ export function EngagedLeadsPage() {
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div><span className="text-gray-500">Name:</span><p className="font-medium">{selectedFull?.firstName ?? ""} {selectedFull?.lastName ?? ""}</p></div>
-                <div><span className="text-gray-500">Email:</span><p className="font-medium">{selectedLead.email}</p>
+                <div><span className="text-gray-500">Email:</span>
+                  {selectedLead.email ? <p><CopyableEmail email={selectedLead.email} /></p> : <p className="font-medium">-</p>}
                   {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.currentTitle || "-"}</p></div>
