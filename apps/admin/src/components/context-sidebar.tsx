@@ -335,12 +335,14 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
   // no per-viewer feature flag — every signed-in staff sees it.
   const analyticsItems: SidebarItem[] = [
     { id: "landing", label: "Unique visitors", href: "/metrics?view=landing", icon: <OverviewIcon /> },
-    { id: "signups", label: "Signup conversions", href: "/metrics?view=signups", icon: <ConversionsIcon /> },
+    { id: "signups", label: "Signups", href: "/metrics?view=signups", icon: <ConversionsIcon /> },
+    { id: "active-users", label: "Active users", href: "/metrics?view=active-users", icon: <OrgIcon /> },
     { id: "cards", label: "Cards added", href: "/metrics?view=cards", icon: <BillingIcon /> },
   ];
 
   const activeView = searchParams.get("view");
-  const normalizedView = activeView === "signups" || activeView === "cards" ? activeView : "landing";
+  const normalizedView =
+    activeView === "signups" || activeView === "cards" || activeView === "active-users" ? activeView : "landing";
 
   return (
     <SidebarSection title="Platform">

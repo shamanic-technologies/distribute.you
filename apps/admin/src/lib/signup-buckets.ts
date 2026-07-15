@@ -15,11 +15,15 @@ function isoWeekKey(date: Date): { key: string; label: string } {
   // ISO 8601 week: Thursday-anchored, weeks start Monday.
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const day = d.getUTCDay() || 7; // Sunday -> 7
+  // Monday of this week — used as the human label (e.g. "Jun 12").
+  const monday = new Date(d);
+  monday.setUTCDate(monday.getUTCDate() - (day - 1));
   d.setUTCDate(d.getUTCDate() + 4 - day);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   const ww = String(week).padStart(2, "0");
-  return { key: `${d.getUTCFullYear()}-W${ww}`, label: `W${ww} ${d.getUTCFullYear()}` };
+  const label = monday.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return { key: `${d.getUTCFullYear()}-W${ww}`, label };
 }
 
 function monthLabel(year: number, monthIndex: number): string {

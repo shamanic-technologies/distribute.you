@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
 import { SignupPeriodChart } from "@/components/signup-period-chart";
+import { ActiveUsersView } from "@/components/active-users-view";
 import {
   fetchPublicStatsSummary,
   type DailyFunnelPoint,
@@ -18,7 +19,8 @@ export const revalidate = 300;
 
 const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
   { id: "landing", label: "Unique visitors", href: "/metrics?view=landing" },
-  { id: "signups", label: "Signup conversions", href: "/metrics?view=signups" },
+  { id: "signups", label: "Signups", href: "/metrics?view=signups" },
+  { id: "active-users", label: "Active users", href: "/metrics?view=active-users" },
   { id: "cards", label: "Cards added", href: "/metrics?view=cards" },
 ];
 
@@ -40,7 +42,7 @@ function pct(numerator: number, denominator: number): string {
 
 function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === "signups" || value === "cards") return value;
+  if (value === "signups" || value === "cards" || value === "active-users") return value;
   return "landing";
 }
 
@@ -250,7 +252,9 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
 
   const sp = await searchParams;
   const view = parseView(sp.view);
-  const stats = await fetchPublicStatsSummary(view);
+  // The active-users view reads the cross-org accounts snapshot client-side
+  // (getAuditAccounts), so it doesn't need the PostHog/Stripe/Clerk summary.
+  const stats = view === "active-users" ? null : await fetchPublicStatsSummary(view);
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -291,10 +295,10 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           </div>
         </section>
 
-        {view === "landing" && (
+        {view === "landing" && stats && (
           <LandingView totalVisitors={stats.landingVisitors} timeline={stats.timeline} sources={stats.trafficSources} />
         )}
-        {view === "signups" && (
+        {view === "signups" && stats && (
           <SignupView
             totalUsers={stats.users.totalUsers}
             totalVisitors={stats.landingVisitors}
@@ -302,30 +306,33 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
             timeline={stats.timeline}
           />
         )}
-        {view === "cards" && (
+        {view === "active-users" && <ActiveUsersView />}
+        {view === "cards" && stats && (
           <CardsView cardsAdded={stats.cardsAdded} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
         )}
 
-        <section className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Data sources</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">PostHog unique visitors and signup events</p>
+        {stats && (
+          <section className="rounded-lg border border-gray-200 bg-white p-6">
+            <h2 className="text-lg font-semibold text-gray-950">Data sources</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">PostHog unique visitors and signup events</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">Stripe saved payment methods</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Gold</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">Public signup and billing totals</p>
+              </div>
             </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">Stripe saved payment methods</p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Gold</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">Public signup and billing totals</p>
-            </div>
-          </div>
-          <p className="mt-4 text-xs text-gray-400">
-            Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-          </p>
-        </section>
+            <p className="mt-4 text-xs text-gray-400">
+              Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );
