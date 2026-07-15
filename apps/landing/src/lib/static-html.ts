@@ -316,7 +316,9 @@ const TICKER_OBJECTIVES = [
 const BOARD_TOKEN = "__TICKER_BOARD__";
 
 interface TickerMetrics {
-  board: string; // server-rendered <div class="ticker-board">…</div>
+  board: string; // server-rendered <div class="ticker-board">…</div> (index-agency /v0)
+  heroPos: string; // compact non-clickable hero proof-rail stat: positive reply
+  heroWeb: string; // compact non-clickable hero proof-rail stat: website visits
   cpc: string; // scalars for the reused pricing card / mockup / compare rows
   cpr: string;
   cpm: string;
@@ -376,9 +378,13 @@ function trendStroke(): string {
   return TREND_GREEN;
 }
 
-function sparklineSvg(points: SeriesPoint[], stroke: string): string {
+function sparklineSvg(
+  points: SeriesPoint[],
+  stroke: string,
+  cls = "tkr-spark",
+): string {
   if (points.length < 2) {
-    return `<div class="tkr-spark tkr-spark-empty" aria-hidden="true"></div>`;
+    return `<div class="${cls} tkr-spark-empty" aria-hidden="true"></div>`;
   }
   const vals = points.map((p) => p.v);
   const min = Math.min(...vals);
@@ -394,7 +400,26 @@ function sparklineSvg(points: SeriesPoint[], stroke: string): string {
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
-  return `<svg class="tkr-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+// Compact NON-CLICKABLE hero proof-rail stat (positive reply / website visits):
+// price + green ▲ growth + micro sparkline + label. No link, no detail page —
+// the homepage board section was removed; these two live below the hero.
+function heroStatCard(
+  cfg: { label: string },
+  points: SeriesPoint[],
+): string {
+  const price = points.length ? points[points.length - 1].v : null;
+  const priceStr = price === null ? "&mdash;" : usdSmart(price);
+  const g = growth7d(points);
+  let chg = "";
+  if (g !== null && g !== 0) {
+    const pct = (Math.abs(g) * 100).toFixed(1);
+    chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
+  }
+  const spark = sparklineSvg(points, trendStroke(), "prs-spark");
+  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-price">${priceStr}</span>${chg}</div>${spark}<span>${cfg.label}</span></div>`;
 }
 
 function tickerCard(
@@ -444,6 +469,8 @@ function buildFallbackTicker(): TickerMetrics {
   };
   return {
     board: tickerBoard(series),
+    heroPos: heroStatCard(TICKER_OBJECTIVES[0], series.positiveReply),
+    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], series.websiteVisit),
     cpc: "$0.88",
     cpr: "$151",
     cpm: "$5.68",
@@ -506,6 +533,8 @@ async function fetchTicker(): Promise<TickerMetrics> {
 
   return {
     board: tickerBoard(series),
+    heroPos: heroStatCard(TICKER_OBJECTIVES[0], reply),
+    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], visit),
     cpc: last(visit) ?? fb.cpc,
     cpr: last(reply) ?? fb.cpr,
     cpm: last(meeting) ?? fb.cpm,
@@ -529,6 +558,8 @@ async function withTickerMetrics(html: string) {
   // scalar-only pages (e.g. /pricing, which has no board) still get real rates.
   const needsMetrics =
     html.includes(BOARD_TOKEN) ||
+    html.includes("__HERO_POS__") ||
+    html.includes("__HERO_WEB__") ||
     html.includes("__TICKER_CPC__") ||
     html.includes("__TICKER_CPR__") ||
     html.includes("__TICKER_CPM__");
@@ -537,6 +568,8 @@ async function withTickerMetrics(html: string) {
   const t = await resolveTicker();
   return html
     .replaceAll(BOARD_TOKEN, t.board)
+    .replaceAll("__HERO_POS__", t.heroPos)
+    .replaceAll("__HERO_WEB__", t.heroWeb)
     .replaceAll("__TICKER_CPC__", t.cpc)
     .replaceAll("__TICKER_CPR__", t.cpr)
     .replaceAll("__TICKER_CPM__", t.cpm);
