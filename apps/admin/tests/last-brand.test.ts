@@ -238,8 +238,8 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
     "utf-8",
   );
 
-  it("points the logo at the cross-org metrics page and marks breadcrumb parents as explicit hierarchy navigation", () => {
-    expect(header).toContain('href="/metrics"');
+  it("points the logo at the app root and marks breadcrumb parents as explicit hierarchy navigation", () => {
+    expect(header).toContain('href="/"');
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${organization.id}`)");
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
   });

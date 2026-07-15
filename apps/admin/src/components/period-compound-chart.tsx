@@ -3,6 +3,7 @@
 import {
   Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Legend,
   Line,
@@ -12,13 +13,13 @@ import {
   YAxis,
 } from "recharts";
 
-export interface PeriodBarGrowthPoint {
-  /** X-axis label, e.g. "Jul 2026" (month), "Jun 12" (week/day). */
+export interface PeriodCompoundPoint {
+  /** X-axis label, e.g. "Jul 2026" (month) or "Jun 12" (week). */
   label: string;
-  /** Bar value (count). */
+  /** Bar value (count) for the period. */
   value: number;
-  /** Period-over-period growth in percent; null on the first bucket. */
-  growthPct: number | null;
+  /** Compound growth rate since inception at this period, in percent. Null before the anchor. */
+  cmgrPct: number | null;
 }
 
 const BAR_COLOR = "#6366f1";
@@ -34,34 +35,43 @@ function ChartTooltip({
   valueLabel,
 }: {
   active?: boolean;
-  payload?: Array<{ payload: PeriodBarGrowthPoint }>;
+  payload?: Array<{ payload: PeriodCompoundPoint & { isCurrent: boolean } }>;
   valueLabel: string;
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
-      <p className="text-gray-500">{point.label}</p>
+      <p className="text-gray-500">
+        {point.label}
+        {point.isCurrent ? " (in progress)" : ""}
+      </p>
       <p className="mt-1 flex items-center gap-2 font-semibold text-gray-900">
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: BAR_COLOR }} />
         {point.value.toLocaleString("en-US")} {valueLabel}
       </p>
-      {point.growthPct !== null && (
+      {point.cmgrPct !== null && (
         <p className="mt-1 flex items-center gap-2 font-semibold text-gray-900">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: LINE_COLOR }} />
-          {formatGrowth(point.growthPct)} growth
+          {formatGrowth(point.cmgrPct)} since inception
         </p>
       )}
     </div>
   );
 }
 
-export function PeriodBarGrowthChart({
+/**
+ * A period bar chart (value bars) with a compound-growth line (CMGR / CWGR since
+ * inception). The final, still-in-progress period renders "in pencil": a hollow
+ * dashed bar and a dashed line tail with a hollow dot, so a partial current
+ * period reads as tentative rather than a final number.
+ */
+export function PeriodCompoundChart({
   data,
   valueLabel,
   growthLabel,
 }: {
-  data: PeriodBarGrowthPoint[];
+  data: PeriodCompoundPoint[];
   valueLabel: string;
   growthLabel: string;
 }) {
@@ -73,10 +83,20 @@ export function PeriodBarGrowthChart({
     );
   }
 
+  const lastIndex = data.length - 1;
+  const chartData = data.map((d, i) => ({
+    ...d,
+    isCurrent: i === lastIndex,
+    // Solid line runs to the last CONCLUDED period; the dashed tail spans the last
+    // concluded period → the current one (they meet at index lastIndex - 1).
+    cmgrSolid: i <= lastIndex - 1 ? d.cmgrPct : null,
+    cmgrTail: i >= lastIndex - 1 ? d.cmgrPct : null,
+  }));
+
   return (
     <div className="h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis
             dataKey="label"
@@ -104,16 +124,42 @@ export function PeriodBarGrowthChart({
           />
           <Tooltip content={<ChartTooltip valueLabel={valueLabel} />} cursor={{ fill: "#f8fafc" }} />
           <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
-          <Bar yAxisId="value" dataKey="value" name={valueLabel} fill={BAR_COLOR} radius={[3, 3, 0, 0]} maxBarSize={48} />
+          <Bar yAxisId="value" dataKey="value" name={valueLabel} radius={[3, 3, 0, 0]} maxBarSize={48}>
+            {chartData.map((d, i) => (
+              <Cell
+                key={i}
+                fill={d.isCurrent ? "transparent" : BAR_COLOR}
+                stroke={d.isCurrent ? BAR_COLOR : undefined}
+                strokeWidth={d.isCurrent ? 1.5 : 0}
+                strokeDasharray={d.isCurrent ? "4 3" : undefined}
+              />
+            ))}
+          </Bar>
           <Line
             yAxisId="growth"
             type="monotone"
-            dataKey="growthPct"
+            dataKey="cmgrSolid"
             name={growthLabel}
             dot={false}
             activeDot={{ r: 4 }}
             stroke={LINE_COLOR}
             strokeWidth={2}
+            connectNulls={false}
+          />
+          <Line
+            yAxisId="growth"
+            type="monotone"
+            dataKey="cmgrTail"
+            legendType="none"
+            dot={(props) => {
+              const { cx, cy, index, key } = props as { cx?: number; cy?: number; index: number; key?: string };
+              if (index !== lastIndex || cx == null || cy == null) return <g key={key ?? index} />;
+              return <circle key={key ?? index} cx={cx} cy={cy} r={4} fill="#fff" stroke={LINE_COLOR} strokeWidth={2} />;
+            }}
+            activeDot={{ r: 4 }}
+            stroke={LINE_COLOR}
+            strokeWidth={2}
+            strokeDasharray="5 4"
             connectNulls={false}
           />
         </ComposedChart>

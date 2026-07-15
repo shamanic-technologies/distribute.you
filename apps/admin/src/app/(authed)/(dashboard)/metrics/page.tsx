@@ -3,7 +3,8 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
-import { SignupPeriodChart } from "@/components/signup-period-chart";
+import { PeriodCompoundChart } from "@/components/period-compound-chart";
+import { CmgrStat } from "@/components/cmgr-stat";
 import { ActiveUsersView } from "@/components/active-users-view";
 import {
   fetchPublicStatsSummary,
@@ -11,14 +12,7 @@ import {
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import {
-  cmgrSummary,
-  monthlySignups,
-  weeklySignups,
-  monthlyCards,
-  weeklyCards,
-  type SignupBucket,
-} from "@/lib/signup-buckets";
+import { cmgrSummary, monthlySignups, weeklySignups, monthlyCards, weeklyCards } from "@/lib/signup-buckets";
 import { formatCount } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
@@ -71,28 +65,6 @@ function StatCard({ label, value, detail, accent }: StatCardProps) {
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-gray-950">{value}</p>
       <p className="mt-1 text-sm text-gray-500">{detail}</p>
-    </div>
-  );
-}
-
-function formatCmgr(value: number | null): string {
-  if (value === null) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
-}
-
-/**
- * Compound-growth headline shown above a signup chart: the big number is the
- * CMGR/CWGR up to the last concluded period; the faint line below is the average
- * of the whole plotted line, both excluding the current partial period.
- */
-function CmgrStat({ buckets, unit }: { buckets: SignupBucket[]; unit: string }) {
-  const { latestPct, avgPct } = cmgrSummary(buckets);
-  return (
-    <div>
-      <p className="text-2xl font-semibold text-gray-950">{formatCmgr(latestPct)}</p>
-      <p className="mt-0.5 text-xs text-gray-400">
-        {formatCmgr(avgPct)} average {unit} since inception
-      </p>
     </div>
   );
 }
@@ -182,6 +154,10 @@ function SignupView({
 }) {
   const monthly = monthlySignups(timeline);
   const weekly = weeklySignups(timeline);
+  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const monthlyCmgr = cmgrSummary(monthly);
+  const weeklyCmgr = cmgrSummary(weekly);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
@@ -194,20 +170,20 @@ function SignupView({
           <h2 className="text-lg font-semibold text-gray-950">Monthly signups</h2>
           <p className="mt-1 text-sm text-gray-500">Signups per month with compound monthly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat buckets={monthly} unit="monthly" />
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
           </div>
           <div className="mt-5">
-            <SignupPeriodChart data={monthly} growthLabel="CMGR since inception" />
+            <PeriodCompoundChart data={monthlyPoints} valueLabel="Signups" growthLabel="CMGR since inception" />
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-950">Weekly signups</h2>
           <p className="mt-1 text-sm text-gray-500">Signups per week with compound weekly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat buckets={weekly} unit="weekly" />
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
           </div>
           <div className="mt-5">
-            <SignupPeriodChart data={weekly} growthLabel="CWGR since inception" />
+            <PeriodCompoundChart data={weeklyPoints} valueLabel="Signups" growthLabel="CWGR since inception" />
           </div>
         </div>
       </section>
@@ -248,6 +224,10 @@ function CardsView({
 }) {
   const monthly = monthlyCards(timeline);
   const weekly = weeklyCards(timeline);
+  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const monthlyCmgr = cmgrSummary(monthly);
+  const weeklyCmgr = cmgrSummary(weekly);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
@@ -260,20 +240,20 @@ function CardsView({
           <h2 className="text-lg font-semibold text-gray-950">Monthly paid users</h2>
           <p className="mt-1 text-sm text-gray-500">Paid users per month with compound monthly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat buckets={monthly} unit="monthly" />
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
           </div>
           <div className="mt-5">
-            <SignupPeriodChart data={monthly} growthLabel="CMGR since inception" />
+            <PeriodCompoundChart data={monthlyPoints} valueLabel="Paid users" growthLabel="CMGR since inception" />
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-950">Weekly paid users</h2>
           <p className="mt-1 text-sm text-gray-500">Paid users per week with compound weekly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat buckets={weekly} unit="weekly" />
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
           </div>
           <div className="mt-5">
-            <SignupPeriodChart data={weekly} growthLabel="CWGR since inception" />
+            <PeriodCompoundChart data={weeklyPoints} valueLabel="Paid users" growthLabel="CWGR since inception" />
           </div>
         </div>
       </section>
