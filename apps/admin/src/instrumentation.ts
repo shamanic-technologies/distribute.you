@@ -272,6 +272,7 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
   { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
+  { provider: "posthog", envVar: "POSTHOG_PERSONAL_API_KEY" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.

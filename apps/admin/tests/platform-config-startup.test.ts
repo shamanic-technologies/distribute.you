@@ -29,6 +29,7 @@ describe("Platform config registration at startup", () => {
       { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
       { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
       { provider: "apify", envVar: "APIFY_API_KEY" },
+      { provider: "posthog", envVar: "POSTHOG_PERSONAL_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -43,9 +44,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 28 platform keys", () => {
+    it("should register exactly 29 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(28);
+      expect(matches).toHaveLength(29);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
