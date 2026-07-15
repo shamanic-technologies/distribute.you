@@ -106,6 +106,14 @@ export function dailySignups(points: DailyFunnelPoint[]): SignupBucket[] {
   return aggregate(points, (date, iso) => ({ key: iso, label: dayLabel(date) }), (p) => p.signups);
 }
 
+export function monthlyVisitors(points: DailyFunnelPoint[]): SignupBucket[] {
+  return aggregate(points, monthKey, (p) => p.landingVisitors);
+}
+
+export function weeklyVisitors(points: DailyFunnelPoint[]): SignupBucket[] {
+  return aggregate(points, (date) => isoWeekKey(date), (p) => p.landingVisitors);
+}
+
 export function monthlyCards(points: DailyFunnelPoint[]): SignupBucket[] {
   return aggregate(points, monthKey, (p) => p.cardsAdded);
 }
