@@ -13,7 +13,18 @@ interface ApiOptions {
   body?: Record<string, unknown>;
   headers?: Record<string, string>;
   suppressPaymentRequired?: boolean;
+  /**
+   * Client-side timeout (ms). A hung request (backend never answers) otherwise
+   * leaves the promise pending forever → any `await`-gated loader spins with no
+   * error/finally ever firing. Set this on a call whose caller shows a loader so
+   * a hang is bounded into the caught-error path (translated to a 408 ApiError).
+   */
+  timeoutMs?: number;
 }
+
+/** Default client timeout for AI/LLM-backed suggest calls (backend can be slow +
+ *  occasionally hangs). Bounds the loader so an error/finally path always fires. */
+export const SUGGEST_TIMEOUT_MS = 120_000;
 
 /**
  * Unified API call function.
@@ -117,7 +128,7 @@ async function getTabSessionToken(): Promise<string | null> {
 }
 
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
-  const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
+  const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired, timeoutMs } = options ?? {};
 
   const send = async (): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
@@ -146,11 +157,26 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
     }
 
-    return fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    // Bound a hung request so the caller's loader can't spin forever. Each attempt
+    // (incl. the org-desync retry) gets its own fresh timeout signal. A timeout
+    // aborts the fetch → rejects with AbortError, translated to a 408 ApiError below.
+    let signal: AbortSignal | undefined;
+    if (timeoutMs && typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+      signal = AbortSignal.timeout(timeoutMs);
+    }
+    try {
+      return await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal,
+      });
+    } catch (err) {
+      if (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError")) {
+        throw new ApiError("Request timed out", 408, { error: "client_timeout", endpoint, timeoutMs });
+      }
+      throw err;
+    }
   };
 
   let response = await send();
@@ -1200,6 +1226,7 @@ export async function suggestAudiences(
     token,
     method: "POST",
     body: { brandId, nlPrompt },
+    timeoutMs: SUGGEST_TIMEOUT_MS,
   });
   const parsed = SuggestAudiencesResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -1407,6 +1434,7 @@ export async function suggestBrandIcp(
     token,
     method: "POST",
     body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
+    timeoutMs: SUGGEST_TIMEOUT_MS,
   });
   const parsed = SuggestBrandIcpResponseSchema.safeParse(raw);
   if (!parsed.success) {
