@@ -113,3 +113,43 @@ export function monthlyCards(points: DailyFunnelPoint[]): SignupBucket[] {
 export function weeklyCards(points: DailyFunnelPoint[]): SignupBucket[] {
   return aggregate(points, (date) => isoWeekKey(date), (p) => p.cardsAdded);
 }
+
+/** Monday (ISO week start) of the given date, as a YYYY-MM-DD key. */
+function mondayIso(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - (day - 1));
+  return d.toISOString().slice(0, 10);
+}
+
+function pct(numerator: number, denominator: number): number {
+  if (denominator === 0) return 0;
+  return Number(((numerator / denominator) * 100).toFixed(1));
+}
+
+/**
+ * Roll a daily funnel timeline up to ISO weeks (date = the week's Monday), summing
+ * counts and recomputing the conversion ratios. Lets the daily chart component render
+ * a weekly series without any change to its shape.
+ */
+export function weeklyTimeline(points: DailyFunnelPoint[]): DailyFunnelPoint[] {
+  const map = new Map<string, { landingVisitors: number; signups: number; cardsAdded: number }>();
+  for (const point of points) {
+    const key = mondayIso(new Date(`${point.date}T00:00:00.000Z`));
+    const existing = map.get(key) ?? { landingVisitors: 0, signups: 0, cardsAdded: 0 };
+    existing.landingVisitors += point.landingVisitors;
+    existing.signups += point.signups;
+    existing.cardsAdded += point.cardsAdded;
+    map.set(key, existing);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, v]) => ({
+      date,
+      landingVisitors: v.landingVisitors,
+      signups: v.signups,
+      cardsAdded: v.cardsAdded,
+      signupConversionPct: pct(v.signups, v.landingVisitors),
+      cardConversionPct: pct(v.cardsAdded, v.signups),
+    }));
+}
