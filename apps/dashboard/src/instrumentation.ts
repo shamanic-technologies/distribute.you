@@ -99,10 +99,13 @@ export const EMAIL_TEMPLATES = [
     htmlBody: emailLayout(`
       <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">Welcome to distribute.</h1>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        You drop a URL. We do the outreach. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf.
+        Cold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.
       </p>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        Nothing to set up. No domains to warm, no inboxes to babysit. Only interested prospects come back to you.
+        So we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.
+      </p>
+      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
+        Only interested prospects come back to you. You close.
       </p>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
         Your first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.
@@ -113,7 +116,7 @@ export const EMAIL_TEMPLATES = [
       <p style="color:${EMAIL_MUTED};font-size:14px;line-height:1.6;margin:20px 0 0;">
         New to this? <a href="${HOW_IT_WORKS_URL}" style="color:${EMAIL_ACCENT_TEXT};">See how it works.</a>
       </p>`),
-    textBody: `Welcome to distribute.\n\nYou drop a URL. We do the outreach. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf.\n\nNothing to set up. No domains to warm, no inboxes to babysit. Only interested prospects come back to you.\n\nYour first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
+    textBody: `Welcome to distribute.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
   },
   // Email 2 — sent AFTER the user pays and launches (completeLaunchAfterCheckout).
   // {{outcomeNoun}} is the plural of the brand's chosen optimization goal (clicks /
@@ -124,15 +127,15 @@ export const EMAIL_TEMPLATES = [
     htmlBody: emailLayout(`
       <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">You're live. Your first {{outcomeNoun}} are on the way.</h1>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        Your campaign is running. We're finding the decision-makers at the companies you want, writing the emails, and sending them from our own domains, on your behalf.
+        Your campaign just went live. From here it runs on its own: we reach out, screen the replies, and pass you the prospects worth your time.
       </p>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
-        Only interested prospects come back to you. Watch your {{outcomeNoun}} land from the dashboard as they come in.
+        Watch your {{outcomeNoun}} land from the dashboard as they come in.
       </p>
       <p style="margin:0;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
       </p>`),
-    textBody: `You're live. Your first {{outcomeNoun}} are on the way.\n\nYour campaign is running. We're finding the decision-makers at the companies you want, writing the emails, and sending them from our own domains, on your behalf.\n\nOnly interested prospects come back to you. Watch your {{outcomeNoun}} land from the dashboard as they come in.\n\nOpen your dashboard: ${DASHBOARD_URL}`,
+    textBody: `You're live. Your first {{outcomeNoun}} are on the way.\n\nYour campaign just went live. From here it runs on its own: we reach out, screen the replies, and pass you the prospects worth your time.\n\nWatch your {{outcomeNoun}} land from the dashboard as they come in.\n\nOpen your dashboard: ${DASHBOARD_URL}`,
   },
   // Brand status switch — sent when the user flips Pause / Restart on a brand.
   // Recipient is the org user; staff are BCC'd on the send (brand-status-email

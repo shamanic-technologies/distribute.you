@@ -86,28 +86,10 @@ export const EMAIL_TEMPLATES = [
       </ul>`),
     textBody: "You're on the list!\n\nThanks for joining the Distribute waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute",
   },
-  {
-    name: "welcome",
-    subject: "Welcome to distribute. Your first meetings are on the way.",
-    htmlBody: emailLayout(`
-      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">Welcome. Your first meetings are on the way.</h1>
-      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        You gave us a URL. We take it from there. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf.
-      </p>
-      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
-        Nothing to set up. No domains to warm, no inboxes to babysit. Only interested prospects come back to you. You close.
-      </p>
-      <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
-        Your first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.
-      </p>
-      <p style="margin:0;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
-      </p>
-      <p style="color:${EMAIL_MUTED};font-size:14px;line-height:1.6;margin:20px 0 0;">
-        New to this? <a href="${DOCS_URL}" style="color:${EMAIL_ACCENT};">See how it works.</a>
-      </p>`),
-    textBody: `Welcome. Your first meetings are on the way.\n\nYou gave us a URL. We take it from there. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf.\n\nNothing to set up. No domains to warm, no inboxes to babysit. Only interested prospects come back to you. You close.\n\nYour first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${DOCS_URL}`,
-  },
+  // NOTE: the customer "welcome" email (sent at signup) is OWNED by apps/dashboard
+  // (customers sign up there). Admin does NOT register `welcome` — the email-template
+  // store is shared + keyed by name, so a divergent admin copy would clobber the
+  // dashboard's on whichever app redeploys last (CLAUDE.md email-owner rule).
 
   // ── Admin notifications (plain, no layout) ──
   {
