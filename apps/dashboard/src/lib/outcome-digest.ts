@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ADMIN_ALLOWED_EMAILS } from "./admin-allowlist";
 import { parseFeatureRevenue } from "./revenue-parse";
-import type { RevenueOverview, SignalSeries } from "./revenue-view";
+import type { ConversionLead, RevenueOverview } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
 export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
@@ -83,6 +83,9 @@ export interface DigestBrandSummary {
   totalPipelineUsd: number;
   organizations: DigestOutcomeOrg[];
   leads: DigestLead[];
+  /** Singular outcome noun for the resolved goal ("form submission", "website
+   *  visit", "positive reply") — the per-person badge label. */
+  outcomeNoun: string;
 }
 
 export interface PreparedDigestSend {
@@ -95,8 +98,21 @@ export interface PreparedDigestSend {
   metadata: Record<string, string>;
 }
 
-/** A brand's optimization goal selects which daily signal counts as an outcome. */
-export type OutcomeGoal = "signups" | "sales_meetings";
+/**
+ * A brand's optimization goal selects which per-lead signal counts as the daily
+ * outcome. `sales_meetings` is DEPRECATED — it, and the legacy unset default
+ * `booked_meetings`, collapse into `positive_replies`. `website_visits` +
+ * `positive_replies` are ALWAYS tracked (email-gateway click / positive reply);
+ * `signups` / `form_submissions` / `purchase` depend on the conversion tracker
+ * (features-service#476) and fall back to website clicks when it isn't live yet
+ * (no lead carries the outcome flag).
+ */
+export type OutcomeGoal =
+  | "website_visits"
+  | "signups"
+  | "form_submissions"
+  | "purchase"
+  | "positive_replies";
 
 export interface OutcomeDigestCollection {
   scannedOrgs: number;
@@ -301,25 +317,95 @@ function previousUtcDay(): string {
     .slice(0, 10);
 }
 
+/** Per-goal outcome resolution: the per-lead timestamp that counts as "the outcome",
+ *  a plural headline label, a singular per-person badge noun, and (for tracker-
+ *  dependent goals) the per-lead flag whose absence across EVERY lead means the
+ *  conversion tracker isn't live yet → fall back to website clicks. */
+interface GoalOutcomeConfig {
+  /** Plural, headline: "form submissions". */
+  label: string;
+  /** Singular, per-person badge: "form submission". */
+  noun: string;
+  outcomeAt: (lead: ConversionLead) => string | null | undefined;
+  /** null = always tracked (email-gateway), never falls back. Otherwise the
+   *  per-lead outcome flag; when every lead's flag is `undefined` the tracker
+   *  isn't in prod yet (features-service#476) → fall back to website clicks. */
+  trackerFlag: ((lead: ConversionLead) => boolean | undefined) | null;
+}
+
+const WEBSITE_VISITS_CONFIG: GoalOutcomeConfig = {
+  label: "website visits",
+  noun: "website visit",
+  outcomeAt: (l) => l.clickedAt,
+  trackerFlag: null,
+};
+
+const GOAL_CONFIG: Record<OutcomeGoal, GoalOutcomeConfig> = {
+  website_visits: WEBSITE_VISITS_CONFIG,
+  positive_replies: {
+    label: "positive replies",
+    noun: "positive reply",
+    outcomeAt: (l) => l.repliedPositiveAt,
+    trackerFlag: null,
+  },
+  signups: {
+    label: "signups",
+    noun: "signup",
+    outcomeAt: (l) => l.signupAt,
+    trackerFlag: (l) => l.signup,
+  },
+  form_submissions: {
+    label: "form submissions",
+    noun: "form submission",
+    outcomeAt: (l) => l.formSubmissionAt,
+    trackerFlag: (l) => l.formSubmission,
+  },
+  purchase: {
+    label: "purchases",
+    noun: "purchase",
+    outcomeAt: (l) => l.purchasedAt,
+    trackerFlag: (l) => l.purchased,
+  },
+};
+
+/** Resolve the goal's outcome config, falling back to website clicks when a
+ *  tracker-dependent goal has no live tracker (no lead carries the outcome flag). */
+function resolveGoalOutcome(
+  revenue: RevenueOverview,
+  goal: OutcomeGoal,
+): GoalOutcomeConfig {
+  const config = GOAL_CONFIG[goal];
+  if (config.trackerFlag === null) return config;
+  const trackerLive = revenue.leads.some(
+    (lead) => config.trackerFlag!(lead) !== undefined,
+  );
+  return trackerLive ? config : WEBSITE_VISITS_CONFIG;
+}
+
+/** UTC calendar day (YYYY-MM-DD) of an ISO timestamp; null when absent/unparseable. */
+function utcDayOf(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString().slice(0, 10);
+}
+
 /**
- * The brand's outcome count + label for `day`, from the SAME `/revenue` signal series
- * the dashboard renders. signups → `clicked`, sales_meetings → `repliedPositive`.
- * An absent series (backend not yet serving it) reads as zero — the brand is skipped.
+ * The brand's outcome count + label for `day`, from the resolved goal's per-lead
+ * timestamp on the SAME `/revenue` `leads[]` snapshot the digest displays. A
+ * tracker-dependent goal with no live tracker falls back to website clicks, so the
+ * headline reflects the goal the brand actually optimizes for (form submissions,
+ * purchases…) — never a mismatched signal.
  */
 function outcomeOnDay(
   revenue: RevenueOverview,
   goal: OutcomeGoal,
   day: string,
 ): { count: number; label: string } {
-  const series: SignalSeries | undefined =
-    goal === "signups" ? revenue.clicked : revenue.repliedPositive;
-  const label = goal === "signups" ? "clicks" : "positive replies";
-  const count = series
-    ? series.daily
-        .filter((d) => d.date === day)
-        .reduce((sum, d) => sum + d.count, 0)
-    : 0;
-  return { count, label };
+  const config = resolveGoalOutcome(revenue, goal);
+  const count = revenue.leads.filter(
+    (lead) => utcDayOf(config.outcomeAt(lead)) === day,
+  ).length;
+  return { count, label: config.label };
 }
 
 export async function sendOutcomeDigestEmails(
@@ -398,6 +484,15 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
         ? `<div style="color:#94a3b8;font-size:11px;margin-top:3px;">${escapeHtml(lead.tags.join(", "))}</div>`
         : "";
       const timeAgo = lead.outcomeAt ? escapeHtml(formatTimeAgo(lead.outcomeAt)) : "";
+      // Green outcome pill — names WHY this person is in the digest (the goal's
+      // outcome: "form submission", "website visit", "positive reply"). Shown only
+      // when this lead actually carries the goal's outcome.
+      const outcomeBadge = lead.outcomeAt
+        ? `<span style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:2px 9px;border-radius:9999px;white-space:nowrap;">${escapeHtml(summary.outcomeNoun)}</span>`
+        : "";
+      const timeAgoLine = timeAgo
+        ? `<div style="color:#94a3b8;font-size:12px;margin-top:4px;">${timeAgo}</div>`
+        : "";
       return `
         <tr>
           <td width="56" style="padding:10px 0;border-top:1px solid #e2e8f0;vertical-align:top;">${avatar}</td>
@@ -407,8 +502,9 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
             ${company}
             ${tags}
           </td>
-          <td style="padding:10px 0;border-top:1px solid #e2e8f0;text-align:right;color:#94a3b8;font-size:12px;vertical-align:top;white-space:nowrap;">
-            ${timeAgo}
+          <td style="padding:10px 0;border-top:1px solid #e2e8f0;text-align:right;vertical-align:top;white-space:nowrap;">
+            ${outcomeBadge}
+            ${timeAgoLine}
           </td>
         </tr>`;
     }).join("");
@@ -517,22 +613,26 @@ async function fetchBrandGoal(
     BrandGoalResponseSchema,
     "fetchBrandGoal",
   );
-  // Visit-driven goals track website clicks; every other goal (incl. the server
-  // default when unset) tracks screened positive replies. Mirrors the dashboard's
-  // settled `isVisitDrivenGoal` (api.ts) so the digest never diverges from it.
-  const goal = data.salesEconomics?.optimizationGoal;
-  return goal && VISIT_DRIVEN_GOALS.has(goal) ? "signups" : "sales_meetings";
+  return normalizeOutcomeGoal(data.salesEconomics?.optimizationGoal);
 }
 
-// The click-driven optimization goals — kept byte-equal with `isVisitDrivenGoal`
-// in api.ts. Any goal NOT in this set (sales_meetings, positive_replies, legacy
-// booked_meetings/sales, and any future reply-driven goal) maps to positive replies.
-const VISIT_DRIVEN_GOALS = new Set([
-  "signups",
-  "website_visits",
-  "form_submissions",
-  "purchase",
-]);
+/**
+ * Map the brand-service `optimizationGoal` wire value to the digest's OutcomeGoal.
+ * Kept byte-equal with the dashboard `normalizeBrandOptimizationGoal` (api.ts):
+ * wire `sales`|`purchase` → purchase (brand-service serialises purchase as `sales`);
+ * `booked_meetings`|`sales_meetings` (deprecated) and the unset default collapse to
+ * `positive_replies`. Reading the raw wire value here previously mis-mapped a
+ * purchase brand (wire `sales`) to the reply goal — this normalization fixes it.
+ */
+function normalizeOutcomeGoal(goal: string | null | undefined): OutcomeGoal {
+  if (goal === "website_visits") return "website_visits";
+  if (goal === "signups") return "signups";
+  if (goal === "form_submissions") return "form_submissions";
+  if (goal === "sales" || goal === "purchase") return "purchase";
+  if (goal === "positive_replies") return "positive_replies";
+  // booked_meetings / sales_meetings (deprecated) / unset → positive replies.
+  return "positive_replies";
+}
 
 async function listBrandsForOrg(
   config: EnvConfig,
@@ -595,6 +695,7 @@ function toDigestBrandSummary(
   revenue: RevenueOverview,
   goal: OutcomeGoal,
 ): DigestBrandSummary {
+  const outcome = resolveGoalOutcome(revenue, goal);
   const organizations = revenue.organizations
     .map((org): DigestOutcomeOrg => ({
       orgName: org.orgName ?? org.orgDomain ?? org.orgId ?? "Unknown organization",
@@ -617,9 +718,11 @@ function toDigestBrandSummary(
       companyLogoUrl: lead.orgLogoUrl,
       companyDomain: lead.orgDomain ?? null,
       tags: stripOpened(lead.tags),
-      // The goal's outcome timestamp: signups → website click, sales_meetings →
-      // positive reply. Null (unknown) sorts last; ISO strings sort chronologically.
-      outcomeAt: (goal === "signups" ? lead.clickedAt : lead.repliedPositiveAt) ?? null,
+      // The resolved goal's per-lead outcome timestamp (website click / positive
+      // reply / signup / form submission / purchase; falls back to website click
+      // when the goal's tracker isn't live). Null (unknown) sorts last; ISO strings
+      // sort chronologically.
+      outcomeAt: outcome.outcomeAt(lead) ?? null,
       // Firmographics — job title (fall back to Apollo seniority band), company
       // industry, headcount, and location. Null when unknown (never synthesized).
       title: lead.title ?? lead.seniority ?? null,
@@ -640,6 +743,7 @@ function toDigestBrandSummary(
     totalPipelineUsd: revenue.totalPipelineUsd ?? 0,
     organizations,
     leads,
+    outcomeNoun: outcome.noun,
   };
 }
 
