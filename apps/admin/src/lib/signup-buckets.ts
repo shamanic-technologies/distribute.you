@@ -1,4 +1,5 @@
 import type { DailyFunnelPoint } from "@/lib/public-stats";
+import { compoundGrowthSeries, compoundGrowthSummary } from "@/lib/compound-growth";
 
 export interface SignupBucket {
   /** Sort/group key, e.g. "2026-07", "2026-W28", "2026-07-15". */
@@ -46,10 +47,7 @@ function dayLabel(date: Date): string {
 
 function withDerived(buckets: Array<{ key: string; label: string; signups: number }>): SignupBucket[] {
   const sorted = [...buckets].sort((a, b) => a.key.localeCompare(b.key));
-  // Anchor the compound rate on the first bucket with real signups — a zero (or
-  // near-zero) base makes the ratio explode / divide by zero.
-  const baseIndex = sorted.findIndex((bucket) => bucket.signups > 0);
-  const baseSignups = baseIndex >= 0 ? sorted[baseIndex].signups : 0;
+  const cmgr = compoundGrowthSeries(sorted.map((bucket) => bucket.signups));
 
   return sorted.map((bucket, index) => {
     const prev = sorted[index - 1];
@@ -57,15 +55,7 @@ function withDerived(buckets: Array<{ key: string; label: string; signups: numbe
       prev && prev.signups > 0
         ? Number((((bucket.signups - prev.signups) / prev.signups) * 100).toFixed(1))
         : null;
-
-    // CMGR/CWGR from the anchor to this bucket: ((v_i / v_base) ^ (1/n) - 1) * 100.
-    const periods = baseIndex >= 0 ? index - baseIndex : -1;
-    const cmgrPct =
-      baseSignups > 0 && periods >= 1
-        ? Number(((Math.pow(bucket.signups / baseSignups, 1 / periods) - 1) * 100).toFixed(1))
-        : null;
-
-    return { ...bucket, growthPct, cmgrPct };
+    return { ...bucket, growthPct, cmgrPct: cmgr[index] };
   });
 }
 
@@ -76,15 +66,7 @@ function withDerived(buckets: Array<{ key: string; label: string; signups: numbe
  * - `avgPct` — mean of every plotted CMGR/CWGR point, excluding the current period.
  */
 export function cmgrSummary(buckets: SignupBucket[]): { latestPct: number | null; avgPct: number | null } {
-  if (buckets.length < 2) return { latestPct: null, avgPct: null };
-  const concluded = buckets.slice(0, -1); // drop the current partial period
-  const latestPct = concluded[concluded.length - 1]?.cmgrPct ?? null;
-  const points = concluded.map((b) => b.cmgrPct).filter((v): v is number => v !== null);
-  const avgPct =
-    points.length > 0
-      ? Number((points.reduce((sum, v) => sum + v, 0) / points.length).toFixed(1))
-      : null;
-  return { latestPct, avgPct };
+  return compoundGrowthSummary(buckets.map((b) => b.cmgrPct));
 }
 
 function aggregate(

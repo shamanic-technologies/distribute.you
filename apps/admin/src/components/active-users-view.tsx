@@ -11,11 +11,13 @@ import {
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
-import { PeriodBarGrowthChart, type PeriodBarGrowthPoint } from "@/components/period-bar-growth-chart";
+import { PeriodCompoundChart, type PeriodCompoundPoint } from "@/components/period-compound-chart";
+import { CmgrStat } from "@/components/cmgr-stat";
+import { compoundGrowthSeries, compoundGrowthSummary } from "@/lib/compound-growth";
 
 const num = (n: number) => n.toLocaleString("en-US");
 
-function bucketLabel(periodStart: string, granularity: "month" | "week" | "day"): string {
+function bucketLabel(periodStart: string, granularity: "month" | "week"): string {
   const date = new Date(`${periodStart}T00:00:00.000Z`);
   return date.toLocaleDateString("en-US", {
     ...(granularity === "month"
@@ -25,11 +27,17 @@ function bucketLabel(periodStart: string, granularity: "month" | "week" | "day")
   });
 }
 
-function toPoints(buckets: ActiveUsersBucket[], granularity: "month" | "week" | "day"): PeriodBarGrowthPoint[] {
-  return buckets.map((b) => ({
+/**
+ * Map active-user buckets to compound-growth points. CMGR/CWGR is computed
+ * client-side from the served per-period `activeUsers` values (mirrors the
+ * signups view; no backend change).
+ */
+function toCompoundPoints(buckets: ActiveUsersBucket[], granularity: "month" | "week"): PeriodCompoundPoint[] {
+  const cmgr = compoundGrowthSeries(buckets.map((b) => b.activeUsers));
+  return buckets.map((b, i) => ({
     label: bucketLabel(b.periodStart, granularity),
     value: b.activeUsers,
-    growthPct: b.growthPct,
+    cmgrPct: cmgr[i],
   }));
 }
 
@@ -89,6 +97,11 @@ export function ActiveUsersView() {
 
   const s = data?.stats;
 
+  const monthlyPoints = toCompoundPoints(history?.monthly ?? [], "month");
+  const weeklyPoints = toCompoundPoints(history?.weekly ?? [], "week");
+  const monthlyCmgr = compoundGrowthSummary(monthlyPoints.map((p) => p.cmgrPct));
+  const weeklyCmgr = compoundGrowthSummary(weeklyPoints.map((p) => p.cmgrPct));
+
   if (isError) {
     return (
       <section className="rounded-lg border border-red-200 bg-white p-6">
@@ -137,37 +150,36 @@ export function ActiveUsersView() {
           <p className="mt-1 text-xs text-red-500">{historyErr?.message ?? "Unknown error"}</p>
         </section>
       ) : (
-        <section className="grid gap-6 lg:grid-cols-3">
+        <section className="grid gap-6 md:grid-cols-2">
           <div className="rounded-lg border border-gray-200 bg-white p-6">
             <h2 className="text-lg font-semibold text-gray-950">Monthly active users</h2>
-            <p className="mt-1 text-sm text-gray-500">Active users per month with month-on-month growth.</p>
+            <p className="mt-1 text-sm text-gray-500">Active users per month with compound monthly growth since inception.</p>
+            {!historyPending && (
+              <div className="mt-4">
+                <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+              </div>
+            )}
             <div className="mt-5">
               {historyPending ? (
                 <Skeleton className="h-[280px] w-full rounded" />
               ) : (
-                <PeriodBarGrowthChart data={toPoints(history?.monthly ?? [], "month")} valueLabel="active users" growthLabel="MoM growth" />
+                <PeriodCompoundChart data={monthlyPoints} valueLabel="active users" growthLabel="CMGR since inception" />
               )}
             </div>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-6">
             <h2 className="text-lg font-semibold text-gray-950">Weekly active users</h2>
-            <p className="mt-1 text-sm text-gray-500">Active users per week with week-on-week growth.</p>
+            <p className="mt-1 text-sm text-gray-500">Active users per week with compound weekly growth since inception.</p>
+            {!historyPending && (
+              <div className="mt-4">
+                <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+              </div>
+            )}
             <div className="mt-5">
               {historyPending ? (
                 <Skeleton className="h-[280px] w-full rounded" />
               ) : (
-                <PeriodBarGrowthChart data={toPoints(history?.weekly ?? [], "week")} valueLabel="active users" growthLabel="WoW growth" />
-              )}
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <h2 className="text-lg font-semibold text-gray-950">Daily active users</h2>
-            <p className="mt-1 text-sm text-gray-500">Active users per day with day-on-day growth.</p>
-            <div className="mt-5">
-              {historyPending ? (
-                <Skeleton className="h-[280px] w-full rounded" />
-              ) : (
-                <PeriodBarGrowthChart data={toPoints(history?.daily ?? [], "day")} valueLabel="active users" growthLabel="DoD growth" />
+                <PeriodCompoundChart data={weeklyPoints} valueLabel="active users" growthLabel="CWGR since inception" />
               )}
             </div>
           </div>
