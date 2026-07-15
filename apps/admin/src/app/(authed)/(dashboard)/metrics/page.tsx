@@ -12,7 +12,7 @@ import {
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { cmgrSummary, monthlySignups, weeklySignups, monthlyCards, weeklyCards } from "@/lib/signup-buckets";
+import { cmgrSummary, monthlySignups, weeklySignups, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
 import { formatCount } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
@@ -224,6 +224,7 @@ function CardsView({
 }) {
   const monthly = monthlyCards(timeline);
   const weekly = weeklyCards(timeline);
+  const weeklyTl = weeklyTimeline(timeline);
   const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
   const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
   const monthlyCmgr = cmgrSummary(monthly);
@@ -260,10 +261,10 @@ function CardsView({
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-950">Paid users vs signups</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily paid users compared with daily signups.</p>
+          <p className="mt-1 text-sm text-gray-500">Weekly paid users compared with weekly signups.</p>
           <div className="mt-5">
             <PublicAnalyticsChart
-              data={timeline}
+              data={weeklyTl}
               series={[
                 { metric: "signups", color: "#6366f1" },
                 { metric: "cardsAdded", color: "#10b981" },
@@ -273,9 +274,9 @@ function CardsView({
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-950">Signup to paid conversion over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily paid users divided by daily signup events.</p>
+          <p className="mt-1 text-sm text-gray-500">Weekly paid users divided by weekly signup events.</p>
           <div className="mt-5">
-            <PublicAnalyticsChart data={timeline} metric="cardConversionPct" color="#f59e0b" />
+            <PublicAnalyticsChart data={weeklyTl} metric="cardConversionPct" color="#f59e0b" />
           </div>
         </div>
       </section>
