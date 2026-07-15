@@ -1,6 +1,8 @@
+import { formatGrowthPct } from "@/lib/format-number";
+
 function formatCmgr(value: number | null): string {
   if (value === null) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+  return formatGrowthPct(value);
 }
 
 /**

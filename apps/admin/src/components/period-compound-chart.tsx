@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatGrowthPct } from "@/lib/format-number";
 
 export interface PeriodCompoundPoint {
   /** X-axis label, e.g. "Jul 2026" (month) or "Jun 12" (week). */
@@ -25,18 +26,18 @@ export interface PeriodCompoundPoint {
 const BAR_COLOR = "#6366f1";
 const LINE_COLOR = "#f59e0b";
 
-function formatGrowth(value: number): string {
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
-}
+const defaultFormatValue = (n: number) => Math.round(n).toLocaleString("en-US");
 
 function ChartTooltip({
   active,
   payload,
   valueLabel,
+  formatValue,
 }: {
   active?: boolean;
   payload?: Array<{ payload: PeriodCompoundPoint & { isCurrent: boolean } }>;
   valueLabel: string;
+  formatValue: (n: number) => string;
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
@@ -48,12 +49,12 @@ function ChartTooltip({
       </p>
       <p className="mt-1 flex items-center gap-2 font-semibold text-gray-900">
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: BAR_COLOR }} />
-        {point.value.toLocaleString("en-US")} {valueLabel}
+        {formatValue(point.value)} {valueLabel}
       </p>
       {point.cmgrPct !== null && (
         <p className="mt-1 flex items-center gap-2 font-semibold text-gray-900">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: LINE_COLOR }} />
-          {formatGrowth(point.cmgrPct)} since inception
+          {formatGrowthPct(point.cmgrPct)} since inception
         </p>
       )}
     </div>
@@ -70,11 +71,18 @@ export function PeriodCompoundChart({
   data,
   valueLabel,
   growthLabel,
+  formatValue = defaultFormatValue,
+  formatAxis,
 }: {
   data: PeriodCompoundPoint[];
   valueLabel: string;
   growthLabel: string;
+  /** Tooltip value formatter (default: integer with thousand separators). */
+  formatValue?: (n: number) => string;
+  /** Y-axis tick formatter (default: same as formatValue). */
+  formatAxis?: (n: number) => string;
 }) {
+  const axisFormat = formatAxis ?? formatValue;
   if (data.length === 0) {
     return (
       <div className="flex h-[280px] items-center justify-center text-sm text-gray-400">
@@ -107,11 +115,11 @@ export function PeriodCompoundChart({
           />
           <YAxis
             yAxisId="value"
-            tickFormatter={(value) => Math.round(Number(value)).toLocaleString("en-US")}
+            tickFormatter={(value) => axisFormat(Number(value))}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickLine={false}
             axisLine={false}
-            width={44}
+            width={52}
           />
           <YAxis
             yAxisId="growth"
@@ -122,7 +130,7 @@ export function PeriodCompoundChart({
             axisLine={false}
             width={44}
           />
-          <Tooltip content={<ChartTooltip valueLabel={valueLabel} />} cursor={{ fill: "#f8fafc" }} />
+          <Tooltip content={<ChartTooltip valueLabel={valueLabel} formatValue={formatValue} />} cursor={{ fill: "#f8fafc" }} />
           <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
           <Bar yAxisId="value" dataKey="value" name={valueLabel} radius={[3, 3, 0, 0]} maxBarSize={48}>
             {chartData.map((d, i) => (

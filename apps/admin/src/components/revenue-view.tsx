@@ -11,23 +11,34 @@ import {
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { CmgrStat } from "@/components/cmgr-stat";
+import { PeriodCompoundChart } from "@/components/period-compound-chart";
 import { formatUsd } from "@/lib/format-number";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 import {
   revenueBuckets,
   revenueCmgrSummary,
-  dailyRevenueLine,
+  scaleBuckets,
+  toCompoundPoints,
+  trackedWeeks,
+  MRR_FACTOR,
+  ARR_FACTOR,
   monthlyRevenueByKey,
   monthlyTimelineTotals,
   monthlyActiveUsersByKey,
   avgPerSeries,
+  type RevenueBucket,
   type AvgSeries,
 } from "@/lib/revenue-buckets";
-import { RevenuePeriodChart, RevenueAvgChart, RevenueDailyLineChart } from "@/components/revenue-charts";
 
-function money(value: number): string {
-  const decimals = Math.abs(value) < 10 ? 2 : 0;
-  return formatUsd(value, decimals);
+// Currency formatters — full for tooltips/headlines, compact for chart axes.
+function usdFull(n: number): string {
+  return formatUsd(n, Math.abs(n) < 10 ? 2 : 0);
+}
+function usdCompact(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1000) return `$${(n / 1000).toFixed(1)}k`;
+  if (abs >= 10) return `$${Math.round(n).toLocaleString("en-US")}`;
+  return `$${n.toFixed(2)}`;
 }
 
 function StatCard({
@@ -57,14 +68,102 @@ function StatCard({
   );
 }
 
+/** A revenue/MRR/ARR bar+compound-growth card (reuses the shared signups chart). */
+function PeriodCard({
+  title,
+  subtitle,
+  cmgrLabel,
+  cmgrUnit,
+  latestPct,
+  avgPct,
+  buckets,
+  growthLabel,
+  valueLabel,
+  pending,
+}: {
+  title: string;
+  subtitle: string;
+  cmgrLabel: string;
+  cmgrUnit: string;
+  latestPct: number | null;
+  avgPct: number | null;
+  buckets: RevenueBucket[];
+  growthLabel: string;
+  valueLabel: string;
+  pending: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
+      <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+      <div className="mt-4">
+        {pending ? (
+          <Skeleton className="h-16 w-32 rounded" />
+        ) : (
+          <CmgrStat latestPct={latestPct} avgPct={avgPct} label={cmgrLabel} unit={cmgrUnit} />
+        )}
+      </div>
+      <div className="mt-5">
+        {pending ? (
+          <Skeleton className="h-[280px] w-full rounded" />
+        ) : (
+          <PeriodCompoundChart
+            data={toCompoundPoints(buckets)}
+            valueLabel={valueLabel}
+            growthLabel={growthLabel}
+            formatValue={usdFull}
+            formatAxis={usdCompact}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Snapshot + "avg of the avg" headline for an average-revenue-per-X card. */
 function AvgHeadline({ series }: { series: AvgSeries }) {
   return (
     <div>
-      <p className="text-2xl font-semibold text-gray-950">{series.snapshotUsd === null ? "—" : money(series.snapshotUsd)}</p>
+      <p className="text-2xl font-semibold text-gray-950">{series.snapshotUsd === null ? "—" : usdFull(series.snapshotUsd)}</p>
       <p className="mt-0.5 text-xs text-gray-400">
-        {series.avgOfAvgUsd === null ? "—" : money(series.avgOfAvgUsd)} average of the monthly averages
+        {series.avgOfAvgUsd === null ? "—" : usdFull(series.avgOfAvgUsd)} average of the monthly averages
       </p>
+    </div>
+  );
+}
+
+function AvgCard({
+  title,
+  subtitle,
+  series,
+  valueLabel,
+  pending,
+}: {
+  title: string;
+  subtitle: string;
+  series: AvgSeries;
+  valueLabel: string;
+  pending: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
+      <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+      <div className="mt-4">{pending ? <Skeleton className="h-16 w-32 rounded" /> : <AvgHeadline series={series} />}</div>
+      <div className="mt-5">
+        {pending ? (
+          <Skeleton className="h-[280px] w-full rounded" />
+        ) : (
+          // No growth line for an average ratio — just the bars, current period in pencil.
+          <PeriodCompoundChart
+            data={toCompoundPoints(series.buckets, false)}
+            valueLabel={valueLabel}
+            growthLabel=""
+            formatValue={usdFull}
+            formatAxis={usdCompact}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -86,9 +185,6 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
     if (!data) return null;
     const monthly = revenueBuckets(data.monthly, "month");
     const weekly = revenueBuckets(data.weekly, "week");
-    // "MRR over time" = the full per-day line since the first billed day (not the
-    // trailing-90-day `daily` window).
-    const daily = dailyRevenueLine(data.sinceInceptionDaily);
 
     const revenueByMonth = monthlyRevenueByKey(data.monthly);
     const visitorsByMonth = monthlyTimelineTotals(timeline, "landingVisitors");
@@ -98,7 +194,11 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
     return {
       monthly,
       weekly,
-      daily,
+      // MRR / ARR are scale-invariant on growth, so they reuse the revenue CMGR/CWGR.
+      monthlyMrr: scaleBuckets(monthly, MRR_FACTOR.month),
+      weeklyMrr: scaleBuckets(weekly, MRR_FACTOR.week),
+      monthlyArr: scaleBuckets(monthly, ARR_FACTOR.month),
+      weeklyArr: scaleBuckets(weekly, ARR_FACTOR.week),
       monthlyCmgr: revenueCmgrSummary(monthly),
       weeklyCmgr: revenueCmgrSummary(weekly),
       perVisitor: avgPerSeries(revenueByMonth, visitorsByMonth),
@@ -116,81 +216,114 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
     );
   }
 
+  const mc = derived?.monthlyCmgr;
+  const wc = derived?.weeklyCmgr;
+
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard
           label="Total revenue"
-          value={data ? money(data.totalRevenueUsd) : "—"}
+          value={data ? usdFull(data.totalRevenueUsd) : "—"}
           detail="Realized cold-email revenue since inception"
           accent="bg-brand-500"
           pending={isPending}
         />
         <StatCard
           label="Current MRR"
-          value={data ? money(data.currentMrrUsd) : "—"}
+          value={data ? usdFull(data.currentMrrUsd) : "—"}
           detail="Active daily budgets × 30, live fleet"
           accent="bg-emerald-500"
           pending={isPending}
         />
         <StatCard
-          label="Tracked revenue days"
-          value={data ? data.sinceInceptionDaily.length.toLocaleString("en-US") : "—"}
-          detail="Days since the first billed cold-email spend"
+          label="Tracked revenue weeks"
+          value={data ? trackedWeeks(data.sinceInceptionDaily).toLocaleString("en-US") : "—"}
+          detail="Weeks since the first billed cold-email spend"
           accent="bg-sky-500"
           pending={isPending}
         />
       </section>
 
       <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Monthly revenue</h2>
-          <p className="mt-1 text-sm text-gray-500">Realized revenue per month with compound monthly growth since inception.</p>
-          <div className="mt-4">
-            {isPending || !derived ? (
-              <Skeleton className="h-16 w-32 rounded" />
-            ) : (
-              <CmgrStat latestPct={derived.monthlyCmgr.latestPct} avgPct={derived.monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
-            )}
-          </div>
-          <div className="mt-5">
-            {isPending || !derived ? (
-              <Skeleton className="h-[280px] w-full rounded" />
-            ) : (
-              <RevenuePeriodChart data={derived.monthly} growthLabel="CMGR since inception" />
-            )}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Weekly revenue</h2>
-          <p className="mt-1 text-sm text-gray-500">Realized revenue per week with compound weekly growth since inception.</p>
-          <div className="mt-4">
-            {isPending || !derived ? (
-              <Skeleton className="h-16 w-32 rounded" />
-            ) : (
-              <CmgrStat latestPct={derived.weeklyCmgr.latestPct} avgPct={derived.weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
-            )}
-          </div>
-          <div className="mt-5">
-            {isPending || !derived ? (
-              <Skeleton className="h-[280px] w-full rounded" />
-            ) : (
-              <RevenuePeriodChart data={derived.weekly} growthLabel="CWGR since inception" />
-            )}
-          </div>
-        </div>
+        <PeriodCard
+          title="Monthly revenue"
+          subtitle="Realized revenue per month with compound monthly growth since inception."
+          cmgrLabel="CMGR"
+          cmgrUnit="monthly"
+          latestPct={mc?.latestPct ?? null}
+          avgPct={mc?.avgPct ?? null}
+          buckets={derived?.monthly ?? []}
+          growthLabel="CMGR since inception"
+          valueLabel="revenue"
+          pending={isPending || !derived}
+        />
+        <PeriodCard
+          title="Weekly revenue"
+          subtitle="Realized revenue per week with compound weekly growth since inception."
+          cmgrLabel="CWGR"
+          cmgrUnit="weekly"
+          latestPct={wc?.latestPct ?? null}
+          avgPct={wc?.avgPct ?? null}
+          buckets={derived?.weekly ?? []}
+          growthLabel="CWGR since inception"
+          valueLabel="revenue"
+          pending={isPending || !derived}
+        />
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-950">MRR over time</h2>
-        <p className="mt-1 text-sm text-gray-500">Total active daily budget billed per day since inception.</p>
-        <div className="mt-5">
-          {isPending || !derived ? (
-            <Skeleton className="h-[280px] w-full rounded" />
-          ) : (
-            <RevenueDailyLineChart data={derived.daily} />
-          )}
-        </div>
+      <section className="grid gap-6 md:grid-cols-2">
+        <PeriodCard
+          title="Monthly MRR"
+          subtitle="Monthly recurring revenue run-rate with compound monthly growth."
+          cmgrLabel="CMGR"
+          cmgrUnit="monthly"
+          latestPct={mc?.latestPct ?? null}
+          avgPct={mc?.avgPct ?? null}
+          buckets={derived?.monthlyMrr ?? []}
+          growthLabel="CMGR since inception"
+          valueLabel="MRR"
+          pending={isPending || !derived}
+        />
+        <PeriodCard
+          title="Weekly MRR"
+          subtitle="Weekly run-rate expressed as MRR (× 52 ÷ 12) with compound weekly growth."
+          cmgrLabel="CWGR"
+          cmgrUnit="weekly"
+          latestPct={wc?.latestPct ?? null}
+          avgPct={wc?.avgPct ?? null}
+          buckets={derived?.weeklyMrr ?? []}
+          growthLabel="CWGR since inception"
+          valueLabel="MRR"
+          pending={isPending || !derived}
+        />
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-2">
+        <PeriodCard
+          title="Monthly ARR"
+          subtitle="Annual run-rate from each month (× 12) with compound monthly growth."
+          cmgrLabel="CMGR"
+          cmgrUnit="monthly"
+          latestPct={mc?.latestPct ?? null}
+          avgPct={mc?.avgPct ?? null}
+          buckets={derived?.monthlyArr ?? []}
+          growthLabel="CMGR since inception"
+          valueLabel="ARR"
+          pending={isPending || !derived}
+        />
+        <PeriodCard
+          title="Weekly ARR"
+          subtitle="Annual run-rate from each week (× 52) with compound weekly growth."
+          cmgrLabel="CWGR"
+          cmgrUnit="weekly"
+          latestPct={wc?.latestPct ?? null}
+          avgPct={wc?.avgPct ?? null}
+          buckets={derived?.weeklyArr ?? []}
+          growthLabel="CWGR since inception"
+          valueLabel="ARR"
+          pending={isPending || !derived}
+        />
       </section>
 
       {historyError && (
@@ -201,48 +334,27 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
       )}
 
       <section className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Avg revenue per unique visitor</h2>
-          <p className="mt-1 text-sm text-gray-500">Monthly revenue divided by unique website visitors.</p>
-          <div className="mt-4">
-            {isPending || !derived ? <Skeleton className="h-16 w-32 rounded" /> : <AvgHeadline series={derived.perVisitor} />}
-          </div>
-          <div className="mt-5">
-            {isPending || !derived ? (
-              <Skeleton className="h-[240px] w-full rounded" />
-            ) : (
-              <RevenueAvgChart data={derived.perVisitor.buckets} valueLabel="per visitor" />
-            )}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Avg revenue per signup</h2>
-          <p className="mt-1 text-sm text-gray-500">Monthly revenue divided by signups.</p>
-          <div className="mt-4">
-            {isPending || !derived ? <Skeleton className="h-16 w-32 rounded" /> : <AvgHeadline series={derived.perSignup} />}
-          </div>
-          <div className="mt-5">
-            {isPending || !derived ? (
-              <Skeleton className="h-[240px] w-full rounded" />
-            ) : (
-              <RevenueAvgChart data={derived.perSignup.buckets} valueLabel="per signup" />
-            )}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Avg revenue per paid client</h2>
-          <p className="mt-1 text-sm text-gray-500">Monthly revenue divided by active paying clients.</p>
-          <div className="mt-4">
-            {isPending || !derived ? <Skeleton className="h-16 w-32 rounded" /> : <AvgHeadline series={derived.perPaidClient} />}
-          </div>
-          <div className="mt-5">
-            {isPending || !derived ? (
-              <Skeleton className="h-[240px] w-full rounded" />
-            ) : (
-              <RevenueAvgChart data={derived.perPaidClient.buckets} valueLabel="per client" />
-            )}
-          </div>
-        </div>
+        <AvgCard
+          title="Avg revenue per unique visitor"
+          subtitle="Monthly revenue divided by unique website visitors."
+          series={derived?.perVisitor ?? { buckets: [], snapshotUsd: null, avgOfAvgUsd: null }}
+          valueLabel="per visitor"
+          pending={isPending || !derived}
+        />
+        <AvgCard
+          title="Avg revenue per signup"
+          subtitle="Monthly revenue divided by signups."
+          series={derived?.perSignup ?? { buckets: [], snapshotUsd: null, avgOfAvgUsd: null }}
+          valueLabel="per signup"
+          pending={isPending || !derived}
+        />
+        <AvgCard
+          title="Avg revenue per paid client"
+          subtitle="Monthly revenue divided by active paying clients."
+          series={derived?.perPaidClient ?? { buckets: [], snapshotUsd: null, avgOfAvgUsd: null }}
+          valueLabel="per client"
+          pending={isPending || !derived}
+        />
       </section>
     </>
   );
