@@ -101,6 +101,7 @@ html.dark .bg-gray-200 { background-color: #334155; }
 /* Text — every step bumped one notch brighter so secondary text on
  * slate-800/slate-900 backgrounds stays readable (was 4.0:1 on #64748b,
  * now ~6.5:1 on #94a3b8 / ~9:1 on #cbd5e1). */
+html.dark .text-gray-950 { color: #f8fafc; }
 html.dark .text-gray-900 { color: #f1f5f9; }
 html.dark .text-gray-800 { color: #e2e8f0; }
 html.dark .text-gray-700 { color: #cbd5e1; }

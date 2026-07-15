@@ -21,9 +21,9 @@ type ChartSeries = {
 const METRIC_LABEL: Record<MetricKey, string> = {
   landingVisitors: "Unique visitors",
   signups: "Signups",
-  cardsAdded: "Cards added",
+  cardsAdded: "Paid users",
   signupConversionPct: "Signup conversion",
-  cardConversionPct: "Card conversion",
+  cardConversionPct: "Paid conversion",
 };
 
 function formatDateShort(iso: string): string {

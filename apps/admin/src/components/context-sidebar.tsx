@@ -342,9 +342,9 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
   const analyticsItems: SidebarItem[] = [
     { id: "landing", label: "Unique visitors", href: "/metrics?view=landing", icon: <OverviewIcon /> },
     { id: "signups", label: "Signups", href: "/metrics?view=signups", icon: <ConversionsIcon /> },
+    { id: "cards", label: "Paid users", href: "/metrics?view=cards", icon: <BillingIcon /> },
     { id: "active-users", label: "Active users", href: "/metrics?view=active-users", icon: <OrgIcon /> },
     { id: "revenue", label: "Revenue", href: "/metrics?view=revenue", icon: <RevenueIcon /> },
-    { id: "cards", label: "Cards added", href: "/metrics?view=cards", icon: <BillingIcon /> },
   ];
 
   const activeView = searchParams.get("view");

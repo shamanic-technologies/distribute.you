@@ -4809,6 +4809,55 @@ export async function getActiveUsersHistory(token?: string): Promise<ActiveUsers
   return apiCall<ActiveUsersHistory>(`/features/audit/active-users`, { token });
 }
 
+// ── Per-user active history (staff) ──────────────────────────────────────────
+// One row per user (org ever active) with its active-history summary + the
+// month/week/day active-bucket sets for the drill-down. Producer-owned shape
+// (features-service /internal/stats/active-users-by-user).
+export interface ActiveUserBrand {
+  brandId: string;
+  brandName: string | null;
+  brandDomain: string | null;
+}
+
+export interface ActiveUserRow {
+  orgId: string;
+  orgExternalId: string | null; // Clerk org id, resolves the name client-side
+  ownerEmail: string | null;
+  brands: ActiveUserBrand[];
+  firstActiveDay: string; // YYYY-MM-DD
+  lastActiveDay: string;
+  firstActiveWeek: string; // YYYY-Www
+  lastActiveWeek: string;
+  firstActiveMonth: string; // YYYY-MM
+  lastActiveMonth: string;
+  retentionWeeks: number; // inclusive span between first and last active week
+  activeThisWeek: boolean;
+  activeThisMonth: boolean;
+  activeDays: string[]; // YYYY-MM-DD, ascending
+  activeWeeks: string[]; // YYYY-Www, ascending
+  activeMonths: string[]; // YYYY-MM, ascending
+}
+
+export interface ActiveUsersByUser {
+  users: ActiveUserRow[];
+  stats: {
+    totalUsers: number;
+    activeThisWeekCount: number;
+    activeThisMonthCount: number;
+  };
+  currentWeek: string; // YYYY-Www
+  currentMonth: string; // YYYY-MM
+  asOf: string;
+}
+
+/**
+ * Per-user active-history breakdown (staff). Transparent proxy to features-service
+ * GET /internal/stats/active-users-by-user.
+ */
+export async function getActiveUsersByUser(token?: string): Promise<ActiveUsersByUser> {
+  return apiCall<ActiveUsersByUser>(`/features/audit/active-users-by-user`, { token });
+}
+
 // ── Fleet revenue history (staff) ────────────────────────────────────────────
 // Cross-org, fleet-wide REALIZED revenue history — the SAME per-day actualized
 // cold-email spend signal the active-users history is reconstructed from, summed

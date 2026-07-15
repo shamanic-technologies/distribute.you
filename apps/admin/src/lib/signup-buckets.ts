@@ -1,4 +1,5 @@
 import type { DailyFunnelPoint } from "@/lib/public-stats";
+import { compoundGrowthSeries, compoundGrowthSummary } from "@/lib/compound-growth";
 
 export interface SignupBucket {
   /** Sort/group key, e.g. "2026-07", "2026-W28", "2026-07-15". */
@@ -46,10 +47,7 @@ function dayLabel(date: Date): string {
 
 function withDerived(buckets: Array<{ key: string; label: string; signups: number }>): SignupBucket[] {
   const sorted = [...buckets].sort((a, b) => a.key.localeCompare(b.key));
-  // Anchor the compound rate on the first bucket with real signups — a zero (or
-  // near-zero) base makes the ratio explode / divide by zero.
-  const baseIndex = sorted.findIndex((bucket) => bucket.signups > 0);
-  const baseSignups = baseIndex >= 0 ? sorted[baseIndex].signups : 0;
+  const cmgr = compoundGrowthSeries(sorted.map((bucket) => bucket.signups));
 
   return sorted.map((bucket, index) => {
     const prev = sorted[index - 1];
@@ -57,15 +55,7 @@ function withDerived(buckets: Array<{ key: string; label: string; signups: numbe
       prev && prev.signups > 0
         ? Number((((bucket.signups - prev.signups) / prev.signups) * 100).toFixed(1))
         : null;
-
-    // CMGR/CWGR from the anchor to this bucket: ((v_i / v_base) ^ (1/n) - 1) * 100.
-    const periods = baseIndex >= 0 ? index - baseIndex : -1;
-    const cmgrPct =
-      baseSignups > 0 && periods >= 1
-        ? Number(((Math.pow(bucket.signups / baseSignups, 1 / periods) - 1) * 100).toFixed(1))
-        : null;
-
-    return { ...bucket, growthPct, cmgrPct };
+    return { ...bucket, growthPct, cmgrPct: cmgr[index] };
   });
 }
 
@@ -76,43 +66,90 @@ function withDerived(buckets: Array<{ key: string; label: string; signups: numbe
  * - `avgPct` — mean of every plotted CMGR/CWGR point, excluding the current period.
  */
 export function cmgrSummary(buckets: SignupBucket[]): { latestPct: number | null; avgPct: number | null } {
-  if (buckets.length < 2) return { latestPct: null, avgPct: null };
-  const concluded = buckets.slice(0, -1); // drop the current partial period
-  const latestPct = concluded[concluded.length - 1]?.cmgrPct ?? null;
-  const points = concluded.map((b) => b.cmgrPct).filter((v): v is number => v !== null);
-  const avgPct =
-    points.length > 0
-      ? Number((points.reduce((sum, v) => sum + v, 0) / points.length).toFixed(1))
-      : null;
-  return { latestPct, avgPct };
+  return compoundGrowthSummary(buckets.map((b) => b.cmgrPct));
 }
+
+/** Selects the per-day metric to bucket (signups by default, cards for the paid-users view). */
+type ValueFn = (point: DailyFunnelPoint) => number;
 
 function aggregate(
   points: DailyFunnelPoint[],
   keyFn: (date: Date, iso: string) => { key: string; label: string },
+  valueFn: ValueFn,
 ): SignupBucket[] {
   const map = new Map<string, { key: string; label: string; signups: number }>();
   for (const point of points) {
     const date = new Date(`${point.date}T00:00:00.000Z`);
     const { key, label } = keyFn(date, point.date);
+    const value = valueFn(point);
     const existing = map.get(key);
-    if (existing) existing.signups += point.signups;
-    else map.set(key, { key, label, signups: point.signups });
+    if (existing) existing.signups += value;
+    else map.set(key, { key, label, signups: value });
   }
   return withDerived([...map.values()]);
 }
 
+const monthKey = (date: Date) => ({
+  key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
+  label: monthLabel(date.getUTCFullYear(), date.getUTCMonth()),
+});
+
 export function monthlySignups(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, (date) => ({
-    key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
-    label: monthLabel(date.getUTCFullYear(), date.getUTCMonth()),
-  }));
+  return aggregate(points, monthKey, (p) => p.signups);
 }
 
 export function weeklySignups(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, (date) => isoWeekKey(date));
+  return aggregate(points, (date) => isoWeekKey(date), (p) => p.signups);
 }
 
 export function dailySignups(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, (date, iso) => ({ key: iso, label: dayLabel(date) }));
+  return aggregate(points, (date, iso) => ({ key: iso, label: dayLabel(date) }), (p) => p.signups);
+}
+
+export function monthlyCards(points: DailyFunnelPoint[]): SignupBucket[] {
+  return aggregate(points, monthKey, (p) => p.cardsAdded);
+}
+
+export function weeklyCards(points: DailyFunnelPoint[]): SignupBucket[] {
+  return aggregate(points, (date) => isoWeekKey(date), (p) => p.cardsAdded);
+}
+
+/** Monday (ISO week start) of the given date, as a YYYY-MM-DD key. */
+function mondayIso(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - (day - 1));
+  return d.toISOString().slice(0, 10);
+}
+
+function pct(numerator: number, denominator: number): number {
+  if (denominator === 0) return 0;
+  return Number(((numerator / denominator) * 100).toFixed(1));
+}
+
+/**
+ * Roll a daily funnel timeline up to ISO weeks (date = the week's Monday), summing
+ * counts and recomputing the conversion ratios. Lets the daily chart component render
+ * a weekly series without any change to its shape.
+ */
+export function weeklyTimeline(points: DailyFunnelPoint[]): DailyFunnelPoint[] {
+  const map = new Map<string, { landingVisitors: number; signups: number; cardsAdded: number }>();
+  for (const point of points) {
+    const key = mondayIso(new Date(`${point.date}T00:00:00.000Z`));
+    const existing = map.get(key) ?? { landingVisitors: 0, signups: 0, cardsAdded: 0 };
+    existing.landingVisitors += point.landingVisitors;
+    existing.signups += point.signups;
+    existing.cardsAdded += point.cardsAdded;
+    map.set(key, existing);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, v]) => ({
+      date,
+      landingVisitors: v.landingVisitors,
+      signups: v.signups,
+      cardsAdded: v.cardsAdded,
+      signupConversionPct: pct(v.signups, v.landingVisitors),
+      cardConversionPct: pct(v.cardsAdded, v.signups),
+    }));
 }

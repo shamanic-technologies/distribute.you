@@ -68,9 +68,9 @@ describe("cross-org build-in-public metrics page", () => {
     expect(metricsPage).toContain("Unique visitors over time");
     expect(metricsPage).toContain("Signups vs unique visitors");
     expect(metricsPage).toContain("Signup conversion over time");
-    expect(metricsPage).toContain("Cards added over time");
+    expect(metricsPage).toContain("Paid users vs signups");
     expect(metricsPage).toContain("Visitor origins");
-    expect(metricsPage).toContain("Signup to card conversion over time");
+    expect(metricsPage).toContain("Signup to paid conversion over time");
   });
 
   it("shows compound growth (CMGR/CWGR) on the monthly and weekly signup charts, no daily chart", () => {
@@ -86,7 +86,7 @@ describe("cross-org build-in-public metrics page", () => {
   it("exposes the focused analytics navigation in the app-level sidebar", () => {
     expect(sidebar).toContain("Unique visitors");
     expect(sidebar).toContain("Signups");
-    expect(sidebar).toContain("Cards added");
+    expect(sidebar).toContain("Paid users");
     expect(sidebar).toContain("/metrics?view=landing");
     expect(sidebar).not.toContain('href="/?view=landing"');
   });

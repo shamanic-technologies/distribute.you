@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
+import { CmgrStat } from "@/components/cmgr-stat";
 import { formatUsd } from "@/lib/format-number";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 import {
@@ -27,11 +28,6 @@ import { RevenuePeriodChart, RevenueAvgChart, RevenueDailyLineChart } from "@/co
 function money(value: number): string {
   const decimals = Math.abs(value) < 10 ? 2 : 0;
   return formatUsd(value, decimals);
-}
-
-function formatGrowth(value: number | null): string {
-  if (value === null) return "—";
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
 function StatCard({
@@ -57,16 +53,6 @@ function StatCard({
         <p className="mt-2 text-2xl font-semibold text-gray-950">{value}</p>
       )}
       <p className="mt-1 text-sm text-gray-500">{detail}</p>
-    </div>
-  );
-}
-
-/** Compound-growth headline (CMGR/CWGR) for the monthly / weekly revenue charts. */
-function CmgrHeadline({ latestPct, avgPct, unit }: { latestPct: number | null; avgPct: number | null; unit: string }) {
-  return (
-    <div>
-      <p className="text-2xl font-semibold text-gray-950">{formatGrowth(latestPct)}</p>
-      <p className="mt-0.5 text-xs text-gray-400">{formatGrowth(avgPct)} average {unit} since inception</p>
     </div>
   );
 }
@@ -162,7 +148,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
             {isPending || !derived ? (
               <Skeleton className="h-16 w-32 rounded" />
             ) : (
-              <CmgrHeadline latestPct={derived.monthlyCmgr.latestPct} avgPct={derived.monthlyCmgr.avgPct} unit="monthly" />
+              <CmgrStat latestPct={derived.monthlyCmgr.latestPct} avgPct={derived.monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
             )}
           </div>
           <div className="mt-5">
@@ -180,7 +166,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
             {isPending || !derived ? (
               <Skeleton className="h-16 w-32 rounded" />
             ) : (
-              <CmgrHeadline latestPct={derived.weeklyCmgr.latestPct} avgPct={derived.weeklyCmgr.avgPct} unit="weekly" />
+              <CmgrStat latestPct={derived.weeklyCmgr.latestPct} avgPct={derived.weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
             )}
           </div>
           <div className="mt-5">

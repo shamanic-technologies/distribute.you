@@ -1529,6 +1529,7 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "awardsAndRecognition", description: "Awards, recognition, and industry accolades" },
   { key: "revenueMilestones", description: "Revenue milestones and key business metrics" },
   { key: "socialProof", description: "Social proof: case studies, testimonials, and results" },
+  { key: "perceivedLikelihood", description: "Perceived likelihood of success: proof the outcome is achievable — track record, data, guarantees, named results and outcomes" },
   { key: "callToAction", description: "Primary CTA" },
   { key: "urgency", description: "Urgency elements and time pressure" },
   { key: "scarcity", description: "Scarcity and limited availability" },
@@ -1536,6 +1537,26 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "additionalContext", description: "Additional context and notable information" },
 ];
 
+
+/**
+ * Persists the user's OPTIONAL onboarding phone number to Clerk user
+ * publicMetadata via the in-repo server route (which holds CLERK_SECRET_KEY).
+ * Fail-loud: a non-2xx throws so the caller surfaces it.
+ */
+export async function savePhoneNumber(input: {
+  countryCode: string;
+  dialCode: string;
+  national: string;
+}): Promise<void> {
+  const res = await fetch("/api/onboarding/phone", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to save phone number (${res.status})`);
+  }
+}
 
 /** Convert extract-fields results map to a key→value map (preserves raw types) */
 export function fieldResultsToMap(results: Record<string, ExtractFieldResult>): Record<string, unknown> {
