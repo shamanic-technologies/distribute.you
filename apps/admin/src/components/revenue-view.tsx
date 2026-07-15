@@ -86,7 +86,9 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
     if (!data) return null;
     const monthly = revenueBuckets(data.monthly, "month");
     const weekly = revenueBuckets(data.weekly, "week");
-    const daily = dailyRevenueLine(data.daily);
+    // "MRR over time" = the full per-day line since the first billed day (not the
+    // trailing-90-day `daily` window).
+    const daily = dailyRevenueLine(data.sinceInceptionDaily);
 
     const revenueByMonth = monthlyRevenueByKey(data.monthly);
     const visitorsByMonth = monthlyTimelineTotals(timeline, "landingVisitors");
@@ -133,8 +135,8 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
         />
         <StatCard
           label="Tracked revenue days"
-          value={data ? data.daily.length.toLocaleString("en-US") : "—"}
-          detail="Days with realized cold-email spend"
+          value={data ? data.sinceInceptionDaily.length.toLocaleString("en-US") : "—"}
+          detail="Days since the first billed cold-email spend"
           accent="bg-sky-500"
           pending={isPending}
         />

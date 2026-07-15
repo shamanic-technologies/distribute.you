@@ -4877,9 +4877,10 @@ export interface FleetRevenueBucket {
 export interface FleetRevenue {
   totalRevenueUsd: number; // cumulative realized cold-email revenue since inception (USD)
   currentMrrUsd: number; // live fleet active daily budget × 30 (USD)
-  monthly: FleetRevenueBucket[];
-  weekly: FleetRevenueBucket[];
-  daily: FleetRevenueBucket[];
+  monthly: FleetRevenueBucket[]; // trailing calendar-month buckets
+  weekly: FleetRevenueBucket[]; // trailing ISO-week buckets
+  daily: FleetRevenueBucket[]; // trailing UTC-day buckets (windowed, default 90d)
+  sinceInceptionDaily: FleetRevenueBucket[]; // per-day line, first billed day → today (the MRR-over-time series)
   asOf: string;
 }
 
