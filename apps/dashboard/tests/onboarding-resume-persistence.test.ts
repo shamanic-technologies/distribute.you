@@ -120,8 +120,10 @@ describe("Beta onboarding resume persistence", () => {
     // generic resume must NOT also fire (it would re-hydrate the brand and land on
     // "pricing", flashing the budget modal over the real "launching" flow).
     expect(src).toContain('!searchParams.get("launch_checkout") &&');
-    // success first-paint goes straight to "launching", never the budget step.
-    expect(src).toContain('searchParams.get("launch_checkout") === "success"\n        ? "launching"');
+    // success first-paint goes to the first post-payment step ("phone"), never the
+    // budget step and never straight to "launching" (the loader is deferred until
+    // after the post-payment steps).
+    expect(src).toContain('searchParams.get("launch_checkout") === "success"\n        ? "phone"');
   });
 
   it("activates the picked audiences as the terminal launch commit", () => {

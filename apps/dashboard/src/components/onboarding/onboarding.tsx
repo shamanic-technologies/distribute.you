@@ -31,6 +31,7 @@ import {
   getSalesEconomicsEffective,
   saveBrandClickDestination,
   saveBrandSalesEconomics,
+  savePhoneNumber,
   suggestAudiences,
   setAudienceStatus,
   listAudiences,
@@ -58,6 +59,8 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { outcomeNounPlural } from "@/lib/strategy-model";
+import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
+import { POST_PAYMENT_OFFER_LEVERS } from "./offer-levers";
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
@@ -113,6 +116,14 @@ type Step =
   | "consent"
   | "pricing"
   | "bonus"
+  // Post-payment steps (checkout SUCCESS return only) — run BEFORE the launching
+  // loader: collect an optional phone, confirm lifetime revenue / paid client,
+  // then walk the offer levers (one screen each). Never persisted to the resume
+  // snapshot (the persist effect skips on ?launch_checkout=success), so they are
+  // intentionally NOT in ALL_STEPS and need no ONBOARDING_STATE_VERSION bump.
+  | "phone"
+  | "ltr"
+  | "offer"
   | "launching";
 
 // The sales goal drives the projection count so the budget cards show the chosen
@@ -629,11 +640,13 @@ export function Onboarding() {
   const [step, setStep] = useState<Step>(() =>
     restored
       ? // A Stripe checkout SUCCESS return is owned by the dedicated checkout effect
-        // (resumeCheckoutLaunch → "launching"); land there on the first paint so the
-        // budget step never flashes before that effect runs. A cancelled return still
+        // (resumeCheckoutLaunch → the post-payment steps); land on the first
+        // post-payment step ("phone") on first paint so the budget step never
+        // flashes before that effect runs. The launching loader is deferred until
+        // the user finishes the post-payment steps. A cancelled return still
         // resolves to its snapshot step (pricing).
         searchParams.get("launch_checkout") === "success"
-        ? "launching"
+        ? "phone"
         : resolveResumeStep(restored.step, restored.brandId)
       : fromAdd
         ? "url"
@@ -689,6 +702,14 @@ export function Onboarding() {
   const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
+  // Post-payment steps (phone → ltr → offer levers). `phone` is user-level
+  // (Clerk metadata), optional. `offerIndex` walks the offer levers one screen at
+  // a time. The pending checkout blob is stashed so the terminal offer step can
+  // run completeLaunchAfterCheckout AFTER the user finishes these steps (with
+  // their edited profile), instead of at the checkout-return effect.
+  const [phone, setPhone] = useState<PhoneValue>(EMPTY_PHONE);
+  const [offerIndex, setOfferIndex] = useState(0);
+  const pendingCheckoutRef = useRef<PendingCheckoutLaunch | null>(null);
 
   // Loading-sequence + real fetch coordination. The visible checks follow real
   // client milestones: org ready, brand upserted, then service extraction.
@@ -1417,22 +1438,125 @@ export function Onboarding() {
     }
   }
 
+  // Payment succeeded. Restore the wizard state and stash the pending blob, then
+  // route to the FIRST post-payment step (phone) — the launch itself is deferred
+  // to finalizePostPaymentAndLaunch, which runs after the user walks phone → ltr →
+  // offer levers. This lets those steps refine the profile/economics BEFORE the
+  // campaign is created. If reading the pending blob fails we fall back to pricing.
   async function resumeCheckoutLaunch() {
-    setBusy(true);
     setError(null);
     try {
       const pending = readPendingCheckoutLaunch();
-      applyRestoredOnboardingState(pending.onboardingState, { step: "launching" });
+      pendingCheckoutRef.current = pending;
+      applyRestoredOnboardingState(pending.onboardingState, { step: "phone" });
       setCheckoutBudgetUsd(pending.budgetUsd);
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
       setLaunchStep(0);
-      setStep("launching");
-
-      await completeLaunchAfterCheckout(pending);
+      setOfferIndex(0);
+      setStep("phone");
+      setBusy(false);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "checkout_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
       setError(`Checkout returned, but launch could not finish: ${detail}`);
+      setStep("pricing");
+      setBusy(false);
+    }
+  }
+
+  // ── Post-payment steps ────────────────────────────────────────────
+  // Save the optional phone (Clerk user metadata) and advance to the LTR step.
+  // An empty number is a valid skip — no write, just advance.
+  async function savePhoneAndContinue() {
+    if (phone.national.trim()) {
+      setBusy(true);
+      try {
+        await savePhoneNumber(phone);
+      } catch (err) {
+        // Phone is optional reassurance data — never block the (already paid)
+        // launch on it. Log loud, advance anyway.
+        console.error("[dashboard] onboarding: failed to save phone; advancing", err);
+      } finally {
+        setBusy(false);
+      }
+    }
+    setStep("ltr");
+  }
+
+  // Persist the confirmed lifetime revenue / paid client, then advance to the
+  // offer levers. Saved via sales-economics (same field the rates step writes).
+  async function saveLtrAndContinue() {
+    const id = brandIdRef.current;
+    let ltv: number;
+    try {
+      ltv = parseRateTextInput(rateText.ltv, "ltv");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Please enter a valid dollar amount.");
+      return;
+    }
+    setError(null);
+    const nextRates = { ...rates, ltv };
+    setRates(nextRates);
+    setRateText((t) => ({ ...t, ltv: rateToText(ltv) }));
+    if (id) {
+      setBusy(true);
+      try {
+        await saveBrandSalesEconomics(id, {
+          lifetimeRevenueUsd: nextRates.ltv,
+          replyToMeetingPct: nextRates.r2m,
+          visitToMeetingPct: nextRates.v2m,
+          meetingToClosePct: nextRates.m2c,
+          visitToSignupPct: nextRates.v2s,
+          signupToPaidClientPct: nextRates.s2c,
+          visitToPaidClientPct: nextRates.v2p,
+          replyToPaidClientPct: nextRates.r2p,
+          visitToFormSubmissionPct: nextRates.v2f,
+          formSubmissionToPaidClientPct: nextRates.f2p,
+          optimizationGoal: optimizationGoalForOutcome(outcome),
+        });
+      } catch (err) {
+        console.error("[dashboard] onboarding: failed to save lifetime revenue; advancing", err);
+      } finally {
+        setBusy(false);
+      }
+    }
+    setOfferIndex(0);
+    setStep("offer");
+  }
+
+  // Offer-lever step Continue: advance to the next lever, or (on the last one)
+  // finalize the launch. Lever edits live in `profile` state and are committed to
+  // brand-service inside completeLaunchAfterCheckout via the stashed pending blob.
+  function continueOffer() {
+    if (offerIndex < POST_PAYMENT_OFFER_LEVERS.length - 1) {
+      setOfferIndex((i) => i + 1);
+      return;
+    }
+    void finalizePostPaymentAndLaunch();
+  }
+
+  // Terminal commit: run the real launch (audiences, topup, budget, campaign,
+  // onboarding-complete, redirect) with the profile the user just edited. Mirrors
+  // the old resumeCheckoutLaunch tail, moved here so it runs after the
+  // post-payment steps.
+  async function finalizePostPaymentAndLaunch() {
+    const pending = pendingCheckoutRef.current;
+    if (!pending) {
+      setError("Your checkout session was lost. Refresh to finish launching.");
+      setStep("pricing");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      setStep("launching");
+      setLaunchStep(0);
+      // Carry the levers the user just edited into the profile save.
+      await completeLaunchAfterCheckout({ ...pending, profile });
+    } catch (err) {
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "post_payment_finalize" });
+      const detail = err instanceof Error ? err.message : "unknown error";
+      setError(`Launch could not finish: ${detail}`);
       setStep("pricing");
       setBusy(false);
     }
@@ -1932,6 +2056,94 @@ export function Onboarding() {
             ))}
           </ul>
           <p className="text-[11px] leading-5 text-gray-400">By continuing you authorize distribute to contact prospects on your behalf, representing your brand, per our <a href="https://distribute.you/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>.</p>
+      </StepShell>
+    );
+  }
+
+  if (step === "phone") {
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={savePhoneAndContinue} busy={busy} label="Continue" />}
+      >
+        <div className="mb-4 flex items-start gap-2">
+          <PaperAirplaneIcon className="h-5 w-5 text-brand-600" />
+          <h2 className="font-display text-2xl font-bold text-gray-900">Your phone number.</h2>
+        </div>
+        <p className="mb-6 text-sm leading-6 text-gray-500">Optional. We only use it to reach you quickly about your own campaign, never for outreach. Add it or skip it.</p>
+        <PhoneInput value={phone} onChange={setPhone} autoFocus />
+        <button
+          onClick={() => setStep("ltr")}
+          className="mt-4 text-sm text-gray-400 underline transition hover:text-gray-600"
+        >
+          Skip for now
+        </button>
+      </StepShell>
+    );
+  }
+
+  if (step === "ltr") {
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={saveLtrAndContinue} busy={busy} label="Continue" />}
+      >
+        <BackButton onClick={() => setStep("phone")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Lifetime revenue per paid client.</h2>
+        <p className="mt-2 mb-6 text-gray-500">The average revenue one customer brings you over their lifetime. It sets the value of every outcome we drive, so your budget and projections stay yours. An estimate is fine.</p>
+        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        <div className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="text-base font-semibold text-gray-900">{RATE_META.ltv.label}</div>
+            <div className="mt-1 text-sm leading-5 text-gray-500">{RATE_META.ltv.hint}</div>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 focus-within:border-brand-400 sm:w-40 sm:shrink-0">
+            <span className="text-2xl font-semibold text-gray-400">$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={rateText.ltv}
+              onChange={(e) => {
+                ratesEditedRef.current = true;
+                launchFeatureInputsRef.current = null;
+                setRateText((t) => ({ ...t, ltv: e.target.value }));
+              }}
+              onBlur={() => {
+                const value = parseLocaleNumberInput(rateText.ltv);
+                if (value !== null) setRateText((t) => ({ ...t, ltv: rateToText(value) }));
+              }}
+              className="w-full bg-transparent text-right text-3xl font-bold text-gray-900 focus:outline-none"
+            />
+          </div>
+        </div>
+      </StepShell>
+    );
+  }
+
+  if (step === "offer") {
+    const lever = POST_PAYMENT_OFFER_LEVERS[offerIndex];
+    const raw = profile[lever.key];
+    const current = Array.isArray(raw) ? raw.join(", ") : (raw ?? "");
+    const isLast = offerIndex === POST_PAYMENT_OFFER_LEVERS.length - 1;
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
+      >
+        <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("ltr"))} />
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
+          Your offer · {offerIndex + 1} of {POST_PAYMENT_OFFER_LEVERS.length}
+        </div>
+        <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
+        <p className="mt-2 mb-5 text-sm leading-6 text-gray-500">{lever.why}</p>
+        <textarea
+          value={current}
+          onChange={(e) => setProfile((p) => ({ ...p, [lever.key]: e.target.value }))}
+          placeholder={lever.placeholder}
+          rows={5}
+          className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-base leading-6 text-gray-900 focus:border-brand-400 focus:outline-none"
+        />
+        <p className="mt-3 text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
       </StepShell>
     );
   }
