@@ -73,7 +73,6 @@ export function PeriodCompoundChart({
   growthLabel,
   formatValue = defaultFormatValue,
   formatAxis,
-  tentativeCurrent = true,
 }: {
   data: PeriodCompoundPoint[];
   valueLabel: string;
@@ -82,13 +81,6 @@ export function PeriodCompoundChart({
   formatValue?: (n: number) => string;
   /** Y-axis tick formatter (default: same as formatValue). */
   formatAxis?: (n: number) => string;
-  /**
-   * Draw the final period "in pencil" (hollow dashed bar + dashed line tail) to
-   * signal a still-accumulating partial period. TRUE for flow metrics (realized
-   * revenue). Set FALSE for a point-in-time snapshot metric (committed MRR/ARR),
-   * where the current period is a real, complete value — a solid bar.
-   */
-  tentativeCurrent?: boolean;
 }) {
   const axisFormat = formatAxis ?? formatValue;
   if (data.length === 0) {
@@ -102,12 +94,11 @@ export function PeriodCompoundChart({
   const lastIndex = data.length - 1;
   const chartData = data.map((d, i) => ({
     ...d,
-    isCurrent: tentativeCurrent && i === lastIndex,
+    isCurrent: i === lastIndex,
     // Solid line runs to the last CONCLUDED period; the dashed tail spans the last
-    // concluded period → the current one. When the current period is NOT tentative,
-    // the solid line runs all the way and there is no dashed tail.
-    cmgrSolid: !tentativeCurrent || i <= lastIndex - 1 ? d.cmgrPct : null,
-    cmgrTail: tentativeCurrent && i >= lastIndex - 1 ? d.cmgrPct : null,
+    // concluded period → the current one (they meet at index lastIndex - 1).
+    cmgrSolid: i <= lastIndex - 1 ? d.cmgrPct : null,
+    cmgrTail: i >= lastIndex - 1 ? d.cmgrPct : null,
   }));
 
   return (
