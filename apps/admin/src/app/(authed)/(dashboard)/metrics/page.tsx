@@ -13,7 +13,7 @@ import {
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { cmgrSummary, monthlySignups, weeklySignups, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
+import { cmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
 import { formatCount, formatPctAdaptive } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
@@ -122,12 +122,40 @@ function LandingView({
   timeline: DailyFunnelPoint[];
   sources: TrafficSource[];
 }) {
+  const monthly = monthlyVisitors(timeline);
+  const weekly = weeklyVisitors(timeline);
+  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const monthlyCmgr = cmgrSummary(monthly);
+  const weeklyCmgr = cmgrSummary(weekly);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Unique visitors" value={formatCount(totalVisitors)} detail={`Through ${latestDate(timeline)}`} accent="bg-sky-500" />
         <StatCard label="Tracked days" value={formatCount(timeline.length)} detail="PostHog daily visitor buckets" accent="bg-gray-500" />
         <StatCard label="Top origin" value={sources[0]?.source ?? "No source"} detail={sources[0] ? `${formatCount(sources[0].visitors)} unique visitors` : "No visitors yet"} accent="bg-emerald-500" />
+      </section>
+      <section className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Monthly unique visitors</h2>
+          <p className="mt-1 text-sm text-gray-500">Unique visitors per month with compound monthly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+          </div>
+          <div className="mt-5">
+            <PeriodCompoundChart data={monthlyPoints} valueLabel="Unique visitors" growthLabel="CMGR since inception" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Weekly unique visitors</h2>
+          <p className="mt-1 text-sm text-gray-500">Unique visitors per week with compound weekly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+          </div>
+          <div className="mt-5">
+            <PeriodCompoundChart data={weeklyPoints} valueLabel="Unique visitors" growthLabel="CWGR since inception" />
+          </div>
+        </div>
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
