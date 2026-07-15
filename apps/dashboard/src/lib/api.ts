@@ -261,6 +261,41 @@ export async function deleteByokKey(
   });
 }
 
+// Chat session history — restore the "Edit with AI" panel after a refresh.
+// Gateway proxies GET /v1/chat/sessions/:sessionId → chat-service /sessions/:id.
+// We only render `messages`; the schema stays tolerant of the other session
+// metadata fields (org/brand/workflow) the endpoint returns.
+const ChatHistoryToolCallSchema = z.object({
+  name: z.string(),
+  args: z.record(z.string(), z.unknown()),
+  result: z.unknown().optional(),
+});
+const ChatHistoryMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant", "tool"]),
+  content: z.string(),
+  contentBlocks: z.array(z.unknown()).nullable(),
+  toolCalls: z.array(ChatHistoryToolCallSchema).nullable(),
+});
+const ChatSessionHistorySchema = z.object({
+  sessionId: z.string(),
+  messages: z.array(ChatHistoryMessageSchema),
+});
+export type ChatSessionHistory = z.infer<typeof ChatSessionHistorySchema>;
+
+export async function getChatSessionHistory(
+  sessionId: string,
+  token?: string,
+): Promise<ChatSessionHistory> {
+  const raw = await apiCall<unknown>(`/chat/sessions/${sessionId}`, { token });
+  const parsed = ChatSessionHistorySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("getChatSessionHistory: response shape mismatch", parsed.error, raw);
+    throw new Error("Invalid chat session history response shape");
+  }
+  return parsed.data;
+}
+
 // Activity tracking
 export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
   return apiCall<{ ok: boolean }>("/activity", { token, method: "POST" });
