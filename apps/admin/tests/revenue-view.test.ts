@@ -4,10 +4,9 @@ import path from "path";
 import {
   revenueBuckets,
   revenueCmgrSummary,
-  scaleBuckets,
+  mrrRunRateBuckets,
+  toArr,
   trackedWeeks,
-  MRR_FACTOR,
-  ARR_FACTOR,
   monthlyRevenueByKey,
   monthlyTimelineTotals,
   monthlyActiveUsersByKey,
@@ -96,17 +95,34 @@ describe("Revenue bucket derivations", () => {
     expect(avgPct).toBe(100);
   });
 
-  it("MRR/ARR scale the value but leave growth + CMGR unchanged (ratio-invariant)", () => {
-    const rev = revenueBuckets(monthly, "month");
-    const arr = scaleBuckets(rev, ARR_FACTOR.month); // × 12
-    expect(arr.map((b) => b.value)).toEqual([1200, 2400, 4800]);
-    // growth% and cmgr% identical to the revenue series
-    expect(arr.map((b) => b.growthPct)).toEqual(rev.map((b) => b.growthPct));
-    expect(arr.map((b) => b.cmgrPct)).toEqual(rev.map((b) => b.cmgrPct));
-    // monthly MRR is unscaled; weekly MRR/ARR annualize by 52
-    expect(MRR_FACTOR.month).toBe(1);
-    expect(ARR_FACTOR.week).toBe(52);
-    expect(MRR_FACTOR.week).toBeCloseTo(52 / 12, 5);
+  it("MRR = realized run-rate (avg daily spend × 30), a rate not a period total", () => {
+    // 30 days at $10/day realized → run-rate = $10 × 30 = $300/mo (NOT the $300 total by coincidence);
+    // a HALF month (15 days) at $10/day still reads $300 MRR — extrapolated, not $150.
+    const full: FleetRevenueBucket[] = Array.from({ length: 30 }, (_, i) => ({
+      period: `2026-06-${String(i + 1).padStart(2, "0")}`,
+      periodStart: `2026-06-${String(i + 1).padStart(2, "0")}`,
+      revenueUsd: 10,
+    }));
+    const partial: FleetRevenueBucket[] = Array.from({ length: 15 }, (_, i) => ({
+      period: `2026-07-${String(i + 1).padStart(2, "0")}`,
+      periodStart: `2026-07-${String(i + 1).padStart(2, "0")}`,
+      revenueUsd: 10,
+    }));
+    const mrr = mrrRunRateBuckets([...full, ...partial], "month");
+    expect(mrr.map((b) => b.value)).toEqual([300, 300]); // partial month extrapolates to the same rate
+  });
+
+  it("ARR = MRR × 12 (scale-invariant → growth/CMGR preserved)", () => {
+    const days: FleetRevenueBucket[] = Array.from({ length: 60 }, (_, i) => {
+      const month = i < 30 ? "06" : "07";
+      const day = String((i % 30) + 1).padStart(2, "0");
+      return { period: `2026-${month}-${day}`, periodStart: `2026-${month}-${day}`, revenueUsd: i < 30 ? 10 : 20 };
+    });
+    const mrr = mrrRunRateBuckets(days, "month");
+    const arr = toArr(mrr);
+    expect(arr.map((b) => b.value)).toEqual(mrr.map((b) => b.value * 12));
+    expect(arr.map((b) => b.cmgrPct)).toEqual(mrr.map((b) => b.cmgrPct));
+    expect(arr.map((b) => b.growthPct)).toEqual(mrr.map((b) => b.growthPct));
   });
 
   it("trackedWeeks counts 7-day blocks since the first billed day", () => {
