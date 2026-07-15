@@ -4809,6 +4809,40 @@ export async function getActiveUsersHistory(token?: string): Promise<ActiveUsers
   return apiCall<ActiveUsersHistory>(`/features/audit/active-users`, { token });
 }
 
+// ── Fleet revenue history (staff) ────────────────────────────────────────────
+// Cross-org, fleet-wide REALIZED revenue history — the SAME per-day actualized
+// cold-email spend signal the active-users history is reconstructed from, summed
+// in dollars instead of thresholded to a distinct-org headcount. Bucketed
+// monthly / weekly / daily since inception, plus the cumulative total and the
+// live current MRR (current fleet active daily budget × 30). Producer-owned
+// shape (features-service GET /internal/stats/revenue, proxied staff-gated at
+// api-service — same auth path as getAuditAccounts / getActiveUsersHistory).
+// Field names below are the admin's expected shape; conform to the deployed
+// producer via the api-registry once features-service ships.
+export interface FleetRevenueBucket {
+  period: string; // "YYYY-MM" | "YYYY-Www" | "YYYY-MM-DD"
+  periodStart: string; // UTC bucket start, "YYYY-MM-DD" (month 1st / week Monday / day)
+  revenueUsd: number; // realized cold-email revenue billed in this bucket (USD)
+}
+
+export interface FleetRevenue {
+  totalRevenueUsd: number; // cumulative realized cold-email revenue since inception (USD)
+  currentMrrUsd: number; // live fleet active daily budget × 30 (USD)
+  monthly: FleetRevenueBucket[];
+  weekly: FleetRevenueBucket[];
+  daily: FleetRevenueBucket[];
+  asOf: string;
+}
+
+/**
+ * Fleet-wide realized-revenue history (monthly/weekly/daily + cumulative total +
+ * live MRR). Staff-gated platform view. Transparent proxy to features-service
+ * GET /internal/stats/revenue.
+ */
+export async function getFleetRevenue(token?: string): Promise<FleetRevenue> {
+  return apiCall<FleetRevenue>(`/features/audit/revenue`, { token });
+}
+
 // ── Google CRM (staff console) ───────────────────────────────────────────────
 // Typed rows from google-service via the api-service gateway. The clean typed
 // fields (fromEmail/subject/…, displayName/primaryEmail/…) are an ADDITIVE
