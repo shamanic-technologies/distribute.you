@@ -2,11 +2,36 @@
 
 import { useMemo } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getAuditAccounts, type AuditAccounts } from "@/lib/api";
+import {
+  getAuditAccounts,
+  getActiveUsersHistory,
+  type AuditAccounts,
+  type ActiveUsersBucket,
+  type ActiveUsersHistory,
+} from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
+import { PeriodBarGrowthChart, type PeriodBarGrowthPoint } from "@/components/period-bar-growth-chart";
 
 const num = (n: number) => n.toLocaleString("en-US");
+
+function bucketLabel(periodStart: string, granularity: "month" | "week" | "day"): string {
+  const date = new Date(`${periodStart}T00:00:00.000Z`);
+  return date.toLocaleDateString("en-US", {
+    ...(granularity === "month"
+      ? { month: "short", year: "numeric" }
+      : { month: "short", day: "numeric" }),
+    timeZone: "UTC",
+  });
+}
+
+function toPoints(buckets: ActiveUsersBucket[], granularity: "month" | "week" | "day"): PeriodBarGrowthPoint[] {
+  return buckets.map((b) => ({
+    label: bucketLabel(b.periodStart, granularity),
+    value: b.activeUsers,
+    growthPct: b.growthPct,
+  }));
+}
 
 function StatCard({
   label,
@@ -55,6 +80,13 @@ export function ActiveUsersView() {
     return { activeUsers: activeOrgs.size, totalOrgs: allOrgs.size };
   }, [data]);
 
+  const {
+    data: history,
+    isPending: historyPending,
+    isError: historyError,
+    error: historyErr,
+  } = useAuthQuery<ActiveUsersHistory>(["activeUsersHistory"], () => getActiveUsersHistory(), pollOptionsSlower);
+
   const s = data?.stats;
 
   if (isError) {
@@ -99,15 +131,48 @@ export function ActiveUsersView() {
         />
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-950">Active users over time</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Monthly, weekly, and daily active users with growth rates.
-        </p>
-        <div className="mt-5 flex h-[220px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50 px-6 text-center text-sm text-gray-400">
-          Historical active-user trend is being wired from features-service and will appear here.
-        </div>
-      </section>
+      {historyError ? (
+        <section className="rounded-lg border border-red-200 bg-white p-6">
+          <p className="text-sm font-medium text-red-700">Couldn&apos;t load active-user history.</p>
+          <p className="mt-1 text-xs text-red-500">{historyErr?.message ?? "Unknown error"}</p>
+        </section>
+      ) : (
+        <section className="grid gap-6 lg:grid-cols-3">
+          <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <h2 className="text-lg font-semibold text-gray-950">Monthly active users</h2>
+            <p className="mt-1 text-sm text-gray-500">Active users per month with month-on-month growth.</p>
+            <div className="mt-5">
+              {historyPending ? (
+                <Skeleton className="h-[280px] w-full rounded" />
+              ) : (
+                <PeriodBarGrowthChart data={toPoints(history?.monthly ?? [], "month")} valueLabel="active users" growthLabel="MoM growth" />
+              )}
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <h2 className="text-lg font-semibold text-gray-950">Weekly active users</h2>
+            <p className="mt-1 text-sm text-gray-500">Active users per week with week-on-week growth.</p>
+            <div className="mt-5">
+              {historyPending ? (
+                <Skeleton className="h-[280px] w-full rounded" />
+              ) : (
+                <PeriodBarGrowthChart data={toPoints(history?.weekly ?? [], "week")} valueLabel="active users" growthLabel="WoW growth" />
+              )}
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-6">
+            <h2 className="text-lg font-semibold text-gray-950">Daily active users</h2>
+            <p className="mt-1 text-sm text-gray-500">Active users per day with day-on-day growth.</p>
+            <div className="mt-5">
+              {historyPending ? (
+                <Skeleton className="h-[280px] w-full rounded" />
+              ) : (
+                <PeriodBarGrowthChart data={toPoints(history?.daily ?? [], "day")} valueLabel="active users" growthLabel="DoD growth" />
+              )}
+            </div>
+          </div>
+        </section>
+      )}
     </>
   );
 }
