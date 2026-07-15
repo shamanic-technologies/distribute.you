@@ -271,10 +271,13 @@ export const EMAIL_TEMPLATES = [
   // ── Daily outcome digest (beta-gated by dashboard cron via PostHog) ──
   // dashboard cron sends ONE email PER BRAND to users where the PostHog beta flag
   // resolves true, and only when that brand recorded at least one outcome on the
-  // day — clicks (signups goal) or positive replies (sales-meetings goal). The brand
-  // name leads the subject so the user can filter in their inbox.
+  // day. The outcome is the brand's OPTIMIZATION GOAL (website visits, signups,
+  // form submissions, purchases, or positive replies) — `{{outcomeLabel}}` is
+  // resolved per goal in outcome-digest.ts, falling back to website clicks only when
+  // a goal's conversion tracker isn't live yet. The brand name leads the subject so
+  // the user can filter in their inbox.
   // The body below the intro lists the people in the pipeline (face photo +
-  // company logo) via {{digestHtml}}.
+  // company logo + a green outcome pill) via {{digestHtml}}.
   // Variables:
   //   brandName, brandUrl, outcomeCount, outcomeLabel, totalLeads,
   //   totalOutcomeOrganizations, digestHtml, digestText
@@ -284,9 +287,9 @@ export const EMAIL_TEMPLATES = [
     htmlBody: emailLayout(`
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        {{brandName}} got <strong>{{outcomeCount}} new {{outcomeLabel}}</strong> today.
+        {{brandName}} got <strong style="color:#15803d;">{{outcomeCount}} new {{outcomeLabel}}</strong> today.
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+      <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:16px;">
         {{totalLeads}} people in your pipeline.
       </p>
       {{digestHtml}}
