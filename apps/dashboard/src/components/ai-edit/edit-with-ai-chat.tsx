@@ -26,6 +26,8 @@ import {
   clearStoredSession,
   SESSION_NOT_FOUND_NOTICE,
 } from "@/lib/chat-session";
+import { getChatSessionHistory, ApiError } from "@/lib/api";
+import { historyToUIMessages } from "@/lib/chat-session-history";
 
 /**
  * Edit-with-AI — REAL LLM chat (replaces the client-side interpreter mock).
@@ -215,6 +217,54 @@ export function EditWithAIChat({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+
+  // Track the live message count so the async rehydration below never clobbers
+  // a conversation the user has already started typing into while the fetch was
+  // in flight (closure over `messages` would be stale).
+  const messagesLenRef = useRef(messages.length);
+  useEffect(() => {
+    messagesLenRef.current = messages.length;
+  }, [messages]);
+
+  // Rehydrate the visible conversation after a page refresh. The sessionId is
+  // kept in localStorage; chat-service keeps the full turn log. On open, if a
+  // stored session exists, fetch its history and restore the panel so a reload
+  // no longer resets the chat to the intro. Runs once per session key; skipped
+  // when the user has already resumed typing (messages > intro) or is streaming.
+  const rehydratedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    if (rehydratedKeyRef.current === chatKey) return;
+    rehydratedKeyRef.current = chatKey;
+    let cancelled = false;
+    getChatSessionHistory(sid)
+      .then((history) => {
+        if (cancelled) return;
+        if (messagesLenRef.current > 1 || isStreaming) return;
+        const restored = historyToUIMessages(history.messages);
+        if (restored.length > 0) setMessages([introMessage, ...restored]);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        // A stored sessionId that no longer resolves (pruned, or another org):
+        // drop it so the next message starts fresh, mirroring the SSE
+        // session_not_found recovery. Other failures degrade to the intro.
+        if (err instanceof ApiError && (err.status === 404 || err.status === 403)) {
+          sessionIdRef.current = null;
+          clearStoredSession(sessionStorageKey(chatKey));
+          setSessionResetNotice(true);
+        } else {
+          console.error("chat history rehydrate failed", err);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // isStreaming/messages are read via refs at resolve time — intentionally not deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, chatKey, introMessage, setMessages]);
 
   // Auto-grow the input as the user types (the `max-h-32` cap then scrolls).
   // Without this the `rows={1}` textarea stays one line tall and multi-line
