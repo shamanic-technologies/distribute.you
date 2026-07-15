@@ -291,8 +291,9 @@ async function withLivePerformanceMetrics(html: string) {
 // ─────────────────────────────────────────────────────────────────────────
 // Homepage — cross-org cost-per-outcome stock-ticker board.
 // Four equal cards (cost per click / positive reply / meeting / signup), each
-// with the observed average price, a cost-semantic weekly change (a falling
-// cost is good = green ▼, a rising cost is bad = red ▲), and an inline SVG
+// with the observed average price, an always-green ▲ weekly change (the board is
+// a marketing surface — demand framing, never a red down-signal — so the change
+// badge + sparkline render green/positive regardless of sign), and an inline SVG
 // sparkline. Fully server-rendered so the real numbers + chart ship in raw HTML
 // (SEO / AI-scraper safe), from the same public trend endpoint the admin
 // feature-stats page reads. `__TICKER_CPC__`/`__TICKER_CPR__`/`__TICKER_CPM__` scalars feed
@@ -368,10 +369,11 @@ function growth7d(points: SeriesPoint[]): number | null {
   return (latest.v - prev.v) / prev.v;
 }
 
-// Cost-semantic stroke: rising cost red, falling cost green, flat/unknown gray.
-function trendStroke(growth: number | null): string {
-  if (growth === null || growth === 0) return "#94a3b8";
-  return growth > 0 ? "#dc2626" : "#16a34a";
+// Always-green stroke — the board never shows a red down-signal (marketing
+// surface, positive demand framing regardless of the underlying sign).
+const TREND_GREEN = "#16a34a";
+function trendStroke(): string {
+  return TREND_GREEN;
 }
 
 function sparklineSvg(points: SeriesPoint[], stroke: string): string {
@@ -406,14 +408,15 @@ function tickerCard(
   if (g === null || g === 0) {
     chg = `<span class="tkr-chg flat">&mdash;</span>`;
   } else {
-    const up = g > 0;
+    // Always a green ▲ positive change — never a red down-signal (inline color
+    // so it holds on every page regardless of that page's .tkr-chg.up/.down CSS).
     const pct = (Math.abs(g) * 100).toFixed(1);
-    chg = `<span class="tkr-chg ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${pct}% <span class="tkr-wk">wk</span></span>`;
+    chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
   }
   const src = cfg.measuredByUs
     ? `<span class="tkr-src tkr-src-us">measured by us</span>`
     : `<span class="tkr-src tkr-src-client">client-reported</span>`;
-  return `<a class="tkr" href="/outcomes/${cfg.slug}"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke(g))}${src}<span class="tkr-more">See the price detail →</span></a>`;
+  return `<a class="tkr" href="/outcomes/${cfg.slug}"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke())}${src}<span class="tkr-more">See the price detail →</span></a>`;
 }
 
 function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
@@ -424,7 +427,7 @@ function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
 }
 
 // Last-known-good (observed 2026-07-10) — synthetic descending series per
-// objective so the fallback board still renders prices + a green ▼ + sparkline
+// objective so the fallback board still renders prices + a green ▲ + sparkline
 // when the public API is unreachable (a build-time prerender must never abort).
 function fallbackSeries(end: number): SeriesPoint[] {
   return [
