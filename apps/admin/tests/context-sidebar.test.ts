@@ -39,7 +39,7 @@ describe("Context sidebar", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     expect(content).toContain("Unique visitors");
     expect(content).toContain("Signups");
-    expect(content).toContain("Cards added");
+    expect(content).toContain("Paid users");
     expect(content).toContain("/metrics?view=landing");
     expect(content).not.toContain('href: `/features/${f.slug}`');
   });

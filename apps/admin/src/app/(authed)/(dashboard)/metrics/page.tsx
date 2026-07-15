@@ -12,7 +12,7 @@ import {
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { cmgrSummary, monthlySignups, weeklySignups } from "@/lib/signup-buckets";
+import { cmgrSummary, monthlySignups, weeklySignups, monthlyCards, weeklyCards } from "@/lib/signup-buckets";
 import { formatCount } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +21,8 @@ export const revalidate = 300;
 const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
   { id: "landing", label: "Unique visitors", href: "/metrics?view=landing" },
   { id: "signups", label: "Signups", href: "/metrics?view=signups" },
+  { id: "cards", label: "Paid users", href: "/metrics?view=cards" },
   { id: "active-users", label: "Active users", href: "/metrics?view=active-users" },
-  { id: "cards", label: "Cards added", href: "/metrics?view=cards" },
 ];
 
 interface PageProps {
@@ -222,24 +222,58 @@ function CardsView({
   totalUsers: number;
   timeline: DailyFunnelPoint[];
 }) {
+  const monthly = monthlyCards(timeline);
+  const weekly = weeklyCards(timeline);
+  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const monthlyCmgr = cmgrSummary(monthly);
+  const weeklyCmgr = cmgrSummary(weekly);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total cards added" value={formatCount(cardsAdded)} detail="Billing public accounts with payment method" accent="bg-emerald-500" />
-        <StatCard label="Signup to card conversion" value={pct(cardsAdded, totalUsers)} detail="Cards added divided by total signups" accent="bg-brand-500" />
-        <StatCard label="Tracked card days" value={formatCount(timeline.filter((point) => point.cardsAdded > 0).length)} detail="Stripe first saved-card dates" accent="bg-sky-500" />
+        <StatCard label="Total paid users" value={formatCount(cardsAdded)} detail="Billing public accounts with payment method" accent="bg-emerald-500" />
+        <StatCard label="Signup to paid conversion" value={pct(cardsAdded, totalUsers)} detail="Paid users divided by total signups" accent="bg-brand-500" />
+        <StatCard label="Tracked paid days" value={formatCount(timeline.filter((point) => point.cardsAdded > 0).length)} detail="Stripe first saved-card dates" accent="bg-sky-500" />
       </section>
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Cards added over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily first saved card per Stripe customer.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Monthly paid users</h2>
+          <p className="mt-1 text-sm text-gray-500">Paid users per month with compound monthly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+          </div>
           <div className="mt-5">
-            <PublicAnalyticsChart data={timeline} metric="cardsAdded" color="#10b981" />
+            <PeriodCompoundChart data={monthlyPoints} valueLabel="Paid users" growthLabel="CMGR since inception" />
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Signup to card conversion over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily cards added divided by daily signup events.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Weekly paid users</h2>
+          <p className="mt-1 text-sm text-gray-500">Paid users per week with compound weekly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+          </div>
+          <div className="mt-5">
+            <PeriodCompoundChart data={weeklyPoints} valueLabel="Paid users" growthLabel="CWGR since inception" />
+          </div>
+        </div>
+      </section>
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Paid users vs signups</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily paid users compared with daily signups.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart
+              data={timeline}
+              series={[
+                { metric: "signups", color: "#6366f1" },
+                { metric: "cardsAdded", color: "#10b981" },
+              ]}
+            />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Signup to paid conversion over time</h2>
+          <p className="mt-1 text-sm text-gray-500">Daily paid users divided by daily signup events.</p>
           <div className="mt-5">
             <PublicAnalyticsChart data={timeline} metric="cardConversionPct" color="#f59e0b" />
           </div>
