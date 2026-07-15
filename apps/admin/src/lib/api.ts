@@ -4940,8 +4940,22 @@ export interface CustomerHealth {
   };
 }
 
+/**
+ * Per-org dashboard-return signal (features-service#576). Null when PostHog has
+ * no data / is unreachable / the POSTHOG_* env is not yet provisioned — render
+ * "-" in that state, never fabricate a 0.
+ */
+export interface CustomerDashboardReturnFrequency {
+  sessions7d: number; // distinct dashboard sessions, trailing 7d
+  sessions30d: number; // distinct dashboard sessions, trailing 30d
+  pageviews7d: number;
+  pageviews30d: number;
+  lastSeen: string | null; // ISO timestamp of most recent dashboard pageview
+  daysSinceLastSeen: number | null;
+}
+
 export interface CustomerNotTrackedYet {
-  dashboardReturnFrequency: null;
+  dashboardReturnFrequency: CustomerDashboardReturnFrequency | null;
   budgetChangeHistory: null;
   pauseHistory: null;
 }
