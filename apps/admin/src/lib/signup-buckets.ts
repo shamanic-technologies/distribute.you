@@ -87,32 +87,47 @@ export function cmgrSummary(buckets: SignupBucket[]): { latestPct: number | null
   return { latestPct, avgPct };
 }
 
+/** Selects the per-day metric to bucket (signups by default, cards for the paid-users view). */
+type ValueFn = (point: DailyFunnelPoint) => number;
+
 function aggregate(
   points: DailyFunnelPoint[],
   keyFn: (date: Date, iso: string) => { key: string; label: string },
+  valueFn: ValueFn,
 ): SignupBucket[] {
   const map = new Map<string, { key: string; label: string; signups: number }>();
   for (const point of points) {
     const date = new Date(`${point.date}T00:00:00.000Z`);
     const { key, label } = keyFn(date, point.date);
+    const value = valueFn(point);
     const existing = map.get(key);
-    if (existing) existing.signups += point.signups;
-    else map.set(key, { key, label, signups: point.signups });
+    if (existing) existing.signups += value;
+    else map.set(key, { key, label, signups: value });
   }
   return withDerived([...map.values()]);
 }
 
+const monthKey = (date: Date) => ({
+  key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
+  label: monthLabel(date.getUTCFullYear(), date.getUTCMonth()),
+});
+
 export function monthlySignups(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, (date) => ({
-    key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
-    label: monthLabel(date.getUTCFullYear(), date.getUTCMonth()),
-  }));
+  return aggregate(points, monthKey, (p) => p.signups);
 }
 
 export function weeklySignups(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, (date) => isoWeekKey(date));
+  return aggregate(points, (date) => isoWeekKey(date), (p) => p.signups);
 }
 
 export function dailySignups(points: DailyFunnelPoint[]): SignupBucket[] {
-  return aggregate(points, (date, iso) => ({ key: iso, label: dayLabel(date) }));
+  return aggregate(points, (date, iso) => ({ key: iso, label: dayLabel(date) }), (p) => p.signups);
+}
+
+export function monthlyCards(points: DailyFunnelPoint[]): SignupBucket[] {
+  return aggregate(points, monthKey, (p) => p.cardsAdded);
+}
+
+export function weeklyCards(points: DailyFunnelPoint[]): SignupBucket[] {
+  return aggregate(points, (date) => isoWeekKey(date), (p) => p.cardsAdded);
 }

@@ -13,7 +13,7 @@ describe("Cross-org metrics page shows public global metrics", () => {
     expect(content).toContain("fetchPublicStatsSummary");
     expect(content).toContain("Unique visitors over time");
     expect(content).toContain("Signup conversion over time");
-    expect(content).toContain("Cards added over time");
+    expect(content).toContain("Paid users vs signups");
     expect(content).toContain('href="/orgs"');
     expect(content).not.toContain("useOrganization");
     expect(content).not.toContain("router.replace");
