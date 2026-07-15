@@ -78,6 +78,8 @@ function PeriodCard({
   growthLabel,
   valueLabel,
   pending,
+  tentativeCurrent = true,
+  currentValue,
 }: {
   title: string;
   subtitle: string;
@@ -89,6 +91,10 @@ function PeriodCard({
   growthLabel: string;
   valueLabel: string;
   pending: boolean;
+  // Committed (snapshot) cards: draw the current period as a solid bar and lead
+  // with the live current value (so a one-snapshot chart still reads correctly).
+  tentativeCurrent?: boolean;
+  currentValue?: string;
 }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -97,6 +103,16 @@ function PeriodCard({
       <div className="mt-4">
         {pending ? (
           <Skeleton className="h-16 w-32 rounded" />
+        ) : currentValue !== undefined ? (
+          <div>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-semibold text-gray-950">{currentValue}</p>
+              <span className="text-sm font-semibold text-brand-500">now</span>
+            </div>
+            <p className="mt-0.5 text-xs text-gray-400">
+              {latestPct === null ? `${cmgrLabel} builds as history accrues` : <CmgrInline latestPct={latestPct} avgPct={avgPct} label={cmgrLabel} unit={cmgrUnit} />}
+            </p>
+          </div>
         ) : (
           <CmgrStat latestPct={latestPct} avgPct={avgPct} label={cmgrLabel} unit={cmgrUnit} />
         )}
@@ -111,10 +127,31 @@ function PeriodCard({
             growthLabel={growthLabel}
             formatValue={usdFull}
             formatAxis={usdCompact}
+            tentativeCurrent={tentativeCurrent}
           />
         )}
       </div>
     </div>
+  );
+}
+
+/** Inline CMGR sub-line for the committed cards (value is the big number instead). */
+function CmgrInline({
+  latestPct,
+  avgPct,
+  label,
+  unit,
+}: {
+  latestPct: number | null;
+  avgPct: number | null;
+  label: string;
+  unit: string;
+}) {
+  const fmt = (v: number | null) => (v === null ? "—" : `${v > 0 ? "+" : ""}${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v)}%`);
+  return (
+    <>
+      {fmt(latestPct)} {label} · {fmt(avgPct)} average {unit} since inception
+    </>
   );
 }
 
@@ -294,6 +331,8 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           growthLabel="CMGR since inception"
           valueLabel="MRR"
           pending={isPending || !derived}
+          tentativeCurrent={false}
+          currentValue={data ? usdFull(data.committedMrr.currentMrrUsd) : undefined}
         />
         <PeriodCard
           title="Weekly MRR"
@@ -306,6 +345,8 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           growthLabel="CWGR since inception"
           valueLabel="MRR"
           pending={isPending || !derived}
+          tentativeCurrent={false}
+          currentValue={data ? usdFull(data.committedMrr.currentMrrUsd) : undefined}
         />
       </section>
 
@@ -321,6 +362,8 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           growthLabel="CMGR since inception"
           valueLabel="ARR"
           pending={isPending || !derived}
+          tentativeCurrent={false}
+          currentValue={data ? usdFull(data.committedMrr.currentArrUsd) : undefined}
         />
         <PeriodCard
           title="Weekly ARR"
@@ -333,6 +376,8 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           growthLabel="CWGR since inception"
           valueLabel="ARR"
           pending={isPending || !derived}
+          tentativeCurrent={false}
+          currentValue={data ? usdFull(data.committedMrr.currentArrUsd) : undefined}
         />
       </section>
 

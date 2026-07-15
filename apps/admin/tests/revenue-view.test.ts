@@ -64,6 +64,11 @@ describe("Revenue metrics view — wiring", () => {
     // MRR/ARR are the COMMITTED run-rate from the backend snapshot series.
     expect(revenueView).toContain("committedBuckets");
     expect(revenueView).toContain("Committed run-rate");
+    // Committed cards draw the current period as a SOLID bar (real snapshot, not a
+    // partial pencil) and lead with the live current value so a one-snapshot chart reads right.
+    expect(revenueView).toContain("tentativeCurrent={false}");
+    expect(revenueView).toContain("currentMrrUsd");
+    expect(revenueView).toContain("currentArrUsd");
     expect(revenueView).not.toContain("MRR over time");
     expect(revenueView).toContain("Avg revenue per unique visitor");
     expect(revenueView).toContain("Avg revenue per signup");
