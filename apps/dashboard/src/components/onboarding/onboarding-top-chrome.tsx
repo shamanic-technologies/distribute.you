@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
+import { isAdminEmail } from "@/lib/admin-allowlist";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
 /**
@@ -32,10 +34,20 @@ import { explicitHierarchyHref } from "@/lib/last-brand";
  * (Dashboard ▾) with the user's memberships; the brand switcher appears once an org is
  * picked. The Cancel target works for `from=add` (active org stays the existing,
  * complete one); for `new=1` the reliable "go back" affordance is the org switcher.
+ *
+ * STAFF (god-mode) ALSO get the escape chrome on bare `/onboarding`. A staff member
+ * whose active org is an incomplete/never-onboarded tenant (e.g. dropped there by the
+ * god-mode org switch) is otherwise pinned on `/onboarding` by the edge gate with no
+ * way back — the first-run "trap" is wrong for them since they already have live
+ * tenants to return to. `BreadcrumbNav` renders the staff all-orgs switcher (its own
+ * `isStaff` gate), so switching to any complete org clears the edge gate and escapes.
  */
 export function OnboardingTopChrome() {
   const params = useSearchParams();
-  const isAddFlow = params.get("from") === "add" || params.get("new") === "1";
+  const { user } = useUser();
+  const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
+  const isAddFlow =
+    params.get("from") === "add" || params.get("new") === "1" || isStaff;
 
   if (!isAddFlow) {
     // First-run signup: keep the account widget (sign out / switch account —
