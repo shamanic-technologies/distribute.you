@@ -10,6 +10,7 @@ import {
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/forgot-password(.*)",
   "/sso-callback(.*)",
   "/claim(.*)",
   "/api/public(.*)",
@@ -19,6 +20,7 @@ const isPublicRoute = createRouteMatcher([
 const isAuthRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/forgot-password(.*)",
   "/claim(.*)",
 ]);
 const isSessionTaskRoute = createRouteMatcher([

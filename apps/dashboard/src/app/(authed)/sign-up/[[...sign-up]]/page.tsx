@@ -8,13 +8,30 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 
+function clerkErrorMessage(err: unknown): string {
+  const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
+  return (
+    e?.errors?.[0]?.longMessage ||
+    e?.errors?.[0]?.message ||
+    "Something went wrong. Please try again."
+  );
+}
+
 export default function SignUpPage() {
-  const { signUp, isLoaded } = useSignUp();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const { isSignedIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const redirectStartedRef = useRef(false);
+
+  // Email/password state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isSignedIn) {
@@ -68,9 +85,95 @@ export default function SignUpPage() {
     setLoading(true);
   };
 
+  // The email/password verified session lands on the same destination as the
+  // Google path: prefilled onboarding when a landing ?url= is carried, else /orgs.
+  const redirectAfterSignUp = () => {
+    const prefillUrl = (searchParams.get("url") || "").trim();
+    router.push(
+      prefillUrl ? `/onboarding?url=${encodeURIComponent(prefillUrl)}` : "/orgs"
+    );
+  };
+
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLoaded || !signUp || submitting) return;
+    setError("");
+    setSubmitting(true);
+    try {
+      posthog.capture("signup_email_started");
+      await signUp.create({ emailAddress: email, password });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setPendingVerification(true);
+    } catch (err) {
+      posthog.capture("signup_email_failed", { stage: "create" });
+      console.error("Email sign up error:", err);
+      setError(clerkErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLoaded || !signUp || submitting) return;
+    setError("");
+    setSubmitting(true);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        posthog.capture("signup_email_verified");
+        redirectAfterSignUp();
+      } else {
+        setError("Verification incomplete. Please check the code and retry.");
+      }
+    } catch (err) {
+      posthog.capture("signup_email_failed", { stage: "verify" });
+      console.error("Email verification error:", err);
+      setError(clerkErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!isLoaded || !signUp) return;
+    setError("");
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+    } catch (err) {
+      console.error("Resend code error:", err);
+      setError(clerkErrorMessage(err));
+    }
+  };
+
   if (isSignedIn) {
     return null;
   }
+
+  const inputStyle: React.CSSProperties = {
+    fontFamily: '"Inter", system-ui, sans-serif',
+    fontSize: "0.9375rem",
+    padding: "0.75rem 1rem",
+    width: "100%",
+    borderRadius: "0.75rem",
+    background: "oklch(99% 0.002 264)",
+    border: "1px solid oklch(87% 0.006 264)",
+    color: "oklch(18% 0.008 264)",
+    outline: "none",
+  };
+
+  const primaryBtnStyle: React.CSSProperties = {
+    fontFamily: '"Inter", system-ui, sans-serif',
+    fontSize: "0.9375rem",
+    fontWeight: 600,
+    padding: "0.75rem 1rem",
+    width: "100%",
+    borderRadius: "0.75rem",
+    background: "oklch(55% 0.24 264)",
+    color: "oklch(99% 0 0)",
+    border: "none",
+  };
 
   return (
     <div
@@ -263,7 +366,7 @@ export default function SignUpPage() {
                 marginBottom: "0.5rem",
               }}
             >
-              Create your account
+              {pendingVerification ? "Verify your email" : "Create your account"}
             </h1>
             <p
               style={{
@@ -272,7 +375,9 @@ export default function SignUpPage() {
                 color: "oklch(48% 0.006 264)",
               }}
             >
-              $25 free credits.
+              {pendingVerification
+                ? `We sent a code to ${email}`
+                : "$25 free credits."}
             </p>
           </div>
 
@@ -285,85 +390,200 @@ export default function SignUpPage() {
               boxShadow: "0 1px 4px oklch(12% 0.008 264 / 0.06)",
             }}
           >
-            <button
-              type="button"
-              onClick={handleGoogleSignUp}
-              disabled={loading}
-              aria-busy={loading}
-              className={`w-full flex items-center justify-center gap-3 rounded-xl transition-colors ${
-                loading ? "cursor-wait" : "hover:brightness-[0.97]"
-              }`}
-              style={{
-                fontFamily: '"Inter", system-ui, sans-serif',
-                fontSize: "0.9375rem",
-                fontWeight: 500,
-                padding: "0.75rem 1rem",
-                background: "oklch(98% 0.003 264)",
-                border: "1px solid oklch(87% 0.006 264)",
-                color: "oklch(22% 0.008 264)",
-              }}
-            >
-              {loading ? (
-                <svg
-                  className="w-5 h-5 animate-spin flex-shrink-0"
-                  style={{ color: "oklch(60% 0.006 264)" }}
-                  fill="none"
-                  viewBox="0 0 24 24"
+            {pendingVerification ? (
+              <form onSubmit={handleVerify} className="flex flex-col gap-4">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="Enter 6-digit code"
+                  style={{ ...inputStyle, textAlign: "center", letterSpacing: "0.3em" }}
+                  required
+                />
+                {error && (
+                  <p
+                    style={{
+                      fontFamily: '"Inter", system-ui, sans-serif',
+                      fontSize: "0.8125rem",
+                      color: "oklch(55% 0.2 25)",
+                    }}
+                  >
+                    {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  aria-busy={submitting}
+                  className={submitting ? "cursor-wait" : "hover:brightness-105"}
+                  style={primaryBtnStyle}
                 >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-              )}
-              {loading ? "Creating account..." : "Continue with Google"}
-            </button>
+                  {submitting ? "Verifying..." : "Verify email"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  className="transition-opacity hover:opacity-75"
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.8125rem",
+                    color: "oklch(42% 0.2 264)",
+                    background: "none",
+                    border: "none",
+                  }}
+                >
+                  Resend code
+                </button>
+              </form>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGoogleSignUp}
+                  disabled={loading}
+                  aria-busy={loading}
+                  className={`w-full flex items-center justify-center gap-3 rounded-xl transition-colors ${
+                    loading ? "cursor-wait" : "hover:brightness-[0.97]"
+                  }`}
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.9375rem",
+                    fontWeight: 500,
+                    padding: "0.75rem 1rem",
+                    background: "oklch(98% 0.003 264)",
+                    border: "1px solid oklch(87% 0.006 264)",
+                    color: "oklch(22% 0.008 264)",
+                  }}
+                >
+                  {loading ? (
+                    <svg
+                      className="w-5 h-5 animate-spin flex-shrink-0"
+                      style={{ color: "oklch(60% 0.006 264)" }}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
+                    </svg>
+                  )}
+                  {loading ? "Creating account..." : "Continue with Google"}
+                </button>
 
-            <div
-              className="mt-6 text-center"
-              style={{
-                fontFamily: '"Inter", system-ui, sans-serif',
-                fontSize: "0.875rem",
-                color: "oklch(52% 0.006 264)",
-              }}
-            >
-              Already have an account?{" "}
-              <Link
-                href="/sign-in"
-                className="font-medium transition-opacity hover:opacity-75"
-                style={{ color: "oklch(42% 0.2 264)" }}
-              >
-                Sign in
-              </Link>
-            </div>
+                {/* Divider */}
+                <div className="flex items-center gap-3 my-5">
+                  <span
+                    className="flex-1"
+                    style={{ height: "1px", background: "oklch(91% 0.005 264)" }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: '"Inter", system-ui, sans-serif',
+                      fontSize: "0.75rem",
+                      color: "oklch(62% 0.006 264)",
+                    }}
+                  >
+                    or
+                  </span>
+                  <span
+                    className="flex-1"
+                    style={{ height: "1px", background: "oklch(91% 0.005 264)" }}
+                  />
+                </div>
+
+                <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3">
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    style={inputStyle}
+                    required
+                  />
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Create a password"
+                    style={inputStyle}
+                    required
+                  />
+                  {/* Clerk renders a bot-protection challenge here when enabled */}
+                  <div id="clerk-captcha" />
+                  {error && (
+                    <p
+                      style={{
+                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontSize: "0.8125rem",
+                        color: "oklch(55% 0.2 25)",
+                      }}
+                    >
+                      {error}
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    aria-busy={submitting}
+                    className={submitting ? "cursor-wait" : "hover:brightness-105"}
+                    style={primaryBtnStyle}
+                  >
+                    {submitting ? "Creating account..." : "Create account"}
+                  </button>
+                </form>
+
+                <div
+                  className="mt-6 text-center"
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.875rem",
+                    color: "oklch(52% 0.006 264)",
+                  }}
+                >
+                  Already have an account?{" "}
+                  <Link
+                    href="/sign-in"
+                    className="font-medium transition-opacity hover:opacity-75"
+                    style={{ color: "oklch(42% 0.2 264)" }}
+                  >
+                    Sign in
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
 
           <p
