@@ -56,3 +56,29 @@ export const POST_PAYMENT_OFFER_LEVERS: ReadonlyArray<OfferLever> = [
     placeholder: "Limited seats, waitlist, capped capacity.",
   },
 ];
+
+// Build a ready-to-paste prompt so a user who wants help can hand this exact
+// offer question to their own LLM (ChatGPT, Claude, ...), get a tighter answer,
+// and paste it back into the field. `current` is whatever is already in the
+// textarea (AI-prefilled from the site or hand-edited). Keep plain, no em-dash.
+export function buildLeverLLMPrompt(
+  lever: OfferLever,
+  current: string,
+  domain: string,
+): string {
+  const draft = current.trim() ? current.trim() : "(nothing yet)";
+  return [
+    `I run this business: ${domain}`,
+    "",
+    "I'm setting up a cold-email campaign and need to nail one part of my offer.",
+    "",
+    `Question: ${lever.title}`,
+    lever.why,
+    "",
+    `My current draft: ${draft}`,
+    "",
+    "Rewrite it so it is specific, concrete, and believable for a cold email.",
+    "Use real details about my business. Keep it to 1-3 short sentences.",
+    "Return only the rewritten text, nothing else.",
+  ].join("\n");
+}

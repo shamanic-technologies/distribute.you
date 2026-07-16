@@ -73,7 +73,7 @@ import {
 import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
 import { Skeleton } from "@/components/skeleton";
 import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
-import { POST_PAYMENT_OFFER_LEVERS } from "./offer-levers";
+import { POST_PAYMENT_OFFER_LEVERS, buildLeverLLMPrompt } from "./offer-levers";
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
@@ -2433,7 +2433,10 @@ export function Onboarding() {
           rows={5}
           className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-base leading-6 text-gray-900 focus:border-brand-400 focus:outline-none"
         />
-        <p className="mt-3 text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
+          <CopyForLLMButton text={buildLeverLLMPrompt(lever, current, hostname || domain || "my business")} />
+        </div>
       </StepShell>
     );
   }
@@ -3018,6 +3021,28 @@ function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button onClick={onClick} className="mb-6 flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-600">
       <ChevronLeftIcon className="h-4 w-4" /> Back
+    </button>
+  );
+}
+
+// Secondary CTA on the offer-lever steps: copies a ready prompt (the offer
+// question + the user's current draft) so they can hand it to their own LLM,
+// get a tighter answer, and paste it back. Self-contained state so it can
+// render inside the `offer` step's conditional block.
+function CopyForLLMButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      }}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+    >
+      {copied ? "Copied!" : "Copy for LLM"}
     </button>
   );
 }
