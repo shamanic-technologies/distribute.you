@@ -36,6 +36,17 @@ describe("Onboarding escape chrome", () => {
     expect(chrome).not.toContain("fixed top-4 right-4");
   });
 
+  it("staff and users with a completed org also escape bare /onboarding", () => {
+    // A super-admin dropped on an incomplete tenant by god-mode, or a non-staff
+    // multi-org user whose active org is incomplete, is otherwise pinned on bare
+    // /onboarding by the edge gate with no exit. Both get the escape chrome. (#2746)
+    expect(chrome).toContain("isAdminEmail");
+    expect(chrome).toContain("isStaff");
+    expect(chrome).toContain("useOrganizationList");
+    expect(chrome).toContain("hasCompletedOrg");
+    expect(chrome).toContain("onboardingComplete === true");
+  });
+
   it("add/new flow mounts the org→brand switcher + a logo + a Cancel exit", () => {
     expect(chrome).toContain("BreadcrumbNav");
     // Both the logo and Cancel point at the dashboard (resolves to last-visited
