@@ -52,6 +52,17 @@ describe("Audiences page", () => {
     expect(src).toContain("const defaultSortCol");
   });
 
+  it("breaks outcome-cost ties on the website-visit cost (CPC) ASC for signups + form_submissions", () => {
+    // Visit-driven outcome goals sort by the outcome cost FIRST, then break ties on
+    // the cheapest website-visit cost (CPC) — so two audiences with the same/missing
+    // CPS/CPFS rank by cheapest visit. Only while sorting by the outcome-cost column.
+    expect(src).toContain("const tieBreakCol");
+    expect(src).toContain('showSignupCols && sortCol === "cps"');
+    expect(src).toContain('showFormSubmissionCols && sortCol === "cpfs"');
+    expect(src).toContain("if (!tieBreakCol) return 0;");
+    expect(src).toContain("sortValue(tieBreakCol, a");
+  });
+
   it("hides the signup + form-submission outcome columns until the conversion tracker is set up", () => {
     // No tracker → no signups/form-submissions to attribute, so the columns would only
     // ever show 0 / "-". Gate them on lead-service's tracker liveness (live_waiting|live).
