@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useOrganizationList, useUser } from "@clerk/nextjs";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
@@ -41,13 +41,33 @@ import { explicitHierarchyHref } from "@/lib/last-brand";
  * way back — the first-run "trap" is wrong for them since they already have live
  * tenants to return to. `BreadcrumbNav` renders the staff all-orgs switcher (its own
  * `isStaff` gate), so switching to any complete org clears the edge gate and escapes.
+ *
+ * ANY user who ALREADY has a COMPLETED org gets the escape chrome too. A non-staff
+ * multi-org user whose active org happens to be an incomplete tenant is pinned on bare
+ * `/onboarding` by the edge gate the same way — but they have a live, onboarded tenant
+ * to return to, so the first-run trap is wrong for them. Detect it from Clerk
+ * memberships: any org with `publicMetadata.onboardingComplete === true`. A GENUINE
+ * first-run user has exactly one org, and it's incomplete → `hasCompletedOrg` is false
+ * → trap stays (correct). Loading is trap-first (false until memberships resolve), so
+ * there's no flash of the escape for a real first-run.
  */
 export function OnboardingTopChrome() {
   const params = useSearchParams();
   const { user } = useUser();
+  const { userMemberships } = useOrganizationList({
+    userMemberships: { infinite: true },
+  });
   const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
+  const hasCompletedOrg = !!userMemberships?.data?.some(
+    (m) =>
+      (m.organization.publicMetadata as { onboardingComplete?: boolean } | undefined)
+        ?.onboardingComplete === true,
+  );
   const isAddFlow =
-    params.get("from") === "add" || params.get("new") === "1" || isStaff;
+    params.get("from") === "add" ||
+    params.get("new") === "1" ||
+    isStaff ||
+    hasCompletedOrg;
 
   if (!isAddFlow) {
     // First-run signup: keep the account widget (sign out / switch account —
