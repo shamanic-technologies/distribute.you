@@ -47,6 +47,7 @@ import {
   prefillToStringMap,
   configureAutoTopup,
   createCheckoutSession,
+  getBillingAccount,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
   salesObjectiveForOptimizationGoal,
@@ -1479,65 +1480,77 @@ export function Onboarding() {
     return p;
   }
 
+  // Build + persist the PendingCheckoutLaunch blob shared by BOTH launch paths:
+  // the Stripe-checkout path (beginCheckoutAndLaunch, new orgs) and the direct
+  // launch path (launchDirectlyWithoutCheckout, existing orgs adding a brand).
+  // Throws (fail-loud) when any required launch input is missing; also writes the
+  // wizard snapshot + the sessionStorage pending blob so a refresh can resume.
+  function buildPendingLaunchBlob(): PendingCheckoutLaunch {
+    const storedPending = readPendingCheckoutLaunchOrNull();
+    const id = brandIdRef.current ?? storedPending?.brandId ?? null;
+    const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
+    // Live selection wins, matching the display precedence (derivedBudget() ??
+    // checkoutBudgetUsd at the bonus/pricing steps). checkoutBudgetUsd is only ever
+    // written from a restored/resumed snapshot, so after a checkout cancel it holds
+    // the PRIOR budget — putting it first would charge the stale amount even though
+    // the user re-picked a different tier.
+    const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
+    const trimmed = url.trim();
+    const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
+    const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
+    const launchHostname = hostname || storedPending?.hostname || "";
+    const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
+    if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
+      throw new Error("Checkout state is missing. Go back to pricing and try again.");
+    }
+    // Block launch when no audience is picked — outreach can't run without one, so
+    // a campaign launched audience-less is a paid-for dead end. Live selection wins,
+    // falling back to the resumed snapshot (same precedence as budget above).
+    const launchAudienceIds = selectedAudienceIds.length
+      ? selectedAudienceIds
+      : storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds ?? [];
+    if (launchAudienceIds.length === 0) {
+      throw new Error("Pick at least one audience before launching — go back to the audience step.");
+    }
+    const checkoutAmountCents = Math.round(budget * 100);
+    const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
+    if (!workflowSlug) {
+      throw new Error("Campaign workflow setup is still missing. Please try again.");
+    }
+    const checkoutState = buildOnboardingState({ step: "pricing", checkoutBudgetUsd: budget });
+    writeOnboardingState(checkoutState);
+
+    const pending: PendingCheckoutLaunch = {
+      version: 1,
+      brandId: id,
+      orgId,
+      brandUrl,
+      hostname: launchHostname,
+      outcome: launchOutcome,
+      budgetUsd: budget,
+      workflowSlug,
+      checkoutAmountCents,
+      topupAmountCents: checkoutAmountCents,
+      topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
+      featureInputs: storedPending?.featureInputs,
+      profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
+      services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
+      selectedAudienceIds: launchAudienceIds,
+      onboardingState: checkoutState,
+      createdAt: new Date().toISOString(),
+    };
+    window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
+    return pending;
+  }
+
   async function beginCheckoutAndLaunch() {
     setBusy(true);
     setError(null);
     setCancelNotice(null);
     try {
-      const storedPending = readPendingCheckoutLaunchOrNull();
-      const id = brandIdRef.current ?? storedPending?.brandId ?? null;
-      const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
-      // Live selection wins, matching the display precedence (derivedBudget() ??
-      // checkoutBudgetUsd at the bonus/pricing steps). checkoutBudgetUsd is only ever
-      // written from a restored/resumed snapshot, so after a checkout cancel it holds
-      // the PRIOR budget — putting it first would charge the stale amount even though
-      // the user re-picked a different tier.
-      const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
-      const trimmed = url.trim();
-      const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
-      const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
-      const launchHostname = hostname || storedPending?.hostname || "";
-      const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
-      if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
-        throw new Error("Checkout state is missing. Go back to pricing and try again.");
-      }
-      // Block payment when no audience is picked — outreach can't run without one, so
-      // a campaign launched audience-less is a paid-for dead end. Live selection wins,
-      // falling back to the resumed snapshot (same precedence as budget above).
-      const launchAudienceIds = selectedAudienceIds.length
-        ? selectedAudienceIds
-        : storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds ?? [];
-      if (launchAudienceIds.length === 0) {
-        throw new Error("Pick at least one audience before launching — go back to the audience step.");
-      }
-      const checkoutAmountCents = Math.round(budget * 100);
-      const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
-      if (!workflowSlug) {
-        throw new Error("Campaign workflow setup is still missing. Please try again.");
-      }
-      const checkoutState = buildOnboardingState({ step: "pricing", checkoutBudgetUsd: budget });
-      writeOnboardingState(checkoutState);
-
-      const pending: PendingCheckoutLaunch = {
-        version: 1,
-        brandId: id,
-        orgId,
-        brandUrl,
-        hostname: launchHostname,
-        outcome: launchOutcome,
-        budgetUsd: budget,
-        workflowSlug,
-        checkoutAmountCents,
-        topupAmountCents: checkoutAmountCents,
-        topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
-        featureInputs: storedPending?.featureInputs,
-        profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
-        services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
-        selectedAudienceIds: launchAudienceIds,
-        onboardingState: checkoutState,
-        createdAt: new Date().toISOString(),
-      };
-      window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
+      const pending = buildPendingLaunchBlob();
+      const budget = pending.budgetUsd;
+      const checkoutAmountCents = pending.checkoutAmountCents;
 
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
@@ -1593,6 +1606,63 @@ export function Onboarding() {
       setError(`Checkout returned, but launch could not finish: ${detail}`);
       setStep("pricing");
       setBusy(false);
+    }
+  }
+
+  // Direct launch — NO Stripe redirect. Used when an existing org ADDS a brand
+  // (`?from=add`) and already has a payment method on file: card capture + the
+  // first-$25 welcome match are new-org-only, so we skip the checkout screen and
+  // launch straight into the post-payment sequence (celebrate → phone → ltr → …).
+  // Funding is covered by the org's existing card via configureAutoTopup (re-armed
+  // in runLaunchWork) — never a re-charge. Mirrors resumeCheckoutLaunch, but builds
+  // the pending blob in-memory instead of reading a Stripe-return snapshot.
+  async function launchDirectlyWithoutCheckout() {
+    setBusy(true);
+    setError(null);
+    setCancelNotice(null);
+    try {
+      const pending = buildPendingLaunchBlob();
+      pendingCheckoutRef.current = pending;
+      setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
+      setLaunchStep(0);
+      setOfferIndex(0);
+      setStep("celebrate");
+      setBusy(false);
+      startBackgroundLaunch().catch(() => {});
+      const prewarmId = pending.brandId;
+      if (prewarmId) void fetchBestModelLadder(prewarmId, pending.outcome);
+    } catch (err) {
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "direct_launch" });
+      setError(err instanceof Error ? err.message : "Launch failed. Your brand was not launched.");
+      setBusy(false);
+    }
+  }
+
+  // Pricing-step "Continue". For an existing org ADDING a brand (`?from=add`) with a
+  // card already on file, skip the $25-welcome screen + Stripe checkout and launch
+  // directly. New orgs — or an add-brand org with no payment method yet — keep the
+  // checkout path (bonus → beginCheckoutAndLaunch) so the card is captured + auto-topup
+  // armed. The billing-account check is fail-safe: on any error we fall back to
+  // checkout rather than risk launching a recurring brand unfunded.
+  async function continueFromPricing() {
+    if (!fromAdd) {
+      setStep("bonus");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const account = await getBillingAccount();
+      if (account.has_payment_method) {
+        await launchDirectlyWithoutCheckout();
+        return;
+      }
+      setBusy(false);
+      setStep("bonus");
+    } catch (err) {
+      console.error("[dashboard] onboarding: billing-account check failed, falling back to checkout", err);
+      setBusy(false);
+      setStep("bonus");
     }
   }
 
@@ -2450,8 +2520,15 @@ export function Onboarding() {
     <StepShell
       header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
       footer={
-        <button onClick={() => setStep("bonus")} disabled={displayBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-          Continue <ArrowRightIcon className="h-4 w-4" />
+        <button onClick={continueFromPricing} disabled={displayBudget == null || busy} className={`mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50"}`}>
+          {busy ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              Launching…
+            </>
+          ) : (
+            <>Continue <ArrowRightIcon className="h-4 w-4" /></>
+          )}
         </button>
       }
     >

@@ -139,13 +139,15 @@ describe("Beta onboarding resume persistence", () => {
     expect(launch).toContain("if (launchAudienceIds.length === 0) {");
   });
 
-  it("blocks checkout when no audience is selected (no paid audience-less launch)", () => {
-    const begin = src.slice(
+  it("blocks launch when no audience is selected (no audience-less launch)", () => {
+    // The guard lives in the shared buildPendingLaunchBlob, called by BOTH the Stripe
+    // checkout path (beginCheckoutAndLaunch) and the direct path (launchDirectlyWithoutCheckout).
+    const build = src.slice(
+      src.indexOf("function buildPendingLaunchBlob"),
       src.indexOf("async function beginCheckoutAndLaunch"),
-      src.indexOf("async function resumeCheckoutLaunch"),
     );
-    expect(begin).toContain("const launchAudienceIds = selectedAudienceIds.length");
-    expect(begin).toContain("if (launchAudienceIds.length === 0) {");
+    expect(build).toContain("const launchAudienceIds = selectedAudienceIds.length");
+    expect(build).toContain("if (launchAudienceIds.length === 0) {");
   });
 
   it("persists pricing and audience display state, not only launch state", () => {
