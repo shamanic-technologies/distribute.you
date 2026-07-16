@@ -861,9 +861,13 @@ export function EngagedLeadsPage() {
   // content-generation (via api-service) when a lead is selected, keyed off the
   // leadId already on the row. Interleaved into the timeline. (#2095 pattern.)
   const selectedLeadId = selectedLead?.leadId ?? null;
+  // Scope the by-lead email to the brand in view: the same person can be a lead under
+  // several brands in one org, each with its own generated email. Without brandId the
+  // read returns the wrong brand's email under this brand's lead. brandId is in the key
+  // so switching brand refetches the correct generation.
   const { data: leadEmailData } = useAuthQuery(
-    ["leadEmail", selectedLeadId],
-    () => getLeadEmail(selectedLeadId as string),
+    ["leadEmail", selectedLeadId, brandId],
+    () => getLeadEmail(selectedLeadId as string, brandId),
     { enabled: !!selectedLeadId },
   );
   const personLocation = [selectedFull?.city, selectedFull?.state, selectedFull?.country].filter(Boolean).join(", ");

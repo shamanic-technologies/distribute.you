@@ -2613,10 +2613,15 @@ const LeadEmailGenerationSchema = z
 
 const GetLeadEmailResponseSchema = z.object({ generation: LeadEmailGenerationSchema.nullable() });
 
-/** GET /v1/emails/by-lead/:leadId → { generation } (null when the lead has no
- *  generated email yet). 404 is mapped to { generation: null } by the gateway. */
-export async function getLeadEmail(leadId: string, token?: string): Promise<{ generation: LeadEmailGeneration | null }> {
-  const raw = await apiCall<unknown>(`/emails/by-lead/${leadId}`, { token });
+/** GET /v1/emails/by-lead/:leadId?brandId= → { generation } (null when the lead has no
+ *  generated email yet). 404 is mapped to { generation: null } by the gateway.
+ *  `brandId` scopes the generation to the brand being viewed: the same person can be a
+ *  lead under several brands in one org (each with its OWN generated email), so without
+ *  the scope the by-lead read returns whichever generation it finds — the wrong brand's
+ *  email under the current brand's lead. Pass the viewed brand's id to disambiguate. */
+export async function getLeadEmail(leadId: string, brandId?: string, token?: string): Promise<{ generation: LeadEmailGeneration | null }> {
+  const qs = brandId ? `?brandId=${encodeURIComponent(brandId)}` : "";
+  const raw = await apiCall<unknown>(`/emails/by-lead/${leadId}${qs}`, { token });
   const parsed = GetLeadEmailResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] getLeadEmail: response shape mismatch", { issues: parsed.error.issues, raw });
