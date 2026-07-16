@@ -102,14 +102,14 @@ function SortHeader({
   const active = sortCol === col;
   return (
     <th className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : "text-left"}`}>
-      <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
+      <span className="inline-flex items-center gap-1">
         <button
           type="button"
           onClick={() => onSort(col)}
           aria-label={`Sort by ${label}`}
           className={`inline-flex items-center gap-1 transition hover:text-gray-600 ${
-            align === "right" ? "flex-row-reverse" : ""
-          } ${active ? "text-gray-700" : ""}`}
+            active ? "text-gray-700" : ""
+          }`}
         >
           <span>{label}</span>
           <span className="text-[9px] leading-none">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
