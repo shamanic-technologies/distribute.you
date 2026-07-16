@@ -8,12 +8,27 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 
+function clerkErrorMessage(err: unknown): string {
+  const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
+  return (
+    e?.errors?.[0]?.longMessage ||
+    e?.errors?.[0]?.message ||
+    "Something went wrong. Please try again."
+  );
+}
+
 export default function SignInPage() {
-  const { signIn, isLoaded } = useSignIn();
+  const { signIn, setActive, isLoaded } = useSignIn();
   const { isSignedIn } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const redirectStartedRef = useRef(false);
+
+  // Email/password state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isSignedIn) {
@@ -58,9 +73,59 @@ export default function SignInPage() {
     setLoading(true);
   };
 
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLoaded || !signIn || submitting) return;
+    setError("");
+    setSubmitting(true);
+    try {
+      posthog.capture("signin_email_started");
+      const result = await signIn.create({ identifier: email, password });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        posthog.capture("signin_email_completed");
+        router.push("/orgs");
+      } else {
+        // needs_second_factor / needs_new_password etc. are not enabled on this
+        // instance; surface a generic message rather than silently hanging.
+        setError("Additional verification required. Try Google sign-in.");
+      }
+    } catch (err) {
+      posthog.capture("signin_email_failed");
+      console.error("Email sign in error:", err);
+      setError(clerkErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (isSignedIn) {
     return null;
   }
+
+  const inputStyle: React.CSSProperties = {
+    fontFamily: '"Inter", system-ui, sans-serif',
+    fontSize: "0.9375rem",
+    padding: "0.75rem 1rem",
+    width: "100%",
+    borderRadius: "0.75rem",
+    background: "oklch(99% 0.002 264)",
+    border: "1px solid oklch(87% 0.006 264)",
+    color: "oklch(18% 0.008 264)",
+    outline: "none",
+  };
+
+  const primaryBtnStyle: React.CSSProperties = {
+    fontFamily: '"Inter", system-ui, sans-serif',
+    fontSize: "0.9375rem",
+    fontWeight: 600,
+    padding: "0.75rem 1rem",
+    width: "100%",
+    borderRadius: "0.75rem",
+    background: "oklch(55% 0.24 264)",
+    color: "oklch(99% 0 0)",
+    border: "none",
+  };
 
   return (
     <div
@@ -336,6 +401,81 @@ export default function SignInPage() {
               )}
               {loading ? "Connecting..." : "Continue with Google"}
             </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-5">
+              <span
+                className="flex-1"
+                style={{ height: "1px", background: "oklch(91% 0.005 264)" }}
+              />
+              <span
+                style={{
+                  fontFamily: '"Inter", system-ui, sans-serif',
+                  fontSize: "0.75rem",
+                  color: "oklch(62% 0.006 264)",
+                }}
+              >
+                or
+              </span>
+              <span
+                className="flex-1"
+                style={{ height: "1px", background: "oklch(91% 0.005 264)" }}
+              />
+            </div>
+
+            <form onSubmit={handleEmailSignIn} className="flex flex-col gap-3">
+              <input
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                style={inputStyle}
+                required
+              />
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                style={inputStyle}
+                required
+              />
+              <div className="text-right">
+                <Link
+                  href="/forgot-password"
+                  className="transition-opacity hover:opacity-75"
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.8125rem",
+                    color: "oklch(42% 0.2 264)",
+                  }}
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              {error && (
+                <p
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.8125rem",
+                    color: "oklch(55% 0.2 25)",
+                  }}
+                >
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={submitting}
+                aria-busy={submitting}
+                className={submitting ? "cursor-wait" : "hover:brightness-105"}
+                style={primaryBtnStyle}
+              >
+                {submitting ? "Signing in..." : "Sign in"}
+              </button>
+            </form>
 
             <div
               className="mt-6 text-center"
