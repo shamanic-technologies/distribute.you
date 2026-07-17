@@ -369,6 +369,11 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
   { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
+  // Platform Twilio credential — one account for the whole platform (SMS +
+  // WhatsApp channel). twilio-service resolves it via key-service
+  // (GET /keys/platform/twilio/decrypt) and JSON.parses { accountSid, authToken },
+  // so this env var's value must be that JSON string.
+  { provider: "twilio", envVar: "TWILIO_PLATFORM_KEY" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.
