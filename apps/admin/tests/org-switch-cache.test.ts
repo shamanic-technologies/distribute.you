@@ -34,20 +34,26 @@ describe("Org switch cross-org isolation framework", () => {
 
   // --- Client cache choke point: keyed remount -----------------------------
 
-  it("QueryProvider remounts under a key derived from the active org id", () => {
+  it("QueryProvider remounts under a key derived from the URL cache bucket", () => {
+    // The cache bucket is the URL org id on an /orgs/[id] god-mode page (per-org
+    // isolation, DIS-143) or the fixed "platform" bucket on a cross-org fleet page.
+    // Derived from the URL (not the shared/global Clerk active org, which flips
+    // cross-tab), so a real org change still changes the id → remount → fresh
+    // per-bucket disk key space.
     const content = read(queryProviderPath);
-    expect(content).toContain("useOrganization");
-    expect(content).toContain("organization?.id");
-    expect(content).toContain("key={orgKey}");
+    expect(content).toContain("bucketForPath");
+    expect(content).toContain("/orgs/");
+    expect(content).toContain("key={bucket}");
   });
 
-  it("persister no-ops while orgId is null (never persists under a shared anon bucket)", () => {
-    // While orgId is null the disk cache must NOT be written: a shared `cache:anon`
-    // bucket would restore org A's data under org B (DIS-143 / OWASP shared-key).
+  it("persister storage no-ops on the server + org-scopes the disk key by bucket", () => {
+    // Server (no window) → storage undefined → nothing persists. Org pages persist
+    // under `distribute-admin-cache:<orgId>`, so org A's data never restores under
+    // org B (DIS-143); the "platform" fallback is fleet-global data owned by no org.
     const content = read(queryProviderPath);
-    expect(content).toContain(
-      'typeof window !== "undefined" && orgId ? window.localStorage : undefined',
-    );
+    expect(content).toContain('typeof window !== "undefined"');
+    expect(content).toContain("persistEnabled ? idbStorage : undefined");
+    expect(content).toContain("prefix: persisterStorageKey(bucket)");
   });
 
   it("OrgCacheInvalidator no longer clears the React Query cache (remount supersedes)", () => {

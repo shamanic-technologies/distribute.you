@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { isPersistableQueryKey } from "../src/lib/persist-cache";
 
 const root = path.join(__dirname, "../src/app");
 const crmDir = path.join(root, "(authed)/(dashboard)/orgs/[orgId]/services/crm");
@@ -14,7 +15,6 @@ const parsePath = path.join(crmDir, "_components/parse-gmail-payload.ts");
 const clientPath = path.join(crmDir, "_components/google-crm-client.tsx");
 const hookPath = path.join(crmDir, "_components/use-google-sync.ts");
 const apiPath = path.join(root, "../lib/api.ts");
-const persistCachePath = path.join(root, "../lib/persist-cache.ts");
 
 describe("Google CRM page files", () => {
   it("page exists", () => {
@@ -253,16 +253,24 @@ describe("Typed google-service readers (additive/optional + safeParse)", () => {
   });
 });
 
-describe("Persist allowlist", () => {
-  const content = fs.readFileSync(persistCachePath, "utf-8");
-
-  it("persists the tiny googleAccounts root (connect-state)", () => {
-    expect(content).toContain('"googleAccounts"');
+describe("Persist (denylist — every non-sensitive root persists)", () => {
+  // Admin is a staff-only, separate-origin, local-first SWR surface: the per-query
+  // IndexedDB persister persists ANY successful root except key material (no ~5MB
+  // cap, off-main-thread → the old "don't persist message bodies" perf invariant is
+  // gone). So the CRM connect-state AND the message/contact lists all persist now.
+  it("persists the googleAccounts connect-state root", () => {
+    expect(isPersistableQueryKey(["googleAccounts"])).toBe(true);
   });
 
-  it("does NOT persist the message/contact entity lists (invariant)", () => {
-    expect(content).not.toContain('"googleMessages"');
-    expect(content).not.toContain('"googleContacts"');
+  it("also persists the CRM message/contact lists (denylist, per-query IndexedDB)", () => {
+    expect(isPersistableQueryKey(["googleMessages", "b1"])).toBe(true);
+    expect(isPersistableQueryKey(["googleContacts", "b1"])).toBe(true);
+  });
+
+  it("still never persists key material to disk", () => {
+    expect(isPersistableQueryKey(["apiKeys"])).toBe(false);
+    expect(isPersistableQueryKey(["byokKeys"])).toBe(false);
+    expect(isPersistableQueryKey(["keySources"])).toBe(false);
   });
 });
 
