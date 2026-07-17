@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -18,6 +18,7 @@ import {
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { NewCampaignModal } from "@/components/campaigns/new-campaign-modal";
 import { Skeleton } from "@/components/skeleton";
 
 // Every displayed number here is a READY features-service field. The only
@@ -93,6 +94,7 @@ export function CampaignsPage() {
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
+  const [newOpen, setNewOpen] = useState(false);
 
   // Campaign rows (name / status / channel / budget) — campaign-service.
   const campaignsQ = useAuthQuery(
@@ -166,9 +168,20 @@ export function CampaignsPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="w-full p-4 md:p-8">
-        <div className="flex items-center gap-2 mb-1">
-          <h1 className="font-display text-xl font-bold text-gray-800">Campaigns</h1>
-          <MaturityBadge level="beta" />
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-xl font-bold text-gray-800">Campaigns</h1>
+            <MaturityBadge level="beta" />
+          </div>
+          {rows.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setNewOpen(true)}
+              className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              New campaign
+            </button>
+          )}
         </div>
         <p className="text-sm text-gray-500 mb-5">
           Campaign-centered view of this brand&apos;s pipeline, cost, and return.
@@ -231,6 +244,13 @@ export function CampaignsPage() {
           </table>
         </div>
       </div>
+      {newOpen && rows[0] && (
+        <NewCampaignModal
+          template={rows[0].campaign}
+          basePath={basePath}
+          onClose={() => setNewOpen(false)}
+        />
+      )}
     </div>
   );
 }
