@@ -2101,6 +2101,74 @@ export function keepLastGoodFeatureRevenue(
   );
 }
 
+// ─── Per-campaign revenue (grouped) ──────────────────────────────────────────
+// features-service `GET /features/:slug/revenue?groupBy=campaignId` returns one
+// LEAN group per campaign that has runs for the brand+feature: campaignId +
+// headline.totalPipelineUsd + costEconomics only (no timeSeries/orgs/leads/events).
+// Each group is byte-equal to the standalone ?campaignId= call. Every displayed
+// stat (pipeline / $CAC / ROI / %CAC) is a ready features-service field — the
+// dashboard renders, never computes (CLAUDE.md: a displayed stat is
+// features-service-owned). One call powers the whole Campaigns table.
+const CampaignRevenueCostEconomicsSchema = z.object({
+  // Accept both the current `actualCostUsd` and legacy `totalCostUsd` name for
+  // rollout tolerance (mirrors CostEconomicsSchema in revenue-parse.ts).
+  actualCostUsd: z.number().optional(),
+  totalCostUsd: z.number().optional(),
+  costOfAcquisitionPct: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+  expectedConversions: z.number().nullish(),
+  costPerConversionUsd: z.number().nullish(),
+});
+const FeatureRevenueByCampaignSchema = z.object({
+  groupBy: z.string(),
+  groups: z.array(
+    z.object({
+      campaignId: z.string(),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: CampaignRevenueCostEconomicsSchema,
+    }),
+  ),
+});
+
+export interface CampaignRevenueGroup {
+  campaignId: string;
+  totalPipelineUsd: number | null;
+  actualCostUsd: number;
+  costOfAcquisitionPct: number | null;
+  roiMultiple: number | null;
+  expectedConversions: number | null;
+  costPerConversionUsd: number | null;
+}
+
+/** GET /features/:slug/revenue?groupBy=campaignId — one lean revenue group per campaign. */
+export async function getFeatureRevenueByCampaign(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<CampaignRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "campaignId", pricing: "net" });
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
+    { token },
+  );
+  const parsed = FeatureRevenueByCampaignSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenueByCampaign: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFeatureRevenueByCampaign: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    campaignId: g.campaignId,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    actualCostUsd: g.costEconomics.actualCostUsd ?? g.costEconomics.totalCostUsd ?? 0,
+    costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
+    roiMultiple: g.costEconomics.roiMultiple,
+    expectedConversions: g.costEconomics.expectedConversions ?? null,
+    costPerConversionUsd: g.costEconomics.costPerConversionUsd ?? null,
+  }));
+}
+
 const PipelineActivityMetricSchema = z.object({
   actual: z.number().nullable(),
   expected: z.number().nullable(),
