@@ -73,7 +73,13 @@ import {
 import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
 import { Skeleton } from "@/components/skeleton";
 import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
-import { POST_PAYMENT_OFFER_LEVERS, buildLeverLLMPrompt } from "./offer-levers";
+import {
+  POST_PAYMENT_OFFER_LEVERS,
+  buildLeverLLMPrompt,
+  formatListLeverValue,
+  isListLever,
+  parseListLeverInput,
+} from "./offer-levers";
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
@@ -2413,7 +2419,15 @@ export function Onboarding() {
   if (step === "offer") {
     const lever = POST_PAYMENT_OFFER_LEVERS[offerIndex];
     const raw = profile[lever.key];
-    const current = Array.isArray(raw) ? raw.join(", ") : (raw ?? "");
+    // List-kind levers (socialProof) edit one item per line and persist as string[];
+    // writing the raw textarea string back would clobber the array (the empty-on-
+    // Strategy bug). Free-text levers keep their plain string.
+    const isList = isListLever(lever.key);
+    const current = isList
+      ? formatListLeverValue(raw)
+      : Array.isArray(raw)
+        ? raw.join(", ")
+        : (raw ?? "");
     const isLast = offerIndex === POST_PAYMENT_OFFER_LEVERS.length - 1;
     return (
       <StepShell
@@ -2428,7 +2442,12 @@ export function Onboarding() {
         <p className="mt-2 mb-5 text-sm leading-6 text-gray-500">{lever.why}</p>
         <textarea
           value={current}
-          onChange={(e) => setProfile((p) => ({ ...p, [lever.key]: e.target.value }))}
+          onChange={(e) =>
+            setProfile((p) => ({
+              ...p,
+              [lever.key]: isList ? parseListLeverInput(e.target.value) : e.target.value,
+            }))
+          }
           placeholder={lever.placeholder}
           rows={5}
           className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-base leading-6 text-gray-900 focus:border-brand-400 focus:outline-none"

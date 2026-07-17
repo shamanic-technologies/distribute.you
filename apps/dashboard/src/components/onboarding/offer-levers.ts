@@ -57,6 +57,35 @@ export const POST_PAYMENT_OFFER_LEVERS: ReadonlyArray<OfferLever> = [
   },
 ];
 
+// Lever keys whose brand-profile field is LIST-kind (string[]). socialProof is the
+// only list lever in the post-payment set ("services" is a list too but is collected
+// in the pre-payment services step, not here). Writing one of these back as the raw
+// <textarea> string clobbers the array — saveBrandProfileVersion then persists a
+// string and the Strategy page's ListEditor renders it EMPTY — so the offer step must
+// split the text into items. Mirrors SALES_PROFILE_FIELDS' kind:"list".
+const LIST_LEVER_KEYS: ReadonlySet<string> = new Set(["socialProof"]);
+
+/** Is this offer lever a list-kind field (must be persisted as string[])? */
+export function isListLever(key: string): boolean {
+  return LIST_LEVER_KEYS.has(key);
+}
+
+/** The <textarea> string for a list lever — one item per line, so the round-trip
+ *  with parseListLeverInput is lossless. Accepts a legacy string or the array. */
+export function formatListLeverValue(value: string | string[] | undefined | null): string {
+  if (Array.isArray(value)) return value.join("\n");
+  return typeof value === "string" ? value : "";
+}
+
+/** Split a list lever's <textarea> content into trimmed, non-empty items so the
+ *  profile keeps socialProof a string[] — never a clobbered bare string. */
+export function parseListLeverInput(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+}
+
 // Build a ready-to-paste prompt so a user who wants help can hand this exact
 // offer question to their own LLM (ChatGPT, Claude, ...), get a tighter answer,
 // and paste it back into the field. `current` is whatever is already in the

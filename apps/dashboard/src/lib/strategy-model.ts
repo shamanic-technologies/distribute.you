@@ -174,6 +174,24 @@ export function offerLeverValue(
     .filter((v) => v.length > 0 && v.toLowerCase() !== "unknown");
 }
 
+/**
+ * Coerce a brand-profile LIST-kind field value to a string[] for display / editing.
+ * A correct value is already string[]. A LEGACY value can be a bare STRING: an older
+ * post-payment offer step wrote list-kind levers (socialProof) back as the raw
+ * <textarea> string, clobbering the array so `saveBrandProfileVersion` persisted a
+ * string. Split such a string on newlines or commas, trim, drop empties, so the
+ * content still renders as list items instead of collapsing to an empty list (the
+ * "Social proof shows empty" bug). Pure display normalisation — no metric.
+ */
+export function coerceListField(value: string | string[] | undefined | null): string[] {
+  if (Array.isArray(value)) return value.map((v) => v.trim()).filter((v) => v.length > 0);
+  if (typeof value !== "string") return [];
+  return value
+    .split(/\r?\n|,/)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+}
+
 /** Honest human label for which POPULATION produced a resolved cost number, so the UI
  *  never mislabels a fleet-benchmark or per-audience number as "this brand". */
 export const WORKFLOW_GRAIN_LABEL: Record<WorkflowProjectionGrain, string> = {
