@@ -3599,6 +3599,67 @@ export async function getCreditGrants(token?: string): Promise<{ grants: CreditG
   return parsed.data as unknown as { grants: CreditGrant[] };
 }
 
+// A single customer payment (a Stripe PaymentIntent = a one-off top-up the
+// customer paid). Read from the api-service gateway payments route, which
+// forwards the org's PaymentIntents mirrored server-side in stripe-service.
+// NOTE: shape verified against api-registry (live) before merge — the gateway
+// owns the wire shape; this reader conforms to the deployed route.
+export interface Payment {
+  id: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  createdAt: string; // ISO 8601
+  description: string | null;
+}
+
+// stripe-service mirrors raw Stripe PaymentIntents; `amount` is cents (number),
+// `created` is unix-seconds. `.passthrough()` keeps unmodeled Stripe fields.
+const PaymentIntentSchema = z
+  .object({
+    id: z.string(),
+    amount: z.coerce.number(),
+    currency: z.string(),
+    status: z.string(),
+    created: z.coerce.number(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const ListPaymentsResponseSchema = z.object({
+  object: z.literal("list"),
+  data: z.array(PaymentIntentSchema),
+  has_more: z.boolean(),
+  url: z.string(),
+});
+
+/**
+ * GET /billing/payments — the active org's payment history (its Stripe
+ * PaymentIntents / top-ups). Backs the billing page "Payments" card.
+ */
+export async function getBillingPayments(token?: string): Promise<{ payments: Payment[] }> {
+  const raw = await apiCall<unknown>("/billing/payments", { token });
+  const parsed = ListPaymentsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBillingPayments: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBillingPayments: invalid response shape");
+  }
+  const payments: Payment[] = parsed.data.data.map((pi) => ({
+    id: pi.id,
+    amountCents: pi.amount,
+    currency: (pi.currency ?? "usd").toUpperCase(),
+    status: pi.status,
+    createdAt: new Date(pi.created * 1000).toISOString(),
+    description: pi.description ?? null,
+  }));
+  // Most recent first.
+  payments.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return { payments };
+}
+
 export async function createCheckoutSession(
   params:
     | { topup_amount_cents: number; mode?: "payment"; success_url: string; cancel_url: string }
