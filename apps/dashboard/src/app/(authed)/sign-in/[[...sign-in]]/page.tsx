@@ -7,6 +7,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
+import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
 
 function clerkErrorMessage(err: unknown): string {
   const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
@@ -52,6 +53,7 @@ export default function SignInPage() {
     const startGoogleSignIn = async () => {
       try {
         posthog.capture("signin_google_oauth_started", { provider: "google" });
+        rememberAuthMethod("google");
         await signIn.authenticateWithRedirect({
           strategy: "oauth_google",
           redirectUrl: "/sso-callback",
@@ -83,6 +85,7 @@ export default function SignInPage() {
       const result = await signIn.create({ identifier: email, password });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+        rememberAuthMethod("email");
         posthog.capture("signin_email_completed");
         router.push("/orgs");
       } else {
@@ -340,6 +343,8 @@ export default function SignInPage() {
               boxShadow: "0 1px 4px oklch(12% 0.008 264 / 0.06)",
             }}
           >
+            <div style={{ position: "relative" }}>
+            <LastUsedBadge method="google" />
             <button
               type="button"
               onClick={handleGoogleSignIn}
@@ -401,6 +406,7 @@ export default function SignInPage() {
               )}
               {loading ? "Connecting..." : "Continue with Google"}
             </button>
+            </div>
 
             {/* Divider */}
             <div className="flex items-center gap-3 my-5">
@@ -424,15 +430,18 @@ export default function SignInPage() {
             </div>
 
             <form onSubmit={handleEmailSignIn} className="flex flex-col gap-3">
-              <input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                style={inputStyle}
-                required
-              />
+              <div style={{ position: "relative" }}>
+                <LastUsedBadge method="email" />
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  style={inputStyle}
+                  required
+                />
+              </div>
               <input
                 type="password"
                 autoComplete="current-password"

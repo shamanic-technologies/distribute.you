@@ -7,6 +7,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
+import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
 
 function clerkErrorMessage(err: unknown): string {
   const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
@@ -56,6 +57,7 @@ export default function SignUpPage() {
       try {
         sessionStorage.setItem("distribute_auth_intent", "signup");
         posthog.capture("signup_google_oauth_started", { provider: "google" });
+        rememberAuthMethod("google");
         // A website carried from the landing pricing CTA (?url=) prefills the
         // onboarding brand. /onboarding is exempt from the first-run gate, so
         // landing there directly (vs the default /orgs -> bare /onboarding bounce
@@ -122,6 +124,7 @@ export default function SignUpPage() {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+        rememberAuthMethod("email");
         posthog.capture("signup_email_verified");
         redirectAfterSignUp();
       } else {
@@ -439,6 +442,8 @@ export default function SignUpPage() {
               </form>
             ) : (
               <>
+                <div style={{ position: "relative" }}>
+                <LastUsedBadge method="google" />
                 <button
                   type="button"
                   onClick={handleGoogleSignUp}
@@ -500,6 +505,7 @@ export default function SignUpPage() {
                   )}
                   {loading ? "Creating account..." : "Continue with Google"}
                 </button>
+                </div>
 
                 {/* Divider */}
                 <div className="flex items-center gap-3 my-5">
@@ -523,15 +529,18 @@ export default function SignUpPage() {
                 </div>
 
                 <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3">
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@company.com"
-                    style={inputStyle}
-                    required
-                  />
+                  <div style={{ position: "relative" }}>
+                    <LastUsedBadge method="email" />
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      style={inputStyle}
+                      required
+                    />
+                  </div>
                   <input
                     type="password"
                     autoComplete="new-password"
