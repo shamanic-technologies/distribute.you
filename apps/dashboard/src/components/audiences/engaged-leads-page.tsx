@@ -889,7 +889,7 @@ export function EngagedLeadsPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
-      <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
+      <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 pb-24 overflow-y-auto transition-all`}>
         <OutreachStatCardsAuto outreachOverride={loading ? null : contactedCount} />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
