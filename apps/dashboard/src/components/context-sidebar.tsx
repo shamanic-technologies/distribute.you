@@ -11,6 +11,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { useIsAdminUser } from "@/lib/use-admin-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -215,6 +216,12 @@ const StrategyIcon = () => (
   </svg>
 );
 
+const CampaignsIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+  </svg>
+);
+
 const BrandProfileIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
@@ -401,6 +408,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   // beta allowlist; carries the beta badge on the nav entry.
   const isBeta = useIsBetaUser();
   const brandProfileOk = isRevenueFeature(featureSlug) && isBeta;
+  // Campaigns (v2, campaign-centered) — staff/god-mode PREVIEW while the campaign
+  // concept is progressively re-introduced. Gated on the staff allowlist (isAdmin),
+  // shown with a beta badge. Non-staff never see it.
+  const isAdmin = useIsAdminUser();
+  const campaignsOk = isRevenueFeature(featureSlug) && isAdmin;
   // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog
   // resolves. Folded flat into this footer so the brand sidebar stays mounted on
   // /brand-info + /workflows (no separate Settings sidebar level).
@@ -460,6 +472,18 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Audiences",
             href: `${basePath}/audiences`,
             icon: <AudiencesIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    // Campaigns — staff-only campaign-centered v2 preview. Beta badge.
+    ...(campaignsOk
+      ? [
+          {
+            id: "campaigns",
+            label: "Campaigns",
+            href: `${basePath}/campaigns`,
+            icon: <CampaignsIcon />,
+            maturity: "beta",
           } satisfies SidebarItem,
         ]
       : []),
