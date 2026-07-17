@@ -96,9 +96,16 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
                   <p className="text-sm font-medium text-gray-700">{user?.fullName}</p>
                   <p className="text-xs text-gray-500 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
                 </div>
+                <Link
+                  href="/account"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Profile
+                </Link>
                 <button
                   onClick={() => signOut({ redirectUrl: "/sign-in" })}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition border-t border-gray-100"
                 >
                   Sign out
                 </button>
