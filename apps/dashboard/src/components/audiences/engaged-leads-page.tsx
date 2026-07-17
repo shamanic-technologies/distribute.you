@@ -7,6 +7,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import {
   listBrandLeads,
+  listCampaignLeads,
   getLeadConsolidatedStatus,
   getBrandSalesEconomics,
   getFeatureRevenue,
@@ -629,7 +630,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   );
 }
 
-export function EngagedLeadsPage() {
+export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   const params = useParams();
   const brandId = params.brandId as string;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -638,9 +639,12 @@ export function EngagedLeadsPage() {
   const [page, setPage] = useState(0);
   const hasAutoSelectedTab = useRef(false);
 
+  // Campaign-scoped (v2 staff preview) when a campaignId is passed, else brand-scoped.
+  // Both readers return the same Lead[] shape; the campaign variant filters to one
+  // campaign's leads_campaigns rows.
   const { data, isPending, isPlaceholderData } = useAuthQuery(
-    ["brandLeads", brandId],
-    () => listBrandLeads(brandId),
+    campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
+    () => (campaignId ? listCampaignLeads(campaignId) : listBrandLeads(brandId)),
     { refetchInterval: POLL_INTERVAL },
   );
 
@@ -665,8 +669,10 @@ export function EngagedLeadsPage() {
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const { data: revenueData } = useAuthQuery(
-    ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId),
+    campaignId
+      ? ["featureRevenue", brandId, featureSlug, "campaign", campaignId]
+      : ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId, campaignId),
     {
       enabled: revenueEnabled,
       refetchInterval: POLL_INTERVAL,

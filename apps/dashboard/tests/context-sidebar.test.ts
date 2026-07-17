@@ -22,16 +22,17 @@ describe("Context sidebar", () => {
 
   it("should handle all navigation levels", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature/featureSettings, campaign AND app-level feature ("Campaigns"
-    // island) levels were removed (single-feature product at the brand level per
-    // brand — everything flattens to the brand). The Brand Settings level was
-    // also flattened into the brand sidebar (settings / profile / info /
-    // workflows are flat footer links), so nav is now app → org → brand only.
+    // The feature/featureSettings AND app-level feature ("Campaigns" island)
+    // levels were removed (single-feature product at the brand level per brand).
+    // The Brand Settings level was flattened into the brand sidebar (settings /
+    // profile / info / workflows are flat footer links). The CAMPAIGN level is
+    // re-introduced as a staff/god-mode v2 preview (#2762) — `.../campaigns/[id]`
+    // swaps to the campaign sidebar. So nav is app → org → brand → campaign.
     expect(content).toContain('"app"');
     expect(content).toContain('"org"');
     expect(content).toContain('"brand"');
+    expect(content).toContain('"campaign"');
     expect(content).not.toContain('"brandSettings"');
-    expect(content).not.toContain('"campaign"');
     expect(content).not.toContain('"appFeature"');
   });
 

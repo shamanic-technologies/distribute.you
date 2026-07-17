@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useIsAdminUser } from "@/lib/use-admin-user";
@@ -86,12 +86,13 @@ function StatTile({ label, value, pending }: { label: string; value: string; pen
 
 export function CampaignsPage() {
   const params = useParams();
+  const router = useRouter();
+  const orgId = String(params.orgId);
   const brandId = String(params.brandId);
   const isAdmin = useIsAdminUser();
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
-
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
   // Campaign rows (name / status / channel / budget) — campaign-service.
   const campaignsQ = useAuthQuery(
@@ -140,11 +141,6 @@ export function CampaignsPage() {
     return top ? channelLabel(top.campaign.workflowSlug) : "—";
   }, [rows]);
 
-  const selected = useMemo(
-    () => rows.find((r) => r.campaign.id === selectedId) ?? null,
-    [rows, selectedId],
-  );
-
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed
   // gate query (CLAUDE.md: reveal-on-settle). The header waits on the brand-level
   // revenue; the table waits on campaigns + groups.
@@ -168,8 +164,8 @@ export function CampaignsPage() {
   const globalCac = brandRevenueQ.data?.costEconomics.costPerConversionUsd ?? null;
 
   return (
-    <div className="flex flex-col md:flex-row h-full relative">
-      <div className={`${selected ? "hidden md:block md:w-1/2" : "w-full"} p-4 md:p-8 overflow-y-auto transition-all`}>
+    <div className="h-full overflow-y-auto">
+      <div className="w-full p-4 md:p-8">
         <div className="flex items-center gap-2 mb-1">
           <h1 className="font-display text-xl font-bold text-gray-800">Campaigns</h1>
           <MaturityBadge level="beta" />
@@ -218,10 +214,8 @@ export function CampaignsPage() {
                 rows.map(({ campaign, revenue }) => (
                   <tr
                     key={campaign.id}
-                    onClick={() => setSelectedId(campaign.id)}
-                    className={`border-b border-gray-100 cursor-pointer transition ${
-                      selectedId === campaign.id ? "bg-brand-50" : "hover:bg-gray-50"
-                    }`}
+                    onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
+                    className="border-b border-gray-100 cursor-pointer transition hover:bg-gray-50"
                   >
                     <td className="px-4 py-3 font-medium text-gray-800">{campaign.name}</td>
                     <td className="px-4 py-3"><StatusPill status={campaign.status} /></td>
@@ -237,76 +231,6 @@ export function CampaignsPage() {
           </table>
         </div>
       </div>
-
-      {/* Right detail panel */}
-      {selected && (
-        <div className="absolute inset-0 md:relative md:w-1/2 bg-gray-50 md:border-l border-gray-200 overflow-y-auto z-10">
-          <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-            <button onClick={() => setSelectedId(null)} className="md:hidden flex items-center gap-2 text-gray-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-              Back
-            </button>
-            <h2 className="font-semibold text-gray-800 hidden md:block">Campaign Details</h2>
-            <button onClick={() => setSelectedId(null)} className="text-gray-400 hover:text-gray-600 hidden md:block">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-          <div className="p-4 md:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="font-display font-bold text-lg text-gray-900">{selected.campaign.name}</h3>
-              <StatusPill status={selected.campaign.status} />
-            </div>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-white rounded-lg border border-gray-200 p-3">
-                <div className="text-xs text-gray-500">Pipeline generated</div>
-                <div className="text-lg font-bold text-gray-900">{fmtUsd(selected.revenue?.totalPipelineUsd)}</div>
-              </div>
-              <div className="bg-white rounded-lg border border-gray-200 p-3">
-                <div className="text-xs text-gray-500">Cost per acquisition</div>
-                <div className="text-lg font-bold text-gray-900">{fmtUsd(selected.revenue?.costPerConversionUsd)}</div>
-              </div>
-              <div className="bg-white rounded-lg border border-gray-200 p-3">
-                <div className="text-xs text-gray-500">ROI</div>
-                <div className="text-lg font-bold text-gray-900">{fmtRoi(selected.revenue?.roiMultiple)}</div>
-              </div>
-              <div className="bg-white rounded-lg border border-gray-200 p-3">
-                <div className="text-xs text-gray-500">% CAC</div>
-                <div className="text-lg font-bold text-gray-900">{fmtPct(selected.revenue?.costOfAcquisitionPct)}</div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4 text-sm">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <dt className="text-xs text-gray-500">Channel</dt>
-                  <dd className="text-gray-800">{channelLabel(selected.campaign.workflowSlug)}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Total spend</dt>
-                  <dd className="text-gray-800">{fmtUsd(selected.revenue?.actualCostUsd)}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Daily budget</dt>
-                  <dd className="text-gray-800">
-                    {selected.campaign.maxBudgetDailyUsd
-                      ? fmtUsd(Number(selected.campaign.maxBudgetDailyUsd))
-                      : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Created</dt>
-                  <dd className="text-gray-800">
-                    {new Date(selected.campaign.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
