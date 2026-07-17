@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PROD_URLS } from "@/lib/env-urls";
-import { BRAND_LOGO_URL, TWITTER_HANDLE } from "@/lib/seo";
+import { TWITTER_HANDLE } from "@/lib/seo";
 import { OUTCOMES, getOutcome, type OutcomeDef } from "@/lib/outcomes/outcomes";
-import {
-  fetchOutcomeStats,
-  type OutcomeStats,
-  type OutcomeDistribution,
-  type TrendPoint,
-} from "@/lib/outcomes/fetch-outcome";
+import { fetchOutcomeStats, type OutcomeStats } from "@/lib/outcomes/fetch-outcome";
 
 export const revalidate = 300;
 export const dynamicParams = false;
@@ -78,205 +73,6 @@ function fmtUsd(v: number | null | undefined): string {
     ? `$${v.toFixed(2)}`
     : `$${Math.round(v).toLocaleString("en-US")}`;
 }
-function fmtDate(iso: string): string {
-  return new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-// ── Inline SVG trend (server-rendered, scraper-safe, no client JS) ───────────
-function TrendChart({ points }: { points: TrendPoint[] }) {
-  const data = points.filter(
-    (p): p is { date: string; costPerOutcomeUsd: number } =>
-      p.costPerOutcomeUsd !== null,
-  );
-  if (data.length < 2) {
-    return (
-      <div className="flex h-48 items-center justify-center text-sm text-gray-400">
-        Not enough data yet to plot a trend.
-      </div>
-    );
-  }
-  const W = 640;
-  const H = 200;
-  const pad = 8;
-  const vals = data.map((d) => d.costPerOutcomeUsd);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const span = max - min || 1;
-  const x = (i: number) => (i / (data.length - 1)) * (W - pad * 2) + pad;
-  const y = (v: number) => pad + (1 - (v - min) / span) * (H - pad * 2);
-  const line = data.map((d, i) => `${x(i).toFixed(1)},${y(d.costPerOutcomeUsd).toFixed(1)}`);
-  const area = `${pad},${H - pad} ${line.join(" ")} ${W - pad},${H - pad}`;
-  return (
-    <div>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="h-48 w-full"
-        role="img"
-        aria-label="Cost per outcome over time"
-      >
-        <polygon points={area} fill="rgba(69,227,142,0.12)" />
-        <polyline
-          points={line.join(" ")}
-          fill="none"
-          stroke="#45e38e"
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className="mt-1 flex justify-between text-xs text-gray-400">
-        <span>{fmtDate(data[0].date)}</span>
-        <span>
-          low {fmtUsd(min)} · high {fmtUsd(max)}
-        </span>
-        <span>{fmtDate(data[data.length - 1].date)}</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Inline SVG histogram (cross-brand price spread) ──────────────────────────
-// Server-rendered, scraper-safe, no client JS. Equal-width bins over each
-// brand's cost per outcome. Every bin slot is drawn (faint track) so the
-// intervals stay legible even when a bin is empty; $ edge labels sit under the
-// boundaries and each populated bar carries its brand count.
-function Histogram({
-  dist,
-  noun,
-}: {
-  dist: OutcomeDistribution;
-  noun: string;
-}) {
-  const W = 680;
-  const H = 250;
-  const padL = 8;
-  const padR = 8;
-  const padTop = 24; // count labels
-  const padBottom = 40; // $ edge labels
-  const chartTop = padTop;
-  const chartBottom = H - padBottom;
-  const chartH = chartBottom - chartTop;
-  const innerW = W - padL - padR;
-
-  const n = dist.buckets.length;
-  const gap = 12;
-  const barW = (innerW - gap * (n - 1)) / n;
-  const maxCount = Math.max(...dist.buckets.map((b) => b.count), 1);
-
-  const barX = (i: number) => padL + i * (barW + gap);
-  // n+1 boundary edges: each bin's min, plus the last bin's max.
-  const edges: { x: number; v: number; anchor: "start" | "middle" | "end" }[] = [
-    ...dist.buckets.map((b, i) => ({
-      x: barX(i),
-      v: b.minUsd,
-      anchor: (i === 0 ? "start" : "middle") as "start" | "middle" | "end",
-    })),
-    {
-      x: barX(n - 1) + barW,
-      v: dist.buckets[n - 1].maxUsd,
-      anchor: "end" as const,
-    },
-  ];
-
-  return (
-    <div>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        role="img"
-        aria-label={`Distribution of cost per ${noun} across brands`}
-      >
-        {/* baseline axis */}
-        <line
-          x1={padL}
-          y1={chartBottom}
-          x2={W - padR}
-          y2={chartBottom}
-          stroke="#26303d"
-          strokeWidth={1}
-        />
-        {dist.buckets.map((b, i) => {
-          const x = barX(i);
-          const h = b.count > 0 ? Math.max((b.count / maxCount) * chartH, 4) : 0;
-          const barY = chartBottom - h;
-          return (
-            <g key={i}>
-              <title>
-                {`${fmtUsd(b.minUsd)}–${fmtUsd(b.maxUsd)}: ${b.count} ${
-                  b.count === 1 ? "brand" : "brands"
-                }`}
-              </title>
-              {/* faint slot so empty intervals stay visible */}
-              <rect
-                x={x.toFixed(1)}
-                y={chartTop}
-                width={barW.toFixed(1)}
-                height={chartH}
-                rx="3"
-                fill="#45e38e"
-                opacity={0.06}
-              />
-              {b.count > 0 && (
-                <>
-                  <rect
-                    x={x.toFixed(1)}
-                    y={barY.toFixed(1)}
-                    width={barW.toFixed(1)}
-                    height={h.toFixed(1)}
-                    rx="3"
-                    fill="#45e38e"
-                    opacity={0.9}
-                  />
-                  <text
-                    x={(x + barW / 2).toFixed(1)}
-                    y={(barY - 8).toFixed(1)}
-                    textAnchor="middle"
-                    fontSize={13}
-                    fontWeight={600}
-                    fill="#8af6bc"
-                  >
-                    {b.count}
-                  </text>
-                </>
-              )}
-            </g>
-          );
-        })}
-        {/* $ boundary labels + ticks */}
-        {edges.map((e, i) => (
-          <g key={`e${i}`}>
-            <line
-              x1={e.x}
-              y1={chartBottom}
-              x2={e.x}
-              y2={chartBottom + 5}
-              stroke="#26303d"
-              strokeWidth={1}
-            />
-            <text
-              x={e.x.toFixed(1)}
-              y={chartBottom + 20}
-              textAnchor={e.anchor}
-              fontSize={12}
-              fill="#657184"
-            >
-              {fmtUsd(e.v)}
-            </text>
-          </g>
-        ))}
-      </svg>
-      <div className="mt-3 text-center text-xs text-gray-400">
-        {dist.brandCount} brands · median {fmtUsd(dist.median)} · mean{" "}
-        {fmtUsd(dist.mean)} · each bar = brands in that price range
-      </div>
-    </div>
-  );
-}
 
 function SourceTag({ measuredByUs }: { measuredByUs: boolean }) {
   return measuredByUs ? (
@@ -328,34 +124,29 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
       </h1>
       <p className="mt-3 max-w-2xl text-lg text-gray-600">{def.tagline}</p>
 
-      {/* Price cards */}
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Price cards — the BEST cross-org model, not a pooled average */}
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs uppercase tracking-wider text-gray-500">
-            Current average
+            Best model
           </p>
           <p className="mt-1 text-3xl font-semibold text-gray-900">
-            {fmtUsd(stats.currentAvgUsd)}
+            {fmtUsd(stats.bestCostUsd)}
           </p>
-          <p className="mt-1 text-xs text-gray-400">per {def.noun}, live</p>
+          <p className="mt-1 text-xs text-gray-400">
+            per {def.noun}, our cheapest workflow that delivers it
+          </p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs uppercase tracking-wider text-gray-500">
-            All-time average
+            Models tried
           </p>
           <p className="mt-1 text-3xl font-semibold text-gray-900">
-            {fmtUsd(stats.lifetimeAvgUsd)}
+            {stats.workflows.length || "—"}
           </p>
-          <p className="mt-1 text-xs text-gray-400">pooled, all history</p>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs uppercase tracking-wider text-gray-500">
-            Across
+          <p className="mt-1 text-xs text-gray-400">
+            workflows that produced this outcome
           </p>
-          <p className="mt-1 text-3xl font-semibold text-gray-900">
-            {stats.brandCount ?? "—"}
-          </p>
-          <p className="mt-1 text-xs text-gray-400">brands we run</p>
         </div>
       </div>
 
@@ -379,46 +170,14 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
         </div>
       </section>
 
-      {/* Trend */}
-      <section className="mt-10 rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-sm font-semibold text-gray-900">
-          Cost per {def.noun} over time
-        </h2>
-        <p className="mt-1 text-xs text-gray-500">
-          Moving average across every brand we run.
-        </p>
-        <div className="mt-4">
-          <TrendChart points={stats.trend} />
-        </div>
-      </section>
-
-      {/* Distribution histogram, cross-brand price spread. */}
-      <section className="mt-6 rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-sm font-semibold text-gray-900">
-          Price spread across brands
-        </h2>
-        <p className="mt-1 text-xs text-gray-500">
-          Each brand pays its own rate. This is how the cost per {def.noun} is
-          spread across the brands we run, not just the average.
-        </p>
-        <div className="mt-4">
-          {stats.distribution ? (
-            <Histogram dist={stats.distribution} noun={def.noun} />
-          ) : (
-            <p className="py-6 text-sm text-gray-400">
-              Not enough brands yet to show the full spread.
-            </p>
-          )}
-        </div>
-      </section>
-
       {/* Best model, per-workflow cost, cheapest first */}
-      <section className="mt-6 rounded-xl border border-gray-200 bg-white p-6">
+      <section className="mt-10 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">
           Our best models
         </h2>
         <p className="mt-1 text-xs text-gray-500">
-          Each workflow is one way we chase this outcome. Cheapest first.
+          Each workflow is one way we chase this outcome, priced on the outcomes
+          it actually delivered. Cheapest first.
         </p>
         {stats.workflows.length === 0 ? (
           <p className="mt-4 text-sm text-gray-400">
@@ -486,28 +245,30 @@ function OutcomePage({ def, stats }: { def: OutcomeDef; stats: OutcomeStats }) {
       </section>
 
       {/* Other outcomes */}
-      <section className="mt-10">
-        <h2 className="text-sm font-semibold text-gray-900">Other outcomes</h2>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {others.map((o) => (
-            <a
-              key={o.slug}
-              href={`/outcomes/${o.slug}`}
-              className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                <span className="rounded bg-gray-900 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white">
-                  {o.sym}
-                </span>
-                <span className="text-sm font-medium text-gray-900">
-                  {o.label}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-gray-500">Cost per {o.noun} →</p>
-            </a>
-          ))}
-        </div>
-      </section>
+      {others.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold text-gray-900">Other outcomes</h2>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {others.map((o) => (
+              <a
+                key={o.slug}
+                href={`/outcomes/${o.slug}`}
+                className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-gray-900 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white">
+                    {o.sym}
+                  </span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {o.label}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Cost per {o.noun} →</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
       </main>
     </div>
   );

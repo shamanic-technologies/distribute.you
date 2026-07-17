@@ -52,23 +52,12 @@ export const OUTCOMES: OutcomeDef[] = [
     howWeTrack:
       "We measure this ourselves. Replies land in our inboxes first. We read and qualify every one, and only count it as positive when the prospect shows real buying interest.",
   },
-  // "meetings-booked" is beta-gated — removed from the public landing (ticker,
-  // /benchmarks, /outcomes). Keep the "meetingBooked" objective in the union
-  // above for the legacy __TICKER_CPM__ scalar. Re-add here to expose it again.
-  {
-    slug: "signups",
-    objective: "signup",
-    sym: "SIG",
-    label: "Signup",
-    noun: "signup",
-    nounPlural: "signups",
-    measuredByUs: false,
-    tagline: "What a new signup or trial costs.",
-    howItWorks:
-      "A signup is a prospect we contacted starting a trial or creating an account. It is a self-serve outcome that fits product-led offers, where the prospect can act without a sales call.",
-    howWeTrack:
-      "This one is reported by you. Signups happen inside your product, so we rely on the conversion you report. Expect more variation here than on the outcomes we track from our own inboxes.",
-  },
+  // The landing exposes ONLY the two OBSERVED outcomes (website visits +
+  // positive replies) — the ones distribute measures from its own sending
+  // inboxes. The projected outcomes (meetings, signups) are client-reported and
+  // no longer rendered here. The "meetingBooked" / "signup" objectives stay in
+  // the union above for the legacy __TICKER_CPM__ scalar (static-html.ts); re-add
+  // an entry here to expose a page again.
 ];
 
 export function getOutcome(slug: string): OutcomeDef | undefined {
