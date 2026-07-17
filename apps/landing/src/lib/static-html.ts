@@ -445,7 +445,7 @@ function tickerCard(
   const src = cfg.measuredByUs
     ? `<span class="tkr-src tkr-src-us">measured by us</span>`
     : `<span class="tkr-src tkr-src-client">client-reported</span>`;
-  return `<a class="tkr" href="/outcomes/${cfg.slug}"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke())}${src}<span class="tkr-more">See the price detail →</span></a>`;
+  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke())}${src}</div>`;
 }
 
 function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
