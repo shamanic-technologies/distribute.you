@@ -3,11 +3,7 @@ import Link from "next/link";
 import { PROD_URLS } from "@/lib/env-urls";
 import { BRAND_LOGO_URL, TWITTER_HANDLE } from "@/lib/seo";
 import { OUTCOMES, type OutcomeDef } from "@/lib/outcomes/outcomes";
-import {
-  fetchOutcomeStats,
-  type OutcomeStats,
-  type TrendPoint,
-} from "@/lib/outcomes/fetch-outcome";
+import { fetchOutcomeStats, type OutcomeStats } from "@/lib/outcomes/fetch-outcome";
 
 export const revalidate = 300;
 
@@ -18,7 +14,7 @@ const PAGE_URL = `${PROD_URLS.landing}/benchmarks`;
 const PAGE_TITLE = "What outcomes cost";
 const PAGE_TITLE_SOCIAL = "What outcomes cost | distribute";
 const PAGE_DESCRIPTION =
-  "The live going rate for B2B outbound outcomes, averaged across every brand distribute runs: cost per website visit, positive reply, booked meeting, and signup.";
+  "The cost of our best cross-org workflow for each B2B outbound outcome distribute measures: cost per website visit and cost per positive reply for a sales meeting.";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -73,73 +69,7 @@ function fmtUsd(v: number | null | undefined): string {
     : `$${Math.round(v).toLocaleString("en-US")}`;
 }
 
-// Mini trend sparkline (theme-independent, emerald stroke). Server-rendered SVG
-// so the chart ships in raw HTML (SEO / AI-scraper safe).
-function Sparkline({ points }: { points: TrendPoint[] }) {
-  const vals = points
-    .map((p) => p.costPerOutcomeUsd)
-    .filter((v): v is number => v !== null);
-  if (vals.length < 2) {
-    return <div className="h-9 w-full" aria-hidden="true" />;
-  }
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const span = max - min || 1;
-  const W = 140;
-  const H = 36;
-  const pad = 3;
-  const coords = vals
-    .map((v, i) => {
-      const x = (i / (vals.length - 1)) * W;
-      const y = pad + (1 - (v - min) / span) * (H - 2 * pad);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg
-      className="h-9 w-full"
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <polyline
-        points={coords}
-        fill="none"
-        stroke="#45e38e"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 type OutcomeRow = { def: OutcomeDef; stats: OutcomeStats | null };
-
-// One outcome card (badge + label + live cost + source tag), links to its
-// detail page. Used inside the two motion tracks.
-function OutcomeMini({ row }: { row: OutcomeRow }) {
-  const { def, stats } = row;
-  return (
-    <Link
-      href={`/outcomes/${def.slug}`}
-      className="group flex flex-1 flex-col justify-between rounded-lg border border-gray-200 bg-gray-50 p-4 transition hover:border-emerald-300 hover:shadow-sm"
-    >
-      <div>
-        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-emerald-700">
-          {def.sym}
-        </span>
-        <div className="mt-2 text-sm font-medium text-gray-900">{def.label}</div>
-      </div>
-      <div className="mt-3 text-2xl font-bold tracking-tight text-gray-900">
-        {fmtUsd(stats?.currentAvgUsd)}
-      </div>
-      <div className="mt-1 text-[11px] uppercase tracking-wide text-gray-400">
-        {def.measuredByUs ? "measured by us" : "client-reported"}
-      </div>
-    </Link>
-  );
-}
 
 async function safeStats(def: OutcomeDef): Promise<OutcomeStats | null> {
   // Build-time prerender must stay shippable: a slow/failed public metric must
@@ -158,7 +88,6 @@ export default async function BenchmarksPage() {
   const bySlug = (slug: string) => rows.find((r) => r.def.slug === slug);
   const reply = bySlug("positive-replies");
   const visit = bySlug("website-visits");
-  const signup = bySlug("signups");
 
   const datasetJsonLd = {
     "@context": "https://schema.org",
@@ -192,60 +121,26 @@ export default async function BenchmarksPage() {
       <section className="mx-auto max-w-5xl px-6 pt-20 pb-10 sm:pt-28">
         <div className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-emerald-600">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          Live · observed prices
+          Live · best model
         </div>
         <h1 className="mt-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
           What outcomes actually cost.
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-gray-600">
-          Nobody pays a fixed rate. These are the average prices our campaigns
-          are paying right now, across every brand we run — for the two outcomes
-          that matter: a positive reply for a sales meeting, or a self-serve
-          signup.
+          These are the prices our best cross-org workflow is paying right now
+          for the two outcomes we measure ourselves: a website visit, or a
+          positive reply for a sales meeting. Not a diluted pooled average — the
+          model we deploy to new clients by default.
         </p>
       </section>
 
-      {/* Two outcome motions — sales (positive reply) vs self-serve (visit → signup) */}
-      <section className="mx-auto max-w-5xl px-6 pb-4">
-        <h2 className="mb-1 text-sm font-semibold text-gray-900">
-          Two ways to buy outcomes
-        </h2>
-        <p className="mb-6 text-sm text-gray-500">
-          Pick the motion that fits your product: book a sales meeting, or drive
-          self-serve signups. Each outcome is priced on its own.
-        </p>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <div className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
-              Book a sales meeting
-            </div>
-            {reply && <OutcomeMini row={reply} />}
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <div className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
-              Or drive self-serve signups
-            </div>
-            <div className="flex items-stretch gap-3">
-              {visit && <OutcomeMini row={visit} />}
-              <div
-                className="hidden shrink-0 items-center text-gray-300 sm:flex"
-                aria-hidden="true"
-              >
-                →
-              </div>
-              {signup && <OutcomeMini row={signup} />}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Detail cards, cost + trend, link into each outcome page */}
+      {/* Detail cards — best-model cost, link into each outcome page */}
       <section className="mx-auto max-w-5xl px-6 py-12">
         <h2 className="mb-6 text-sm font-semibold text-gray-900">
           Every outcome, in detail
         </h2>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {[reply, visit, signup].filter((r): r is OutcomeRow => Boolean(r)).map(({ def, stats }) => (
+          {[reply, visit].filter((r): r is OutcomeRow => Boolean(r)).map(({ def, stats }) => (
             <Link
               key={def.slug}
               href={`/outcomes/${def.slug}`}
@@ -262,17 +157,14 @@ export default async function BenchmarksPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold tracking-tight text-gray-900">
-                    {fmtUsd(stats?.currentAvgUsd)}
+                    {fmtUsd(stats?.bestCostUsd)}
                   </div>
                   <div className="text-[11px] uppercase tracking-wide text-gray-400">
-                    avg / {def.noun}
+                    best model
                   </div>
                 </div>
               </div>
-              <div className="mt-4">
-                <Sparkline points={stats?.trend ?? []} />
-              </div>
-              <div className="mt-3 flex items-center justify-between">
+              <div className="mt-4 flex items-center justify-between">
                 <span className="text-[11px] uppercase tracking-wide text-gray-400">
                   {def.measuredByUs ? "measured by us" : "client-reported"}
                 </span>
@@ -285,10 +177,10 @@ export default async function BenchmarksPage() {
         </div>
         <p className="mt-6 max-w-3xl text-xs leading-relaxed text-gray-400">
           Website visits and positive replies we measure ourselves, from our own
-          sending inboxes. Signups are reported by each client from their own
-          funnel, so they vary more between brands. Observed prices are
-          not guarantees; your cost depends on targeting, offer, geography, copy,
-          and downstream conversion.
+          sending inboxes. Each price is the cost of our cheapest cross-org
+          workflow that actually delivered the outcome. Observed prices are not
+          guarantees; your cost depends on targeting, offer, geography, copy, and
+          downstream conversion.
         </p>
       </section>
 
