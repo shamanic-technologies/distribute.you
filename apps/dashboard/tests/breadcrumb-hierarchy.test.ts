@@ -30,9 +30,10 @@ describe("Breadcrumb hierarchy", () => {
     const content = fs.readFileSync(breadcrumbPath, "utf-8");
     expect(content).toContain('"orgs"');
     expect(content).toContain('"brands"');
-    // The campaign switcher was removed with the campaign concept; the app-level
-    // feature switcher (`"features"` path) was removed in the #1768 follow-up.
-    expect(content).not.toContain('"campaigns"');
+    // The app-level feature switcher (`"features"` path) stays removed (#1768).
+    // The `"campaigns"` section IS parsed again for the campaign-level crumb
+    // (v2 staff preview, #2762) — `.../campaigns/[id]` shows Campaigns › <name>.
+    expect(content).toContain('"campaigns"');
     expect(content).not.toContain('"features"');
   });
 

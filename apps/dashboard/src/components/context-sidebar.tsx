@@ -239,9 +239,10 @@ const SettingsIcon = () => (
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "org" | "brand";
+  type: "app" | "org" | "brand" | "campaign";
   orgId?: string;
   brandId?: string;
+  campaignId?: string;
 }
 
 function getNavigationLevel(segments: string[]): NavigationLevel {
@@ -250,6 +251,13 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
+      // Campaign LEVEL (v2 staff preview) — `.../campaigns/[campaignId]/...` drills
+      // into ONE campaign and swaps to the campaign sidebar. The campaigns LIST
+      // (`.../campaigns` with no id) stays brand-level so the brand "Campaigns" nav
+      // entry highlights.
+      if (segments[4] === "campaigns" && segments[5]) {
+        return { type: "campaign", orgId, brandId, campaignId: segments[5] };
+      }
       // Every brand section — root overview, entity pages, AND settings /
       // brand-profile / brand-info / workflows — renders the SAME brand sidebar.
       // Settings + Profile + Info + Workflows are flat links in that sidebar's
@@ -579,6 +587,97 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   );
 }
 
+// Campaign Level Sidebar (v2 staff/god-mode PREVIEW — #2762) — mirrors the brand
+// sidebar layout but drilled into ONE campaign. Overview + Leads are scoped to the
+// campaign (campaign-filtered pages, beta badge); Strategy + Audiences are the
+// brand's shared config (a campaign inherits them), so they link back to the
+// brand-level pages. Reachable only by staff (the routes self-gate); the sidebar
+// double-gates on `isAdmin` so a non-staff URL hit shows just the back link.
+function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
+  orgId: string;
+  brandId: string;
+  campaignId: string;
+  pathname: string;
+}) {
+  const featureSlug = useSoleFeatureSlug();
+  const { organization } = useOrganization();
+  const isAdmin = useIsAdminUser();
+  const revenueOk = isRevenueFeature(featureSlug);
+  const basePath = `/orgs/${orgId}/brands/${brandId}`;
+  const campaignBase = `${basePath}/campaigns/${campaignId}`;
+
+  const items: SidebarItem[] =
+    isAdmin && revenueOk
+      ? [
+          {
+            id: "campaign-overview",
+            label: "Overview",
+            href: campaignBase,
+            icon: <OverviewIcon />,
+            maturity: "beta",
+          },
+          {
+            id: "campaign-leads",
+            label: "Leads",
+            href: `${campaignBase}/leads`,
+            icon: <LeadsIcon />,
+            maturity: "beta",
+          },
+          // Brand-config passthrough — a campaign inherits the brand's strategy +
+          // audiences, so these link to the brand-level pages (they leave the
+          // campaign context by design).
+          {
+            id: "strategy",
+            label: "Strategy",
+            href: `${basePath}/strategy`,
+            icon: <StrategyIcon />,
+          },
+          {
+            id: "audiences",
+            label: "Audiences",
+            href: `${basePath}/audiences`,
+            icon: <AudiencesIcon />,
+          },
+        ]
+      : [];
+
+  return (
+    <SidebarSection
+      title="Campaign"
+      backHref={`${basePath}/campaigns`}
+      backLabel="Campaigns"
+      footer={
+        <div className="border-t border-gray-100">
+          <div className="p-2 space-y-0.5">
+            <SidebarLink
+              item={{
+                id: "settings",
+                label: "Brand Settings",
+                href: `${basePath}/settings`,
+                icon: <SettingsIcon />,
+              }}
+              isActive={pathname === `${basePath}/settings`}
+            />
+          </div>
+          <ReferralCard />
+        </div>
+      }
+    >
+      {items.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          isActive={
+            item.id === "campaign-overview"
+              ? pathname === campaignBase
+              : pathname.startsWith(item.href)
+          }
+        />
+      ))}
+    </SidebarSection>
+  );
+}
+
 export function ContextSidebar() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -591,6 +690,15 @@ export function ContextSidebar() {
       return <OrgLevelSidebar orgId={level.orgId!} pathname={pathname} />;
     case "brand":
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
+    case "campaign":
+      return (
+        <CampaignLevelSidebar
+          orgId={level.orgId!}
+          brandId={level.brandId!}
+          campaignId={level.campaignId!}
+          pathname={pathname}
+        />
+      );
     default:
       return <AppLevelSidebar />;
   }

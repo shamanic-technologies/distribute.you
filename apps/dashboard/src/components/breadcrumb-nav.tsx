@@ -142,6 +142,7 @@ export function BreadcrumbNav() {
   const [byIdBrand, setByIdBrand] = useState<Brand | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
+  const [campaignName, setCampaignName] = useState<string | null>(null);
   const [allOrgs, setAllOrgs] = useState<OrgOption[]>([]);
   const [orgSearch, setOrgSearch] = useState("");
   const [orgsLoading, setOrgsLoading] = useState(false);
@@ -189,6 +190,10 @@ export function BreadcrumbNav() {
     brandId && section === "workflows" && pathParts[5] && pathParts[5] !== "new"
       ? pathParts[5]
       : null;
+  // Campaign LEVEL (v2 staff preview): `.../campaigns/[campaignId]` → resolve the
+  // campaign name by-id for the crumb (mirrors the workflow crumb fetch).
+  const campaignId =
+    brandId && section === "campaigns" && pathParts[5] ? pathParts[5] : null;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -271,6 +276,19 @@ export function BreadcrumbNav() {
       .then((data) => setWorkflowName(data ? workflowDisplayName(data) : null))
       .catch(() => setWorkflowName(null));
   }, [workflowId]);
+
+  useEffect(() => {
+    if (!campaignId) { setCampaignName(null); return; }
+    let cancelled = false;
+    fetch(`/api/v1/campaigns/${campaignId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setCampaignName(data?.campaign?.name ?? null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [campaignId]);
 
   const toggleDropdown = (key: string) => {
     if (openDropdown === key) {
@@ -510,6 +528,31 @@ export function BreadcrumbNav() {
               </div>
             )}
           </div>
+        </>
+      )}
+
+      {/* CAMPAIGN (v2 staff preview): Campaigns list crumb + campaign name */}
+      {brandId && orgId && section === "campaigns" && (
+        <>
+          <Sep />
+          {campaignId ? (
+            <Link
+              href={`/orgs/${orgId}/brands/${brandId}/campaigns`}
+              className="px-2 py-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded transition"
+            >
+              Campaigns
+            </Link>
+          ) : (
+            <span className="px-2 py-1 text-gray-600">Campaigns</span>
+          )}
+          {campaignId && (
+            <>
+              <Sep />
+              <span className="px-2 py-1 font-medium text-gray-800">
+                {campaignName || "Campaign"}
+              </span>
+            </>
+          )}
         </>
       )}
 
