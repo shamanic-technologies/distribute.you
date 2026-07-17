@@ -40,6 +40,7 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { CampaignBudgetControl } from "@/components/campaigns/campaign-budget-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
@@ -315,12 +316,16 @@ export function CampaignOverviewPage() {
     optimizationGoal,
   ]);
 
+  // Audiences stay brand-wide, but their STATS are scoped to this campaign (v2) —
+  // features-service `?campaignId=` (via api-service forward). Keyed by campaignId so
+  // it's a distinct cache entry from the brand-wide Top-audiences card.
   const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
+    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "campaign", campaignId],
     () => fetchFeatureAudienceStats(featureSlug, {
       brandId,
       goal: audienceStatsGoal,
       limit: 3,
+      campaignId,
     }),
     { enabled, ...pollOptions },
   );
@@ -358,6 +363,16 @@ export function CampaignOverviewPage() {
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const campaignsPath = `${basePath}/campaigns`;
 
+  // Effective daily budget = the campaign's own `maxBudgetDailyUsd` (v2 per-campaign
+  // budget) when set, else the brand daily budget it inherits (null-inherit — same
+  // resolution campaign-service paces on). `maxBudgetDailyUsd` is whole USD; the
+  // section wants cents. `budgetInherited` drives the "inherits brand" hint.
+  const campaignBudgetUsd = campaign?.maxBudgetDailyUsd;
+  const effectiveBudgetCents =
+    campaignBudgetUsd != null
+      ? Math.round(Number(campaignBudgetUsd) * 100)
+      : budgetData?.dailyBudgetCents ?? null;
+
   if (!isAdmin) {
     return (
       <DashboardPage width="wide">
@@ -390,15 +405,22 @@ export function CampaignOverviewPage() {
   }
 
   const CampaignHeader = (
-    <div className="flex items-center gap-2">
-      <Link href={campaignsPath} className="text-sm text-gray-400 hover:text-gray-600">
-        Campaigns
-      </Link>
-      <span className="text-gray-300">/</span>
-      <h1 className="font-display text-xl font-bold text-gray-800">
-        {campaign?.name ?? "Campaign"}
-      </h1>
-      <MaturityBadge level="beta" />
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2">
+        <Link href={campaignsPath} className="text-sm text-gray-400 hover:text-gray-600">
+          Campaigns
+        </Link>
+        <span className="text-gray-300">/</span>
+        <h1 className="font-display text-xl font-bold text-gray-800">
+          {campaign?.name ?? "Campaign"}
+        </h1>
+        <MaturityBadge level="beta" />
+      </div>
+      <CampaignBudgetControl
+        campaignId={campaignId}
+        campaign={campaign}
+        brandDailyBudgetCents={budgetData?.dailyBudgetCents ?? null}
+      />
     </div>
   );
 
@@ -436,7 +458,7 @@ export function CampaignOverviewPage() {
         }
         costPending={!costRevealed}
         todayCostPending={!costRevealed}
-        dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}
+        dailyBudgetCents={effectiveBudgetCents}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}

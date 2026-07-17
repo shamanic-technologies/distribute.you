@@ -2009,6 +2009,10 @@ export async function fetchFeatureAudienceStats(
      *  (preserves the Top-audiences ranking card). The Audiences page passes all
      *  three so archived audiences show their historical outreach stats. */
     statuses?: string;
+    /** Optional campaign scope (v2). Audiences stay brand-wide, but their stats can
+     *  be filtered to a single campaign's outreach — the campaign overview passes it.
+     *  Omitted → brand-wide numbers as before. (api-service forwards ?campaignId=.) */
+    campaignId?: string;
   },
   token?: string,
 ): Promise<FeatureAudienceStatsResponse> {
@@ -2016,6 +2020,7 @@ export async function fetchFeatureAudienceStats(
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
   if (params.statuses) query.set("statuses", params.statuses);
+  if (params.campaignId) query.set("campaignId", params.campaignId);
   // pricing=net → per-audience MONEY metrics (metrics.cpcCents / cpprCents /
   // cpfsCents / cpsCents) reflect the org's FROZEN post-usage-discount cost, so the
   // Top-audiences card + Audiences ranking match the net brand-overview cost cards.
@@ -2408,6 +2413,26 @@ export async function listCampaignsByBrand(brandId: string, token?: string): Pro
 // Single campaign
 export async function getCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, { token });
+  const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
+  return { campaign: enriched };
+}
+
+/**
+ * Set ONE campaign's daily budget (v2 per-campaign budget). PATCH /v1/campaigns/:id
+ * with `{ maxBudgetDailyUsd }` (whole USD string). campaign-service paces the sales
+ * feature on `campaign ?? brand` — writing this makes the campaign override its brand
+ * budget; passing null clears it back to inheriting the brand budget. Used by the
+ * beta per-campaign budget editor. */
+export async function updateCampaignDailyBudget(
+  campaignId: string,
+  maxBudgetDailyUsd: string | null,
+  token?: string,
+): Promise<{ campaign: Campaign }> {
+  const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, {
+    token,
+    method: "PATCH",
+    body: { maxBudgetDailyUsd },
+  });
   const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
   return { campaign: enriched };
 }
