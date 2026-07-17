@@ -7,6 +7,8 @@ import {
   PauseIcon,
   PlayIcon,
   XMarkIcon,
+  InformationCircleIcon,
+  CreditCardIcon,
 } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
 import {
@@ -36,7 +38,14 @@ import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 
 const PROJECTION_REF_BUDGET = 100;
-const COUNT_TIERS = [5, 25, 125] as const;
+// Outcome-count tiers (per month) — each maps to a $/day via the projection unit
+// cost, shown as the tier's primary $/day. Matches the onboarding pricing step.
+const COUNT_TIERS = [25, 50, 100] as const;
+
+// Shown on the (i) beside each tier's outcomes/mo — the count is a projection, not
+// a guarantee. Byte-equal to the onboarding pricing-step tooltip.
+const ESTIMATE_TOOLTIP =
+  "Estimated conversion based on your provided information and the outcomes of our current client database.";
 
 const DEFAULT_SALES_ECONOMICS = {
   lifetimeRevenueUsd: 4000,
@@ -97,12 +106,6 @@ const GOAL_OPTIONS: {
   },
 ];
 
-// <$10 → cents ($X.XX), ≥$10 → whole dollars ($X). Dashboard-wide rule.
-function fmtUsdAdaptive(n: number): string {
-  const decimals = Math.abs(n) < 10 ? 2 : 0;
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
-}
-
 // Daily budgets always render as whole dollars (no cents), regardless of magnitude.
 function fmtUsdWhole(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
@@ -111,11 +114,6 @@ function fmtUsdWhole(n: number): string {
 function budgetLabel(cents: number | null): string | null {
   if (cents === null || cents <= 0) return null;
   return `${fmtUsdWhole(cents / 100)}/day`;
-}
-
-// Unit cost per outcome keeps the adaptive rule (cents under $10).
-function fmtUsd0(n: number): string {
-  return fmtUsdAdaptive(n);
 }
 
 function fmtCount(n: number): string {
@@ -163,8 +161,10 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   const [selectedGoal, setSelectedGoal] =
     useState<BrandOptimizationGoal>("positive_replies");
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
-  const [selectedCount, setSelectedCount] = useState<number | null>(null);
-  const [customCount, setCustomCount] = useState("");
+  // Canonical selection = the $/day budget (primary value); customBudget is the
+  // "Other" custom $/day text. Mirrors the onboarding pricing step.
+  const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
+  const [customBudget, setCustomBudget] = useState("");
 
   const { data: pauseData } = useAuthQuery(
     ["brandPause", brandId],
@@ -273,8 +273,8 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   }
 
   function openBudgetDialog() {
-    setSelectedCount(null);
-    setCustomCount("");
+    setSelectedBudget(null);
+    setCustomBudget("");
     setBudgetDialogOpen(true);
   }
 
@@ -309,18 +309,17 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
       })
     : null;
 
+  // Daily budget needed to hit `n` outcomes / month.
   function budgetForCount(n: number): number | null {
     if (unitCost == null || unitCost <= 0) return null;
     return Math.max(1, Math.round((n * unitCost) / 30));
   }
 
-  const selectedBudget =
-    selectedCount == null
-      ? null
-      : budgetForCount(selectedCount) ??
-        (projection?.recommendedBudgetUsd && projection.recommendedBudgetUsd > 0
-          ? Math.round(projection.recommendedBudgetUsd)
-          : null);
+  // Outcomes / month a `$b`/day budget buys (inverse of budgetForCount). Display only.
+  function countForBudget(b: number): number | null {
+    if (unitCost == null || unitCost <= 0) return null;
+    return Math.max(0, Math.round((b * 30) / unitCost));
+  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -505,8 +504,8 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                   Daily budget
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Pick how many {outcomeUnit} you want each month. We set the daily
-                  cap to match.
+                  Pick your daily budget. We show the {outcomeUnit} it buys each
+                  month.
                 </p>
               </div>
               <button
@@ -527,6 +526,15 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
               </div>
             )}
 
+            <div className="mb-4 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
+              <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+              <p className="text-sm leading-6 text-brand-800">
+                This is your <strong>brand daily budget cap</strong>. You pay as you
+                go for what we actually spend, never more than this per day. Cancel
+                anytime.
+              </p>
+            </div>
+
             {projectionPending ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[0, 1, 2, 3].map((i) => (
@@ -541,16 +549,18 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {COUNT_TIERS.map((n, i) => {
                   const b = budgetForCount(n);
-                  const active = selectedCount === n;
+                  const active = b != null && selectedBudget === b;
                   return (
                     <button
                       key={n}
                       type="button"
+                      disabled={b == null}
                       onClick={() => {
-                        setSelectedCount(n);
-                        setCustomCount("");
+                        if (b == null) return;
+                        setSelectedBudget(b);
+                        setCustomBudget("");
                       }}
-                      className={`rounded-xl border-2 p-4 text-left transition ${
+                      className={`rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
                         active
                           ? "border-brand-400 bg-brand-50"
                           : "border-gray-200 bg-white hover:border-gray-300"
@@ -566,24 +576,39 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                         </div>
                       )}
                       <div className="text-xl font-bold text-gray-950">
-                        {fmtCount(n)}
+                        {b != null ? fmtUsdWhole(b) : "—"}
+                        <span className="text-sm font-normal text-gray-500"> / day</span>
                       </div>
-                      <div className="text-xs text-gray-500">{outcomeUnit} / mo</div>
-                      <div className="mt-2 text-xs text-gray-400">
-                        {b != null ? `~${fmtUsdWhole(b)} / day` : "-"}
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <span>
+                          {fmtCount(n)} {outcomeUnit} / mo
+                        </span>
+                        <span
+                          title={ESTIMATE_TOOLTIP}
+                          className="inline-flex cursor-help"
+                        >
+                          <InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" />
+                        </span>
                       </div>
                     </button>
                   );
                 })}
 
                 {(() => {
-                  const customN = Number(customCount);
-                  const isCustom = customCount !== "" && customN > 0;
-                  const active = isCustom && selectedCount === customN;
-                  const b = isCustom ? budgetForCount(customN) : null;
+                  const customN = Number(customBudget);
+                  const customB =
+                    customBudget !== "" && customN > 0 ? Math.round(customN) : null;
+                  const isCustom = customB !== null;
+                  const active = isCustom && selectedBudget === customB;
+                  const cnt = isCustom ? countForBudget(customB) : null;
                   return (
                     <div
+                      onClick={() => {
+                        if (isCustom) setSelectedBudget(customB);
+                      }}
                       className={`rounded-xl border-2 p-4 transition ${
+                        isCustom ? "cursor-pointer" : ""
+                      } ${
                         active
                           ? "border-brand-400 bg-brand-50"
                           : "border-gray-200 bg-white"
@@ -592,23 +617,45 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                         Other
                       </div>
-                      <input
-                        type="number"
-                        min={1}
-                        value={customCount}
-                        onChange={(e) => {
-                          setCustomCount(e.target.value);
-                          const v = Number(e.target.value);
-                          setSelectedCount(v > 0 ? v : null);
-                        }}
-                        placeholder="Custom"
-                        className="w-full bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
-                      />
-                      <div className="text-xs text-gray-500">
-                        {outcomeUnit} / mo
+                      <div className="flex items-baseline">
+                        <span className="shrink-0 text-xl font-bold text-gray-950">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={customBudget}
+                          onChange={(e) => {
+                            setCustomBudget(e.target.value);
+                            const v = Number(e.target.value);
+                            setSelectedBudget(
+                              e.target.value !== "" && v > 0 ? Math.round(v) : null,
+                            );
+                          }}
+                          placeholder="0"
+                          className="w-full min-w-0 flex-1 bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+                        />
+                        <span className="shrink-0 text-sm font-normal text-gray-500">
+                          {" "}
+                          / day
+                        </span>
                       </div>
-                      <div className="mt-2 text-xs text-gray-400">
-                        {b != null ? `~${fmtUsdWhole(b)} / day` : "-"}
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        {cnt != null ? (
+                          <>
+                            <span>
+                              {fmtCount(cnt)} {outcomeUnit} / mo
+                            </span>
+                            <span
+                              title={ESTIMATE_TOOLTIP}
+                              className="inline-flex cursor-help"
+                            >
+                              <InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" />
+                            </span>
+                          </>
+                        ) : (
+                          " "
+                        )}
                       </div>
                     </div>
                   );
@@ -620,10 +667,11 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
               <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
                 Daily budget:{" "}
                 <strong className="text-gray-900">{fmtUsdWhole(selectedBudget)} / day</strong>
-                {unitCost != null && (
+                {countForBudget(selectedBudget) != null && (
                   <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline">
                     {" "}
-                    ~{fmtUsd0(unitCost)} / {outcomeUnit.replace(/s$/, "")}
+                    {fmtCount(countForBudget(selectedBudget)!)} {outcomeUnit} / mo
+                    estimated
                   </span>
                 )}
               </div>
