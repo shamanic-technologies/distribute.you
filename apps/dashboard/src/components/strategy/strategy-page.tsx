@@ -33,6 +33,7 @@ import {
   type ProfileFields,
 } from "@/components/brand-profile/field-editor";
 import {
+  coerceListField,
   isRowFloored,
   modelAvatar,
   objectiveForOptimizationGoal,
@@ -349,7 +350,9 @@ export function StrategyPage() {
     if (!value) return;
     setOfferDraft((prev) => {
       const cur = prev ?? offerBaseline;
-      const arr = Array.isArray(cur[key]) ? (cur[key] as string[]) : [];
+      // Coerce a LEGACY string value to a list first, so adding an item to a
+      // corrupted socialProof re-persists it as an array on save (heals the row).
+      const arr = coerceListField(cur[key]);
       if (arr.some((v) => v.toLowerCase() === value.toLowerCase())) return cur;
       return { ...cur, [key]: [...arr, value] };
     });
@@ -358,7 +361,7 @@ export function StrategyPage() {
   const removeOfferItem = (key: string, value: string) =>
     setOfferDraft((prev) => {
       const cur = prev ?? offerBaseline;
-      const arr = Array.isArray(cur[key]) ? (cur[key] as string[]) : [];
+      const arr = coerceListField(cur[key]);
       return { ...cur, [key]: arr.filter((v) => v !== value) };
     });
 
@@ -516,7 +519,7 @@ export function StrategyPage() {
                         />
                       ) : (
                         <ListEditor
-                          values={Array.isArray(value) ? value : []}
+                          values={coerceListField(value)}
                           placeholder={placeholder}
                           onAdd={(v) => addOfferItem(lever.key, v)}
                           onRemove={(v) => removeOfferItem(lever.key, v)}
