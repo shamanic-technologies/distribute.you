@@ -1,33 +1,164 @@
 "use client";
 
-import { QueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
-  PersistQueryClientProvider,
-  removeOldestQuery,
-} from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+  QueryClient,
+  QueryClientProvider,
+  keepPreviousData,
+  type Query,
+} from "@tanstack/react-query";
+import { experimental_createQueryPersister } from "@tanstack/react-query-persist-client";
+import {
+  get as idbGet,
+  set as idbSet,
+  del as idbDel,
+  entries as idbEntries,
+} from "idb-keyval";
 import { useOrganization } from "@clerk/nextjs";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import {
+  PERSIST_GC_TIME_MS,
   PERSIST_MAX_AGE_MS,
-  cacheBuildId,
+  coldRestorablePairs,
+  persistCacheVersion,
   persisterStorageKey,
-  shouldPersistQuery,
+  isPersistableQueryKey,
 } from "@/lib/persist-cache";
 import { installIdleFocusManager } from "@/lib/idle-focus-manager";
 
-function makeQueryClient() {
-  return new QueryClient({
+/**
+ * The cache bucket for THIS route (the persister prefix + the remount key). On a
+ * god-mode `/orgs/[id]/…` page it is the URL org id, so org A's persisted customer
+ * data never restores under org B (DIS-143). On a cross-org fleet page (metrics,
+ * audit, feature-stats, features, workflows — platform-global data owned by no
+ * single org) it is the fixed `"platform"` bucket, so those pages are SWR-instant
+ * regardless of the staff user's Clerk active org. Derived from the URL (not the
+ * shared/global Clerk active org), so it never flips cross-tab.
+ */
+function bucketForPath(pathname: string | null): string {
+  return pathname?.match(/\/orgs\/([^/?#]+)/)?.[1] ?? "platform";
+}
+
+/**
+ * Ask the browser to make the origin's storage PERSISTENT (best-effort → durable).
+ * Without this grant, IndexedDB is "best-effort" and the browser evicts the WHOLE
+ * store under disk pressure or after prolonged non-use — silently wiping the
+ * local-first query cache after a few idle days, so a returning visitor hits the
+ * cold path and sees an infinite skeleton. `maxAge: Infinity` on the persister is
+ * meaningless while the store itself is evictable; this grant is what actually makes
+ * "instant across days" true. Idempotent + guarded (feature-detected, no-op if
+ * already persisted or unsupported); never throws into the render path.
+ */
+async function requestPersistentStorage(): Promise<void> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.storage?.persist) return;
+    if (await navigator.storage.persisted()) return;
+    await navigator.storage.persist();
+  } catch {
+    // Storage API can throw in private-mode / locked-down contexts — non-fatal,
+    // the cache just stays evictable (the pre-existing behavior).
+  }
+}
+
+/**
+ * IndexedDB-backed storage adapter for the per-query persister. The persister only
+ * needs the AsyncStorage `getItem / setItem / removeItem` triple; idb-keyval gives
+ * us exactly that against IndexedDB — which has NO ~5MB per-origin Web-Storage cap,
+ * so big lists persist without evicting the small overview queries, and writes
+ * happen off the main thread (no serialize jank).
+ */
+const idbStorage = {
+  getItem: (key: string) => idbGet(key),
+  setItem: (key: string, value: string) => idbSet(key, value),
+  removeItem: (key: string) => idbDel(key),
+  // Needed by the persister's `restoreQueries` (whole-prefix scan). Keys are always
+  // the string `${prefix}-${queryHash}` and values the serialized JSON we wrote, so
+  // the idb-keyval `IDBValidKey`/`any` tuple is safe to narrow.
+  entries: () => idbEntries() as Promise<[string, string][]>,
+};
+
+/**
+ * Re-seed COLD (memory-empty) queries from THIS bucket's on-disk snapshot on every
+ * navigation — NOT only on provider mount. The per-query persister self-restores a
+ * query from disk only when it FETCHES (i.e. `enabled`), and the mount seed
+ * (`persister.restoreQueries`) is one-shot; so a page entered while the
+ * org-consistency gate is momentarily CLOSED (Clerk active-org still settling → an
+ * org-scoped `useAuthQuery` disabled → never fetches), or a sub-page whose memory was
+ * GC'd, paints a SKELETON even though its stale snapshot is on disk. Backend-healthy
+ * hides it (the network answers eventually); backend-DOWN turns it into a STUCK
+ * skeleton. Painting the disk snapshot is the whole point of a local-first cache:
+ * backend down MUST degrade to stale, never to a skeleton.
+ *
+ * READ-ONLY (pure `setQueryData`, zero network → no cross-org request → DIS-143 gate
+ * untouched), BUCKET-PREFIXED, BUSTER-checked, and COLD-GUARDED (never overwrites
+ * fresher in-memory data — see coldRestorablePairs). Best-effort: never throws.
+ */
+async function reseedColdQueriesFromDisk(
+  client: QueryClient,
+  bucket: string,
+): Promise<void> {
+  try {
+    const all = (await idbEntries()) as [string, string][];
+    const pairs = coldRestorablePairs(
+      all,
+      persisterStorageKey(bucket),
+      persistCacheVersion(),
+      (queryKey) => client.getQueryData(queryKey) !== undefined,
+    );
+    for (const { queryKey, data, updatedAt } of pairs) {
+      client.setQueryData(
+        queryKey,
+        data,
+        updatedAt != null ? { updatedAt } : undefined,
+      );
+    }
+  } catch {
+    // IndexedDB can throw in private-mode / locked-down contexts — non-fatal, the
+    // enabled-query self-restore + mount seed still cover the common paths.
+  }
+}
+
+/**
+ * One QueryClient per bucket mount. The PER-QUERY persister (not the whole-client
+ * one) is wired as a default query option: it wraps each `queryFn` and, on mount,
+ * returns the query's last-known value straight from IndexedDB BEFORE hitting the
+ * network — so opening a page paints its content instantly, then revalidates
+ * silently (SWR).
+ *
+ * - `maxAge: Infinity` — disk entries never expire → instant across sessions/days.
+ * - `gcTime: PERSIST_GC_TIME_MS` — bounds MEMORY only; disk retention is independent.
+ * - `prefix: persisterStorageKey(bucket)` — org-scopes org pages (DIS-143), or the
+ *   fixed `"platform"` bucket for cross-org fleet pages.
+ * - `buster: persistCacheVersion()` — MANUAL version; bumped by hand only on an
+ *   incompatible response-shape change (NOT the per-deploy SHA). See persist-cache.ts.
+ * - `filters.predicate` — DENYLIST: every non-sensitive root persists (key material
+ *   never touches disk).
+ */
+function makeQueryClient(bucket: string) {
+  const persistEnabled = typeof window !== "undefined";
+  const persister = experimental_createQueryPersister({
+    storage: persistEnabled ? idbStorage : undefined,
+    maxAge: PERSIST_MAX_AGE_MS,
+    buster: persistCacheVersion(),
+    prefix: persisterStorageKey(bucket),
+    // STATUS-AGNOSTIC predicate (matches on the query key only). The persister
+    // evaluates this ONCE at the top of its wrapped queryFn and uses the verdict for
+    // BOTH restore (query still `pending`) AND persist — a `status === "success"`
+    // check here would be `false` at restore time → the persister silently never
+    // restores and never writes (a total no-op). See isPersistableQueryKey.
+    filters: {
+      predicate: (query: Query) => isPersistableQueryKey(query.queryKey),
+    },
+  });
+
+  const client = new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 60_000,
-        // == the persister `maxAge` (30 min). gcTime MUST be >= maxAge or in-memory
-        // GC evicts a query before its persisted copy can restore (TanStack rule).
-        // 30 min (not 24h) BOUNDS MEMORY: gcTime governs how long an inactive query
-        // — including big leads/emails lists — stays in the JS heap. 24h kept them
-        // all day → the #1273 memory overflow. 30 min covers "leave + return" while
-        // letting heavy inactive lists leave the heap.
-        gcTime: PERSIST_MAX_AGE_MS,
+        // Memory bound only; disk persists independently (per-query persister).
+        gcTime: PERSIST_GC_TIME_MS,
+        // Local-first: restore each query from IndexedDB before the network.
+        persister: persister.persisterFn,
         placeholderData: keepPreviousData,
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
@@ -36,96 +167,90 @@ function makeQueryClient() {
       mutations: { retry: 0 },
     },
   });
+
+  return { client, persister };
 }
 
 /**
- * One QueryClient + one persister per mount, both scoped to a single org id.
- * A fresh mount => fresh (EMPTY) in-memory cache AND a persister bound to that
- * org's localStorage key => atomic per-org isolation (DIS-143). The outer
- * QueryProvider remounts this under `key={orgId}` on switch, so neither the
- * in-memory cache nor the disk cache of the previous org can bleed across.
+ * One QueryClient per bucket. A fresh mount => fresh (EMPTY) in-memory cache + a
+ * persister whose storage keys are prefixed with THIS bucket => atomic isolation
+ * between orgs (and between org pages and fleet pages). The outer QueryProvider
+ * remounts this under `key={bucket}` on bucket change, so neither the in-memory
+ * cache nor the disk key space of the previous bucket can bleed across.
  */
-function OrgScopedQueryClientProvider({
-  orgId,
+function BucketScopedQueryClientProvider({
+  bucket,
   children,
 }: {
-  orgId: string | null;
+  bucket: string;
   children: ReactNode;
 }) {
-  const [queryClient] = useState(makeQueryClient);
+  // Created once per mount; the component is keyed by bucket upstream, so this runs
+  // fresh per bucket and the persister prefix can never point at another bucket's keys.
+  const [{ client, persister }] = useState(() => makeQueryClient(bucket));
+  const pathname = usePathname();
 
-  // Persist the cache to localStorage so leaving a page and returning — even
-  // after gcTime eviction OR a full reload / new tab — restores the last-known
-  // content INSTANTLY, then revalidates silently in the background. This is the
-  // 4th anti-flash layer (CLAUDE.md → "Coordinated reveal"); the first three only
-  // protect a warm in-memory cache. One persister per org id. The component is
-  // keyed by orgId upstream, so this memo computes once per org and the disk key
-  // can never point at another org's cache.
-  const persistOptions = useMemo(() => {
-    const persister = createSyncStoragePersister({
-      // SSR has no localStorage → undefined storage makes the persister a no-op.
-      // ALSO no-op while orgId is null (Clerk session not yet resolved): otherwise
-      // EVERY org reads/writes the SAME shared `cache:anon` bucket during its load
-      // window, so org A's persisted cache restores under org B — a cross-org bleed
-      // (DIS-143) and an OWASP "shared cache key without tenant prefix" violation.
-      // Persist ONLY under a resolved, org-scoped key; the brief null window stays
-      // unpersisted (it refetches anyway).
-      storage:
-        typeof window !== "undefined" && orgId ? window.localStorage : undefined,
-      key: persisterStorageKey(orgId),
-      // On QuotaExceededError (localStorage's ~5MB cap, e.g. a multi-MB leads
-      // list) drop the oldest cached query and retry until it fits. The page the
-      // user is on is most-recently-used → persisted last → survives; only stale
-      // large entries are evicted. Never throws, degrades at any size.
-      retry: removeOldestQuery,
-    });
-    return {
-      persister,
-      maxAge: PERSIST_MAX_AGE_MS,
-      // A new deploy busts the persisted cache (the data shape may have changed).
-      buster: cacheBuildId(),
-      // Only successful, non-sensitive queries touch disk.
-      dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
-    };
-  }, [orgId]);
+  // HARD-REFRESH INSTANT PAINT. On a cold load the in-memory cache is empty AND (on an
+  // org page) Clerk's active org is still resolving, so an org-scoped `useAuthQuery` is
+  // DISABLED by the org-consistency gate — which means the per-query persister, whose
+  // restore runs INSIDE the (now-skipped) queryFn, never fires → infinite skeletons
+  // until Clerk settles. Fix: seed the in-memory cache from this bucket's IndexedDB
+  // entries on mount. `restoreQueries` iterates only the keys under THIS bucket's prefix,
+  // is READ-ONLY (pure `setQueryData`, zero network → DIS-143 gate untouched), and
+  // preserves each entry's `dataUpdatedAt` so a still-mounted disabled query reads the
+  // seeded data immediately, then revalidates once Clerk resolves (SWR).
+  useEffect(() => {
+    void persister.restoreQueries(client);
+    // Run once per bucket-scoped mount (keyed by bucket upstream).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
-      {children}
-    </PersistQueryClientProvider>
-  );
+  // NAV RESEED. The mount seed above is one-shot and the per-query self-restore only
+  // fires for an ENABLED (fetching) query, so a page reached while an org gate is closed
+  // — or a sub-page whose memory was GC'd — cold-skeletons even though its disk snapshot
+  // exists, and a DOWN backend makes that skeleton stick. Re-seed cold queries from disk
+  // on every route change (fleet AND org pages) so the local-first cache always paints
+  // its stale content instead of a skeleton. COLD-GUARDED (never stomps fresher memory)
+  // and bucket-prefixed, so re-running it on each navigation is safe and cheap.
+  useEffect(() => {
+    void reseedColdQueriesFromDisk(client, bucket);
+  }, [pathname, bucket, client]);
+
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
 export function QueryProvider({ children }: { children: ReactNode }) {
-  // ClerkProvider lives in `(authed)/layout.tsx`, an ancestor of every consumer
-  // of this provider (dashboard + onboarding), so `useOrganization` is safe.
-  const { organization } = useOrganization();
-  const orgId = organization?.id ?? null;
+  // ClerkProvider lives in `(authed)/layout.tsx`, an ancestor of every consumer of
+  // this provider, so `useOrganization` is safe. It is read only to keep the idle
+  // manager wired; the cache bucket is derived from the URL, not the active org.
+  useOrganization();
+  const pathname = usePathname();
 
   // Pause all interval polling when the tab is hidden OR the user is idle.
-  // Installed once on the global focusManager (singleton) — survives org-switch
+  // Installed once on the global focusManager (singleton) — survives bucket-switch
   // remounts of the inner provider. Stops the continuous DOM churn that feeds
   // PostHog's rrweb recorder and OOMs long-lived tabs. See idle-focus-manager.ts.
   useEffect(() => installIdleFocusManager(), []);
 
-  // Atomically reset the ENTIRE React Query cache — in-memory AND the active
-  // persister — on org switch by remounting under a new `key` (TanStack canonical
-  // multi-tenant pattern). New mount => new QueryClient (empty in-memory) + a
-  // persister bound to the new org's localStorage key + a fresh re-hydrate from
-  // THAT org's disk cache. Stronger than `queryClient.clear()`, which races by
-  // refetching still-mounted observers under the new org's JWT (the DIS-143
-  // cross-org 404) and would NOT reset the persister target. Paired with the
-  // proxy's server-side fail-closed org guard (`checkProxyOrg`) for defense in depth.
-  //
-  // NOTE: this remounts the whole authed subtree on switch, so org-change navigation
-  // lives in `OrgCacheInvalidator`, mounted ABOVE this provider (it must survive the
-  // remount to fire its `router.push`).
-  const orgKey = orgId ?? "no-org";
+  // Make the cache survive idle days: request persistent storage once at boot so the
+  // browser stops evicting the IndexedDB store the local-first cache lives in. The
+  // single biggest lever against "instant right after a deploy, then infinite skeleton
+  // a few days later". Fire-and-forget, guarded, never blocks render.
+  useEffect(() => {
+    void requestPersistentStorage();
+  }, []);
+
+  // Bucket is derived from the URL path (stable per route, never blinks like Clerk's
+  // active org), so it needs no monotonic latch. Switching between a fleet page
+  // ("platform") and an org page (the org id) remounts the inner provider under a new
+  // key => a fresh QueryClient + a fresh per-bucket disk key space; the per-query
+  // persister re-paints each page from IndexedDB on mount, so the remount is invisible.
+  const bucket = bucketForPath(pathname);
 
   return (
-    <OrgScopedQueryClientProvider key={orgKey} orgId={orgId}>
+    <BucketScopedQueryClientProvider key={bucket} bucket={bucket}>
       {children}
-    </OrgScopedQueryClientProvider>
+    </BucketScopedQueryClientProvider>
   );
 }
 

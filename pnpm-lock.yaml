@@ -35,9 +35,6 @@ importers:
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.2.2)
-      '@tanstack/query-sync-storage-persister':
-        specifier: ^5.100.14
-        version: 5.100.14
       '@tanstack/react-query':
         specifier: ^5.100.14
         version: 5.100.14(react@19.2.4)
@@ -50,6 +47,9 @@ importers:
       canvas-confetti:
         specifier: ^1.9.4
         version: 1.9.4
+      idb-keyval:
+        specifier: ^6.2.1
+        version: 6.2.5
       isomorphic-dompurify:
         specifier: ^3.12.0
         version: 3.12.0

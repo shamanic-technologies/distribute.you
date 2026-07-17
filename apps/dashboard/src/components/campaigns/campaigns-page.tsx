@@ -247,6 +247,7 @@ export function CampaignsPage() {
       {newOpen && rows[0] && (
         <NewCampaignModal
           template={rows[0].campaign}
+          brandId={brandId}
           basePath={basePath}
           onClose={() => setNewOpen(false)}
         />
