@@ -31,71 +31,87 @@ describe("daily outcome digest", () => {
       .slice(0, 10);
   }
 
-  // A recent positive-reply timestamp → drives the "time ago" row (sales_meetings goal).
-  const repliedThreeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  // An outcome timestamp landing on the closed day. Start-of-yesterday is 24-48h
+  // before ANY same-day test run → formatTimeAgo deterministically yields "1d ago".
+  function outcomeAtOnDay(day: string): string {
+    return `${day}T00:00:01.000Z`;
+  }
 
-  // Brand revenue fixture: 2 pipeline orgs + a positive-reply series whose count
-  // for `day` is controllable (drives the sales_meetings outcome gate).
-  function brandRevenue(repliedCountOnDay: number, day: string): unknown {
+  const ORGS = [
+    {
+      orgId: "lead-org-1",
+      orgName: "Lead Co",
+      orgLogoUrl: null,
+      orgDomain: "leadco.test",
+      topPerson: { firstName: "Ada", lastName: "Lovelace", photoUrl: null },
+      tags: ["replied", "clicked"],
+      expectedRevenueUsd: 8000,
+      mostAdvancedDate: null,
+    },
+    {
+      orgId: "lead-org-2",
+      orgName: "Pipeline Inc",
+      orgLogoUrl: null,
+      orgDomain: "pipeline.test",
+      topPerson: null,
+      tags: ["delivered"],
+      expectedRevenueUsd: 4500,
+      mostAdvancedDate: null,
+    },
+  ];
+
+  // A pipeline lead; `outcome` overrides the per-goal signal fields (clickedAt /
+  // repliedPositiveAt / signup(+At) / formSubmission(+At) / purchased(+At)). Lead 0
+  // is richly enriched (drives the firmographic assertions).
+  function lead(i: number, outcome: Record<string, unknown>): Record<string, unknown> {
+    const rich = i === 0;
+    return {
+      leadId: `lead-${i + 1}`,
+      firstName: rich ? "Ada" : `Person${i}`,
+      lastName: rich ? "Lovelace" : "Reply",
+      photoUrl: rich ? "https://img.example.test/ada.jpg" : null,
+      orgName: rich ? "Lead Co" : "Pipeline Inc",
+      orgLogoUrl: null,
+      orgDomain: rich ? "leadco.test" : "pipeline.test",
+      tags: ["replied"],
+      expectedRevenueUsd: rich ? 8000 : 4000,
+      conversionProbabilityPct: null,
+      contacted: true,
+      contactedAt: null,
+      clickedAt: null,
+      repliedPositiveAt: null,
+      title: rich ? "Head of Growth" : null,
+      seniority: rich ? "director" : null,
+      orgIndustry: rich ? "Marketing" : null,
+      orgEmployeeCount: rich ? 120 : null,
+      orgCity: rich ? "Austin" : null,
+      orgCountry: rich ? "United States" : null,
+      date: null,
+      ...outcome,
+    };
+  }
+
+  // Brand revenue with 2 pipeline orgs + `count` leads carrying a positive-reply
+  // outcome ON `day` (the default positive_replies / sales_meetings goal path).
+  function revenueWithLeads(leads: unknown[]): unknown {
     return {
       featureSlug: "sales-cold-email-outreach",
       headline: { totalPipelineUsd: 12500 },
       costEconomics: { actualCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
-      repliedPositive: {
-        total: repliedCountOnDay,
-        daily: repliedCountOnDay > 0 ? [{ date: day, count: repliedCountOnDay }] : [],
-        undatedCount: 0,
-      },
       timeSeries: [],
-      organizations: [
-        {
-          orgId: "lead-org-1",
-          orgName: "Lead Co",
-          orgLogoUrl: null,
-          orgDomain: "leadco.test",
-          topPerson: { firstName: "Ada", lastName: "Lovelace", photoUrl: null },
-          tags: ["replied", "clicked"],
-          expectedRevenueUsd: 8000,
-          mostAdvancedDate: null,
-        },
-        {
-          orgId: "lead-org-2",
-          orgName: "Pipeline Inc",
-          orgLogoUrl: null,
-          orgDomain: "pipeline.test",
-          topPerson: null,
-          tags: ["delivered"],
-          expectedRevenueUsd: 4500,
-          mostAdvancedDate: null,
-        },
-      ],
-      leads: [
-        {
-          leadId: "lead-1",
-          firstName: "Ada",
-          lastName: "Lovelace",
-          photoUrl: "https://img.example.test/ada.jpg",
-          orgName: "Lead Co",
-          orgLogoUrl: null,
-          orgDomain: "leadco.test",
-          tags: ["replied"],
-          expectedRevenueUsd: 8000,
-          conversionProbabilityPct: null,
-          contacted: true,
-          contactedAt: null,
-          clickedAt: null,
-          repliedPositiveAt: repliedThreeHoursAgo,
-          title: "Head of Growth",
-          seniority: "director",
-          orgIndustry: "Marketing",
-          orgEmployeeCount: 120,
-          orgCity: "Austin",
-          orgCountry: "United States",
-          date: null,
-        },
-      ],
+      organizations: ORGS,
+      leads,
       events: [],
     };
+  }
+
+  function brandRevenue(repliedCountOnDay: number, day: string): unknown {
+    const at = outcomeAtOnDay(day);
+    return revenueWithLeads(
+      Array.from({ length: repliedCountOnDay }, (_, i) =>
+        lead(i, { repliedPositiveAt: at }),
+      ),
+    );
   }
 
   it("prepares a per-brand send for EVERY customer user (no beta gate)", async () => {
@@ -192,9 +208,11 @@ describe("daily outcome digest", () => {
     expect(send.metadata.digestHtml).toContain("Ada Lovelace");
     expect(send.metadata.digestHtml).toContain("https://img.example.test/ada.jpg");
     expect(send.metadata.digestHtml).toContain("img.logo.dev/leadco.test");
-    expect(send.metadata.digestHtml).toContain("3h ago");
+    expect(send.metadata.digestHtml).toContain("1d ago");
+    // Green per-person outcome pill names the goal outcome (singular noun).
+    expect(send.metadata.digestHtml).toContain("positive reply");
     expect(send.metadata.digestText).toContain("Ada Lovelace");
-    expect(send.metadata.digestText).toContain("3h ago");
+    expect(send.metadata.digestText).toContain("1d ago");
     // Firmographics for reassurance — title, industry, banded headcount, location.
     expect(send.metadata.digestHtml).toContain("Head of Growth");
     expect(send.metadata.digestHtml).toContain("Marketing");
@@ -492,6 +510,7 @@ describe("daily outcome digest", () => {
         brandName: "Acme",
         brandUrl: "https://acme.test",
         totalPipelineUsd: 12500,
+        outcomeNoun: "website visit",
         organizations: [
           {
             orgName: "Lead Co",
@@ -546,10 +565,108 @@ describe("daily outcome digest", () => {
     expect(html).not.toContain("$");
     expect(html).not.toContain("expected revenue");
     expect(html).toContain("replied, clicked");
+    // Green outcome pill shows for the person WITH an outcome, once (Grace has none).
+    expect(html).toContain("website visit");
+    expect(html.match(/website visit/g)).toHaveLength(1);
     // Firmographics render for the enriched person, banded headcount + location.
     expect(html).toContain("Head of Growth");
     expect(html).toContain("Marketing");
     expect(html).toContain("51-200 employees");
     expect(html).toContain("Austin, United States");
+  });
+
+  // A single org / user / brand fetch stub parameterized by the brand's
+  // optimizationGoal wire value + the /revenue payload.
+  function digestFetch(optimizationGoal: string, revenue: unknown): DigestFetch {
+    return async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://api.clerk.com/v1/organizations")) {
+        return jsonResponse({ data: [{ id: "org_1", name: "Org" }], total_count: 1 });
+      }
+      if (url === "https://api.example.test/v1/users?limit=100&offset=0") {
+        return jsonResponse({
+          users: [{
+            id: "internal-user",
+            externalId: "user_1",
+            email: "owner@customer.com",
+            firstName: "Casey",
+            lastName: "Owner",
+            imageUrl: null,
+            phone: null,
+            createdAt: "2026-06-09T00:00:00.000Z",
+          }],
+          total: 1,
+          limit: 100,
+          offset: 0,
+        });
+      }
+      if (url === "https://api.example.test/v1/brands") {
+        return jsonResponse({
+          brands: [{ id: "brand_1", domain: "acme.test", name: "Acme", brandUrl: "https://acme.test", createdAt: null, updatedAt: null, logoUrl: null }],
+        });
+      }
+      if (url.endsWith("/brands/brand_1/sales-economics")) {
+        return jsonResponse({ salesEconomics: { optimizationGoal } });
+      }
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+        return jsonResponse(revenue);
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    };
+  }
+
+  it("notifies on FORM SUBMISSIONS when that goal's tracker is live", async () => {
+    const at = outcomeAtOnDay(previousUtcDay());
+    const revenue = revenueWithLeads([
+      lead(0, { formSubmission: true, formSubmissionAt: at, clickedAt: at }),
+      lead(1, { formSubmission: true, formSubmissionAt: at, clickedAt: at }),
+    ]);
+    const result = await collectOutcomeDigestSends({
+      ...env,
+      fetchFn: digestFetch("form_submissions", revenue),
+    });
+    expect(result.preparedSends).toHaveLength(1);
+    expect(result.preparedSends[0].metadata).toMatchObject({
+      outcomeLabel: "form submissions",
+      outcomeCount: "2",
+    });
+    expect(result.preparedSends[0].metadata.digestHtml).toContain("form submission");
+  });
+
+  it("falls back to WEBSITE VISITS when the form_submissions tracker is not live yet", async () => {
+    const at = outcomeAtOnDay(previousUtcDay());
+    // No lead carries a `formSubmission` flag (tracker not in prod) → fall back to clicks.
+    const revenue = revenueWithLeads([
+      lead(0, { clickedAt: at }),
+      lead(1, { clickedAt: at }),
+      lead(2, { clickedAt: at }),
+    ]);
+    const result = await collectOutcomeDigestSends({
+      ...env,
+      fetchFn: digestFetch("form_submissions", revenue),
+    });
+    expect(result.preparedSends).toHaveLength(1);
+    expect(result.preparedSends[0].metadata).toMatchObject({
+      outcomeLabel: "website visits",
+      outcomeCount: "3",
+    });
+    expect(result.preparedSends[0].metadata.digestHtml).toContain("website visit");
+  });
+
+  it("maps the wire `sales` optimizationGoal to PURCHASES, not the reply goal", async () => {
+    const at = outcomeAtOnDay(previousUtcDay());
+    const revenue = revenueWithLeads([
+      lead(0, { purchased: true, purchasedAt: at, clickedAt: at }),
+    ]);
+    const result = await collectOutcomeDigestSends({
+      ...env,
+      fetchFn: digestFetch("sales", revenue),
+    });
+    expect(result.preparedSends).toHaveLength(1);
+    expect(result.preparedSends[0].metadata).toMatchObject({
+      outcomeLabel: "purchases",
+      outcomeCount: "1",
+    });
+    expect(result.preparedSends[0].metadata.digestHtml).toContain("purchase");
   });
 });

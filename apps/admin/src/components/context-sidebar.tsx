@@ -243,9 +243,21 @@ const OverviewIcon = () => (
   </svg>
 );
 
+const RevenueIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10c1.11 0 2.08.402 2.599 1M12 8V6m0 12v-2m0 0c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 const ExternalLinkIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+  </svg>
+);
+
+const HealthIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12h-4l-3 9L9 3l-3 9H2" />
   </svg>
 );
 
@@ -335,12 +347,17 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
   // no per-viewer feature flag — every signed-in staff sees it.
   const analyticsItems: SidebarItem[] = [
     { id: "landing", label: "Unique visitors", href: "/metrics?view=landing", icon: <OverviewIcon /> },
-    { id: "signups", label: "Signup conversions", href: "/metrics?view=signups", icon: <ConversionsIcon /> },
-    { id: "cards", label: "Cards added", href: "/metrics?view=cards", icon: <BillingIcon /> },
+    { id: "signups", label: "Signups", href: "/metrics?view=signups", icon: <ConversionsIcon /> },
+    { id: "cards", label: "Paid users", href: "/metrics?view=cards", icon: <BillingIcon /> },
+    { id: "active-users", label: "Active users", href: "/metrics?view=active-users", icon: <OrgIcon /> },
+    { id: "revenue", label: "Revenue", href: "/metrics?view=revenue", icon: <RevenueIcon /> },
   ];
 
   const activeView = searchParams.get("view");
-  const normalizedView = activeView === "signups" || activeView === "cards" ? activeView : "landing";
+  const normalizedView =
+    activeView === "signups" || activeView === "cards" || activeView === "active-users" || activeView === "revenue"
+      ? activeView
+      : "landing";
 
   return (
     <SidebarSection title="Platform">
@@ -348,6 +365,13 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         item={{ id: "organizations", label: "Organizations", href: "/orgs", icon: <OrgIcon /> }}
         isActive={pathname === "/orgs"}
       />
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Customer Success</h4>
+        <SidebarLink
+          item={{ id: "customer-success", label: "Customer Success", href: "/customer-success", icon: <HealthIcon /> }}
+          isActive={pathname === "/customer-success"}
+        />
+      </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Dashboard</h4>
         {analyticsItems.map((item) => (

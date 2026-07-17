@@ -120,7 +120,7 @@ async function fetchOutcomeStatsUncached(
       p25?: unknown;
       p75?: unknown;
     }>(
-      `/v1/public/features/cost-per-outcome-distribution?featureSlug=${slug}&objective=${objective}&buckets=12`,
+      `/v1/public/features/cost-per-outcome-distribution?featureSlug=${slug}&objective=${objective}&buckets=5`,
     ),
   ]);
 

@@ -12,6 +12,7 @@ import { OrgCacheInvalidator } from "@/components/org-cache-invalidator";
 import { CreditAlerts } from "@/components/billing/credit-alerts";
 import { NoAudienceBanner } from "@/components/onboarding/no-audience-banner";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
+import { SupportButton } from "@/components/support/support-button";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
@@ -70,6 +71,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <CreditAlerts />
       <NoAudienceBanner />
       <OnboardingFlow />
+      <SupportButton />
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Mobile sidebar overlay */}
         {isOpen && (

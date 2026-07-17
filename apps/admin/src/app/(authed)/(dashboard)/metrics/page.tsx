@@ -3,21 +3,28 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PublicAnalyticsChart } from "@/components/public-analytics-chart";
+import { PeriodCompoundChart } from "@/components/period-compound-chart";
+import { CmgrStat } from "@/components/cmgr-stat";
+import { ActiveUsersView } from "@/components/active-users-view";
+import { RevenueView } from "@/components/revenue-view";
 import {
   fetchPublicStatsSummary,
   type DailyFunnelPoint,
   type PublicAnalyticsView,
   type TrafficSource,
 } from "@/lib/public-stats";
-import { formatCount } from "@/lib/format-number";
+import { cmgrSummary, monthlyVisitors, weeklyVisitors, monthlySignups, weeklySignups, monthlyCards, weeklyCards, weeklyTimeline } from "@/lib/signup-buckets";
+import { formatCount, formatPctAdaptive } from "@/lib/format-number";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 const VIEWS: Array<{ id: PublicAnalyticsView; label: string; href: string }> = [
   { id: "landing", label: "Unique visitors", href: "/metrics?view=landing" },
-  { id: "signups", label: "Signup conversions", href: "/metrics?view=signups" },
-  { id: "cards", label: "Cards added", href: "/metrics?view=cards" },
+  { id: "signups", label: "Signups", href: "/metrics?view=signups" },
+  { id: "cards", label: "Paid users", href: "/metrics?view=cards" },
+  { id: "active-users", label: "Active users", href: "/metrics?view=active-users" },
+  { id: "revenue", label: "Revenue", href: "/metrics?view=revenue" },
 ];
 
 interface PageProps {
@@ -32,13 +39,13 @@ interface StatCardProps {
 }
 
 function pct(numerator: number, denominator: number): string {
-  if (denominator === 0) return "0.0%";
-  return `${((numerator / denominator) * 100).toFixed(1)}%`;
+  if (denominator === 0) return "0%";
+  return formatPctAdaptive((numerator / denominator) * 100);
 }
 
 function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === "signups" || value === "cards") return value;
+  if (value === "signups" || value === "cards" || value === "active-users" || value === "revenue") return value;
   return "landing";
 }
 
@@ -98,7 +105,7 @@ function SourcesTable({ sources }: { sources: TrafficSource[] }) {
               </div>
             </div>
             <p className="text-sm font-semibold text-gray-950 sm:text-right">{formatCount(source.visitors)}</p>
-            <p className="text-xs text-gray-500 sm:text-right">{source.sharePct.toFixed(1)}%</p>
+            <p className="text-xs text-gray-500 sm:text-right">{formatPctAdaptive(source.sharePct)}</p>
           </div>
         ))}
       </div>
@@ -115,12 +122,40 @@ function LandingView({
   timeline: DailyFunnelPoint[];
   sources: TrafficSource[];
 }) {
+  const monthly = monthlyVisitors(timeline);
+  const weekly = weeklyVisitors(timeline);
+  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const monthlyCmgr = cmgrSummary(monthly);
+  const weeklyCmgr = cmgrSummary(weekly);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Unique visitors" value={formatCount(totalVisitors)} detail={`Through ${latestDate(timeline)}`} accent="bg-sky-500" />
         <StatCard label="Tracked days" value={formatCount(timeline.length)} detail="PostHog daily visitor buckets" accent="bg-gray-500" />
         <StatCard label="Top origin" value={sources[0]?.source ?? "No source"} detail={sources[0] ? `${formatCount(sources[0].visitors)} unique visitors` : "No visitors yet"} accent="bg-emerald-500" />
+      </section>
+      <section className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Monthly unique visitors</h2>
+          <p className="mt-1 text-sm text-gray-500">Unique visitors per month with compound monthly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+          </div>
+          <div className="mt-5">
+            <PeriodCompoundChart data={monthlyPoints} valueLabel="Unique visitors" growthLabel="CMGR since inception" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Weekly unique visitors</h2>
+          <p className="mt-1 text-sm text-gray-500">Unique visitors per week with compound weekly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+          </div>
+          <div className="mt-5">
+            <PeriodCompoundChart data={weeklyPoints} valueLabel="Unique visitors" growthLabel="CWGR since inception" />
+          </div>
+        </div>
       </section>
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -147,12 +182,40 @@ function SignupView({
   signupEvents: number;
   timeline: DailyFunnelPoint[];
 }) {
+  const monthly = monthlySignups(timeline);
+  const weekly = weeklySignups(timeline);
+  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const monthlyCmgr = cmgrSummary(monthly);
+  const weeklyCmgr = cmgrSummary(weekly);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard label="Total signups" value={formatCount(totalUsers)} detail="Clerk /users/count total" accent="bg-brand-500" />
         <StatCard label="Tracked signup events" value={formatCount(signupEvents)} detail="PostHog signup_completed events" accent="bg-sky-500" />
         <StatCard label="Signup conversion" value={pct(totalUsers, totalVisitors)} detail="Total users divided by unique visitors" accent="bg-emerald-500" />
+      </section>
+      <section className="grid gap-6 md:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Monthly signups</h2>
+          <p className="mt-1 text-sm text-gray-500">Signups per month with compound monthly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+          </div>
+          <div className="mt-5">
+            <PeriodCompoundChart data={monthlyPoints} valueLabel="Signups" growthLabel="CMGR since inception" />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Weekly signups</h2>
+          <p className="mt-1 text-sm text-gray-500">Signups per week with compound weekly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+          </div>
+          <div className="mt-5">
+            <PeriodCompoundChart data={weeklyPoints} valueLabel="Signups" growthLabel="CWGR since inception" />
+          </div>
+        </div>
       </section>
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -189,26 +252,61 @@ function CardsView({
   totalUsers: number;
   timeline: DailyFunnelPoint[];
 }) {
+  const monthly = monthlyCards(timeline);
+  const weekly = weeklyCards(timeline);
+  const weeklyTl = weeklyTimeline(timeline);
+  const monthlyPoints = monthly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const weeklyPoints = weekly.map((b) => ({ label: b.label, value: b.signups, cmgrPct: b.cmgrPct }));
+  const monthlyCmgr = cmgrSummary(monthly);
+  const weeklyCmgr = cmgrSummary(weekly);
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total cards added" value={formatCount(cardsAdded)} detail="Billing public accounts with payment method" accent="bg-emerald-500" />
-        <StatCard label="Signup to card conversion" value={pct(cardsAdded, totalUsers)} detail="Cards added divided by total signups" accent="bg-brand-500" />
-        <StatCard label="Tracked card days" value={formatCount(timeline.filter((point) => point.cardsAdded > 0).length)} detail="Stripe first saved-card dates" accent="bg-sky-500" />
+        <StatCard label="Total paid users" value={formatCount(cardsAdded)} detail="Billing public accounts with payment method" accent="bg-emerald-500" />
+        <StatCard label="Signup to paid conversion" value={pct(cardsAdded, totalUsers)} detail="Paid users divided by total signups" accent="bg-brand-500" />
+        <StatCard label="Tracked paid days" value={formatCount(timeline.filter((point) => point.cardsAdded > 0).length)} detail="Stripe first saved-card dates" accent="bg-sky-500" />
       </section>
-      <section className="grid gap-6 xl:grid-cols-2">
+      <section className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Cards added over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily first saved card per Stripe customer.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Monthly paid users</h2>
+          <p className="mt-1 text-sm text-gray-500">Paid users per month with compound monthly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+          </div>
           <div className="mt-5">
-            <PublicAnalyticsChart data={timeline} metric="cardsAdded" color="#10b981" />
+            <PeriodCompoundChart data={monthlyPoints} valueLabel="Paid users" growthLabel="CMGR since inception" />
           </div>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Signup to card conversion over time</h2>
-          <p className="mt-1 text-sm text-gray-500">Daily cards added divided by daily signup events.</p>
+          <h2 className="text-lg font-semibold text-gray-950">Weekly paid users</h2>
+          <p className="mt-1 text-sm text-gray-500">Paid users per week with compound weekly growth since inception.</p>
+          <div className="mt-4">
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+          </div>
           <div className="mt-5">
-            <PublicAnalyticsChart data={timeline} metric="cardConversionPct" color="#f59e0b" />
+            <PeriodCompoundChart data={weeklyPoints} valueLabel="Paid users" growthLabel="CWGR since inception" />
+          </div>
+        </div>
+      </section>
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Paid users vs signups</h2>
+          <p className="mt-1 text-sm text-gray-500">Weekly paid users compared with weekly signups.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart
+              data={weeklyTl}
+              series={[
+                { metric: "signups", color: "#6366f1" },
+                { metric: "cardsAdded", color: "#10b981" },
+              ]}
+            />
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-950">Signup to paid conversion over time</h2>
+          <p className="mt-1 text-sm text-gray-500">Weekly paid users divided by weekly signup events.</p>
+          <div className="mt-5">
+            <PublicAnalyticsChart data={weeklyTl} metric="cardConversionPct" color="#f59e0b" />
           </div>
         </div>
       </section>
@@ -225,7 +323,9 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
 
   const sp = await searchParams;
   const view = parseView(sp.view);
-  const stats = await fetchPublicStatsSummary(view);
+  // The active-users view reads the cross-org accounts snapshot client-side
+  // (getAuditAccounts), so it doesn't need the PostHog/Stripe/Clerk summary.
+  const stats = view === "active-users" ? null : await fetchPublicStatsSummary(view);
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -266,10 +366,10 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           </div>
         </section>
 
-        {view === "landing" && (
+        {view === "landing" && stats && (
           <LandingView totalVisitors={stats.landingVisitors} timeline={stats.timeline} sources={stats.trafficSources} />
         )}
-        {view === "signups" && (
+        {view === "signups" && stats && (
           <SignupView
             totalUsers={stats.users.totalUsers}
             totalVisitors={stats.landingVisitors}
@@ -277,30 +377,34 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
             timeline={stats.timeline}
           />
         )}
-        {view === "cards" && (
+        {view === "active-users" && <ActiveUsersView />}
+        {view === "revenue" && stats && <RevenueView timeline={stats.timeline} />}
+        {view === "cards" && stats && (
           <CardsView cardsAdded={stats.cardsAdded} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
         )}
 
-        <section className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="text-lg font-semibold text-gray-950">Data sources</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">PostHog unique visitors and signup events</p>
+        {stats && (
+          <section className="rounded-lg border border-gray-200 bg-white p-6">
+            <h2 className="text-lg font-semibold text-gray-950">Data sources</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">PostHog unique visitors and signup events</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">Stripe saved payment methods</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Gold</p>
+                <p className="mt-1 text-sm font-medium text-gray-900">Public signup and billing totals</p>
+              </div>
             </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">Stripe saved payment methods</p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Gold</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">Public signup and billing totals</p>
-            </div>
-          </div>
-          <p className="mt-4 text-xs text-gray-400">
-            Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-          </p>
-        </section>
+            <p className="mt-4 text-xs text-gray-400">
+              Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );

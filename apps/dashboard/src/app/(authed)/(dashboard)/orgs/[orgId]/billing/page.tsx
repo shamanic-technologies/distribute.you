@@ -7,12 +7,14 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
   getBillingAccount,
   getCreditGrants,
+  getBillingPayments,
   createCheckoutSession,
   createPortalSession,
   listBrands,
   getBrandDailyBudget,
   type BillingAccount,
   type CreditGrant,
+  type Payment,
   type Brand,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
@@ -37,6 +39,22 @@ function grantLabel(reason: string): string {
     default:
       if (reason.startsWith("invite")) return "Referral bonus";
       return `Promo: ${reason}`;
+  }
+}
+
+// Payment status → badge label + tone. Stripe PaymentIntent statuses:
+// succeeded | processing | requires_* | canceled. Customers mostly see
+// succeeded; the rest are shown honestly rather than hidden.
+function paymentStatusBadge(status: string): { label: string; className: string } {
+  switch (status) {
+    case "succeeded":
+      return { label: "Paid", className: "bg-green-50 text-green-700" };
+    case "processing":
+      return { label: "Processing", className: "bg-amber-50 text-amber-700" };
+    case "canceled":
+      return { label: "Canceled", className: "bg-gray-100 text-gray-500" };
+    default:
+      return { label: "Incomplete", className: "bg-gray-100 text-gray-500" };
   }
 }
 
@@ -107,6 +125,15 @@ export default function BillingPage() {
     () => getCreditGrants(),
   );
   const grants = grantsData?.grants ?? [];
+
+  // Payments ("Payments" card) — the org's own Stripe top-up history. These are
+  // one-off PaymentIntents, NOT Stripe invoices, so the Stripe billing-portal
+  // "invoices" view is empty for customers; this card is the real payment log.
+  const { data: paymentsData, isPending: paymentsPending } = useAuthQuery<{ payments: Payment[] }>(
+    ["billingPayments"],
+    () => getBillingPayments(),
+  );
+  const payments = paymentsData?.payments ?? [];
 
   // Org-wide daily burn = sum of every brand's saved daily budget (paused/unset
   // brands contribute 0). The org wallet is shared across brands, so this is how
@@ -218,6 +245,16 @@ export default function BillingPage() {
   // the shown amount IS what gets charged, so a struck-through gross would be misleading.
   const usageDiscountPct = account?.usage_discount_pct ?? null;
   const hasUsageDiscount = typeof usageDiscountPct === "number" && usageDiscountPct > 0 && usageDiscountPct < 100;
+
+  // A negative available balance = postpaid usage running on credit. Frame it as "Balance"
+  // (label) with the absolute amount in green, and align the tooltip to that meaning — the
+  // "what you can spend right now" copy is wrong once the balance is negative. Both the big
+  // number and the breakdown footer read from these so they never drift apart.
+  const isNegativeBalance = availableCents < 0;
+  const balanceLabel = isNegativeBalance ? "Balance" : "Available";
+  const balanceTip = isNegativeBalance
+    ? "Your usage running on credit. This is covered automatically by your next top-up charge."
+    : "What you can spend right now: total credits minus confirmed and provisioned charges.";
 
   // Depleted = AVAILABLE (spendable, net of provisioned holds) at/below zero AND no auto-topup
   // to cover it. Keys on balance_cents — the value spending is actually blocked on — not the
@@ -405,9 +442,9 @@ export default function BillingPage() {
           <div>
             <div className="flex items-center gap-1.5">
               {/* A negative available balance = postpaid usage running on credit; frame it
-                  positively as "Usage" with the absolute amount in green, not a red deficit. */}
-              <p className="text-sm text-gray-500">{availableCents < 0 ? "Usage" : "Available"}</p>
-              <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+                  positively as "Balance" with the absolute amount in green, not a red deficit. */}
+              <p className="text-sm text-gray-500">{balanceLabel}</p>
+              <InfoTooltip tip={balanceTip} />
             </div>
             <p className={`text-3xl font-bold mt-1 ${availableCents < 0 ? "text-green-600" : availableCents === 0 ? "text-red-600" : "text-gray-900"}`}>
               {formatBillingCents(availableCents < 0 ? Math.abs(availableCents) : account?.balance_cents ?? "0")}
@@ -454,8 +491,8 @@ export default function BillingPage() {
 
             <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2">
               <dt className="flex items-center gap-1.5 font-medium text-gray-700">
-                {availableCents < 0 ? "Usage" : "Available"}
-                <InfoTooltip tip="What you can spend right now: total credits minus confirmed and provisioned charges." />
+                {balanceLabel}
+                <InfoTooltip tip={balanceTip} />
               </dt>
               <dd className={`font-semibold ${availableCents < 0 ? "text-green-600" : availableCents === 0 ? "text-red-600" : "text-gray-900"}`}>
                 {formatBillingCents(availableCents < 0 ? Math.abs(availableCents) : account?.balance_cents ?? "0")}
@@ -515,32 +552,6 @@ export default function BillingPage() {
             )}
           </div>
         </div>
-
-        {/* Invoices — opens the Stripe-hosted billing portal (invoice history + PDF
-            receipts, managed by Stripe). Reuses the same portal session as "Manage".
-            Only shown once a Stripe customer exists (no invoices before first top-up). */}
-        {account?.has_payment_method && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Invoices</p>
-                  <p className="mt-0.5 text-xs text-gray-500">Receipts and invoice history, managed by Stripe.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleManagePayment("invoices")}
-                disabled={portalLoadingSource !== null}
-                className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
-              >
-                {portalLoadingSource === "invoices" ? "Opening..." : "View invoices"}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Add Credits + enable Auto-Topup — only until auto-topup is configured */}
         {!hasAutoTopup && (
@@ -663,6 +674,74 @@ export default function BillingPage() {
                   </span>
                 </li>
               ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Payments — the org's own Stripe top-up history (PaymentIntents).
+            Complements the Stripe-portal "Invoices" button above: customers pay
+            via one-off charges, not invoices, so this is where the real payment
+            log lives. */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <h2 className="text-lg font-medium text-gray-900">Payments</h2>
+            </div>
+            {account?.has_payment_method && (
+              <button
+                onClick={() => handleManagePayment("invoices")}
+                disabled={portalLoadingSource !== null}
+                className="flex-shrink-0 text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
+              >
+                {portalLoadingSource === "invoices" ? "Opening..." : "View invoices"}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mb-4">Every top-up you&apos;ve paid.</p>
+
+          {paymentsPending && payments.length === 0 ? (
+            // Static-shell reveal: frame + title/subtitle stay; skeleton the list
+            // while pending so the "No payments yet." empty-state never flashes
+            // before the fetch settles. Warm persisted cache → instant, no skeleton.
+            <div className="space-y-2.5">
+              {[0, 1].map((i) => (
+                <div key={i} className="flex items-center justify-between gap-3 py-0.5">
+                  <div className="min-w-0 space-y-1.5">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                  <Skeleton className="h-4 w-14" />
+                </div>
+              ))}
+            </div>
+          ) : payments.length === 0 ? (
+            <p className="text-sm text-gray-500">No payments yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {payments.map((payment) => {
+                const badge = paymentStatusBadge(payment.status);
+                return (
+                  <li key={payment.id} className="flex items-center justify-between gap-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800">
+                        {payment.description || "Credit top-up"}
+                      </p>
+                      <p className="text-xs text-gray-500">{formatGrantDate(payment.createdAt)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatBillingCents(payment.amountCents)}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

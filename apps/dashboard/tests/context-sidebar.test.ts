@@ -22,16 +22,17 @@ describe("Context sidebar", () => {
 
   it("should handle all navigation levels", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature/featureSettings, campaign AND app-level feature ("Campaigns"
-    // island) levels were removed (single-feature product at the brand level per
-    // brand — everything flattens to the brand). The Brand Settings level was
-    // also flattened into the brand sidebar (settings / profile / info /
-    // workflows are flat footer links), so nav is now app → org → brand only.
+    // The feature/featureSettings AND app-level feature ("Campaigns" island)
+    // levels were removed (single-feature product at the brand level per brand).
+    // The Brand Settings level was flattened into the brand sidebar (settings /
+    // profile / info / workflows are flat footer links). The CAMPAIGN level is
+    // re-introduced as a staff/god-mode v2 preview (#2762) — `.../campaigns/[id]`
+    // swaps to the campaign sidebar. So nav is app → org → brand → campaign.
     expect(content).toContain('"app"');
     expect(content).toContain('"org"');
     expect(content).toContain('"brand"');
+    expect(content).toContain('"campaign"');
     expect(content).not.toContain('"brandSettings"');
-    expect(content).not.toContain('"campaign"');
     expect(content).not.toContain('"appFeature"');
   });
 
@@ -61,18 +62,29 @@ describe("Context sidebar", () => {
 
   it("should have brand-level items (single-feature nav flattened into the brand)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The feature segment + the campaign concept are gone from the BRAND sidebar:
-    // it's Overview + Brand Settings (the entity "Database" section was removed —
-    // lead data is now surfaced via the overview's lead detail panel). Brand
-    // Profile lives inside Brand Settings. The brand "Campaigns" entry
-    // (`${basePath}/campaigns`), "Create Campaign" and "Conversions" were all
+    // The feature segment is gone from the BRAND sidebar: it's Overview + Brand
+    // Settings (the entity "Database" section was removed — lead data is now
+    // surfaced via the overview's lead detail panel). Brand Profile lives inside
+    // Brand Settings. The legacy "Create Campaign" and "Conversions" entries were
     // removed. (The app-level feature "Campaigns" island at
     // `/features/[featureId]` was also removed — #1768 follow-up.)
+    // NOTE: a NEW staff/god-mode "Campaigns" entry (`${basePath}/campaigns`,
+    // `campaignsOk` gate) re-introduces the campaign-centered v2 preview — see the
+    // dedicated guard below; the general no-legacy assertions here exclude it.
     expect(content).toContain('label: "Overview"');
     expect(content).not.toContain('>Database<');
-    expect(content).not.toContain('href: `${basePath}/campaigns`');
     expect(content).not.toContain('label: "Create Campaign"');
     expect(content).not.toContain('href: `${basePath}/conversions`');
+  });
+
+  it("has a STAFF-gated (v2) Campaigns entry with a beta badge", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    // Re-introduced campaign concept: staff/god-mode preview only, so the entry is
+    // gated on `campaignsOk` (isAdmin + revenue feature) and carries the beta badge.
+    expect(content).toContain("const campaignsOk =");
+    expect(content).toContain("useIsAdminUser");
+    expect(content).toContain('id: "campaigns"');
+    expect(content).toContain('href: `${basePath}/campaigns`');
   });
 
   it("should grey out coming soon items with a tag (SidebarLink primitive)", () => {

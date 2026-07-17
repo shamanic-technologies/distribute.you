@@ -206,7 +206,27 @@ function analyticsHead(): string {
     ? `<script>!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId captureTraceFeedback captureTraceMetric".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);posthog.init('${phToken}',{api_host:'${phHost}',defaults:'2026-01-30'});</script>`
     : "";
 
-  return ga + posthog;
+  // Partnero affiliate tracking + cross-subdomain via-forward.
+  return ga + posthog + partneroHead();
+}
+
+// Partnero affiliate program `KHV3KEHI`. Two parts:
+//  (1) PartneroJS loader — records the referral click + keeps the partner key
+//      in the `partnero_partner` cookie on the landing domain as the visitor
+//      browses (survives internal landing navigation).
+//  (2) via-forward — the signup happens on dashboard.distribute.you (a
+//      DIFFERENT subdomain), and Partnero has no cross-subdomain cookie, so we
+//      carry the partner key across by appending `?via=<key>` to every
+//      dashboard-bound link at click time. The dashboard persists it + registers
+//      the customer server-to-server (see apps/dashboard PartneroViaCapture +
+//      /api/partnero/customer). Delegated capture-phase listener → also covers
+//      the nav/footer links injected later by components.js.
+function partneroHead(): string {
+  const loader = `<script>(function(p,t,n,e,r,o){p['__partnerObject']=r;function f(){var c={a:arguments,q:[]};var r=this.push(c);return "number"!=typeof r?r:f.bind(c.q);}f.q=f.q||[];p[r]=p[r]||f.bind(f.q);p[r].q=p[r].q||f.q;o=t.createElement(n);var _=t.getElementsByTagName(n)[0];o.async=1;o.src=e+'?v'+(~~(new Date().getTime()/1e6));_.parentNode.insertBefore(o,_);})(window,document,'script','https://app.partnero.com/js/universal.js','po');po('settings','assets_host','https://assets.partnero.com');po('program','KHV3KEHI','load');</script>`;
+
+  const forward = `<script>(function(){function k(){var m=location.search.match(/[?&]via=([^&]+)/);if(m)return decodeURIComponent(m[1]);var c=document.cookie.match(/(?:^|; )partnero_partner=([^;]+)/);return c?decodeURIComponent(c[1]):null;}document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="dashboard.distribute.you"]'):null;if(!a)return;var v=k();if(!v)return;try{var u=new URL(a.href);if(!u.searchParams.get('via')){u.searchParams.set('via',v);a.href=u.href;}}catch(err){}},true);})();</script>`;
+
+  return loader + forward;
 }
 
 export function staticHtml(fileName: string) {
@@ -271,8 +291,9 @@ async function withLivePerformanceMetrics(html: string) {
 // ─────────────────────────────────────────────────────────────────────────
 // Homepage — cross-org cost-per-outcome stock-ticker board.
 // Four equal cards (cost per click / positive reply / meeting / signup), each
-// with the observed average price, a cost-semantic weekly change (a falling
-// cost is good = green ▼, a rising cost is bad = red ▲), and an inline SVG
+// with the observed average price, an always-green ▲ weekly change (the board is
+// a marketing surface — demand framing, never a red down-signal — so the change
+// badge + sparkline render green/positive regardless of sign), and an inline SVG
 // sparkline. Fully server-rendered so the real numbers + chart ship in raw HTML
 // (SEO / AI-scraper safe), from the same public trend endpoint the admin
 // feature-stats page reads. `__TICKER_CPC__`/`__TICKER_CPR__`/`__TICKER_CPM__` scalars feed
@@ -285,17 +306,19 @@ async function withLivePerformanceMetrics(html: string) {
 const TICKER_OBJECTIVES = [
   // Headline metrics, in order: (1) positive reply for a sales meeting, then
   // (2) website visits — the two vedette outcomes; signup is tertiary.
-  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
-  { key: "websiteVisit", sym: "WEB", label: "Website visits", measuredByUs: true, slug: "website-visits" },
+  { key: "positiveReply", sym: "POS", label: "Positive reply for a sales meeting", unit: "per positive reply for a sales meeting", measuredByUs: true, slug: "positive-replies" },
+  { key: "websiteVisit", sym: "WEB", label: "Website visits", unit: "per website visit", measuredByUs: true, slug: "website-visits" },
   // meetingBooked is beta-gated out of the public board; the __TICKER_CPM__
   // scalar (legacy /v0 homepage) is still computed from a separate fetch below.
-  { key: "signup", sym: "SIG", label: "Signup", measuredByUs: false, slug: "signups" },
+  { key: "signup", sym: "SIG", label: "Signup", unit: "per signup", measuredByUs: false, slug: "signups" },
 ] as const;
 
 const BOARD_TOKEN = "__TICKER_BOARD__";
 
 interface TickerMetrics {
-  board: string; // server-rendered <div class="ticker-board">…</div>
+  board: string; // server-rendered <div class="ticker-board">…</div> (index-agency /v0)
+  heroPos: string; // compact non-clickable hero proof-rail stat: positive reply
+  heroWeb: string; // compact non-clickable hero proof-rail stat: website visits
   cpc: string; // scalars for the reused pricing card / mockup / compare rows
   cpr: string;
   cpm: string;
@@ -348,15 +371,20 @@ function growth7d(points: SeriesPoint[]): number | null {
   return (latest.v - prev.v) / prev.v;
 }
 
-// Cost-semantic stroke: rising cost red, falling cost green, flat/unknown gray.
-function trendStroke(growth: number | null): string {
-  if (growth === null || growth === 0) return "#94a3b8";
-  return growth > 0 ? "#dc2626" : "#16a34a";
+// Always-green stroke — the board never shows a red down-signal (marketing
+// surface, positive demand framing regardless of the underlying sign).
+const TREND_GREEN = "#16a34a";
+function trendStroke(): string {
+  return TREND_GREEN;
 }
 
-function sparklineSvg(points: SeriesPoint[], stroke: string): string {
+function sparklineSvg(
+  points: SeriesPoint[],
+  stroke: string,
+  cls = "tkr-spark",
+): string {
   if (points.length < 2) {
-    return `<div class="tkr-spark tkr-spark-empty" aria-hidden="true"></div>`;
+    return `<div class="${cls} tkr-spark-empty" aria-hidden="true"></div>`;
   }
   const vals = points.map((p) => p.v);
   const min = Math.min(...vals);
@@ -372,7 +400,30 @@ function sparklineSvg(points: SeriesPoint[], stroke: string): string {
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
-  return `<svg class="tkr-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${coords}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+// Compact NON-CLICKABLE hero proof-rail stat (positive reply / website visits):
+// price + green ▲ growth + micro sparkline + label. No link, no detail page —
+// the homepage board section was removed; these two live below the hero.
+function heroStatCard(
+  cfg: { label: string; unit: string },
+  points: SeriesPoint[],
+): string {
+  const price = points.length ? points[points.length - 1].v : null;
+  const priceStr = price === null ? "&mdash;" : usdSmart(price);
+  const g = growth7d(points);
+  let chg = "";
+  if (g !== null && g !== 0) {
+    const pct = (Math.abs(g) * 100).toFixed(1);
+    chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
+  }
+  const spark = sparklineSvg(points, trendStroke(), "prs-spark");
+  // Big white lead reads as a full phrase ("$200 per positive reply for a sales
+  // meeting"), the price emphasised; the grey note clarifies it's the current
+  // rate = trailing moving average over the last ~100 outcomes
+  // (features-service cost-per-outcome-trend windowOutcomes default = 100).
+  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-lead"><span class="prs-price">${priceStr}</span> ${cfg.unit}</span>${chg}</div>${spark}<small class="prs-note">Current rate · avg. of the last 100 outcomes</small></div>`;
 }
 
 function tickerCard(
@@ -386,14 +437,15 @@ function tickerCard(
   if (g === null || g === 0) {
     chg = `<span class="tkr-chg flat">&mdash;</span>`;
   } else {
-    const up = g > 0;
+    // Always a green ▲ positive change — never a red down-signal (inline color
+    // so it holds on every page regardless of that page's .tkr-chg.up/.down CSS).
     const pct = (Math.abs(g) * 100).toFixed(1);
-    chg = `<span class="tkr-chg ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${pct}% <span class="tkr-wk">wk</span></span>`;
+    chg = `<span class="tkr-chg" style="color:${TREND_GREEN}">▲ ${pct}% <span class="tkr-wk">wk</span></span>`;
   }
   const src = cfg.measuredByUs
     ? `<span class="tkr-src tkr-src-us">measured by us</span>`
     : `<span class="tkr-src tkr-src-client">client-reported</span>`;
-  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke(g))}${src}</div>`;
+  return `<div class="tkr"><div class="tkr-sym"><span class="tkr-chip">${cfg.sym}</span> ${cfg.label}</div><div class="tkr-row"><span class="tkr-price">${priceStr}</span>${chg}</div>${sparklineSvg(points, trendStroke())}${src}</div>`;
 }
 
 function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
@@ -404,7 +456,7 @@ function tickerBoard(seriesByObjective: Record<string, SeriesPoint[]>): string {
 }
 
 // Last-known-good (observed 2026-07-10) — synthetic descending series per
-// objective so the fallback board still renders prices + a green ▼ + sparkline
+// objective so the fallback board still renders prices + a green ▲ + sparkline
 // when the public API is unreachable (a build-time prerender must never abort).
 function fallbackSeries(end: number): SeriesPoint[] {
   return [
@@ -421,6 +473,8 @@ function buildFallbackTicker(): TickerMetrics {
   };
   return {
     board: tickerBoard(series),
+    heroPos: heroStatCard(TICKER_OBJECTIVES[0], series.positiveReply),
+    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], series.websiteVisit),
     cpc: "$0.88",
     cpr: "$151",
     cpm: "$5.68",
@@ -483,6 +537,8 @@ async function fetchTicker(): Promise<TickerMetrics> {
 
   return {
     board: tickerBoard(series),
+    heroPos: heroStatCard(TICKER_OBJECTIVES[0], reply),
+    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], visit),
     cpc: last(visit) ?? fb.cpc,
     cpr: last(reply) ?? fb.cpr,
     cpm: last(meeting) ?? fb.cpm,
@@ -506,6 +562,8 @@ async function withTickerMetrics(html: string) {
   // scalar-only pages (e.g. /pricing, which has no board) still get real rates.
   const needsMetrics =
     html.includes(BOARD_TOKEN) ||
+    html.includes("__HERO_POS__") ||
+    html.includes("__HERO_WEB__") ||
     html.includes("__TICKER_CPC__") ||
     html.includes("__TICKER_CPR__") ||
     html.includes("__TICKER_CPM__");
@@ -514,6 +572,8 @@ async function withTickerMetrics(html: string) {
   const t = await resolveTicker();
   return html
     .replaceAll(BOARD_TOKEN, t.board)
+    .replaceAll("__HERO_POS__", t.heroPos)
+    .replaceAll("__HERO_WEB__", t.heroWeb)
     .replaceAll("__TICKER_CPC__", t.cpc)
     .replaceAll("__TICKER_CPR__", t.cpr)
     .replaceAll("__TICKER_CPM__", t.cpm);

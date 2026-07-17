@@ -59,8 +59,8 @@ describe("Beta onboarding resume persistence", () => {
   });
 
   it("replays the loading screen once to re-hydrate before landing on a deep step", () => {
-    expect(src).toContain("async function runResume(target: Step)");
-    expect(src).toContain("createBrandAndFetchServices({ isResume: true })");
+    expect(src).toContain("async function runResume(target: Step, urlOverride?: string)");
+    expect(src).toContain("createBrandAndFetchServices({ isResume: true, urlOverride })");
     expect(src).toContain("resumeStartedRef");
   });
 
@@ -120,8 +120,10 @@ describe("Beta onboarding resume persistence", () => {
     // generic resume must NOT also fire (it would re-hydrate the brand and land on
     // "pricing", flashing the budget modal over the real "launching" flow).
     expect(src).toContain('!searchParams.get("launch_checkout") &&');
-    // success first-paint goes straight to "launching", never the budget step.
-    expect(src).toContain('searchParams.get("launch_checkout") === "success"\n        ? "launching"');
+    // success first-paint goes to the first post-payment step ("celebrate"), never
+    // the budget step and never straight to "launching" (the loader is deferred
+    // until after the post-payment steps).
+    expect(src).toContain('searchParams.get("launch_checkout") === "success"\n        ? "celebrate"');
   });
 
   it("activates the picked audiences as the terminal launch commit", () => {
@@ -129,21 +131,23 @@ describe("Beta onboarding resume persistence", () => {
     // "No active audience yet" blocker). completeLaunchAfterCheckout activates the
     // selected audiences idempotently before campaign create; fail-loud if none.
     const launch = src.slice(
-      src.indexOf("async function completeLaunchAfterCheckout"),
-      src.indexOf("async function generateActiveAudienceAvatars"),
+      src.indexOf("async function runLaunchWork"),
+      src.indexOf("function startBackgroundLaunch"),
     );
     expect(launch).toContain("const launchAudienceIds = pending.onboardingState.selectedAudienceIds ?? [];");
     expect(launch).toContain('await setAudienceStatus(audienceId, "active");');
     expect(launch).toContain("if (launchAudienceIds.length === 0) {");
   });
 
-  it("blocks checkout when no audience is selected (no paid audience-less launch)", () => {
-    const begin = src.slice(
+  it("blocks launch when no audience is selected (no audience-less launch)", () => {
+    // The guard lives in the shared buildPendingLaunchBlob, called by BOTH the Stripe
+    // checkout path (beginCheckoutAndLaunch) and the direct path (launchDirectlyWithoutCheckout).
+    const build = src.slice(
+      src.indexOf("function buildPendingLaunchBlob"),
       src.indexOf("async function beginCheckoutAndLaunch"),
-      src.indexOf("async function resumeCheckoutLaunch"),
     );
-    expect(begin).toContain("const launchAudienceIds = selectedAudienceIds.length");
-    expect(begin).toContain("if (launchAudienceIds.length === 0) {");
+    expect(build).toContain("const launchAudienceIds = selectedAudienceIds.length");
+    expect(build).toContain("if (launchAudienceIds.length === 0) {");
   });
 
   it("persists pricing and audience display state, not only launch state", () => {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { URLS } from "@distribute/content";
+import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SALES_PRICING_TIERS = [
   { name: "Free", price: 0, period: "one-time", emails: "500" },
@@ -289,7 +290,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <SupportWhatsAppButton />
+      </body>
     </html>
   );
 }

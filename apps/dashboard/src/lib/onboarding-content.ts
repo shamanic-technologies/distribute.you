@@ -80,9 +80,35 @@ export const REMINDER_COPY = {
     body: "We need at least one active audience to know who to contact. Add one and we start finding leads for you right away.",
     cta: "Add an audience",
   },
+  // Every active audience has been fully contacted (0% of the pool left).
+  audienceExhausted: {
+    title: "Your audiences are all contacted",
+    body: "Every active audience has been fully contacted, so outreach has nothing left to send. Extend an audience and we start reaching out again right away.",
+    cta: "Extend audience",
+  },
+  // Active audiences are almost drained (all below the low-remaining threshold).
+  // `{pct}` is replaced with the best remaining percentage at render time.
+  audienceLowRemaining: {
+    title: "Your audience is almost contacted",
+    body: "Only {pct}% of your audience is still contactable. Extend it so we keep finding new leads for you.",
+    cta: "Extend audience",
+  },
 } as const;
 
 export const NO_AUDIENCE_BANNER_COPY = {
   message: "No active audience yet. Outreach cannot run until you add one.",
   cta: "Add an audience",
+} as const;
+
+// Shown when every active audience is fully contacted (0% of the pool left).
+export const AUDIENCE_EXHAUSTED_BANNER_COPY = {
+  message: "Your audiences are fully contacted. Extend an audience to keep outreach running.",
+  cta: "Extend audience",
+} as const;
+
+// Shown when active audiences are almost drained; `{pct}` is replaced with the
+// best remaining percentage at render time.
+export const AUDIENCE_LOW_REMAINING_BANNER_COPY = {
+  message: "Only {pct}% of your audience is still contactable. Extend an audience to keep outreach running.",
+  cta: "Extend audience",
 } as const;

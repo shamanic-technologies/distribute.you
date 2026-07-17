@@ -43,9 +43,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 28 platform keys", () => {
+    it("should register exactly 29 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(28);
+      expect(matches).toHaveLength(29);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {

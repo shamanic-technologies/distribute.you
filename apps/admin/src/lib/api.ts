@@ -4583,6 +4583,49 @@ export async function getInstantlyAccountHealth(
 }
 
 // ---------------------------------------------------------------------------
+// Full raw Instantly account config for ONE account (staff-only, platform view,
+// no org). The account-health list row is a CURATED subset; this returns the
+// entire raw Instantly account object so staff can audit every mailbox setting
+// (warmup {limit, increment, advanced:{…}}, enable_slow_ramp, daily_limit,
+// provider_code, tracking domain, timestamps, all flags). The shape is
+// intentionally OPEN — we render whatever keys Instantly actually sends, so the
+// value is validated only as an object of arbitrary keys, never a field
+// whitelist.
+// ---------------------------------------------------------------------------
+export interface InstantlyAccountDetail {
+  account: Record<string, unknown>;
+}
+
+const InstantlyAccountDetailSchema = z.object({
+  account: z.record(z.string(), z.unknown()),
+});
+
+/**
+ * Full raw Instantly config for a single account, keyed by email. Staff-only,
+ * platform-scoped (no org). safeParse converts wire-rot into a caught fetch
+ * error instead of a render crash; the `account` object itself is left open so
+ * the panel renders every key Instantly returns.
+ */
+export async function getInstantlyAccountDetail(
+  email: string,
+  token?: string,
+): Promise<InstantlyAccountDetail> {
+  const raw = await apiCall<unknown>(
+    `/instantly/audit/account-detail?email=${encodeURIComponent(email)}`,
+    { token },
+  );
+  const parsed = InstantlyAccountDetailSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getInstantlyAccountDetail: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] getInstantlyAccountDetail: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ---------------------------------------------------------------------------
 // Sending-capacity over time (staff-only, platform-scoped, no org). One point
 // per UTC calendar day: the fleet's `in_production` daily send capacity
 // (Σ daily_limit over accounts whose as-of-that-day lifecycle is in_production)
@@ -4736,6 +4779,298 @@ export interface AuditAccounts {
  */
 export async function getAuditAccounts(token?: string): Promise<AuditAccounts> {
   return apiCall<AuditAccounts>(`/features/audit/accounts`, { token });
+}
+
+// ── Active users history (staff) ─────────────────────────────────────────────
+// Cross-org, fleet-wide HISTORY of active users (distinct orgs with an active,
+// funded, non-paused cold-email brand) bucketed monthly / weekly / daily, each
+// with a period-over-period growth rate, plus the live current total. Aggregate
+// counts only. Producer-owned shape (features-service /internal/stats/active-users).
+export interface ActiveUsersBucket {
+  period: string; // "YYYY-MM" | "YYYY-Www" | "YYYY-MM-DD"
+  periodStart: string; // UTC start of the bucket, "YYYY-MM-DD" (month 1st / week Monday / day)
+  activeUsers: number;
+  growthPct: number | null; // period-over-period %, null on the first bucket
+}
+
+export interface ActiveUsersHistory {
+  currentTotal: number; // live distinct active-user count (matches the accounts snapshot)
+  monthly: ActiveUsersBucket[];
+  weekly: ActiveUsersBucket[];
+  daily: ActiveUsersBucket[];
+  asOf: string;
+}
+
+/**
+ * Fleet-wide active-users history (monthly/weekly/daily + growth). Staff-gated
+ * platform view. Transparent proxy to features-service GET /internal/stats/active-users.
+ */
+export async function getActiveUsersHistory(token?: string): Promise<ActiveUsersHistory> {
+  return apiCall<ActiveUsersHistory>(`/features/audit/active-users`, { token });
+}
+
+// ── Per-user active history (staff) ──────────────────────────────────────────
+// One row per user (org ever active) with its active-history summary + the
+// month/week/day active-bucket sets for the drill-down. Producer-owned shape
+// (features-service /internal/stats/active-users-by-user).
+export interface ActiveUserBrand {
+  brandId: string;
+  brandName: string | null;
+  brandDomain: string | null;
+}
+
+export interface ActiveUserRow {
+  orgId: string;
+  orgExternalId: string | null; // Clerk org id, resolves the name client-side
+  ownerEmail: string | null;
+  brands: ActiveUserBrand[];
+  firstActiveDay: string; // YYYY-MM-DD
+  lastActiveDay: string;
+  firstActiveWeek: string; // YYYY-Www
+  lastActiveWeek: string;
+  firstActiveMonth: string; // YYYY-MM
+  lastActiveMonth: string;
+  retentionWeeks: number; // inclusive span between first and last active week
+  activeThisWeek: boolean;
+  activeThisMonth: boolean;
+  activeDays: string[]; // YYYY-MM-DD, ascending
+  activeWeeks: string[]; // YYYY-Www, ascending
+  activeMonths: string[]; // YYYY-MM, ascending
+}
+
+export interface ActiveUsersByUser {
+  users: ActiveUserRow[];
+  stats: {
+    totalUsers: number;
+    activeThisWeekCount: number;
+    activeThisMonthCount: number;
+  };
+  currentWeek: string; // YYYY-Www
+  currentMonth: string; // YYYY-MM
+  asOf: string;
+}
+
+/**
+ * Per-user active-history breakdown (staff). Transparent proxy to features-service
+ * GET /internal/stats/active-users-by-user.
+ */
+export async function getActiveUsersByUser(token?: string): Promise<ActiveUsersByUser> {
+  return apiCall<ActiveUsersByUser>(`/features/audit/active-users-by-user`, { token });
+}
+
+// ── Customer Success health board (staff) ────────────────────────────────────
+// Cross-org, fleet-wide "Customer Success" board: one ready-composed row per
+// cold-email customer (org × brand), currently-active first, each with a
+// green/yellow/red health badge + value/economics metrics. Every number is
+// computed + owned by features-service; the admin renders only (no browser math).
+// Producer-owned shape (features-service GET /internal/stats/customer-health),
+// proxied staff-gated at api-service as GET /features/audit/customer-success.
+
+export type CustomerOptimizationGoal =
+  | "signup"
+  | "meetingBooked"
+  | "purchase"
+  | "websiteVisit"
+  | "positiveReply"
+  | "formSubmission";
+
+export interface CustomerConversionTracker {
+  needed: boolean;
+  observedConversions: number | null;
+  firing: boolean | null; // inferred: observedConversions > 0
+  inferred: true;
+}
+
+export interface CustomerEconomics {
+  lifetimeRevenueUsd: number;
+  replyToMeetingPct: number;
+  visitToMeetingPct: number;
+  meetingToClosePct: number;
+  visitToSignupPct: number;
+  signupToPaidClientPct: number;
+  visitToClosePct: number;
+  // The last four are only present for some goals — declared optional.
+  visitToPaidClientPct?: number;
+  replyToPaidClientPct?: number;
+  visitToFormSubmissionPct?: number;
+  formSubmissionToPaidClientPct?: number;
+}
+
+export interface CustomerCurrentEconomics {
+  realizedSpendUsd: number | null;
+  expectedPipelineUsd: number | null;
+  currentCacUsd: number | null;
+  roiMultiple: number | null; // LTR / CAC = pipeline / spend; ≥ 1 ⟺ below breakeven
+  cacPct: number | null; // CAC as a share of LTR, percent
+}
+
+export interface CustomerAudiencesRollup {
+  count: number;
+  totalSize: number;
+  totalRemaining: number;
+  pctUsed: number | null;
+}
+
+export interface CustomerBestAudience {
+  audienceId: string;
+  name: string;
+  cacUsd: number | null;
+  size: number;
+  remaining: number;
+  pctRemaining: number | null;
+}
+
+export interface CustomerBestWorkflow {
+  workflowDynastySlug: string;
+  name: string | null;
+  cacUsd: number;
+  grain: "crossOrg" | "brand" | "audience";
+}
+
+export interface CustomerHealth {
+  badge: "green" | "yellow" | "red";
+  inputs: {
+    active: boolean;
+    hasBudget: boolean;
+    roiMultiple: number | null;
+    roiHealthy: boolean;
+    audiencePctUsed: number | null;
+    audienceNearExhausted: boolean;
+    audienceNearExhaustedThresholdPct: number;
+  };
+}
+
+/**
+ * Per-org dashboard-return signal (features-service#576). Null when PostHog has
+ * no data / is unreachable / the POSTHOG_* env is not yet provisioned — render
+ * "-" in that state, never fabricate a 0.
+ */
+export interface CustomerDashboardReturnFrequency {
+  sessions7d: number; // distinct dashboard sessions, trailing 7d
+  sessions30d: number; // distinct dashboard sessions, trailing 30d
+  pageviews7d: number;
+  pageviews30d: number;
+  lastSeen: string | null; // ISO timestamp of most recent dashboard pageview
+  daysSinceLastSeen: number | null;
+}
+
+export interface CustomerNotTrackedYet {
+  dashboardReturnFrequency: CustomerDashboardReturnFrequency | null;
+  budgetChangeHistory: null;
+  pauseHistory: null;
+}
+
+export interface CustomerRow {
+  orgId: string;
+  orgExternalId: string | null; // Clerk org id, resolves the name client-side
+  ownerEmail: string | null;
+  brandId: string;
+  brandName: string | null;
+  brandDomain: string | null;
+  featureSlug: string | null;
+  firstActiveDay: string | null; // YYYY-MM-DD
+  lastActiveDay: string | null;
+  retentionWeeks: number | null;
+  activeThisWeek: boolean;
+  activeThisMonth: boolean;
+  activeDays: string[]; // YYYY-MM-DD, ascending
+  status: "active" | "paused" | "inactive";
+  dailyBudgetUsd: number | null;
+  orgBalanceUsd: number; // spendable
+  orgActualBalanceUsd: number; // actual (active-verdict figure)
+  autoTopupEnabled: boolean;
+  optimizationGoal: CustomerOptimizationGoal | null;
+  conversionTracker: CustomerConversionTracker;
+  breakevenCacUsd: number | null; // = brand LTR
+  ltrUsd: number | null;
+  economics: CustomerEconomics | null;
+  currentEconomics: CustomerCurrentEconomics;
+  audiences: CustomerAudiencesRollup;
+  bestAudience: CustomerBestAudience | null;
+  bestWorkflow: CustomerBestWorkflow | null;
+  health: CustomerHealth;
+  notTrackedYet: CustomerNotTrackedYet;
+}
+
+export interface CustomerSuccessFleetStats {
+  totalCustomers: number;
+  activeCount: number;
+  pausedCount: number;
+  inactiveCount: number;
+  greenCount: number;
+  yellowCount: number;
+  redCount: number;
+}
+
+export interface CustomerSuccessBoard {
+  customers: CustomerRow[];
+  stats: CustomerSuccessFleetStats;
+  asOf: string; // ISO timestamp
+}
+
+/**
+ * Fleet-wide customer-success health board (staff). Transparent proxy to
+ * features-service GET /internal/stats/customer-health. Rows arrive
+ * currently-active-first; render only, never compute a metric client-side.
+ */
+export async function getCustomerSuccess(token?: string): Promise<CustomerSuccessBoard> {
+  return apiCall<CustomerSuccessBoard>(`/features/audit/customer-success`, { token });
+}
+
+// ── Fleet revenue history (staff) ────────────────────────────────────────────
+// Cross-org, fleet-wide REALIZED revenue history — the SAME per-day actualized
+// cold-email spend signal the active-users history is reconstructed from, summed
+// in dollars instead of thresholded to a distinct-org headcount. Bucketed
+// monthly / weekly / daily since inception, plus the cumulative total and the
+// live current MRR (current fleet active daily budget × 30). Producer-owned
+// shape (features-service GET /internal/stats/revenue, proxied staff-gated at
+// api-service — same auth path as getAuditAccounts / getActiveUsersHistory).
+// Field names below are the admin's expected shape; conform to the deployed
+// producer via the api-registry once features-service ships.
+export interface FleetRevenueBucket {
+  period: string; // "YYYY-MM" | "YYYY-Www" | "YYYY-MM-DD"
+  periodStart: string; // UTC bucket start, "YYYY-MM-DD" (month 1st / week Monday / day)
+  revenueUsd: number; // realized cold-email revenue billed in this bucket (USD)
+}
+
+// COMMITTED MRR/ARR over time — the point-in-time run-rate (active daily budget ×
+// 30), snapshotted daily by features-service. Each bucket's point = the last
+// recorded snapshot in the period; the CURRENT period's point = the live
+// currentMrrUsd (reconciles with the accounts audit). No historical backfill —
+// the series starts at the first snapshot and lengthens each day.
+export interface CommittedMrrBucket {
+  period: string; // "YYYY-MM" (monthly) | "YYYY-Www" (weekly)
+  periodStart: string; // UTC bucket start "YYYY-MM-DD"
+  mrrUsd: number; // committed MRR as of this period (USD)
+  arrUsd: number; // committed ARR = mrrUsd × 12 (USD)
+  growthPct: number | null; // period-over-period %, null on the first/zero-prev bucket
+}
+
+export interface CommittedMrr {
+  currentMrrUsd: number; // live committed MRR (= FleetRevenue.currentMrrUsd)
+  currentArrUsd: number; // live committed ARR = currentMrrUsd × 12
+  monthly: CommittedMrrBucket[];
+  weekly: CommittedMrrBucket[];
+}
+
+export interface FleetRevenue {
+  totalRevenueUsd: number; // cumulative realized cold-email revenue since inception (USD)
+  currentMrrUsd: number; // live fleet active daily budget × 30 (USD)
+  monthly: FleetRevenueBucket[]; // trailing calendar-month buckets (realized)
+  weekly: FleetRevenueBucket[]; // trailing ISO-week buckets (realized)
+  daily: FleetRevenueBucket[]; // trailing UTC-day buckets (realized, windowed default 90d)
+  sinceInceptionDaily: FleetRevenueBucket[]; // per-day realized line, first billed day → today
+  committedMrr: CommittedMrr; // committed MRR/ARR run-rate over time (daily snapshots)
+  asOf: string;
+}
+
+/**
+ * Fleet-wide realized-revenue history (monthly/weekly/daily + cumulative total +
+ * live MRR). Staff-gated platform view. Transparent proxy to features-service
+ * GET /internal/stats/revenue.
+ */
+export async function getFleetRevenue(token?: string): Promise<FleetRevenue> {
+  return apiCall<FleetRevenue>(`/features/audit/revenue`, { token });
 }
 
 // ── Google CRM (staff console) ───────────────────────────────────────────────

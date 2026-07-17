@@ -395,8 +395,8 @@
       min-height:91px;
       display:flex;
       flex-direction:column;
-      justify-content:center;
-      padding:16px 25px;
+      justify-content:flex-start;
+      padding:18px 25px;
       border-left:1px solid var(--line-soft);
     }
     .proof-rail-item:first-child{border-left:0;padding-left:0}
@@ -404,6 +404,14 @@
     .proof-rail-item b{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--text)}
     .proof-rail-item span{margin-top:5px;color:var(--faint);font-size:10.5px;line-height:1.45}
     .proof-rail-item a:hover b{color:var(--green)}
+    /* compact non-clickable live-rate stat (positive reply / website visits).
+       Price is the lead figure, top-aligned with the Live / Open source words. */
+    .proof-rail-stat .prs-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+    .proof-rail-stat .prs-lead{color:var(--text);font-family:var(--display);font-size:15px;font-weight:500;line-height:1.2;max-width:30ch}
+    .proof-rail-stat .prs-price{font-size:26px;font-weight:700;letter-spacing:-.5px;color:var(--text)}
+    .prs-spark{display:block;width:100%;max-width:132px;height:18px;margin:8px 0 2px}
+    .proof-rail-stat span{margin-top:2px}
+    .prs-note{margin-top:3px;color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.03em;line-height:1.4}
 
     section{padding:102px 0}
     .section-head{max-width:760px;margin-bottom:47px}
@@ -540,6 +548,15 @@
     .snapshot-row span{color:var(--muted);font-size:12.5px}
     .snapshot-row b{font-family:var(--mono);font-size:20px;font-weight:500}
     .snapshot-note{margin-top:18px;padding-top:17px;border-top:1px solid var(--line);color:var(--faint);font-size:10.5px;line-height:1.6}
+    .outcome-tracks{display:flex;flex-direction:column;gap:16px;margin-top:19px}
+    .outcome-track{padding:18px 18px 20px;border:1px solid var(--line-soft);border-radius:12px;background:#0b1016}
+    .outcome-track-label{color:var(--green);font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+    .outcome-pair{display:flex;align-items:stretch;gap:14px;margin-top:15px}
+    .outcome-mini{flex:1;display:flex;flex-direction:column;padding:15px;border:1px solid var(--line-soft);border-radius:10px;background:var(--panel)}
+    .outcome-name{font-size:14.5px;font-weight:600;line-height:1.3}
+    .outcome-val{margin-top:auto;padding-top:14px;font-family:var(--display);font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1}
+    .outcome-src{margin-top:8px;color:var(--faint);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em}
+    .outcome-arrow{display:flex;align-items:center;color:var(--faint);font-size:18px}
 
     .economics-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px;align-items:stretch}
     .price-card{
@@ -828,7 +845,7 @@
 
           <div class="hero-links" id="form-note">
             <span class="microcopy">Website in · buyers confirmed · daily budget set · done</span>
-            <a class="inline-link" href="https://distribute.you/#outcomes">See live campaign rates</a>
+            <a class="inline-link" href="https://distribute.you/benchmarks">See live campaign rates</a>
           </div>
 
           <div class="trust-strip" aria-label="Key product facts">
@@ -878,9 +895,9 @@
 
     <div class="proof-rail" aria-label="Proof and transparency">
       <div class="wrap proof-rail-grid">
-        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>23k+</b><span>emails logged in the public dataset</span></a></div>
-        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>25</b><span>outreach workflows tracked publicly</span></a></div>
-        <div class="proof-rail-item"><a href="https://distribute.you/#outcomes"><b>Live</b><span>observed campaign rates you can inspect</span></a></div>
+        __HERO_POS__
+        __HERO_WEB__
+        <div class="proof-rail-item"><a href="https://distribute.you/benchmarks"><b>Live</b><span>observed campaign rates you can inspect</span></a></div>
         <div class="proof-rail-item"><a href="https://github.com/shamanic-technologies/distribute.you"><b>Open source</b><span>code and methodology available to inspect</span></a></div>
       </div>
     </div>
@@ -1038,7 +1055,7 @@
             <p>See aggregate campaign results, compare outreach workflows, and inspect how the product is built. The numbers move because the campaigns are real.</p>
 
             <div class="proof-links">
-              <a class="proof-link" href="https://distribute.you/#outcomes">
+              <a class="proof-link" href="https://distribute.you/benchmarks">
                 <span>Production data</span>
                 <b>Live rates</b>
                 <small>Aggregate campaign results and real funnel behavior.</small>
@@ -1056,29 +1073,39 @@
             </div>
           </div>
 
-          <aside class="proof-side" aria-label="Example campaign snapshot">
-            <div class="snapshot-label"><span>One campaign snapshot</span><span>not a guarantee</span></div>
-            <div class="snapshot-list">
-              <div class="snapshot-row"><span>Approx. spend</span><b>€90</b></div>
-              <div class="snapshot-row"><span>Prospects contacted</span><b>700</b></div>
-              <div class="snapshot-row"><span>Website visits</span><b>44</b></div>
-              <div class="snapshot-row"><span>Implied cost per visit</span><b>≈ €2</b></div>
+          <aside class="proof-side" aria-label="Cost per outcome">
+            <div class="snapshot-label"><span>Cost per outcome</span><span>observed</span></div>
+            <div class="outcome-tracks">
+              <div class="outcome-track">
+                <div class="outcome-track-label">Book a sales meeting</div>
+                <div class="outcome-pair">
+                  <div class="outcome-mini">
+                    <div class="outcome-name">Positive reply for a sales meeting</div>
+                    <div class="outcome-val">$194</div>
+                    <div class="outcome-src">measured by us</div>
+                  </div>
+                </div>
+              </div>
+              <div class="outcome-track">
+                <div class="outcome-track-label">Or drive self-serve signups</div>
+                <div class="outcome-pair">
+                  <div class="outcome-mini">
+                    <div class="outcome-name">Website visits</div>
+                    <div class="outcome-val">$1.22</div>
+                    <div class="outcome-src">measured by us</div>
+                  </div>
+                  <div class="outcome-arrow" aria-hidden="true">→</div>
+                  <div class="outcome-mini">
+                    <div class="outcome-name">Signup</div>
+                    <div class="outcome-val">$26</div>
+                    <div class="outcome-src">client-reported</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="snapshot-note">A campaign example, not a platform-wide average. Your cost depends on targeting, offer, geography, copy, deliverability, and downstream conversion.</div>
+            <div class="snapshot-note">Average observed prices across every brand we run, not a guarantee. Your cost depends on targeting, offer, geography, copy, deliverability, and downstream conversion.</div>
           </aside>
         </div>
-      </div>
-    </section>
-
-    <section id="outcomes">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="ticker-live"><span class="ticker-live-dot" aria-hidden="true"></span>Live · observed prices</span>
-          <h2 style="margin-top:14px">The going rate for outcomes.</h2>
-          <p class="section-copy">Nobody pays a fixed price. These are the average prices our campaigns are paying right now, across every brand we run. Set a daily budget and the outcomes start flowing.</p>
-        </div>
-        __TICKER_BOARD__
-        <p class="ticker-legend"><b>Website visits</b> and <b>positive replies</b> we measure ourselves, from our own sending inboxes. <b>Signups</b> are reported by each client from their own funnel, so they vary more between brands.</p>
       </div>
     </section>
 
@@ -1263,7 +1290,7 @@
           <p>Drop your URL, approve the buyers, and set the budget. distribute handles the prospecting, emails, follow-ups, and reply filtering. You step in when someone is interested.</p>
           <div class="closing-actions">
             <a class="button primary" href="https://dashboard.distribute.you/sign-up">Launch my campaign →</a>
-            <a class="button secondary" href="https://distribute.you/#outcomes">See public performance</a>
+            <a class="button secondary" href="https://distribute.you/benchmarks">See public performance</a>
           </div>
           <div class="microcopy">Under 30-second setup · from $1/day · no seats · pause anytime</div>
         </div>
@@ -1282,7 +1309,7 @@
           <h4>Product</h4>
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
-          <a href="#outcomes">Live rates</a>
+          <a href="https://distribute.you/benchmarks">Live rates</a>
           <a href="https://distribute.you/benchmarks">Benchmarks</a>
         </div>
         <div class="footer-col">
@@ -1340,5 +1367,6 @@
       }
     })();
   </script>
+<script src="js/support-button.js"></script>
 </body>
 </html>

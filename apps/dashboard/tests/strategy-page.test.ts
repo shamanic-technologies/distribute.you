@@ -309,6 +309,11 @@ describe("brand-profile field set carries the new levers", () => {
 
 describe("StrategyPage source guards", () => {
   const page = read("../src/components/strategy/strategy-page.tsx");
+  // The best-model identity row + projected-economics stat grid was extracted to a
+  // shared component (rendered by both Strategy + onboarding, so the numbers match).
+  // Rendering-string guards below assert against the combined surface.
+  const card = read("../src/components/strategy/best-model-card.tsx");
+  const both = page + "\n" + card;
 
   it("is GA — no beta gate", () => {
     expect(page).not.toContain("useIsBetaUser");
@@ -329,62 +334,62 @@ describe("StrategyPage source guards", () => {
     expect(page).not.toContain("buildAudienceMetricRows");
   });
   it("reads costs VERBATIM from the server-resolved grain (no client CPC/projection math)", () => {
-    expect(page).toContain("resolved.costPerClickUsd");
-    expect(page).toContain("resolved.costPerOutcomeUsd");
-    expect(page).toContain("resolved.costPerPaidClientUsd");
-    expect(page).toContain("formatPctWhole(resolved.cacPct)");
+    expect(both).toContain("resolved.costPerClickUsd");
+    expect(both).toContain("resolved.costPerOutcomeUsd");
+    expect(both).toContain("resolved.costPerPaidClientUsd");
+    expect(both).toContain("formatPctWhole(resolved.cacPct)");
     // no rescale of a brand projection by an audience CPC
     expect(page).not.toContain("bestWf");
     expect(page).not.toContain("brandCostPerOutcome");
   });
   it("labels the number by its resolved grain, not a fixed 'this brand'", () => {
-    expect(page).toContain("WORKFLOW_GRAIN_LABEL");
-    expect(page).toContain("Based on ");
+    expect(both).toContain("WORKFLOW_GRAIN_LABEL");
+    expect(both).toContain("Based on ");
     expect(page).not.toContain("This brand cost / click");
   });
   it("renders a plain whole-dollar cost (no '>' prefix) even when the grain saw 0 clicks", () => {
-    expect(page).toContain("formatUsdFloor");
-    expect(page).toContain("isRowFloored");
+    expect(both).toContain("formatUsdFloor");
+    expect(both).toContain("isRowFloored");
     // the ">" floor prefix read as confusing on a not-yet-realized outcome — dropped.
     expect(page).not.toContain("`>${s}`");
   });
   it("surfaces the agency-domain framing", () => {
-    expect(page).toContain("on your behalf");
-    expect(page).toContain("warmed sending domains");
+    expect(both).toContain("on your behalf");
+    expect(both).toContain("warmed sending domains");
   });
   it("offers example emails + the reassessment explainer", () => {
-    expect(page).toContain("listWorkflowExamples");
-    expect(page).toContain("How we pick the best model");
+    expect(both).toContain("listWorkflowExamples");
+    expect(both).toContain("How we pick the best model");
   });
   it("shows the offer (Hormozi) section read from Brand Profile", () => {
-    expect(page).toContain("getBrandProfile");
-    expect(page).toContain("OFFER_LEVERS");
-    expect(page).toContain("What we use to optimize your conversion");
-    expect(page).toContain("Alex Hormozi value equation");
+    expect(both).toContain("getBrandProfile");
+    expect(both).toContain("OFFER_LEVERS");
+    expect(both).toContain("What we use to optimize your conversion");
+    expect(both).toContain("Alex Hormozi value equation");
   });
   it("keeps an Edit link on The plan (→ settings); the offer card is edited INLINE (no blue Edit button)", () => {
-    expect(page).toContain("settingsHref");
-    expect(page).toContain("action={<EditLink href={settingsHref} />}");
+    expect(both).toContain("settingsHref");
+    expect(both).toContain("action={<EditLink href={settingsHref} />}");
     // the offer card no longer jumps to Brand Profile — each lever is a hover-to-edit
     // zone (TextEditor / ListEditor) and Save forks a new brand-profile version.
     expect(page).not.toContain("action={<EditLink href={brandProfileHref} />}");
     expect(page).not.toContain("Edit your offer in Brand Profile");
-    expect(page).toContain("saveBrandProfileVersion");
-    expect(page).toContain("TextEditor");
-    expect(page).toContain("ListEditor");
+    expect(both).toContain("saveBrandProfileVersion");
+    expect(both).toContain("TextEditor");
+    expect(both).toContain("ListEditor");
   });
   it("lists every active audience (not only ones with evidence) in the best model", () => {
-    expect(page).toContain("activeAudiences");
-    expect(page).toContain("Estimates by audience");
+    expect(both).toContain("activeAudiences");
+    expect(both).toContain("Estimates by audience");
   });
   it("shows the served projected-economics boxes for the best model", () => {
     // "Cost per website visit" = the click cost; for website_visits it IS the outcome,
     // so the separate "Cost / <noun>" outcome tile is dropped for that goal only.
-    expect(page).toContain("Cost per website visit");
-    expect(page).toContain("isWebsiteVisitsGoal");
-    expect(page).toContain("Cost / paid client");
-    expect(page).toContain("Lifetime revenue on each dollar spent");
-    expect(page).toContain("Cost of acquisition");
+    expect(both).toContain("Cost per website visit");
+    expect(both).toContain("isWebsiteVisitsGoal");
+    expect(both).toContain("Cost / paid client");
+    expect(both).toContain("Lifetime revenue on each dollar spent");
+    expect(both).toContain("Cost of acquisition");
   });
   it("drops the Cost per website visit tile + column for positive_replies", () => {
     // Single-step reply→paid goal: clicks aren't in the funnel, so the CPC tile/column
@@ -392,8 +397,8 @@ describe("StrategyPage source guards", () => {
     expect(page).toContain(
       'const isPositiveRepliesGoal = optimizationGoal === "positive_replies"',
     );
-    expect(page).toContain("{!isPositiveRepliesGoal && (");
-    expect(page).toContain("isWebsiteVisitsGoal || isPositiveRepliesGoal");
+    expect(both).toContain("{!isPositiveRepliesGoal && (");
+    expect(both).toContain("isWebsiteVisitsGoal || isPositiveRepliesGoal");
   });
   it("renders the per-audience metric table with expansion-first cost/ROI/CAC tooltips", () => {
     expect(page).toContain("MetricLabel");

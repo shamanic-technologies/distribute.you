@@ -102,14 +102,14 @@ function SortHeader({
   const active = sortCol === col;
   return (
     <th className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : "text-left"}`}>
-      <span className={`inline-flex items-center gap-1 ${align === "right" ? "flex-row-reverse" : ""}`}>
+      <span className="inline-flex items-center gap-1">
         <button
           type="button"
           onClick={() => onSort(col)}
           aria-label={`Sort by ${label}`}
           className={`inline-flex items-center gap-1 transition hover:text-gray-600 ${
-            align === "right" ? "flex-row-reverse" : ""
-          } ${active ? "text-gray-700" : ""}`}
+            active ? "text-gray-700" : ""
+          }`}
         >
           <span>{label}</span>
           <span className="text-[9px] leading-none">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
@@ -300,6 +300,17 @@ export function CustomerAudiencesPage() {
     setSortCol(defaultSortCol);
     setSortDir("asc");
   }, [defaultSortCol, hasUserSorted]);
+  // Visit-driven outcome goals (signups / form_submissions) present the outcome cost
+  // FIRST but the website-visit funnel below it — so break ties on the cheapest
+  // website-visit cost (CPC) ASC: two audiences with the same (or missing) outcome
+  // cost then rank by cheapest visit. Only applies while sorting by the outcome-cost
+  // column itself (CPS / CPFS); a manual sort on any other header is single-key.
+  // (meetings / positive_replies hide the CPC column entirely → no tie-break.)
+  const tieBreakCol: SortCol | null =
+    (showSignupCols && sortCol === "cps") ||
+    (showFormSubmissionCols && sortCol === "cpfs")
+      ? "cpc"
+      : null;
 
   // Per-audience outreach / clicks evidence (features-service). Joined to
   // the human-service audience rows by audienceId; audiences with no attributed
@@ -501,14 +512,27 @@ export function CustomerAudiencesPage() {
         const sorted = [...visible].sort((a, b) => {
           const av = sortValue(sortCol, a, statsByAudienceId.get(a.id));
           const bv = sortValue(sortCol, b, statsByAudienceId.get(b.id));
-          if (av == null && bv == null) return 0;
-          if (av == null) return 1;
-          if (bv == null) return -1;
-          const cmp =
-            typeof av === "string" && typeof bv === "string"
-              ? av.localeCompare(bv)
-              : (av as number) - (bv as number);
-          return sortDir === "asc" ? cmp : -cmp;
+          if (av != null && bv != null) {
+            const cmp =
+              typeof av === "string" && typeof bv === "string"
+                ? av.localeCompare(bv)
+                : (av as number) - (bv as number);
+            if (cmp !== 0) return sortDir === "asc" ? cmp : -cmp;
+          } else if (av == null && bv != null) {
+            return 1;
+          } else if (av != null && bv == null) {
+            return -1;
+          }
+          // Primary equal (or both missing): break ties on the goal's website-visit
+          // cost (CPC) ASC — cheapest visit first — independent of the primary
+          // direction. Nulls still last. No tie-break col → stable (return 0).
+          if (!tieBreakCol) return 0;
+          const at = sortValue(tieBreakCol, a, statsByAudienceId.get(a.id));
+          const bt = sortValue(tieBreakCol, b, statsByAudienceId.get(b.id));
+          if (at == null && bt == null) return 0;
+          if (at == null) return 1;
+          if (bt == null) return -1;
+          return (at as number) - (bt as number);
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">

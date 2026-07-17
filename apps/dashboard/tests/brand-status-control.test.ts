@@ -70,11 +70,15 @@ describe("brand overview status control", () => {
   it("opens an onboarding-style budget modal from the status pill", () => {
     expect(control).toContain("budgetDialogOpen");
     expect(control).toContain("openBudgetDialog");
-    expect(control).toContain("COUNT_TIERS = [5, 25, 125]");
+    expect(control).toContain("COUNT_TIERS = [25, 50, 100]");
     expect(control).toContain("Other");
     expect(control).toContain("getWorkflowProjection");
     expect(control).toContain("budgetForCount");
     expect(control).toContain("saveBudget(selectedBudget)");
+    // $/day-primary framing, aligned with the onboarding pricing step.
+    expect(control).toContain("countForBudget");
+    expect(control).toContain("ESTIMATE_TOOLTIP");
+    expect(control).toContain("brand daily budget cap");
   });
 
   it("loads budget options with the brand goal objective, not hardcoded self-serve", () => {

@@ -261,6 +261,41 @@ export async function deleteByokKey(
   });
 }
 
+// Chat session history — restore the "Edit with AI" panel after a refresh.
+// Gateway proxies GET /v1/chat/sessions/:sessionId → chat-service /sessions/:id.
+// We only render `messages`; the schema stays tolerant of the other session
+// metadata fields (org/brand/workflow) the endpoint returns.
+const ChatHistoryToolCallSchema = z.object({
+  name: z.string(),
+  args: z.record(z.string(), z.unknown()),
+  result: z.unknown().optional(),
+});
+const ChatHistoryMessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant", "tool"]),
+  content: z.string(),
+  contentBlocks: z.array(z.unknown()).nullable(),
+  toolCalls: z.array(ChatHistoryToolCallSchema).nullable(),
+});
+const ChatSessionHistorySchema = z.object({
+  sessionId: z.string(),
+  messages: z.array(ChatHistoryMessageSchema),
+});
+export type ChatSessionHistory = z.infer<typeof ChatSessionHistorySchema>;
+
+export async function getChatSessionHistory(
+  sessionId: string,
+  token?: string,
+): Promise<ChatSessionHistory> {
+  const raw = await apiCall<unknown>(`/chat/sessions/${sessionId}`, { token });
+  const parsed = ChatSessionHistorySchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("getChatSessionHistory: response shape mismatch", parsed.error, raw);
+    throw new Error("Invalid chat session history response shape");
+  }
+  return parsed.data;
+}
+
 // Activity tracking
 export async function trackActivity(token?: string): Promise<{ ok: boolean }> {
   return apiCall<{ ok: boolean }>("/activity", { token, method: "POST" });
@@ -1191,16 +1226,29 @@ const SuggestAudiencesResponseSchema = z.object({
  * one or more, which are ACTIVATED via `setAudienceStatus(audienceId, "active")`.
  * Unpicked candidates remain suggested/inactive.
  */
+// Cold human-service (audience suggest) + brand-service (ICP) calls can HANG,
+// not just fail — a backend 502/partial-failure that never closes the socket
+// leaves the request PENDING forever. The onboarding audience step's loaders
+// (the prewarm `.finally`, `runSuggest`'s `finally`) only clear on settle, and a
+// hang never settles → eternal "Generating…" spinner. Bounding the request turns
+// a hang into a rejection so the existing catch/finally clears the loader + shows
+// the error. 2 min is generous for a slow cold suggest but finite.
+const SUGGEST_TIMEOUT_MS = 120_000;
+
 export async function suggestAudiences(
   brandId: string,
   nlPrompt: string,
   token?: string,
 ): Promise<{ candidates: AudienceCandidate[] }> {
-  const raw = await apiCall<unknown>(`/orgs/audiences/suggest`, {
-    token,
-    method: "POST",
-    body: { brandId, nlPrompt },
-  });
+  const raw = await withTimeout(
+    apiCall<unknown>(`/orgs/audiences/suggest`, {
+      token,
+      method: "POST",
+      body: { brandId, nlPrompt },
+    }),
+    SUGGEST_TIMEOUT_MS,
+    "suggestAudiences",
+  );
   const parsed = SuggestAudiencesResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] suggestAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
@@ -1403,11 +1451,17 @@ export async function suggestBrandIcp(
   existingIcps?: string[],
   token?: string,
 ): Promise<{ icp: string }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
-    token,
-    method: "POST",
-    body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
-  });
+  // Same hang class as suggestAudiences — the prewarm awaits this FIRST, so a
+  // hung ICP call stalls the audience prewarm before suggestAudiences even runs.
+  const raw = await withTimeout(
+    apiCall<unknown>(`/brands/${brandId}/icp/suggest`, {
+      token,
+      method: "POST",
+      body: existingIcps && existingIcps.length > 0 ? { existingIcps } : {},
+    }),
+    SUGGEST_TIMEOUT_MS,
+    "suggestBrandIcp",
+  );
   const parsed = SuggestBrandIcpResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] suggestBrandIcp: response shape mismatch", { issues: parsed.error.issues, raw });
@@ -1529,6 +1583,7 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "awardsAndRecognition", description: "Awards, recognition, and industry accolades" },
   { key: "revenueMilestones", description: "Revenue milestones and key business metrics" },
   { key: "socialProof", description: "Social proof: case studies, testimonials, and results" },
+  { key: "perceivedLikelihood", description: "Perceived likelihood of success: proof the outcome is achievable — track record, data, guarantees, named results and outcomes" },
   { key: "callToAction", description: "Primary CTA" },
   { key: "urgency", description: "Urgency elements and time pressure" },
   { key: "scarcity", description: "Scarcity and limited availability" },
@@ -1536,6 +1591,26 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "additionalContext", description: "Additional context and notable information" },
 ];
 
+
+/**
+ * Persists the user's OPTIONAL onboarding phone number to Clerk user
+ * publicMetadata via the in-repo server route (which holds CLERK_SECRET_KEY).
+ * Fail-loud: a non-2xx throws so the caller surfaces it.
+ */
+export async function savePhoneNumber(input: {
+  countryCode: string;
+  dialCode: string;
+  national: string;
+}): Promise<void> {
+  const res = await fetch("/api/onboarding/phone", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to save phone number (${res.status})`);
+  }
+}
 
 /** Convert extract-fields results map to a key→value map (preserves raw types) */
 export function fieldResultsToMap(results: Record<string, ExtractFieldResult>): Record<string, unknown> {
@@ -1934,6 +2009,10 @@ export async function fetchFeatureAudienceStats(
      *  (preserves the Top-audiences ranking card). The Audiences page passes all
      *  three so archived audiences show their historical outreach stats. */
     statuses?: string;
+    /** Optional campaign scope (v2). Audiences stay brand-wide, but their stats can
+     *  be filtered to a single campaign's outreach — the campaign overview passes it.
+     *  Omitted → brand-wide numbers as before. (api-service forwards ?campaignId=.) */
+    campaignId?: string;
   },
   token?: string,
 ): Promise<FeatureAudienceStatsResponse> {
@@ -1941,6 +2020,7 @@ export async function fetchFeatureAudienceStats(
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
   if (params.statuses) query.set("statuses", params.statuses);
+  if (params.campaignId) query.set("campaignId", params.campaignId);
   // pricing=net → per-audience MONEY metrics (metrics.cpcCents / cpprCents /
   // cpfsCents / cpsCents) reflect the org's FROZEN post-usage-discount cost, so the
   // Top-audiences card + Audiences ranking match the net brand-overview cost cards.
@@ -2024,6 +2104,74 @@ export function keepLastGoodFeatureRevenue(
     ["spend", "sequences", "outreachContacted", "opened", "clicked", "repliedPositive", "meetingsBooked", "purchased"],
     "featureRevenue",
   );
+}
+
+// ─── Per-campaign revenue (grouped) ──────────────────────────────────────────
+// features-service `GET /features/:slug/revenue?groupBy=campaignId` returns one
+// LEAN group per campaign that has runs for the brand+feature: campaignId +
+// headline.totalPipelineUsd + costEconomics only (no timeSeries/orgs/leads/events).
+// Each group is byte-equal to the standalone ?campaignId= call. Every displayed
+// stat (pipeline / $CAC / ROI / %CAC) is a ready features-service field — the
+// dashboard renders, never computes (CLAUDE.md: a displayed stat is
+// features-service-owned). One call powers the whole Campaigns table.
+const CampaignRevenueCostEconomicsSchema = z.object({
+  // Accept both the current `actualCostUsd` and legacy `totalCostUsd` name for
+  // rollout tolerance (mirrors CostEconomicsSchema in revenue-parse.ts).
+  actualCostUsd: z.number().optional(),
+  totalCostUsd: z.number().optional(),
+  costOfAcquisitionPct: z.number().nullable(),
+  roiMultiple: z.number().nullable(),
+  expectedConversions: z.number().nullish(),
+  costPerConversionUsd: z.number().nullish(),
+});
+const FeatureRevenueByCampaignSchema = z.object({
+  groupBy: z.string(),
+  groups: z.array(
+    z.object({
+      campaignId: z.string(),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: CampaignRevenueCostEconomicsSchema,
+    }),
+  ),
+});
+
+export interface CampaignRevenueGroup {
+  campaignId: string;
+  totalPipelineUsd: number | null;
+  actualCostUsd: number;
+  costOfAcquisitionPct: number | null;
+  roiMultiple: number | null;
+  expectedConversions: number | null;
+  costPerConversionUsd: number | null;
+}
+
+/** GET /features/:slug/revenue?groupBy=campaignId — one lean revenue group per campaign. */
+export async function getFeatureRevenueByCampaign(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<CampaignRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "campaignId", pricing: "net" });
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
+    { token },
+  );
+  const parsed = FeatureRevenueByCampaignSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenueByCampaign: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFeatureRevenueByCampaign: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    campaignId: g.campaignId,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    actualCostUsd: g.costEconomics.actualCostUsd ?? g.costEconomics.totalCostUsd ?? 0,
+    costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
+    roiMultiple: g.costEconomics.roiMultiple,
+    expectedConversions: g.costEconomics.expectedConversions ?? null,
+    costPerConversionUsd: g.costEconomics.costPerConversionUsd ?? null,
+  }));
 }
 
 const PipelineActivityMetricSchema = z.object({
@@ -2265,6 +2413,26 @@ export async function listCampaignsByBrand(brandId: string, token?: string): Pro
 // Single campaign
 export async function getCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, { token });
+  const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
+  return { campaign: enriched };
+}
+
+/**
+ * Set ONE campaign's daily budget (v2 per-campaign budget). PATCH /v1/campaigns/:id
+ * with `{ maxBudgetDailyUsd }` (whole USD string). campaign-service paces the sales
+ * feature on `campaign ?? brand` — writing this makes the campaign override its brand
+ * budget; passing null clears it back to inheriting the brand budget. Used by the
+ * beta per-campaign budget editor. */
+export async function updateCampaignDailyBudget(
+  campaignId: string,
+  maxBudgetDailyUsd: string | null,
+  token?: string,
+): Promise<{ campaign: Campaign }> {
+  const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, {
+    token,
+    method: "PATCH",
+    body: { maxBudgetDailyUsd },
+  });
   const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
   return { campaign: enriched };
 }
@@ -2538,10 +2706,15 @@ const LeadEmailGenerationSchema = z
 
 const GetLeadEmailResponseSchema = z.object({ generation: LeadEmailGenerationSchema.nullable() });
 
-/** GET /v1/emails/by-lead/:leadId → { generation } (null when the lead has no
- *  generated email yet). 404 is mapped to { generation: null } by the gateway. */
-export async function getLeadEmail(leadId: string, token?: string): Promise<{ generation: LeadEmailGeneration | null }> {
-  const raw = await apiCall<unknown>(`/emails/by-lead/${leadId}`, { token });
+/** GET /v1/emails/by-lead/:leadId?brandId= → { generation } (null when the lead has no
+ *  generated email yet). 404 is mapped to { generation: null } by the gateway.
+ *  `brandId` scopes the generation to the brand being viewed: the same person can be a
+ *  lead under several brands in one org (each with its OWN generated email), so without
+ *  the scope the by-lead read returns whichever generation it finds — the wrong brand's
+ *  email under the current brand's lead. Pass the viewed brand's id to disambiguate. */
+export async function getLeadEmail(leadId: string, brandId?: string, token?: string): Promise<{ generation: LeadEmailGeneration | null }> {
+  const qs = brandId ? `?brandId=${encodeURIComponent(brandId)}` : "";
+  const raw = await apiCall<unknown>(`/emails/by-lead/${leadId}${qs}`, { token });
   const parsed = GetLeadEmailResponseSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("[dashboard] getLeadEmail: response shape mismatch", { issues: parsed.error.issues, raw });
@@ -3424,6 +3597,67 @@ export async function getCreditGrants(token?: string): Promise<{ grants: CreditG
     throw new Error("[dashboard] getCreditGrants: invalid response shape");
   }
   return parsed.data as unknown as { grants: CreditGrant[] };
+}
+
+// A single customer payment (a Stripe PaymentIntent = a one-off top-up the
+// customer paid). Read from the api-service gateway payments route, which
+// forwards the org's PaymentIntents mirrored server-side in stripe-service.
+// NOTE: shape verified against api-registry (live) before merge — the gateway
+// owns the wire shape; this reader conforms to the deployed route.
+export interface Payment {
+  id: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  createdAt: string; // ISO 8601
+  description: string | null;
+}
+
+// stripe-service mirrors raw Stripe PaymentIntents; `amount` is cents (number),
+// `created` is unix-seconds. `.passthrough()` keeps unmodeled Stripe fields.
+const PaymentIntentSchema = z
+  .object({
+    id: z.string(),
+    amount: z.coerce.number(),
+    currency: z.string(),
+    status: z.string(),
+    created: z.coerce.number(),
+    description: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const ListPaymentsResponseSchema = z.object({
+  object: z.literal("list"),
+  data: z.array(PaymentIntentSchema),
+  has_more: z.boolean(),
+  url: z.string(),
+});
+
+/**
+ * GET /billing/payments — the active org's payment history (its Stripe
+ * PaymentIntents / top-ups). Backs the billing page "Payments" card.
+ */
+export async function getBillingPayments(token?: string): Promise<{ payments: Payment[] }> {
+  const raw = await apiCall<unknown>("/billing/payments", { token });
+  const parsed = ListPaymentsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBillingPayments: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBillingPayments: invalid response shape");
+  }
+  const payments: Payment[] = parsed.data.data.map((pi) => ({
+    id: pi.id,
+    amountCents: pi.amount,
+    currency: (pi.currency ?? "usd").toUpperCase(),
+    status: pi.status,
+    createdAt: new Date(pi.created * 1000).toISOString(),
+    description: pi.description ?? null,
+  }));
+  // Most recent first.
+  payments.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return { payments };
 }
 
 export async function createCheckoutSession(

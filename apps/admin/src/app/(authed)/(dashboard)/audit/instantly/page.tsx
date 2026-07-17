@@ -6,8 +6,10 @@ import {
   getInstantlySendingForecast,
   getInstantlyReconcile,
   getInstantlyAccountHealth,
+  getInstantlyAccountDetail,
   getInstantlyCapacityHistory,
   getSendForecast,
+  type InstantlyAccountDetail,
   type InstantlySendingForecast,
   type InstantlyReconcile,
   type InstantlyAccountHealth,
@@ -340,6 +342,136 @@ function CapacityHistorySection() {
   );
 }
 
+// --- Raw Instantly config rendering -----------------------------------------
+// A leaf value we can render directly: booleans get a colored pill, everything
+// else prints as-is, null/absent prints an em dash. Arrays of primitives are
+// collapsed to a joined string leaf; nested objects/arrays-of-objects flatten
+// into dotted (`warmup.advanced.weekday_only`) / indexed (`foo[0].bar`) labels.
+type RawLeaf = string | number | boolean | null;
+
+function flattenRawConfig(
+  obj: Record<string, unknown>,
+): Array<{ key: string; value: RawLeaf }> {
+  const out: Array<{ key: string; value: RawLeaf }> = [];
+  const walk = (value: unknown, prefix: string): void => {
+    if (value === null || value === undefined) {
+      out.push({ key: prefix, value: null });
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        out.push({ key: prefix, value: null });
+        return;
+      }
+      const allPrimitive = value.every(
+        (v) =>
+          v === null ||
+          typeof v === "string" ||
+          typeof v === "number" ||
+          typeof v === "boolean",
+      );
+      if (allPrimitive) {
+        out.push({
+          key: prefix,
+          value: value.map((v) => (v === null ? "—" : String(v))).join(", "),
+        });
+        return;
+      }
+      value.forEach((v, i) => walk(v, `${prefix}[${i}]`));
+      return;
+    }
+    if (typeof value === "object") {
+      const entries = Object.entries(value as Record<string, unknown>);
+      if (entries.length === 0) {
+        out.push({ key: prefix, value: null });
+        return;
+      }
+      for (const [k, v] of entries) walk(v, prefix ? `${prefix}.${k}` : k);
+      return;
+    }
+    // primitive (string | number | boolean)
+    out.push({ key: prefix, value: value as RawLeaf });
+  };
+  for (const [k, v] of Object.entries(obj)) walk(v, k);
+  return out;
+}
+
+// Boolean → colored tag: green pill for true, red pill for false.
+function BoolPill({ value }: { value: boolean }) {
+  return (
+    <span
+      className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${
+        value ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+      }`}
+    >
+      {value ? "true" : "false"}
+    </span>
+  );
+}
+
+// "Raw Instantly config" section inside the account slide-over. Fetches the full
+// raw account object on open (keyed by email) and renders EVERY key/value —
+// booleans as colored tags, everything else as label/value rows.
+function RawConfigSection({ email }: { email: string }) {
+  const { data, isPending, isError, error } = useAuthQuery<InstantlyAccountDetail>(
+    ["instantlyAccountDetail", email],
+    () => getInstantlyAccountDetail(email),
+  );
+
+  const entries = useMemo(
+    () => (data ? flattenRawConfig(data.account) : []),
+    [data],
+  );
+
+  return (
+    <div className="border-t border-gray-100 pt-3">
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+        Raw Instantly config
+      </p>
+      {isError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+          <p className="text-xs font-medium text-red-700">
+            Couldn&apos;t load the raw Instantly config.
+          </p>
+          <p className="mt-1 text-[11px] text-red-500">
+            {error?.message ?? "Unknown error"}
+          </p>
+        </div>
+      ) : isPending ? (
+        <div className="flex flex-col gap-2 py-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-4 w-full rounded" />
+          ))}
+        </div>
+      ) : entries.length === 0 ? (
+        <p className="py-2 text-xs text-gray-400">No config fields returned.</p>
+      ) : (
+        <div className="flex flex-col">
+          {entries.map(({ key, value }) => (
+            <div
+              key={key}
+              className="flex items-start justify-between gap-4 border-b border-gray-50 py-1.5 last:border-0"
+            >
+              <span className="break-all font-mono text-[11px] text-gray-500">
+                {key}
+              </span>
+              <span className="break-all text-right text-sm tabular-nums text-gray-900">
+                {value === null ? (
+                  <span className="text-gray-400">—</span>
+                ) : typeof value === "boolean" ? (
+                  <BoolPill value={value} />
+                ) : (
+                  String(value)
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Right-hand slide-over recapping every field for one account row — including the
 // fields dropped from the table (Queued steps, Queued seq, domain, lifecycle
 // timing, inbox placement).
@@ -439,6 +571,9 @@ function AccountDetailPanel({
             <Row label="Queued tomorrow">{num(row.queuedNextTomorrow)}</Row>
             <Row label="Queued later">{num(row.queuedNextLater)}</Row>
           </Group>
+
+          {/* Full raw Instantly account config — every key/value, booleans as tags. */}
+          <RawConfigSection email={row.email} />
         </div>
       </div>
     </div>

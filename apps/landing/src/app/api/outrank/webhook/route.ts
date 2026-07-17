@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { OutrankWebhookSchema, extractArticles } from "@/lib/blog/outrank-schema";
 import { upsertArticle } from "@/lib/blog/db";
+import { pingIndexNow } from "@/lib/indexnow";
+import { PROD_URLS } from "@/lib/env-urls";
 
 export const runtime = "nodejs";
 
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest) {
 
   const articles = extractArticles(parsed.data);
 
+  const changedUrls: string[] = [];
   for (const article of articles) {
     const saved = await upsertArticle(article);
     console.log(
@@ -45,10 +48,15 @@ export async function POST(request: NextRequest) {
     );
     revalidatePath(`/blog/${saved.slug}`);
     revalidateTag(`blog-article-${saved.slug}`, "default");
+    changedUrls.push(`${PROD_URLS.landing}/blog/${saved.slug}`);
   }
   revalidatePath("/blog");
   revalidatePath("/sitemap.xml");
   revalidateTag("blog-articles", "default");
+
+  // Notify IndexNow (Bing, Yandex) so the new/updated articles are recrawled
+  // within minutes. Best-effort — never blocks the (already-persisted) publish.
+  await pingIndexNow(changedUrls);
 
   return NextResponse.json({ message: "Webhook processed successfully" });
 }

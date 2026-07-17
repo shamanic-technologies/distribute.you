@@ -7,6 +7,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import {
   listBrandLeads,
+  listCampaignLeads,
   getLeadConsolidatedStatus,
   getBrandSalesEconomics,
   getFeatureRevenue,
@@ -301,6 +302,36 @@ function AudienceSection({
         </div>
       )}
     </div>
+  );
+}
+
+// Right-panel email: click to copy to clipboard. Shows a transient "Copied!"
+// ack for ~1.5s, then reverts to the address.
+function CopyableEmail({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(email).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      (err) => console.error("Failed to copy email to clipboard", err),
+    );
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Click to copy"
+      className="font-medium text-left inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 hover:underline break-all cursor-pointer"
+    >
+      <span>{email}</span>
+      {copied ? (
+        <span className="text-xs text-green-600 shrink-0">Copied!</span>
+      ) : (
+        <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+      )}
+    </button>
   );
 }
 
@@ -599,17 +630,21 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   );
 }
 
-export function EngagedLeadsPage() {
+export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   const params = useParams();
   const brandId = params.brandId as string;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("positive-replies");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
   const hasAutoSelectedTab = useRef(false);
 
+  // Campaign-scoped (v2 staff preview) when a campaignId is passed, else brand-scoped.
+  // Both readers return the same Lead[] shape; the campaign variant filters to one
+  // campaign's leads_campaigns rows.
   const { data, isPending, isPlaceholderData } = useAuthQuery(
-    ["brandLeads", brandId],
-    () => listBrandLeads(brandId),
+    campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
+    () => (campaignId ? listCampaignLeads(campaignId) : listBrandLeads(brandId)),
     { refetchInterval: POLL_INTERVAL },
   );
 
@@ -634,8 +669,10 @@ export function EngagedLeadsPage() {
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const { data: revenueData } = useAuthQuery(
-    ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId),
+    campaignId
+      ? ["featureRevenue", brandId, featureSlug, "campaign", campaignId]
+      : ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId, campaignId),
     {
       enabled: revenueEnabled,
       refetchInterval: POLL_INTERVAL,
@@ -787,6 +824,21 @@ export function EngagedLeadsPage() {
     });
   }, [activeList, search]);
 
+  // Paginate the active-tab (post-search) list at 50/page. Pure display slice —
+  // the tab count badge + CSV export stay whole-list. Reset to page 0 whenever the
+  // tab or search changes (else you land on an out-of-range page after the subset
+  // shrinks). Clamp defensively in case a poll shrinks the list under the cursor.
+  const PAGE_SIZE = 50;
+  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedLeads = useMemo(
+    () => filteredLeads.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE),
+    [filteredLeads, safePage],
+  );
+  useEffect(() => {
+    setPage(0);
+  }, [activeTab, search]);
+
   // Tabs = the realized-outcome tab (when available) + the goal's on-path engagement
   // steps, outcome-first (goal-steps single source), off-funnel steps dropped.
   const tabs: { key: Tab; label: string; count: number }[] = visibleTabs.map((key) => ({
@@ -815,9 +867,13 @@ export function EngagedLeadsPage() {
   // content-generation (via api-service) when a lead is selected, keyed off the
   // leadId already on the row. Interleaved into the timeline. (#2095 pattern.)
   const selectedLeadId = selectedLead?.leadId ?? null;
+  // Scope the by-lead email to the brand in view: the same person can be a lead under
+  // several brands in one org, each with its own generated email. Without brandId the
+  // read returns the wrong brand's email under this brand's lead. brandId is in the key
+  // so switching brand refetches the correct generation.
   const { data: leadEmailData } = useAuthQuery(
-    ["leadEmail", selectedLeadId],
-    () => getLeadEmail(selectedLeadId as string),
+    ["leadEmail", selectedLeadId, brandId],
+    () => getLeadEmail(selectedLeadId as string, brandId),
     { enabled: !!selectedLeadId },
   );
   const personLocation = [selectedFull?.city, selectedFull?.state, selectedFull?.country].filter(Boolean).join(", ");
@@ -839,7 +895,7 @@ export function EngagedLeadsPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-full relative">
-      <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 overflow-y-auto transition-all`}>
+      <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 pb-24 overflow-y-auto transition-all`}>
         <OutreachStatCardsAuto outreachOverride={loading ? null : contactedCount} />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
@@ -851,7 +907,7 @@ export function EngagedLeadsPage() {
             )}
           </h1>
           {!loading && (
-            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={leads.length === 0} />
+            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={leads.length === 0} label="Export leads" />
           )}
         </div>
 
@@ -884,7 +940,35 @@ export function EngagedLeadsPage() {
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
             ) : (
-              <LeadsTable leads={filteredLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} outcomeDates={outcomeDates} />
+              <>
+                <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} outcomeDates={outcomeDates} />
+                {filteredLeads.length > PAGE_SIZE && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-sm text-gray-500">
+                      {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filteredLeads.length)} of {filteredLeads.length.toLocaleString("en-US")}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        disabled={safePage === 0}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-sm text-gray-500">Page {safePage + 1} of {pageCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                        disabled={safePage >= pageCount - 1}
+                        className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -906,7 +990,8 @@ export function EngagedLeadsPage() {
             <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div><span className="text-gray-500">Name:</span><p className="font-medium">{selectedFull?.firstName ?? ""} {selectedFull?.lastName ?? ""}</p></div>
-                <div><span className="text-gray-500">Email:</span><p className="font-medium">{selectedLead.email}</p>
+                <div><span className="text-gray-500">Email:</span>
+                  {selectedLead.email ? <p><CopyableEmail email={selectedLead.email} /></p> : <p className="font-medium">-</p>}
                   {selectedLead.emailStatus && <span className={`text-xs px-1.5 py-0.5 rounded ${selectedLead.emailStatus === "verified" ? "bg-green-100 text-green-700" : selectedLead.emailStatus === "guessed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}`}>{selectedLead.emailStatus}</span>}
                 </div>
                 <div><span className="text-gray-500">Title:</span><p className="font-medium">{selectedFull?.currentTitle || "-"}</p></div>

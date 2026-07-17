@@ -39,13 +39,6 @@ function formatUsd(usd: number): string {
   })}`;
 }
 
-function formatUsdWithCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
 // Daily budget always renders as whole dollars (no cents), regardless of magnitude.
 function formatBudgetCents(cents: number): string {
   return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
@@ -125,7 +118,7 @@ export function RevenueCostSummary({
                 <Skeleton className="mt-1 h-7 w-28" />
               ) : (
                 <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">
-                  {formatUsdWithCents(todayCommittedCents)}
+                  {formatUsd(todayCommittedCents / 100)}
                   {dailyBudgetCents != null && dailyBudgetCents > 0 ? (
                     <span className="text-sm font-medium text-gray-400">/{formatBudgetCents(dailyBudgetCents)}</span>
                   ) : null}

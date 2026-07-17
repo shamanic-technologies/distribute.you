@@ -3,13 +3,20 @@ import {
   WELCOME_STEPS,
   REMINDER_COPY,
   NO_AUDIENCE_BANNER_COPY,
+  AUDIENCE_EXHAUSTED_BANNER_COPY,
+  AUDIENCE_LOW_REMAINING_BANNER_COPY,
 } from "../src/lib/onboarding-content";
+
+const banners = [
+  NO_AUDIENCE_BANNER_COPY,
+  AUDIENCE_EXHAUSTED_BANNER_COPY,
+  AUDIENCE_LOW_REMAINING_BANNER_COPY,
+];
 
 const allCopy = [
   ...WELCOME_STEPS.flatMap((s) => [s.title, s.description]),
   ...Object.values(REMINDER_COPY).flatMap((c) => [c.title, c.body, c.cta]),
-  NO_AUDIENCE_BANNER_COPY.message,
-  NO_AUDIENCE_BANNER_COPY.cta,
+  ...banners.flatMap((b) => [b.message, b.cta]),
 ];
 
 describe("onboarding copy", () => {
@@ -49,5 +56,19 @@ describe("onboarding copy", () => {
     expect(REMINDER_COPY.topupRecharge.cta).toMatch(/add credits/i);
     expect(REMINDER_COPY.topupRecharge.cta).not.toMatch(/auto top-up/i);
     expect(REMINDER_COPY.topupRecharge.body).toMatch(/isn't available/i);
+  });
+
+  it("audience-exhausted copy says it is done and offers to extend", () => {
+    expect(REMINDER_COPY.audienceExhausted.cta).toMatch(/extend/i);
+    expect(REMINDER_COPY.audienceExhausted.body).toMatch(/fully contacted/i);
+    expect(AUDIENCE_EXHAUSTED_BANNER_COPY.cta).toMatch(/extend/i);
+    expect(AUDIENCE_EXHAUSTED_BANNER_COPY.message).toMatch(/fully contacted/i);
+  });
+
+  it("audience-low-remaining copy carries a {pct} token and an extend CTA", () => {
+    expect(REMINDER_COPY.audienceLowRemaining.body).toMatch(/\{pct\}%/);
+    expect(REMINDER_COPY.audienceLowRemaining.cta).toMatch(/extend/i);
+    expect(AUDIENCE_LOW_REMAINING_BANNER_COPY.message).toMatch(/\{pct\}%/);
+    expect(AUDIENCE_LOW_REMAINING_BANNER_COPY.cta).toMatch(/extend/i);
   });
 });

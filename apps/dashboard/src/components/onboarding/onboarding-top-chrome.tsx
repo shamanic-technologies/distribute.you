@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useOrganizationList, useUser } from "@clerk/nextjs";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
+import { isAdminEmail } from "@/lib/admin-allowlist";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
 /**
@@ -32,10 +34,40 @@ import { explicitHierarchyHref } from "@/lib/last-brand";
  * (Dashboard ▾) with the user's memberships; the brand switcher appears once an org is
  * picked. The Cancel target works for `from=add` (active org stays the existing,
  * complete one); for `new=1` the reliable "go back" affordance is the org switcher.
+ *
+ * STAFF (god-mode) ALSO get the escape chrome on bare `/onboarding`. A staff member
+ * whose active org is an incomplete/never-onboarded tenant (e.g. dropped there by the
+ * god-mode org switch) is otherwise pinned on `/onboarding` by the edge gate with no
+ * way back — the first-run "trap" is wrong for them since they already have live
+ * tenants to return to. `BreadcrumbNav` renders the staff all-orgs switcher (its own
+ * `isStaff` gate), so switching to any complete org clears the edge gate and escapes.
+ *
+ * ANY user who ALREADY has a COMPLETED org gets the escape chrome too. A non-staff
+ * multi-org user whose active org happens to be an incomplete tenant is pinned on bare
+ * `/onboarding` by the edge gate the same way — but they have a live, onboarded tenant
+ * to return to, so the first-run trap is wrong for them. Detect it from Clerk
+ * memberships: any org with `publicMetadata.onboardingComplete === true`. A GENUINE
+ * first-run user has exactly one org, and it's incomplete → `hasCompletedOrg` is false
+ * → trap stays (correct). Loading is trap-first (false until memberships resolve), so
+ * there's no flash of the escape for a real first-run.
  */
 export function OnboardingTopChrome() {
   const params = useSearchParams();
-  const isAddFlow = params.get("from") === "add" || params.get("new") === "1";
+  const { user } = useUser();
+  const { userMemberships } = useOrganizationList({
+    userMemberships: { infinite: true },
+  });
+  const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
+  const hasCompletedOrg = !!userMemberships?.data?.some(
+    (m) =>
+      (m.organization.publicMetadata as { onboardingComplete?: boolean } | undefined)
+        ?.onboardingComplete === true,
+  );
+  const isAddFlow =
+    params.get("from") === "add" ||
+    params.get("new") === "1" ||
+    isStaff ||
+    hasCompletedOrg;
 
   if (!isAddFlow) {
     // First-run signup: keep the account widget (sign out / switch account —

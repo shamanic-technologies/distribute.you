@@ -18,12 +18,14 @@ import {
   PaperAirplaneIcon,
   PencilSquareIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import posthog from "posthog-js";
 import {
   upsertBrand,
+  getBrand,
   extractBrandFields,
   SALES_PROFILE_FIELDS,
   getBrandProfile,
@@ -31,20 +33,25 @@ import {
   getSalesEconomicsEffective,
   saveBrandClickDestination,
   saveBrandSalesEconomics,
+  savePhoneNumber,
   suggestAudiences,
   setAudienceStatus,
   listAudiences,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
+  getWorkflowProjectionLadder,
+  type WorkflowProjectionLadderResponse,
   getFeature,
   prefillFeatureInputs,
   prefillToStringMap,
   configureAutoTopup,
   createCheckoutSession,
+  getBillingAccount,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
   salesObjectiveForOptimizationGoal,
+  sendAuthNotification,
   type BrandOptimizationGoal,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
@@ -56,6 +63,17 @@ import {
   workflowProjectionMatchesOutcomeRates,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
+import {
+  outcomeNounPlural,
+  objectiveForOptimizationGoal,
+  pickBestBrandRow,
+  isRowFloored,
+  modelAvatar,
+} from "@/lib/strategy-model";
+import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
+import { Skeleton } from "@/components/skeleton";
+import { PhoneInput, EMPTY_PHONE, type PhoneValue } from "./phone-input";
+import { POST_PAYMENT_OFFER_LEVERS, buildLeverLLMPrompt } from "./offer-levers";
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
@@ -111,6 +129,16 @@ type Step =
   | "consent"
   | "pricing"
   | "bonus"
+  // Post-payment steps (checkout SUCCESS return only) — run BEFORE the launching
+  // loader: collect an optional phone, confirm lifetime revenue / paid client,
+  // then walk the offer levers (one screen each). Never persisted to the resume
+  // snapshot (the persist effect skips on ?launch_checkout=success), so they are
+  // intentionally NOT in ALL_STEPS and need no ONBOARDING_STATE_VERSION bump.
+  | "celebrate"
+  | "phone"
+  | "ltr"
+  | "model"
+  | "offer"
   | "launching";
 
 // The sales goal drives the projection count so the budget cards show the chosen
@@ -611,6 +639,15 @@ export function Onboarding() {
   // skip the welcome hero and land straight on the URL step. Same flow otherwise.
   const fromAdd = searchParams.get("from") === "add";
   const flowKey: OnboardingFlowKey = fromAdd ? "add" : forceNew ? "new" : "signup";
+  // Cross-session resume of a never-finished brand. The per-brand setup gate
+  // (`BrandSetupGate`) redirects a brand that has no campaign (= onboarding
+  // abandoned before the terminal launch) back here as `?from=add&brandId=<id>`.
+  // Same-tab resume already works via the sessionStorage snapshot; this param is
+  // the CROSS-session path (the snapshot is gone), so we re-hydrate the brand from
+  // backend and drop the user back on the goal step (everything before it prefilled).
+  // Only used when there's no snapshot to restore — a live snapshot wins (it lands
+  // straight on the step the user left, e.g. pricing).
+  const resumeBrandIdParam = searchParams.get("brandId");
 
   // Resume snapshot (refresh / back). Read ONCE, synchronously, before first paint —
   // a `useRef` lazy-init seeds every field below so `url`/`outcome`/`rates`/etc. are
@@ -627,15 +664,22 @@ export function Onboarding() {
   const [step, setStep] = useState<Step>(() =>
     restored
       ? // A Stripe checkout SUCCESS return is owned by the dedicated checkout effect
-        // (resumeCheckoutLaunch → "launching"); land there on the first paint so the
-        // budget step never flashes before that effect runs. A cancelled return still
+        // (resumeCheckoutLaunch → the post-payment steps); land on the first
+        // post-payment step ("celebrate") on first paint so the budget step never
+        // flashes before that effect runs. The launching loader is deferred until
+        // the user finishes the post-payment steps. A cancelled return still
         // resolves to its snapshot step (pricing).
         searchParams.get("launch_checkout") === "success"
-        ? "launching"
+        ? "celebrate"
         : resolveResumeStep(restored.step, restored.brandId)
-      : fromAdd
-        ? "url"
-        : "welcome",
+      : resumeBrandIdParam && searchParams.get("launch_checkout") === null
+        ? // Cross-session brand resume: show the loading screen immediately (no URL
+          // flash) while the param-resume effect re-hydrates the brand, then it lands
+          // on the goal step.
+          "loading"
+        : fromAdd
+          ? "url"
+          : "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -687,6 +731,30 @@ export function Onboarding() {
   const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
+  // Post-payment steps (phone → ltr → offer levers). `phone` is user-level
+  // (Clerk metadata), optional. `offerIndex` walks the offer levers one screen at
+  // a time. The pending checkout blob is stashed so the terminal offer step can
+  // run completeLaunchAfterCheckout AFTER the user finishes these steps (with
+  // their edited profile), instead of at the checkout-return effect.
+  const [phone, setPhone] = useState<PhoneValue>(EMPTY_PHONE);
+  const [offerIndex, setOfferIndex] = useState(0);
+  const pendingCheckoutRef = useRef<PendingCheckoutLaunch | null>(null);
+  // Best-model step (post-payment, after LTR). The 3-grain workflow-projection
+  // LADDER — the SAME endpoint + pick the Strategy page uses, so the numbers match
+  // byte-for-byte. Prewarmed at the celebrate step, refetched after the LTR save
+  // (the entered lifetime revenue changes the projected CAC / ROI). `null` = still
+  // loading; the step shows a skeleton until it lands.
+  const [bestModelLadder, setBestModelLadder] = useState<WorkflowProjectionLadderResponse | null>(null);
+  const bestModelFetchRef = useRef<Promise<void> | null>(null);
+  // Aggressive parallel launch. The whole launch (audiences, auto-topup, budget,
+  // campaign create, onboarding-complete) is kicked off in the BACKGROUND the moment
+  // the checkout returns — while the user fills the optional post-payment steps — so
+  // "Opening your dashboard" is near-instant, and the campaign is created even if the
+  // user quits before reaching the dashboard. `backgroundLaunchRef` holds the single
+  // in-flight promise (fire once); `launchError` surfaces a background failure at the
+  // terminal launching screen with a retry.
+  const backgroundLaunchRef = useRef<Promise<{ campaignId: string }> | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   // Loading-sequence + real fetch coordination. The visible checks follow real
   // client milestones: org ready, brand upserted, then service extraction.
@@ -801,11 +869,11 @@ export function Onboarding() {
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
   // user back on the exact step they were on. The brand already exists → idempotent.
-  async function runResume(target: Step): Promise<void> {
+  async function runResume(target: Step, urlOverride?: string): Promise<void> {
     setStep("loading");
     resetLoadingProgress();
     try {
-      await createBrandAndFetchServices({ isResume: true });
+      await createBrandAndFetchServices({ isResume: true, urlOverride });
       setStep(target);
     } catch (err) {
       if (isInsufficientCredit(err)) {
@@ -829,6 +897,44 @@ export function Onboarding() {
       return;
     }
     void runResume(resumeTargetRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cross-session brand resume (?brandId=, no snapshot): the per-brand setup gate
+  // redirected a never-finished brand here. Fetch it to seed the URL, then replay the
+  // loading-screen hydration (idempotent upsert + services/economics/projection/
+  // audience prewarm from backend) and land on the goal step — the user re-confirms
+  // goal → rates → audiences → consent → budget with everything before it prefilled.
+  // We stop at the goal step (not budget) because the pre-terminal audience picks +
+  // budget tier live only in the sessionStorage snapshot, which is gone cross-session
+  // — so the user must re-pick those, but nothing typed earlier is lost (it's saved
+  // in backend and re-hydrated). A live snapshot (same tab) wins and skips this.
+  const paramResumeStartedRef = useRef(false);
+  useEffect(() => {
+    if (paramResumeStartedRef.current) return;
+    if (!resumeBrandIdParam || restored || searchParams.get("launch_checkout")) return;
+    paramResumeStartedRef.current = true;
+    void (async () => {
+      try {
+        const res = await getBrand(resumeBrandIdParam);
+        const b = res?.brand;
+        const seededUrl = b ? b.url ?? (b.domain ? `https://${b.domain}` : "") : "";
+        if (!seededUrl) {
+          // Brand vanished / has no URL — fall back to the URL step rather than trap
+          // the user on a stuck loading screen.
+          setStep("url");
+          return;
+        }
+        setUrl(seededUrl);
+        setBrandId(resumeBrandIdParam);
+        brandIdRef.current = resumeBrandIdParam;
+        if (organization?.id) orgIdRef.current = organization.id;
+        await runResume("objective", seededUrl);
+      } catch (err) {
+        console.error("[dashboard] onboarding brand-param resume failed:", err);
+        setStep("url");
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -945,9 +1051,12 @@ export function Onboarding() {
   // On a RESUME (refresh after the brand was already created) the org + brand already
   // exist: force org reuse so we never spin up a duplicate org, and the idempotent
   // upsertBrand below returns the same brandId.
-  async function createBrandAndFetchServices(opts?: { isResume?: boolean }): Promise<void> {
+  async function createBrandAndFetchServices(opts?: { isResume?: boolean; urlOverride?: string }): Promise<void> {
     const isResume = opts?.isResume ?? false;
-    const trimmed = url.trim();
+    // `urlOverride` — the cross-session param-resume seeds the brand URL and calls
+    // runResume in the SAME tick, so `url` state is still stale in this closure;
+    // the override carries the freshly-fetched URL to the idempotent upsert below.
+    const trimmed = (opts?.urlOverride ?? url).trim();
     const brandUrl = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     const workspaceStartedAt = performance.now();
     const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
@@ -1246,7 +1355,14 @@ export function Onboarding() {
     return featureInputs;
   }
 
-  async function completeLaunchAfterCheckout(pending: PendingCheckoutLaunch) {
+  // The real launch work — audiences, auto-topup, budget, campaign create,
+  // onboarding-complete. Run in the BACKGROUND right after checkout (see
+  // startBackgroundLaunch), so it can complete even if the user quits before the
+  // dashboard. Does NOT navigate or clear the resume snapshot — the terminal
+  // (finalizePostPaymentAndLaunch) owns that, so a mid-flow refresh can still resume
+  // the optional post-payment steps. Uses the as-of-checkout profile; the terminal
+  // re-saves any offer-lever edits on top. Returns the created campaign id.
+  async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<{ campaignId: string }> {
     if (pending.profile && pending.services) {
       await saveBrandProfileVersion(pending.brandId, {
         ...pending.profile,
@@ -1316,12 +1432,115 @@ export function Onboarding() {
     // in the cookie the edge gate reads BEFORE we navigate — otherwise the stale
     // JWT loops the next navigation back to /onboarding (DIS-111).
     await session?.getToken({ skipCache: true }).catch(() => {});
-    window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
-    // Flow genuinely finished — drop the resume snapshot so the next onboarding (a new
-    // brand/org in the same tab) starts clean instead of resuming this completed one.
-    clearOnboardingState();
     setLaunchStep(5);
-    router.push(`/orgs/${pending.orgId}/brands/${pending.brandId}?launched=${campaign.id}`);
+    // Email 2 — the post-payment "your <goal> is on the way" welcome. Fired here (not
+    // at signup, where no brand/goal exists yet) so it can name the brand's chosen
+    // optimization goal. Routed to the user server-side (not an admin event); repeatable
+    // per launch. Fire-and-forget — never block the redirect.
+    sendAuthNotification("goal_launched", undefined, {
+      outcomeNoun: outcomeNounPlural(pending.outcome),
+    }).catch(() => {});
+    return { campaignId: campaign.id };
+  }
+
+  // Fire the full launch ONCE, in the background, the moment checkout returns. Idempotent
+  // via `backgroundLaunchRef` (never creates two campaigns). A failure is surfaced at the
+  // terminal launching screen (launchError) with a retry; the fire-site swallow keeps it
+  // from becoming an unhandled rejection while the user is still on an earlier step.
+  function startBackgroundLaunch(): Promise<{ campaignId: string }> {
+    if (backgroundLaunchRef.current) return backgroundLaunchRef.current;
+    const pending = pendingCheckoutRef.current;
+    if (!pending) {
+      return Promise.reject(new Error("Your checkout session was lost. Refresh to finish launching."));
+    }
+    const promise = runLaunchWork(pending);
+    backgroundLaunchRef.current = promise;
+    promise.catch((err) => {
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "background_launch" });
+      const detail = err instanceof Error ? err.message : "unknown error";
+      setLaunchError(`Launch could not finish: ${detail}`);
+      // Allow a retry from the terminal screen to re-run the work.
+      backgroundLaunchRef.current = null;
+    });
+    return promise;
+  }
+
+  // Fetch the best-model projection LADDER (same endpoint + pick as the Strategy page,
+  // so the numbers match). Prewarmed at the celebrate step, refetched after the LTR save.
+  function fetchBestModelLadder(id: string, outcomeArg: Outcome): Promise<void> {
+    const objective = objectiveForOptimizationGoal(optimizationGoalForOutcome(outcomeArg));
+    const p = getWorkflowProjectionLadder({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective })
+      .then((ladder) => {
+        setBestModelLadder(ladder);
+      })
+      .catch((e) => {
+        console.error("[dashboard] onboarding: best-model ladder fetch failed", e);
+      });
+    bestModelFetchRef.current = p;
+    return p;
+  }
+
+  // Build + persist the PendingCheckoutLaunch blob shared by BOTH launch paths:
+  // the Stripe-checkout path (beginCheckoutAndLaunch, new orgs) and the direct
+  // launch path (launchDirectlyWithoutCheckout, existing orgs adding a brand).
+  // Throws (fail-loud) when any required launch input is missing; also writes the
+  // wizard snapshot + the sessionStorage pending blob so a refresh can resume.
+  function buildPendingLaunchBlob(): PendingCheckoutLaunch {
+    const storedPending = readPendingCheckoutLaunchOrNull();
+    const id = brandIdRef.current ?? storedPending?.brandId ?? null;
+    const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
+    // Live selection wins, matching the display precedence (derivedBudget() ??
+    // checkoutBudgetUsd at the bonus/pricing steps). checkoutBudgetUsd is only ever
+    // written from a restored/resumed snapshot, so after a checkout cancel it holds
+    // the PRIOR budget — putting it first would charge the stale amount even though
+    // the user re-picked a different tier.
+    const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
+    const trimmed = url.trim();
+    const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
+    const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
+    const launchHostname = hostname || storedPending?.hostname || "";
+    const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
+    if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
+      throw new Error("Checkout state is missing. Go back to pricing and try again.");
+    }
+    // Block launch when no audience is picked — outreach can't run without one, so
+    // a campaign launched audience-less is a paid-for dead end. Live selection wins,
+    // falling back to the resumed snapshot (same precedence as budget above).
+    const launchAudienceIds = selectedAudienceIds.length
+      ? selectedAudienceIds
+      : storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds ?? [];
+    if (launchAudienceIds.length === 0) {
+      throw new Error("Pick at least one audience before launching — go back to the audience step.");
+    }
+    const checkoutAmountCents = Math.round(budget * 100);
+    const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
+    if (!workflowSlug) {
+      throw new Error("Campaign workflow setup is still missing. Please try again.");
+    }
+    const checkoutState = buildOnboardingState({ step: "pricing", checkoutBudgetUsd: budget });
+    writeOnboardingState(checkoutState);
+
+    const pending: PendingCheckoutLaunch = {
+      version: 1,
+      brandId: id,
+      orgId,
+      brandUrl,
+      hostname: launchHostname,
+      outcome: launchOutcome,
+      budgetUsd: budget,
+      workflowSlug,
+      checkoutAmountCents,
+      topupAmountCents: checkoutAmountCents,
+      topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
+      featureInputs: storedPending?.featureInputs,
+      profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
+      services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
+      selectedAudienceIds: launchAudienceIds,
+      onboardingState: checkoutState,
+      createdAt: new Date().toISOString(),
+    };
+    window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
+    return pending;
   }
 
   async function beginCheckoutAndLaunch() {
@@ -1329,60 +1548,9 @@ export function Onboarding() {
     setError(null);
     setCancelNotice(null);
     try {
-      const storedPending = readPendingCheckoutLaunchOrNull();
-      const id = brandIdRef.current ?? storedPending?.brandId ?? null;
-      const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
-      // Live selection wins, matching the display precedence (derivedBudget() ??
-      // checkoutBudgetUsd at the bonus/pricing steps). checkoutBudgetUsd is only ever
-      // written from a restored/resumed snapshot, so after a checkout cancel it holds
-      // the PRIOR budget — putting it first would charge the stale amount even though
-      // the user re-picked a different tier.
-      const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
-      const trimmed = url.trim();
-      const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
-      const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
-      const launchHostname = hostname || storedPending?.hostname || "";
-      const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
-      if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
-        throw new Error("Checkout state is missing. Go back to pricing and try again.");
-      }
-      // Block payment when no audience is picked — outreach can't run without one, so
-      // a campaign launched audience-less is a paid-for dead end. Live selection wins,
-      // falling back to the resumed snapshot (same precedence as budget above).
-      const launchAudienceIds = selectedAudienceIds.length
-        ? selectedAudienceIds
-        : storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds ?? [];
-      if (launchAudienceIds.length === 0) {
-        throw new Error("Pick at least one audience before launching — go back to the audience step.");
-      }
-      const checkoutAmountCents = Math.round(budget * 100);
-      const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
-      if (!workflowSlug) {
-        throw new Error("Campaign workflow setup is still missing. Please try again.");
-      }
-      const checkoutState = buildOnboardingState({ step: "pricing", checkoutBudgetUsd: budget });
-      writeOnboardingState(checkoutState);
-
-      const pending: PendingCheckoutLaunch = {
-        version: 1,
-        brandId: id,
-        orgId,
-        brandUrl,
-        hostname: launchHostname,
-        outcome: launchOutcome,
-        budgetUsd: budget,
-        workflowSlug,
-        checkoutAmountCents,
-        topupAmountCents: checkoutAmountCents,
-        topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
-        featureInputs: storedPending?.featureInputs,
-        profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
-        services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
-        selectedAudienceIds: launchAudienceIds,
-        onboardingState: checkoutState,
-        createdAt: new Date().toISOString(),
-      };
-      window.sessionStorage.setItem(CHECKOUT_PENDING_KEY, JSON.stringify(pending));
+      const pending = buildPendingLaunchBlob();
+      const budget = pending.budgetUsd;
+      const checkoutAmountCents = pending.checkoutAmountCents;
 
       const successUrl = new URL(`${window.location.origin}${window.location.pathname}`);
       successUrl.searchParams.set("success", "true");
@@ -1408,24 +1576,207 @@ export function Onboarding() {
     }
   }
 
+  // Payment succeeded. Restore the wizard state and stash the pending blob, then
+  // route to the FIRST post-payment step (phone) — the launch itself is deferred
+  // to finalizePostPaymentAndLaunch, which runs after the user walks phone → ltr →
+  // offer levers. This lets those steps refine the profile/economics BEFORE the
+  // campaign is created. If reading the pending blob fails we fall back to pricing.
   async function resumeCheckoutLaunch() {
-    setBusy(true);
     setError(null);
     try {
       const pending = readPendingCheckoutLaunch();
-      applyRestoredOnboardingState(pending.onboardingState, { step: "launching" });
+      pendingCheckoutRef.current = pending;
+      applyRestoredOnboardingState(pending.onboardingState, { step: "celebrate" });
       setCheckoutBudgetUsd(pending.budgetUsd);
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
       setLaunchStep(0);
-      setStep("launching");
-
-      await completeLaunchAfterCheckout(pending);
+      setOfferIndex(0);
+      setStep("celebrate");
+      setBusy(false);
+      // Kick the whole launch in the BACKGROUND right now — while the user fills the
+      // optional post-payment steps — so the dashboard opens near-instantly and the
+      // campaign is created even if they quit before reaching it. Also prewarm the
+      // best-model projection (refetched after the LTR save) so the model step is warm.
+      startBackgroundLaunch().catch(() => {});
+      const prewarmId = pending.brandId;
+      if (prewarmId) void fetchBestModelLadder(prewarmId, pending.outcome);
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "checkout_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
       setError(`Checkout returned, but launch could not finish: ${detail}`);
       setStep("pricing");
       setBusy(false);
+    }
+  }
+
+  // Direct launch — NO Stripe redirect. Used when an existing org ADDS a brand
+  // (`?from=add`) and already has a payment method on file: card capture + the
+  // first-$25 welcome match are new-org-only, so we skip the checkout screen and
+  // launch straight into the post-payment sequence (celebrate → phone → ltr → …).
+  // Funding is covered by the org's existing card via configureAutoTopup (re-armed
+  // in runLaunchWork) — never a re-charge. Mirrors resumeCheckoutLaunch, but builds
+  // the pending blob in-memory instead of reading a Stripe-return snapshot.
+  async function launchDirectlyWithoutCheckout() {
+    setBusy(true);
+    setError(null);
+    setCancelNotice(null);
+    try {
+      const pending = buildPendingLaunchBlob();
+      pendingCheckoutRef.current = pending;
+      setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
+      setLaunchStep(0);
+      setOfferIndex(0);
+      setStep("celebrate");
+      setBusy(false);
+      startBackgroundLaunch().catch(() => {});
+      const prewarmId = pending.brandId;
+      if (prewarmId) void fetchBestModelLadder(prewarmId, pending.outcome);
+    } catch (err) {
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "direct_launch" });
+      setError(err instanceof Error ? err.message : "Launch failed. Your brand was not launched.");
+      setBusy(false);
+    }
+  }
+
+  // Pricing-step "Continue". For an existing org ADDING a brand (`?from=add`) with a
+  // card already on file, skip the $25-welcome screen + Stripe checkout and launch
+  // directly. New orgs — or an add-brand org with no payment method yet — keep the
+  // checkout path (bonus → beginCheckoutAndLaunch) so the card is captured + auto-topup
+  // armed. The billing-account check is fail-safe: on any error we fall back to
+  // checkout rather than risk launching a recurring brand unfunded.
+  async function continueFromPricing() {
+    if (!fromAdd) {
+      setStep("bonus");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const account = await getBillingAccount();
+      if (account.has_payment_method) {
+        await launchDirectlyWithoutCheckout();
+        return;
+      }
+      setBusy(false);
+      setStep("bonus");
+    } catch (err) {
+      console.error("[dashboard] onboarding: billing-account check failed, falling back to checkout", err);
+      setBusy(false);
+      setStep("bonus");
+    }
+  }
+
+  // ── Post-payment steps ────────────────────────────────────────────
+  // Save the optional phone (Clerk user metadata) and advance to the LTR step.
+  // An empty number is a valid skip — no write, just advance.
+  async function savePhoneAndContinue() {
+    if (phone.national.trim()) {
+      setBusy(true);
+      try {
+        await savePhoneNumber(phone);
+      } catch (err) {
+        // Phone is optional reassurance data — never block the (already paid)
+        // launch on it. Log loud, advance anyway.
+        console.error("[dashboard] onboarding: failed to save phone; advancing", err);
+      } finally {
+        setBusy(false);
+      }
+    }
+    setStep("ltr");
+  }
+
+  // Persist the confirmed lifetime revenue / paid client, then advance to the
+  // offer levers. Saved via sales-economics (same field the rates step writes).
+  async function saveLtrAndContinue() {
+    const id = brandIdRef.current;
+    let ltv: number;
+    try {
+      ltv = parseRateTextInput(rateText.ltv, "ltv");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Please enter a valid dollar amount.");
+      return;
+    }
+    setError(null);
+    const nextRates = { ...rates, ltv };
+    setRates(nextRates);
+    setRateText((t) => ({ ...t, ltv: rateToText(ltv) }));
+    if (id) {
+      // Fire-and-forget the economics save, THEN refetch the best-model projection
+      // with the new lifetime revenue — never block the button on the cold write. We
+      // advance immediately; the model step shows the celebrate-prewarmed numbers
+      // (or a skeleton if the prewarm hasn't landed yet) and swaps to the updated
+      // projection when the refetch resolves — no reset, so no skeleton flash.
+      void (async () => {
+        try {
+          await saveBrandSalesEconomics(id, {
+            lifetimeRevenueUsd: nextRates.ltv,
+            replyToMeetingPct: nextRates.r2m,
+            visitToMeetingPct: nextRates.v2m,
+            meetingToClosePct: nextRates.m2c,
+            visitToSignupPct: nextRates.v2s,
+            signupToPaidClientPct: nextRates.s2c,
+            visitToPaidClientPct: nextRates.v2p,
+            replyToPaidClientPct: nextRates.r2p,
+            visitToFormSubmissionPct: nextRates.v2f,
+            formSubmissionToPaidClientPct: nextRates.f2p,
+            optimizationGoal: optimizationGoalForOutcome(outcome),
+          });
+        } catch (err) {
+          console.error("[dashboard] onboarding: failed to save lifetime revenue; advancing", err);
+        }
+        await fetchBestModelLadder(id, outcome);
+      })();
+    }
+    setOfferIndex(0);
+    setStep("model");
+  }
+
+  // Offer-lever step Continue: advance to the next lever, or (on the last one)
+  // finalize the launch. Lever edits live in `profile` state and are saved on top of
+  // the background launch's as-of-checkout profile by finalizePostPaymentAndLaunch.
+  function continueOffer() {
+    if (offerIndex < POST_PAYMENT_OFFER_LEVERS.length - 1) {
+      setOfferIndex((i) => i + 1);
+      return;
+    }
+    void finalizePostPaymentAndLaunch();
+  }
+
+  // Terminal: the launch is (usually) already done in the background — here we just
+  // persist the offer-lever edits, await the background launch, then clean up + redirect.
+  // The background launch was fired at checkout return; awaiting it here is near-instant
+  // when the user spent time on the post-payment steps. A background failure surfaces via
+  // launchError with a retry.
+  async function finalizePostPaymentAndLaunch() {
+    setLaunchError(null);
+    setStep("launching");
+    try {
+      // Persist the offer-lever edits on top of the background launch's as-of-checkout
+      // profile (best-effort — never block the already-paid launch on it).
+      const id = brandIdRef.current ?? pendingCheckoutRef.current?.brandId ?? null;
+      const svcs = pendingCheckoutRef.current?.services;
+      if (id && svcs) {
+        await saveBrandProfileVersion(id, {
+          ...profile,
+          services: svcs,
+          consentedChannels: ["email"],
+          agencyConsentAt: new Date().toISOString(),
+        }).catch((e) =>
+          console.error("[dashboard] onboarding: offer-lever profile save failed; continuing", e),
+        );
+      }
+      const result = await startBackgroundLaunch();
+      // Cleanup + redirect happen ONLY at the terminal (not in the background work) so a
+      // mid-flow refresh can still resume the optional post-payment steps.
+      window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
+      clearOnboardingState();
+      const pending = pendingCheckoutRef.current;
+      const orgId = pending?.orgId ?? orgIdRef.current;
+      router.push(`/orgs/${orgId}/brands/${id}?launched=${result.campaignId}`);
+    } catch (err) {
+      posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "post_payment_finalize" });
+      const detail = err instanceof Error ? err.message : "unknown error";
+      setLaunchError(`Launch could not finish: ${detail}`);
     }
   }
 
@@ -1927,12 +2278,189 @@ export function Onboarding() {
     );
   }
 
+  if (step === "celebrate") {
+    return (
+      <StepShell
+        maxWidth="sm:max-w-2xl"
+        footer={<NextButton onClick={() => setStep("phone")} label="Let's optimize" />}
+      >
+        <ConfettiBurst />
+        <div className="flex flex-col items-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 text-brand-600">
+            <SparklesIcon className="h-8 w-8" />
+          </div>
+          <h1 className="mt-6 font-display text-4xl font-bold leading-tight text-gray-950">You're in. Welcome aboard.</h1>
+          <p className="mt-3 max-w-md text-base leading-7 text-gray-500">
+            Your outreach is funded and ready to launch. Now a few quick details so we get the most value out of every dollar you put in. It takes under a minute.
+          </p>
+        </div>
+      </StepShell>
+    );
+  }
+
+  if (step === "phone") {
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={savePhoneAndContinue} busy={busy} label="Continue" />}
+      >
+        <div className="mb-4 flex items-start gap-2">
+          <PaperAirplaneIcon className="h-5 w-5 text-brand-600" />
+          <h2 className="font-display text-2xl font-bold text-gray-900">Your phone number.</h2>
+        </div>
+        <p className="mb-6 text-sm leading-6 text-gray-500">Optional. We only use it to reach you quickly about your own campaign, never for outreach. Add it or skip it.</p>
+        <PhoneInput value={phone} onChange={setPhone} autoFocus />
+        <button
+          onClick={() => setStep("ltr")}
+          className="mt-4 text-sm text-gray-400 underline transition hover:text-gray-600"
+        >
+          Skip for now
+        </button>
+      </StepShell>
+    );
+  }
+
+  if (step === "ltr") {
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={saveLtrAndContinue} busy={busy} label="Continue" />}
+      >
+        <BackButton onClick={() => setStep("phone")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Lifetime revenue per paid client.</h2>
+        <p className="mt-2 mb-6 text-gray-500">The average revenue one customer brings you over their lifetime. It sets the value of every outcome we drive, so your budget and projections stay yours. An estimate is fine.</p>
+        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        <div className="flex flex-col items-stretch gap-4 rounded-xl border border-gray-200 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="text-base font-semibold text-gray-900">{RATE_META.ltv.label}</div>
+            <div className="mt-1 text-sm leading-5 text-gray-500">{RATE_META.ltv.hint}</div>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 focus-within:border-brand-400 sm:w-40 sm:shrink-0">
+            <span className="text-2xl font-semibold text-gray-400">$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={rateText.ltv}
+              onChange={(e) => {
+                ratesEditedRef.current = true;
+                launchFeatureInputsRef.current = null;
+                setRateText((t) => ({ ...t, ltv: e.target.value }));
+              }}
+              onBlur={() => {
+                const value = parseLocaleNumberInput(rateText.ltv);
+                if (value !== null) setRateText((t) => ({ ...t, ltv: rateToText(value) }));
+              }}
+              className="w-full bg-transparent text-right text-3xl font-bold text-gray-900 focus:outline-none"
+            />
+          </div>
+        </div>
+      </StepShell>
+    );
+  }
+
+  if (step === "model") {
+    const goal = optimizationGoalForOutcome(outcome);
+    const rows = bestModelLadder?.rows ?? [];
+    const brandRow = pickBestBrandRow(rows, bestModelLadder?.recommendedWorkflowDynastySlug ?? null);
+    const resolved = brandRow?.resolved ?? null;
+    const bestName =
+      brandRow?.workflow.workflowDynastyName ?? brandRow?.workflow.workflowDynastySlug ?? "-";
+    const bestSlug = brandRow?.workflow.workflowDynastySlug ?? null;
+    const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
+    const pending = bestModelLadder === null;
+    return (
+      <StepShell
+        maxWidth="sm:max-w-2xl"
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={() => setStep("offer")} label="Continue" />}
+      >
+        <BackButton onClick={() => setStep("ltr")} />
+        <h2 className="font-display text-2xl font-bold text-gray-900">Your best model.</h2>
+        <p className="mt-2 mb-6 text-gray-500">
+          Based on your numbers, here is the model we will run for you and what each outcome should cost. These are the same projections you will see on your Strategy page.
+        </p>
+        {pending ? (
+          <div className="space-y-4">
+            <Skeleton className="h-14 w-full" />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
+            </div>
+          </div>
+        ) : resolved ? (
+          <div className="space-y-5">
+            <BestModelStats
+              resolved={resolved}
+              bestName={bestName}
+              brandGrain={resolved.grain}
+              avatar={avatar}
+              roiMultiple={resolved.roiMultiple}
+              floored={brandRow ? isRowFloored(brandRow) : false}
+              cppr={cpprFromRow(brandRow)}
+              goal={goal}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            We are still crunching your projections. You can continue; the full numbers appear on your dashboard.
+          </p>
+        )}
+      </StepShell>
+    );
+  }
+
+  if (step === "offer") {
+    const lever = POST_PAYMENT_OFFER_LEVERS[offerIndex];
+    const raw = profile[lever.key];
+    const current = Array.isArray(raw) ? raw.join(", ") : (raw ?? "");
+    const isLast = offerIndex === POST_PAYMENT_OFFER_LEVERS.length - 1;
+    return (
+      <StepShell
+        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
+      >
+        <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("model"))} />
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
+          Your offer · {offerIndex + 1} of {POST_PAYMENT_OFFER_LEVERS.length}
+        </div>
+        <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
+        <p className="mt-2 mb-5 text-sm leading-6 text-gray-500">{lever.why}</p>
+        <textarea
+          value={current}
+          onChange={(e) => setProfile((p) => ({ ...p, [lever.key]: e.target.value }))}
+          placeholder={lever.placeholder}
+          rows={5}
+          className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-base leading-6 text-gray-900 focus:border-brand-400 focus:outline-none"
+        />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
+          <CopyForLLMButton text={buildLeverLLMPrompt(lever, current, hostname || domain || "my business")} />
+        </div>
+      </StepShell>
+    );
+  }
+
   if (step === "launching") {
     const brand = launchingBrand ?? { domain, hostname };
     return (
       <StepShell header={<BrandStepHeader domain={brand.domain} hostname={brand.hostname} />}>
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">Launching your campaign...</div>
           <p className="mb-6 text-center text-sm text-gray-500">Keep this tab open while we finish setup.</p>
+          {launchError && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p>{launchError}</p>
+              <button
+                onClick={() => {
+                  setLaunchError(null);
+                  void finalizePostPaymentAndLaunch();
+                }}
+                className="mt-2 font-semibold underline hover:text-red-800"
+              >
+                Try again
+              </button>
+            </div>
+          )}
           <div className="space-y-2">
             {LAUNCH_STEPS.map((s, i) => {
               const isDone = i < launchStep;
@@ -1995,8 +2523,15 @@ export function Onboarding() {
     <StepShell
       header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
       footer={
-        <button onClick={() => setStep("bonus")} disabled={displayBudget == null} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-          Continue <ArrowRightIcon className="h-4 w-4" />
+        <button onClick={continueFromPricing} disabled={displayBudget == null || busy} className={`mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50"}`}>
+          {busy ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              Launching…
+            </>
+          ) : (
+            <>Continue <ArrowRightIcon className="h-4 w-4" /></>
+          )}
         </button>
       }
     >
@@ -2423,6 +2958,39 @@ function BrandStepHeader({ domain, hostname, onEdit }: { domain: string | null; 
 // and only on the few steps too tall to fit. `svh` (not `dvh`) so the iOS Safari
 // address bar can't push the pinned CTA off-screen. On `sm+` it reverts to the prior
 // floating card: centered, max-width-capped, rounded border + shadow, natural flow.
+// One-shot confetti burst on mount (post-payment celebration). Dynamic-imports
+// canvas-confetti so it stays out of the initial onboarding bundle, and guards
+// against SSR (window absent). Renders nothing.
+function ConfettiBurst() {
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const confetti = (await import("canvas-confetti")).default;
+        if (cancelled) return;
+        const fire = (particleRatio: number, opts: Record<string, unknown>) =>
+          confetti({
+            origin: { y: 0.6 },
+            particleCount: Math.floor(200 * particleRatio),
+            ...opts,
+          });
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2, { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+        fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+        fire(0.1, { spread: 120, startVelocity: 45 });
+      } catch (err) {
+        // Confetti is pure delight — never block the (already paid) flow on it.
+        console.error("[dashboard] onboarding: confetti failed to load", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return null;
+}
+
 function StepShell({
   header,
   footer,
@@ -2453,6 +3021,28 @@ function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button onClick={onClick} className="mb-6 flex items-center gap-1.5 text-sm text-gray-400 transition hover:text-gray-600">
       <ChevronLeftIcon className="h-4 w-4" /> Back
+    </button>
+  );
+}
+
+// Secondary CTA on the offer-lever steps: copies a ready prompt (the offer
+// question + the user's current draft) so they can hand it to their own LLM,
+// get a tighter answer, and paste it back. Self-contained state so it can
+// render inside the `offer` step's conditional block.
+function CopyForLLMButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      }}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50"
+    >
+      {copied ? "Copied!" : "Copy for LLM"}
     </button>
   );
 }
