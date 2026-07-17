@@ -71,8 +71,8 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "brandLeads", "brandEmails", "brandOutlets", "brandArticles", "brandJournalists",
       "enrichedJournalists", "brandRuns", "brandMediaKits", "mediaKit",
       // feature-level
-      "featureStats", "featureRevenue", "featurePipelineActivity", "featureAudienceStats",
-      "featureWorkflows",
+      "featureStats", "featureRevenue", "featureRevenueByCampaign", "featurePipelineActivity",
+      "featureAudienceStats", "featureWorkflows",
       // audiences
       "audiences",
       // workflows
