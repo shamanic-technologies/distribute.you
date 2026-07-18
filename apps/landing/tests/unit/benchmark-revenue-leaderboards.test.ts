@@ -10,14 +10,9 @@ const typePath = path.resolve(
   __dirname,
   "../../src/lib/performance/fetch-leaderboard.ts",
 );
-const pagePath = path.resolve(
-  __dirname,
-  "../../src/app/benchmarks/page.tsx",
-);
 
 const tableContent = fs.readFileSync(tablePath, "utf-8");
 const typeContent = fs.readFileSync(typePath, "utf-8");
-const pageContent = fs.readFileSync(pagePath, "utf-8");
 
 describe("benchmark revenue leaderboards", () => {
   it("threads expected revenue and ROI through workflow leaderboard rows", () => {

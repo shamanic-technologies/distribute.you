@@ -13,7 +13,6 @@ export const BRAND_LOGO_URL = `${SITE_URL}${BRAND_LOGO_PATH}`;
 export const DEFAULT_OG_IMAGE_PATH = "/opengraph-image";
 export const DEFAULT_OG_IMAGE_URL = `${SITE_URL}${DEFAULT_OG_IMAGE_PATH}`;
 export const PRICING_OG_IMAGE_PATH = "/pricing/opengraph-image";
-export const BENCHMARKS_OG_IMAGE_PATH = "/benchmarks/opengraph-image";
 export const INVESTORS_OG_IMAGE_PATH = "/investors/opengraph-image";
 
 export function absoluteUrl(path: string) {

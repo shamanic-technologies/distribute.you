@@ -28,7 +28,6 @@ export function resolveUrls(hostname: string) {
     docs: adapt(URLS.docs),
     apiDocs: adapt(URLS.apiDocs),
     performance: "/performance",
-    benchmarks: "/benchmarks",
     pricing: "/pricing",
     github: URLS.github,
     twitter: URLS.twitter,

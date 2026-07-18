@@ -14,7 +14,6 @@ export function Navbar() {
   const links = [
     { label: "Pricing", href: urls.pricing },
     { label: "Performance", href: urls.performance },
-    { label: "Benchmarks", href: urls.benchmarks },
   ];
 
   function isCurrent(href: string) {
