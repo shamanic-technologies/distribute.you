@@ -37,15 +37,6 @@ const COLUMNS: FooterColumn[] = [
       { label: "Sign up", href: URLS.signUp, external: true },
     ],
   },
-  {
-    title: "Open source",
-    links: [
-      { label: "GitHub repo", href: URLS.github, external: true },
-      { label: "MIT license", href: `${URLS.github}/blob/main/LICENSE`, external: true },
-      { label: "Methodology", href: URLS.github, external: true },
-      { label: "Self-host", href: URLS.github, external: true },
-    ],
-  },
 ];
 
 const SUB_BRANDS = [
@@ -151,7 +142,7 @@ export function Footer({ disclaimer }: FooterProps) {
         {/* Bottom strip */}
         <div className="border-t border-gray-900 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-gray-600">
           <span>
-            © {year} distribute. MIT License. 100% open source.
+            © {year} distribute.
           </span>
           <span className="text-gray-700">
             Built by{" "}

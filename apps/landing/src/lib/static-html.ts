@@ -322,6 +322,8 @@ interface TickerMetrics {
   cpc: string; // scalars for the reused pricing card / mockup / compare rows
   cpr: string;
   cpm: string;
+  bestPos: string; // best-model scalars for the homepage "Cost per outcome" snapshot
+  bestWeb: string;
 }
 
 interface TrendPoint {
@@ -487,6 +489,8 @@ function buildFallbackTicker(): TickerMetrics {
     cpc: "$0.88",
     cpr: "$151",
     cpm: "$5.68",
+    bestPos: usdSmart(FALLBACK_BEST.positiveReply),
+    bestWeb: usdSmart(FALLBACK_BEST.websiteVisit),
   };
 }
 
@@ -604,6 +608,8 @@ async function fetchTicker(): Promise<TickerMetrics> {
     cpc: last(visit) ?? fb.cpc,
     cpr: last(reply) ?? fb.cpr,
     cpm: last(meeting) ?? fb.cpm,
+    bestPos: bestReply !== null ? usdSmart(bestReply) : fb.bestPos,
+    bestWeb: bestVisit !== null ? usdSmart(bestVisit) : fb.bestWeb,
   };
 }
 
@@ -628,7 +634,9 @@ async function withTickerMetrics(html: string) {
     html.includes("__HERO_WEB__") ||
     html.includes("__TICKER_CPC__") ||
     html.includes("__TICKER_CPR__") ||
-    html.includes("__TICKER_CPM__");
+    html.includes("__TICKER_CPM__") ||
+    html.includes("__BEST_POS__") ||
+    html.includes("__BEST_WEB__");
   if (!needsMetrics) return html;
 
   const t = await resolveTicker();
@@ -638,7 +646,9 @@ async function withTickerMetrics(html: string) {
     .replaceAll("__HERO_WEB__", t.heroWeb)
     .replaceAll("__TICKER_CPC__", t.cpc)
     .replaceAll("__TICKER_CPR__", t.cpr)
-    .replaceAll("__TICKER_CPM__", t.cpm);
+    .replaceAll("__TICKER_CPM__", t.cpm)
+    .replaceAll("__BEST_POS__", t.bestPos)
+    .replaceAll("__BEST_WEB__", t.bestWeb);
 }
 
 export async function staticResponse(fileName: string) {

@@ -250,7 +250,6 @@ export default function InvestorsPage() {
                     <li>Public unit prices + 2x margin baked in</li>
                     <li>Pay-as-you-go credits, first $25 spent matched free</li>
                     <li>Multi-brand portfolio in one dashboard</li>
-                    <li>Open source as a safety valve</li>
                   </ul>
                 </div>
               </div>

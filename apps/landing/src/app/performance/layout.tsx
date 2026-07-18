@@ -32,10 +32,7 @@ export default function PerformanceLayout({
       <Footer
         disclaimer={
           <>
-            All data is from real campaigns. Updated hourly.{" "}
-            <a href={URLS.github} className="underline hover:text-gray-300">
-              Open source methodology.
-            </a>
+            All data is from real campaigns. Updated hourly.
           </>
         }
       />
