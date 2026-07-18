@@ -406,12 +406,17 @@ function sparklineSvg(
 // Compact NON-CLICKABLE hero proof-rail stat (positive reply / website visits):
 // price + green ▲ growth + micro sparkline + label. No link, no detail page —
 // the homepage board section was removed; these two live below the hero.
+//
+// The headline PRICE is the BEST cross-org workflow's cost per outcome (the
+// model we deploy to new clients by default), passed as `bestModelUsd` — NOT a
+// pooled/trend average. The sparkline + weekly ▲ still ride the observed trend
+// series as a demand-direction decoration.
 function heroStatCard(
   cfg: { label: string; unit: string },
   points: SeriesPoint[],
+  bestModelUsd: number | null,
 ): string {
-  const price = points.length ? points[points.length - 1].v : null;
-  const priceStr = price === null ? "&mdash;" : usdSmart(price);
+  const priceStr = bestModelUsd === null ? "&mdash;" : usdSmart(bestModelUsd);
   const g = growth7d(points);
   let chg = "";
   if (g !== null && g !== 0) {
@@ -420,10 +425,9 @@ function heroStatCard(
   }
   const spark = sparklineSvg(points, trendStroke(), "prs-spark");
   // Big white lead reads as a full phrase ("$200 per positive reply for a sales
-  // meeting"), the price emphasised; the grey note clarifies it's the current
-  // rate = trailing moving average over the last ~100 outcomes
-  // (features-service cost-per-outcome-trend windowOutcomes default = 100).
-  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-lead"><span class="prs-price">${priceStr}</span> ${cfg.unit}</span>${chg}</div>${spark}<small class="prs-note">Current rate · avg. of the last 100 outcomes</small></div>`;
+  // meeting"), the price emphasised; the grey note clarifies it's our best
+  // model = the cheapest cross-org workflow that actually delivers the outcome.
+  return `<div class="proof-rail-item proof-rail-stat"><div class="prs-top"><span class="prs-lead"><span class="prs-price">${priceStr}</span> ${cfg.unit}</span>${chg}</div>${spark}<small class="prs-note">Our best model · cheapest workflow that delivers it</small></div>`;
 }
 
 function tickerCard(
@@ -465,6 +469,11 @@ function fallbackSeries(end: number): SeriesPoint[] {
     { date: "2026-07-09", v: end },
   ];
 }
+// Last-known-good BEST-model cost per outcome (observed 2026-07-17) — the hero
+// numbers fall back to these when the workflow-cost-per-outcome endpoint is
+// unreachable, so a cold/slow API still ships real-shaped best-model prices.
+const FALLBACK_BEST = { positiveReply: 108, websiteVisit: 0.62 } as const;
+
 function buildFallbackTicker(): TickerMetrics {
   const series: Record<string, SeriesPoint[]> = {
     websiteVisit: fallbackSeries(0.88),
@@ -473,12 +482,57 @@ function buildFallbackTicker(): TickerMetrics {
   };
   return {
     board: tickerBoard(series),
-    heroPos: heroStatCard(TICKER_OBJECTIVES[0], series.positiveReply),
-    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], series.websiteVisit),
+    heroPos: heroStatCard(TICKER_OBJECTIVES[0], series.positiveReply, FALLBACK_BEST.positiveReply),
+    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], series.websiteVisit, FALLBACK_BEST.websiteVisit),
     cpc: "$0.88",
     cpr: "$151",
     cpm: "$5.68",
   };
+}
+
+// Best cross-org workflow cost for an objective = the cheapest workflow whose
+// OBJECTIVE outcome was actually observed > 0. We filter on the observed COUNT,
+// never a cost threshold: a 0-outcome "husk" workflow (spent money, produced
+// nothing) must never be crowned "best", and its cost can drop to its own spend
+// on the backend — only observed-count filtering is correct. Bounded 8s so a
+// slow cold endpoint can't blow the homepage prerender budget (throws → the
+// caller falls back to last-known-good).
+async function fetchBestModelUsd(
+  apiUrl: string,
+  headers: Record<string, string>,
+  slug: string,
+  objective: string,
+): Promise<number | null> {
+  const res = await fetch(
+    `${apiUrl}/v1/public/features/workflow-cost-per-outcome?featureSlug=${slug}&objective=${objective}`,
+    { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/workflow-cost-per-outcome ${objective} failed: ${res.status}`,
+    );
+  }
+  const data = (await res.json()) as {
+    workflows?: Array<{
+      observedClicks?: number | null;
+      observedPositiveReplies?: number | null;
+      costPerOutcomeUsd?: number | null;
+    }>;
+  };
+  const observed = (w: {
+    observedClicks?: number | null;
+    observedPositiveReplies?: number | null;
+  }): number =>
+    (numericOrNull(
+      objective === "websiteVisit" ? w.observedClicks : w.observedPositiveReplies,
+    ) ?? 0);
+  const priced = (data.workflows ?? [])
+    .filter((w) => observed(w) > 0)
+    .flatMap((w) => {
+      const v = numericOrNull(w.costPerOutcomeUsd);
+      return v !== null ? [v] : [];
+    });
+  return priced.length ? Math.min(...priced) : null;
 }
 
 async function fetchTrendSeries(
@@ -522,6 +576,14 @@ async function fetchTicker(): Promise<TickerMetrics> {
     () => [] as SeriesPoint[],
   );
 
+  // The two hero numbers show our BEST cross-org workflow cost per outcome, not
+  // the trend average — fetched on their own so a failure degrades that one
+  // number to the fallback without blanking the board.
+  const [bestReply, bestVisit] = await Promise.all([
+    fetchBestModelUsd(apiUrl, headers, slug, "positiveReply").catch(() => null),
+    fetchBestModelUsd(apiUrl, headers, slug, "websiteVisit").catch(() => null),
+  ]);
+
   if (!visit.length && !reply.length && !signup.length) {
     throw new Error("[landing] cost-per-outcome-trend returned no backed series");
   }
@@ -537,8 +599,8 @@ async function fetchTicker(): Promise<TickerMetrics> {
 
   return {
     board: tickerBoard(series),
-    heroPos: heroStatCard(TICKER_OBJECTIVES[0], reply),
-    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], visit),
+    heroPos: heroStatCard(TICKER_OBJECTIVES[0], reply, bestReply ?? FALLBACK_BEST.positiveReply),
+    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], visit, bestVisit ?? FALLBACK_BEST.websiteVisit),
     cpc: last(visit) ?? fb.cpc,
     cpr: last(reply) ?? fb.cpr,
     cpm: last(meeting) ?? fb.cpm,
