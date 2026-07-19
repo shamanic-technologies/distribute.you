@@ -1476,15 +1476,16 @@ __CAC_BOOT_SLOT__
       var W=Math.max(280,container.clientWidth||600),H=220;
       var L=52,R=14,T=14,B=28,PW=W-L-R,PH=H-T-B,n=points.length;
       var vs=points.map(function(p){return p.v;});
-      var min=Math.min.apply(null,vs),max=Math.max.apply(null,vs);
-      var pad=(max-min)*0.12||Math.max(1,max*0.1);
-      var lo=Math.max(0,min-pad),hi=max+pad,span=(hi-lo)||1;
+      /* Fixed round-dollar Y axis: $0 / $500 / $1,000 / $1,500 (steps of $500).
+         Ceiling adapts up in $500 steps only if a point ever exceeds $1,500. */
+      var STEP=500,dmax=Math.max.apply(null,vs);
+      var lo=0,hi=Math.max(1500,Math.ceil(dmax/STEP)*STEP),span=hi-lo;
       var X=function(i){return L+(n===1?PW/2:(i/(n-1))*PW);};
       var Y=function(v){return T+(1-(v-lo)/span)*PH;};
-      var TICKS=4,grid='',ylab='';
-      for(var g=0;g<=TICKS;g++){var val=lo+(g/TICKS)*span,y=Y(val);
+      var TICKS=Math.round(hi/STEP),grid='',ylab='';
+      for(var g=0;g<=TICKS;g++){var val=g*STEP,y=Y(val);
         grid+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-R)+'" y2="'+y.toFixed(1)+'" class="ch-grid"/>';
-        ylab+='<text x="'+(L-8)+'" y="'+(y+3).toFixed(1)+'" class="ch-ylab" text-anchor="end">'+fmtUsd(val)+'</text>';}
+        ylab+='<text x="'+(L-8)+'" y="'+(y+3).toFixed(1)+'" class="ch-ylab" text-anchor="end">$'+val.toLocaleString('en-US')+'</text>';}
       var xt=Math.min(5,n),xlab='';
       for(var k=0;k<xt;k++){var idx=Math.round((k/(xt-1||1))*(n-1)),x=X(idx);
         var anc=k===0?'start':(k===xt-1?'end':'middle');
