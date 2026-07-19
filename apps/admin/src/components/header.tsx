@@ -51,7 +51,7 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
                   <circle cx="32" cy="32" r="9" fill="currentColor" />
                 </svg>
               </span>
-              <span className="font-display font-bold text-lg text-brand-600 hidden sm:block">distribute</span>
+              <span className="font-display font-bold text-lg text-brand-600 hidden sm:block">distribute.you</span>
               <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase hidden sm:block">beta</span>
             </div>
           ) : (
@@ -62,7 +62,7 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
                   <circle cx="32" cy="32" r="9" fill="currentColor" />
                 </svg>
               </span>
-              <span className="font-display font-bold text-lg text-brand-600 hidden sm:block">distribute</span>
+              <span className="font-display font-bold text-lg text-brand-600 hidden sm:block">distribute.you</span>
               <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase hidden sm:block">beta</span>
             </Link>
           )}
