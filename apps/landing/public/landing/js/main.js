@@ -483,7 +483,7 @@ if (tocLinks.length) {
       + tiersBlock()
       + summaryBlock()
       + '<div class="pm-nav"><button type="button" class="pm-back" data-back>← Back</button>'
-      + '<button type="button" class="btn btn-p btn-lg" data-start' + (startDisabled ? ' disabled' : '') + '>Get started →</button></div>';
+      + '<button type="button" class="btn btn-p btn-lg" data-start' + (startDisabled ? ' disabled' : '') + '>Get started. $25 free →</button></div>';
 
     // Still loading either source → re-render once it lands to fill the price + $/day.
     function reRenderIfOpen() { if (state.step === 1 && overlay.classList.contains('open')) renderResult(); }
