@@ -663,6 +663,15 @@
     .pm-back{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;font-family:var(--body);padding:8px 4px;flex-shrink:0;transition:color .18s}
     .pm-back:hover{color:var(--text)}
     .pm-price.calc .pm-price-n{color:var(--muted);font-size:20px;font-weight:600}
+    .pm-rates{display:flex;flex-direction:column;gap:12px;margin-top:20px}
+    .pm-rate{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 15px;border-radius:12px;background:#0b1016;border:1px solid var(--line)}
+    .pm-rate-l{min-width:0}
+    .pm-rate-lbl{font-size:13px;font-weight:600;color:var(--text)}
+    .pm-rate-hint{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+    .pm-rate-in{display:flex;align-items:center;gap:4px;flex-shrink:0}
+    .pm-rate-in input{width:58px;text-align:right;padding:7px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-family:var(--display);font-size:16px;font-weight:700;outline:none}
+    .pm-rate-in input:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-dim)}
+    .pm-rate-in span{font-size:14px;font-weight:700;color:var(--muted)}
 
     .economics-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px;align-items:stretch}
     .price-card{
@@ -1582,7 +1591,7 @@ __CAC_BOOT_SLOT__
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init); else init();
   })();
 </script>
-<script src="js/pricing-modal-v1.js?v=2" defer></script>
+<script src="js/pricing-modal-v1.js?v=3" defer></script>
 <script src="js/support-button.js"></script>
 </body>
 </html>
