@@ -577,8 +577,17 @@
     .cac-delta.good{color:var(--green);background:var(--green-dim);border-color:var(--green-line)}
     .cac-delta.bad{color:var(--red);background:var(--red-dim);border-color:rgba(255,120,108,.26)}
     .cac-delta.flat{color:var(--faint)}
-    .cac-chart{margin-top:22px;height:96px}
-    .cac-chart svg{display:block;width:100%;height:96px}
+    .cac-chart{margin-top:20px;height:220px;position:relative;touch-action:pan-y}
+    .cac-chart svg{display:block}
+    .ch-grid{stroke:var(--line-soft);stroke-width:1}
+    .ch-axis{stroke:var(--line);stroke-width:1}
+    .ch-ylab,.ch-xlab{fill:var(--faint);font-family:var(--mono);font-size:9.5px}
+    .ch-cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:.55}
+    .ch-dot{fill:var(--green);stroke:var(--bg);stroke-width:2}
+    .ch-hit{cursor:crosshair}
+    .ch-tip{position:absolute;pointer-events:none;z-index:3;background:var(--panel-3);border:1px solid var(--line);border-radius:8px;padding:7px 10px;box-shadow:0 10px 28px rgba(0,0,0,.45);white-space:nowrap;transition:opacity .08s}
+    .ch-tip b{display:block;font-family:var(--display);font-size:15px;font-weight:700;color:var(--text)}
+    .ch-tip span{display:block;margin-top:2px;color:var(--faint);font-family:var(--mono);font-size:9.5px;letter-spacing:.02em}
     .cac-foot{margin-top:16px;padding-top:15px;border-top:1px solid var(--line-soft);display:flex;align-items:center;gap:8px;color:var(--faint);font-family:var(--mono);font-size:9.5px;letter-spacing:.03em;line-height:1.5}
 
     /* Custom-price modal */
@@ -1395,20 +1404,66 @@
             .map(function(p){return {date:p.date,v:p.costPerOutcomeUsd};});
         });
     }
-    function sparkline(points){
-      if(!points.length)return '';
-      var w=320,h=96,pad=4,n=points.length;
+    function fmtDate(iso){var d=new Date(iso+'T00:00:00Z');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+    function fmtDateFull(iso){var d=new Date(iso+'T00:00:00Z');return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+
+    /* Financial-style chart: $ Y-axis, dated X-axis, crosshair + tooltip on hover. */
+    function renderChart(container,points){
+      if(!points.length){container.innerHTML='';return;}
+      var W=Math.max(280,container.clientWidth||600),H=220;
+      var L=52,R=14,T=14,B=28,PW=W-L-R,PH=H-T-B,n=points.length;
       var vs=points.map(function(p){return p.v;});
-      var min=Math.min.apply(null,vs),max=Math.max.apply(null,vs),span=(max-min)||1;
-      var X=function(i){return pad+(i/(n-1||1))*(w-2*pad);};
-      var Y=function(v){return pad+(1-(v-min)/span)*(h-2*pad);};
+      var min=Math.min.apply(null,vs),max=Math.max.apply(null,vs);
+      var pad=(max-min)*0.12||Math.max(1,max*0.1);
+      var lo=Math.max(0,min-pad),hi=max+pad,span=(hi-lo)||1;
+      var X=function(i){return L+(n===1?PW/2:(i/(n-1))*PW);};
+      var Y=function(v){return T+(1-(v-lo)/span)*PH;};
+      var TICKS=4,grid='',ylab='';
+      for(var g=0;g<=TICKS;g++){var val=lo+(g/TICKS)*span,y=Y(val);
+        grid+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-R)+'" y2="'+y.toFixed(1)+'" class="ch-grid"/>';
+        ylab+='<text x="'+(L-8)+'" y="'+(y+3).toFixed(1)+'" class="ch-ylab" text-anchor="end">'+fmtUsd(val)+'</text>';}
+      var xt=Math.min(5,n),xlab='';
+      for(var k=0;k<xt;k++){var idx=Math.round((k/(xt-1||1))*(n-1)),x=X(idx);
+        var anc=k===0?'start':(k===xt-1?'end':'middle');
+        xlab+='<text x="'+x.toFixed(1)+'" y="'+(H-8)+'" class="ch-xlab" text-anchor="'+anc+'">'+fmtDate(points[idx].date)+'</text>';}
       var line=points.map(function(p,i){return (i?'L':'M')+X(i).toFixed(1)+' '+Y(p.v).toFixed(1);}).join(' ');
-      var area=line+' L'+X(n-1).toFixed(1)+' '+(h-pad)+' L'+X(0).toFixed(1)+' '+(h-pad)+' Z';
-      return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Cost per positive reply trend">'
-        +'<defs><linearGradient id="cacg" x1="0" x2="0" y1="0" y2="1">'
-        +'<stop offset="0%" stop-color="rgba(69,227,142,.32)"/><stop offset="100%" stop-color="rgba(69,227,142,0)"/></linearGradient></defs>'
+      var area=line+' L'+X(n-1).toFixed(1)+' '+(T+PH)+' L'+X(0).toFixed(1)+' '+(T+PH)+' Z';
+      container.innerHTML=
+        '<svg class="ch-svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Cost per positive reply over time">'
+        +'<defs><linearGradient id="cacg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="rgba(69,227,142,.30)"/><stop offset="100%" stop-color="rgba(69,227,142,0)"/></linearGradient></defs>'
+        +grid
+        +'<line class="ch-axis" x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(T+PH)+'"/>'
         +'<path d="'+area+'" fill="url(#cacg)"/>'
-        +'<path d="'+line+'" fill="none" stroke="#45e38e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+        +'<path d="'+line+'" fill="none" stroke="#45e38e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+        +ylab+xlab
+        +'<g class="ch-cursor" style="display:none"><line class="ch-cross ch-vx" y1="'+T+'" y2="'+(T+PH)+'"/><line class="ch-cross ch-hz" x1="'+L+'" x2="'+(W-R)+'"/><circle class="ch-dot" r="4"/></g>'
+        +'<rect class="ch-hit" x="'+L+'" y="'+T+'" width="'+PW+'" height="'+PH+'"/>'
+        +'</svg><div class="ch-tip" style="display:none"></div>';
+      var svg=container.querySelector('.ch-svg'),cur=container.querySelector('.ch-cursor'),
+          vx=container.querySelector('.ch-vx'),hz=container.querySelector('.ch-hz'),
+          dot=container.querySelector('.ch-dot'),tip=container.querySelector('.ch-tip'),
+          hit=container.querySelector('.ch-hit');
+      function show(clientX){
+        var r=svg.getBoundingClientRect(),scale=r.width/W;
+        var sx=(clientX-r.left)/scale;
+        var idx=Math.round(((sx-L)/PW)*(n-1));idx=Math.max(0,Math.min(n-1,idx));
+        var px=X(idx),py=Y(points[idx].v);
+        cur.style.display='';vx.setAttribute('x1',px);vx.setAttribute('x2',px);
+        hz.setAttribute('y1',py);hz.setAttribute('y2',py);dot.setAttribute('cx',px);dot.setAttribute('cy',py);
+        tip.style.display='block';tip.innerHTML='<b>'+fmtUsd(points[idx].v)+'</b><span>'+fmtDateFull(points[idx].date)+'</span>';
+        var tw=tip.offsetWidth,th=tip.offsetHeight,tx=px*scale,ty=py*scale;
+        tip.style.left=Math.max(4,Math.min(r.width-tw-4,tx-tw/2))+'px';
+        tip.style.top=Math.max(2,ty-th-12)+'px';
+      }
+      function hide(){cur.style.display='none';tip.style.display='none';}
+      hit.addEventListener('pointermove',function(e){show(e.clientX);});
+      hit.addEventListener('pointerdown',function(e){show(e.clientX);});
+      hit.addEventListener('pointerleave',hide);
+      container.__points=points;
+      if(!container.__ro&&window.ResizeObserver){
+        container.__ro=new ResizeObserver(function(){if(container.__points)renderChart(container,container.__points);});
+        container.__ro.observe(container);
+      }
     }
     function weeklyDelta(points){
       if(points.length<2)return null;
@@ -1432,7 +1487,7 @@
             setText('[data-cac-mult]', Math.round(MARKET/best)+'×');
           }
           var chart=document.querySelector('[data-cac-chart]');
-          if(chart&&points.length)chart.innerHTML=sparkline(points);
+          if(chart&&points.length)renderChart(chart,points);
           var d=weeklyDelta(points), badge=document.querySelector('[data-cac-delta]');
           if(badge){
             if(d==null||d===0){badge.style.display='none';}
