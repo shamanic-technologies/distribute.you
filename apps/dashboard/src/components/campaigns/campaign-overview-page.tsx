@@ -19,6 +19,7 @@ import {
   listAudiences,
   getWorkflowProjection,
   isVisitDrivenGoal,
+  optimizationGoalForRuntimeGoal,
   salesObjectiveForOptimizationGoal,
   keepLastGoodWorkflowProjection,
   keepLastGoodFeatureRevenue,
@@ -216,8 +217,14 @@ export function CampaignOverviewPage() {
     () => getBrandSalesEconomics(brandId),
     { enabled, ...pollOptions },
   );
-  const optimizationGoal =
+  const brandOptimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+  // Prefer the campaign's OWN goal (v2 per-campaign goal) when set; fall back to the
+  // brand goal only when the campaign inherits (null). RuntimeGoal → brand-goal vocab
+  // so it drives the goal-labelled display surfaces. Pure display of campaign config.
+  const optimizationGoal = campaign?.goal
+    ? optimizationGoalForRuntimeGoal(campaign.goal)
+    : brandOptimizationGoal;
   const visitToMeetingPct =
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =
@@ -336,6 +343,13 @@ export function CampaignOverviewPage() {
     { enabled, ...pollOptions },
   );
   const activeAudiences = audiencesData?.audiences.filter((a) => a.status === "active");
+  // Prefer the campaign's OWN targeted audience subset (v2 `audienceIds`) when set;
+  // else the brand's active set it inherits. Resolve ids → names from the already-
+  // fetched listAudiences (pure display lookup, no extra fetch).
+  const campaignAudienceIds = campaign?.audienceIds ?? null;
+  const displayAudiences = campaignAudienceIds
+    ? audiencesData?.audiences.filter((a) => campaignAudienceIds.includes(a.id))
+    : activeAudiences;
 
   const revenueSettled = data !== undefined || revenueIsError;
   const revenueRevealed = useCoordinatedReveal([revenueSettled]);
@@ -466,7 +480,7 @@ export function CampaignOverviewPage() {
         costBottomCard={
           <TopAudiencesCard
             data={audienceStatsRevealed ? audienceStatsData : undefined}
-            audiences={audienceStatsRevealed ? activeAudiences : undefined}
+            audiences={audienceStatsRevealed ? displayAudiences : undefined}
             pending={!audienceStatsRevealed}
             metric={audienceStatsMetric}
           />
