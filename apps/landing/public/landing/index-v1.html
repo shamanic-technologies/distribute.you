@@ -102,6 +102,27 @@
       border-bottom:1px solid rgba(226,230,239,.9);
       backdrop-filter:blur(18px);
       -webkit-backdrop-filter:blur(18px);
+      transition:padding .45s ease,background .45s ease,border-color .45s ease;
+    }
+    header .wrap{
+      transition:max-width .45s ease,padding .45s ease,border-radius .45s ease,background .45s ease,box-shadow .45s ease;
+    }
+    /* shrink-into-a-floating-pill on scroll (matches the previous nav behavior) */
+    header.scrolled{
+      padding:10px 14px;
+      background:transparent;
+      border-bottom-color:transparent;
+      backdrop-filter:none;
+      -webkit-backdrop-filter:none;
+    }
+    header.scrolled .wrap{
+      max-width:920px;
+      padding:0 10px 0 18px;
+      border-radius:16px;
+      background:rgba(255,255,255,.9);
+      backdrop-filter:blur(18px);
+      -webkit-backdrop-filter:blur(18px);
+      box-shadow:0 0 0 1px var(--line),0 8px 26px rgba(20,30,60,.10);
     }
     nav{
       min-height:70px;
@@ -109,7 +130,10 @@
       align-items:center;
       justify-content:space-between;
       gap:24px;
+      transition:min-height .45s ease;
     }
+    header.scrolled nav{min-height:54px}
+    header.scrolled .logo-mark{width:21px;height:21px}
     .logo{
       display:inline-flex;
       align-items:center;
@@ -1358,6 +1382,17 @@
 
   <script>
     (function(){
+      // shrink the nav into a floating pill once the page is scrolled
+      var hdr=document.querySelector('header');
+      if(hdr){
+        var onNavScroll=function(){
+          if(window.scrollY>12) hdr.classList.add('scrolled');
+          else hdr.classList.remove('scrolled');
+        };
+        onNavScroll();
+        window.addEventListener('scroll',onNavScroll,{passive:true});
+      }
+
       const toggle=document.querySelector('.nav-toggle');
       const links=document.getElementById('nav-links');
       if(toggle&&links){
