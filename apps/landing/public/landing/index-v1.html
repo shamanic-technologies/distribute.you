@@ -1018,8 +1018,13 @@
       <div class="wrap cac-grid">
         <div class="cac-left">
           <div class="eyebrow">Live cost of acquisition</div>
+<<<<<<< Updated upstream
           <h2 class="cac-h"><span class="accent">Amazingly cheap</span>. Check the live rate at all times.</h2>
           <p class="section-copy">A booked B2B sales meeting runs about <b>$700</b> on the market. Right now we deliver a positive reply for a sales meeting at <b class="cac-hl" data-cac-inline>$52</b>. That is roughly <b class="cac-hl" data-cac-mult>13&times;</b> cheaper, and it moves live as clients invest, earn outcomes, and our technology improves over time.</p>
+=======
+          <h2 class="cac-h"><span class="accent">Absurdly cheap</span>. Check the live rate at all times.</h2>
+          <p class="section-copy">A booked B2B sales meeting runs about <b>$700</b> on the market. Right now we deliver a positive reply for a sales meeting at <b class="cac-hl" data-cac-inline>__CAC_PRICE__</b>. That is roughly <b class="cac-hl" data-cac-mult>__CAC_MULT__</b> cheaper, and it moves live as clients invest, earn outcomes, and our technology improves over time.</p>
+>>>>>>> Stashed changes
           <div class="cac-actions">
             <button type="button" class="button secondary" data-pricing-modal>Get your custom price</button>
             <p class="cac-fine">Live rate, not a guarantee. Your cost depends on targeting, offer and downstream conversion.</p>
@@ -1029,7 +1034,7 @@
           <div class="cac-card">
             <div class="cac-card-top">
               <div class="cac-price-wrap">
-                <div class="cac-price" data-cac-big>$52</div>
+                <div class="cac-price" data-cac-big>__CAC_PRICE__</div>
                 <div class="cac-unit">per positive reply for a sales meeting</div>
               </div>
               <div class="cac-delta-col">
@@ -1465,15 +1470,6 @@ __CAC_BOOT_SLOT__
     function setText(sel,txt){var el=document.querySelector(sel); if(el)el.textContent=txt;}
 
     var bestPrice=null;
-    function fetchBest(){
-      return getJSON(API+'/v1/public/features/workflow-cost-per-outcome?featureSlug='+encodeURIComponent(SLUG)+'&objective=positiveReply')
-        .then(function(d){
-          var priced=(d.workflows||[]).filter(function(w){return (w.observedPositiveReplies||0)>0 && w.costPerOutcomeUsd!=null;})
-            .map(function(w){return w.costPerOutcomeUsd;});
-          bestPrice = priced.length ? Math.min.apply(null,priced) : null;
-          return bestPrice;
-        });
-    }
     function fmtDate(iso){var d=new Date(iso+'T00:00:00Z');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
     function fmtDateFull(iso){var d=new Date(iso+'T00:00:00Z');return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 
@@ -1604,41 +1600,18 @@ __CAC_BOOT_SLOT__
         upd.innerHTML='<span class="cac-live-dot"></span>Updated '+rel;
       }
     }
-    /* REAL best-model dated trend (single best workflow, cross-org, never pooled).
-       Returns {best, points:[{date,v}]} with only the backed days. */
-    function fetchBestTrend(){
-      return getJSON(API+'/v1/public/features/best-model-cost-per-outcome-trend?featureSlug='+encodeURIComponent(SLUG)+'&objective=positiveReply&days=180')
-        .then(function(d){
-          return {
-            best:(d&&typeof d.bestWorkflowLifetimeCostPerOutcomeUsd==='number')?d.bestWorkflowLifetimeCostPerOutcomeUsd:null,
-            points:((d&&d.points)||[]).filter(function(p){return p&&p.costPerOutcomeUsd!=null&&typeof p.date==='string';})
-              .map(function(p){return {date:p.date,v:p.costPerOutcomeUsd};})
-          };
-        });
-    }
     function renderCac(){
-      /* SSR boot paints instantly, then refresh with the live real best-model
-         trend. Fall back to the live best-model price (rescaling the baked curve)
-         only if the trend has no backed points. */
+      /* Render ONCE from the server-baked boot (best-model price + real dated
+         series). The price is already in the served HTML; the chart draws from
+         boot.points. NO client re-fetch — the values change only when the ISR
+         snapshot re-renders (~every 300s). This is what kills the flash. */
       var boot=window.__CAC_BOOT__;
       if(boot){ if(boot.best!=null)bestPrice=boot.best; applyData(boot.best, boot.points||[]); }
-      fetchBestTrend().then(function(r){
-        if(r.points&&r.points.length){ applyData(r.best!=null?r.best:bestPrice, r.points); return; }
-        return fetchBest().then(function(b){
-          if(b==null)return;
-          var pts=(boot&&boot.points)||[], base=boot&&boot.best;
-          if(base>0&&pts.length){ pts=pts.map(function(p){return {date:p.date,v:Math.round(p.v*(b/base)*100)/100};}); }
-          applyData(b, pts);
-        });
-      }).catch(function(){});
     }
     // The pricing modal (the real 2-step goal -> price + budget calculator)
     // lives in js/pricing-modal-v1.js and self-wires to [data-pricing-modal].
     // This inline block only renders the on-page live CAC numbers.
-    function init(){
-      renderCac();
-      if('requestIdleCallback' in window)requestIdleCallback(function(){fetchBest().catch(function(){});});
-    }
+    function init(){ renderCac(); }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init); else init();
   })();
 </script>
