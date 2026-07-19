@@ -19,7 +19,7 @@ export default function ChooseOrganizationTaskPage() {
           >
             <Image
               src="/logo-distribute.svg"
-              alt="distribute"
+              alt="distribute.you"
               width={28}
               height={28}
             />
