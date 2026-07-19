@@ -11,32 +11,27 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 // brand), so it is safe to show in full inside a snippet and to embed in a
 // browser pixel. Read-only display of server-owned snippets; no metric computed.
 //
-// Every case is laid out linearly (no toggles): each event ships both a
-// server-side curl and a browser pixel, with all identity fields pre-filled.
+// The script is shown ONCE (not duplicated per event): a single server-side curl
+// and a single browser pixel, each carrying a comment that enumerates the "event"
+// enum with its use case, so the user swaps in whichever one fires on their site.
 // The "Copy for LLM" button copies a plain-language brief a user can paste into
 // Claude/Cursor to have it wired into their own site.
 
-type EventType = "signup" | "meeting_booked" | "form_submission" | "sale";
-
-const EVENTS: { type: EventType; label: string; when: string }[] = [
-  { type: "signup", label: "Signup", when: "a user creates an account" },
-  { type: "meeting_booked", label: "Meeting booked", when: "a user books a meeting or demo" },
-  { type: "form_submission", label: "Form submission", when: "a user submits a lead or contact form" },
-  { type: "sale", label: "Sale", when: "a customer completes a sale" },
-];
-
-// A sale carries the amount in cents so we can attribute revenue, not just a
-// count. The other events have no value, so valueCents is only in the sale
-// snippet.
-function serverSnippet(ingestUrl: string, token: string, event: EventType): string {
-  const value = event === "sale" ? `,"valueCents":4900` : "";
-  return `curl -X POST ${ingestUrl} \\
+// Enum of conversion events + when each fires. A sale also carries "valueCents"
+// so we can attribute revenue, not just a count.
+function serverSnippet(ingestUrl: string, token: string): string {
+  return `# event: which conversion to report. One of —
+#   signup           a user creates an account
+#   meeting_booked   a user books a meeting or demo
+#   form_submission  a user submits a lead or contact form
+#   sale             a customer completes a sale (add "valueCents":<amount> for revenue)
+curl -X POST ${ingestUrl} \\
   -H "x-conversion-token: ${token}" \\
   -H "Content-Type: application/json" \\
-  -d '{"event":"${event}","email":"customer@email.com","firstName":"Jane","lastName":"Doe","companyUrl":"https://theircompany.com"${value}}'`;
+  -d '{"event":"signup","email":"customer@email.com","firstName":"Jane","lastName":"Doe","companyUrl":"https://theircompany.com"}'`;
 }
 
-function pixelSnippet(ingestUrl: string, token: string, event: EventType): string {
+function pixelSnippet(ingestUrl: string, token: string): string {
   return `<script>
   // Fires on page load so we can confirm your tracker is live —
   // before your first conversion even lands.
@@ -46,7 +41,12 @@ function pixelSnippet(ingestUrl: string, token: string, event: EventType): strin
     body: JSON.stringify({ event: "ping" }),
   });
 
-  // Fire when the ${event} actually happens (pull real values from your form).
+  // Fire when the conversion happens (pull real values from your form). "event"
+  // is one of —
+  //   signup           a user creates an account
+  //   meeting_booked   a user books a meeting or demo
+  //   form_submission  a user submits a lead or contact form
+  //   sale             a customer completes a sale (add valueCents: <amount> for revenue)
   fetch("${ingestUrl}", {
     method: "POST",
     headers: {
@@ -54,13 +54,11 @@ function pixelSnippet(ingestUrl: string, token: string, event: EventType): strin
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      event: "${event}",
+      event: "signup",
       email: "customer@email.com",
       firstName: "Jane",
       lastName: "Doe",
-      companyUrl: "https://theircompany.com",${
-        event === "sale" ? `\n      valueCents: 4900,` : ""
-      }
+      companyUrl: "https://theircompany.com",
     }),
   });
 </script>`;
@@ -246,25 +244,15 @@ export function BrandConversionTrackingCard({ brandId }: { brandId: string }) {
 
       <StatusPill data={data} />
 
-      <div className="space-y-6">
-        {EVENTS.map(({ type, label, when }) => (
-          <div key={type}>
-            <div className="mb-2">
-              <span className="text-sm font-semibold text-gray-900">{label}</span>
-              <span className="ml-2 text-xs text-gray-400">Fire when {when}.</span>
-            </div>
-            <div className="space-y-4">
-              <CopyBlock
-                label="Server side (recommended, most reliable)"
-                code={serverSnippet(ingestUrl, token, type)}
-              />
-              <CopyBlock
-                label="Browser pixel (if you have no backend)"
-                code={pixelSnippet(ingestUrl, token, type)}
-              />
-            </div>
-          </div>
-        ))}
+      <div className="space-y-4">
+        <CopyBlock
+          label="Server side (recommended, most reliable)"
+          code={serverSnippet(ingestUrl, token)}
+        />
+        <CopyBlock
+          label="Browser pixel (if you have no backend)"
+          code={pixelSnippet(ingestUrl, token)}
+        />
       </div>
     </div>
   );
