@@ -633,15 +633,19 @@ const CAC_BOOT_TOKEN = "__CAC_BOOT_SLOT__";
 // resolved price, live or fallback) so the sparkline agrees with the headline
 // number. Weekly points over ~6 months, smooth decline + a tiny fixed wiggle.
 function fallbackCacSeries(end: number): SeriesPoint[] {
-  const WEEKS = 26;
-  const anchor = Date.UTC(2026, 6, 9); // 2026-07-09, matches the ticker fallback tail
-  const week = 7 * 24 * 60 * 60 * 1000;
+  // One point PER DAY over the trailing window, up to and INCLUDING today (the
+  // last point is today at `end`). ISR (revalidate 300) re-renders it so "today"
+  // stays current. The client forward-fills any gaps / extends to its own today.
+  const DAYS = 120;
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const day = 24 * 60 * 60 * 1000;
   const out: SeriesPoint[] = [];
-  for (let i = WEEKS - 1; i >= 0; i--) {
-    const date = new Date(anchor - i * week).toISOString().slice(0, 10);
-    const progress = (WEEKS - 1 - i) / (WEEKS - 1); // 0 (oldest) -> 1 (latest)
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const date = new Date(todayUTC - i * day).toISOString().slice(0, 10);
+    const progress = (DAYS - 1 - i) / (DAYS - 1); // 0 (oldest) -> 1 (today)
     const trend = 1.9 - 0.9 * progress; // ~1.9x down to 1x
-    const wiggle = 1 + 0.05 * Math.sin(i * 1.3);
+    const wiggle = 1 + 0.05 * Math.sin(i * 0.35);
     out.push({ date, v: Math.round(end * trend * wiggle * 100) / 100 });
   }
   return out;
