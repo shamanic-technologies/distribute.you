@@ -154,6 +154,11 @@ export function OutreachStatCards({
   // `sales` goal) — the GA goals (signups/sales_meetings/form_submissions/
   // website_purchase) show their outcome ungated.
   const goalIsBeta = goal === "sales";
+  // The combined `sales` goal wins a paying client via EITHER the visit→paid OR the
+  // reply→paid path, so it surfaces the reply funnel (Positive Replies + Cost per positive
+  // reply) ALONGSIDE the website-visit funnel above and the Sale outcome below. Reply
+  // attribution is inbox-sourced (no conversion-tracker CTA). Every other goal is unchanged.
+  const showReplyPair = goal === "sales";
 
   // Unified outcome card. positive_replies is a 1-step goal (goalOutcomeStep is null) but
   // the reply IS the outcome — surface it as Positive Replies + Cost per positive reply
@@ -220,6 +225,33 @@ export function OutreachStatCards({
               label={clickMetric.costLabel}
               tooltip={clickMetric.costTooltip}
               value={clickMetric.costValue}
+              pending={pending}
+            />
+          </Cell>
+        </>
+      )}
+
+      {/* Combined `sales` goal: surface the reply funnel too (Positive Replies + Cost per
+          positive reply), between the website-visit funnel above and the Sale outcome below.
+          Inbox-sourced attribution → no conversion-tracker CTA. */}
+      {showReplyPair && (
+        <>
+          <Cell>
+            <ScoreCard
+              label="Positive Replies"
+              value={
+                spend?.positiveRepliesCount != null
+                  ? formatCount(spend.positiveRepliesCount)
+                  : "—"
+              }
+              pending={pending}
+            />
+          </Cell>
+          <Cell>
+            <ScoreCard
+              label="Cost per positive reply"
+              tooltip="Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach."
+              value={formatCostCents(spend?.cpprCents)}
               pending={pending}
             />
           </Cell>

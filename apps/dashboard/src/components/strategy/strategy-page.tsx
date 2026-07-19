@@ -250,8 +250,11 @@ export function StrategyPage() {
   const noun = outcomeNoun(optimizationGoal);
   // Sales-meetings objective → the funnel runs through a positive reply, so surface
   // the cost per positive reply (a card left of "Cost / meeting" + a CPPR column left
-  // of CPC in the per-audience table). Read verbatim from the resolved grain.
-  const showReplyStat = optimizationGoal === "sales_meetings";
+  // of CPC in the per-audience table). The combined `sales` goal wins via EITHER the
+  // visit→paid OR the reply→paid path, so it surfaces the reply cost too (alongside the
+  // website-visit cost + the cost per sale). Read verbatim from the resolved grain.
+  const showReplyStat =
+    optimizationGoal === "sales_meetings" || optimizationGoal === "sales";
   // For a website-visits brand the OUTCOME is the website visit itself, i.e. the click:
   // cost per website visit ≡ cost per click. So we render ONE "Cost per website visit"
   // tile/column (the click cost) and drop the separate outcome tile/column that would
