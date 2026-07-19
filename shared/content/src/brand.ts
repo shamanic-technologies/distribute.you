@@ -1,5 +1,5 @@
 export const BRAND = {
-  name: "distribute",
+  name: "distribute.you",
   tagline: "Sales Automation",
   hero: "Cold Email Outreach, on Autopilot.",
   license: "MIT",

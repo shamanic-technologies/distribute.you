@@ -1,4 +1,4 @@
-# distribute
+# distribute.you
 
 **Sales Automation**
 
@@ -6,9 +6,9 @@
 
 [distribute.you](https://distribute.you) | [Dashboard](https://dashboard.distribute.you)
 
-## What is distribute?
+## What is distribute.you?
 
-distribute is sales automation, done for you. Create an account, give us your URL — we run your cold email outreach with AI workflows ranked by real performance data.
+distribute.you is sales automation, done for you. Create an account, give us your URL — we run your cold email outreach with AI workflows ranked by real performance data.
 
 ## Distribution Features
 
