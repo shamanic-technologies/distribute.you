@@ -3,25 +3,25 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const SITE_URL = "https://dashboard.distribute.you";
-const SITE_NAME = "distribute Dashboard";
+const SITE_NAME = "distribute.you Dashboard";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Dashboard | distribute",
-    template: "%s | distribute Dashboard",
+    default: "Dashboard | distribute.you",
+    template: "%s | distribute.you Dashboard",
   },
-  description: "Manage your API keys, campaigns, usage, and billing. Configure your distribute automations.",
+  description: "Manage your API keys, campaigns, usage, and billing. Configure your distribute.you automations.",
   keywords: [
-    "distribute",
+    "distribute.you",
     "dashboard",
     "campaigns",
     "automation",
     "API keys",
     "distribution",
   ],
-  authors: [{ name: "distribute" }],
-  creator: "distribute",
+  authors: [{ name: "distribute.you" }],
+  creator: "distribute.you",
   formatDetection: {
     email: false,
     address: false,
@@ -32,21 +32,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute Dashboard",
+    title: "distribute.you Dashboard",
     description: "Manage your API keys, campaigns, and usage.",
     images: [
       {
         url: "https://distribute.you/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute Dashboard",
+        alt: "distribute.you Dashboard",
       },
     ],
   },
   twitter: {
     card: "summary",
-    title: "distribute Dashboard",
-    description: "Manage your distribute automations.",
+    title: "distribute.you Dashboard",
+    description: "Manage your distribute.you automations.",
   },
   robots: {
     index: false,
@@ -62,14 +62,14 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "distribute Dashboard",
+  name: "distribute.you Dashboard",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description: "Dashboard to manage API keys, campaigns, and distribution automation settings.",
   url: SITE_URL,
   provider: {
     "@type": "Organization",
-    name: "distribute",
+    name: "distribute.you",
     url: "https://distribute.you",
   },
 };
