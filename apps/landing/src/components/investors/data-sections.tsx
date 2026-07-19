@@ -66,7 +66,7 @@ export async function CompanyOverviewSection() {
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 space-y-4 text-sm leading-relaxed">
       <p>
-        <strong className="text-gray-900">distribute</strong> is a pay-as-you-go
+        <strong className="text-gray-900">distribute.you</strong> is a pay-as-you-go
         cloud platform for AI cold email outreach. Builders provide a URL and a
         daily budget; AI workflows handle prospecting, email generation, sending,
         reply qualification, and reporting — ranked by real cost-per-positive-reply.

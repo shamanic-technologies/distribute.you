@@ -44,7 +44,7 @@ export function DashboardPreview() {
         <div className="flex min-h-[420px]">
           {/* Sidebar */}
           <div className="w-48 border-r border-gray-800 bg-gray-900/50 p-4 hidden md:block">
-            <div className="font-semibold text-white text-sm mb-4 tracking-tight">distribute</div>
+            <div className="font-semibold text-white text-sm mb-4 tracking-tight">distribute.you</div>
             <div className="space-y-1">
               {features.map((f) => {
                 const colors = SIDEBAR_COLORS[f.color];

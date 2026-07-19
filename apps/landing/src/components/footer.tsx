@@ -77,7 +77,7 @@ export function Footer({ disclaimer }: FooterProps) {
             <div className="flex items-center gap-2 mb-4">
               <Image
                 src="/logo-distribute.svg"
-                alt="distribute"
+                alt="distribute.you"
                 width={28}
                 height={28}
                 className="rounded-lg"
