@@ -544,12 +544,13 @@ async function fetchTrendSeries(
   headers: Record<string, string>,
   slug: string,
   objective: string,
+  days = 90,
 ): Promise<SeriesPoint[]> {
   // Bound each call so a slow/hanging cold endpoint can't blow the homepage's
   // 60s build-time prerender budget — a timeout throws, propagates through the
   // Promise.all, and resolveTicker falls back to the last-known-good board.
   const res = await fetch(
-    `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=90`,
+    `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=${days}`,
     { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
   );
   if (!res.ok) {
@@ -651,9 +652,44 @@ async function withTickerMetrics(html: string) {
     .replaceAll("__BEST_WEB__", t.bestWeb);
 }
 
+// Homepage live cost-of-acquisition chart — SSR "boot" payload so the chart +
+// numbers paint on FIRST byte (no client-fetch delay). The client reads
+// window.__CAC_BOOT__ to render instantly, then refetches live to refresh. On a
+// build-time fetch failure the boot degrades to the last-known-good price + an
+// empty series (the client fills the chart on its own fetch) — never blank.
+const CAC_BOOT_TOKEN = "__CAC_BOOT__";
+
+async function resolveCacBoot(): Promise<string> {
+  const apiUrl = resolvePublicApiUrl();
+  const headers = { Accept: "application/json" };
+  const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
+  let best: number | null = FALLBACK_BEST.positiveReply;
+  let points: SeriesPoint[] = [];
+  try {
+    const [b, p] = await Promise.all([
+      fetchBestModelUsd(apiUrl, headers, slug, "positiveReply").catch(() => null),
+      fetchTrendSeries(apiUrl, headers, slug, "positiveReply", 365).catch(
+        () => [] as SeriesPoint[],
+      ),
+    ]);
+    if (b !== null) best = b;
+    points = p;
+  } catch (error) {
+    console.error("[landing] cac boot unavailable, using fallback", error);
+  }
+  return `<script>window.__CAC_BOOT__=${JSON.stringify({ best, points })}</script>`;
+}
+
+async function withCacBoot(html: string) {
+  if (!html.includes(CAC_BOOT_TOKEN)) return html;
+  return html.replaceAll(CAC_BOOT_TOKEN, await resolveCacBoot());
+}
+
 export async function staticResponse(fileName: string) {
-  const html = await withTickerMetrics(
-    await withLivePerformanceMetrics(staticHtml(fileName)),
+  const html = await withCacBoot(
+    await withTickerMetrics(
+      await withLivePerformanceMetrics(staticHtml(fileName)),
+    ),
   );
 
   return new Response(html, {

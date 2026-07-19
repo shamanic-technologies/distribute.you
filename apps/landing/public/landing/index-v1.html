@@ -887,7 +887,7 @@
           <div class="category-label">Sales Productized Agency</div>
           <h1>Sell like crazy. <span class="accent">Get sales when you sleep.</span></h1>
           <p class="hero-copy">
-            Drop your website. Validate the targeting and positioning. distribute.you finds interested B2B prospects for a sales meeting with you. <strong>We forward the conversation in your inbox, and you handle the closing yourself.</strong>
+            Drop your website. Validate the targeting and positioning. distribute.you finds interested B2B prospects for sales meetings with you. <strong>We forward the conversations in your inbox, and you handle the closing yourself.</strong>
           </p>
 
           <form class="url-form" id="campaign-form" novalidate>
@@ -1369,6 +1369,7 @@
       }
     })();
   </script>
+__CAC_BOOT__
 <script>
   (function(){
     var API='https://api.distribute.you';
@@ -1476,34 +1477,38 @@
       if(!prev)return null;
       return (last-prev)/prev; /* +ve cost rose (bad), -ve cost fell (good) */
     }
+    function applyData(best,points){
+      points=points||[];
+      if(best!=null){
+        var p=fmtUsd(best);
+        setText('[data-cac-big]',p);
+        setText('[data-cac-inline]',p);
+        setText('[data-cac-mult]', Math.round(MARKET/best)+'×');
+      }
+      var chart=document.querySelector('[data-cac-chart]');
+      if(chart&&points.length)renderChart(chart,points);
+      var d=weeklyDelta(points), badge=document.querySelector('[data-cac-delta]');
+      if(badge){
+        if(d==null||d===0){badge.style.display='none';}
+        else{
+          var up=d>0, pct=(Math.abs(d)*100).toFixed(1);
+          badge.style.display='';
+          badge.className='cac-delta '+(up?'bad':'good');
+          badge.textContent=(up?'▲':'▼')+' '+pct+'% past week';
+        }
+      }
+      if(points.length){
+        var since=document.querySelector('[data-cac-since]');
+        if(since){var dt=new Date(points[0].date+'T00:00:00Z');
+          since.textContent=' · since '+dt.toLocaleDateString('en-US',{month:'short',year:'numeric'});}
+      }
+    }
     function renderCac(){
+      /* SSR boot: paint instantly from server-baked data, then refresh live. */
+      var boot=window.__CAC_BOOT__;
+      if(boot){ if(boot.best!=null)bestPrice=boot.best; applyData(boot.best, boot.points||[]); }
       Promise.all([fetchBest().catch(function(){return null;}), fetchTrend().catch(function(){return [];})])
-        .then(function(res){
-          var best=res[0], points=res[1];
-          if(best!=null){
-            var p=fmtUsd(best);
-            setText('[data-cac-big]',p);
-            setText('[data-cac-inline]',p);
-            setText('[data-cac-mult]', Math.round(MARKET/best)+'×');
-          }
-          var chart=document.querySelector('[data-cac-chart]');
-          if(chart&&points.length)renderChart(chart,points);
-          var d=weeklyDelta(points), badge=document.querySelector('[data-cac-delta]');
-          if(badge){
-            if(d==null||d===0){badge.style.display='none';}
-            else{
-              var up=d>0, pct=(Math.abs(d)*100).toFixed(1);
-              badge.style.display='';
-              badge.className='cac-delta '+(up?'bad':'good');
-              badge.textContent=(up?'▲':'▼')+' '+pct+'% wk';
-            }
-          }
-          if(points.length){
-            var since=document.querySelector('[data-cac-since]');
-            if(since){var dt=new Date(points[0].date+'T00:00:00Z');
-              since.textContent=' · since '+dt.toLocaleDateString('en-US',{month:'short',year:'numeric'});}
-          }
-        });
+        .then(function(res){ applyData(res[0], res[1]); });
     }
     function buildModal(){
       var overlay=document.createElement('div');
