@@ -610,8 +610,35 @@
     .pm-field label{display:block;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}
     .pm-field input{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);font-family:var(--body);font-size:14px}
     .pm-field input:focus{outline:2px solid var(--green);outline-offset:1px;border-color:transparent}
-    .pm-nav{margin-top:20px}
-    .pm-nav .button{width:100%;justify-content:center}
+    .pm-nav{margin-top:22px;display:flex;align-items:center;gap:12px}
+    .pm-nav .button{flex:1;justify-content:center}
+    .button[disabled]{opacity:.45;cursor:not-allowed;pointer-events:none}
+    .pm-dots{display:flex;gap:6px;margin-bottom:20px}
+    .pm-dot{width:26px;height:4px;border-radius:99px;background:var(--line);transition:background .2s}
+    .pm-dot.on{background:var(--green)}
+    .pm-choices{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+    .pm-choice{text-align:left;width:100%;cursor:pointer;padding:15px 17px;border-radius:12px;background:#0b1016;border:1.5px solid var(--line);transition:border-color .18s,background .18s}
+    .pm-choice:hover{border-color:var(--green-line)}
+    .pm-choice.sel{border-color:var(--green);background:var(--green-dim)}
+    .pm-choice-t{font-size:14.5px;font-weight:600;color:var(--text)}
+    .pm-choice-d{font-size:12.5px;color:var(--muted);margin-top:3px}
+    .pm-budget-h{font-size:13px;font-weight:600;color:var(--text);margin:22px 0 11px}
+    .pm-tiers{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .pm-tier{cursor:pointer;text-align:center;padding:14px 8px;border-radius:12px;background:#0b1016;border:1.5px solid var(--line);transition:border-color .18s,background .18s}
+    .pm-tier:hover{border-color:var(--green-line)}
+    .pm-tier.sel{border-color:var(--green);background:var(--green-dim)}
+    .pm-tier-eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+    .pm-tier.rec .pm-tier-eyebrow{color:var(--green)}
+    .pm-tier-n{font-family:var(--display);font-size:24px;font-weight:700;color:var(--text);line-height:1.1;margin-top:3px}
+    .pm-tier-unit{font-size:10.5px;color:var(--muted)}
+    .pm-tier-day{font-size:10.5px;font-weight:600;color:var(--faint);margin-top:6px}
+    .pm-tier-custom input{width:100%;text-align:center;padding:5px;margin-top:3px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-family:var(--display);font-size:20px;font-weight:700;outline:none}
+    .pm-tier-custom input:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-dim)}
+    .pm-summary{text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
+    .pm-summary b{color:var(--text)}
+    .pm-back{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;font-family:var(--body);padding:8px 4px;flex-shrink:0;transition:color .18s}
+    .pm-back:hover{color:var(--text)}
+    .pm-price.calc .pm-price-n{color:var(--muted);font-size:20px;font-weight:600}
 
     .economics-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px;align-items:stretch}
     .price-card{
@@ -1510,53 +1537,17 @@ __CAC_BOOT__
       Promise.all([fetchBest().catch(function(){return null;}), fetchTrend().catch(function(){return [];})])
         .then(function(res){ applyData(res[0], res[1]); });
     }
-    function buildModal(){
-      var overlay=document.createElement('div');
-      overlay.className='pm-overlay'; overlay.setAttribute('aria-hidden','true');
-      overlay.innerHTML='<div class="pm-card" role="dialog" aria-modal="true" aria-label="Custom pricing">'
-        +'<button class="pm-close" type="button" aria-label="Close">✕</button>'
-        +'<span class="pm-eyebrow">Custom pricing</span>'
-        +'<h2 class="pm-title">See your live rate</h2>'
-        +'<p class="pm-sub">This is what a positive reply for a sales meeting costs right now, live. Drop your website and we run it for you.</p>'
-        +'<div class="pm-price"><div class="pm-price-lbl">Cost per positive reply for a sales meeting</div>'
-        +'<div class="pm-price-n" data-pm-price>…</div>'
-        +'<div class="pm-price-per">live cost, updated as campaigns run</div></div>'
-        +'<div class="pm-credit"><div class="pm-credit-t">Your first $25 is on us.</div>'
-        +'<div class="pm-credit-d">Spend $25 and we match it, $1 for $1. Credits unlock the moment your spend reaches $25.</div></div>'
-        +'<div class="pm-field"><label for="pm-url">Your company website</label>'
-        +'<input id="pm-url" type="url" inputmode="url" autocomplete="url" placeholder="https://yourcompany.com"></div>'
-        +'<div class="pm-nav"><button type="button" class="button primary" data-pm-go>Get started →</button></div></div>';
-      document.body.appendChild(overlay);
-      var urlInput=overlay.querySelector('#pm-url');
-      function close(){overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.style.overflow='';}
-      function open(url){
-        overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
-        if(url)urlInput.value=url;
-        var pn=overlay.querySelector('[data-pm-price]');
-        if(bestPrice!=null)pn.textContent=fmtUsd(bestPrice);
-        else fetchBest().then(function(b){if(b!=null)pn.textContent=fmtUsd(b);}).catch(function(){});
-        setTimeout(function(){urlInput.focus();},50);
-      }
-      overlay.querySelector('.pm-close').addEventListener('click',close);
-      overlay.addEventListener('click',function(e){if(e.target===overlay)close();});
-      document.addEventListener('keydown',function(e){if(e.key==='Escape'&&overlay.classList.contains('open'))close();});
-      overlay.querySelector('[data-pm-go]').addEventListener('click',function(){
-        var v=(urlInput.value||'').trim().replace(/^https?:\/\//i,'');
-        window.location.href = v ? SIGNUP+'?url='+encodeURIComponent(v) : SIGNUP;
-      });
-      return {open:open};
-    }
+    // The pricing modal (the real 2-step goal -> price + budget calculator)
+    // lives in js/pricing-modal-v1.js and self-wires to [data-pricing-modal].
+    // This inline block only renders the on-page live CAC numbers.
     function init(){
       renderCac();
-      var modal=buildModal();
-      document.querySelectorAll('[data-pricing-modal]').forEach(function(t){
-        t.addEventListener('click',function(e){e.preventDefault();modal.open('');});
-      });
       if('requestIdleCallback' in window)requestIdleCallback(function(){fetchBest().catch(function(){});});
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init); else init();
   })();
 </script>
+<script src="js/pricing-modal-v1.js" defer></script>
 <script src="js/support-button.js"></script>
 </body>
 </html>
