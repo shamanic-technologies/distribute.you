@@ -109,6 +109,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Brand entity sub-lists (big — persisted so their pages skip the reload skeleton)
   "brandLeads",
   "brandEmails",
+  // Per-lead generated email content — the leads detail-panel fetch
+  // (`["leadEmail", leadId, brandId]`, click-gated). Persisted so re-opening a
+  // lead paints its last-known email from disk instead of cold-fetching.
+  "leadEmail",
   "brandOutlets",
   "brandArticles",
   "brandJournalists",

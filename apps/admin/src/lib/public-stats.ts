@@ -254,19 +254,63 @@ async function fetchTrafficSources(totalVisitors: number): Promise<TrafficSource
   });
 }
 
+// The paid-users (cards) view builds a per-day timeline by fetching every Stripe
+// customer's payment_methods — one request per customer. Firing all of them at
+// once through an unbounded Promise.all bursts past Stripe's rate limit (100
+// read req/s live mode) → every request 429s → the whole /metrics?view=cards
+// render throws (digest 1380900901 in prod). So the fan-out runs through a
+// bounded worker pool, and each idempotent GET retries on a 429 / transient 5xx
+// with backoff (honoring Stripe's Retry-After) before failing loud.
+const STRIPE_READ_CONCURRENCY = 6;
+const STRIPE_READ_RETRIES = 4;
+const STRIPE_READ_BACKOFF_MS = [500, 1000, 2000, 4000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function isTransientStripeStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status < 600);
+}
+
 async function stripeList(path: string, params: URLSearchParams): Promise<z.infer<typeof stripeListSchema>> {
   const secretKey = requireEnv("STRIPE_SECRET_KEY");
-  const res = await fetch(`${STRIPE_API_URL}${path}?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${secretKey}` },
-    next: { revalidate: 300 },
-  });
+  let lastError: unknown;
 
-  if (!res.ok) {
-    throw new Error(`[public-stats] Stripe ${path} failed: ${res.status} ${res.statusText}`);
+  for (let attempt = 0; attempt <= STRIPE_READ_RETRIES; attempt++) {
+    const res = await fetch(`${STRIPE_API_URL}${path}?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+      next: { revalidate: 300 },
+    });
+
+    if (res.ok) {
+      const data: unknown = await res.json();
+      return stripeListSchema.parse(data);
+    }
+
+    lastError = new Error(`[public-stats] Stripe ${path} failed: ${res.status} ${res.statusText}`);
+    if (!isTransientStripeStatus(res.status) || attempt === STRIPE_READ_RETRIES) throw lastError;
+
+    // Prefer Stripe's Retry-After (seconds) when present; else exponential backoff.
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const backoff = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : STRIPE_READ_BACKOFF_MS[Math.min(attempt, STRIPE_READ_BACKOFF_MS.length - 1)];
+    await sleep(backoff);
   }
 
-  const data: unknown = await res.json();
-  return stripeListSchema.parse(data);
+  throw lastError;
+}
+
+async function mapWithConcurrency<I, O>(items: I[], limit: number, fn: (item: I) => Promise<O>): Promise<O[]> {
+  const results: O[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const current = next++;
+      results[current] = await fn(items[current]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
 }
 
 async function fetchStripeCustomers(): Promise<Array<{ id: string }>> {
@@ -288,14 +332,14 @@ async function fetchStripeCardsDaily(): Promise<Map<string, number>> {
   const customers = await fetchStripeCustomers();
   const daily = new Map<string, number>();
 
-  await Promise.all(customers.map(async (customer) => {
+  await mapWithConcurrency(customers, STRIPE_READ_CONCURRENCY, async (customer) => {
     const params = new URLSearchParams({ limit: "100", type: "card" });
     const page = await stripeList(`/customers/${customer.id}/payment_methods`, params);
     const firstCardCreated = page.data.map((paymentMethod) => paymentMethod.created).sort((a, b) => a - b)[0];
     if (firstCardCreated === undefined) return;
     const day = new Date(firstCardCreated * 1000).toISOString().slice(0, 10);
     daily.set(day, (daily.get(day) ?? 0) + 1);
-  }));
+  });
 
   return daily;
 }

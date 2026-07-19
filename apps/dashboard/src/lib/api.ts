@@ -354,6 +354,31 @@ export async function resolveUser(
 }
 
 // Campaigns
+// The per-campaign goal is the runtime-goal vocabulary (campaign-service), which
+// is a DIFFERENT enum from the brand-level `BrandOptimizationGoal`. NULL on a
+// campaign = inherit the brand goal.
+export type RuntimeGoal = "signup" | "meetingBooked" | "purchase";
+
+/** Map a brand `BrandOptimizationGoal` to the nearest campaign RuntimeGoal
+ *  (used to seed the New Campaign goal picker from the brand's inherited goal). */
+export function runtimeGoalForOptimizationGoal(goal: BrandOptimizationGoal): RuntimeGoal {
+  // website_purchase (renamed purchase) + combined sales both terminate in a paid
+  // client → the campaign paces on the `purchase` runtime goal.
+  if (goal === "website_purchase" || goal === "sales") return "purchase";
+  if (goal === "sales_meetings" || goal === "positive_replies") return "meetingBooked";
+  // signups / website_visits / form_submissions → signup (visit-driven default).
+  return "signup";
+}
+
+/** Map a campaign RuntimeGoal back to a `BrandOptimizationGoal` so the campaign's
+ *  OWN goal can drive the goal-labelled display surfaces (which speak the brand
+ *  optimization-goal vocabulary). Display-only. */
+export function optimizationGoalForRuntimeGoal(goal: RuntimeGoal): BrandOptimizationGoal {
+  if (goal === "signup") return "signups";
+  if (goal === "purchase") return "website_purchase";
+  return "sales_meetings";
+}
+
 export interface Campaign {
   id: string;
   name: string;
@@ -369,6 +394,12 @@ export interface Campaign {
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;
   maxBudgetTotalUsd: string | null;
+  // Per-campaign config (v2, campaign-service). All nullable; NULL = inherit the
+  // brand-level value (goal / active audience set / services / click destination).
+  goal: RuntimeGoal | null;
+  audienceIds: string[] | null;
+  servicesOffered: string[] | null;
+  clickDestinationUrl: string | null;
   endDate: string | null;
   toResumeAt: string | null;
   createdAt: string;
@@ -2446,23 +2477,43 @@ export async function getCampaign(campaignId: string, token?: string): Promise<{
 }
 
 /**
- * Set ONE campaign's daily budget (v2 per-campaign budget). PATCH /v1/campaigns/:id
- * with `{ maxBudgetDailyUsd }` (whole USD string). campaign-service paces the sales
- * feature on `campaign ?? brand` — writing this makes the campaign override its brand
- * budget; passing null clears it back to inheriting the brand budget. Used by the
- * beta per-campaign budget editor. */
-export async function updateCampaignDailyBudget(
+ * PATCH /v1/campaigns/:id — update ONE campaign's per-campaign config (v2). Every
+ * field is optional; passing null (or omitting) makes the campaign INHERIT the
+ * brand-level value (goal / active audience set / services / click destination /
+ * daily budget). `maxBudgetDailyUsd` is a whole-USD string. campaign-service paces
+ * the sales feature on `campaign ?? brand`, so writing a field overrides the brand;
+ * writing null clears it back to inheriting.
+ */
+export async function updateCampaign(
   campaignId: string,
-  maxBudgetDailyUsd: string | null,
+  patch: {
+    goal?: RuntimeGoal | null;
+    audienceIds?: string[] | null;
+    servicesOffered?: string[] | null;
+    clickDestinationUrl?: string | null;
+    maxBudgetDailyUsd?: string | null;
+  },
   token?: string,
 ): Promise<{ campaign: Campaign }> {
   const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, {
     token,
     method: "PATCH",
-    body: { maxBudgetDailyUsd },
+    body: patch as unknown as Record<string, unknown>,
   });
   const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
   return { campaign: enriched };
+}
+
+/**
+ * Set ONE campaign's daily budget (v2 per-campaign budget). Thin wrapper over
+ * `updateCampaign`. Writing null clears it back to inheriting the brand budget.
+ */
+export async function updateCampaignDailyBudget(
+  campaignId: string,
+  maxBudgetDailyUsd: string | null,
+  token?: string,
+): Promise<{ campaign: Campaign }> {
+  return updateCampaign(campaignId, { maxBudgetDailyUsd }, token);
 }
 
 // Campaign sub-resources

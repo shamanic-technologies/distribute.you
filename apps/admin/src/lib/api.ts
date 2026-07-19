@@ -4869,7 +4869,13 @@ export async function getActiveUsersByUser(token?: string): Promise<ActiveUsersB
 export type CustomerOptimizationGoal =
   | "signup"
   | "meetingBooked"
+  // `purchase` = the legacy wire key for the website-purchase goal; kept as a
+  // transitional alias. `websitePurchase` is the renamed key + `sales` the new
+  // combined goal (paying client won via the visit→paid OR reply→paid path,
+  // valued at CLTV). Tolerant of whichever the deployed backend emits.
   | "purchase"
+  | "websitePurchase"
+  | "sales"
   | "websiteVisit"
   | "positiveReply"
   | "formSubmission";
@@ -4954,10 +4960,23 @@ export interface CustomerDashboardReturnFrequency {
   daysSinceLastSeen: number | null;
 }
 
+// One daily-budget change (billing, forward-only): budget BECAME dailyBudgetUsd at changedAt (0 = pause).
+export interface CustomerBudgetChange {
+  dailyBudgetUsd: number;
+  changedAt: string; // ISO
+}
+
+// One pause flip (campaign, forward-only): paused = new state after the flip (true=paused, false=resumed).
+export interface CustomerPauseTransition {
+  paused: boolean;
+  transitionedAt: string; // ISO
+}
+
 export interface CustomerNotTrackedYet {
   dashboardReturnFrequency: CustomerDashboardReturnFrequency | null;
-  budgetChangeHistory: null;
-  pauseHistory: null;
+  // Forward-only timelines (oldest-first). Empty array = tracked, nothing yet; null = read failed/unconfigured.
+  budgetChangeHistory: CustomerBudgetChange[] | null;
+  pauseHistory: CustomerPauseTransition[] | null;
 }
 
 export interface CustomerRow {
@@ -5427,7 +5446,14 @@ const CrossOrgLifetimeSchema = z.object({
     signup: z.coerce.number().nullable(),
     formSubmission: z.coerce.number().nullable(),
     meetingBooked: z.coerce.number().nullable(),
-    purchase: z.coerce.number().nullable(),
+    // `purchase` = legacy key (transitional alias for websitePurchase);
+    // `websitePurchase` = renamed key; `sales` = new combined goal (visit→paid
+    // OR reply→paid, CLTV-valued). All `.nullish()` so the read is tolerant of
+    // whichever keys the deployed backend serves during the staged rollout —
+    // renders "—" until the producer populates them, never a false $0.
+    purchase: z.coerce.number().nullish(),
+    websitePurchase: z.coerce.number().nullish(),
+    sales: z.coerce.number().nullish(),
   }),
   totalSpentUsd: z.coerce.number(),
   totalClicks: z.coerce.number(),
