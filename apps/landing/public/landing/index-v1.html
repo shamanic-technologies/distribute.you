@@ -1472,13 +1472,6 @@ __CAC_BOOT_SLOT__
           return bestPrice;
         });
     }
-    function fetchTrend(){
-      return getJSON(API+'/v1/public/features/cost-per-outcome-trend?featureSlug='+encodeURIComponent(SLUG)+'&objective=positiveReply&days=365')
-        .then(function(d){
-          return (d.points||[]).filter(function(p){return p&&p.costPerOutcomeUsd!=null&&typeof p.date==='string';})
-            .map(function(p){return {date:p.date,v:p.costPerOutcomeUsd};});
-        });
-    }
     function fmtDate(iso){var d=new Date(iso+'T00:00:00Z');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
     function fmtDateFull(iso){var d=new Date(iso+'T00:00:00Z');return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 
@@ -1579,11 +1572,19 @@ __CAC_BOOT_SLOT__
       }
     }
     function renderCac(){
-      /* SSR boot: paint instantly from server-baked data, then refresh live. */
+      /* SSR boot: paint instantly from server-baked data, then refresh the live
+         BEST-model price. The series is the best-model timeline (never a
+         cross-workflow pooled average): we refresh only the single best-model
+         price cross-org and rescale the baked curve to end on it, until the
+         best-model dated-trend endpoint ships real per-day points. */
       var boot=window.__CAC_BOOT__;
       if(boot){ if(boot.best!=null)bestPrice=boot.best; applyData(boot.best, boot.points||[]); }
-      Promise.all([fetchBest().catch(function(){return null;}), fetchTrend().catch(function(){return [];})])
-        .then(function(res){ applyData(res[0], res[1]); });
+      fetchBest().then(function(b){
+        if(b==null)return;
+        var pts=(boot&&boot.points)||[], base=boot&&boot.best;
+        if(base>0&&pts.length){ pts=pts.map(function(p){return {date:p.date,v:Math.round(p.v*(b/base)*100)/100};}); }
+        applyData(b, pts);
+      }).catch(function(){});
     }
     // The pricing modal (the real 2-step goal -> price + budget calculator)
     // lives in js/pricing-modal-v1.js and self-wires to [data-pricing-modal].
