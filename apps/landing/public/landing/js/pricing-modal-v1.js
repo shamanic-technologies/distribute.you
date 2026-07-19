@@ -183,8 +183,10 @@
     var g = state.goal;
     var uc = unitCostFor(g);              // BIG number (best avg-100), or undefined while loading
     state.unitCost = (uc === undefined) ? null : uc;
-    var buc = budgetUnitFor(g);           // BUDGET model (fleet-avg projected), or undefined while loading
-    state.budgetUnitCost = (buc === undefined) ? null : buc;
+    // Budget uses the SAME live headline price as the big number above, so the
+    // $/day tiers + summary stay coherent with "Cost per <outcome>" — one price
+    // everywhere, never a second fleet-avg model that contradicts the headline.
+    state.budgetUnitCost = state.unitCost;
 
     function priceBlock() {
       if (uc === undefined) {
@@ -230,10 +232,9 @@
       + '<div class="pm-nav"><button type="button" class="pm-back" data-back>← Back</button>'
       + '<button type="button" class="button primary" data-start' + (startDisabled ? ' disabled' : '') + '>Get started →</button></div>';
 
-    // Still loading either source → re-render once it lands to fill the price + $/day.
+    // Still loading the price → re-render once it lands to fill the price + $/day.
     function reRenderIfOpen() { if (state.step === 1 && overlay.classList.contains('open')) renderResult(); }
     if (uc === undefined) fetchBest(g.objective).then(reRenderIfOpen);
-    if (buc === undefined) fetchProjection().then(reRenderIfOpen);
 
     body.querySelectorAll('[data-count]').forEach(function (btn) {
       btn.addEventListener('click', function () { state.count = parseInt(btn.getAttribute('data-count'), 10); renderResult(); });
