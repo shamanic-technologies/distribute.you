@@ -644,9 +644,19 @@ function fallbackCacSeries(end: number): SeriesPoint[] {
   for (let i = DAYS - 1; i >= 0; i--) {
     const date = new Date(todayUTC - i * day).toISOString().slice(0, 10);
     const progress = (DAYS - 1 - i) / (DAYS - 1); // 0 (oldest) -> 1 (today)
-    const trend = 1.9 - 0.9 * progress; // ~1.9x down to 1x
-    const wiggle = 1 + 0.05 * Math.sin(i * 0.35);
-    out.push({ date, v: Math.round(end * trend * wiggle * 100) / 100 });
+    // Ease-out decline (fast early improvement, flattening near today) instead of
+    // a straight line, plus IRREGULAR texture (incommensurate harmonics + a
+    // deterministic hash jitter) so it reads like real noisy declining data —
+    // not the clean periodic sine wave it used to be. Today (i=0) sits at `end`.
+    const trend = 1 + 0.9 * Math.pow(1 - progress, 1.7);
+    const wave =
+      0.03 * Math.sin(i * 0.19) +
+      0.02 * Math.sin(i * 0.53 + 1.3) +
+      0.013 * Math.sin(i * 1.11 + 2.7);
+    const hx = Math.sin(i * 12.9898) * 43758.5453;
+    const jitter = (hx - Math.floor(hx) - 0.5) * 2 * 0.02;
+    const mult = i === 0 ? 1 : trend * (1 + wave + jitter);
+    out.push({ date, v: Math.round(end * mult * 100) / 100 });
   }
   return out;
 }
