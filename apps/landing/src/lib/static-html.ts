@@ -467,7 +467,7 @@ function fallbackSeries(end: number): SeriesPoint[] {
 // Last-known-good BEST-model cost per outcome (observed 2026-07-17) — the hero
 // numbers fall back to these when the workflow-cost-per-outcome endpoint is
 // unreachable, so a cold/slow API still ships real-shaped best-model prices.
-const FALLBACK_BEST = { positiveReply: 108, websiteVisit: 0.62 } as const;
+const FALLBACK_BEST = { positiveReply: 52.57, websiteVisit: 0.62 } as const;
 
 function buildFallbackTicker(): TickerMetrics {
   const series: Record<string, SeriesPoint[]> = {
@@ -693,7 +693,11 @@ function fallbackCacSeries(end: number): SeriesPoint[] {
   return out;
 }
 
-async function resolveCacBoot(): Promise<string> {
+async function resolveCacBoot(): Promise<{
+  best: number;
+  points: SeriesPoint[];
+  renderedAt: number;
+}> {
   const apiUrl = resolvePublicApiUrl();
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
@@ -720,12 +724,30 @@ async function resolveCacBoot(): Promise<string> {
   // ~300s). The client shows "Updated X min ago" from it — the freshness of the
   // SSR data, NOT the last data-point date.
   const renderedAt = Date.now();
-  return `<script>window.__CAC_BOOT__=${JSON.stringify({ best, points, renderedAt })}</script>`;
+  return { best: best ?? FALLBACK_BEST.positiveReply, points, renderedAt };
 }
 
 async function withCacBoot(html: string) {
-  if (!html.includes(CAC_BOOT_TOKEN)) return html;
-  return html.replaceAll(CAC_BOOT_TOKEN, await resolveCacBoot());
+  if (
+    !html.includes(CAC_BOOT_TOKEN) &&
+    !html.includes("__CAC_PRICE__") &&
+    !html.includes("__CAC_MULT__")
+  ) {
+    return html;
+  }
+  const boot = await resolveCacBoot();
+  // Bake the price + multiple into the SERVED HTML so the correct number paints
+  // on the FIRST byte — no static placeholder, no client re-fetch, no flash. The
+  // number only changes when the ISR snapshot re-renders (every ~300s).
+  const price = usdSmart(boot.best);
+  const mult = `${Math.round(700 / boot.best)}×`;
+  return html
+    .replaceAll(
+      CAC_BOOT_TOKEN,
+      `<script>window.__CAC_BOOT__=${JSON.stringify(boot)}</script>`,
+    )
+    .replaceAll("__CAC_PRICE__", price)
+    .replaceAll("__CAC_MULT__", mult);
 }
 
 export async function staticResponse(fileName: string) {
