@@ -247,12 +247,13 @@ export interface Spend {
   /** REAL cost per form submission, USD cents = committed spend ÷ `formSubmissionsCount`.
    *  null when `formSubmissionsCount` is 0 (no denominator) → the CPFS card renders "—". */
   cpfsCents?: number | null;
-  /** REAL tracked purchase (paid-client close) count for the purchase goal
-   *  (features-service#476). Additive/optional; absent → the Purchases card renders "—". */
-  purchasesCount?: number;
-  /** REAL cost per purchase, USD cents = committed spend ÷ `purchasesCount`.
-   *  null when `purchasesCount` is 0 → the CPP card renders "—". */
-  cppCents?: number | null;
+  /** REAL tracked SALE (paying-client won) count — terminal outcome of the website_purchase
+   *  goal (multi-step close) AND the combined sales goal. Additive/optional; absent → the
+   *  Sales card renders "—". */
+  salesCount?: number;
+  /** REAL cost per sale, USD cents = committed spend ÷ `salesCount`.
+   *  null when `salesCount` is 0 → the cost card renders "—". */
+  cpSaleCents?: number | null;
 }
 
 /** Everything the overview + conversions pages render for a feature+brand. */

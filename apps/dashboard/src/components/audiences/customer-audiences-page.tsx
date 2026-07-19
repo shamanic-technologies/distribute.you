@@ -41,7 +41,7 @@ function formatCents(cents: number | null): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "outreach" | "remaining" | "size";
+type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
 
 /**
  * Sort key for an audience row under a given column. `audience` sorts by name
@@ -72,6 +72,10 @@ function sortValue(
       return stats?.evidence.formSubmissions ?? null;
     case "cpfs":
       return stats?.metrics.cpfsCents ?? null;
+    case "sales":
+      return stats?.evidence.sales ?? null;
+    case "cpsale":
+      return stats?.metrics.cpsaleCents ?? null;
     case "outreach":
       return stats?.evidence.contacted ?? null;
     case "remaining":
@@ -265,9 +269,13 @@ export function CustomerAudiencesPage() {
   const audienceStatsGoal: FeatureAudienceStatsGoal =
     optimizationGoal === "form_submissions"
       ? "formSubmission"
-      : isVisitDrivenGoal(optimizationGoal)
-        ? "signup"
-        : "meetingBooked";
+      : optimizationGoal === "website_purchase"
+        ? "websitePurchase"
+        : optimizationGoal === "sales"
+          ? "sales"
+          : isVisitDrivenGoal(optimizationGoal)
+            ? "signup"
+            : "meetingBooked";
   // Sales-meetings goal → surface reply economics: extra "Positive Replies" +
   // "CPPR" columns (left of Cost per click), and default the sort to CPPR asc.
   const showMeetingCols = audienceStatsGoal === "meetingBooked";
@@ -285,16 +293,25 @@ export function CustomerAudiencesPage() {
   // submission" (CPFS) + "Form submissions" columns FIRST (before the website-visit
   // funnel), default sort CPFS asc. Also gated on the tracker being set up.
   const showFormSubmissionCols = optimizationGoal === "form_submissions" && trackerSetUp;
+  // website_purchase (multi-step close) + sales (combined) both terminate in a real
+  // per-audience SALE outcome: "Cost per sale" (CP Sale) + "Sales" columns FIRST
+  // (before the website-visit funnel), default sort CP Sale asc. Gated on the tracker
+  // being set up — with no tracker there are no sales to attribute.
+  const showSaleCols =
+    (optimizationGoal === "sales" || optimizationGoal === "website_purchase") && trackerSetUp;
   // Seed the initial sort column from the brand goal once it resolves — cheapest
-  // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), else CPC
-  // (website visits) — until the user picks a column manually.
+  // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), CP Sale
+  // (sales / website purchases), else CPC (website visits) — until the user picks a
+  // column manually.
   const defaultSortCol: SortCol = showMeetingCols
     ? "cppr"
     : showSignupCols
       ? "cps"
       : showFormSubmissionCols
         ? "cpfs"
-        : "cpc";
+        : showSaleCols
+          ? "cpsale"
+          : "cpc";
   useEffect(() => {
     if (hasUserSorted) return;
     setSortCol(defaultSortCol);
@@ -308,7 +325,8 @@ export function CustomerAudiencesPage() {
   // (meetings / positive_replies hide the CPC column entirely → no tie-break.)
   const tieBreakCol: SortCol | null =
     (showSignupCols && sortCol === "cps") ||
-    (showFormSubmissionCols && sortCol === "cpfs")
+    (showFormSubmissionCols && sortCol === "cpfs") ||
+    (showSaleCols && sortCol === "cpsale")
       ? "cpc"
       : null;
 
@@ -536,7 +554,7 @@ export function CustomerAudiencesPage() {
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${isPositiveReplies ? "min-w-[820px]" : showMeetingCols || showFormSubmissionCols || showSignupCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            <table className={`${isPositiveReplies ? "min-w-[820px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
@@ -581,6 +599,21 @@ export function CustomerAudiencesPage() {
                         info="Cost per form submission — audience-scoped spend divided by form submissions. Lower is better."
                       />
                       <SortHeader label="Form submissions" col="formSubmissions" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                    </>
+                  )}
+                  {/* website_purchase / sales goals: the SALE outcome columns lead (cost then
+                      count), before the website-visit funnel. Cost per sale is the default sort. */}
+                  {showSaleCols && (
+                    <>
+                      <SortHeader
+                        label="Cost per sale"
+                        col="cpsale"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Cost per sale — audience-scoped spend divided by sales (paying clients won). Lower is better."
+                      />
+                      <SortHeader label="Sales" col="sales" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                     </>
                   )}
                   {/* positive_replies: clicks aren't in the reply→paid funnel — hide CPC + Website Visits. */}
@@ -701,6 +734,31 @@ export function CustomerAudiencesPage() {
                               <Skeleton className="ml-auto h-4 w-10" />
                             ) : stats?.evidence.formSubmissions != null ? (
                               stats.evidence.formSubmissions.toLocaleString("en-US")
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </>
+                      )}
+                      {/* website_purchase / sales outcome cells (cost then count), before the
+                          website-visit funnel. Sale fields are optional on the wire — render "-"
+                          until a sale is attributed for the audience. */}
+                      {showSaleCols && (
+                        <>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats?.metrics.cpsaleCents != null ? (
+                              formatCents(stats.metrics.cpsaleCents)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-10" />
+                            ) : stats?.evidence.sales != null ? (
+                              stats.evidence.sales.toLocaleString("en-US")
                             ) : (
                               "-"
                             )}

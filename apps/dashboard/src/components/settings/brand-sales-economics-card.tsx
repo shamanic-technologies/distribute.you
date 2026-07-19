@@ -123,7 +123,8 @@ const OPTIMIZATION_GOALS: {
   { value: "website_visits", label: "# Website visits" },
   { value: "positive_replies", label: "# Positive Replies" },
   { value: "form_submissions", label: "# Form submissions" },
-  { value: "purchase", label: "# Purchases", beta: true },
+  { value: "website_purchase", label: "# Website purchases" },
+  { value: "sales", label: "# Sales", beta: true },
 ];
 
 const PCT_FIELDS: {
@@ -154,25 +155,25 @@ const PCT_FIELDS: {
     key: "visitToSignupPct",
     label: "Website visit → signup",
     tip: "Of leads who visit your website, the share that sign up.",
-    goals: ["signups", "purchase"],
+    goals: ["signups", "website_purchase"],
   },
   {
     key: "signupToPaidClientPct",
     label: "Signup → Paid client",
     tip: "Of leads who sign up, the share that become paying customers.",
-    goals: ["signups", "purchase"],
+    goals: ["signups", "website_purchase"],
   },
   {
     key: "visitToPaidClientPct",
     label: "Website visit → Paid client",
     tip: "Of leads who click through to your website, the share that become paying customers.",
-    goals: ["website_visits"],
+    goals: ["website_visits", "sales"],
   },
   {
     key: "replyToPaidClientPct",
     label: "Positive reply → Paid client",
     tip: "Of leads who reply positively, the share that become paying customers.",
-    goals: ["positive_replies"],
+    goals: ["positive_replies", "sales"],
   },
   {
     key: "visitToFormSubmissionPct",
@@ -194,7 +195,9 @@ const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]>
   website_visits: ["visitToPaidClientPct"],
   positive_replies: ["replyToPaidClientPct"],
   form_submissions: ["visitToFormSubmissionPct", "formSubmissionToPaidClientPct"],
-  purchase: ["visitToSignupPct", "signupToPaidClientPct"],
+  website_purchase: ["visitToSignupPct", "signupToPaidClientPct"],
+  // Combined goal: a paying client won via EITHER path → both single-step paid rates.
+  sales: ["visitToPaidClientPct", "replyToPaidClientPct"],
 };
 
 const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {

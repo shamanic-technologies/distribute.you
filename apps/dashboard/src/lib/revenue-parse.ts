@@ -166,10 +166,11 @@ const SpendSchema = z.object({
   // cpsCents. Optional for rollout tolerance; cpfsCents null when the count is 0.
   formSubmissionsCount: z.coerce.number().optional(),
   cpfsCents: z.coerce.number().nullable().optional(),
-  // REAL tracked purchase (paid-client close) count + cost-per-purchase for the
-  // purchase goal (features-service#476). Same rollout tolerance; cppCents null at 0.
-  purchasesCount: z.coerce.number().optional(),
-  cppCents: z.coerce.number().nullable().optional(),
+  // REAL tracked SALE (paying-client won) count + cost-per-sale — the terminal outcome
+  // of BOTH the website_purchase goal (multi-step close) and the combined sales goal
+  // (event=sale, RENAMED from purchase). Same rollout tolerance; cpSaleCents null at 0.
+  salesCount: z.coerce.number().optional(),
+  cpSaleCents: z.coerce.number().nullable().optional(),
 });
 
 const FeatureRevenueResponseSchema = z.object({

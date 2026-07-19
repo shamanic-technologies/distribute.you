@@ -15,11 +15,10 @@ import type { BrandOptimizationGoal } from "@/lib/api";
  *    Website Visits = clicked, Positive replies = repliedPositive). These have per-lead
  *    booleans (Leads tabs + table) AND a daily series (activity graph) TODAY.
  *  - `outcome` — a downstream tracker outcome (Signups / Sales Meetings / Form submissions
- *    / Purchases). Available as a brand-level aggregate COUNT + COST on the features-service
+ *    / Sales). Available as a brand-level aggregate COUNT + COST on the features-service
  *    `/revenue` `spend` block (stat cards). NOT attributed per-lead yet for signup/form, so
  *    outcome steps do NOT drive the Leads tabs / table / graph (per-lead attribution is a
- *    features-service follow-up); `countField: null` when even the aggregate is absent
- *    (purchase — no `purchasesCount` on the wire yet).
+ *    features-service follow-up); `countField: null` when even the aggregate is absent.
  *
  * 1-step goals (website_visits, positive_replies) have NO separate outcome step: the
  * visit / reply IS the outcome, already surfaced by its signal step.
@@ -28,7 +27,7 @@ import type { BrandOptimizationGoal } from "@/lib/api";
 /** Leads-page tab key for a lead-signal step (engagement signals). */
 export type LeadTab = "outreach" | "clicks" | "positive-replies";
 /** Leads-page tab key for a realized-outcome step (per-lead conversion). */
-export type OutcomeTab = "signups" | "meetings" | "form-submissions" | "purchases";
+export type OutcomeTab = "signups" | "meetings" | "form-submissions" | "sales";
 /** Any Leads-page tab. */
 export type AnyLeadTab = LeadTab | OutcomeTab;
 /**
@@ -49,8 +48,8 @@ type SpendCountField =
   | "signupsCount"
   | "salesMeetingsCount"
   | "formSubmissionsCount"
-  | "purchasesCount";
-type SpendCostField = "cpsCents" | "cpsmCents" | "cpfsCents" | "cppCents";
+  | "salesCount";
+type SpendCostField = "cpsCents" | "cpsmCents" | "cpfsCents" | "cpSaleCents";
 
 export interface GoalStep {
   /** Stable step id (also the outcome key). */
@@ -61,7 +60,7 @@ export interface GoalStep {
     | "signups"
     | "sales_meetings"
     | "form_submissions"
-    | "purchases";
+    | "sales";
   /** User-facing step label. */
   label: string;
   /** Accent colour (activity-chart bar + surface accents). */
@@ -162,15 +161,19 @@ const FORM_OUTCOME: GoalStep = {
     dateField: "formSubmissionAt",
   },
 };
-const PURCHASE_OUTCOME: GoalStep = {
-  key: "purchases",
-  label: "Purchases",
+// The terminal SALE outcome — shared by BOTH the website_purchase goal (multi-step
+// close) and the combined sales goal (paying client via either path). The wire spend
+// block serves salesCount + cpSaleCents (features-service combined-sales slice); the
+// per-lead boolean/timestamp keep their wire names `purchased`/`purchasedAt`.
+const SALE_OUTCOME: GoalStep = {
+  key: "sales",
+  label: "Sales",
   color: "#7c3aed",
   outcome: {
-    countField: "purchasesCount",
-    costField: "cppCents",
-    costLabel: "CPP",
-    tab: "purchases",
+    countField: "salesCount",
+    costField: "cpSaleCents",
+    costLabel: "CP Sale",
+    tab: "sales",
     leadField: "purchased",
     dateField: "purchasedAt",
   },
@@ -187,8 +190,12 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
       return [OUTREACH_STEP, VISITS_STEP, SIGNUPS_OUTCOME];
     case "form_submissions":
       return [OUTREACH_STEP, VISITS_STEP, FORM_OUTCOME];
-    case "purchase":
-      return [OUTREACH_STEP, VISITS_STEP, PURCHASE_OUTCOME];
+    case "website_purchase":
+      // Multi-step self-serve close: visit → sale.
+      return [OUTREACH_STEP, VISITS_STEP, SALE_OUTCOME];
+    case "sales":
+      // Combined goal: a sale via EITHER the visit OR the reply path.
+      return [OUTREACH_STEP, VISITS_STEP, REPLIES_STEP, SALE_OUTCOME];
     case "sales_meetings":
       return [OUTREACH_STEP, VISITS_STEP, REPLIES_STEP, MEETINGS_OUTCOME];
   }
@@ -229,7 +236,7 @@ export function goalChartMetricKeys(goal: BrandOptimizationGoal): ChartMetricKey
  * repliedPositive) are NEVER tracker-dependent.
  */
 export const TRACKER_DEPENDENT_CHART_KEYS: ReadonlySet<ChartMetricKey> = new Set(
-  [SIGNUPS_OUTCOME, MEETINGS_OUTCOME, FORM_OUTCOME, PURCHASE_OUTCOME]
+  [SIGNUPS_OUTCOME, MEETINGS_OUTCOME, FORM_OUTCOME, SALE_OUTCOME]
     .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
     .map((s) => s.chartKey),
 );

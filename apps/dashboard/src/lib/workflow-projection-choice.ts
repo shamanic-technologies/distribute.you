@@ -10,6 +10,9 @@ type WorkflowOutcomeUnitCostOptions = {
   visitToSignupPct?: number | null;
   replyToMeetingPct?: number | null;
   visitToMeetingPct?: number | null;
+  // Combined-sales rates: a paying client won via EITHER path (visit→paid, reply→paid).
+  visitToPaidClientPct?: number | null;
+  replyToPaidClientPct?: number | null;
   projectionBudgetUsd?: number | null;
 };
 
@@ -30,9 +33,14 @@ function serverOutcomeUnitCost(
   if (goal === "form_submissions") {
     return positiveOrNull(workflow.costPerFormSubmissionUsd ?? workflow.costPerOutcomeUsd);
   }
-  // purchase = the paid client itself (multi-step purchase funnel) → cost-per-paid-client.
-  if (goal === "purchase") {
+  // website_purchase = the paid client itself (multi-step close funnel) → cost-per-paid-client.
+  if (goal === "website_purchase") {
     return positiveOrNull(workflow.costPerCloseUsd ?? workflow.costPerOutcomeUsd);
+  }
+  // sales = the combined goal (a paying client won via visit→paid OR reply→paid). The
+  // server resolves the combined cost-per-sale as resolved.costPerOutcomeUsd; read it verbatim.
+  if (goal === "sales") {
+    return positiveOrNull(workflow.costPerOutcomeUsd ?? workflow.costPerCloseUsd);
   }
   const cost =
     goal === "signups"
@@ -67,8 +75,8 @@ function workflowOutcomeUnitCostFromRates(
     );
   }
 
-  // form_submissions / purchase read the server-resolved GOAL metric (never null when the
-  // brand has economics); the projected-count fallback covers the legacy count shape.
+  // form_submissions / website_purchase read the server-resolved GOAL metric (never null
+  // when the brand has economics); the projected-count fallback covers the legacy shape.
   if (goal === "form_submissions") {
     return (
       positiveOrNull(workflow.costPerFormSubmissionUsd ?? workflow.costPerOutcomeUsd) ??
@@ -77,13 +85,40 @@ function workflowOutcomeUnitCostFromRates(
         : null)
     );
   }
-  if (goal === "purchase") {
+  if (goal === "website_purchase") {
     return (
       positiveOrNull(workflow.costPerCloseUsd ?? workflow.costPerOutcomeUsd) ??
       (workflow.projection?.closes != null && workflow.projection.closes > 0
         ? projectionBudgetUsd / workflow.projection.closes
         : null)
     );
+  }
+  // sales = the COMBINED goal. Prefer the server-resolved combined cost-per-sale; else
+  // mirror the server's additive expected-count across BOTH paths:
+  //   salesPerBudget = (1/clickUsd)·visitToPaidClientPct + (1/replyUsd)·replyToPaidClientPct
+  //   costPerSale    = 1 / salesPerBudget
+  // (same structure as the meeting-booked combined branch below).
+  if (goal === "sales") {
+    const serverCost = positiveOrNull(workflow.costPerOutcomeUsd ?? workflow.costPerCloseUsd);
+    if (serverCost != null) return serverCost;
+    const visitToPaid = options.visitToPaidClientPct;
+    const replyToPaid = options.replyToPaidClientPct;
+    if (
+      (visitToPaid != null && visitToPaid > 0) ||
+      (replyToPaid != null && replyToPaid > 0)
+    ) {
+      const salesPerDollar =
+        (workflow.clickUsd != null && workflow.clickUsd > 0 && visitToPaid != null
+          ? (1 / workflow.clickUsd) * (visitToPaid / 100)
+          : 0) +
+        (workflow.replyUsd != null && workflow.replyUsd > 0 && replyToPaid != null
+          ? (1 / workflow.replyUsd) * (replyToPaid / 100)
+          : 0);
+      return salesPerDollar > 0 ? 1 / salesPerDollar : null;
+    }
+    return workflow.projection?.closes != null && workflow.projection.closes > 0
+      ? projectionBudgetUsd / workflow.projection.closes
+      : null;
   }
 
   if (goal === "signups") {

@@ -33,7 +33,8 @@ const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   website_visits: "Maximising website visits",
   positive_replies: "Maximising positive replies",
   form_submissions: "Maximising form submissions",
-  purchase: "Maximising purchases",
+  website_purchase: "Maximising website purchases",
+  sales: "Maximising sales",
 };
 
 function hostnameOf(url: string | undefined): string {

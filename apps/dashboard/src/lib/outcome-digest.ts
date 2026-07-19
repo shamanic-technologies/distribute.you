@@ -103,15 +103,16 @@ export interface PreparedDigestSend {
  * outcome. `sales_meetings` is DEPRECATED — it, and the legacy unset default
  * `booked_meetings`, collapse into `positive_replies`. `website_visits` +
  * `positive_replies` are ALWAYS tracked (email-gateway click / positive reply);
- * `signups` / `form_submissions` / `purchase` depend on the conversion tracker
+ * `signups` / `form_submissions` / `sales` depend on the conversion tracker
  * (features-service#476) and fall back to website clicks when it isn't live yet
- * (no lead carries the outcome flag).
+ * (no lead carries the outcome flag). `sales` is the terminal paying-client outcome
+ * shared by the website_purchase (multi-step close) and combined sales goals.
  */
 export type OutcomeGoal =
   | "website_visits"
   | "signups"
   | "form_submissions"
-  | "purchase"
+  | "sales"
   | "positive_replies";
 
 export interface OutcomeDigestCollection {
@@ -157,8 +158,8 @@ const BrandsResponseSchema = z.object({
 
 // Brand optimization goal — selects the outcome signal: visit-driven goals →
 // website clicks, everything else (server default when unset) → screened positive
-// replies. The wire keeps adding goals (form_submissions, purchase, legacy aliases
-// booked_meetings/sales); a strict union throws `invalid_union` on any new value and
+// replies. The wire keeps adding goals (form_submissions, website_purchase, combined_sales,
+// legacy aliases booked_meetings/sales/purchase); a strict union throws `invalid_union` on any new value and
 // SKIPS the brand's digest, so this stays an open `z.string()` and the visit-vs-reply
 // mapping is decided in fetchBrandGoal against the settled VISIT_DRIVEN_GOALS set.
 const BrandGoalResponseSchema = z.object({
@@ -360,9 +361,9 @@ const GOAL_CONFIG: Record<OutcomeGoal, GoalOutcomeConfig> = {
     outcomeAt: (l) => l.formSubmissionAt,
     trackerFlag: (l) => l.formSubmission,
   },
-  purchase: {
-    label: "purchases",
-    noun: "purchase",
+  sales: {
+    label: "sales",
+    noun: "sale",
     outcomeAt: (l) => l.purchasedAt,
     trackerFlag: (l) => l.purchased,
   },
@@ -394,7 +395,7 @@ function utcDayOf(iso: string | null | undefined): string | null {
  * timestamp on the SAME `/revenue` `leads[]` snapshot the digest displays. A
  * tracker-dependent goal with no live tracker falls back to website clicks, so the
  * headline reflects the goal the brand actually optimizes for (form submissions,
- * purchases…) — never a mismatched signal.
+ * sales…) — never a mismatched signal.
  */
 function outcomeOnDay(
   revenue: RevenueOverview,
@@ -619,16 +620,16 @@ async function fetchBrandGoal(
 /**
  * Map the brand-service `optimizationGoal` wire value to the digest's OutcomeGoal.
  * Kept byte-equal with the dashboard `normalizeBrandOptimizationGoal` (api.ts):
- * wire `sales`|`purchase` → purchase (brand-service serialises purchase as `sales`);
- * `booked_meetings`|`sales_meetings` (deprecated) and the unset default collapse to
- * `positive_replies`. Reading the raw wire value here previously mis-mapped a
- * purchase brand (wire `sales`) to the reply goal — this normalization fixes it.
+ * the website_purchase goal (multi-step close) AND the combined `combined_sales` goal
+ * both terminate in a paying client (event=sale) → the `sales` digest outcome. The
+ * legacy `sales`/`purchase` wire spellings map there too. `booked_meetings`|
+ * `sales_meetings` (deprecated) and the unset default collapse to `positive_replies`.
  */
 function normalizeOutcomeGoal(goal: string | null | undefined): OutcomeGoal {
   if (goal === "website_visits") return "website_visits";
   if (goal === "signups") return "signups";
   if (goal === "form_submissions") return "form_submissions";
-  if (goal === "sales" || goal === "purchase") return "purchase";
+  if (goal === "website_purchase" || goal === "combined_sales" || goal === "sales" || goal === "purchase") return "sales";
   if (goal === "positive_replies") return "positive_replies";
   // booked_meetings / sales_meetings (deprecated) / unset → positive replies.
   return "positive_replies";

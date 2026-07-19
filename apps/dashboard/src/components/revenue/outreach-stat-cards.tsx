@@ -137,9 +137,9 @@ export function OutreachStatCards({
   };
 
   // The goal's downstream OUTCOME step (Signups / Sales Meetings / Form submissions /
-  // Purchases), or null for a 1-step goal whose outcome IS its signal. goal-steps.ts is
-  // the single source, so form_submissions/purchase no longer borrow the Signups/
-  // Sales-Meetings surfaces (the "half-wired goal" trap).
+  // Sales), or null for a 1-step goal whose outcome IS its signal. goal-steps.ts is
+  // the single source, so form_submissions/website_purchase/sales no longer borrow the
+  // Signups/Sales-Meetings surfaces (the "half-wired goal" trap).
   const outcomeStep = goalOutcomeStep(goal);
   const outcome = outcomeStep?.outcome ?? null;
   // The outcome COUNT + its cost are REAL tracker values, server-provided by
@@ -150,9 +150,10 @@ export function OutreachStatCards({
     outcome?.countField != null ? spend?.[outcome.countField] : undefined;
   const outcomeCost = outcome?.costField != null ? spend?.[outcome.costField] : null;
   const outcomeCountValue = outcomeCount != null ? formatCount(outcomeCount) : "—";
-  // Badge the outcome pair `beta` only while the GOAL itself is beta (purchase) — the
-  // GA goals (signups/sales_meetings/form_submissions) show their outcome ungated.
-  const goalIsBeta = goal === "purchase";
+  // Badge the outcome pair `beta` only while the GOAL itself is beta (the combined
+  // `sales` goal) — the GA goals (signups/sales_meetings/form_submissions/
+  // website_purchase) show their outcome ungated.
+  const goalIsBeta = goal === "sales";
 
   // Unified outcome card. positive_replies is a 1-step goal (goalOutcomeStep is null) but
   // the reply IS the outcome — surface it as Positive Replies + Cost per positive reply

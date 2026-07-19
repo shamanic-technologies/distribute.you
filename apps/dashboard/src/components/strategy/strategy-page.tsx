@@ -264,15 +264,18 @@ export function StrategyPage() {
   const isPositiveRepliesGoal = optimizationGoal === "positive_replies";
 
   // Objective + conversion-rate labels/values per goal (drives the header stat row).
-  // purchase reuses the self-serve two-step (visit → signup → paid) — brand-service has
-  // no purchase-specific rate; form_submissions is its own two-step (visit → form → paid).
+  // website_purchase reuses the self-serve two-step (visit → signup → paid) — brand-service
+  // has no purchase-specific rate; form_submissions is its own two-step (visit → form →
+  // paid); sales is the combined goal, showing BOTH single-step paid rates (visit→paid,
+  // reply→paid).
   const OBJECTIVE_LABEL: Record<BrandOptimizationGoal, string> = {
     signups: "Signups",
     sales_meetings: "Sales meetings",
     website_visits: "Website visits",
     positive_replies: "Positive replies",
     form_submissions: "Form submissions",
-    purchase: "Purchases",
+    website_purchase: "Website purchases",
+    sales: "Sales",
   };
   const conv1: { label: string; value: number | null | undefined } =
     optimizationGoal === "signups"
@@ -283,19 +286,24 @@ export function StrategyPage() {
           ? { label: "Positive reply → paid", value: econ?.replyToPaidClientPct }
           : optimizationGoal === "form_submissions"
             ? { label: "Visit → form submission", value: econ?.visitToFormSubmissionPct }
-            : optimizationGoal === "purchase"
+            : optimizationGoal === "website_purchase"
               ? { label: "Visit → signup", value: econ?.visitToSignupPct }
-              : { label: "Reply → meeting", value: econ?.replyToMeetingPct };
+              : optimizationGoal === "sales"
+                ? { label: "Website visit → paid", value: econ?.visitToPaidClientPct }
+                : { label: "Reply → meeting", value: econ?.replyToMeetingPct };
   // Two-step goals show a second conversion; the single-step beta goals
-  // (website_visits / positive_replies) go straight to paid, so no row 2.
+  // (website_visits / positive_replies) go straight to paid, so no row 2. The combined
+  // sales goal shows its second path (reply → paid) as row 2.
   const conv2: { label: string; value: number | null | undefined } | null =
-    optimizationGoal === "signups" || optimizationGoal === "purchase"
+    optimizationGoal === "signups" || optimizationGoal === "website_purchase"
       ? { label: "Signup → paid", value: econ?.signupToPaidClientPct }
       : optimizationGoal === "form_submissions"
         ? { label: "Form submission → paid", value: econ?.formSubmissionToPaidClientPct }
-        : optimizationGoal === "sales_meetings"
-          ? { label: "Meeting → close", value: econ?.meetingToClosePct }
-          : null;
+        : optimizationGoal === "sales"
+          ? { label: "Positive reply → paid", value: econ?.replyToPaidClientPct }
+          : optimizationGoal === "sales_meetings"
+            ? { label: "Meeting → close", value: econ?.meetingToClosePct }
+            : null;
 
   // The 3-grain workflow-projection ladder: one row per (audienceId, workflow) with
   // its cost at each grain + the server-`resolved` grain (brand-real when the brand

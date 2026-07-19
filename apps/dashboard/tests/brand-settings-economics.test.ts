@@ -36,7 +36,6 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
   it("does not expose the deprecated sales-funnel stage field", () => {
     expect(content).not.toContain(deprecatedStageType);
     expect(content).not.toContain(deprecatedStageField);
-    expect(content).not.toContain('"website_purchase"');
     expect(content).not.toContain('"sales_meeting"');
   });
 
@@ -191,7 +190,7 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain("visiblePctFields");
     expect(content).toContain("f.goals.includes(form.optimizationGoal)");
     expect(content).toContain('goals: ["sales_meetings"]');
-    expect(content).toContain('goals: ["signups", "purchase"]');
+    expect(content).toContain('goals: ["signups", "website_purchase"]');
   });
 
   it("validates the selected goal fields before saving and persists the optimization goal", () => {

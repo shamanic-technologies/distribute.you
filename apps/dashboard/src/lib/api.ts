@@ -685,17 +685,22 @@ export type BrandBusinessModel = "b2c" | "b2b";
 // "sales_meetings" when never set; GET/PUT responses always include a non-null value.
 // website_visits / positive_replies are the two beta single-step goals (visit→paid,
 // reply→paid) — their wire values match the local names 1:1 (no rename).
+// website_purchase = the RENAMED former `purchase` goal (multi-step self-serve close);
+// sales = the beta COMBINED goal (a paying client won via EITHER the visit→paid OR the
+// reply→paid path, valued at CLTV). Both terminate in a `sale`.
 export type BrandOptimizationGoal =
   | "signups"
   | "sales_meetings"
   | "website_visits"
   | "positive_replies"
   | "form_submissions"
-  | "purchase";
+  | "website_purchase"
+  | "sales";
 type BrandOptimizationGoalWire =
   | BrandOptimizationGoal
   | "booked_meetings"
-  | "sales";
+  | "combined_sales"
+  | "purchase";
 
 function normalizeBrandOptimizationGoal(
   goal: BrandOptimizationGoalWire,
@@ -704,35 +709,44 @@ function normalizeBrandOptimizationGoal(
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
   if (goal === "form_submissions") return "form_submissions";
-  // brand-service persists the purchase goal under the snake wire value `sales`.
-  if (goal === "sales" || goal === "purchase") return "purchase";
+  // The combined-sales goal is `combined_sales` on the brand-service wire.
+  if (goal === "combined_sales") return "sales";
+  // The renamed website-purchase goal reads as `website_purchase`. The LEGACY `sales`
+  // wire (brand-service used to persist the old purchase goal as `sales`) + the legacy
+  // `purchase` spelling both collapse to the renamed website_purchase goal.
+  if (goal === "website_purchase" || goal === "sales" || goal === "purchase") return "website_purchase";
   // booked_meetings / sales_meetings collapse to sales_meetings.
   return "sales_meetings";
 }
 
 function serializeBrandOptimizationGoal(
   goal: BrandOptimizationGoal,
-): "signups" | "booked_meetings" | "website_visits" | "positive_replies" | "form_submissions" | "sales" {
+): "signups" | "booked_meetings" | "website_visits" | "positive_replies" | "form_submissions" | "website_purchase" | "combined_sales" {
   if (goal === "signups") return "signups";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
   if (goal === "form_submissions") return "form_submissions";
-  // purchase serialises to brand-service's snake `sales` optimizationGoal.
-  if (goal === "purchase") return "sales";
+  // website_purchase serialises 1:1; sales → the combined-sales wire value.
+  if (goal === "website_purchase") return "website_purchase";
+  if (goal === "sales") return "combined_sales";
   return "booked_meetings";
 }
 
 // Most surfaces only distinguish VISIT-driven (website click → outcome) from
 // REPLY-driven (positive reply → outcome) behaviour. signups + website_visits +
-// form_submissions + purchase are visit-driven; sales_meetings + positive_replies are
-// reply-driven. Use this instead of `goal === "signups"` so the beta goals route to the
+// form_submissions + website_purchase are visit-driven; sales_meetings + positive_replies
+// are reply-driven. The combined `sales` goal is BOTH visit- and reply-driven — it counts
+// as visit-driven here so the coarse overview surfaces group it with the paid-client
+// (website_purchase) family; the Audiences ranking table handles its cost-per-sale column
+// explicitly. Use this instead of `goal === "signups"` so the beta goals route to the
 // right family everywhere.
 export function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
   return (
     goal === "signups" ||
     goal === "website_visits" ||
     goal === "form_submissions" ||
-    goal === "purchase"
+    goal === "website_purchase" ||
+    goal === "sales"
   );
 }
 
@@ -809,6 +823,8 @@ const BrandSalesEconomicsSchema = z.object({
     z.literal("signups"),
     z.literal("sales_meetings"),
     z.literal("booked_meetings"),
+    z.literal("website_purchase"),
+    z.literal("combined_sales"),
     z.literal("sales"),
     z.literal("website_visits"),
     z.literal("positive_replies"),
@@ -1848,7 +1864,8 @@ export interface PipelineActivityResponse {
 export type FeatureAudienceStatsGoal =
   | "signup"
   | "meetingBooked"
-  | "purchase"
+  | "websitePurchase"
+  | "sales"
   | "formSubmission";
 export type FeatureAudienceStatsSortMetric = "cpc" | "cppr";
 
@@ -1878,6 +1895,11 @@ export interface FeatureAudienceStatsRow {
      *  absent otherwise / when the signup emails weren't served — never a fabricated
      *  0. Optional to decouple the rollout: renders "-" until features-service ships. */
     signups?: number;
+    /** REAL per-audience SALES — paying clients won (lead-service conversion tracker,
+     *  event=sale), attributed by the same membership join as signups. Present ONLY for
+     *  the website_purchase OR combined-sales goals (both terminate in a `sale`); absent
+     *  otherwise / when the emails weren't served — never a fabricated 0. */
+    sales?: number | null;
   };
   metrics: {
     cpcCents: number | null;
@@ -1888,6 +1910,9 @@ export interface FeatureAudienceStatsRow {
     /** REAL cost per signup = spend ÷ signups. Null when 0/absent (not the signups
      *  goal, or emails not served). Never a false $0. Optional until the producer ships. */
     cpsCents?: number | null;
+    /** REAL cost per sale = spend ÷ sales. Null when 0/absent (not the website_purchase
+     *  / combined-sales goal, or emails not served). Never a false $0. */
+    cpsaleCents?: number | null;
   };
 }
 
@@ -1920,12 +1945,14 @@ const FeatureAudienceStatsRowSchema = z.object({
     positiveReplies: z.number(),
     formSubmissions: z.number().optional(),
     signups: z.number().optional(),
+    sales: z.coerce.number().nullable().optional(),
   }),
   metrics: z.object({
     cpcCents: z.number().nullable(),
     cpprCents: z.number().nullable(),
     cpfsCents: z.number().nullable().optional(),
     cpsCents: z.number().nullable().optional(),
+    cpsaleCents: z.coerce.number().nullable().optional(),
   }),
 });
 
@@ -1935,7 +1962,8 @@ const FeatureAudienceStatsResponseSchema = z.object({
   goal: z.union([
     z.literal("signup"),
     z.literal("meetingBooked"),
-    z.literal("purchase"),
+    z.literal("websitePurchase"),
+    z.literal("sales"),
     z.literal("formSubmission"),
   ]),
   brandProfileId: z.string().nullable(),
@@ -3078,7 +3106,8 @@ export type SalesObjective =
   | "form_submissions"
   | "website_visits"
   | "positive_replies"
-  | "purchase";
+  | "website_purchase"
+  | "sales";
 
 export function salesObjectiveForOptimizationGoal(
   goal: BrandOptimizationGoal,
@@ -3087,14 +3116,16 @@ export function salesObjectiveForOptimizationGoal(
   // right funnel: website_visits + positive_replies are SINGLE-STEP (visit→paid /
   // reply→paid, using visitToPaidClientPct / replyToPaidClientPct); form_submissions is
   // its own two-step; signups → self-serve (visit→signup→paid); sales_meetings →
-  // meeting-booked. (features-service natively supports all five — the old "borrow the
+  // meeting-booked. (features-service natively supports all — the old "borrow the
   // nearest family" workaround is gone; sending the real goal fixes cost-per-outcome,
   // cost-per-paid-client, ROI + CAC for the single-step goals.)
   if (goal === "form_submissions") return "form_submissions";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
-  // purchase → the native multi-step purchase funnel (cost-per-paid-client).
-  if (goal === "purchase") return "purchase";
+  // website_purchase → the native multi-step close funnel (cost-per-paid-client).
+  if (goal === "website_purchase") return "website_purchase";
+  // sales → the combined goal (paying client via visit→paid OR reply→paid).
+  if (goal === "sales") return "sales";
   if (goal === "sales_meetings") return "meeting-booked";
   return "self-serve";
 }
@@ -3148,7 +3179,8 @@ const WorkflowProjectionResponseSchema = z.object({
     z.literal("form_submissions"),
     z.literal("website_visits"),
     z.literal("positive_replies"),
-    z.literal("purchase"),
+    z.literal("website_purchase"),
+    z.literal("sales"),
   ]),
   workflows: z.array(WorkflowProjectionItemSchema),
   recommendedWorkflowDynastySlug: z.string().nullable(),

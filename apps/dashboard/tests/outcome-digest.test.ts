@@ -653,7 +653,7 @@ describe("daily outcome digest", () => {
     expect(result.preparedSends[0].metadata.digestHtml).toContain("website visit");
   });
 
-  it("maps the wire `sales` optimizationGoal to PURCHASES, not the reply goal", async () => {
+  it("maps the wire `sales` optimizationGoal to SALES, not the reply goal", async () => {
     const at = outcomeAtOnDay(previousUtcDay());
     const revenue = revenueWithLeads([
       lead(0, { purchased: true, purchasedAt: at, clickedAt: at }),
@@ -664,9 +664,9 @@ describe("daily outcome digest", () => {
     });
     expect(result.preparedSends).toHaveLength(1);
     expect(result.preparedSends[0].metadata).toMatchObject({
-      outcomeLabel: "purchases",
+      outcomeLabel: "sales",
       outcomeCount: "1",
     });
-    expect(result.preparedSends[0].metadata.digestHtml).toContain("purchase");
+    expect(result.preparedSends[0].metadata.digestHtml).toContain("sale");
   });
 });
