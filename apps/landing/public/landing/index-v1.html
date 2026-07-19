@@ -597,7 +597,7 @@
     .cac-live{display:inline-flex;align-items:center;gap:7px;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
     .cac-live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(37,99,235,.55);animation:cacPulse 2.4s ease-out infinite}
     @keyframes cacPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.5)}70%{box-shadow:0 0 0 7px rgba(37,99,235,0)}100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}}
-    .cac-fine{margin-top:18px;color:var(--faint);font-size:10.5px;line-height:1.6;max-width:54ch}
+    .cac-fine{margin-top:0;color:var(--faint);font-size:12px;line-height:1.5;flex:1;min-width:220px;max-width:36ch}
     .cac-card{padding:28px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,var(--panel-2),var(--panel));box-shadow:var(--shadow)}
     .cac-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
     .cac-price{font-family:var(--display);font-size:64px;font-weight:700;letter-spacing:-.03em;line-height:.95;color:var(--text)}
@@ -1022,8 +1022,8 @@
           <p class="section-copy">A booked B2B sales meeting runs about <b>$700</b> on the market. Right now we deliver a positive reply for a sales meeting at <b class="cac-hl" data-cac-inline>$52</b>. That is roughly <b class="cac-hl" data-cac-mult>13&times;</b> cheaper, and it moves live as clients invest, earn outcomes, and our technology improves over time.</p>
           <div class="cac-actions">
             <button type="button" class="button secondary" data-pricing-modal>Get your custom price</button>
+            <p class="cac-fine">Live rate, not a guarantee. Your cost depends on targeting, offer and downstream conversion.</p>
           </div>
-          <p class="cac-fine">Live rate, not a guarantee. Your cost depends on targeting, offer, geography, copy, deliverability, and downstream conversion.</p>
         </div>
         <aside class="cac-right" aria-label="Live cost per positive reply">
           <div class="cac-card">
