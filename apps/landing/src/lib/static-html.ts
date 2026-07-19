@@ -532,6 +532,38 @@ async function fetchBestModelUsd(
   return priced.length ? Math.min(...priced) : null;
 }
 
+// The REAL best-model dated cost-per-outcome trend (features-service, non-pooled
+// single best workflow). `best` = the best model's lifetime cost (the headline
+// number the last backed point tracks). `points` = only the BACKED days
+// (null-cost days dropped). Bounded 8s so a slow cold endpoint can't blow the
+// homepage prerender budget.
+async function fetchBestModelTrend(
+  apiUrl: string,
+  headers: Record<string, string>,
+  slug: string,
+  objective: string,
+  days = 180,
+): Promise<{ best: number | null; points: SeriesPoint[] }> {
+  const res = await fetch(
+    `${apiUrl}/v1/public/features/best-model-cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=${days}`,
+    { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[landing] /v1/public/features/best-model-cost-per-outcome-trend ${objective} failed: ${res.status}`,
+    );
+  }
+  const data = (await res.json()) as {
+    bestWorkflowLifetimeCostPerOutcomeUsd?: number | null;
+    points?: Array<{ date?: string | null; costPerOutcomeUsd?: number | null }>;
+  };
+  const points = (data.points ?? []).flatMap((p) => {
+    const v = numericOrNull(p?.costPerOutcomeUsd);
+    return v !== null && typeof p.date === "string" ? [{ date: p.date, v }] : [];
+  });
+  return { best: numericOrNull(data.bestWorkflowLifetimeCostPerOutcomeUsd), points };
+}
+
 async function fetchTicker(): Promise<TickerMetrics> {
   const apiUrl = resolvePublicApiUrl();
   const headers = { Accept: "application/json" };
@@ -665,24 +697,25 @@ async function resolveCacBoot(): Promise<string> {
   const apiUrl = resolvePublicApiUrl();
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
-  let best: number | null = FALLBACK_BEST.positiveReply;
-  // BEST-model cost per positive reply, cross-org, single best workflow — the
-  // MIN over per-workflow ratios, NEVER a cross-workflow pooled average
-  // (`cost-per-outcome-trend` was that pooled series and is eradicated here).
-  const b = await fetchBestModelUsd(
+  // REAL best-model dated trend (single best workflow, cross-org, never pooled).
+  const trend = await fetchBestModelTrend(
     apiUrl,
     headers,
     slug,
     "positiveReply",
+    180,
   ).catch((error) => {
-    console.error("[landing] cac boot best-model unavailable, using fallback", error);
+    console.error("[landing] cac boot best-model trend unavailable, using fallback", error);
     return null;
   });
-  if (b !== null) best = b;
-  // The series is the best-model timeline: a deterministic best-shaped curve
-  // ending on the best-model price. Swap in real per-day points once a
-  // best-model dated-trend endpoint (per-workflow, non-pooled) ships.
-  const points = fallbackCacSeries(best ?? FALLBACK_BEST.positiveReply);
+  const best: number | null = trend?.best ?? FALLBACK_BEST.positiveReply;
+  // Use the real backed daily points; only when the endpoint has < 2 backed days
+  // (genuine cold start) fall back to a deterministic best-shaped curve so the
+  // chart is never near-empty.
+  const points =
+    trend && trend.points.length >= 2
+      ? trend.points
+      : fallbackCacSeries(best ?? FALLBACK_BEST.positiveReply);
   // `renderedAt` = when this ISR snapshot was server-rendered (refreshed every
   // ~300s). The client shows "Updated X min ago" from it — the freshness of the
   // SSR data, NOT the last data-point date.
