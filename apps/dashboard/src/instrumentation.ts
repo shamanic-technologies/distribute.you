@@ -210,11 +210,11 @@ export const EMAIL_TEMPLATES = [
         You're #{{position}} on the distribute.you waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Want to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.
+        Want to skip the line? Ask someone already using distribute.you for their invite link. Each invite drops $25 in credits into both sides.
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">See you inside soon.</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nYou're #{{position}} on the distribute.you waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.\n\nWant to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.\n\nSee you inside soon.\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nYou're #{{position}} on the distribute.you waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.\n\nWant to skip the line? Ask someone already using distribute.you for their invite link. Each invite drops $25 in credits into both sides.\n\nSee you inside soon.\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "invite-claimed-welcome",
@@ -230,8 +230,8 @@ export const EMAIL_TEMPLATES = [
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
         You also have 3 invites to share. Each one drops $25 into both sides.
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nThanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.\n\nOpen your dashboard and run your first AI-driven outreach today: ${DASHBOARD_URL}\n\nYou also have 3 invites to share. Each one drops $25 into both sides.\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nThanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.\n\nOpen your dashboard and run your first AI-driven outreach today: ${DASHBOARD_URL}\n\nYou also have 3 invites to share. Each one drops $25 into both sides.\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "invite-success-notification",
@@ -269,8 +269,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nYour credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.\n\nWant them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nYour credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.\n\nWant them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "credit-depleted-followup-3d",
@@ -286,8 +286,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nQuick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.\n\nAdd credit to get them running again, and flip on auto-topup so this doesn't happen next time.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nQuick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.\n\nAdd credit to get them running again, and flip on auto-topup so this doesn't happen next time.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "credit-depleted-followup-10d",
@@ -303,8 +303,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
 
   // ── Daily outcome digest (beta-gated by dashboard cron via PostHog) ──
@@ -335,8 +335,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
 ];
 
