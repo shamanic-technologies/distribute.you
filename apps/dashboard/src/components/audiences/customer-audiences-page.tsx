@@ -299,6 +299,11 @@ export function CustomerAudiencesPage() {
   // being set up — with no tracker there are no sales to attribute.
   const showSaleCols =
     (optimizationGoal === "sales" || optimizationGoal === "website_purchase") && trackerSetUp;
+  // The combined `sales` goal wins a paying client via EITHER the visit→paid OR the
+  // reply→paid path, so its ranking surfaces BOTH funnels: the reply funnel (Positive
+  // replies + CPPR) ALONGSIDE the website-visit funnel + the Sale outcome — mirroring the
+  // sales-meetings reply columns. website_purchase stays visit-only (single close path).
+  const showReplyCols = showMeetingCols || optimizationGoal === "sales";
   // Seed the initial sort column from the brand goal once it resolves — cheapest
   // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), CP Sale
   // (sales / website purchases), else CPC (website visits) — until the user picks a
@@ -554,11 +559,11 @@ export function CustomerAudiencesPage() {
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${isPositiveReplies ? "min-w-[820px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            <table className={`${isPositiveReplies ? "min-w-[820px]" : showReplyCols && showSaleCols ? "min-w-[1320px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
-                  {showMeetingCols && (
+                  {showReplyCols && (
                     <>
                       <SortHeader label="Positive replies" col="replies" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                       <SortHeader
@@ -671,7 +676,7 @@ export function CustomerAudiencesPage() {
                           </div>
                         </div>
                       </td>
-                      {showMeetingCols && (
+                      {showReplyCols && (
                         <>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
                             {statsLoading ? (
