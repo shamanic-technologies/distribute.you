@@ -330,7 +330,7 @@
     }
     .analysis-row{
       display:grid;
-      grid-template-columns:118px 1fr;
+      grid-template-columns:118px 1fr auto;
       gap:14px;
       padding:11px 13px;
       border-top:1px solid var(--line-soft);
@@ -339,6 +339,7 @@
     .analysis-row:first-child{border-top:0}
     .analysis-row span{color:var(--faint)}
     .analysis-row b{font-weight:500;color:var(--text)}
+    .row-ok{color:var(--green);font-weight:500;font-size:10.5px;white-space:nowrap;align-self:center}
     .flow-label{margin:18px 0 10px;color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
     .flow{
       display:grid;
@@ -398,6 +399,10 @@
     }
     .console-metric span{display:block;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
     .console-metric b{display:block;margin-top:6px;font-family:var(--mono);font-size:17px;font-weight:500}
+    .console-outcome{margin-top:10px;padding:13px 15px;border:1px solid var(--green-line);border-radius:9px;background:var(--green-dim)}
+    .console-outcome span{display:block;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+    .console-outcome b{display:block;margin-top:6px;color:var(--green);font-family:var(--mono);font-size:17px;font-weight:500}
+    .console-outcome em{display:block;margin-top:4px;color:var(--muted);font-style:normal;font-size:11px;line-height:1.4}
     .console-foot{
       display:flex;
       align-items:center;
@@ -980,9 +985,8 @@
             <div class="console-url"><span>yourcompany.com</span><strong>analyzed ✓</strong></div>
 
             <div class="analysis-card">
-              <div class="analysis-row"><span>Offer</span><b>B2B implementation service</b></div>
-              <div class="analysis-row"><span>Likely buyers</span><b>Founders · COOs · Heads of Growth</b></div>
-              <div class="analysis-row"><span>Campaign angle</span><b>Remove a costly operating bottleneck</b></div>
+              <div class="analysis-row"><span>Offer</span><b>B2B implementation service</b><em class="row-ok">accepted ✓</em></div>
+              <div class="analysis-row"><span>Likely buyers</span><b>Founders · COOs · Heads of Growth</b><em class="row-ok">accepted ✓</em></div>
             </div>
 
             <div class="flow-label">What distribute handles</div>
@@ -997,6 +1001,12 @@
             <div class="console-bottom">
               <div class="console-metric"><span>Daily spend cap</span><b>$10 / day</b></div>
               <div class="console-metric"><span>Primary objective</span><b>Positive replies</b></div>
+            </div>
+
+            <div class="console-outcome">
+              <span>Expected output</span>
+              <b>~6 positive replies / mo</b>
+              <em>for a sales meeting, earned from the $10 / day cap</em>
             </div>
 
             <div class="console-foot">
