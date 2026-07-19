@@ -563,6 +563,21 @@ export function CustomerAudiencesPage() {
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
+                  {/* website_purchase / sales goals: the SALE outcome columns lead (cost then
+                      count), before the reply + website-visit funnels. Cost per sale is the default sort. */}
+                  {showSaleCols && (
+                    <>
+                      <SortHeader
+                        label="Cost per sale"
+                        col="cpsale"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Cost per sale — audience-scoped spend divided by sales (paying clients won). Lower is better."
+                      />
+                      <SortHeader label="Sales" col="sales" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                    </>
+                  )}
                   {showReplyCols && (
                     <>
                       <SortHeader label="Positive replies" col="replies" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
@@ -604,21 +619,6 @@ export function CustomerAudiencesPage() {
                         info="Cost per form submission — audience-scoped spend divided by form submissions. Lower is better."
                       />
                       <SortHeader label="Form submissions" col="formSubmissions" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
-                    </>
-                  )}
-                  {/* website_purchase / sales goals: the SALE outcome columns lead (cost then
-                      count), before the website-visit funnel. Cost per sale is the default sort. */}
-                  {showSaleCols && (
-                    <>
-                      <SortHeader
-                        label="Cost per sale"
-                        col="cpsale"
-                        sortCol={sortCol}
-                        sortDir={sortDir}
-                        onSort={onSort}
-                        info="Cost per sale — audience-scoped spend divided by sales (paying clients won). Lower is better."
-                      />
-                      <SortHeader label="Sales" col="sales" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                     </>
                   )}
                   {/* positive_replies: clicks aren't in the reply→paid funnel — hide CPC + Website Visits. */}
@@ -676,6 +676,31 @@ export function CustomerAudiencesPage() {
                           </div>
                         </div>
                       </td>
+                      {/* website_purchase / sales outcome cells (cost then count), before the
+                          reply + website-visit funnels. Sale fields are optional on the wire —
+                          render "-" until a sale is attributed for the audience. */}
+                      {showSaleCols && (
+                        <>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats?.metrics.cpsaleCents != null ? (
+                              formatCents(stats.metrics.cpsaleCents)
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-10" />
+                            ) : stats?.evidence.sales != null ? (
+                              stats.evidence.sales.toLocaleString("en-US")
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </>
+                      )}
                       {showReplyCols && (
                         <>
                           <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
@@ -739,31 +764,6 @@ export function CustomerAudiencesPage() {
                               <Skeleton className="ml-auto h-4 w-10" />
                             ) : stats?.evidence.formSubmissions != null ? (
                               stats.evidence.formSubmissions.toLocaleString("en-US")
-                            ) : (
-                              "-"
-                            )}
-                          </td>
-                        </>
-                      )}
-                      {/* website_purchase / sales outcome cells (cost then count), before the
-                          website-visit funnel. Sale fields are optional on the wire — render "-"
-                          until a sale is attributed for the audience. */}
-                      {showSaleCols && (
-                        <>
-                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                            {statsLoading ? (
-                              <Skeleton className="ml-auto h-4 w-12" />
-                            ) : stats?.metrics.cpsaleCents != null ? (
-                              formatCents(stats.metrics.cpsaleCents)
-                            ) : (
-                              "-"
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
-                            {statsLoading ? (
-                              <Skeleton className="ml-auto h-4 w-10" />
-                            ) : stats?.evidence.sales != null ? (
-                              stats.evidence.sales.toLocaleString("en-US")
                             ) : (
                               "-"
                             )}
