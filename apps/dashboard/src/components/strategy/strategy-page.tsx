@@ -404,18 +404,18 @@ export function StrategyPage() {
   // value stays server-provided (no client-side metric math, no rescale).
   const activeAudiences = audiencesData?.audiences ?? [];
 
-  // Table order: cheapest Cost per website visit (= resolved.costPerClickUsd) first.
-  // Audiences with no evidence row yet (no resolved cost) sort to the END. Each audience
-  // falls back to the best workflow's brand-level row when it never ran it, so the cost
-  // is that couple's audience-grain figure or the workflow's brand/crossOrg cost. Pure
-  // display ordering — the cost itself is the server-resolved value, never recomputed here.
+  // Table order: highest ROI (= resolved.roiMultiple) first. Audiences with no evidence
+  // row yet (no resolved ROI) sort to the END. Each audience falls back to the best
+  // workflow's brand-level row when it never ran it, so the ROI is that couple's
+  // audience-grain figure or the workflow's brand/crossOrg value. Pure display ordering —
+  // the ROI itself is the server-resolved value, never recomputed here.
   const sortedAudiences = [...activeAudiences].sort((a, b) => {
-    const ca = pickAudienceOrBrandRow(rows, bestSlug, a.id)?.resolved?.costPerClickUsd ?? null;
-    const cb = pickAudienceOrBrandRow(rows, bestSlug, b.id)?.resolved?.costPerClickUsd ?? null;
-    if (ca == null && cb == null) return 0;
-    if (ca == null) return 1;
-    if (cb == null) return -1;
-    return ca - cb;
+    const ra = pickAudienceOrBrandRow(rows, bestSlug, a.id)?.resolved?.roiMultiple ?? null;
+    const rb = pickAudienceOrBrandRow(rows, bestSlug, b.id)?.resolved?.roiMultiple ?? null;
+    if (ra == null && rb == null) return 0;
+    if (ra == null) return 1;
+    if (rb == null) return -1;
+    return rb - ra;
   });
 
   // Example emails for the best model — fetched on demand (drawer), cascade
