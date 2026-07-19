@@ -4869,7 +4869,13 @@ export async function getActiveUsersByUser(token?: string): Promise<ActiveUsersB
 export type CustomerOptimizationGoal =
   | "signup"
   | "meetingBooked"
+  // `purchase` = the legacy wire key for the website-purchase goal; kept as a
+  // transitional alias. `websitePurchase` is the renamed key + `sales` the new
+  // combined goal (paying client won via the visit→paid OR reply→paid path,
+  // valued at CLTV). Tolerant of whichever the deployed backend emits.
   | "purchase"
+  | "websitePurchase"
+  | "sales"
   | "websiteVisit"
   | "positiveReply"
   | "formSubmission";
@@ -5440,7 +5446,14 @@ const CrossOrgLifetimeSchema = z.object({
     signup: z.coerce.number().nullable(),
     formSubmission: z.coerce.number().nullable(),
     meetingBooked: z.coerce.number().nullable(),
-    purchase: z.coerce.number().nullable(),
+    // `purchase` = legacy key (transitional alias for websitePurchase);
+    // `websitePurchase` = renamed key; `sales` = new combined goal (visit→paid
+    // OR reply→paid, CLTV-valued). All `.nullish()` so the read is tolerant of
+    // whichever keys the deployed backend serves during the staged rollout —
+    // renders "—" until the producer populates them, never a false $0.
+    purchase: z.coerce.number().nullish(),
+    websitePurchase: z.coerce.number().nullish(),
+    sales: z.coerce.number().nullish(),
   }),
   totalSpentUsd: z.coerce.number(),
   totalClicks: z.coerce.number(),

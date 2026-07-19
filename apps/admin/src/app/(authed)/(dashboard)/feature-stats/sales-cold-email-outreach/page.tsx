@@ -34,8 +34,22 @@ const OBJECTIVES: { key: CrossOrgObjective; label: string; noun: string }[] = [
   { key: "signup", label: "Cost per signup", noun: "signup" },
   { key: "formSubmission", label: "Cost per form submission", noun: "form submission" },
   { key: "meetingBooked", label: "Cost per meeting", noun: "meeting" },
-  { key: "purchase", label: "Cost per purchase", noun: "purchase" },
+  // `purchase` stays the trend/workflow query key (features-service still
+  // accepts it); only the display label was renamed to "website purchase".
+  { key: "purchase", label: "Cost per website purchase", noun: "website purchase" },
 ];
+
+// A display-only outcome (summary table row) with no moving-average trend of
+// its own — only a lifetime all-time avg. `Sales` is the new combined goal
+// (paying client won via visit→paid OR reply→paid, valued at CLTV); the
+// features-service trend/per-workflow endpoints do NOT accept it as an
+// `objective`, so it appears as an all-time figure only, not a ticker/selector.
+type DisplayObjective = { key: string; label: string; noun: string };
+const SALES_OBJECTIVE: DisplayObjective = {
+  key: "sales",
+  label: "Cost per sale (CLTV)",
+  noun: "sale",
+};
 
 // Trailing display days for the moving-average series (matches the Details chart
 // so the two sections share one cached query per objective).
@@ -295,8 +309,26 @@ export default function SalesColdEmailOutreachStatsPage() {
     })),
   });
 
+  // Lifetime all-time avg by objective key. `websitePurchase` is the renamed
+  // key with legacy `purchase` fallback (tolerant of whichever the deployed
+  // backend serves); every objective is null-safe → "—", never a false $0.
+  const lifetimeObj = lifetime.data?.avgCostPerOutcomeByObjective;
+  const allTimeFor = (key: string): number | null => {
+    if (!lifetimeObj) return null;
+    if (key === "purchase") return lifetimeObj.websitePurchase ?? lifetimeObj.purchase ?? null;
+    return (lifetimeObj as Record<string, number | null | undefined>)[key] ?? null;
+  };
+
   // Per-objective derived summary (price = 100-avg = latest backed point; weekly change; series).
-  const summaries = OBJECTIVES.map((o, i) => {
+  type OutcomeSummary = {
+    objective: DisplayObjective;
+    pending: boolean;
+    points: CrossOrgTrendPoint[];
+    price: number | null;
+    growth: number | null;
+    allTime: number | null;
+  };
+  const summaries: OutcomeSummary[] = OBJECTIVES.map((o, i) => {
     const q = trends[i];
     const pts = q.data?.points ?? [];
     return {
@@ -305,9 +337,24 @@ export default function SalesColdEmailOutreachStatsPage() {
       points: pts,
       price: latestCost(q.data?.points),
       growth: growth7d(q.data?.points),
-      allTime: lifetime.data?.avgCostPerOutcomeByObjective[o.key] ?? null,
+      allTime: allTimeFor(o.key),
     };
   });
+
+  // Sales (combined goal) — all-time figure only (no trend/100-avg endpoint):
+  // price/growth/trend stay "—", the All-time avg column carries the figure.
+  // Null-safe → renders empty until features-service populates the `sales` key.
+  const salesSummary: OutcomeSummary = {
+    objective: SALES_OBJECTIVE,
+    pending: false,
+    points: [],
+    price: null,
+    growth: null,
+    allTime: allTimeFor("sales"),
+  };
+  // Cards stay trend-based (need a moving average); the summary table carries
+  // the full ledger incl. the all-time-only Sales row.
+  const tableSummaries: OutcomeSummary[] = [...summaries, salesSummary];
 
   const trend = trends[OBJECTIVES.findIndex((o) => o.key === objective)];
   const workflows = useQuery({
@@ -341,15 +388,15 @@ export default function SalesColdEmailOutreachStatsPage() {
     cmpValues(wfKey[wfSort.key](a), wfKey[wfSort.key](b), wfSort.dir),
   );
 
-  const sumKey: Record<string, (s: (typeof summaries)[number]) => number | string | null | undefined> = {
+  const sumKey: Record<string, (s: OutcomeSummary) => number | string | null | undefined> = {
     outcome: (s) => s.objective.label,
     allTime: (s) => s.allTime,
     price: (s) => s.price,
     growth: (s) => s.growth,
   };
   const sortedSummaries = sumSort
-    ? [...summaries].sort((a, b) => cmpValues(sumKey[sumSort.key](a), sumKey[sumSort.key](b), sumSort.dir))
-    : summaries;
+    ? [...tableSummaries].sort((a, b) => cmpValues(sumKey[sumSort.key](a), sumKey[sumSort.key](b), sumSort.dir))
+    : tableSummaries;
 
   const points = trend.data?.points ?? [];
   const currentAvg = latestCost(trend.data?.points);
@@ -432,7 +479,9 @@ export default function SalesColdEmailOutreachStatsPage() {
           Price = the current 100-outcome moving average; all-time avg = the lifetime pooled average
           (both features-service, cross-org). 7-day change compares the price to a week ago; the
           arrow shows direction (▲ up / ▼ down) and the color is cost-semantic — a falling cost is
-          green (good), a rising cost is red. A blank means no cross-org outcomes yet.
+          green (good), a rising cost is red. A blank means no cross-org outcomes yet. Sale (CLTV) is
+          the combined goal (a paying client won via the visit→paid or reply→paid path); it shows an
+          all-time avg only.
         </p>
       </section>
 

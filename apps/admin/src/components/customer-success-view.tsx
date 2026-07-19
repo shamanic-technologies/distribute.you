@@ -44,14 +44,22 @@ function count(value: number | null | undefined): string {
 const GOAL_LABEL: Record<CustomerOptimizationGoal, string> = {
   signup: "Signups",
   meetingBooked: "Meetings booked",
-  purchase: "Purchases",
+  // `purchase` (legacy alias) + `websitePurchase` (renamed key) both label
+  // "Website purchases"; `sales` is the new combined goal (visit→paid OR
+  // reply→paid, CLTV-valued).
+  purchase: "Website purchases",
+  websitePurchase: "Website purchases",
+  sales: "Sales",
   websiteVisit: "Website visits",
   positiveReply: "Positive replies",
   formSubmission: "Form submissions",
 };
 
 function goalLabel(goal: CustomerOptimizationGoal | null): string {
-  return goal ? GOAL_LABEL[goal] : DASH;
+  // Fail soft to DASH for an unrecognized goal — getCustomerSuccess casts the
+  // wire value without a Zod enum, so an unknown future goal must not render
+  // "undefined".
+  return goal ? (GOAL_LABEL[goal] ?? DASH) : DASH;
 }
 
 const GRAIN_LABEL: Record<"crossOrg" | "brand" | "audience", string> = {
