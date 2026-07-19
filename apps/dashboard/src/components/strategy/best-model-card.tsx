@@ -126,7 +126,7 @@ export function BestModelStats({
   goal: BrandOptimizationGoal;
 }) {
   const noun = outcomeNoun(goal);
-  const showReplyStat = goal === "sales_meetings";
+  const showReplyStat = goal === "sales_meetings" || goal === "sales";
   const isWebsiteVisitsGoal = goal === "website_visits";
   const isPositiveRepliesGoal = goal === "positive_replies";
 
