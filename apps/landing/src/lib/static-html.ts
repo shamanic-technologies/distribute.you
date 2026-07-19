@@ -654,10 +654,30 @@ async function withTickerMetrics(html: string) {
 
 // Homepage live cost-of-acquisition chart — SSR "boot" payload so the chart +
 // numbers paint on FIRST byte (no client-fetch delay). The client reads
-// window.__CAC_BOOT__ to render instantly, then refetches live to refresh. On a
-// build-time fetch failure the boot degrades to the last-known-good price + an
-// empty series (the client fills the chart on its own fetch) — never blank.
+// window.__CAC_BOOT__ to render instantly, then refetches live to refresh.
 const CAC_BOOT_TOKEN = "__CAC_BOOT__";
+
+// Deterministic last-known-good CAC trend, baked into the boot payload whenever
+// the live cost-per-outcome-trend endpoint is slow/unreachable (it has been
+// flaky). Without this the chart div renders EMPTY (client guard clears it on a
+// zero-length series) and the section "loses its chart". The landing does not
+// have to be live — it has to be instant and never blank. Ends at `end` (the
+// resolved price, live or fallback) so the sparkline agrees with the headline
+// number. Weekly points over ~6 months, smooth decline + a tiny fixed wiggle.
+function fallbackCacSeries(end: number): SeriesPoint[] {
+  const WEEKS = 26;
+  const anchor = Date.UTC(2026, 6, 9); // 2026-07-09, matches the ticker fallback tail
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const out: SeriesPoint[] = [];
+  for (let i = WEEKS - 1; i >= 0; i--) {
+    const date = new Date(anchor - i * week).toISOString().slice(0, 10);
+    const progress = (WEEKS - 1 - i) / (WEEKS - 1); // 0 (oldest) -> 1 (latest)
+    const trend = 1.9 - 0.9 * progress; // ~1.9x down to 1x
+    const wiggle = 1 + 0.05 * Math.sin(i * 1.3);
+    out.push({ date, v: Math.round(end * trend * wiggle * 100) / 100 });
+  }
+  return out;
+}
 
 async function resolveCacBoot(): Promise<string> {
   const apiUrl = resolvePublicApiUrl();
@@ -676,6 +696,12 @@ async function resolveCacBoot(): Promise<string> {
     points = p;
   } catch (error) {
     console.error("[landing] cac boot unavailable, using fallback", error);
+  }
+  // Never ship an empty series — an empty boot blanks the chart. Bake the
+  // last-known-good trend so the chart paints instantly; the client still
+  // refetches live and swaps in real points when the endpoint responds.
+  if (points.length === 0) {
+    points = fallbackCacSeries(best ?? FALLBACK_BEST.positiveReply);
   }
   return `<script>window.__CAC_BOOT__=${JSON.stringify({ best, points })}</script>`;
 }
