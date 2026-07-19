@@ -4,18 +4,18 @@ import { DocsLayout } from "@/components/docs-layout";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const SITE_URL = "https://docs.distribute.you";
-const SITE_NAME = "distribute Documentation";
-const SITE_DESCRIPTION = "Complete documentation for distribute - AI-powered distribution automation via MCP. Integration guides for ChatGPT, Claude, Cursor, n8n, Zapier, and Make.com.";
+const SITE_NAME = "distribute.you Documentation";
+const SITE_DESCRIPTION = "Complete documentation for distribute.you - AI-powered distribution automation via MCP. Integration guides for ChatGPT, Claude, Cursor, n8n, Zapier, and Make.com.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute Documentation",
-    template: "%s | distribute Docs",
+    default: "distribute.you Documentation",
+    template: "%s | distribute.you Docs",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "distribute",
+    "distribute.you",
     "documentation",
     "API",
     "MCP",
@@ -31,8 +31,8 @@ export const metadata: Metadata = {
     "client acquisition",
     "AI distribution",
   ],
-  authors: [{ name: "distribute" }],
-  creator: "distribute",
+  authors: [{ name: "distribute.you" }],
+  creator: "distribute.you",
   formatDetection: {
     email: false,
     address: false,
@@ -43,21 +43,21 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute Documentation",
-    description: "Learn how to use distribute - installation, API reference, and integrations.",
+    title: "distribute.you Documentation",
+    description: "Learn how to use distribute.you - installation, API reference, and integrations.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "distribute Documentation",
+        alt: "distribute.you Documentation",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute Documentation",
-    description: "Complete guides and API reference for distribute.",
+    title: "distribute.you Documentation",
+    description: "Complete guides and API reference for distribute.you.",
     images: ["/og-image.jpg"],
     creator: "@distribute_you",
   },
@@ -85,7 +85,7 @@ export const metadata: Metadata = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "distribute",
+  name: "distribute.you",
   url: "https://distribute.you",
   logo: "https://distribute.you/logo-head.jpg",
   sameAs: [
@@ -97,10 +97,10 @@ const organizationJsonLd = {
 const softwareJsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "distribute",
+  name: "distribute.you",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  description: "AI-powered distribution automation platform. Automate sales outreach, journalist pitches, and hiring campaigns. Provide your URL and budget — distribute handles the rest.",
+  description: "AI-powered distribution automation platform. Automate sales outreach, journalist pitches, and hiring campaigns. Provide your URL and budget — distribute.you handles the rest.",
   url: "https://distribute.you",
   offers: {
     "@type": "Offer",
@@ -129,7 +129,7 @@ const websiteJsonLd = {
   description: SITE_DESCRIPTION,
   publisher: {
     "@type": "Organization",
-    name: "distribute",
+    name: "distribute.you",
     url: "https://distribute.you",
   },
 };
@@ -141,7 +141,7 @@ const breadcrumbJsonLd = {
     {
       "@type": "ListItem",
       position: 1,
-      name: "distribute",
+      name: "distribute.you",
       item: "https://distribute.you",
     },
     {
@@ -159,18 +159,18 @@ const faqJsonLd = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "What is distribute?",
+      name: "What is distribute.you?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute is an AI-powered distribution automation platform that uses the Model Context Protocol (MCP) to enable AI assistants like ChatGPT, Claude, and Cursor to launch and manage cold email campaigns, find leads, and automate outreach.",
+        text: "distribute.you is an AI-powered distribution automation platform that uses the Model Context Protocol (MCP) to enable AI assistants like ChatGPT, Claude, and Cursor to launch and manage cold email campaigns, find leads, and automate outreach.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I install the distribute MCP server?",
+      name: "How do I install the distribute.you MCP server?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "For Claude Code: run 'claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY'. For Claude Desktop or Cursor, add the MCP server config to your configuration file. See docs.distribute.you/mcp/installation for details.",
+        text: "For Claude Code: run 'claude mcp add distribute.you -- npx @distribute/mcp --api-key=YOUR_KEY'. For Claude Desktop or Cursor, add the MCP server config to your configuration file. See docs.distribute.you/mcp/installation for details.",
       },
     },
     {
@@ -178,15 +178,15 @@ const faqJsonLd = {
       name: "What tools are available?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "The distribute MCP server provides 35 tools for managing brands, campaigns, workflows, leads, emails, outlets, journalists, articles, press kits, billing, and costs. See docs.distribute.you/mcp/tools for the full reference.",
+        text: "The distribute.you MCP server provides 35 tools for managing brands, campaigns, workflows, leads, emails, outlets, journalists, articles, press kits, billing, and costs. See docs.distribute.you/mcp/tools for the full reference.",
       },
     },
     {
       "@type": "Question",
-      name: "How much does distribute cost?",
+      name: "How much does distribute.you cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute charges transparent variable costs — every unit price we re-bill is published live at distribute.you/pricing, grouped by provider and cost type. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). No fixed subscription you only half-use. See your cost breakdown in real-time in the dashboard.",
+        text: "distribute.you charges transparent variable costs — every unit price we re-bill is published live at distribute.you/pricing, grouped by provider and cost type. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). No fixed subscription you only half-use. See your cost breakdown in real-time in the dashboard.",
       },
     },
   ],
