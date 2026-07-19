@@ -332,7 +332,7 @@
       + tiersBlock()
       + summaryBlock()
       + '<div class="pm-nav"><button type="button" class="pm-back" data-back>← Back</button>'
-      + '<button type="button" class="button primary" data-start' + (startDisabled ? ' disabled' : '') + '>Get started →</button></div>';
+      + '<button type="button" class="button primary" data-start' + (startDisabled ? ' disabled' : '') + '>Get started. $25 free →</button></div>';
 
     // Atoms still loading → re-render once they land to fill the price + $/day.
     function reRenderIfOpen() { if (state.step === resultStep() && overlay.classList.contains('open')) renderResult(); }
