@@ -1016,7 +1016,7 @@
         <div class="cac-left">
           <div class="eyebrow">Live cost of acquisition</div>
           <h2 class="cac-h"><span class="accent">Absurdly cheap</span>. Check the live rate at all times.</h2>
-          <p class="section-copy">A booked B2B sales meeting runs about <b>$700</b> on the market. Right now we deliver a positive reply for a sales meeting at <b class="cac-hl" data-cac-inline>$52</b>. That is roughly <b class="cac-hl" data-cac-mult>13&times;</b> cheaper, and the number is live: it moves as the campaigns run.</p>
+          <p class="section-copy">A booked B2B sales meeting runs about <b>$700</b> on the market. Right now we deliver a positive reply for a sales meeting at <b class="cac-hl" data-cac-inline>$52</b>. That is roughly <b class="cac-hl" data-cac-mult>13&times;</b> cheaper, and it moves live as clients invest, earn outcomes, and our technology improves over time.</p>
           <div class="cac-actions">
             <button type="button" class="button secondary" data-pricing-modal>Get your custom price</button>
           </div>
@@ -1547,8 +1547,26 @@ __CAC_BOOT_SLOT__
       if(!prev)return null;
       return (last-prev)/prev; /* +ve cost rose (bad), -ve cost fell (good) */
     }
+    /* Forward-fill to one point PER DAY, carrying the last known value across
+       any gap, and extend to today INCLUSIVE. Densifies the baked series and any
+       future sparse best-model points into a daily line ending today. */
+    function forwardFillDaily(pts){
+      if(!pts||!pts.length)return pts||[];
+      var day=86400000, byDate={};
+      pts.forEach(function(p){ byDate[p.date]=p.v; });
+      var start=new Date(pts[0].date+'T00:00:00Z').getTime();
+      var now=new Date(), today=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate());
+      if(today<start)today=start;
+      var out=[], lastV=pts[0].v;
+      for(var t=start;t<=today;t+=day){
+        var d=new Date(t).toISOString().slice(0,10);
+        if(byDate[d]!=null)lastV=byDate[d];
+        out.push({date:d,v:lastV});
+      }
+      return out;
+    }
     function applyData(best,points){
-      points=points||[];
+      points=forwardFillDaily(points||[]);
       if(best!=null){
         var p=fmtUsd(best);
         setText('[data-cac-big]',p);
