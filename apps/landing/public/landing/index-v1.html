@@ -1032,7 +1032,7 @@
               <div class="cac-delta" data-cac-delta></div>
             </div>
             <div class="cac-chart" data-cac-chart aria-hidden="true"></div>
-            <div class="cac-foot"><span class="cac-live-dot"></span> Live cost of acquisition, observed across our clients<span data-cac-since></span></div>
+            <div class="cac-foot"><span class="cac-live-dot"></span> Live cost of acquisition, observed across our clients.<span data-cac-updated></span></div>
           </div>
         </aside>
       </div>
@@ -1565,9 +1565,14 @@ __CAC_BOOT_SLOT__
         }
       }
       if(points.length){
-        var since=document.querySelector('[data-cac-since]');
-        if(since){var dt=new Date(points[0].date+'T00:00:00Z');
-          since.textContent=' · since '+dt.toLocaleDateString('en-US',{month:'short',year:'numeric'});}
+        var upd=document.querySelector('[data-cac-updated]');
+        if(upd){
+          var last=new Date(points[points.length-1].date+'T00:00:00Z');
+          var today=new Date(); today.setUTCHours(0,0,0,0);
+          var days=Math.round((today-last)/86400000);
+          var rel = days<=0 ? 'today' : days===1 ? 'yesterday' : days+' days ago';
+          upd.textContent=' Updated '+rel+'.';
+        }
       }
     }
     function renderCac(){
