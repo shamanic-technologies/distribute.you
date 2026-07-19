@@ -4954,10 +4954,23 @@ export interface CustomerDashboardReturnFrequency {
   daysSinceLastSeen: number | null;
 }
 
+// One daily-budget change (billing, forward-only): budget BECAME dailyBudgetUsd at changedAt (0 = pause).
+export interface CustomerBudgetChange {
+  dailyBudgetUsd: number;
+  changedAt: string; // ISO
+}
+
+// One pause flip (campaign, forward-only): paused = new state after the flip (true=paused, false=resumed).
+export interface CustomerPauseTransition {
+  paused: boolean;
+  transitionedAt: string; // ISO
+}
+
 export interface CustomerNotTrackedYet {
   dashboardReturnFrequency: CustomerDashboardReturnFrequency | null;
-  budgetChangeHistory: null;
-  pauseHistory: null;
+  // Forward-only timelines (oldest-first). Empty array = tracked, nothing yet; null = read failed/unconfigured.
+  budgetChangeHistory: CustomerBudgetChange[] | null;
+  pauseHistory: CustomerPauseTransition[] | null;
 }
 
 export interface CustomerRow {

@@ -84,6 +84,29 @@ function DashEngagementCell({ d }: { d: CustomerDashboardReturnFrequency | null 
   );
 }
 
+function fmtDay(iso: string): string {
+  return iso.slice(0, 10); // YYYY-MM-DD (producers send ISO; compact for the panel)
+}
+
+/**
+ * Render a forward-only history timeline. null → "Not available" (read failed / unconfigured); [] →
+ * emptyText (tracked, nothing yet — a legitimate state, NOT the same as null); else most-recent-first lines.
+ */
+function HistoryPanel({ lines, emptyText }: { lines: string[] | null; emptyText: string }) {
+  if (lines === null) return <p className="text-sm text-gray-400">Not available.</p>;
+  if (lines.length === 0) return <p className="text-sm text-gray-400">{emptyText}</p>;
+  return (
+    <div className="space-y-1 rounded-lg border border-gray-100 bg-gray-50 p-3">
+      {lines.slice(0, 12).map((l, i) => (
+        <p key={i} className="text-xs tabular-nums text-gray-700">
+          {l}
+        </p>
+      ))}
+      {lines.length > 12 && <p className="text-xs text-gray-400">+{lines.length - 12} earlier</p>}
+    </div>
+  );
+}
+
 // ── Health badge ─────────────────────────────────────────────────────────────
 
 const HEALTH_DOT: Record<"green" | "yellow" | "red", string> = {
@@ -406,11 +429,30 @@ function RightPanel({ row, names, onClose }: { row: CustomerRow; names: Record<s
         )}
       </PanelSection>
 
-      <PanelSection title="Not tracked yet">
-        <div className="space-y-1">
-          <PanelRow label="Daily-budget history" value="Not tracked yet" muted />
-          <PanelRow label="Pause history" value="Not tracked yet" muted />
-        </div>
+      <PanelSection title="Daily-budget history">
+        <HistoryPanel
+          emptyText="No budget changes since tracking began."
+          lines={
+            row.notTrackedYet.budgetChangeHistory === null
+              ? null
+              : [...row.notTrackedYet.budgetChangeHistory]
+                  .reverse()
+                  .map((h) => `${fmtDay(h.changedAt)} · ${usd(h.dailyBudgetUsd)}`)
+          }
+        />
+      </PanelSection>
+
+      <PanelSection title="Pause history">
+        <HistoryPanel
+          emptyText="No pause changes since tracking began."
+          lines={
+            row.notTrackedYet.pauseHistory === null
+              ? null
+              : [...row.notTrackedYet.pauseHistory]
+                  .reverse()
+                  .map((t) => `${fmtDay(t.transitionedAt)} · ${t.paused ? "Paused" : "Resumed"}`)
+          }
+        />
       </PanelSection>
     </aside>
   );
