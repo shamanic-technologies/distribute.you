@@ -68,7 +68,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "brand", "brands", "brandProfile", "brandExtractedFields", "brandSalesEconomics",
       "brandDailyBudget", "brandPause", "brandCostBreakdown", "brandCostBreakdownToday",
       // brand entity sub-lists (big — now persisted too)
-      "brandLeads", "brandEmails", "brandOutlets", "brandArticles", "brandJournalists",
+      "brandLeads", "brandEmails", "leadEmail", "brandOutlets", "brandArticles", "brandJournalists",
       "enrichedJournalists", "brandRuns", "brandMediaKits", "mediaKit",
       // feature-level
       "featureStats", "featureRevenue", "featureRevenueByCampaign", "featurePipelineActivity",
