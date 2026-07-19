@@ -76,6 +76,9 @@
     :focus-visible{outline:2px solid var(--green);outline-offset:3px}
 
     .announcement{
+      position:sticky;
+      top:0;
+      z-index:70;
       border-bottom:1px solid var(--line-soft);
       background:#eef1f8;
     }
@@ -85,18 +88,19 @@
       align-items:center;
       justify-content:center;
       gap:10px;
-      color:var(--muted);
-      font-family:var(--mono);
-      font-size:11px;
+      color:var(--text);
+      font-family:var(--body);
+      font-size:12.5px;
+      font-weight:450;
       text-align:center;
-      letter-spacing:.01em;
+      letter-spacing:0;
     }
     .announcement b{color:var(--green);font-weight:600}
     .announcement a{color:var(--text);border-bottom:1px solid var(--line)}
 
     header{
       position:sticky;
-      top:0;
+      top:38px;
       z-index:60;
       background:rgba(255,255,255,.82);
       border-bottom:1px solid rgba(226,230,239,.9);
@@ -834,7 +838,7 @@
     }
     @media(max-width:620px){
       .wrap{width:min(var(--max),calc(100% - 30px))}
-      .announcement-inner{padding:8px 0;font-size:9.5px}
+      .announcement-inner{padding:8px 0;font-size:11.5px}
       .nav-actions>.button{display:none}
       .hero{padding:67px 0 50px}
       h1{font-size:44px}
@@ -917,10 +921,21 @@
 <body>
   <div class="announcement">
     <div class="wrap announcement-inner">
-      <span><b>New accounts:</b> up to $25 in matched campaign credits. Eligibility and terms apply.</span>
+      <span><b>New accounts:</b> $25 in matched credits until <span id="announce-date">today</span></span>
       <a href="https://dashboard.distribute.you/sign-up">Start</a>
     </div>
   </div>
+  <script>
+    (function(){
+      var el=document.getElementById("announce-date");
+      if(!el)return;
+      var d=new Date();
+      var day=d.getDate();
+      var suffix=(day%10===1&&day!==11)?"st":(day%10===2&&day!==12)?"nd":(day%10===3&&day!==13)?"rd":"th";
+      var month=d.toLocaleDateString("en-US",{month:"long"});
+      el.textContent=month+" "+day+suffix;
+    })();
+  </script>
 
   <header>
     <div class="wrap">
