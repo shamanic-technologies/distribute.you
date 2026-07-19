@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { OrgActivator } from "@/components/org-activator";
 import { AuthEventTracker } from "@/components/auth-event-tracker";
 import { AdsPurchaseTracker } from "@/components/ads-purchase-tracker";
+import { DistributeSaleTracker } from "@/components/distribute-sale-tracker";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
 import { OrgCacheInvalidator } from "@/components/org-cache-invalidator";
@@ -65,6 +66,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <OrgActivator />
       <AuthEventTracker />
       <AdsPurchaseTracker />
+      <DistributeSaleTracker />
       <UserActivityTracker />
       <UserResolver />
       <Header />
