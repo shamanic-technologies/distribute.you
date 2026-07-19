@@ -340,34 +340,11 @@ if (tocLinks.length) {
     return (typeof v === 'number' && v > 0) ? v : goal.fallback;
   }
 
-  /* ── BUDGET TIERS — fleet-average PROJECTED cost per outcome, from features-service
-        cost-projection (avgCostPerOutcomeByObjective). Different model from the big
-        number above (fleet-avg EV funnel vs best-workflow avg-100), so the $/day tiers
-        need NOT be coherent with the headline price — that is intentional. One fetch
-        per feature returns every objective. Cache: undefined = not fetched, null =
-        fetched-but-empty (→ fallback), object = { <objective>: number|null }. ── */
-  var projCache;            // undefined until first fetch
-  var projPromise = null;
-  function fetchProjection() {
-    if (projCache !== undefined) return Promise.resolve(projCache);
-    if (projPromise) return projPromise;
-    var ctrl = ('AbortController' in window) ? new AbortController() : null;
-    if (ctrl) setTimeout(function () { ctrl.abort(); }, 8000);
-    projPromise = fetch(API + '/cost-projection?featureSlug=' + SLUG, ctrl ? { signal: ctrl.signal } : {})
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) {
-        projCache = (d && d.avgCostPerOutcomeByObjective) ? d.avgCostPerOutcomeByObjective : null;
-        return projCache;
-      })
-      .catch(function () { projCache = null; return null; });
-    return projPromise;
-  }
-  // number = resolved BUDGET unit cost · undefined = still loading
-  function budgetUnitFor(goal) {
-    if (projCache === undefined) return undefined;
-    var v = (projCache && typeof projCache === 'object') ? projCache[goal.objective] : null;
-    return (typeof v === 'number' && v > 0) ? v : goal.fallback;
-  }
+  /* ── BUDGET TIERS — same BEST-model cost per outcome as the headline number.
+        The old fleet-average cost-projection (avgCostPerOutcomeByObjective) was a
+        cross-org, cross-WORKFLOW pooled average — eradicated. The $/day tiers now
+        derive from the best single-model unit cost, so budget and headline agree. ── */
+  function budgetUnitFor(goal) { return unitCostFor(goal); }
 
   /* ── Formatting ── */
   function fmtUsd(n) {
@@ -449,7 +426,6 @@ if (tocLinks.length) {
       btn.addEventListener('click', function () {
         state.goal = GOALS.filter(function (x) { return x.key === btn.getAttribute('data-goal'); })[0];
         fetchBest(state.goal.objective);
-        fetchProjection();
         render();
       });
     });
@@ -512,7 +488,6 @@ if (tocLinks.length) {
     // Still loading either source → re-render once it lands to fill the price + $/day.
     function reRenderIfOpen() { if (state.step === 1 && overlay.classList.contains('open')) renderResult(); }
     if (uc === undefined) fetchBest(g.objective).then(reRenderIfOpen);
-    if (buc === undefined) fetchProjection().then(reRenderIfOpen);
 
     body.querySelectorAll('[data-count]').forEach(function (btn) {
       btn.addEventListener('click', function () { state.count = parseInt(btn.getAttribute('data-count'), 10); renderResult(); });
@@ -550,7 +525,7 @@ if (tocLinks.length) {
   });
 
   // Warm both endpoints early so the price step is instant.
-  function warm() { GOALS.forEach(function (g) { fetchBest(g.objective); }); fetchProjection(); }
+  function warm() { GOALS.forEach(function (g) { fetchBest(g.objective); }); }
   if ('requestIdleCallback' in window) requestIdleCallback(warm);
   else setTimeout(warm, 1200);
 })();
