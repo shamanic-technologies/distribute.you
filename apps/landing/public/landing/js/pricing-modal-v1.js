@@ -20,7 +20,12 @@
     { key: 'website_visits', objective: 'websiteVisit', fallback: 0.90, label: 'Website visits', unit: 'website visits', unitOne: 'website visit', desc: 'Maximize qualified website visits.' },
     { key: 'signups', objective: 'signup', fallback: 32.85, label: 'Sign-ups', unit: 'sign-ups', unitOne: 'sign-up', desc: 'Maximize free signups and trial starts.' },
     { key: 'form_submissions', objective: 'formSubmission', fallback: 45, label: 'Form submissions', unit: 'form submissions', unitOne: 'form submission', desc: 'Maximize lead-form submissions.' },
-    { key: 'positive_replies', objective: 'positiveReply', fallback: 151, label: 'Positive replies', unit: 'positive replies', unitOne: 'positive reply', desc: 'Maximize positive replies for a sales meeting from prospects.' }
+    { key: 'positive_replies', objective: 'positiveReply', fallback: 151, label: 'Positive replies', unit: 'positive replies', unitOne: 'positive reply', desc: 'Maximize positive replies for a sales meeting from prospects.' },
+    // Sales = the combined goal (a paying client won via website visits OR positive
+    // replies). The best-workflow endpoint has no `sales` objective, so its price is
+    // sourced from the fleet-average cost-projection (source: 'projection'), which
+    // serves every objective incl. `sales`. features-service-owned, never computed here.
+    { key: 'sales', objective: 'sales', source: 'projection', fallback: 72, label: 'Sales', unit: 'sales', unitOne: 'sale', desc: 'Maximize paying clients won via website visits or positive replies.' }
   ];
   var COUNT_TIERS = [5, 25, 125];
   var TIER_LABELS = ['Starter', 'Recommended', 'Growth'];
@@ -54,8 +59,15 @@
       .catch(function () { costCache[objective] = null; return null; });
     return costPromise[objective];
   }
-  // number = resolved BIG-number unit cost · undefined = still loading
+  // number = resolved unit cost · undefined = still loading.
+  // Projection-sourced goals (e.g. sales) read the fleet-average cost-projection;
+  // all others read the best-workflow cost cache.
   function unitCostFor(goal) {
+    if (goal.source === 'projection') {
+      if (projCache === undefined) return undefined;
+      var pv = (projCache && typeof projCache === 'object') ? projCache[goal.objective] : null;
+      return (typeof pv === 'number' && pv > 0) ? pv : goal.fallback;
+    }
     var v = costCache[goal.objective];
     if (v === undefined) return undefined;
     return (typeof v === 'number' && v > 0) ? v : goal.fallback;
@@ -155,7 +167,7 @@
   function renderGoal() {
     var html = '<span class="pm-eyebrow">Custom pricing</span>'
       + '<h2 class="pm-title">What is your primary sales goal?</h2>'
-      + '<p class="pm-sub">Pick the one outcome to price. We show the live cost at our best-performing playbook.</p>'
+      + '<p class="pm-sub">Pick the one outcome to price. We show the live cost, measured across active campaigns.</p>'
       + '<div class="pm-choices">';
     GOALS.forEach(function (g) {
       var sel = state.goal && state.goal.key === g.key ? ' sel' : '';
@@ -195,7 +207,7 @@
       }
       return '<div class="pm-price"><div class="pm-price-lbl">Cost per ' + esc(g.unitOne) + '</div>'
         + '<div class="pm-price-n">' + (fmtUsd(uc) || '-') + '</div>'
-        + '<div class="pm-price-per">at our best-performing playbook, measured live</div></div>';
+        + '<div class="pm-price-per">measured live across active campaigns</div></div>';
     }
     function tiersBlock() {
       var html = '<div class="pm-budget-h">How many ' + esc(g.unit) + ' a month?</div><div class="pm-tiers">';
@@ -234,7 +246,7 @@
 
     // Still loading the price → re-render once it lands to fill the price + $/day.
     function reRenderIfOpen() { if (state.step === 1 && overlay.classList.contains('open')) renderResult(); }
-    if (uc === undefined) fetchBest(g.objective).then(reRenderIfOpen);
+    if (uc === undefined) (g.source === 'projection' ? fetchProjection() : fetchBest(g.objective)).then(reRenderIfOpen);
 
     body.querySelectorAll('[data-count]').forEach(function (btn) {
       btn.addEventListener('click', function () { state.count = parseInt(btn.getAttribute('data-count'), 10); renderResult(); });
