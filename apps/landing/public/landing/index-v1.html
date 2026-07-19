@@ -1480,10 +1480,14 @@ __CAC_BOOT_SLOT__
       var W=Math.max(280,container.clientWidth||600),H=220;
       var L=52,R=14,T=14,B=28,PW=W-L-R,PH=H-T-B,n=points.length;
       var vs=points.map(function(p){return p.v;});
-      /* Fixed round-dollar Y axis: $0 / $500 / $1,000 / $1,500 (steps of $500).
-         Ceiling adapts up in $500 steps only if a point ever exceeds $1,500. */
-      var STEP=500,dmax=Math.max.apply(null,vs);
-      var lo=0,hi=Math.max(1500,Math.ceil(dmax/STEP)*STEP),span=hi-lo;
+      /* Nice round-dollar Y axis: pick the smallest "nice" step (10/25/50/100/
+         250/…) that covers the data from $0 in ~4 intervals, so the labels are
+         pertinent round dollars scaled to the data (not a fixed $500 grid). */
+      var dmax=Math.max.apply(null,vs)||1;
+      var NICE=[10,25,50,100,250,500,1000,2500,5000,10000,25000,50000];
+      var STEP=NICE[NICE.length-1];
+      for(var si=0;si<NICE.length;si++){ if(Math.ceil(dmax/NICE[si])<=4){ STEP=NICE[si]; break; } }
+      var lo=0,hi=Math.max(STEP,Math.ceil(dmax/STEP)*STEP),span=hi-lo;
       var X=function(i){return L+(n===1?PW/2:(i/(n-1))*PW);};
       var Y=function(v){return T+(1-(v-lo)/span)*PH;};
       var TICKS=Math.round(hi/STEP),grid='',ylab='';
