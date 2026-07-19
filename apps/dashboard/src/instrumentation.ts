@@ -25,7 +25,7 @@ function emailLayout(content: string): string {
 <body style="margin:0;padding:0;background-color:${EMAIL_BG};font-family:${EMAIL_FONT};-webkit-font-smoothing:antialiased;">
   <div style="max-width:560px;margin:0 auto;padding:40px 24px;">
     <div style="margin-bottom:28px;">
-      <span style="font-size:26px;font-weight:700;letter-spacing:-0.03em;color:${EMAIL_TEXT};">distribute</span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${EMAIL_DOT};margin-left:3px;"></span>
+      <span style="font-size:26px;font-weight:700;letter-spacing:-0.03em;color:${EMAIL_TEXT};">distribute.you</span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${EMAIL_DOT};margin-left:3px;"></span>
     </div>
     <div style="background:${EMAIL_SURFACE};border:1px solid ${EMAIL_BORDER};border-radius:12px;padding:36px 32px;">
       ${content}
@@ -74,11 +74,11 @@ export const EMAIL_TEMPLATES = [
   // ── User-facing templates (branded) ──
   {
     name: "waitlist",
-    subject: "Welcome to the Distribute Waitlist!",
+    subject: "Welcome to the distribute.you Waitlist!",
     htmlBody: emailLayout(`
       <h1 style="color:#1a1a1a;font-size:24px;margin-bottom:20px;">You're on the list!</h1>
       <p style="color:#4a4a4a;font-size:16px;line-height:1.6;margin-bottom:20px;">
-        Thanks for joining the Distribute waitlist. We'll notify you as soon as we're ready to launch.
+        Thanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.
       </p>
       <p style="color:#4a4a4a;font-size:16px;line-height:1.6;margin-bottom:20px;">
         In the meantime, you can:
@@ -87,7 +87,7 @@ export const EMAIL_TEMPLATES = [
         <li><a href="https://docs.distribute.you" style="color:#00713a;">Read the documentation</a></li>
         <li><a href="https://github.com/shamanic-technologies/distribute" style="color:#00713a;">Star us on GitHub</a></li>
       </ul>`),
-    textBody: "You're on the list!\n\nThanks for joining the Distribute waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute",
+    textBody: "You're on the list!\n\nThanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute",
   },
   // Email 1 — sent at SIGNUP (before onboarding, so no brand/goal exists yet).
   // Short "why distribute" value-prop, goal-agnostic. The goal-specific
@@ -95,9 +95,9 @@ export const EMAIL_TEMPLATES = [
   // fired after the user pays and launches.
   {
     name: "welcome",
-    subject: "Welcome to distribute",
+    subject: "Welcome to distribute.you",
     htmlBody: emailLayout(`
-      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">Welcome to distribute.</h1>
+      <h1 style="color:${EMAIL_TEXT};font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.25;margin:0 0 20px;">Welcome to distribute.you.</h1>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 18px;">
         Cold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.
       </p>
@@ -116,7 +116,7 @@ export const EMAIL_TEMPLATES = [
       <p style="color:${EMAIL_MUTED};font-size:14px;line-height:1.6;margin:20px 0 0;">
         New to this? <a href="${HOW_IT_WORKS_URL}" style="color:${EMAIL_ACCENT_TEXT};">See how it works.</a>
       </p>`),
-    textBody: `Welcome to distribute.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
+    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
   },
   // Email 2 — sent AFTER the user pays and launches (completeLaunchAfterCheckout).
   // {{outcomeNoun}} is the plural of the brand's chosen optimization goal (clicks /
@@ -203,18 +203,18 @@ export const EMAIL_TEMPLATES = [
   //   invite-success-notification → { email, inviteeOrgName, balanceCents, invitesUsed, invitesTotal }
   {
     name: "waitlist-confirmed",
-    subject: "You're on the distribute waitlist",
+    subject: "You're on the distribute.you waitlist",
     htmlBody: emailLayout(`
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        You're #{{position}} on the distribute waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.
+        You're #{{position}} on the distribute.you waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Want to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.
+        Want to skip the line? Ask someone already using distribute.you for their invite link. Each invite drops $25 in credits into both sides.
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">See you inside soon.</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nYou're #{{position}} on the distribute waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.\n\nWant to skip the line? Ask someone already using distribute for their invite link. Each invite drops $25 in credits into both sides.\n\nSee you inside soon.\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nYou're #{{position}} on the distribute.you waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.\n\nWant to skip the line? Ask someone already using distribute.you for their invite link. Each invite drops $25 in credits into both sides.\n\nSee you inside soon.\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "invite-claimed-welcome",
@@ -230,8 +230,8 @@ export const EMAIL_TEMPLATES = [
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
         You also have 3 invites to share. Each one drops $25 into both sides.
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nThanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.\n\nOpen your dashboard and run your first AI-driven outreach today: ${DASHBOARD_URL}\n\nYou also have 3 invites to share. Each one drops $25 into both sides.\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nThanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.\n\nOpen your dashboard and run your first AI-driven outreach today: ${DASHBOARD_URL}\n\nYou also have 3 invites to share. Each one drops $25 into both sides.\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "invite-success-notification",
@@ -269,8 +269,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nYour credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.\n\nWant them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nYour credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.\n\nWant them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "credit-depleted-followup-3d",
@@ -286,8 +286,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nQuick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.\n\nAdd credit to get them running again, and flip on auto-topup so this doesn't happen next time.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nQuick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.\n\nAdd credit to get them running again, and flip on auto-topup so this doesn't happen next time.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
   {
     name: "credit-depleted-followup-10d",
@@ -303,8 +303,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
 
   // ── Daily outcome digest (beta-gated by dashboard cron via PostHog) ──
@@ -335,8 +335,8 @@ export const EMAIL_TEMPLATES = [
       <p style="margin-bottom:20px;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute</p>`),
-    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute`,
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
+    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
 ];
 

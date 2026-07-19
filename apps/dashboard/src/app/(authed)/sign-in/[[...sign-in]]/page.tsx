@@ -158,7 +158,7 @@ export default function SignInPage() {
           >
             <Image
               src="/logo-distribute.svg"
-              alt="distribute"
+              alt="distribute.you"
               width={32}
               height={32}
             />
@@ -277,7 +277,7 @@ export default function SignInPage() {
             >
               <Image
                 src="/logo-distribute.svg"
-                alt="distribute"
+                alt="distribute.you"
                 width={28}
                 height={28}
               />
