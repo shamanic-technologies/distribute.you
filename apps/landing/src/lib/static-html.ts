@@ -655,7 +655,11 @@ async function withTickerMetrics(html: string) {
 // Homepage live cost-of-acquisition chart — SSR "boot" payload so the chart +
 // numbers paint on FIRST byte (no client-fetch delay). The client reads
 // window.__CAC_BOOT__ to render instantly, then refetches live to refresh.
-const CAC_BOOT_TOKEN = "__CAC_BOOT__";
+// NOTE: distinct from the client global `window.__CAC_BOOT__`. A bare
+// `__CAC_BOOT__` placeholder collided with the reader's `window.__CAC_BOOT__`
+// reference under replaceAll — it rewrote the reader to
+// `var boot=window.<script>…</script>` (SyntaxError → chart never rendered).
+const CAC_BOOT_TOKEN = "__CAC_BOOT_SLOT__";
 
 // Deterministic last-known-good CAC trend, baked into the boot payload whenever
 // the live cost-per-outcome-trend endpoint is slow/unreachable (it has been
