@@ -1604,19 +1604,32 @@ __CAC_BOOT_SLOT__
         upd.innerHTML='<span class="cac-live-dot"></span>Updated '+rel;
       }
     }
+    /* REAL best-model dated trend (single best workflow, cross-org, never pooled).
+       Returns {best, points:[{date,v}]} with only the backed days. */
+    function fetchBestTrend(){
+      return getJSON(API+'/v1/public/features/best-model-cost-per-outcome-trend?featureSlug='+encodeURIComponent(SLUG)+'&objective=positiveReply&days=180')
+        .then(function(d){
+          return {
+            best:(d&&typeof d.bestWorkflowLifetimeCostPerOutcomeUsd==='number')?d.bestWorkflowLifetimeCostPerOutcomeUsd:null,
+            points:((d&&d.points)||[]).filter(function(p){return p&&p.costPerOutcomeUsd!=null&&typeof p.date==='string';})
+              .map(function(p){return {date:p.date,v:p.costPerOutcomeUsd};})
+          };
+        });
+    }
     function renderCac(){
-      /* SSR boot: paint instantly from server-baked data, then refresh the live
-         BEST-model price. The series is the best-model timeline (never a
-         cross-workflow pooled average): we refresh only the single best-model
-         price cross-org and rescale the baked curve to end on it, until the
-         best-model dated-trend endpoint ships real per-day points. */
+      /* SSR boot paints instantly, then refresh with the live real best-model
+         trend. Fall back to the live best-model price (rescaling the baked curve)
+         only if the trend has no backed points. */
       var boot=window.__CAC_BOOT__;
       if(boot){ if(boot.best!=null)bestPrice=boot.best; applyData(boot.best, boot.points||[]); }
-      fetchBest().then(function(b){
-        if(b==null)return;
-        var pts=(boot&&boot.points)||[], base=boot&&boot.best;
-        if(base>0&&pts.length){ pts=pts.map(function(p){return {date:p.date,v:Math.round(p.v*(b/base)*100)/100};}); }
-        applyData(b, pts);
+      fetchBestTrend().then(function(r){
+        if(r.points&&r.points.length){ applyData(r.best!=null?r.best:bestPrice, r.points); return; }
+        return fetchBest().then(function(b){
+          if(b==null)return;
+          var pts=(boot&&boot.points)||[], base=boot&&boot.best;
+          if(base>0&&pts.length){ pts=pts.map(function(p){return {date:p.date,v:Math.round(p.v*(b/base)*100)/100};}); }
+          applyData(b, pts);
+        });
       }).catch(function(){});
     }
     // The pricing modal (the real 2-step goal -> price + budget calculator)
