@@ -334,7 +334,7 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
               <div className="flex items-center gap-3">
-                <Image src="/logo-head.jpg" alt="distribute" width={36} height={36} className="rounded-lg" />
+                <Image src="/logo-head.jpg" alt="distribute.you" width={36} height={36} className="rounded-lg" />
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">Build in public</p>
                   <h1 className="mt-1 text-3xl font-semibold tracking-normal text-gray-950 md:text-4xl">
