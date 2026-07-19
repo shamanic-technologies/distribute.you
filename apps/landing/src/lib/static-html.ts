@@ -673,7 +673,11 @@ async function resolveCacBoot(): Promise<string> {
   // ending on the best-model price. Swap in real per-day points once a
   // best-model dated-trend endpoint (per-workflow, non-pooled) ships.
   const points = fallbackCacSeries(best ?? FALLBACK_BEST.positiveReply);
-  return `<script>window.__CAC_BOOT__=${JSON.stringify({ best, points })}</script>`;
+  // `renderedAt` = when this ISR snapshot was server-rendered (refreshed every
+  // ~300s). The client shows "Updated X min ago" from it — the freshness of the
+  // SSR data, NOT the last data-point date.
+  const renderedAt = Date.now();
+  return `<script>window.__CAC_BOOT__=${JSON.stringify({ best, points, renderedAt })}</script>`;
 }
 
 async function withCacBoot(html: string) {
