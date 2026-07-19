@@ -9,11 +9,11 @@ const channelList = liveFeatures
   .map((f) => `- ${f.title} — ${f.description}`)
   .join("\n");
 
-const LLM_INSTRUCTIONS = `# distribute Documentation
+const LLM_INSTRUCTIONS = `# distribute.you Documentation
 
-## What is distribute?
+## What is distribute.you?
 AI cold email outreach, done for you. One API.
-Provide a URL + a daily budget; distribute handles lead finding, content generation,
+Provide a URL + a daily budget; distribute.you handles lead finding, content generation,
 sending, and AI-qualified reply forwarding.
 
 ## What it does
@@ -28,7 +28,7 @@ ${channelList}
 ## Quick Start
 1. Sign up at dashboard.distribute.you ($25 free credits)
 2. Get API key (dist_xxx format)
-3. Install MCP: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
+3. Install MCP: claude mcp add distribute.you -- npx @distribute/mcp --api-key=YOUR_KEY
 4. "Create a brand for acme.com"
 5. "Launch a cold email campaign targeting CTOs, $5/day budget"
 
@@ -42,19 +42,19 @@ export default function DocsHome() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">distribute Documentation</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">distribute.you Documentation</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Provide a URL and a budget — distribute finds the right people,
+        Provide a URL and a budget — distribute.you finds the right people,
         writes personalized cold email, sends it on your behalf, AI-qualifies the replies,
         and forwards the good ones to your inbox.
       </p>
 
       <div className="prose">
-        <h2>What is distribute?</h2>
+        <h2>What is distribute.you?</h2>
         <p>
-          distribute is an AI-powered cold email platform. One account, one API.
+          distribute.you is an AI-powered cold email platform. One account, one API.
           You provide a URL and a daily budget. We handle sending
           infrastructure, deliverability, reply qualification, and CAC attribution.
         </p>
@@ -82,20 +82,20 @@ export default function DocsHome() {
         <h2>Getting Started</h2>
         <ol>
           <li><a href={URLS.signUp}>Create an account</a> and get your API key</li>
-          <li>Set up your brand — provide your URL, distribute analyzes your site automatically</li>
+          <li>Set up your brand — provide your URL, distribute.you analyzes your site automatically</li>
           <li>Set a budget and launch your cold email campaign</li>
           <li>Get notified when someone replies</li>
         </ol>
 
-        <h2>Use distribute from</h2>
+        <h2>Use distribute.you from</h2>
 
         <h3>MCP Server (recommended)</h3>
         <p>
-          Install the <code>@distribute/mcp</code> package to use distribute from Claude Code, Claude Desktop,
+          Install the <code>@distribute/mcp</code> package to use distribute.you from Claude Code, Claude Desktop,
           Cursor, or any MCP-compatible client. See the <Link href="/mcp">MCP Server docs</Link>.
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>
+          <code>claude mcp add distribute.you -- npx @distribute/mcp --api-key=YOUR_KEY</code>
         </pre>
 
         <h3>REST API</h3>
@@ -114,7 +114,7 @@ export default function DocsHome() {
 
         <h3>Brands</h3>
         <p>
-          A brand represents your company or product. When you provide a URL, distribute scrapes and analyzes
+          A brand represents your company or product. When you provide a URL, distribute.you scrapes and analyzes
           your site to understand your business, voice, and value proposition.
         </p>
 
@@ -133,12 +133,12 @@ export default function DocsHome() {
         <h3>Campaigns</h3>
         <p>
           A campaign is a running instance of a workflow for your brand. You set budget limits and
-          distribute handles execution, optimization, and reporting.
+          distribute.you handles execution, optimization, and reporting.
         </p>
 
         <h2>Pricing</h2>
         <p>
-          distribute charges transparent variable costs — every unit price we re-bill is published
+          distribute.you charges transparent variable costs — every unit price we re-bill is published
           live at <a href="https://distribute.you/pricing">distribute.you/pricing</a>, grouped by
           provider and cost type. You buy credits and only pay for what you use (AI calls, lead
           enrichment, email sends). No fixed subscription you only half-use. See your cost
