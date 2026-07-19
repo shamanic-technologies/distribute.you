@@ -326,13 +326,6 @@ interface TickerMetrics {
   bestWeb: string;
 }
 
-interface TrendPoint {
-  date: string | null;
-  costPerOutcomeUsd: number | null;
-}
-interface TrendResponse {
-  points: TrendPoint[];
-}
 interface SeriesPoint {
   date: string;
   v: number;
@@ -539,76 +532,46 @@ async function fetchBestModelUsd(
   return priced.length ? Math.min(...priced) : null;
 }
 
-async function fetchTrendSeries(
-  apiUrl: string,
-  headers: Record<string, string>,
-  slug: string,
-  objective: string,
-  days = 90,
-): Promise<SeriesPoint[]> {
-  // Bound each call so a slow/hanging cold endpoint can't blow the homepage's
-  // 60s build-time prerender budget — a timeout throws, propagates through the
-  // Promise.all, and resolveTicker falls back to the last-known-good board.
-  const res = await fetch(
-    `${apiUrl}/v1/public/features/cost-per-outcome-trend?featureSlug=${slug}&objective=${objective}&days=${days}`,
-    { headers, next: { revalidate: 300 }, signal: AbortSignal.timeout(8_000) },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/cost-per-outcome-trend ${objective} failed: ${res.status}`,
-    );
-  }
-  const data = (await res.json()) as TrendResponse;
-  return (data.points ?? []).flatMap((p) => {
-    const v = numericOrNull(p?.costPerOutcomeUsd);
-    return v !== null && typeof p.date === "string" ? [{ date: p.date, v }] : [];
-  });
-}
-
 async function fetchTicker(): Promise<TickerMetrics> {
   const apiUrl = resolvePublicApiUrl();
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
 
-  // Destructure follows TICKER_OBJECTIVES order (positiveReply, websiteVisit, signup).
-  const [reply, visit, signup] = await Promise.all(
-    TICKER_OBJECTIVES.map((o) => fetchTrendSeries(apiUrl, headers, slug, o.key)),
-  );
-  // meetingBooked is beta-gated out of the public board, but the __TICKER_CPM__
-  // scalar still feeds the legacy /v0 homepage — fetch it on its own so a
-  // failure can't blank the board.
-  const meeting = await fetchTrendSeries(apiUrl, headers, slug, "meetingBooked").catch(
-    () => [] as SeriesPoint[],
-  );
-
-  // The two hero numbers show our BEST cross-org workflow cost per outcome, not
-  // the trend average — fetched on their own so a failure degrades that one
-  // number to the fallback without blanking the board.
-  const [bestReply, bestVisit] = await Promise.all([
+  // Every number here is the BEST single-model cost per outcome, cross-org — the
+  // MIN over per-workflow ratios (fetchBestModelUsd), NEVER a cross-workflow
+  // pooled average. The pooled `cost-per-outcome-trend` series is eradicated.
+  const [bestReply, bestVisit, bestSignup, bestMeeting] = await Promise.all([
     fetchBestModelUsd(apiUrl, headers, slug, "positiveReply").catch(() => null),
     fetchBestModelUsd(apiUrl, headers, slug, "websiteVisit").catch(() => null),
+    fetchBestModelUsd(apiUrl, headers, slug, "signup").catch(() => null),
+    fetchBestModelUsd(apiUrl, headers, slug, "meetingBooked").catch(() => null),
   ]);
 
-  if (!visit.length && !reply.length && !signup.length) {
-    throw new Error("[landing] cost-per-outcome-trend returned no backed series");
+  if (bestReply === null && bestVisit === null && bestSignup === null) {
+    throw new Error("[landing] workflow-cost-per-outcome returned no best model");
   }
 
-  const series: Record<string, SeriesPoint[]> = {
-    websiteVisit: visit,
-    positiveReply: reply,
-    signup,
-  };
-  const last = (s: SeriesPoint[]): string | null =>
-    s.length ? usdSmart(s[s.length - 1].v) : null;
   const fb = buildFallbackTicker();
+  const reply = bestReply ?? FALLBACK_BEST.positiveReply;
+  const visit = bestVisit ?? FALLBACK_BEST.websiteVisit;
+  const signup = bestSignup ?? 22;
+  // Sparkline shape = a deterministic best-shaped curve ending on the best-model
+  // price (real per-day best-model points land once the non-pooled best-model
+  // dated-trend endpoint ships). Board is /v0-only; the live scalars below are
+  // the best-model numbers.
+  const series: Record<string, SeriesPoint[]> = {
+    positiveReply: fallbackSeries(reply),
+    websiteVisit: fallbackSeries(visit),
+    signup: fallbackSeries(signup),
+  };
 
   return {
     board: tickerBoard(series),
-    heroPos: heroStatCard(TICKER_OBJECTIVES[0], reply, bestReply ?? FALLBACK_BEST.positiveReply),
-    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], visit, bestVisit ?? FALLBACK_BEST.websiteVisit),
-    cpc: last(visit) ?? fb.cpc,
-    cpr: last(reply) ?? fb.cpr,
-    cpm: last(meeting) ?? fb.cpm,
+    heroPos: heroStatCard(TICKER_OBJECTIVES[0], series.positiveReply, reply),
+    heroWeb: heroStatCard(TICKER_OBJECTIVES[1], series.websiteVisit, visit),
+    cpc: bestVisit !== null ? usdSmart(bestVisit) : fb.cpc,
+    cpr: bestReply !== null ? usdSmart(bestReply) : fb.cpr,
+    cpm: bestMeeting !== null ? usdSmart(bestMeeting) : fb.cpm,
     bestPos: bestReply !== null ? usdSmart(bestReply) : fb.bestPos,
     bestWeb: bestVisit !== null ? usdSmart(bestVisit) : fb.bestWeb,
   };
@@ -661,11 +624,12 @@ async function withTickerMetrics(html: string) {
 // `var boot=window.<script>…</script>` (SyntaxError → chart never rendered).
 const CAC_BOOT_TOKEN = "__CAC_BOOT_SLOT__";
 
-// Deterministic last-known-good CAC trend, baked into the boot payload whenever
-// the live cost-per-outcome-trend endpoint is slow/unreachable (it has been
-// flaky). Without this the chart div renders EMPTY (client guard clears it on a
-// zero-length series) and the section "loses its chart". The landing does not
-// have to be live — it has to be instant and never blank. Ends at `end` (the
+// Deterministic best-model CAC timeline, baked into the boot payload. This IS
+// the chart series (there is no live per-day series — the pooled
+// cost-per-outcome-trend was eradicated; a non-pooled best-model dated trend
+// will replace this once it ships). Without a series the chart div renders EMPTY
+// (client guard clears it on a zero-length series). The landing does not have to
+// be live — it has to be instant and never blank. Ends at `end` (the
 // resolved price, live or fallback) so the sparkline agrees with the headline
 // number. Weekly points over ~6 months, smooth decline + a tiny fixed wiggle.
 function fallbackCacSeries(end: number): SeriesPoint[] {
