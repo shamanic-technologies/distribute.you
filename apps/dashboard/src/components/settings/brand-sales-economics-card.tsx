@@ -124,7 +124,7 @@ const OPTIMIZATION_GOALS: {
   { value: "positive_replies", label: "# Positive Replies" },
   { value: "form_submissions", label: "# Form submissions" },
   { value: "website_purchase", label: "# Website purchases" },
-  { value: "sales", label: "# Sales", beta: true },
+  { value: "sales", label: "# Sales" },
 ];
 
 const PCT_FIELDS: {

@@ -108,7 +108,6 @@ const GOAL_OPTIONS: {
     value: "sales",
     label: "# Sales",
     description: "Optimize outreach toward paying clients won via either website visits or positive replies.",
-    beta: true,
   },
 ];
 
