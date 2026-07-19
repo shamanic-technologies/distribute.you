@@ -91,7 +91,7 @@ export default async function Home() {
           <div className="flex items-center gap-2">
             <Image
               src="https://distribute.you/logo-head.jpg"
-              alt="distribute"
+              alt="distribute.you"
               width={36}
               height={36}
               className="rounded-lg"
@@ -474,12 +474,12 @@ export default async function Home() {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Image
               src="https://distribute.you/logo-head.jpg"
-              alt="distribute"
+              alt="distribute.you"
               width={32}
               height={32}
               className="rounded-md"
             />
-            <span className="font-bold text-white text-lg">distribute</span>
+            <span className="font-bold text-white text-lg">distribute.you</span>
             <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">beta</span>
           </div>
           <p className="text-sm mb-4">Open-source cold email automation</p>
