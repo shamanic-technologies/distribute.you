@@ -75,8 +75,8 @@ export default function ClaimPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
       <div className="w-full max-w-sm text-center">
         <Link href="https://distribute.you" className="inline-flex items-center gap-2 mb-8">
-          <Image src="/logo-head.jpg" alt="distribute" width={36} height={36} className="rounded-lg" />
-          <span className="font-display font-bold text-xl text-gray-900">distribute</span>
+          <Image src="/logo-head.jpg" alt="distribute.you" width={36} height={36} className="rounded-lg" />
+          <span className="font-display font-bold text-xl text-gray-900">distribute.you</span>
         </Link>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
