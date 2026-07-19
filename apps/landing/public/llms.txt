@@ -1,4 +1,4 @@
-# distribute
+# distribute.you
 
 > Pay-as-you-go cloud platform that runs cold email outreach on behalf of solo
 > founders. You give us a URL and a daily budget; we send from agency-warmed
@@ -8,7 +8,7 @@
 
 ## Brand
 
-- Name: distribute
+- Name: distribute.you
 - Tagline: The Stripe of Distribution
 - ICP: The Serial Builder — 16-40 years old, solo CEO-founder, ships 3+ products
   per year, refuses subscriptions, wants founder reachable

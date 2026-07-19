@@ -27,12 +27,12 @@ export function Navbar() {
         <a href="/" className="dy-nav-logo">
           <Image
             src="/landing/logo/logo-distribute.svg"
-            alt="distribute"
+            alt="distribute.you"
             width={24}
             height={24}
             priority
           />
-          <span>distribute</span>
+          <span>distribute.you</span>
           <span className="dy-nav-chip">BETA</span>
         </a>
 
