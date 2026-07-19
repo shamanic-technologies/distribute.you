@@ -63,7 +63,8 @@ const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   website_visits: "Maximising website visits",
   positive_replies: "Maximising positive replies",
   form_submissions: "Maximising form submissions",
-  purchase: "Maximising purchases",
+  website_purchase: "Maximising website purchases",
+  sales: "Maximising sales",
 };
 
 const GOAL_OPTIONS: {
@@ -99,9 +100,14 @@ const GOAL_OPTIONS: {
     description: "Optimize outreach toward form submissions that convert to paid clients.",
   },
   {
-    value: "purchase",
-    label: "# Purchases",
+    value: "website_purchase",
+    label: "# Website purchases",
     description: "Optimize outreach toward direct website purchases (paid clients).",
+  },
+  {
+    value: "sales",
+    label: "# Sales",
+    description: "Optimize outreach toward paying clients won via either website visits or positive replies.",
     beta: true,
   },
 ];

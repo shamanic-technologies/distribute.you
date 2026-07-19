@@ -14,7 +14,8 @@ const ALL_GOALS: BrandOptimizationGoal[] = [
   "website_visits",
   "positive_replies",
   "form_submissions",
-  "purchase",
+  "website_purchase",
+  "sales",
 ];
 
 describe("goal-steps: Leads tabs (outcome-first, off-path dropped)", () => {
@@ -22,7 +23,8 @@ describe("goal-steps: Leads tabs (outcome-first, off-path dropped)", () => {
     website_visits: ["clicks", "outreach"],
     signups: ["clicks", "outreach"],
     form_submissions: ["clicks", "outreach"],
-    purchase: ["clicks", "outreach"],
+    website_purchase: ["clicks", "outreach"],
+    sales: ["positive-replies", "clicks", "outreach"],
     positive_replies: ["positive-replies", "outreach"],
     sales_meetings: ["positive-replies", "clicks", "outreach"],
   };
@@ -48,9 +50,16 @@ describe("goal-steps: Leads tabs (outcome-first, off-path dropped)", () => {
 
 describe("goal-steps: activity-chart metrics (base→outcome)", () => {
   it("visit-driven goals plot Outreach + Website Visits", () => {
-    for (const goal of ["website_visits", "signups", "purchase"] as const) {
+    for (const goal of ["website_visits", "signups", "website_purchase"] as const) {
       expect(goalChartMetricKeys(goal)).toEqual(["outreach", "clicks"]);
     }
+  });
+  it("combined sales plots BOTH clicks and positive replies (both paths)", () => {
+    expect(goalChartMetricKeys("sales")).toEqual([
+      "outreach",
+      "clicks",
+      "repliedPositive",
+    ]);
   });
   it("form_submissions also plots its Form-submissions bar (features serves the daily series)", () => {
     expect(goalChartMetricKeys("form_submissions")).toEqual([
@@ -93,11 +102,13 @@ describe("goal-steps: stat-card outcome step", () => {
       costLabel: "CPFS",
     });
   });
-  it("purchase binds its aggregate count/cost (features-service#476)", () => {
-    const step = goalOutcomeStep("purchase");
-    expect(step?.label).toBe("Purchases");
-    expect(step?.outcome?.countField).toBe("purchasesCount");
-    expect(step?.outcome?.costField).toBe("cppCents");
+  it("website_purchase + sales bind the SALE aggregate count/cost", () => {
+    for (const goal of ["website_purchase", "sales"] as const) {
+      const step = goalOutcomeStep(goal);
+      expect(step?.label).toBe("Sales");
+      expect(step?.outcome?.countField).toBe("salesCount");
+      expect(step?.outcome?.costField).toBe("cpSaleCents");
+    }
   });
 });
 
@@ -125,9 +136,15 @@ describe("goal-steps: realized-outcome Leads tab (per-lead #476)", () => {
       leadField: "formSubmission",
       dateField: "formSubmissionAt",
     });
-    expect(goalOutcomeTab("purchase")).toEqual({
-      tab: "purchases",
-      label: "Purchases",
+    expect(goalOutcomeTab("website_purchase")).toEqual({
+      tab: "sales",
+      label: "Sales",
+      leadField: "purchased",
+      dateField: "purchasedAt",
+    });
+    expect(goalOutcomeTab("sales")).toEqual({
+      tab: "sales",
+      label: "Sales",
       leadField: "purchased",
       dateField: "purchasedAt",
     });

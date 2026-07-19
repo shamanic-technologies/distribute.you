@@ -16,20 +16,20 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 // The "Copy for LLM" button copies a plain-language brief a user can paste into
 // Claude/Cursor to have it wired into their own site.
 
-type EventType = "signup" | "meeting_booked" | "form_submission" | "purchase";
+type EventType = "signup" | "meeting_booked" | "form_submission" | "sale";
 
 const EVENTS: { type: EventType; label: string; when: string }[] = [
   { type: "signup", label: "Signup", when: "a user creates an account" },
   { type: "meeting_booked", label: "Meeting booked", when: "a user books a meeting or demo" },
   { type: "form_submission", label: "Form submission", when: "a user submits a lead or contact form" },
-  { type: "purchase", label: "Purchase", when: "a user completes a purchase" },
+  { type: "sale", label: "Sale", when: "a customer completes a sale" },
 ];
 
-// Purchase carries the amount in cents so we can attribute revenue, not just a
-// count. The other events have no value, so valueCents is only in the purchase
+// A sale carries the amount in cents so we can attribute revenue, not just a
+// count. The other events have no value, so valueCents is only in the sale
 // snippet.
 function serverSnippet(ingestUrl: string, token: string, event: EventType): string {
-  const value = event === "purchase" ? `,"valueCents":4900` : "";
+  const value = event === "sale" ? `,"valueCents":4900` : "";
   return `curl -X POST ${ingestUrl} \\
   -H "x-conversion-token: ${token}" \\
   -H "Content-Type: application/json" \\
@@ -59,7 +59,7 @@ function pixelSnippet(ingestUrl: string, token: string, event: EventType): strin
       firstName: "Jane",
       lastName: "Doe",
       companyUrl: "https://theircompany.com",${
-        event === "purchase" ? `\n      valueCents: 4900,` : ""
+        event === "sale" ? `\n      valueCents: 4900,` : ""
       }
     }),
   });
@@ -139,7 +139,7 @@ Fire one event when it happens on my site:
 - signup          when a user creates an account
 - meeting_booked  when a user books a meeting or demo
 - form_submission when a user submits a lead or contact form
-- purchase        when a user completes a purchase
+- sale            when a customer completes a sale
 
 Body is JSON. "event" is required; send whatever identity fields I have.
 Email matches best.
@@ -151,8 +151,8 @@ Email matches best.
   "companyUrl": "https://theircompany.com"
 }
 
-For a purchase, also send the amount:
-{ "event": "purchase", "email": "the-user@email.com", "valueCents": 4900 }
+For a sale, also send the amount:
+{ "event": "sale", "email": "the-user@email.com", "valueCents": 4900 }
 
 Also fire {"event":"ping"} (no other fields) once on page load, so distribute
 can confirm the tracker is live before the first real conversion.

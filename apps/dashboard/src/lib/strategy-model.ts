@@ -14,7 +14,8 @@ function isVisitDrivenGoal(goal: BrandOptimizationGoal): boolean {
     goal === "signups" ||
     goal === "website_visits" ||
     goal === "form_submissions" ||
-    goal === "purchase"
+    goal === "website_purchase" ||
+    goal === "sales"
   );
 }
 
@@ -61,7 +62,10 @@ export function modelAvatar(dynastySlug: string): { emoji: string; color: string
  *  The two beta goals borrow the nearest family (visit → signup, reply → meetingBooked);
  *  the enum has no single-step variant. */
 export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAudienceStatsGoal {
-  if (goal === "purchase") return "purchase";
+  // website_purchase (renamed) + sales (combined) each have their own native
+  // audience-stats goal, carrying per-audience sales + cpsaleCents evidence.
+  if (goal === "website_purchase") return "websitePurchase";
+  if (goal === "sales") return "sales";
   // form_submissions has its own native audience-stats goal (visit-driven, sorts on
   // CPC like signup, but carries per-audience formSubmissions + cpfsCents evidence).
   if (goal === "form_submissions") return "formSubmission";
@@ -79,8 +83,10 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
       return "positive reply";
     case "form_submissions":
       return "form submission";
-    case "purchase":
+    case "website_purchase":
       return "purchase";
+    case "sales":
+      return "sale";
     default:
       return "meeting";
   }
@@ -98,7 +104,9 @@ export function outcomeNounPlural(goal: BrandOptimizationGoal): string {
       return "replies";
     case "form_submissions":
       return "form submissions";
-    case "purchase":
+    case "website_purchase":
+      return "sales";
+    case "sales":
       return "sales";
     default:
       return "meetings";
@@ -115,7 +123,8 @@ export function objectiveForOptimizationGoal(goal: BrandOptimizationGoal): Sales
   if (goal === "form_submissions") return "form_submissions";
   if (goal === "website_visits") return "website_visits";
   if (goal === "positive_replies") return "positive_replies";
-  if (goal === "purchase") return "purchase";
+  if (goal === "website_purchase") return "website_purchase";
+  if (goal === "sales") return "sales";
   if (goal === "sales_meetings") return "meeting-booked";
   return "self-serve";
 }

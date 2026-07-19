@@ -43,14 +43,14 @@ const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
   signups: "Signups",
   meetings: "Meetings",
   "form-submissions": "Form submissions",
-  purchases: "Purchases",
+  sales: "Sales",
 };
 
 const OUTCOME_TABS: ReadonlySet<string> = new Set<OutcomeTab>([
   "signups",
   "meetings",
   "form-submissions",
-  "purchases",
+  "sales",
 ]);
 const isOutcomeTab = (tab: string): tab is OutcomeTab => OUTCOME_TABS.has(tab);
 
@@ -94,7 +94,7 @@ function leadDateForTab(lead: Lead, tab: Tab): string | null {
       if (ats.length === 0) return null;
       return ats.reduce((latest, a) => (new Date(a).getTime() > new Date(latest).getTime() ? a : latest));
     }
-    // Outcome tabs (signups/meetings/form-submissions/purchases): the date is the
+    // Outcome tabs (signups/meetings/form-submissions/sales): the date is the
     // realized-outcome timestamp on the /revenue join, not on the lead-service row —
     // resolved separately via `outcomeDates` in the table + grouping.
     default: return null;
@@ -665,7 +665,7 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   // so fetch /revenue (same query key as the stat cards → React Query dedupes to one
   // poll) and join by the lead IDENTITY (`lead.leadId` ↔ `ConversionLead.leadId`, not
   // the leads_campaigns row `id`). The outcome tab (Signups/Meetings/Form submissions/
-  // Purchases) buckets on the join boolean + dates on its timestamp.
+  // Sales) buckets on the join boolean + dates on its timestamp.
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const { data: revenueData } = useAuthQuery(

@@ -111,7 +111,7 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 // the tab, auto-cleared on close → no stale cross-session bleed. Bump VERSION to bust
 // an incompatible shape after a flow change. Cleared on genuine completion (launch()).
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
-const ONBOARDING_STATE_VERSION = 5;
+const ONBOARDING_STATE_VERSION = 6;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
@@ -150,11 +150,11 @@ type Step =
 // The sales goal drives the projection count so the budget cards show the chosen
 // unit, never "closes". Outcome IS the BrandOptimizationGoal — every downstream
 // helper (salesObjectiveForOptimizationGoal, workflowOutcomeUnitCost, goalSteps)
-// already handles all six goals; the funnel just wires the chosen one through.
+// already handles every goal; the funnel just wires the chosen one through.
 // Labels use Google Ads' conversion-goal category names ("version Google Ads").
-// `beta` goals show only to beta users for now (Kevin): Purchases and Book
+// `beta` goals show only to beta users for now (Kevin): Sales (combined) and Book
 // appointments (sales meetings) are gated; Sign-ups / Page views / Contacts /
-// Submit lead forms are ungated in the funnel.
+// Submit lead forms / Purchases are ungated in the funnel.
 type Outcome = BrandOptimizationGoal;
 const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?: boolean }[] = [
   { key: "signups", label: "Sign-ups", unit: "sign-ups", desc: "Maximize free signups / trial starts." },
@@ -162,7 +162,8 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?
   { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits." },
   { key: "positive_replies", label: "Positive replies for sales meetings", unit: "contacts", desc: "Maximize positive replies for a sales meeting from prospects." },
   { key: "form_submissions", label: "Form submissions", unit: "lead forms", desc: "Maximize form submissions." },
-  { key: "purchase", label: "Purchases", unit: "purchases", desc: "Maximize direct purchases.", beta: true },
+  { key: "website_purchase", label: "Purchases", unit: "purchases", desc: "Maximize direct website purchases." },
+  { key: "sales", label: "Sales", unit: "sales", desc: "Maximize paying clients won via website visits or positive replies.", beta: true },
 ];
 
 // Outcome === BrandOptimizationGoal, so this is identity — kept as a named seam so
@@ -193,7 +194,9 @@ const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = {
   website_visits: ["v2p"],
   positive_replies: ["r2p"],
   form_submissions: ["v2f", "f2p"],
-  purchase: ["v2s", "s2c"],
+  website_purchase: ["v2s", "s2c"],
+  // Combined goal: a paying client won via either path → both single-step paid rates.
+  sales: ["v2p", "r2p"],
 };
 
 // ── Rate-input formatting ────────────────────────────────────────────
@@ -1880,6 +1883,8 @@ export function Onboarding() {
       visitToSignupPct: rates.v2s,
       replyToMeetingPct: rates.r2m,
       visitToMeetingPct: rates.v2m,
+      visitToPaidClientPct: rates.v2p,
+      replyToPaidClientPct: rates.r2p,
     });
   }
 
@@ -1895,6 +1900,8 @@ export function Onboarding() {
           visitToSignupPct: rates.v2s,
           replyToMeetingPct: rates.r2m,
           visitToMeetingPct: rates.v2m,
+          visitToPaidClientPct: rates.v2p,
+          replyToPaidClientPct: rates.r2p,
         })
       : null;
   }
