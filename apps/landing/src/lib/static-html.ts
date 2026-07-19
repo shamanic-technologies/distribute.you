@@ -688,25 +688,23 @@ async function resolveCacBoot(): Promise<string> {
   const headers = { Accept: "application/json" };
   const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
   let best: number | null = FALLBACK_BEST.positiveReply;
-  let points: SeriesPoint[] = [];
-  try {
-    const [b, p] = await Promise.all([
-      fetchBestModelUsd(apiUrl, headers, slug, "positiveReply").catch(() => null),
-      fetchTrendSeries(apiUrl, headers, slug, "positiveReply", 365).catch(
-        () => [] as SeriesPoint[],
-      ),
-    ]);
-    if (b !== null) best = b;
-    points = p;
-  } catch (error) {
-    console.error("[landing] cac boot unavailable, using fallback", error);
-  }
-  // Never ship an empty series — an empty boot blanks the chart. Bake the
-  // last-known-good trend so the chart paints instantly; the client still
-  // refetches live and swaps in real points when the endpoint responds.
-  if (points.length === 0) {
-    points = fallbackCacSeries(best ?? FALLBACK_BEST.positiveReply);
-  }
+  // BEST-model cost per positive reply, cross-org, single best workflow — the
+  // MIN over per-workflow ratios, NEVER a cross-workflow pooled average
+  // (`cost-per-outcome-trend` was that pooled series and is eradicated here).
+  const b = await fetchBestModelUsd(
+    apiUrl,
+    headers,
+    slug,
+    "positiveReply",
+  ).catch((error) => {
+    console.error("[landing] cac boot best-model unavailable, using fallback", error);
+    return null;
+  });
+  if (b !== null) best = b;
+  // The series is the best-model timeline: a deterministic best-shaped curve
+  // ending on the best-model price. Swap in real per-day points once a
+  // best-model dated-trend endpoint (per-workflow, non-pooled) ships.
+  const points = fallbackCacSeries(best ?? FALLBACK_BEST.positiveReply);
   return `<script>window.__CAC_BOOT__=${JSON.stringify({ best, points })}</script>`;
 }
 
