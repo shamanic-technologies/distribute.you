@@ -687,10 +687,12 @@
     /* pricing heading stays pinned full-width over its cards; the next section's
        title slides up and takes over (seamless handoff, no dead gap). desktop only. */
     @media(min-width:1031px){
+      /* pricing heading pins full-width + fully opaque over its own cards, then
+         releases exactly when the next section's title arrives. the next section
+         is NOT sticky; it never moves, the title simply scrolls up into place. */
       #pricing{padding-bottom:0}
-      #pricing .section-head{position:sticky;top:116px;z-index:5;background:var(--bg);padding-bottom:28px}
       #pricing + section{padding-top:0}
-      #pricing + section > .wrap > .section-head{position:sticky;top:116px;z-index:6;background:var(--bg);padding-top:28px;padding-bottom:28px}
+      #pricing .section-head{position:sticky;top:116px;z-index:5;max-width:none;margin-bottom:0;padding-top:22px;padding-bottom:34px;background:var(--bg)}
     }
     .price-card{
       padding:33px;
