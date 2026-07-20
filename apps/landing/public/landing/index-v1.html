@@ -1586,7 +1586,8 @@ __CAC_BOOT_SLOT__
         else{
           var up=d>0, pct=(Math.abs(d)*100).toFixed(1);
           badge.style.display='';
-          badge.className='cac-delta '+(up?'bad':'good');
+          /* rising cost = discreet grey (never red); falling cost = green */
+          badge.className='cac-delta '+(up?'flat':'good');
           badge.textContent=(up?'▲':'▼')+' '+pct+'% past week';
         }
       }
