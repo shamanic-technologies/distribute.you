@@ -82,7 +82,7 @@ export function BarChart({
                   title={`${d.label} — ${formatCents(d.value)}`}
                 >
                   <div
-                    className="w-full bg-emerald-500/80 hover:bg-emerald-400 rounded-t transition-colors"
+                    className="w-full bg-blue-500/80 hover:bg-blue-400 rounded-t transition-colors"
                     style={{ height: `${Math.max(pct, 0.5)}%` }}
                   />
                 </div>
@@ -205,7 +205,7 @@ export function CGRLineChart({
               return (
                 <div
                   key={p.label}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-emerald-400 hover:bg-emerald-300 hover:w-3 hover:h-3 transition-all cursor-pointer"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-400 hover:bg-blue-300 hover:w-3 hover:h-3 transition-all cursor-pointer"
                   style={{ left: `${left}%`, top: `${top}px` }}
                   title={`${p.label} — ${p.cgr >= 0 ? "+" : ""}${p.cgr}% compound from anchor`}
                 />
