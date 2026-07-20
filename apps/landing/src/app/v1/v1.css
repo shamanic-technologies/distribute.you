@@ -1,0 +1,74 @@
+/*
+ * /v1 ARCHIVE — scoped styles for the pre-Adam multicolor/beige React landing
+ * (the Fredoka + rainbow-gradient homepage, last live 2026-06-09 @ f23b1866e).
+ * Everything is scoped under `.v1-scope` so it overrides the current green
+ * charter globals only inside this archived page and never leaks to other routes.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Inter:wght@400;500;600&display=swap');
+
+.v1-scope {
+  color: #1a1a2e;
+  background: #ffffff;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.v1-scope h1,
+.v1-scope h2,
+.v1-scope h3,
+.v1-scope .font-display {
+  font-family: "Fredoka", system-ui, -apple-system, sans-serif;
+}
+
+.v1-scope .text-balance {
+  text-wrap: balance;
+}
+
+.v1-scope .gradient-bg {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ecfeff 20%, #eff6ff 40%, #f5f3ff 60%, #fdf2f8 80%, #fffbeb 100%);
+}
+
+.v1-scope .gradient-text {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.v1-scope .gradient-text-subtle {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 20%, #3b82f6 40%, #8b5cf6 60%, #ec4899 80%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.v1-scope .animate-slide-in {
+  animation: v1SlideIn 0.2s ease-out;
+}
+
+.v1-scope .animate-marquee-ltr {
+  animation: v1MarqueeLtr 60s linear infinite;
+}
+
+.v1-scope .animate-marquee-rtl {
+  animation: v1MarqueeRtl 60s linear infinite;
+}
+
+.v1-scope .marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%);
+}
+
+@keyframes v1SlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes v1MarqueeLtr {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes v1MarqueeRtl {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
