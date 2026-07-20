@@ -8,10 +8,13 @@ import { BreadcrumbNav } from "./breadcrumb-nav";
 import { ThemeToggle } from "./theme-toggle";
 import { useMobileSidebar } from "./mobile-sidebar-context";
 import { explicitHierarchyHref } from "@/lib/last-brand";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { MaturityBadge } from "./maturity-badge";
 
 export function Header({ minimal = false }: { minimal?: boolean }) {
   const { signOut } = useClerk();
   const { user } = useUser();
+  const isBeta = useIsBetaUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { toggle: toggleMobileSidebar } = useMobileSidebar();
@@ -96,13 +99,16 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
                   <p className="text-sm font-medium text-gray-700">{user?.fullName}</p>
                   <p className="text-xs text-gray-500 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
                 </div>
-                <Link
-                  href="/account"
-                  onClick={() => setMenuOpen(false)}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Profile
-                </Link>
+                {isBeta && (
+                  <Link
+                    href="/account"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    Profile
+                    <MaturityBadge level="beta" />
+                  </Link>
+                )}
                 <button
                   onClick={() => signOut({ redirectUrl: "/sign-in" })}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition border-t border-gray-100"
