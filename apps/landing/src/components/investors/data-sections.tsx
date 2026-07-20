@@ -170,7 +170,7 @@ function GrowthCard({
     numeric === null
       ? "text-gray-500"
       : numeric >= 0
-        ? "text-emerald-600"
+        ? "text-blue-600"
         : "text-red-600";
   const display =
     numeric === null
@@ -249,7 +249,7 @@ export async function MonthlyGrowthSection() {
                     <td className="py-3 px-4 text-right">{formatCents(row.revenueCents)}</td>
                     <td className="py-3 px-4 text-right">
                       {growth ? (
-                        <span className={Number(growth) >= 0 ? "text-emerald-600" : "text-red-600"}>
+                        <span className={Number(growth) >= 0 ? "text-blue-600" : "text-red-600"}>
                           {Number(growth) >= 0 ? "+" : ""}{growth}%
                         </span>
                       ) : (
@@ -394,7 +394,7 @@ export async function WeeklyGrowthSection() {
                     <td className="py-3 px-4 text-right">{formatCents(row.revenueCents)}</td>
                     <td className="py-3 px-4 text-right">
                       {growth ? (
-                        <span className={Number(growth) >= 0 ? "text-emerald-600" : "text-red-600"}>
+                        <span className={Number(growth) >= 0 ? "text-blue-600" : "text-red-600"}>
                           {Number(growth) >= 0 ? "+" : ""}{growth}%
                         </span>
                       ) : (
