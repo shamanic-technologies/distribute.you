@@ -129,15 +129,12 @@
       box-shadow:0 0 0 1px var(--line),0 8px 26px rgba(20,30,60,.10);
     }
     nav{
-      min-height:70px;
+      height:64px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:24px;
-      transition:min-height .45s ease;
     }
-    header.scrolled nav{min-height:54px}
-    header.scrolled .logo-mark{width:21px;height:21px}
     .logo{
       display:inline-flex;
       align-items:center;
@@ -1413,7 +1410,7 @@
       var hdr=document.querySelector('header');
       if(hdr){
         var onNavScroll=function(){
-          if(window.scrollY>12) hdr.classList.add('scrolled');
+          if(window.scrollY>60) hdr.classList.add('scrolled');
           else hdr.classList.remove('scrolled');
         };
         onNavScroll();
