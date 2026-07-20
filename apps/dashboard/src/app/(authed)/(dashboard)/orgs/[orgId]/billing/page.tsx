@@ -133,7 +133,9 @@ export default function BillingPage() {
     ["billingPayments"],
     () => getBillingPayments(),
   );
-  const payments = paymentsData?.payments ?? [];
+  // Only show successful top-ups — incomplete/failed PaymentIntents are noise to
+  // the customer (an abandoned checkout leaves a requires_* husk); hide them.
+  const payments = (paymentsData?.payments ?? []).filter((p) => p.status === "succeeded");
 
   // Org-wide daily burn = sum of every brand's saved daily budget (paused/unset
   // brands contribute 0). The org wallet is shared across brands, so this is how
