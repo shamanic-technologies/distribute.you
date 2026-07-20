@@ -375,7 +375,7 @@ export function CampaignOverviewPage() {
     statsRevealed && totalWebsiteClicks < 1 && !isBrandPaused;
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const campaignsPath = `${basePath}/campaigns`;
+  const campaignsPath = `${basePath}/channels`;
 
   // Effective daily budget = the campaign's own `maxBudgetDailyUsd` (v2 per-campaign
   // budget) when set, else the brand daily budget it inherits (null-inherit — same

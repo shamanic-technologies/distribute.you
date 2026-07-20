@@ -251,11 +251,11 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      // Campaign LEVEL (v2 staff preview) — `.../campaigns/[campaignId]/...` drills
-      // into ONE campaign and swaps to the campaign sidebar. The campaigns LIST
-      // (`.../campaigns` with no id) stays brand-level so the brand "Campaigns" nav
+      // Channel LEVEL (v2 staff preview) — `.../channels/[campaignId]/...` drills
+      // into ONE channel and swaps to the channel sidebar. The channels LIST
+      // (`.../channels` with no id) stays brand-level so the brand "Channels" nav
       // entry highlights.
-      if (segments[4] === "campaigns" && segments[5]) {
+      if (segments[4] === "channels" && segments[5]) {
         return { type: "campaign", orgId, brandId, campaignId: segments[5] };
       }
       // Every brand section — root overview, entity pages, AND settings /
@@ -483,13 +483,13 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    // Campaigns — staff-only campaign-centered v2 preview. Beta badge.
+    // Channels — staff-only channel-centered v2 preview. Beta badge.
     ...(campaignsOk
       ? [
           {
             id: "campaigns",
-            label: "Campaigns",
-            href: `${basePath}/campaigns`,
+            label: "Channels",
+            href: `${basePath}/channels`,
             icon: <CampaignsIcon />,
             maturity: "beta",
           } satisfies SidebarItem,
@@ -604,7 +604,7 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
   const isAdmin = useIsAdminUser();
   const revenueOk = isRevenueFeature(featureSlug);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const campaignBase = `${basePath}/campaigns/${campaignId}`;
+  const campaignBase = `${basePath}/channels/${campaignId}`;
 
   const items: SidebarItem[] =
     isAdmin && revenueOk
@@ -643,9 +643,9 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
 
   return (
     <SidebarSection
-      title="Campaign"
-      backHref={`${basePath}/campaigns`}
-      backLabel="Campaigns"
+      title="Channel"
+      backHref={`${basePath}/channels`}
+      backLabel="Channels"
       footer={
         <div className="border-t border-gray-100">
           <div className="p-2 space-y-0.5">
