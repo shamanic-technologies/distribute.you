@@ -7,21 +7,21 @@
 
 /* ── Theme ────────────────────────────────────────────────────────── */
 @theme {
-  /* Brand = the new landing charter accent (signal GREEN, OKLCH hue 158;
-   * the served index-v1 landing's --green is #45e38e). brand-600 anchors the
+  /* Brand = the new landing charter accent (brand BLUE, OKLCH hue 258;
+   * the served index-v1 landing's --green is #2563eb). brand-600 anchors the
    * primary accent (legible with white text on light) while brand-400/500 carry
    * the brighter signal green, so every `brand-*` Tailwind utility recolors to
    * the landing in one place. (Option-B reskin: light default, green accent.) */
-  --color-brand-50: oklch(97% 0.02 158);
-  --color-brand-100: oklch(94% 0.05 158);
-  --color-brand-200: oklch(88% 0.09 158);
-  --color-brand-300: oklch(80% 0.14 158);
-  --color-brand-400: oklch(72% 0.17 158);
-  --color-brand-500: oklch(64% 0.17 158);
-  --color-brand-600: oklch(54% 0.16 158);
-  --color-brand-700: oklch(47% 0.14 158);
-  --color-brand-800: oklch(41% 0.115 158);
-  --color-brand-900: oklch(35% 0.09 158);
+  --color-brand-50: oklch(97% 0.02 258);
+  --color-brand-100: oklch(94% 0.05 258);
+  --color-brand-200: oklch(88% 0.09 258);
+  --color-brand-300: oklch(80% 0.14 258);
+  --color-brand-400: oklch(72% 0.17 258);
+  --color-brand-500: oklch(64% 0.17 258);
+  --color-brand-600: oklch(54% 0.16 258);
+  --color-brand-700: oklch(47% 0.14 258);
+  --color-brand-800: oklch(41% 0.115 258);
+  --color-brand-900: oklch(35% 0.09 258);
 
   /* Display = Space Grotesk (the new landing charter's display face), falling
    * back to Inter. Headings keep the tight tracking treatment below. */
@@ -124,7 +124,7 @@ html.dark body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 55% at 50% -5%, oklch(74% 0.17 158 / 0.14), transparent 65%),
+    radial-gradient(ellipse 70% 55% at 50% -5%, oklch(74% 0.17 258 / 0.14), transparent 65%),
     radial-gradient(ellipse 45% 40% at 85% 35%, oklch(64% 0.2 295 / 0.1), transparent 55%),
     radial-gradient(ellipse 45% 45% at 10% 70%, oklch(64% 0.18 220 / 0.08), transparent 55%);
 }
@@ -149,7 +149,7 @@ h1, h2, h3, .font-display {
 
 /* Indigo brand gradient for hero numbers / key titles (matches landing accent). */
 .gradient-text {
-  background: linear-gradient(135deg, oklch(64% 0.17 158) 0%, oklch(54% 0.16 158) 100%);
+  background: linear-gradient(135deg, oklch(64% 0.17 258) 0%, oklch(54% 0.16 258) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -190,9 +190,9 @@ html.dark .gradient-bg {
   text-transform: uppercase;
 }
 html.dark .dy-eyebrow {
-  border-color: oklch(74% 0.17 158 / 0.3);
-  background: oklch(74% 0.17 158 / 0.15);
-  color: oklch(85% 0.13 158);
+  border-color: oklch(74% 0.17 258 / 0.3);
+  background: oklch(74% 0.17 258 / 0.15);
+  color: oklch(85% 0.13 258);
 }
 
 /* Brand status dot for the eyebrow pill. */
@@ -256,10 +256,10 @@ html.dark .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.15); }
 html.dark .hover\:text-gray-800:hover { color: var(--dy-text); }
 html.dark .hover\:text-gray-600:hover { color: var(--dy-sub); }
 
-/* Brand colors in dark — landing signal green accent (hue 158) */
-html.dark .bg-brand-50 { background-color: oklch(74% 0.17 158 / 0.15); }
-html.dark .bg-brand-100 { background-color: oklch(74% 0.17 158 / 0.2); }
-html.dark .border-brand-200 { border-color: oklch(74% 0.17 158 / 0.3); }
+/* Brand colors in dark — landing signal green accent (hue 258) */
+html.dark .bg-brand-50 { background-color: oklch(74% 0.17 258 / 0.15); }
+html.dark .bg-brand-100 { background-color: oklch(74% 0.17 258 / 0.2); }
+html.dark .border-brand-200 { border-color: oklch(74% 0.17 258 / 0.3); }
 
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
@@ -279,8 +279,8 @@ html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3); }
 /* Ring colors */
 html.dark .ring-gray-200 { --tw-ring-color: var(--dy-border-hi); }
 html.dark .ring-gray-300 { --tw-ring-color: var(--dy-border-hi); }
-html.dark .focus\:ring-brand-500:focus { --tw-ring-color: oklch(74% 0.17 158); }
-html.dark .focus\:border-brand-500:focus { border-color: oklch(74% 0.17 158); }
+html.dark .focus\:ring-brand-500:focus { --tw-ring-color: oklch(74% 0.17 258); }
+html.dark .focus\:border-brand-500:focus { border-color: oklch(74% 0.17 258); }
 
 /* Placeholder text — readable against the dy-surface input background. */
 html.dark .placeholder-gray-400::placeholder { color: var(--dy-muted); }
@@ -306,10 +306,10 @@ html.dark .text-amber-800 { color: #f59e0b; }
 html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.08); }
 html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.15); }
 
-/* Brand accent (tool call blocks) dark overrides — landing green (hue 158) */
-html.dark .text-brand-700 { color: oklch(85% 0.13 158); }
-html.dark .text-brand-800 { color: oklch(89% 0.08 158); }
-html.dark .border-brand-300 { border-color: oklch(74% 0.17 158 / 0.25); }
+/* Brand accent (tool call blocks) dark overrides — landing green (hue 258) */
+html.dark .text-brand-700 { color: oklch(85% 0.13 258); }
+html.dark .text-brand-800 { color: oklch(89% 0.08 258); }
+html.dark .border-brand-300 { border-color: oklch(74% 0.17 258 / 0.25); }
 
 /* White/70 backgrounds (PrettyJSON) — ensure dark-readable */
 html.dark .bg-white\/70 { background-color: rgba(255, 255, 255, 0.04); }
