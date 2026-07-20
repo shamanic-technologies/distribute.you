@@ -684,8 +684,14 @@
     .pm-rate-in span{font-size:14px;font-weight:700;color:var(--muted)}
 
     .economics-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px;align-items:stretch}
-    /* pricing heading sticks full-width; cards scroll underneath */
-    #pricing .section-head{position:sticky;top:116px;z-index:5;background:var(--bg);padding-bottom:20px}
+    /* pricing heading stays pinned full-width over its cards; the next section's
+       title slides up and takes over (seamless handoff, no dead gap). desktop only. */
+    @media(min-width:1031px){
+      #pricing{padding-bottom:0}
+      #pricing .section-head{position:sticky;top:116px;z-index:5;background:var(--bg);padding-bottom:28px}
+      #pricing + section{padding-top:0}
+      #pricing + section > .wrap > .section-head{position:sticky;top:116px;z-index:6;background:var(--bg);padding-top:28px;padding-bottom:28px}
+    }
     .price-card{
       padding:33px;
       border:1px solid var(--green-line);
@@ -816,7 +822,6 @@
       .model-grid,.steps-grid{grid-template-columns:1fr 1fr}
       .included-grid{grid-template-columns:1fr;gap:38px}
       .included-statement{position:static}
-      #pricing .section-head{position:static}
       .proof-layout,.economics-grid,.cac-grid{grid-template-columns:1fr}
       .footer-grid{grid-template-columns:1.3fr repeat(3,.7fr)}
     }
