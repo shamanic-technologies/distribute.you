@@ -182,7 +182,7 @@ export default function InvestorsPage() {
                 to me, founder reachable, bugs fixed fast, features shipped fast.&quot;
               </blockquote>
 
-              <div className="rounded-lg bg-gradient-to-br from-brand-500/10 to-emerald-500/10 border border-brand-500/30 p-4">
+              <div className="rounded-lg bg-gradient-to-br from-brand-500/10 to-blue-500/10 border border-brand-500/30 p-4">
                 <p className="text-[10px] uppercase tracking-wider text-brand-700 font-semibold mb-2">
                   The dream
                 </p>
@@ -244,7 +244,7 @@ export default function InvestorsPage() {
                 </div>
                 <div>
                   <h3 className="text-gray-900 font-semibold text-base mb-3">Accepts</h3>
-                  <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-emerald-500/60">
+                  <ul className="list-disc list-inside space-y-1 text-gray-600 marker:text-blue-500/60">
                     <li>Agency-style sender on his behalf</li>
                     <li>AI-qualified replies forwarded to Gmail</li>
                     <li>Public unit prices + 2x margin baked in</li>
