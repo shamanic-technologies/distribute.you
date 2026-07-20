@@ -31,7 +31,7 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     expect(sidebar).toContain("campaignsOk");
     // The nav entry + its beta badge.
     expect(sidebar).toContain('id: "campaigns"');
-    expect(sidebar).toContain("/campaigns`");
+    expect(sidebar).toContain("/channels`");
   });
 
   it("page body gates on isAdmin (staff-only preview)", () => {

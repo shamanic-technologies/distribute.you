@@ -191,7 +191,7 @@ export function NewCampaignModal({
           ? { maxBudgetDailyUsd: String(Math.max(0, Math.round(Number(budget)))) }
           : {}),
       });
-      router.push(`${basePath}/campaigns/${campaign.id}`);
+      router.push(`${basePath}/channels/${campaign.id}`);
     } catch (e) {
       console.error("[dashboard] create campaign failed", e);
       setError(e instanceof Error ? e.message : "Could not create the campaign.");

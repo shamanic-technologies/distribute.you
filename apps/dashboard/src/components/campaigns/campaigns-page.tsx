@@ -11,9 +11,12 @@ import {
   listCampaignsByBrand,
   getFeatureRevenue,
   getFeatureRevenueByCampaign,
+  getBrandSalesEconomics,
   keepLastGoodFeatureRevenue,
+  optimizationGoalForRuntimeGoal,
   type Campaign,
   type CampaignRevenueGroup,
+  type BrandOptimizationGoal,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { formatUsdAdaptive } from "@/lib/format-number";
@@ -28,17 +31,30 @@ import { Skeleton } from "@/components/skeleton";
 // arrangements of wire data, never a derived metric (CLAUDE.md: a displayed stat
 // is features-service-owned, never computed in the browser).
 
-// Cold-email product → the "acquisition channel" is the campaign's workflow.
-// Prettify the slug for display (e.g. "sales-cold-email-outreach" → "Sales cold
-// email outreach"); until a friendlier server-owned label exists this is a pure
-// display lookup.
+// Cold-email product → the outreach "channel" is the campaign's workflow. The
+// product is cold-email-only (CLAUDE.md), so a cold-email workflow renders as
+// "Cold Email"; any other slug is prettified as a fallback. Pure display lookup.
 function channelLabel(workflowSlug: string | null): string {
   if (!workflowSlug) return "—";
+  if (workflowSlug.includes("cold-email") || workflowSlug.includes("email")) return "Cold Email";
   return workflowSlug
     .split("-")
     .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
     .join(" ");
 }
+
+// Short outcome label for the Goal column (e.g. "Positive Replies"), distinct
+// from the settings card's "Maximising …" phrasing. Keyed on the effective
+// BrandOptimizationGoal (campaign's own goal, else the inherited brand goal).
+const GOAL_SHORT: Record<BrandOptimizationGoal, string> = {
+  signups: "Signups",
+  sales_meetings: "Positive Replies",
+  positive_replies: "Positive Replies",
+  website_visits: "Website Visits",
+  form_submissions: "Form Submissions",
+  website_purchase: "Purchases",
+  sales: "Sales",
+};
 
 function fmtUsd(usd: number | null | undefined): string {
   return usd == null ? "—" : formatUsdAdaptive(usd);
@@ -53,9 +69,14 @@ function fmtPct(pct: number | null | undefined): string {
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-green-50 text-green-700 border-green-200",
   running: "bg-green-50 text-green-700 border-green-200",
+  ongoing: "bg-green-50 text-green-700 border-green-200",
+  live: "bg-green-50 text-green-700 border-green-200",
   paused: "bg-amber-50 text-amber-700 border-amber-200",
+  pending: "bg-blue-50 text-blue-700 border-blue-200",
+  scheduled: "bg-blue-50 text-blue-700 border-blue-200",
   stopped: "bg-gray-100 text-gray-500 border-gray-200",
   completed: "bg-gray-100 text-gray-500 border-gray-200",
+  ended: "bg-gray-100 text-gray-500 border-gray-200",
 };
 function StatusPill({ status }: { status: string }) {
   const cls = STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200";
@@ -110,6 +131,16 @@ export function CampaignsPage() {
     { enabled: isAdmin && revenueEnabled, refetchInterval: POLL_INTERVAL },
   );
 
+  // Brand optimization goal — the fallback for a campaign that inherits (goal
+  // null). Same query key the overview uses (deduped, already allowlisted).
+  const econQ = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
+    { enabled: isAdmin, refetchInterval: POLL_INTERVAL },
+  );
+  const brandGoal: BrandOptimizationGoal =
+    econQ.data?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+
   // Brand-level (ungrouped) revenue — the global header's blended pipeline + $CAC.
   // Read straight off features-service (never a client sum/average of the groups).
   const brandRevenueQ = useAuthQuery(
@@ -136,12 +167,22 @@ export function CampaignsPage() {
     return joined.sort((a, b) => (b.revenue?.totalPipelineUsd ?? -1) - (a.revenue?.totalPipelineUsd ?? -1));
   }, [campaigns, groupsById]);
 
-  // #1 acquisition channel = the channel of the top-pipeline campaign (display
-  // argmax over already-fetched rows, not a hidden metric).
+  // Effective goal = the campaign's OWN goal (v2 per-campaign) when set, else the
+  // inherited brand goal → short label. Pure display of campaign config.
+  const goalLabelFor = useMemo(() => {
+    return (campaign: Campaign): string => {
+      const goal = campaign.goal ? optimizationGoalForRuntimeGoal(campaign.goal) : brandGoal;
+      return GOAL_SHORT[goal];
+    };
+  }, [brandGoal]);
+
+  // #1 acquisition channel = "<channel> - <goal>" of the top-pipeline campaign
+  // (display argmax over already-fetched rows, not a hidden metric).
   const topChannel = useMemo(() => {
     const top = rows.find((r) => (r.revenue?.totalPipelineUsd ?? 0) > 0);
-    return top ? channelLabel(top.campaign.workflowSlug) : "—";
-  }, [rows]);
+    if (!top) return "—";
+    return `${channelLabel(top.campaign.workflowSlug)} - ${goalLabelFor(top.campaign)}`;
+  }, [rows, goalLabelFor]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed
   // gate query (CLAUDE.md: reveal-on-settle). The header waits on the brand-level
@@ -170,7 +211,7 @@ export function CampaignsPage() {
       <div className="w-full p-4 md:p-8">
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="flex items-center gap-2">
-            <h1 className="font-display text-xl font-bold text-gray-800">Campaigns</h1>
+            <h1 className="font-display text-xl font-bold text-gray-800">Channels</h1>
             <MaturityBadge level="beta" />
           </div>
           {rows.length > 0 && (
@@ -179,12 +220,12 @@ export function CampaignsPage() {
               onClick={() => setNewOpen(true)}
               className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
-              New campaign
+              New channel
             </button>
           )}
         </div>
         <p className="text-sm text-gray-500 mb-5">
-          Campaign-centered view of this brand&apos;s pipeline, cost, and return.
+          Channel-by-channel view of this brand&apos;s pipeline, cost, and return.
         </p>
 
         {/* Global stats header */}
@@ -194,14 +235,14 @@ export function CampaignsPage() {
           <StatTile label="#1 acquisition channel" value={topChannel} pending={!tableSettled} />
         </div>
 
-        {/* Campaigns table */}
+        {/* Channels table */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="px-4 py-3">Campaign</th>
-                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Channel</th>
+                <th className="px-4 py-3">Goal</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Pipeline</th>
                 <th className="px-4 py-3 text-right">$ CAC</th>
                 <th className="px-4 py-3 text-right">ROI</th>
@@ -220,19 +261,19 @@ export function CampaignsPage() {
               ) : rows.length === 0 ? (
                 <tr>
                   <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
-                    No campaigns yet.
+                    No channels yet.
                   </td>
                 </tr>
               ) : (
                 rows.map(({ campaign, revenue }) => (
                   <tr
                     key={campaign.id}
-                    onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
+                    onClick={() => router.push(`${basePath}/channels/${campaign.id}`)}
                     className="border-b border-gray-100 cursor-pointer transition hover:bg-gray-50"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-800">{campaign.name}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">{channelLabel(campaign.workflowSlug)}</td>
+                    <td className="px-4 py-3 text-gray-600">{goalLabelFor(campaign)}</td>
                     <td className="px-4 py-3"><StatusPill status={campaign.status} /></td>
-                    <td className="px-4 py-3 text-gray-600">{channelLabel(campaign.workflowSlug)}</td>
                     <td className="px-4 py-3 text-right tabular-nums font-medium text-gray-900">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.costPerConversionUsd)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtRoi(revenue?.roiMultiple)}</td>

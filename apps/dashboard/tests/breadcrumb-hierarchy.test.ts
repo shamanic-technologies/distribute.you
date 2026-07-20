@@ -31,9 +31,9 @@ describe("Breadcrumb hierarchy", () => {
     expect(content).toContain('"orgs"');
     expect(content).toContain('"brands"');
     // The app-level feature switcher (`"features"` path) stays removed (#1768).
-    // The `"campaigns"` section IS parsed again for the campaign-level crumb
-    // (v2 staff preview, #2762) — `.../campaigns/[id]` shows Campaigns › <name>.
-    expect(content).toContain('"campaigns"');
+    // The `"channels"` section IS parsed for the channel-level crumb
+    // (v2 staff preview, #2762) — `.../channels/[id]` shows Channels › <name>.
+    expect(content).toContain('"channels"');
     expect(content).not.toContain('"features"');
   });
 

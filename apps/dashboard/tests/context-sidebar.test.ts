@@ -84,7 +84,7 @@ describe("Context sidebar", () => {
     expect(content).toContain("const campaignsOk =");
     expect(content).toContain("useIsAdminUser");
     expect(content).toContain('id: "campaigns"');
-    expect(content).toContain('href: `${basePath}/campaigns`');
+    expect(content).toContain('href: `${basePath}/channels`');
   });
 
   it("should grey out coming soon items with a tag (SidebarLink primitive)", () => {
