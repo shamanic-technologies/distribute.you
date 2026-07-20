@@ -54,14 +54,14 @@ const COLORS: { name: string; hex: string; text: "light" | "dark" }[] = [
   { name: "Ink", hex: "#070A0F", text: "light" },
   { name: "Surface", hex: "#10151D", text: "light" },
   { name: "Line", hex: "#26303D", text: "light" },
-  { name: "Signal green", hex: "#45E38E", text: "dark" },
+  { name: "Signal green", hex: "#2563eb", text: "dark" },
   { name: "Text", hex: "#F2F5F7", text: "dark" },
   { name: "Muted", hex: "#99A4B6", text: "dark" },
 ];
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-.bp{--bg:#070a0f;--panel:#10151d;--panel-2:#151b25;--line:#26303d;--text:#f2f5f7;--muted:#99a4b6;--faint:#657184;--green:#45e38e;
+.bp{--bg:#070a0f;--panel:#10151d;--panel-2:#151b25;--line:#26303d;--text:#f2f5f7;--muted:#99a4b6;--faint:#657184;--green:#2563eb;
   background:radial-gradient(circle at 78% 2%,rgba(69,227,142,.08),transparent 30rem),var(--bg);
   color:var(--text);font-family:'Inter',sans-serif;line-height:1.55;min-height:100vh;-webkit-font-smoothing:antialiased}
 .bp *{box-sizing:border-box}
@@ -289,7 +289,7 @@ export default function BrandPage() {
         </section>
 
         <footer className="bp-foot">
-          <span>Questions about usage? <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#45e38e" }}>{SUPPORT_EMAIL}</a></span>
+          <span>Questions about usage? <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#2563eb" }}>{SUPPORT_EMAIL}</a></span>
           <span>
             <a href={URLS.signUp} style={{ color: "#99a4b6" }}>Start free</a>
           </span>

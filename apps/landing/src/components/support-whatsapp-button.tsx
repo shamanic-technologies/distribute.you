@@ -24,7 +24,7 @@ export function SupportWhatsAppButton() {
         width: 56,
         height: 56,
         borderRadius: "50%",
-        background: "#45e38e",
+        background: "#2563eb",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

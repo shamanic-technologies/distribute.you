@@ -17,7 +17,7 @@
     '#dy-wa-support{position:fixed;z-index:900;' +
     'right:calc(16px + env(safe-area-inset-right,0px));' +
     'bottom:calc(16px + env(safe-area-inset-bottom,0px));' +
-    'width:56px;height:56px;border-radius:50%;background:#45e38e;' +
+    'width:56px;height:56px;border-radius:50%;background:#2563eb;' +
     'display:flex;align-items:center;justify-content:center;' +
     'box-shadow:0 6px 20px rgba(0,0,0,.25);' +
     'transition:transform .15s ease,box-shadow .15s ease;}' +
