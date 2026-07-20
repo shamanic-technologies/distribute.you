@@ -7,19 +7,19 @@
 
 /* ── Theme ────────────────────────────────────────────────────────── */
 @theme {
-  /* Brand = the new landing charter accent (signal GREEN, OKLCH hue 158;
-   * index-v1 landing's --green is #45e38e). Byte-equal with apps/dashboard.
+  /* Brand = the new landing charter accent (brand BLUE, OKLCH hue 258;
+   * index-v1 landing's --green is #2563eb). Byte-equal with apps/dashboard.
    * Migrated off the legacy pink (#ec4899) + Fredoka look. */
-  --color-brand-50: oklch(97% 0.02 158);
-  --color-brand-100: oklch(94% 0.05 158);
-  --color-brand-200: oklch(88% 0.09 158);
-  --color-brand-300: oklch(80% 0.14 158);
-  --color-brand-400: oklch(72% 0.17 158);
-  --color-brand-500: oklch(64% 0.17 158);
-  --color-brand-600: oklch(54% 0.16 158);
-  --color-brand-700: oklch(47% 0.14 158);
-  --color-brand-800: oklch(41% 0.115 158);
-  --color-brand-900: oklch(35% 0.09 158);
+  --color-brand-50: oklch(97% 0.02 258);
+  --color-brand-100: oklch(94% 0.05 258);
+  --color-brand-200: oklch(88% 0.09 258);
+  --color-brand-300: oklch(80% 0.14 258);
+  --color-brand-400: oklch(72% 0.17 258);
+  --color-brand-500: oklch(64% 0.17 258);
+  --color-brand-600: oklch(54% 0.16 258);
+  --color-brand-700: oklch(47% 0.14 258);
+  --color-brand-800: oklch(41% 0.115 258);
+  --color-brand-900: oklch(35% 0.09 258);
 
   --font-display: "Space Grotesk", "Inter", system-ui, -apple-system, sans-serif;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
@@ -145,8 +145,8 @@ html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3); }
 /* Ring colors */
 html.dark .ring-gray-200 { --tw-ring-color: #334155; }
 html.dark .ring-gray-300 { --tw-ring-color: #475569; }
-html.dark .focus\:ring-brand-500:focus { --tw-ring-color: oklch(74% 0.17 158); }
-html.dark .focus\:border-brand-500:focus { border-color: oklch(74% 0.17 158); }
+html.dark .focus\:ring-brand-500:focus { --tw-ring-color: oklch(74% 0.17 258); }
+html.dark .focus\:border-brand-500:focus { border-color: oklch(74% 0.17 258); }
 
 /* Placeholder text — bumped to slate-400 (#94a3b8) so search/form
  * placeholders are visible against the slate-800 input background. */
@@ -174,8 +174,8 @@ html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.08); }
 html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.15); }
 
 /* Brand accent (tool call blocks) dark overrides */
-html.dark .text-brand-700 { color: oklch(85% 0.13 158); }
-html.dark .text-brand-800 { color: oklch(89% 0.08 158); }
+html.dark .text-brand-700 { color: oklch(85% 0.13 258); }
+html.dark .text-brand-800 { color: oklch(89% 0.08 258); }
 html.dark .border-brand-300 { border-color: rgba(219, 39, 119, 0.25); }
 
 /* White/70 backgrounds (PrettyJSON) — ensure dark-readable */
