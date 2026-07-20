@@ -597,11 +597,12 @@
     .cac-h{font-family:var(--display);font-size:34px;line-height:1.1;letter-spacing:-.03em;margin-top:14px}
     .cac-left .section-copy{margin-top:16px;max-width:52ch}
     .cac-hl{color:var(--green);font-weight:700;white-space:nowrap}
-    .cac-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:24px}
+    .cac-actions{display:flex;align-items:center;gap:16px;flex-wrap:nowrap;margin-top:24px}
+    .cac-actions>.button{flex-shrink:0}
     .cac-live{display:inline-flex;align-items:center;gap:7px;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
     .cac-live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(37,99,235,.55);animation:cacPulse 2.4s ease-out infinite}
     @keyframes cacPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.5)}70%{box-shadow:0 0 0 7px rgba(37,99,235,0)}100%{box-shadow:0 0 0 0 rgba(37,99,235,0)}}
-    .cac-fine{margin-top:0;color:var(--faint);font-size:12px;line-height:1.5;flex:1;min-width:220px;max-width:36ch}
+    .cac-fine{margin-top:0;color:var(--faint);font-size:12px;line-height:1.5;flex:1;min-width:0;max-width:36ch}
     .cac-card{padding:28px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,var(--panel-2),var(--panel));box-shadow:var(--shadow)}
     .cac-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
     .cac-price{font-family:var(--display);font-size:64px;font-weight:700;letter-spacing:-.03em;line-height:.95;color:var(--text)}
