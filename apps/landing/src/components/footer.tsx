@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { URLS } from "@distribute/content";
+import { listArticles } from "@/lib/blog/db";
 import { StatusIndicator } from "./status-indicator";
 
 interface FooterProps {
@@ -66,8 +67,11 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
   );
 }
 
-export function Footer({ disclaimer }: FooterProps) {
+export async function Footer({ disclaimer }: FooterProps) {
   const year = new Date().getFullYear();
+  // Latest posts from the blog (fed by the Outrank webhook). listArticles is
+  // cached + returns [] on any error, so this never breaks a page render.
+  const recentPosts = (await listArticles(4)).slice(0, 4);
   return (
     <footer className="bg-gray-950 text-gray-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
@@ -118,6 +122,26 @@ export function Footer({ disclaimer }: FooterProps) {
             ))}
           </div>
         </div>
+
+        {/* From the blog (latest Outrank posts) */}
+        {recentPosts.length > 0 && (
+          <div className="border-t border-gray-900 pt-8 mb-8">
+            <p className="text-[11px] uppercase tracking-wider text-gray-600 font-semibold mb-3">
+              From the blog
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-3">
+              {recentPosts.map((post) => (
+                <a
+                  key={post.slug}
+                  href={`/blog/${post.slug}`}
+                  className="text-sm text-gray-500 hover:text-white transition leading-snug"
+                >
+                  {post.title}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Sub-brands */}
         <div className="border-t border-gray-900 pt-8 mb-8">
