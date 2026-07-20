@@ -684,10 +684,8 @@
     .pm-rate-in span{font-size:14px;font-weight:700;color:var(--muted)}
 
     .economics-grid{display:grid;grid-template-columns:.92fr 1.08fr;gap:24px;align-items:stretch}
-    /* pricing heading sticks beside its scrolling cards (same effect as .included-grid) */
-    .pricing-grid{display:grid;grid-template-columns:.86fr 1.14fr;gap:58px;align-items:start}
-    .pricing-grid .section-head{position:sticky;top:116px;margin-bottom:0;max-width:460px}
-    .pricing-grid .economics-grid{grid-template-columns:1fr}
+    /* pricing heading sticks full-width; cards scroll underneath */
+    #pricing .section-head{position:sticky;top:116px;z-index:5;background:var(--bg);padding-bottom:20px}
     .price-card{
       padding:33px;
       border:1px solid var(--green-line);
@@ -818,8 +816,7 @@
       .model-grid,.steps-grid{grid-template-columns:1fr 1fr}
       .included-grid{grid-template-columns:1fr;gap:38px}
       .included-statement{position:static}
-      .pricing-grid{grid-template-columns:1fr;gap:38px}
-      .pricing-grid .section-head{position:static}
+      #pricing .section-head{position:static}
       .proof-layout,.economics-grid,.cac-grid{grid-template-columns:1fr}
       .footer-grid{grid-template-columns:1.3fr repeat(3,.7fr)}
     }
@@ -1202,7 +1199,7 @@
 
     <!-- PRODUCT OWNER NOTE: This pricing copy intentionally states only the facts shared by both possible billing models. Before publishing a stronger "pay only per outcome" or "metered usage" claim, align the homepage, dashboard, and Terms of Service. -->
     <section id="pricing">
-      <div class="wrap pricing-grid">
+      <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">Budget like an ad campaign</div>
           <h2>Set the budget. <span class="accent">Pilot your return on investment</span></h2>
