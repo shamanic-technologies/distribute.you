@@ -175,7 +175,7 @@ export default function InvestorsPage() {
             </p>
 
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-600 text-sm leading-relaxed space-y-6">
-              <blockquote className="border-l-2 border-brand-500/60 pl-4 italic text-gray-600">
+              <blockquote className="bg-white border border-gray-200 rounded-lg p-4 italic text-gray-600">
                 &quot;16-40 years old. CEO-founder, mostly solo. I always have several SaaS in bench.
                 I have no time between newsletter, content, distribute.you campaigns, meetings,
                 monitoring, replies, and refining the ICP of my own campaigns. I want someone close
