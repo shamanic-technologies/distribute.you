@@ -1426,10 +1426,10 @@ export function Onboarding() {
   async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<{ campaignId: string }> {
     // Confirm the 7 user-fields (services + the offer levers). Every key sent is
     // marked "confirmed" server-side.
-    // TODO(backend): agency consent (the channel list + consent timestamp) used to
-    // piggyback on the brand-profile document, which the 2-layer user-fields model
-    // deprecates. Consent has no home in the 7-field set and needs a dedicated
-    // brand-service consent endpoint — flagged in the PR; consent write dropped here.
+    // NOTE: agency consent is ASKED on the onboarding consent step (kept), but by
+    // decision it is NOT persisted — it used to piggyback on the deprecated
+    // brand-profile document, has no home in the 7-field model, and nothing reads
+    // it, so no backend consent endpoint is built. (Kevin 2026-07-21.)
     if (pending.profile && pending.services) {
       await saveBrandUserFields(pending.brandId, buildUserFieldsPayload(pending.profile, pending.services));
     }
@@ -1815,8 +1815,8 @@ export function Onboarding() {
     try {
       // Confirm the offer-lever edits (the 7 user-fields) on top of the background
       // launch's as-of-checkout save (best-effort — never block the already-paid
-      // launch on it). Consent is intentionally NOT written here — see the
-      // TODO(backend) note in runLaunchWork.
+      // launch on it). Agency consent is asked on the consent step but never
+      // persisted (by decision — see the note in runLaunchWork).
       const id = brandIdRef.current ?? pendingCheckoutRef.current?.brandId ?? null;
       const svcs = pendingCheckoutRef.current?.services;
       if (id && svcs) {
