@@ -1,5 +1,7 @@
 "use client";
 
+import posthog from "posthog-js";
+
 // Floating WhatsApp support button — links to our WhatsApp Pro line.
 // Public marketing surface, so the prefill is generic (no user context).
 const SUPPORT_PHONE = "33680478702";
@@ -11,6 +13,13 @@ export function SupportWhatsAppButton() {
   return (
     <a
       href={HREF}
+      onClick={() =>
+        posthog.capture("support_whatsapp_clicked", {
+          location: "sales-landing",
+          page:
+            typeof window !== "undefined" ? window.location.pathname : null,
+        })
+      }
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
