@@ -1,5 +1,7 @@
 "use client";
 
+import posthog from "posthog-js";
+
 // Floating WhatsApp support button for the REACT landing pages (investors,
 // benchmarks, privacy, terms, blog). The STATIC served pages get the same FAB
 // via public/landing/js/support-button.js — this covers the React surface.
@@ -13,6 +15,13 @@ export function SupportWhatsAppButton() {
   return (
     <a
       href={HREF}
+      onClick={() =>
+        posthog.capture("support_whatsapp_clicked", {
+          location: "landing",
+          page:
+            typeof window !== "undefined" ? window.location.pathname : null,
+        })
+      }
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"

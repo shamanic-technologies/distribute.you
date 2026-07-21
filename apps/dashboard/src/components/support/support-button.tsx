@@ -1,6 +1,8 @@
 "use client";
 
 import { useUser, useOrganization } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
+import posthog from "posthog-js";
 
 // distribute support = WhatsApp Pro. Users message us directly; we reply from
 // our phone. Prefilled with the signed-in user's email + org so the incoming
@@ -26,6 +28,7 @@ function WhatsAppGlyph() {
 export function SupportButton({ raised = false }: { raised?: boolean }) {
   const { user } = useUser();
   const { organization } = useOrganization();
+  const pathname = usePathname();
 
   const email =
     user?.primaryEmailAddress?.emailAddress ??
@@ -38,9 +41,28 @@ export function SupportButton({ raised = false }: { raised?: boolean }) {
     : "Hi! I have a question about distribute:";
   const href = `https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent(intro)}`;
 
+  // The dashboard SupportButton is mounted on both the dashboard shell and the
+  // onboarding shell (same component) — split the two by pathname so we can see
+  // where support demand comes from. User/org context is attached when known.
+  const location = pathname?.startsWith("/onboarding")
+    ? "onboarding"
+    : "dashboard";
+
+  function handleClick() {
+    posthog.capture("support_whatsapp_clicked", {
+      location,
+      page: pathname ?? null,
+      userId: user?.id ?? null,
+      userEmail: email || null,
+      orgId: organization?.id ?? null,
+      orgName: org || null,
+    });
+  }
+
   return (
     <a
       href={href}
+      onClick={handleClick}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
