@@ -110,11 +110,12 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(brand).toMatch(/`\$\{basePath\}\/brand-info`/);
   });
 
-  it("Brand Profile surfaced flat in BrandLevelSidebar footer (next to Brand Settings)", () => {
+  it("no longer surfaces a Brand Profile footer link (page removed)", () => {
     expect(brand.length).toBeGreaterThan(0);
-    // Flat at brand level, replacing the old intermediate Settings button.
-    expect(brand).toMatch(/id:\s*"brand-profile"/);
-    expect(brand).toMatch(/`\$\{basePath\}\/brand-profile`/);
+    // The standalone Brand Profile page + its nav entry were removed with the
+    // 2-layer user-fields migration; the 7 fields are edited on Strategy / onboarding.
+    expect(brand).not.toMatch(/id:\s*"brand-profile"/);
+    expect(brand).not.toContain("/brand-profile`");
   });
 
   it("BrandLevelSidebar no longer renders a Database section header", () => {

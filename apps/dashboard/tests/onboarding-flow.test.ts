@@ -70,7 +70,7 @@ describe("Onboarding direct checkout launch", () => {
     const beginCheckoutAndLaunch = content.slice(beginStart, beginEnd);
     expect(beginCheckoutAndLaunch).toContain("createCheckoutSession");
     expect(beginCheckoutAndLaunch).not.toContain("waitForOnboardingHydration");
-    expect(beginCheckoutAndLaunch).not.toContain("saveBrandProfileVersion");
+    expect(beginCheckoutAndLaunch).not.toContain("saveBrandUserFields");
     expect(beginCheckoutAndLaunch).not.toContain("saveBrandDailyBudget");
     expect(beginCheckoutAndLaunch).not.toContain("buildFeatureInputsForLaunch");
   });

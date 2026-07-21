@@ -98,7 +98,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Brand metadata + config + small summaries
   "brand",
   "brands",
-  "brandProfile",
+  "brandUserFields",
   "brandExtractedFields",
   "brandSalesEconomics",
   "brandDailyBudget",

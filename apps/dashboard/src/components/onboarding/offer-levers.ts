@@ -1,8 +1,9 @@
 // The offer levers we walk the user through right after payment — one screen
 // per lever — so the emails we write convert. Each lever is one term of Alex
 // Hormozi's value equation (mirrors the strategy page's "What we use to
-// optimize your conversion"). Keys map to SALES_PROFILE_FIELDS so the value is
-// AI-prefilled from the brand's site; the user just confirms or tweaks it.
+// optimize your conversion"). Keys map to the confirmed user-fields so the value
+// is AI-prefilled (provenance "suggested") from the brand's site; the user just
+// confirms or tweaks it, and the confirmed value is saved via saveBrandUserFields.
 //
 // "Services sold" is intentionally NOT here — it is already collected in the
 // pre-payment services step. Copy is user-facing: keep it plain, no em-dash.
@@ -20,7 +21,7 @@ export type OfferLever = {
 
 export const POST_PAYMENT_OFFER_LEVERS: ReadonlyArray<OfferLever> = [
   {
-    key: "valueProposition",
+    key: "dreamOutcome",
     title: "Dream outcome",
     why: "The result your buyer wants. We write every email around this promise, so make it specific and worth wanting.",
     placeholder: "The transformation you deliver for your customers.",
@@ -57,12 +58,12 @@ export const POST_PAYMENT_OFFER_LEVERS: ReadonlyArray<OfferLever> = [
   },
 ];
 
-// Lever keys whose brand-profile field is LIST-kind (string[]). socialProof is the
-// only list lever in the post-payment set ("services" is a list too but is collected
+// Lever keys whose user-field is LIST-kind (string[]). socialProof is the only
+// list lever in the post-payment set ("services" is a list too but is collected
 // in the pre-payment services step, not here). Writing one of these back as the raw
-// <textarea> string clobbers the array — saveBrandProfileVersion then persists a
+// <textarea> string clobbers the array — saveBrandUserFields then persists a
 // string and the Strategy page's ListEditor renders it EMPTY — so the offer step must
-// split the text into items. Mirrors SALES_PROFILE_FIELDS' kind:"list".
+// split the text into items. Mirrors the user-field kind:"list".
 const LIST_LEVER_KEYS: ReadonlySet<string> = new Set(["socialProof"]);
 
 /** Is this offer lever a list-kind field (must be persisted as string[])? */

@@ -7,8 +7,9 @@ import {
   createCampaignWithoutBrandEnrichment,
   getBrandSalesEconomics,
   listAudiences,
-  getBrandProfile,
+  getBrandUserFields,
   runtimeGoalForOptimizationGoal,
+  type BrandUserFields,
   type Campaign,
   type RuntimeGoal,
 } from "@/lib/api";
@@ -52,8 +53,8 @@ function hostnameOf(url: string | undefined): string {
   }
 }
 
-function servicesFrom(fields: Record<string, string | string[]> | undefined): string[] {
-  const raw = fields?.services;
+function servicesFrom(fields: BrandUserFields | undefined): string[] {
+  const raw = fields?.services?.value;
   if (!raw) return [];
   return (Array.isArray(raw) ? raw : [raw]).map((s) => s.trim()).filter(Boolean);
 }
@@ -90,12 +91,15 @@ export function NewCampaignModal({
   const audiencesQ = useAuthQuery(["audiences", brandId, "active"], () =>
     listAudiences(brandId, { status: "active" }),
   );
-  const profileQ = useAuthQuery(["brandProfile", brandId], () => getBrandProfile(brandId));
+  const profileQ = useAuthQuery(["brandUserFields", brandId], () => getBrandUserFields(brandId));
 
   const brandGoal = economicsQ.data?.salesEconomics?.optimizationGoal ?? "sales_meetings";
   const inheritedRuntimeGoal = runtimeGoalForOptimizationGoal(brandGoal);
   const audiences = useMemo(() => audiencesQ.data?.audiences ?? [], [audiencesQ.data]);
-  const inheritedServices = useMemo(() => servicesFrom(profileQ.data?.current?.fields), [profileQ.data]);
+  const inheritedServices = useMemo(() => servicesFrom(profileQ.data?.fields), [profileQ.data]);
+  // Whether the inherited services are still an AI prefill (not yet confirmed) —
+  // surfaced as a subtle hint next to the seeded services list.
+  const servicesSuggested = profileQ.data?.fields?.services?.provenance === "suggested";
   const brandHost = hostnameOf(template.brandUrls?.[0]);
 
   // Editable per-campaign config. Seeded from the brand once its context loads.
@@ -306,7 +310,14 @@ export function NewCampaignModal({
 
             <div className="mb-4 space-y-4">
               <div>
-                <StepLabel>Services</StepLabel>
+                <span className="flex items-center gap-2">
+                  <StepLabel>Services</StepLabel>
+                  {profileReady && servicesSuggested && currentServices.length > 0 && (
+                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                      AI-suggested
+                    </span>
+                  )}
+                </span>
                 {!profileReady ? (
                   <Skeleton className="mt-1.5 h-8 w-full" />
                 ) : (

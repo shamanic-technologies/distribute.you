@@ -117,7 +117,7 @@ describe("offer levers module", () => {
   const keys = POST_PAYMENT_OFFER_LEVERS.map((l) => l.key);
   it("has the 6 value-equation levers, excluding services (already collected)", () => {
     expect(keys).toEqual([
-      "valueProposition",
+      "dreamOutcome",
       "perceivedLikelihood",
       "socialProof",
       "riskReversal",

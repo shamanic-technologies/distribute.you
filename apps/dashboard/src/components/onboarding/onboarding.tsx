@@ -28,8 +28,12 @@ import {
   getBrand,
   extractBrandFields,
   SALES_PROFILE_FIELDS,
-  getBrandProfile,
-  saveBrandProfileVersion,
+  getBrandUserFields,
+  saveBrandUserFields,
+  USER_FIELD_KEYS,
+  type FieldProvenance,
+  type UserFieldKey,
+  type UserFieldValue,
   getSalesEconomicsEffective,
   saveBrandClickDestination,
   saveBrandSalesEconomics,
@@ -111,7 +115,9 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 // the tab, auto-cleared on close → no stale cross-session bleed. Bump VERSION to bust
 // an incompatible shape after a flow change. Cleared on genuine completion (launch()).
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
-const ONBOARDING_STATE_VERSION = 6;
+// v7: the profile bag keys the offer levers by the confirmed user-field keys
+// (`valueProposition` → `dreamOutcome`); bump busts pre-migration snapshots.
+const ONBOARDING_STATE_VERSION = 7;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
@@ -548,6 +554,30 @@ function normalizeServices(value: unknown): string[] {
   return toStringList(value).filter(isUsefulServiceLabel);
 }
 
+// Build the saveBrandUserFields PUT body from the onboarding profile bag + the
+// picked services. Only the 7 confirmed user-fields are sent (each sent key is
+// confirmed server-side); empty values are omitted so a blank field never
+// clobbers a confirmed one.
+function buildUserFieldsPayload(
+  profile: Record<string, string | string[]>,
+  services: string[],
+): Partial<Record<UserFieldKey, UserFieldValue>> {
+  const out: Partial<Record<UserFieldKey, UserFieldValue>> = {};
+  const cleanServices = services.map((s) => s.trim()).filter(Boolean);
+  if (cleanServices.length) out.services = cleanServices;
+  for (const key of USER_FIELD_KEYS) {
+    if (key === "services") continue;
+    const v = profile[key];
+    if (Array.isArray(v)) {
+      const cleaned = v.map((s) => s.trim()).filter(Boolean);
+      if (cleaned.length) out[key] = cleaned;
+    } else if (typeof v === "string" && v.trim()) {
+      out[key] = v;
+    }
+  }
+  return out;
+}
+
 function isRateRecord(value: unknown): value is Record<RateKey, number> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c", "v2p", "r2p", "v2f", "f2p"];
@@ -723,6 +753,11 @@ export function Onboarding() {
         : "home",
   );
   const [profile, setProfile] = useState<Record<string, string | string[]>>(() => restored?.profile ?? {});
+  // Per-field provenance for the offer levers ("confirmed" once the user saved a
+  // value, else "suggested" = the AI prefill). Seeded from getBrandUserFields at
+  // hydrate; NOT persisted in the snapshot (re-derived on resume, defaults to
+  // "suggested"). Drives the "AI-suggested" badge on the offer step.
+  const [fieldProvenance, setFieldProvenance] = useState<Record<string, FieldProvenance>>({});
   // Budget selection. selectedBudget IS the $/day sent to the campaign (the primary
   // value shown). Tier $/day is derived from a STABLE base (the projection unit cost),
   // never from the selection — so clicking a card never reshuffles the cards. The
@@ -1000,7 +1035,7 @@ export function Onboarding() {
     setAudiencePrefetch({ promise: audiencePrewarm });
 
     const [prof, econRes, proj, feat] = await Promise.all([
-      getBrandProfile(id),
+      getBrandUserFields(id),
       getSalesEconomicsEffective(id),
       getWorkflowProjection({
         featureSlug: SALES_FEATURE_SLUG,
@@ -1012,14 +1047,31 @@ export function Onboarding() {
     ]);
 
     salesInputsRef.current = feat.feature.inputs ?? [];
-    if (prof.current) {
-      const fields = prof.current.fields;
-      const nextServices = normalizeServices(fields.services);
+    // Seed the profile bag + provenance from the confirmed user-fields. Each of
+    // the 7 keys carries a value (confirmed or AI-suggested prefill); the offer
+    // levers read their prefill from here + show the provenance badge.
+    {
+      const uf = prof.fields;
+      const seeded: Record<string, string | string[]> = {};
+      for (const key of USER_FIELD_KEYS) {
+        const v = uf[key]?.value;
+        if (v != null) seeded[key] = v;
+      }
+      const nextServices = normalizeServices(uf.services?.value);
       setProfile((prev) => ({
-        ...fields,
+        ...prev,
+        ...seeded,
         services: servicesEditedRef.current || nextServices.length === 0 ? prev.services ?? nextServices : nextServices,
       }));
       if (!servicesEditedRef.current && nextServices.length > 0) setServices(nextServices);
+      setFieldProvenance((prev) => {
+        const next = { ...prev };
+        for (const key of USER_FIELD_KEYS) {
+          const p = uf[key]?.provenance;
+          if (p) next[key] = p;
+        }
+        return next;
+      });
     }
     if (econRes.economics && !ratesEditedRef.current) {
       const e = econRes.economics;
@@ -1372,13 +1424,14 @@ export function Onboarding() {
   // the optional post-payment steps. Uses the as-of-checkout profile; the terminal
   // re-saves any offer-lever edits on top. Returns the created campaign id.
   async function runLaunchWork(pending: PendingCheckoutLaunch): Promise<{ campaignId: string }> {
+    // Confirm the 7 user-fields (services + the offer levers). Every key sent is
+    // marked "confirmed" server-side.
+    // TODO(backend): agency consent (the channel list + consent timestamp) used to
+    // piggyback on the brand-profile document, which the 2-layer user-fields model
+    // deprecates. Consent has no home in the 7-field set and needs a dedicated
+    // brand-service consent endpoint — flagged in the PR; consent write dropped here.
     if (pending.profile && pending.services) {
-      await saveBrandProfileVersion(pending.brandId, {
-        ...pending.profile,
-        services: pending.services,
-        consentedChannels: ["email"],
-        agencyConsentAt: new Date().toISOString(),
-      });
+      await saveBrandUserFields(pending.brandId, buildUserFieldsPayload(pending.profile, pending.services));
     }
     // Activation happens ONLY here, at the TERMINAL launch commit — never at the
     // audience step (a re-roll / Back-then-re-pick there used to activate each
@@ -1760,18 +1813,15 @@ export function Onboarding() {
     setLaunchError(null);
     setStep("launching");
     try {
-      // Persist the offer-lever edits on top of the background launch's as-of-checkout
-      // profile (best-effort — never block the already-paid launch on it).
+      // Confirm the offer-lever edits (the 7 user-fields) on top of the background
+      // launch's as-of-checkout save (best-effort — never block the already-paid
+      // launch on it). Consent is intentionally NOT written here — see the
+      // TODO(backend) note in runLaunchWork.
       const id = brandIdRef.current ?? pendingCheckoutRef.current?.brandId ?? null;
       const svcs = pendingCheckoutRef.current?.services;
       if (id && svcs) {
-        await saveBrandProfileVersion(id, {
-          ...profile,
-          services: svcs,
-          consentedChannels: ["email"],
-          agencyConsentAt: new Date().toISOString(),
-        }).catch((e) =>
-          console.error("[dashboard] onboarding: offer-lever profile save failed; continuing", e),
+        await saveBrandUserFields(id, buildUserFieldsPayload(profile, svcs)).catch((e) =>
+          console.error("[dashboard] onboarding: offer-lever user-fields save failed; continuing", e),
         );
       }
       const result = await startBackgroundLaunch();
@@ -2445,7 +2495,18 @@ export function Onboarding() {
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
           Your offer · {offerIndex + 1} of {POST_PAYMENT_OFFER_LEVERS.length}
         </div>
-        <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
+          {fieldProvenance[lever.key] === "confirmed" ? (
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+              Confirmed
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+              AI-suggested
+            </span>
+          )}
+        </div>
         <p className="mt-2 mb-5 text-sm leading-6 text-gray-500">{lever.why}</p>
         <textarea
           value={current}

@@ -143,7 +143,7 @@ export interface OfferLever {
 export const OFFER_LEVERS: OfferLever[] = [
   { key: "services", label: "Services sold", tip: "What you actually deliver to the client." },
   {
-    key: "valueProposition",
+    key: "dreamOutcome",
     label: "Dream outcome",
     tip: "The result your customer wants most.",
   },
@@ -184,10 +184,10 @@ export function offerLeverValue(
 }
 
 /**
- * Coerce a brand-profile LIST-kind field value to a string[] for display / editing.
+ * Coerce a user-field LIST-kind value to a string[] for display / editing.
  * A correct value is already string[]. A LEGACY value can be a bare STRING: an older
  * post-payment offer step wrote list-kind levers (socialProof) back as the raw
- * <textarea> string, clobbering the array so `saveBrandProfileVersion` persisted a
+ * <textarea> string, clobbering the array so the save persisted a
  * string. Split such a string on newlines or commas, trim, drop empties, so the
  * content still renders as list items instead of collapsing to an empty list (the
  * "Social proof shows empty" bug). Pure display normalisation — no metric.

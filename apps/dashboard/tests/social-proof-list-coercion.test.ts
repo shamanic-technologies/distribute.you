@@ -44,7 +44,7 @@ describe("coerceListField — heals a legacy STRING socialProof on display", () 
 describe("offer-lever list handling — writes socialProof as a string[]", () => {
   it("marks socialProof (and only it) a list lever", () => {
     expect(isListLever("socialProof")).toBe(true);
-    expect(isListLever("valueProposition")).toBe(false);
+    expect(isListLever("dreamOutcome")).toBe(false);
     expect(isListLever("riskReversal")).toBe(false);
   });
 

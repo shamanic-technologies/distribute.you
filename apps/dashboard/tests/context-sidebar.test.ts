@@ -131,10 +131,10 @@ describe("Context sidebar", () => {
     expect(content).toContain('FEATURE_GATES["workflows"]');
   });
 
-  it("keeps Brand Profile as a flat footer link in the brand sidebar", () => {
+  it("no longer renders a Brand Profile footer link (page removed)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('label: "Brand Profile"');
-    expect(content).toContain('`${basePath}/brand-profile`');
+    expect(content).not.toContain('label: "Brand Profile"');
+    expect(content).not.toContain("/brand-profile`");
   });
 });
 
