@@ -3583,6 +3583,13 @@ export interface BillingAccount {
   auto_reload_supported?: boolean;
   auto_reload_unsupported_reason?: string | null;
   card_country?: string | null;
+  // Saved-card display fields, sourced from the Stripe PaymentMethod. Additive
+  // (billing-service): absent on older deploys => the Payment method section falls
+  // back to the connected/country-only display. Never derived client-side.
+  card_brand?: string | null;
+  card_last4?: string | null;
+  card_exp_month?: number | null;
+  card_exp_year?: number | null;
   // Per-org usage discount rate (integer 0-100), frozen upstream at cost-declaration so
   // the balance/usage/next-charge numbers above are ALREADY net of it. null = no discount.
   // Absent on older billing deploys.

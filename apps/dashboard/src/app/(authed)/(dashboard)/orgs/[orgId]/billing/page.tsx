@@ -79,6 +79,37 @@ function countryLabel(code: string | null | undefined): string {
   return COUNTRY_NAMES[code.toUpperCase()] ?? "your card's country";
 }
 
+// ISO-3166-1 alpha-2 -> regional-indicator flag emoji (A-Z => U+1F1E6..U+1F1FF).
+function countryFlag(code: string | null | undefined): string {
+  if (!code || code.length !== 2) return "";
+  const up = code.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(up)) return "";
+  return String.fromCodePoint(...[...up].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
+// Stripe PaymentMethod card.brand -> display label. Absent/unknown => "Card".
+const CARD_BRAND_LABELS: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "American Express",
+  discover: "Discover",
+  diners: "Diners Club",
+  jcb: "JCB",
+  unionpay: "UnionPay",
+};
+
+function cardBrandLabel(brand: string | null | undefined): string {
+  if (!brand) return "Card";
+  return CARD_BRAND_LABELS[brand.toLowerCase()] ?? brand.charAt(0).toUpperCase() + brand.slice(1);
+}
+
+function cardExpiryLabel(month: number | null | undefined, year: number | null | undefined): string | null {
+  if (!month || !year) return null;
+  const mm = String(month).padStart(2, "0");
+  const yy = String(year).slice(-2);
+  return `${mm}/${yy}`;
+}
+
 // Last calendar day of the current month, formatted for the "…or on <date>"
 // month-end sweep guarantee (billing-service runMonthEndSweep). Day 0 of next
 // month = last day of this month.
@@ -529,30 +560,94 @@ export default function BillingPage() {
         {/* Payment method — short dedicated section (linked funding source). */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900">Payment method</p>
-                <div className="mt-0.5 flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${account?.has_payment_method ? "bg-green-500" : "bg-gray-300"}`} />
-                  <span className="text-xs text-gray-500">
-                    {account?.has_payment_method ? "Card connected" : "No card yet, added at your first top-up"}
-                  </span>
-                </div>
+                {account?.has_payment_method ? (
+                  <div className="mt-1 space-y-1">
+                    {/* Brand + last4 (Stripe fields; render only when billing-service
+                        exposes them — else fall back to the connected line below). */}
+                    {account.card_last4 ? (
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-900">
+                        <span className="font-medium">{cardBrandLabel(account.card_brand)}</span>
+                        <span className="text-gray-400" aria-hidden>••••</span>
+                        <span className="font-medium tabular-nums">{account.card_last4}</span>
+                        {cardExpiryLabel(account.card_exp_month, account.card_exp_year) && (
+                          <span className="text-xs text-gray-500">
+                            exp {cardExpiryLabel(account.card_exp_month, account.card_exp_year)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-xs text-gray-500">Card connected</span>
+                      </div>
+                    )}
+                    {/* Issuing country — the one card detail always on the wire. */}
+                    {account.card_country && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        {countryFlag(account.card_country) && (
+                          <span aria-hidden>{countryFlag(account.card_country)}</span>
+                        )}
+                        <span>
+                          Issued in {countryLabel(account.card_country)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-gray-300" />
+                    <span className="text-xs text-gray-500">
+                      No card yet, added at your first top-up
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             {account?.has_payment_method && (
               <button
                 onClick={() => handleManagePayment("manage")}
                 disabled={portalLoadingSource !== null}
-                className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
+                className="text-sm font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-50 flex-shrink-0"
               >
                 {portalLoadingSource === "manage" ? "Opening..." : "Manage"}
               </button>
             )}
           </div>
+
+          {/* Non-chargeable card (RBI e-mandate: India + similar) — actionable
+              orange callout asking the user to swap to an auto-chargeable card so
+              auto-topup unlocks. Owns this message (the passive blue notice in the
+              Add Credits block was removed to avoid saying it twice). */}
+          {account?.has_payment_method && !autoReloadSupported && (
+            <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 flex items-start gap-2">
+              <svg className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-orange-800">
+                  Auto-topup unavailable for this card
+                </p>
+                <p className="text-xs text-orange-700 mt-0.5">
+                  Cards issued in {countryLabel(account?.card_country)} can&apos;t be charged
+                  automatically (RBI e-mandate rules), so auto-topup stays off. Add a
+                  non-Indian card so we can top you up automatically and your campaigns never stop.
+                </p>
+                <button
+                  onClick={() => handleManagePayment("manage")}
+                  disabled={portalLoadingSource !== null}
+                  className="mt-2 text-sm font-medium text-orange-800 underline underline-offset-2 transition hover:text-orange-900 disabled:opacity-50"
+                >
+                  {portalLoadingSource === "manage" ? "Opening..." : "Change card"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Add Credits + enable Auto-Topup — only until auto-topup is configured */}
@@ -590,7 +685,7 @@ export default function BillingPage() {
 
             {/* Auto-topup opt-in — the amount + trigger are set automatically (no inputs);
                 hidden when the card's country can't be auto-charged */}
-            {autoReloadSupported ? (
+            {autoReloadSupported && (
             <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
               <div className="flex items-start gap-3">
                 <input
@@ -607,20 +702,6 @@ export default function BillingPage() {
                 </div>
               </div>
             </div>
-            ) : (
-              <div className="border-t border-gray-100 pt-4 mt-4 mb-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-                  <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">Auto-reload not available</p>
-                    <p className="text-xs text-blue-700 mt-0.5">
-                      Cards issued in {countryLabel(account?.card_country)}&nbsp;can&apos;t be set up for auto-reload. Add credit any time with the Add Credit button below.
-                    </p>
-                  </div>
-                </div>
-              </div>
             )}
 
             <button
