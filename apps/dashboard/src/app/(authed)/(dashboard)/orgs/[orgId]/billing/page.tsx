@@ -64,19 +64,22 @@ function formatGrantDate(iso: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-// ISO-3166-1 alpha-2 -> display name. Display-only mapping (billing owns the
-// blocklist via `auto_reload_supported`); we only name the country for the notice.
-const COUNTRY_NAMES: Record<string, string> = {
-  IN: "India",
-  PK: "Pakistan",
-  BD: "Bangladesh",
-  NP: "Nepal",
-  LK: "Sri Lanka",
-};
+// ISO-3166-1 alpha-2 -> full country name, for ANY country (Intl.DisplayNames,
+// so a US/FR/BR card names its country too, not just the RBI-blocked set). Falls
+// back to a generic phrase only when the code is missing/invalid.
+const REGION_NAMES =
+  typeof Intl !== "undefined" && "DisplayNames" in Intl
+    ? new Intl.DisplayNames(["en"], { type: "region" })
+    : null;
 
 function countryLabel(code: string | null | undefined): string {
-  if (!code) return "your card's country";
-  return COUNTRY_NAMES[code.toUpperCase()] ?? "your card's country";
+  if (!code || !/^[A-Za-z]{2}$/.test(code)) return "your card's country";
+  const up = code.toUpperCase();
+  try {
+    return REGION_NAMES?.of(up) ?? up;
+  } catch {
+    return up;
+  }
 }
 
 // ISO-3166-1 alpha-2 -> regional-indicator flag emoji (A-Z => U+1F1E6..U+1F1FF).
