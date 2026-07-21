@@ -33,7 +33,7 @@ type GoalChoice = RuntimeGoal | "inherit";
 const RUNTIME_GOAL_LABEL: Record<RuntimeGoal, string> = {
   signup: "Signups",
   meetingBooked: "Sales meetings",
-  purchase: "Purchases",
+  purchase: "Website purchases",
 };
 
 const GOAL_OPTIONS: { value: GoalChoice; label: string }[] = [
