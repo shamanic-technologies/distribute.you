@@ -634,9 +634,9 @@ export default function BillingPage() {
                   Auto-topup unavailable for this card
                 </p>
                 <p className="text-xs text-orange-700 mt-0.5">
-                  Cards issued in {countryLabel(account?.card_country)} can&apos;t be charged
+                  Cards issued in {countryLabel(account?.card_country)}{" "}can&apos;t be charged
                   automatically (RBI e-mandate rules), so auto-topup stays off. Add a
-                  non-Indian card so we can top you up automatically and your campaigns never stop.
+                  non-Indian card so we can top you up automatically and your campaign can keep running.
                 </p>
                 <button
                   onClick={() => handleManagePayment("manage")}
