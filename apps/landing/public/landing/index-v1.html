@@ -693,6 +693,9 @@
       #pricing{padding-bottom:0}
       #pricing + section{padding-top:0}
       #pricing .section-head{position:sticky;top:116px;z-index:5;max-width:none;margin-bottom:0;padding-top:22px;padding-bottom:34px;background:var(--bg)}
+      /* mask the transparent nav strip above the pinned heading so cards scrolling up
+         are not visible behind the floating pill */
+      #pricing .section-head::before{content:'';position:absolute;left:calc(-50vw + 50%);width:100vw;bottom:100%;height:116px;background:var(--bg);pointer-events:none}
     }
     .price-card{
       padding:33px;
