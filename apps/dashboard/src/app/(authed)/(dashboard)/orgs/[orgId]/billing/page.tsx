@@ -110,6 +110,51 @@ function cardExpiryLabel(month: number | null | undefined, year: number | null |
   return `${mm}/${yy}`;
 }
 
+// Stripe card.brand -> the network's registrable domain, so logo.dev serves the
+// real network logo (Visa/Amex/Mastercard/...). Shared public logo.dev token
+// (same one BrandLogo / conversions-table use).
+const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
+const CARD_BRAND_DOMAINS: Record<string, string> = {
+  visa: "visa.com",
+  mastercard: "mastercard.com",
+  amex: "americanexpress.com",
+  discover: "discover.com",
+  diners: "dinersclubinternational.com",
+  jcb: "global.jcb",
+  unionpay: "unionpayintl.com",
+};
+
+// Generic card glyph — fallback when the brand is unknown or the logo 404s.
+function GenericCardGlyph() {
+  return (
+    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+// Network-logo tile (logo.dev by brand domain). Falls back to a generic card
+// glyph when the brand is unknown OR the logo image fails to load.
+function CardBrandLogo({ brand }: { brand: string | null | undefined }) {
+  const [failed, setFailed] = useState(false);
+  const domain = brand ? CARD_BRAND_DOMAINS[brand.toLowerCase()] : undefined;
+  return (
+    <div className="flex h-9 w-14 flex-shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white p-1.5">
+      {domain && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=64`}
+          alt={`${cardBrandLabel(brand)} logo`}
+          className="max-h-full max-w-full object-contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <GenericCardGlyph />
+      )}
+    </div>
+  );
+}
+
 // Last calendar day of the current month, formatted for the "…or on <date>"
 // month-end sweep guarantee (billing-service runMonthEndSweep). Day 0 of next
 // month = last day of this month.
@@ -560,55 +605,7 @@ export default function BillingPage() {
         {/* Payment method — short dedicated section (linked funding source). */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">Payment method</p>
-                {account?.has_payment_method ? (
-                  <div className="mt-1 space-y-1">
-                    {/* Brand + last4 (Stripe fields; render only when billing-service
-                        exposes them — else fall back to the connected line below). */}
-                    {account.card_last4 ? (
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-900">
-                        <span className="font-medium">{cardBrandLabel(account.card_brand)}</span>
-                        <span className="text-gray-400" aria-hidden>••••</span>
-                        <span className="font-medium tabular-nums">{account.card_last4}</span>
-                        {cardExpiryLabel(account.card_exp_month, account.card_exp_year) && (
-                          <span className="text-xs text-gray-500">
-                            exp {cardExpiryLabel(account.card_exp_month, account.card_exp_year)}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                        <span className="text-xs text-gray-500">Card connected</span>
-                      </div>
-                    )}
-                    {/* Issuing country — the one card detail always on the wire. */}
-                    {account.card_country && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        {countryFlag(account.card_country) && (
-                          <span aria-hidden>{countryFlag(account.card_country)}</span>
-                        )}
-                        <span>
-                          Issued in {countryLabel(account.card_country)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-gray-300" />
-                    <span className="text-xs text-gray-500">
-                      No card yet, added at your first top-up
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+            <p className="text-sm font-medium text-gray-900">Payment method</p>
             {account?.has_payment_method && (
               <button
                 onClick={() => handleManagePayment("manage")}
@@ -619,6 +616,65 @@ export default function BillingPage() {
               </button>
             )}
           </div>
+
+          {account?.has_payment_method ? (
+            // Card row — network logo tile + masked number on one line, expiry +
+            // issuing country as muted secondary (Stripe billing-portal pattern).
+            <div className="mt-3 flex items-center gap-3">
+              <CardBrandLogo brand={account.card_brand} />
+              <div className="min-w-0">
+                {account.card_last4 ? (
+                  <>
+                    <p className="text-sm text-gray-900">
+                      <span className="font-medium">{cardBrandLabel(account.card_brand)}</span>
+                      <span className="mx-1.5 align-middle tracking-[0.2em] text-gray-400" aria-hidden>
+                        ••••
+                      </span>
+                      <span className="font-medium tabular-nums">{account.card_last4}</span>
+                    </p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
+                      {cardExpiryLabel(account.card_exp_month, account.card_exp_year) && (
+                        <span>Expires {cardExpiryLabel(account.card_exp_month, account.card_exp_year)}</span>
+                      )}
+                      {cardExpiryLabel(account.card_exp_month, account.card_exp_year) && account.card_country && (
+                        <span aria-hidden>·</span>
+                      )}
+                      {account.card_country && (
+                        <span className="inline-flex items-center gap-1">
+                          {countryFlag(account.card_country) && (
+                            <span aria-hidden>{countryFlag(account.card_country)}</span>
+                          )}
+                          {countryLabel(account.card_country)}
+                        </span>
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  // Older billing deploy (no card detail fields yet) — connected +
+                  // country only, still on one clean row.
+                  <>
+                    <p className="flex items-center gap-1.5 text-sm text-gray-900">
+                      <span className="h-2 w-2 rounded-full bg-green-500" />
+                      Card connected
+                    </p>
+                    {account.card_country && (
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                        {countryFlag(account.card_country) && (
+                          <span aria-hidden>{countryFlag(account.card_country)}</span>
+                        )}
+                        Issued in {countryLabel(account.card_country)}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-gray-300" />
+              <span className="text-xs text-gray-500">No card yet, added at your first top-up</span>
+            </div>
+          )}
 
           {/* Non-chargeable card (RBI e-mandate: India + similar) — actionable
               orange callout asking the user to swap to an auto-chargeable card so
