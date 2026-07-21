@@ -276,7 +276,7 @@ h1, h2, h3, .font-display {
 }
 .dy-hero-dot {
   width: 0.375rem; height: 0.375rem;
-  background: var(--dy-green); border-radius: 50%;
+  background: var(--dy-accent); border-radius: 50%;
   animation: dy-pulse 2.2s ease-in-out infinite;
 }
 @keyframes dy-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.65); } }
