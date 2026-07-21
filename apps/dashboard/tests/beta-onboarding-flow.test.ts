@@ -182,10 +182,9 @@ describe("Beta onboarding guided flow", () => {
 
   it("agency consent with no channel checkboxes", () => {
     expect(src).toContain("on your behalf");
-    // Consent (consentedChannels / agencyConsentAt) is no longer persisted through
-    // the deprecated brand-profile document — it has no home in the 2-layer
-    // user-fields model and needs a dedicated brand-service consent endpoint
-    // (flagged as a backend follow-up). The consent STEP UI still renders.
+    // Agency consent is ASKED on the consent step ("on your behalf" copy) but by
+    // decision is NOT persisted — no consentedChannels / agencyConsentAt write, no
+    // backend consent endpoint (nothing reads it). The consent STEP UI still renders.
     expect(src).not.toContain("consentedChannels");
     expect(src).not.toContain("agencyConsentAt");
     // The channels checkbox grid was removed.
