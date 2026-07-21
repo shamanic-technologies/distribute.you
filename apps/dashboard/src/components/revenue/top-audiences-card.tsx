@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import type {
   FeatureAudienceStatsResponse,
   FeatureAudienceStatsSortMetric,
@@ -122,7 +123,13 @@ export function TopAudiencesCard({
           const value = isStats
             ? activeMetric === "cpc"
               ? item.row.metrics.cpcCents
-              : item.row.metrics.cpprCents
+              : // Accounting "so far": 0 replies + spend → floor CPPR to this audience's net
+                // committed spend, never a blank "-" that hides real money spent. Server field.
+                costSoFarFloorCents(
+                  item.row.metrics.cpprCents,
+                  item.row.evidence.totalCostInUsdCents,
+                  item.row.evidence.positiveReplies,
+                )
             : null;
           const count = isStats
             ? activeMetric === "cpc"

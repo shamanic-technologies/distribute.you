@@ -14,6 +14,7 @@ import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
+import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import { pollOptions } from "@/lib/query-options";
 import {
   fetchFeatureAudienceStats,
@@ -59,7 +60,14 @@ function sortValue(
     case "replies":
       return stats?.evidence.positiveReplies ?? null;
     case "cppr":
-      return stats?.metrics.cpprCents ?? null;
+      // Accounting "so far": sort on the floored CPPR (net committed spend when 0
+      // replies) so a 0-reply audience with real spend sorts by what it has cost,
+      // matching what the column renders. Same floor as the cell below.
+      return costSoFarFloorCents(
+        stats?.metrics.cpprCents,
+        stats?.evidence.totalCostInUsdCents,
+        stats?.evidence.positiveReplies,
+      );
     case "cpc":
       return stats?.metrics.cpcCents ?? null;
     case "clicks":
@@ -716,7 +724,16 @@ export function CustomerAudiencesPage() {
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
                             ) : stats ? (
-                              formatCents(stats.metrics.cpprCents)
+                              // Accounting "so far": 0 replies + real spend → floor to this
+                              // audience's net committed spend (same net figure as billing),
+                              // never a blank "-". Server field, no client division.
+                              formatCents(
+                                costSoFarFloorCents(
+                                  stats.metrics.cpprCents,
+                                  stats.evidence.totalCostInUsdCents,
+                                  stats.evidence.positiveReplies,
+                                ),
+                              )
                             ) : (
                               "-"
                             )}
