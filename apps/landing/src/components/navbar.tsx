@@ -12,8 +12,8 @@ export function Navbar() {
   const pathname = usePathname();
   const urls = PROD_URLS;
   const links = [
+    { label: "How it works", href: "/how-it-works" },
     { label: "Pricing", href: urls.pricing },
-    { label: "Performance", href: urls.performance },
   ];
 
   function isCurrent(href: string) {
@@ -50,10 +50,10 @@ export function Navbar() {
 
         <div className="dy-nav-right">
           <a href={urls.signIn} className="dy-btn dy-btn-g">
-            Sign in
+            Log in
           </a>
           <LinkButton href={urls.signUp} className="dy-btn dy-btn-p">
-            Start free
+            Launch campaign
           </LinkButton>
         </div>
 
@@ -89,14 +89,14 @@ export function Navbar() {
               </a>
             ))}
             <a href={urls.signIn} className="block rounded-lg px-3 py-2 text-sm text-[var(--dy-sub)] hover:text-[var(--dy-text)]">
-              Sign in
+              Log in
             </a>
             <div className="border-t border-[var(--dy-border-hi)] pt-3">
               <LinkButton
                 href={urls.signUp}
                 className="dy-btn dy-btn-p w-full"
               >
-                Start free
+                Launch campaign
               </LinkButton>
             </div>
           </div>
