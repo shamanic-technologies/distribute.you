@@ -10,7 +10,6 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useIsAdminUser } from "@/lib/use-admin-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
@@ -222,12 +221,6 @@ const CampaignsIcon = () => (
   </svg>
 );
 
-const BrandProfileIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
-  </svg>
-);
-
 const SettingsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -259,10 +252,10 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
         return { type: "campaign", orgId, brandId, campaignId: segments[5] };
       }
       // Every brand section — root overview, entity pages, AND settings /
-      // brand-profile / brand-info / workflows — renders the SAME brand sidebar.
-      // Settings + Profile + Info + Workflows are flat links in that sidebar's
-      // footer, so the sidebar stays mounted and the clicked link goes blue
-      // instead of swapping to a separate Settings sidebar level.
+      // brand-info / workflows — renders the SAME brand sidebar. Settings + Info +
+      // Workflows are flat links in that sidebar's footer, so the sidebar stays
+      // mounted and the clicked link goes blue instead of swapping to a separate
+      // Settings sidebar level.
       return { type: "brand", orgId, brandId };
     }
     return { type: "org", orgId };
@@ -411,11 +404,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const { isLoading: featuresLoading } = useFeatures();
   const { organization } = useOrganization();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  // Brand Profile is BETA (email allowlist) — surfaced flat at the sidebar
-  // bottom next to Brand Settings. Scoped to revenue features AND gated to the
-  // beta allowlist; carries the beta badge on the nav entry.
-  const isBeta = useIsBetaUser();
-  const brandProfileOk = isRevenueFeature(featureSlug) && isBeta;
   // Campaigns (v2, campaign-centered) — staff/god-mode PREVIEW while the campaign
   // concept is progressively re-introduced. Gated on the staff allowlist (isAdmin),
   // shown with a beta badge. Non-staff never see it.
@@ -433,8 +421,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const defsReady = !featuresLoading;
 
   // Revenue surface (Overview) — only on revenue features (sales-cold-email
-  // today). GA. Overview is the brand root. Audiences is still gated to the
-  // email allowlist; Brand Profile lives under Brand Settings.
+  // today). GA. Overview is the brand root.
   const revenueOk = isRevenueFeature(featureSlug);
   const topItems: SidebarItem[] = [
     ...(revenueOk
@@ -503,8 +490,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
       backHref={`/orgs/${orgId}`}
       backLabel={organization?.name || "Overview"}
       footer={
-        // Anchored to the bottom (outside the scrollable nav): Brand Settings +
-        // Brand Profile (flat, replacing the old intermediate Settings button),
+        // Anchored to the bottom (outside the scrollable nav): Brand Settings,
         // then the referral card.
         <div className="border-t border-gray-100">
           <div className="p-2 space-y-0.5">
@@ -517,18 +503,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               }}
               isActive={pathname === `${basePath}/settings`}
             />
-            {brandProfileOk && (
-              <SidebarLink
-                item={{
-                  id: "brand-profile",
-                  label: "Brand Profile",
-                  href: `${basePath}/brand-profile`,
-                  icon: <BrandProfileIcon />,
-                  maturity: "beta",
-                }}
-                isActive={pathname.startsWith(`${basePath}/brand-profile`)}
-              />
-            )}
             {brandInfoOk && (
               <SidebarLink
                 item={{

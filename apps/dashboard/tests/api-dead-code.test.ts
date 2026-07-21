@@ -26,6 +26,13 @@ describe("No dead/broken API functions", () => {
     expect(apiContent).not.toContain("export async function refreshBrandSalesProfile");
   });
 
+  it("should not have the old brand-profile document functions (migrated to user-fields)", () => {
+    expect(apiContent).not.toContain("export async function getBrandProfile");
+    expect(apiContent).not.toContain("export async function saveBrandProfileVersion");
+    expect(apiContent).not.toContain("BrandProfileVersionWire");
+    expect(apiContent).not.toContain("/brand-profile");
+  });
+
   it("should have upsertBrand as the correct brand creation function", () => {
     expect(apiContent).toContain("export async function upsertBrand");
     // upsertBrand correctly sends { url }

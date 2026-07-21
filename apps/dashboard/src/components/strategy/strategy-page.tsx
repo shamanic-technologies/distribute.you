@@ -13,15 +13,20 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { pollOptions } from "@/lib/query-options";
 import {
-  getBrandProfile,
+  getBrandUserFields,
   getBrandSalesEconomics,
   getWorkflowProjectionLadder,
   listAudiences,
   listWorkflowExamples,
-  saveBrandProfileVersion,
+  saveBrandUserFields,
+  USER_FIELD_KEYS,
 } from "@/lib/api";
 import type {
   BrandOptimizationGoal,
+  BrandUserFields,
+  FieldProvenance,
+  UserFieldKey,
+  UserFieldValue,
   WorkflowExampleEmail,
 } from "@/lib/api";
 import {
@@ -53,6 +58,54 @@ import {
   Stat,
 } from "@/components/strategy/best-model-card";
 import { MetricLabel } from "@/components/visibility/metric-info";
+
+/**
+ * The confirmed user-fields map → a plain fields bag (key → value) the inline
+ * editors work with. A list-kind field with no value becomes []; a text one "".
+ */
+function userFieldsToProfile(fields: BrandUserFields | undefined): ProfileFields {
+  const out: ProfileFields = {};
+  for (const key of USER_FIELD_KEYS) {
+    const v = fields?.[key]?.value;
+    if (v != null) out[key] = v;
+  }
+  return out;
+}
+
+/**
+ * A fields bag → the saveBrandUserFields PUT body. Only the 7 user-field keys are
+ * sent (every sent key is confirmed server-side); empty values are omitted so a
+ * blank field never clobbers a confirmed one.
+ */
+function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserFieldKey, UserFieldValue>> {
+  const out: Partial<Record<UserFieldKey, UserFieldValue>> = {};
+  for (const key of USER_FIELD_KEYS) {
+    const v = fields[key];
+    if (Array.isArray(v)) {
+      const cleaned = v.map((s) => s.trim()).filter(Boolean);
+      if (cleaned.length) out[key] = cleaned;
+    } else if (typeof v === "string" && v.trim()) {
+      out[key] = v;
+    }
+  }
+  return out;
+}
+
+/** Small provenance tag: amber "AI-suggested" until the user confirms (saves) it. */
+function FieldProvenanceBadge({ provenance }: { provenance: FieldProvenance }) {
+  if (provenance === "confirmed") {
+    return (
+      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+        Confirmed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+      AI-suggested
+    </span>
+  );
+}
 
 /** USD number → adaptive "$X.XX" (<$10) / "$X" (≥$10) / "-". */
 function formatUsd(usd: number | null | undefined): string {
@@ -328,28 +381,30 @@ export function StrategyPage() {
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
 
-  // Brand profile — the offer fields we optimise conversion against. Same data as
-  // the Brand Profile editor; here the offer levers are edited inline (hover a zone
-  // → click to edit), and Save forks a new immutable brand-profile version.
-  const { data: profileData, isPending: profilePending } = useAuthQuery(
-    ["brandProfile", brandId],
-    () => getBrandProfile(brandId),
+  // Confirmed user-fields — the 7 offer fields we optimise conversion against.
+  // Each carries a provenance ("confirmed" once the user saved it, "suggested"
+  // while it is still the AI prefill). Edited inline (hover a zone → click to
+  // edit); Save confirms the edited values via saveBrandUserFields.
+  const { data: userFieldsData, isPending: profilePending } = useAuthQuery(
+    ["brandUserFields", brandId],
+    () => getBrandUserFields(brandId),
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
   const settingsHref = `/orgs/${orgId}/brands/${brandId}/settings`;
 
-  // Full baseline fields bag — Save POSTs the WHOLE bag as a new version, so edits
-  // to the offer levers must ride on top of every other brand-profile field, never
-  // wipe them.
-  const offerBaseline = cloneFields((profileData?.current?.fields ?? {}) as ProfileFields);
+  // Baseline bag = each user-field's value (list-kind default []). The edited
+  // levers are saved back as confirmed user-fields; unedited keys are left as-is.
+  const offerBaseline = cloneFields(userFieldsToProfile(userFieldsData?.fields));
   const offerFields = offerDraft ?? offerBaseline;
   const offerDirty = offerDraft !== null && !fieldsEqual(offerDraft, offerBaseline);
+  const provenanceOf = (key: string): FieldProvenance =>
+    userFieldsData?.fields[key]?.provenance ?? "suggested";
 
   const saveOfferMut = useMutation({
-    mutationFn: (fields: ProfileFields) => saveBrandProfileVersion(brandId, fields),
+    mutationFn: (fields: ProfileFields) => saveBrandUserFields(brandId, profileToUserFieldsPayload(fields)),
     onSuccess: () => {
       setOfferDraft(null);
-      queryClient.invalidateQueries({ queryKey: ["brandProfile", brandId] });
+      queryClient.invalidateQueries({ queryKey: ["brandUserFields", brandId] });
     },
   });
 
@@ -511,7 +566,7 @@ export function StrategyPage() {
             <>
               <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200">
                 {OFFER_LEVERS.map((lever) => {
-                  // Kind + placeholder come from the shared brand-profile field set
+                  // Kind + placeholder come from the shared user-field set
                   // (services / socialProof are lists, the rest free text).
                   const def = ALL_FIELDS.find((f) => f.key === lever.key);
                   const kind = def?.kind ?? "text";
@@ -519,8 +574,9 @@ export function StrategyPage() {
                   const value = offerFields[lever.key];
                   return (
                     <li key={lever.key} className="px-4 py-3">
-                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                         <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
+                        <FieldProvenanceBadge provenance={provenanceOf(lever.key)} />
                       </p>
                       {kind === "text" ? (
                         <TextEditor

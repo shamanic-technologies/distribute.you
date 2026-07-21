@@ -3,11 +3,13 @@
 import { useState } from "react";
 
 // ---------------------------------------------------------------------------
-// Field model — each brand-profile field is either free `text` (textarea) or a
-// `list` of short strings (chip editor, same affordance as Audiences).
-// Grouped into sections for a calmer layout. Mirrors SALES_PROFILE_FIELDS minus
-// the audience cluster (targetAudience / customerPainPoints → Personas).
-// Shared by the Brand Profile page AND the beta onboarding brand-profile step.
+// Field model — each user-field is either free `text` (textarea) or a `list` of
+// short strings (chip editor, same affordance as Audiences).
+//
+// This is the CONFIRMED user-facing set of the 2-layer brand-fields model: the
+// 7 keys the user validates (see USER_FIELD_KEYS in lib/api.ts). Everything else
+// is auto-extracted + backend-only, so it is not an editable field here.
+// `dreamOutcome` REPLACES the old `valueProposition` (label "Dream outcome").
 // ---------------------------------------------------------------------------
 export type FieldKind = "text" | "list";
 
@@ -18,62 +20,16 @@ export interface FieldDef {
   placeholder: string;
 }
 
-export interface FieldSection {
-  title: string;
-  fields: FieldDef[];
-}
-
-export const SECTIONS: FieldSection[] = [
-  {
-    title: "Positioning",
-    fields: [
-      { key: "companyOverview", label: "Company overview", kind: "text", placeholder: "What the company does, in a sentence or two." },
-      { key: "services", label: "Services sold", kind: "list", placeholder: "Add a service / product you sell…" },
-      { key: "valueProposition", label: "Value proposition", kind: "text", placeholder: "The core promise to customers (the dream outcome)." },
-    ],
-  },
-  {
-    title: "Product",
-    fields: [
-      { key: "keyFeatures", label: "Key features", kind: "list", placeholder: "Add a feature…" },
-      { key: "productDifferentiators", label: "Differentiators", kind: "list", placeholder: "Add a differentiator…" },
-    ],
-  },
-  {
-    title: "Market",
-    fields: [
-      { key: "competitors", label: "Competitors", kind: "list", placeholder: "Add a competitor…" },
-    ],
-  },
-  {
-    title: "Company",
-    fields: [
-      { key: "leadership", label: "Leadership", kind: "list", placeholder: "Add a leader (name — role)…" },
-      { key: "funding", label: "Funding", kind: "text", placeholder: "Total raised, rounds, notable investors." },
-      { key: "awardsAndRecognition", label: "Awards & recognition", kind: "list", placeholder: "Add an award…" },
-      { key: "revenueMilestones", label: "Revenue milestones", kind: "list", placeholder: "Add a milestone…" },
-      { key: "socialProof", label: "Social proof", kind: "list", placeholder: "Add a case study / testimonial…" },
-    ],
-  },
-  {
-    title: "Conversion levers",
-    fields: [
-      { key: "callToAction", label: "Call to action", kind: "text", placeholder: "Primary CTA." },
-      { key: "perceivedLikelihood", label: "Perceived likelihood of success", kind: "text", placeholder: "Proof it works: track record, data, guarantees, named results." },
-      { key: "urgency", label: "Urgency", kind: "text", placeholder: "Time-pressure elements." },
-      { key: "scarcity", label: "Scarcity", kind: "text", placeholder: "Limited-availability elements." },
-      { key: "riskReversal", label: "Risk reversal", kind: "text", placeholder: "Trials, guarantees, refund policy." },
-    ],
-  },
-  {
-    title: "Other",
-    fields: [
-      { key: "additionalContext", label: "Additional context", kind: "text", placeholder: "Anything else worth knowing." },
-    ],
-  },
+// The 7 confirmed user-fields, in display order (mirrors OFFER_LEVERS).
+export const ALL_FIELDS: FieldDef[] = [
+  { key: "services", label: "Services sold", kind: "list", placeholder: "Add a service / product you sell…" },
+  { key: "dreamOutcome", label: "Dream outcome", kind: "text", placeholder: "The core promise to customers (the result they want most)." },
+  { key: "perceivedLikelihood", label: "Perceived likelihood of success", kind: "text", placeholder: "Proof it works: track record, data, guarantees, named results." },
+  { key: "socialProof", label: "Social proof", kind: "list", placeholder: "Add a case study / testimonial…" },
+  { key: "riskReversal", label: "Risk reversal", kind: "text", placeholder: "Trials, guarantees, refund policy." },
+  { key: "urgency", label: "Urgency", kind: "text", placeholder: "Time-pressure elements." },
+  { key: "scarcity", label: "Scarcity", kind: "text", placeholder: "Limited-availability elements." },
 ];
-
-export const ALL_FIELDS: FieldDef[] = SECTIONS.flatMap((s) => s.fields);
 
 export type ProfileFields = Record<string, string | string[]>;
 
@@ -99,43 +55,6 @@ export function fieldsEqual(a: ProfileFields, b: ProfileFields): boolean {
     }
     return (av ?? "") === (bv ?? "");
   });
-}
-
-// ---------------------------------------------------------------------------
-// Field editor — textarea for `text`, chip editor for `list`.
-// ---------------------------------------------------------------------------
-export function FieldEditor({
-  field,
-  value,
-  onText,
-  onAdd,
-  onRemove,
-}: {
-  field: FieldDef;
-  value: string | string[] | undefined;
-  onText: (v: string) => void;
-  onAdd: (v: string) => void;
-  onRemove: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">{field.label}</label>
-      {field.kind === "text" ? (
-        <TextEditor
-          value={typeof value === "string" ? value : ""}
-          placeholder={field.placeholder}
-          onText={onText}
-        />
-      ) : (
-        <ListEditor
-          values={Array.isArray(value) ? value : []}
-          placeholder={field.placeholder}
-          onAdd={onAdd}
-          onRemove={onRemove}
-        />
-      )}
-    </div>
-  );
 }
 
 // Long/free text — clean read view by default; click anywhere to drop into an

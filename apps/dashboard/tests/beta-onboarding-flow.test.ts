@@ -13,7 +13,7 @@ describe("Beta onboarding guided flow", () => {
   );
 
   it("fetches real data during the loading step (no fake)", () => {
-    expect(src).toContain("getBrandProfile");
+    expect(src).toContain("getBrandUserFields");
     expect(src).toContain("getSalesEconomicsEffective");
     expect(src).toContain("getWorkflowProjection");
   });
@@ -43,7 +43,7 @@ describe("Beta onboarding guided flow", () => {
 
   it("persists rates and profile and launches a real campaign", () => {
     expect(src).toContain("saveBrandSalesEconomics");
-    expect(src).toContain("saveBrandProfileVersion");
+    expect(src).toContain("saveBrandUserFields");
     expect(src).toContain("createCampaign");
     // Activation is committed ONCE at the terminal launch: the picked set becomes the
     // brand's EXACT active set (list current active, demote non-picked back to
@@ -182,8 +182,12 @@ describe("Beta onboarding guided flow", () => {
 
   it("agency consent with no channel checkboxes", () => {
     expect(src).toContain("on your behalf");
-    expect(src).toContain("consentedChannels");
-    expect(src).toContain("agencyConsentAt");
+    // Consent (consentedChannels / agencyConsentAt) is no longer persisted through
+    // the deprecated brand-profile document — it has no home in the 2-layer
+    // user-fields model and needs a dedicated brand-service consent endpoint
+    // (flagged as a backend follow-up). The consent STEP UI still renders.
+    expect(src).not.toContain("consentedChannels");
+    expect(src).not.toContain("agencyConsentAt");
     // The channels checkbox grid was removed.
     expect(src).not.toContain("Coming soon");
     expect(src).not.toContain("Always on");

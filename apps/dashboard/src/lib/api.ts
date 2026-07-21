@@ -1517,54 +1517,85 @@ export async function suggestBrandIcp(
   return parsed.data;
 }
 
-export interface BrandProfileVersionWire {
-  id: string;
-  brandId: string;
-  version: number;
-  fields: Record<string, string | string[]>;
-  createdAt: string;
+// ---------------------------------------------------------------------------
+// Confirmed brand USER-FIELDS (2-layer brand-fields model, brand-service).
+//
+// The 7 user-facing fields a user validates for their brand. Each carries a
+// provenance tag:
+//   - "confirmed"  — the user saved this value.
+//   - "suggested"  — a user-facing field not yet confirmed; the value is the AI
+//                    prefill (from extraction). The UI surfaces this as
+//                    "AI-suggested" so the user knows it is a draft.
+//   - "extracted"  — backend-only auto-extracted field (should not appear in the
+//                    7 user-facing keys, but tolerated in the schema).
+//
+// Everything OUTSIDE this set is auto-extracted + ephemeral (3-day cache) and is
+// NOT user-editable — read it via the extract-fields endpoints, never here.
+// `dreamOutcome` REPLACES the old `valueProposition` (label "Dream outcome").
+// ---------------------------------------------------------------------------
+export const USER_FIELD_KEYS = [
+  "services",
+  "dreamOutcome",
+  "perceivedLikelihood",
+  "socialProof",
+  "riskReversal",
+  "urgency",
+  "scarcity",
+] as const;
+export type UserFieldKey = (typeof USER_FIELD_KEYS)[number];
+
+export type FieldProvenance = "confirmed" | "suggested" | "extracted";
+export type UserFieldValue = string | string[];
+export interface UserField {
+  value: UserFieldValue;
+  provenance: FieldProvenance;
 }
+/** The confirmed user-fields map, keyed by user-field key. */
+export type BrandUserFields = Record<string, UserField>;
 
-const BrandProfileVersionSchema = z.object({
-  id: z.string(),
-  brandId: z.string(),
-  version: z.number(),
-  fields: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
-  createdAt: z.string(),
+const UserFieldValueSchema = z.union([z.string(), z.array(z.string())]);
+const UserFieldSchema = z.object({
+  value: UserFieldValueSchema,
+  provenance: z.enum(["confirmed", "suggested", "extracted"]),
+});
+const BrandUserFieldsResponseSchema = z.object({
+  fields: z.record(z.string(), UserFieldSchema),
 });
 
-const GetBrandProfileResponseSchema = z.object({
-  current: BrandProfileVersionSchema.nullable(),
-  versions: z.array(z.object({ id: z.string(), version: z.number(), createdAt: z.string() })),
-});
-
-const SaveBrandProfileResponseSchema = z.object({ version: BrandProfileVersionSchema });
-
-/** GET /brands/:brandId/brand-profile — latest (or derived v1) + version list. */
-export async function getBrandProfile(
+/**
+ * GET /brands/:brandId/user-fields — the 7 confirmed user-facing fields, each
+ * with its value + provenance ("confirmed" | "suggested"). A "suggested" value
+ * is the AI prefill the user has not yet confirmed.
+ */
+export async function getBrandUserFields(
   brandId: string,
   token?: string,
-): Promise<{ current: BrandProfileVersionWire | null; versions: { id: string; version: number; createdAt: string }[] }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token });
-  const parsed = GetBrandProfileResponseSchema.safeParse(raw);
+): Promise<{ fields: BrandUserFields }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/user-fields`, { token });
+  const parsed = BrandUserFieldsResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getBrandProfile: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] getBrandProfile: invalid response shape");
+    console.error("[dashboard] getBrandUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getBrandUserFields: invalid response shape");
   }
   return parsed.data;
 }
 
-/** POST /brands/:brandId/brand-profile — save a new immutable version. */
-export async function saveBrandProfileVersion(
+/**
+ * PUT /brands/:brandId/user-fields — save (confirm) one or more user-fields.
+ * Body is `{ fields: { <key>: value } }`; every key sent is marked "confirmed".
+ * Omit a key to leave its current value/provenance untouched. Returns the full
+ * user-fields map (with the saved keys now "confirmed").
+ */
+export async function saveBrandUserFields(
   brandId: string,
-  fields: Record<string, string | string[]>,
+  fields: Partial<Record<UserFieldKey, UserFieldValue>>,
   token?: string,
-): Promise<{ version: BrandProfileVersionWire }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/brand-profile`, { token, method: "POST", body: { fields } });
-  const parsed = SaveBrandProfileResponseSchema.safeParse(raw);
+): Promise<{ fields: BrandUserFields }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/user-fields`, { token, method: "PUT", body: { fields } });
+  const parsed = BrandUserFieldsResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] saveBrandProfileVersion: response shape mismatch", { issues: parsed.error.issues, raw });
-    throw new Error("[dashboard] saveBrandProfileVersion: invalid response shape");
+    console.error("[dashboard] saveBrandUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] saveBrandUserFields: invalid response shape");
   }
   return parsed.data;
 }

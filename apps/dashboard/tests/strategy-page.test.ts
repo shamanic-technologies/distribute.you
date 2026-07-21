@@ -267,12 +267,12 @@ describe("isRowFloored — 0 observed clicks ⇒ the cost is a floor", () => {
 describe("offerLeverValue — normalises brand-profile fields, drops Unknown", () => {
   const fields = {
     services: ["A", "B"],
-    valueProposition: "Get a strategy in 8 minutes",
+    dreamOutcome: "Get a strategy in 8 minutes",
     socialProof: ["Unknown"],
     urgency: "  ",
   };
   it("returns a string as a one-line list", () => {
-    expect(offerLeverValue(fields, "valueProposition")).toEqual(["Get a strategy in 8 minutes"]);
+    expect(offerLeverValue(fields, "dreamOutcome")).toEqual(["Get a strategy in 8 minutes"]);
   });
   it("returns an array as multiple lines", () => {
     expect(offerLeverValue(fields, "services")).toEqual(["A", "B"]);
@@ -289,7 +289,7 @@ describe("OFFER_LEVERS — the seven value-equation levers", () => {
   it("covers the Hormozi levers in order", () => {
     expect(OFFER_LEVERS.map((l) => l.key)).toEqual([
       "services",
-      "valueProposition",
+      "dreamOutcome",
       "perceivedLikelihood",
       "socialProof",
       "riskReversal",
@@ -361,11 +361,16 @@ describe("StrategyPage source guards", () => {
     expect(both).toContain("listWorkflowExamples");
     expect(both).toContain("How we pick the best model");
   });
-  it("shows the offer (Hormozi) section read from Brand Profile", () => {
-    expect(both).toContain("getBrandProfile");
+  it("shows the offer (Hormozi) section read from the confirmed user-fields", () => {
+    expect(both).toContain("getBrandUserFields");
     expect(both).toContain("OFFER_LEVERS");
     expect(both).toContain("What we use to optimize your conversion");
     expect(both).toContain("Alex Hormozi value equation");
+  });
+  it("surfaces per-field provenance (AI-suggested vs Confirmed)", () => {
+    expect(page).toContain("FieldProvenanceBadge");
+    expect(page).toContain("provenanceOf");
+    expect(page).toContain("AI-suggested");
   });
   it("keeps an Edit link on The plan (→ settings); the offer card is edited INLINE (no blue Edit button)", () => {
     expect(both).toContain("settingsHref");
@@ -374,7 +379,7 @@ describe("StrategyPage source guards", () => {
     // zone (TextEditor / ListEditor) and Save forks a new brand-profile version.
     expect(page).not.toContain("action={<EditLink href={brandProfileHref} />}");
     expect(page).not.toContain("Edit your offer in Brand Profile");
-    expect(both).toContain("saveBrandProfileVersion");
+    expect(both).toContain("saveBrandUserFields");
     expect(both).toContain("TextEditor");
     expect(both).toContain("ListEditor");
   });

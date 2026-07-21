@@ -65,7 +65,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       // config / registries
       "features", "feature", "statsRegistry", "entityRegistry", "platformPrices", "billingAccount",
       // brand metadata + config
-      "brand", "brands", "brandProfile", "brandExtractedFields", "brandSalesEconomics",
+      "brand", "brands", "brandUserFields", "brandExtractedFields", "brandSalesEconomics",
       "brandDailyBudget", "brandPause", "brandCostBreakdown", "brandCostBreakdownToday",
       // brand entity sub-lists (big — now persisted too)
       "brandLeads", "brandEmails", "leadEmail", "brandOutlets", "brandArticles", "brandJournalists",
