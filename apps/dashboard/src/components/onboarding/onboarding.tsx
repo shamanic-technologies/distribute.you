@@ -162,7 +162,7 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?
   { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits." },
   { key: "positive_replies", label: "Positive replies for sales meetings", unit: "contacts", desc: "Maximize positive replies for a sales meeting from prospects." },
   { key: "form_submissions", label: "Form submissions", unit: "lead forms", desc: "Maximize form submissions." },
-  { key: "website_purchase", label: "Purchases", unit: "purchases", desc: "Maximize direct website purchases." },
+  { key: "website_purchase", label: "Website purchases", unit: "website purchases", desc: "Maximize direct website purchases." },
   { key: "sales", label: "Sales", unit: "sales", desc: "Maximize paying clients won via website visits or positive replies." },
 ];
 

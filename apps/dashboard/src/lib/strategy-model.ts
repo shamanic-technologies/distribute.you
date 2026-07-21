@@ -84,7 +84,7 @@ export function outcomeNoun(goal: BrandOptimizationGoal): string {
     case "form_submissions":
       return "form submission";
     case "website_purchase":
-      return "purchase";
+      return "website purchase";
     case "sales":
       return "sale";
     default:
@@ -105,7 +105,7 @@ export function outcomeNounPlural(goal: BrandOptimizationGoal): string {
     case "form_submissions":
       return "form submissions";
     case "website_purchase":
-      return "sales";
+      return "website purchases";
     case "sales":
       return "sales";
     default:

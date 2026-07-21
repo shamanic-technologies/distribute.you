@@ -67,6 +67,19 @@ const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   sales: "Maximising sales",
 };
 
+// Plural outcome noun shown in the budget modal ("X <unit> / mo"). Exhaustive
+// over BrandOptimizationGoal so a new goal can't silently mis-default (the old
+// 4-branch ternary sent website_purchase/form_submissions/sales to "meetings").
+const OUTCOME_UNIT: Record<BrandOptimizationGoal, string> = {
+  signups: "signups",
+  sales_meetings: "meetings",
+  website_visits: "website visits",
+  positive_replies: "positive replies",
+  form_submissions: "form submissions",
+  website_purchase: "website purchases",
+  sales: "sales",
+};
+
 const GOAL_OPTIONS: {
   value: BrandOptimizationGoal;
   label: string;
@@ -211,7 +224,13 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
           budgetUsd: PROJECTION_REF_BUDGET,
         }),
       {
-        enabled: budgetDialogOpen && econ !== undefined,
+        // Prewarm at mount (not gated on the dialog) so the cold Neon chain
+        // (features -> workflow/runs/email-gateway/brand, all scale-to-zero)
+        // resolves in parallel with the overview load and is warm/persisted by
+        // the time the user opens the budget modal — kills the cold-open ~20-30s
+        // skeleton. Budget-invariant (PROJECTION_REF_BUDGET), so one fetch serves
+        // every open.
+        enabled: econ !== undefined,
         placeholderData: undefined,
         structuralSharing: (prev, next) =>
           keepLastGoodWorkflowProjection(
@@ -298,14 +317,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     replyToMeetingPct,
     visitToMeetingPct,
   });
-  const outcomeUnit =
-    goalForBudget === "signups"
-      ? "signups"
-      : goalForBudget === "website_visits"
-        ? "website visits"
-        : goalForBudget === "positive_replies"
-          ? "positive replies"
-          : "meetings";
+  const outcomeUnit = OUTCOME_UNIT[goalForBudget];
   const unitCost = activeWorkflow
     ? workflowOutcomeUnitCost(activeWorkflow, goalForBudget, {
         visitToSignupPct,
@@ -540,7 +552,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
               </p>
             </div>
 
-            {projectionPending ? (
+            {projectionPending && econ !== undefined ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[0, 1, 2, 3].map((i) => (
                   <Skeleton key={i} className="h-32 rounded-xl" />
