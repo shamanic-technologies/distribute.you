@@ -14,8 +14,8 @@ const NAV_HTML = `
       <li><a href="/pricing">Pricing</a></li>
     </ul>
     <div class="nav-right">
-      <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g">Sign in</a>
-      <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p">Start free</a>
+      <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g">Log in</a>
+      <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p">Launch campaign</a>
       <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="3" y1="6" x2="17" y2="6"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="14" x2="17" y2="14"/></svg>
       </button>
@@ -37,8 +37,8 @@ const NAV_HTML = `
     <li><a href="/pricing">Pricing</a></li>
   </ul>
   <div class="nav-mobile-actions">
-    <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g btn-lg">Sign in</a>
-    <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Start free</a>
+    <a href="https://dashboard.distribute.you/sign-in" class="btn btn-g btn-lg">Log in</a>
+    <a href="https://dashboard.distribute.you/sign-up" class="btn btn-p btn-lg">Launch campaign</a>
   </div>
 </div>`;
 
@@ -59,6 +59,7 @@ const FOOTER_HTML = `
         <ul>
           <li><a href="/how-it-works">How it works</a></li>
           <li><a href="/pricing">Pricing</a></li>
+          <li><a href="/blog">Blog</a></li>
         </ul>
       </div>
       <div class="ft-col">
