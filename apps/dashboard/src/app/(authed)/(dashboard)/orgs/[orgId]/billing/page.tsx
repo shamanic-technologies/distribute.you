@@ -139,13 +139,13 @@ function CardBrandLogo({ brand }: { brand: string | null | undefined }) {
   const [failed, setFailed] = useState(false);
   const domain = brand ? CARD_BRAND_DOMAINS[brand.toLowerCase()] : undefined;
   return (
-    <div className="flex h-9 w-14 flex-shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white p-1.5">
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white p-1.5">
       {domain && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=64`}
+          src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=128&format=png&retina=true`}
           alt={`${cardBrandLabel(brand)} logo`}
-          className="max-h-full max-w-full object-contain"
+          className="h-full w-full object-contain"
           onError={() => setFailed(true)}
         />
       ) : (
