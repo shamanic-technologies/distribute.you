@@ -7,6 +7,7 @@ import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrandConversionToken } from "@/lib/api";
+import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import { goalOutcomeStep } from "@/lib/goal-steps";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { Spend } from "@/lib/revenue-view";
@@ -181,8 +182,17 @@ export function OutreachStatCards({
             : "—",
         costLabel: "Cost per positive reply",
         costTooltip:
-          "Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach.",
-        costValue: formatCostCents(spend?.cpprCents),
+          "Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. With no reply yet, it shows the committed spend so far (= Total spent).",
+        // Accounting "so far": 0 replies + real spend → floor to net committed spend
+        // (the same net figure shown as "Total spent"), never a blank "—". Server field,
+        // no client division (floor === spend at 0). features-service stays the source.
+        costValue: formatCostCents(
+          costSoFarFloorCents(
+            spend?.cpprCents,
+            spend?.totalSpentCents,
+            spend?.positiveRepliesCount,
+          ),
+        ),
         badge: undefined,
         showAction: false,
       }
@@ -250,8 +260,14 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label="Cost per positive reply"
-              tooltip="Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach."
-              value={formatCostCents(spend?.cpprCents)}
+              tooltip="Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. With no reply yet, it shows the committed spend so far (= Total spent)."
+              value={formatCostCents(
+                costSoFarFloorCents(
+                  spend?.cpprCents,
+                  spend?.totalSpentCents,
+                  spend?.positiveRepliesCount,
+                ),
+              )}
               pending={pending}
             />
           </Cell>

@@ -47,7 +47,11 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain('label: "Positive Replies"');
     expect(cards).toContain('costLabel: "Cost per positive reply"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
-    expect(cards).toContain("formatCostCents(spend?.cpprCents)");
+    // CPPR is floored to net committed spend "so far" (0 replies + spend → Total spent),
+    // never a blank "—" that hides real money spent. Server field, no client division.
+    expect(cards).toContain("costSoFarFloorCents(");
+    expect(cards).toContain("spend?.cpprCents,");
+    expect(cards).toContain("spend?.totalSpentCents,");
     // GA outcome — the reply card carries no beta badge and no setup CTA.
     expect(cards).toContain("showAction: false");
     // CPPR abbreviation is not used as a card label here (full phrase instead).
