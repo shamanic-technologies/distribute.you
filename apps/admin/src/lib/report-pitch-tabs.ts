@@ -77,14 +77,22 @@ export function pitchTimestamp(
   }
 }
 
-/** Bare registrable host from a URL, `www.` stripped. Returns null on an
- *  unparseable / empty value — a domain derived from a real backend URL
- *  (the published `featuredArticleUrl`) is a display lookup, not a
- *  name-derivation heuristic. */
-export function domainFromUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
+/** Registrable host from EITHER a bare domain (`7shifts.com`) OR a full URL
+ *  (`https://www.forbes.com/x`), `www.` stripped, lowercased. Returns null on
+ *  an unparseable / empty value.
+ *
+ *  The quote request's `mediaOutlet` is already a bare outlet domain
+ *  (`azbigmedia.com`), so this is a display lookup on backend-authoritative
+ *  data — NOT a name-derivation heuristic. Never derive the logo from the
+ *  `pitchUrl` (a connectively.us platform link → the wrong, identical logo on
+ *  every row). */
+export function toDomain(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return null;
+  const withScheme = trimmed.includes("://") ? trimmed : `https://${trimmed}`;
   try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
+    const host = new URL(withScheme).hostname.replace(/^www\./, "");
     return host || null;
   } catch {
     return null;

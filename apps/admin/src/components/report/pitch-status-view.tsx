@@ -8,7 +8,7 @@ import {
   type PitchStatusTab,
   pitchesForTab,
   pitchTimestamp,
-  domainFromUrl,
+  toDomain,
   timeAgo,
 } from "@/lib/report-pitch-tabs";
 
@@ -34,11 +34,12 @@ const COLUMN_LABELS = ["Publication", "Article", "DR", "Attribution", "Updated"]
 function buildRow(
   pitch: QuotePitch,
   outletName: string | null,
-  outletPitchUrl: string | null,
   tabSlug: PitchStatusTab["slug"],
 ): PitchRow {
-  const logoDomain =
-    domainFromUrl(pitch.featuredArticleUrl) ?? domainFromUrl(outletPitchUrl);
+  // The outlet `mediaOutlet` is already a bare domain (e.g. `azbigmedia.com`)
+  // → use it directly for the logo. Fall back to the published article's host.
+  // NEVER the pitchUrl (a connectively.us platform link = same logo everywhere).
+  const logoDomain = toDomain(outletName) ?? toDomain(pitch.featuredArticleUrl);
   return {
     id: pitch.id,
     publicationName: outletName ?? "—",
@@ -73,7 +74,7 @@ export async function PitchStatusView({
   const rows: PitchRow[] = pitchesForTab(pitches, tab)
     .map((p) => {
       const outlet = requestIndex[p.quoteRequestId];
-      return buildRow(p, outlet?.mediaOutlet ?? null, outlet?.pitchUrl ?? null, tab.slug);
+      return buildRow(p, outlet?.mediaOutlet ?? null, tab.slug);
     })
     // Sort by DR desc (all "—" today → equal), then most-recent first. DR is a
     // string placeholder now; numeric DR sorting activates once the backend
