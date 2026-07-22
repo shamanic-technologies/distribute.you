@@ -24,7 +24,6 @@ import {
 import type {
   BrandOptimizationGoal,
   BrandUserFields,
-  FieldProvenance,
   UserFieldKey,
   UserFieldValue,
   WorkflowExampleEmail,
@@ -89,22 +88,6 @@ function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserF
     }
   }
   return out;
-}
-
-/** Small provenance tag: amber "AI-suggested" until the user confirms (saves) it. */
-function FieldProvenanceBadge({ provenance }: { provenance: FieldProvenance }) {
-  if (provenance === "confirmed") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
-        Confirmed
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
-      AI-suggested
-    </span>
-  );
 }
 
 /** USD number → adaptive "$X.XX" (<$10) / "$X" (≥$10) / "-". */
@@ -397,8 +380,6 @@ export function StrategyPage() {
   const offerBaseline = cloneFields(userFieldsToProfile(userFieldsData?.fields));
   const offerFields = offerDraft ?? offerBaseline;
   const offerDirty = offerDraft !== null && !fieldsEqual(offerDraft, offerBaseline);
-  const provenanceOf = (key: string): FieldProvenance =>
-    userFieldsData?.fields[key]?.provenance ?? "suggested";
 
   const saveOfferMut = useMutation({
     mutationFn: (fields: ProfileFields) => saveBrandUserFields(brandId, profileToUserFieldsPayload(fields)),
@@ -576,7 +557,6 @@ export function StrategyPage() {
                     <li key={lever.key} className="px-4 py-3">
                       <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                         <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
-                        <FieldProvenanceBadge provenance={provenanceOf(lever.key)} />
                       </p>
                       {kind === "text" ? (
                         <TextEditor
