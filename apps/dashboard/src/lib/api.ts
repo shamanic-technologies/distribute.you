@@ -1547,18 +1547,45 @@ export type UserFieldKey = (typeof USER_FIELD_KEYS)[number];
 export type FieldProvenance = "confirmed" | "suggested" | "extracted";
 export type UserFieldValue = string | string[];
 export interface UserField {
-  value: UserFieldValue;
+  /**
+   * The confirmed value OR the AI-suggested prefill. `null` when the field is
+   * unconfirmed and its prefill is empty/expired (or a legacy/degenerate row).
+   */
+  value: UserFieldValue | null;
   provenance: FieldProvenance;
 }
 /** The confirmed user-fields map, keyed by user-field key. */
 export type BrandUserFields = Record<string, UserField>;
 
-const UserFieldValueSchema = z.union([z.string(), z.array(z.string())]);
+/**
+ * A user-field VALUE as it can arrive on the wire. The deployed backend contract
+ * types it LOOSELY — `string | string[] (items may be null) | object | null` —
+ * because a "suggested" (unconfirmed / expired) prefill resolves to `null`, and
+ * legacy rows can be an array-with-null-items or an object. A CONFIRMED value is
+ * always a string or string[]. We normalize ANY non-(string | non-empty string[])
+ * shape to `null` so a single unconfirmed/degenerate field can NEVER throw the
+ * whole read and hide the sibling CONFIRMED values.
+ *
+ * This is the data-loss-recovery bug: a brand with 6 recovered confirmed fields +
+ * 1 unconfirmed field whose suggested prefill was `null` rendered the Strategy
+ * offer levers EMPTY, because the old `z.union([z.string(), z.array(z.string())])`
+ * rejected that one `null` → `safeParse` threw → the entire query errored → NONE
+ * of the confirmed values reached the page (and clearing browser storage never
+ * helped, because the network read itself threw on every load).
+ */
+const UserFieldValueSchema = z.unknown().transform((v): UserFieldValue | null => {
+  if (typeof v === "string") return v.trim().length > 0 ? v : null;
+  if (Array.isArray(v)) {
+    const strings = v.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+    return strings.length > 0 ? strings : null;
+  }
+  return null;
+});
 const UserFieldSchema = z.object({
   value: UserFieldValueSchema,
   provenance: z.enum(["confirmed", "suggested", "extracted"]),
 });
-const BrandUserFieldsResponseSchema = z.object({
+export const BrandUserFieldsResponseSchema = z.object({
   fields: z.record(z.string(), UserFieldSchema),
 });
 
