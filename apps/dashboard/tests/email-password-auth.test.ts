@@ -52,6 +52,14 @@ describe("sign-in email/password flow", () => {
   it("links to the forgot-password page", () => {
     expect(signIn).toMatch(/href="\/forgot-password"/);
   });
+
+  it("guides a Google-registered email away from the password box", () => {
+    // A Google-OAuth account has no password factor -> Clerk returns
+    // strategy_for_user_invalid; surface a Google hint, not the raw error.
+    expect(signIn).toMatch(/strategy_for_user_invalid/);
+    expect(signIn).toMatch(/registered with Google/);
+    expect(signIn).toMatch(/isGoogleOnlyAccountError/);
+  });
 });
 
 describe("forgot-password reset flow", () => {
@@ -60,6 +68,12 @@ describe("forgot-password reset flow", () => {
     expect(forgot).toMatch(/attemptFirstFactor/);
     expect(forgot).toMatch(/setActive\(/);
     expect(forgot).toMatch(/type="password"/);
+  });
+
+  it("routes a Google-registered email to Google instead of a reset code", () => {
+    expect(forgot).toMatch(/strategy_for_user_invalid/);
+    expect(forgot).toMatch(/registered with Google/);
+    expect(forgot).toMatch(/isGoogleOnlyAccountError/);
   });
 });
 
