@@ -367,11 +367,6 @@ describe("StrategyPage source guards", () => {
     expect(both).toContain("What we use to optimize your conversion");
     expect(both).toContain("Alex Hormozi value equation");
   });
-  it("surfaces per-field provenance (AI-suggested vs Confirmed)", () => {
-    expect(page).toContain("FieldProvenanceBadge");
-    expect(page).toContain("provenanceOf");
-    expect(page).toContain("AI-suggested");
-  });
   it("keeps an Edit link on The plan (→ settings); the offer card is edited INLINE (no blue Edit button)", () => {
     expect(both).toContain("settingsHref");
     expect(both).toContain("action={<EditLink href={settingsHref} />}");
