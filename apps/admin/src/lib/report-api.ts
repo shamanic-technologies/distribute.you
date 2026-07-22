@@ -555,6 +555,63 @@ export async function fetchRankedOpportunitiesByBrand(
   )();
 }
 
+/** Per-request outlet metadata for the press-report status tables. A quote
+ *  PITCH carries no `mediaOutlet` (only `quoteRequestId`), so the Publication
+ *  column joins pitch → its originating quote request. Keyed by request id.
+ *  `mediaOutlet` is the outlet name; `pitchUrl` is the Featured/pitch URL (a
+ *  weak logo-domain fallback when the pitch has no published `featuredArticleUrl`).
+ *  Fail-soft: an empty map degrades the Publication column to "—" rather than
+ *  poisoning the 4h cache. */
+export interface QuoteRequestOutlet {
+  mediaOutlet: string | null;
+  pitchUrl: string | null;
+}
+
+export async function fetchQuoteRequestIndex(
+  orgId: string,
+  brandId: string,
+  limit = 500,
+): Promise<Record<string, QuoteRequestOutlet>> {
+  return unstable_cache(
+    async () => {
+      try {
+        const result = await adminGet<{
+          providerQuoteRequests: Array<{
+            id: string;
+            mediaOutlet: string | null;
+            pitchUrl: string | null;
+          }>;
+        }>(
+          "listQuoteRequests",
+          `/orgs/quote-requests?limit=${limit}`,
+          orgId,
+          { "x-brand-id": brandId },
+        );
+        const index: Record<string, QuoteRequestOutlet> = {};
+        for (const r of result.providerQuoteRequests ?? []) {
+          index[r.id] = { mediaOutlet: r.mediaOutlet, pitchUrl: r.pitchUrl };
+        }
+        return index;
+      } catch (err) {
+        console.error(
+          `[dashboard-report] fetchQuoteRequestIndex(${brandId}) failed:`,
+          err,
+        );
+        return {};
+      }
+    },
+    [`fetchQuoteRequestIndex`, orgId, brandId, String(limit)],
+    {
+      tags: [
+        `quote-requests:brand:${brandId}`,
+        `report:brand:${brandId}`,
+        `report:org:${orgId}`,
+      ],
+      revalidate: REPORT_REVALIDATE_SECONDS,
+    },
+  )();
+}
+
 export async function fetchWorkflows(orgId: string, featureSlug: string): Promise<Workflow[]> {
   return unstable_cache(
     async () => {

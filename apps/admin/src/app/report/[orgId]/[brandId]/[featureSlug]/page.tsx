@@ -22,8 +22,8 @@ export const revalidate = 14400;
 export const maxDuration = 300;
 
 // Features whose public report has no "Overview" surface — their primary
-// surface is an interactive HITL queue, not a stats funnel. The base route
-// redirects straight to the first entity (quote-requests). The whole
+// surface is the read-only status tracker, not a stats funnel. The base route
+// redirects straight to the first status tab (published). The whole
 // pr-expert-quote-* family qualifies (helper, not a hardcoded slug).
 
 interface PageProps {
@@ -34,7 +34,7 @@ export default async function OverviewPage({ params }: PageProps) {
   const { orgId, brandId, featureSlug } = await params;
 
   if (isExpertQuoteFeature(featureSlug)) {
-    redirect(`/report/${orgId}/${brandId}/${featureSlug}/quote-requests`);
+    redirect(`/report/${orgId}/${brandId}/${featureSlug}/published`);
   }
 
   return (

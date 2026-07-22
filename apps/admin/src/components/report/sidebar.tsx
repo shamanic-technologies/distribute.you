@@ -4,13 +4,17 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
+import { PITCH_STATUS_TABS, type PitchStatusTab } from "@/lib/report-pitch-tabs";
 
 interface SidebarItem {
   id: string;
   label: string;
   href: string;
   icon: ReactNode;
+  count?: number;
 }
+
+export type PitchTabCounts = Record<PitchStatusTab["slug"], number>;
 
 const OverviewIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
@@ -30,58 +34,38 @@ const WorkflowsIcon = () => (
   </svg>
 );
 
-// Quote requests (the HITL queue) — mirrors the campaign entity icon `quote`.
+// One shared icon for every pitch-status tab (Published / Selected / In Review
+// / Pitched) — the count badge carries the distinction, not the glyph.
 const QuotesIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h3v6H7zM7 13c0 2 1 3 3 3M14 7h3v6h-3zM14 13c0 2 1 3 3 3" />
   </svg>
 );
 
-// Pitches — mirrors the campaign entity icon `message-square`.
-const PitchIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-  </svg>
-);
-
-// Prompt — mirrors the campaign Settings `Prompt` button icon.
-const PromptIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m-6 4h6m-3 8l-4-4H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-3 3z" />
-  </svg>
-);
-
 interface ReportSidebarProps {
   basePath: string;
   featureSlug: string;
+  /** Per-tab pitch counts for the PR-Expert status sidebar (badges). */
+  counts?: PitchTabCounts;
 }
 
-function buildItems(basePath: string, featureSlug: string): SidebarItem[] {
+function buildItems(
+  basePath: string,
+  featureSlug: string,
+  counts?: PitchTabCounts,
+): SidebarItem[] {
   if (isExpertQuoteFeature(featureSlug)) {
-    // Mirror the campaign sidebar exactly: the two Outcome entities
-    // (quote-requests, quote-pitches) + the Prompt surface. No Overview —
-    // this feature has no stats funnel; the base path redirects to the first
-    // entity (see the report root page).
-    return [
-      {
-        id: "quote-requests",
-        label: "Quote requests",
-        href: `${basePath}/quote-requests`,
-        icon: <QuotesIcon />,
-      },
-      {
-        id: "quote-pitches",
-        label: "Pitches",
-        href: `${basePath}/quote-pitches`,
-        icon: <PitchIcon />,
-      },
-      {
-        id: "prompt",
-        label: "Prompt",
-        href: `${basePath}/prompt`,
-        icon: <PromptIcon />,
-      },
-    ];
+    // Read-only press-tracker: one tab per pitch-placement stage
+    // (Published / Selected / In Review / Pitched), each with its count. No
+    // Overview and no write surface — the base path redirects to the first
+    // tab (see the report root page).
+    return PITCH_STATUS_TABS.map((tab) => ({
+      id: tab.slug,
+      label: tab.label,
+      href: `${basePath}/${tab.slug}`,
+      icon: <QuotesIcon />,
+      count: counts?.[tab.slug],
+    }));
   }
   // Default — Sales Cold Email Outreach layout (and any future slug that
   // matches the leads-+-workflows shape).
@@ -92,9 +76,9 @@ function buildItems(basePath: string, featureSlug: string): SidebarItem[] {
   ];
 }
 
-export function ReportSidebar({ basePath, featureSlug }: ReportSidebarProps) {
+export function ReportSidebar({ basePath, featureSlug, counts }: ReportSidebarProps) {
   const pathname = usePathname();
-  const items = buildItems(basePath, featureSlug);
+  const items = buildItems(basePath, featureSlug, counts);
 
   return (
     <aside className="w-44 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
@@ -154,6 +138,15 @@ function LinkBody({ item, isActive }: { item: SidebarItem; isActive: boolean }) 
         {pending ? <Spinner /> : item.icon}
       </span>
       <span className="flex-1">{item.label}</span>
+      {item.count != null && (
+        <span
+          className={`ml-auto text-xs font-medium tabular-nums px-1.5 py-0.5 rounded-full ${
+            isActive ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"
+          }`}
+        >
+          {item.count}
+        </span>
+      )}
     </>
   );
 }
