@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ReportSidebar } from "./sidebar";
+import { ReportSidebar, type PitchTabCounts } from "./sidebar";
 
 interface MobileNavProps {
   basePath: string;
   featureSlug: string;
+  counts?: PitchTabCounts;
 }
 
-export function MobileNav({ basePath, featureSlug }: MobileNavProps) {
+export function MobileNav({ basePath, featureSlug, counts }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -58,7 +59,7 @@ export function MobileNav({ basePath, featureSlug }: MobileNavProps) {
         <div
           className={`relative h-full w-44 transform transition-transform duration-200 ease-out ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
-          <ReportSidebar basePath={basePath} featureSlug={featureSlug} />
+          <ReportSidebar basePath={basePath} featureSlug={featureSlug} counts={counts} />
         </div>
       </div>
     </>
