@@ -60,6 +60,7 @@ export interface GoalStep {
     | "signups"
     | "sales_meetings"
     | "form_submissions"
+    | "website_purchase"
     | "sales";
   /** User-facing step label. */
   label: string;
@@ -161,10 +162,27 @@ const FORM_OUTCOME: GoalStep = {
     dateField: "formSubmissionAt",
   },
 };
-// The terminal SALE outcome — shared by BOTH the website_purchase goal (multi-step
-// close) and the combined sales goal (paying client via either path). The wire spend
-// block serves salesCount + cpSaleCents (features-service combined-sales slice); the
-// per-lead boolean/timestamp keep their wire names `purchased`/`purchasedAt`.
+// The website_purchase terminal outcome — SAME wire fields as the combined-sales SALE
+// outcome (salesCount + cpSaleCents, per-lead `purchased`/`purchasedAt`) but its OWN
+// user-facing labels: "Website purchase" / "Cost per purchase". Distinct from the
+// combined `sales` goal (which keeps "Sales"/"CP Sale") per CLAUDE.md #2921 — the two
+// goals are different concepts, so their stat-card boxes must not both read "Sales".
+const PURCHASE_OUTCOME: GoalStep = {
+  key: "website_purchase",
+  label: "Website purchase",
+  color: "#7c3aed",
+  outcome: {
+    countField: "salesCount",
+    costField: "cpSaleCents",
+    costLabel: "Cost per purchase",
+    tab: "sales",
+    leadField: "purchased",
+    dateField: "purchasedAt",
+  },
+};
+// The terminal SALE outcome — the combined sales goal (paying client via either path).
+// The wire spend block serves salesCount + cpSaleCents (features-service combined-sales
+// slice); the per-lead boolean/timestamp keep their wire names `purchased`/`purchasedAt`.
 const SALE_OUTCOME: GoalStep = {
   key: "sales",
   label: "Sales",
@@ -191,8 +209,8 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
     case "form_submissions":
       return [OUTREACH_STEP, VISITS_STEP, FORM_OUTCOME];
     case "website_purchase":
-      // Multi-step self-serve close: visit → sale.
-      return [OUTREACH_STEP, VISITS_STEP, SALE_OUTCOME];
+      // Multi-step self-serve close: visit → purchase.
+      return [OUTREACH_STEP, VISITS_STEP, PURCHASE_OUTCOME];
     case "sales":
       // Combined goal: a sale via EITHER the visit OR the reply path.
       return [OUTREACH_STEP, VISITS_STEP, REPLIES_STEP, SALE_OUTCOME];
@@ -236,7 +254,7 @@ export function goalChartMetricKeys(goal: BrandOptimizationGoal): ChartMetricKey
  * repliedPositive) are NEVER tracker-dependent.
  */
 export const TRACKER_DEPENDENT_CHART_KEYS: ReadonlySet<ChartMetricKey> = new Set(
-  [SIGNUPS_OUTCOME, MEETINGS_OUTCOME, FORM_OUTCOME, SALE_OUTCOME]
+  [SIGNUPS_OUTCOME, MEETINGS_OUTCOME, FORM_OUTCOME, PURCHASE_OUTCOME, SALE_OUTCOME]
     .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
     .map((s) => s.chartKey),
 );

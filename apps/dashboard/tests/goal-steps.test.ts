@@ -102,13 +102,18 @@ describe("goal-steps: stat-card outcome step", () => {
       costLabel: "CPFS",
     });
   });
-  it("website_purchase + sales bind the SALE aggregate count/cost", () => {
+  it("website_purchase + sales bind the SALE aggregate count/cost, distinct labels", () => {
     for (const goal of ["website_purchase", "sales"] as const) {
       const step = goalOutcomeStep(goal);
-      expect(step?.label).toBe("Sales");
       expect(step?.outcome?.countField).toBe("salesCount");
       expect(step?.outcome?.costField).toBe("cpSaleCents");
     }
+    // Same wire fields, but the two goals carry DIFFERENT user-facing labels
+    // (website_purchase must not read "Sales" — CLAUDE.md #2921).
+    expect(goalOutcomeStep("website_purchase")?.label).toBe("Website purchase");
+    expect(goalOutcomeStep("website_purchase")?.outcome?.costLabel).toBe("Cost per purchase");
+    expect(goalOutcomeStep("sales")?.label).toBe("Sales");
+    expect(goalOutcomeStep("sales")?.outcome?.costLabel).toBe("CP Sale");
   });
 });
 
@@ -138,7 +143,7 @@ describe("goal-steps: realized-outcome Leads tab (per-lead #476)", () => {
     });
     expect(goalOutcomeTab("website_purchase")).toEqual({
       tab: "sales",
-      label: "Sales",
+      label: "Website purchase",
       leadField: "purchased",
       dateField: "purchasedAt",
     });
