@@ -187,9 +187,12 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
     expect(statusViewContent).toContain("Updated");
   });
 
-  it("renders the Publication logo via ProviderLogo keyed on a URL-derived domain", () => {
+  it("renders the Publication logo via ProviderLogo keyed on the outlet domain (never the pitchUrl)", () => {
     expect(statusViewContent).toContain("ProviderLogo");
-    expect(statusViewContent).toContain("domainFromUrl");
+    expect(statusViewContent).toContain("toDomain");
+    // The connectively.us platform link must never feed the logo (it would put
+    // the same Connectively logo on every row).
+    expect(statusViewContent).not.toContain("outletPitchUrl");
   });
 
   it("never fabricates DR / Attribution — they render placeholders until the backend enriches", () => {
