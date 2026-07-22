@@ -17,6 +17,20 @@ function clerkErrorMessage(err: unknown): string {
   );
 }
 
+// A Google-OAuth account has no password factor, so `reset_password_email_code`
+// is not a valid strategy for it — Clerk returns `strategy_for_user_invalid`.
+// There is nothing to reset; route the user back to Google sign-in.
+function isGoogleOnlyAccountError(err: unknown): boolean {
+  const e = err as {
+    errors?: Array<{ code?: string; message?: string }>;
+  };
+  const first = e?.errors?.[0];
+  return (
+    first?.code === "strategy_for_user_invalid" ||
+    /verification strategy is not valid/i.test(first?.message ?? "")
+  );
+}
+
 export default function ForgotPasswordPage() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { isSignedIn } = useAuth();
@@ -51,7 +65,13 @@ export default function ForgotPasswordPage() {
     } catch (err) {
       posthog.capture("password_reset_failed", { stage: "request" });
       console.error("Password reset request error:", err);
-      setError(clerkErrorMessage(err));
+      if (isGoogleOnlyAccountError(err)) {
+        setError(
+          "This email is registered with Google. Go back and sign in with Google instead."
+        );
+      } else {
+        setError(clerkErrorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }

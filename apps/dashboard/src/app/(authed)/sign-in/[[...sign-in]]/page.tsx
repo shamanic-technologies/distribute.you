@@ -18,6 +18,21 @@ function clerkErrorMessage(err: unknown): string {
   );
 }
 
+// Clerk returns `strategy_for_user_invalid` ("The verification strategy is not
+// valid for this account") when the identified account has no password factor —
+// i.e. it was created via Google OAuth. This instance only offers Google +
+// email/password, so a password-less account is always a Google account.
+function isGoogleOnlyAccountError(err: unknown): boolean {
+  const e = err as {
+    errors?: Array<{ code?: string; message?: string }>;
+  };
+  const first = e?.errors?.[0];
+  return (
+    first?.code === "strategy_for_user_invalid" ||
+    /verification strategy is not valid/i.test(first?.message ?? "")
+  );
+}
+
 export default function SignInPage() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { isSignedIn } = useAuth();
@@ -96,7 +111,13 @@ export default function SignInPage() {
     } catch (err) {
       posthog.capture("signin_email_failed");
       console.error("Email sign in error:", err);
-      setError(clerkErrorMessage(err));
+      if (isGoogleOnlyAccountError(err)) {
+        setError(
+          'This email is registered with Google. Use "Continue with Google" above.'
+        );
+      } else {
+        setError(clerkErrorMessage(err));
+      }
     } finally {
       setSubmitting(false);
     }
