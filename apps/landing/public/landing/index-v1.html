@@ -910,6 +910,22 @@
     .ticker-legend b{color:var(--muted);font-weight:500}
     @media(max-width:860px){.ticker-board{grid-template-columns:1fr 1fr}}
     @media(max-width:520px){.ticker-board{grid-template-columns:1fr}}
+    .s-testimonials{padding:12px 0 6px}
+    .tm-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:38px}
+    .tm-card{display:flex;flex-direction:column;padding:26px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow)}
+    .tm-stars{color:var(--amber);font-size:14px;letter-spacing:3px;line-height:1}
+    .tm-quote{margin:15px 0 22px;color:var(--text);font-size:16.5px;line-height:1.72;font-weight:450}
+    .tm-foot{margin-top:auto;display:flex;align-items:center;gap:13px}
+    .tm-av{width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid var(--line)}
+    .tm-id{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .tm-name{font-weight:600;font-size:15px;color:var(--text)}
+    .tm-role{font-size:12.5px;color:var(--muted)}
+    .tm-meta{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right}
+    .tm-roi{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--green);background:var(--green-dim);border:1px solid var(--green-line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+    .tm-link{display:inline-flex;align-items:center;text-decoration:none;opacity:.75;transition:opacity .15s}
+    .tm-link:hover{opacity:1}
+    .tm-logo{height:19px;width:auto;display:block}
+    @media(max-width:760px){.tm-grid{grid-template-columns:1fr}}
 </style>
 
   <script type="application/ld+json">
@@ -1157,6 +1173,48 @@
             <p>distribute.you runs the outreach and classifies incoming replies. Interested prospects reach you with the contact and conversation context attached.</p>
             <div class="step-note">You step in when a human conversation matters.</div>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="testimonials" class="s-testimonials">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">What clients say</div>
+          <h2>Results people <span class="accent">stake their name on</span>.</h2>
+        </div>
+        <div class="tm-grid">
+
+          <article class="tm-card">
+            <div class="tm-stars" aria-label="Rated 5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote class="tm-quote">"Kevin is a very intelligent person with insights on how to expand and grow a business. I am happy to work with an ethical and hard working individual who brings results. Highly recommended!"</blockquote>
+            <div class="tm-foot">
+              <img class="tm-av" src="testimonials/ryan-parenti.jpg" width="52" height="52" alt="Ryan W.D. Parenti" loading="lazy">
+              <div class="tm-id">
+                <span class="tm-name">Ryan W.D. Parenti</span>
+                <span class="tm-role">Founder, Doc Dinners</span>
+              </div>
+              <div class="tm-meta">
+                <span class="tm-roi">10.6&times; ROI</span>
+                <a class="tm-link" href="https://docdinners.com/" target="_blank" rel="noopener" aria-label="Doc Dinners">
+                  <img class="tm-logo" src="testimonials/docdinners-logo.webp" height="19" alt="Doc Dinners" loading="lazy">
+                </a>
+              </div>
+            </div>
+          </article>
+
+          <article class="tm-card">
+            <div class="tm-stars" aria-label="Rated 5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote class="tm-quote">"This platform is incredible! Excellent click-through rate... I can literally see everything at a glance... Seriously, amazing work here, this is next-level!"</blockquote>
+            <div class="tm-foot">
+              <img class="tm-av" src="testimonials/katherine-fleishman.jpeg" width="52" height="52" alt="Katherine Fleishman" loading="lazy">
+              <div class="tm-id">
+                <span class="tm-name">Katherine Fleishman</span>
+                <span class="tm-role">PR expert, 20+ years experience</span>
+              </div>
+            </div>
+          </article>
+
         </div>
       </div>
     </section>
