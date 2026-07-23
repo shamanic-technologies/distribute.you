@@ -185,6 +185,14 @@ export default function RootLayout({
             __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YJHNGLEJPP');gtag('config','AW-18233267088');`,
           }}
         />
+        {/* Ahrefs Web Analytics — first-party page-view + traffic tracking
+            (data-key = the distribute.you Ahrefs project). Mirrors
+            static-html.ts analyticsHead(). */}
+        <script
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="6jqRRazbkHBZRDiWAmampA"
+          async
+        />
         {/* Partnero affiliate program KHV3KEHI — loader (records the referral
             click + keeps the partner key in the partnero_partner cookie) +
             via-forward (carries the key to dashboard.distribute.you, a different
