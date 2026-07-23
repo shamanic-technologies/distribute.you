@@ -13,6 +13,7 @@ import {
 import type { QuotePitch } from "@/lib/api";
 import {
   type PitchStatusTab,
+  pitchStatusLabel,
   pitchesForTab,
   pitchTimestamp,
   toDomain,
@@ -53,6 +54,7 @@ function buildRow(
     drLabel: dr != null ? String(dr) : "—",
     drValue: dr,
     attributionLabel: attributionLabel(pitch.backlinkAttribution),
+    statusLabel: pitchStatusLabel(pitch.status),
     timestampIso: pitchTimestamp(pitch, tabSlug),
     // Answer (pitch draft) is already on the wire → instant. The question is
     // fetched on click by this id (kept out of the page-load path).
@@ -81,12 +83,16 @@ export async function PitchStatusView({
     buildRow(p, requestIndex[p.quoteRequestId], tab.slug),
   );
 
+  const showStatus = tab.slug === "all";
   const csvColumns: CsvColumn<PitchRow>[] = [
     { label: "Publication", value: (r) => r.publicationName },
     { label: "Article", value: (r) => r.articleTitle ?? "" },
     { label: "Article URL", value: (r) => r.articleUrl ?? "" },
     { label: "DR", value: (r) => r.drLabel },
     { label: "Attribution", value: (r) => r.attributionLabel },
+    ...(showStatus
+      ? [{ label: "Status", value: (r: PitchRow) => r.statusLabel ?? "" }]
+      : []),
     { label: tab.dateLabel, value: (r) => r.timestampIso ?? "" },
   ];
 
@@ -111,6 +117,7 @@ export async function PitchStatusView({
             rows={rows}
             dateLabel={tab.dateLabel}
             detailBase={`/api/report/${orgId}/${brandId}/${featureSlug}/quote-request`}
+            showStatus={showStatus}
           />
         )}
       </SectionCard>

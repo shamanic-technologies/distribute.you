@@ -16,6 +16,9 @@ export interface PitchRow {
   drLabel: string;
   drValue: number | null;
   attributionLabel: string;
+  /** Current funnel-stage label (In Review / Selected / Published). Only
+   *  rendered on the "All" tab (via `showStatus`); null elsewhere. */
+  statusLabel: string | null;
   timestampIso: string | null;
   // Detail panel: the answer (pitch draft) is already loaded so it shows
   // instantly; the question + journalist/category/deadline are fetched ON
@@ -24,7 +27,7 @@ export interface PitchRow {
   quoteRequestId: string | null;
 }
 
-type SortKey = "publication" | "article" | "dr" | "attribution" | "date";
+type SortKey = "publication" | "article" | "dr" | "attribution" | "status" | "date";
 type SortDir = "asc" | "desc";
 
 function compare(a: PitchRow, b: PitchRow, key: SortKey): number {
@@ -38,6 +41,8 @@ function compare(a: PitchRow, b: PitchRow, key: SortKey): number {
       return (a.drValue ?? -1) - (b.drValue ?? -1);
     case "attribution":
       return a.attributionLabel.localeCompare(b.attributionLabel);
+    case "status":
+      return (a.statusLabel ?? "").localeCompare(b.statusLabel ?? "");
     case "date": {
       const tA = a.timestampIso ? new Date(a.timestampIso).getTime() : 0;
       const tB = b.timestampIso ? new Date(b.timestampIso).getTime() : 0;
@@ -50,12 +55,15 @@ export function SortablePitchTable({
   rows,
   dateLabel,
   detailBase,
+  showStatus = false,
 }: {
   rows: PitchRow[];
   dateLabel: string;
   /** `/api/report/{orgId}/{brandId}/{featureSlug}/quote-request` — the panel
    *  appends `/{quoteRequestId}` to fetch the question on demand. */
   detailBase: string;
+  /** Render the extra Status column (the "All" tab). */
+  showStatus?: boolean;
 }) {
   // Default: DR desc (a present DR outranks an absent one), then most-recent.
   const [sortKey, setSortKey] = useState<SortKey>("dr");
@@ -68,6 +76,7 @@ export function SortablePitchTable({
     { key: "article", label: "Article" },
     { key: "dr", label: "DR" },
     { key: "attribution", label: "Attribution" },
+    ...(showStatus ? [{ key: "status" as const, label: "Status" }] : []),
     { key: "date", label: dateLabel },
   ];
 
@@ -165,6 +174,11 @@ export function SortablePitchTable({
               <td className="px-4 py-3.5 whitespace-nowrap">
                 <AttributionBadge label={row.attributionLabel} />
               </td>
+              {showStatus && (
+                <td className="px-4 py-3.5 whitespace-nowrap">
+                  <StatusBadge label={row.statusLabel} />
+                </td>
+              )}
               <td className="px-4 py-3.5 whitespace-nowrap text-gray-500">
                 {timeAgo(row.timestampIso)}
               </td>
@@ -383,6 +397,26 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
+}
+
+// Funnel-stage badge for the "All" tab's Status column. Colors echo the tab
+// glyphs' meaning: Published = live (green), Selected = picked (brand), In
+// Review = awaiting (amber). Any other value renders neutral.
+function StatusBadge({ label }: { label: string | null }) {
+  if (!label) return <span className="text-sm text-gray-400">—</span>;
+  const style =
+    label === "Published"
+      ? "bg-green-100 text-green-700 border-green-200"
+      : label === "Selected"
+        ? "bg-brand-50 text-brand-700 border-brand-200"
+        : label === "In Review"
+          ? "bg-amber-100 text-amber-700 border-amber-200"
+          : "bg-gray-100 text-gray-600 border-gray-200";
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full border ${style}`}>
+      {label}
+    </span>
+  );
 }
 
 function AttributionBadge({ label }: { label: string }) {

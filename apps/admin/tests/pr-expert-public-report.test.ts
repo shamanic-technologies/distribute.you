@@ -67,15 +67,17 @@ describe("Sidebar — Report link enabled for pr-expert-quote-opportunities", ()
 });
 
 describe("report-pitch-tabs — read-only status tab model", () => {
-  it("declares exactly the 4 tabs Published / Selected / In Review / Pitched", () => {
+  it("declares the 5 tabs Published / Selected / In Review / Pitched / All", () => {
     expect(tabsLibContent).toContain('slug: "published"');
     expect(tabsLibContent).toContain('slug: "selected"');
     expect(tabsLibContent).toContain('slug: "in-review"');
     expect(tabsLibContent).toContain('slug: "pitched"');
+    expect(tabsLibContent).toContain('slug: "all"');
     expect(tabsLibContent).toContain('label: "Published"');
     expect(tabsLibContent).toContain('label: "Selected"');
     expect(tabsLibContent).toContain('label: "In Review"');
     expect(tabsLibContent).toContain('label: "Pitched"');
+    expect(tabsLibContent).toContain('label: "All"');
   });
 
   it("maps tabs: In Review←submitted, Pitched←all-sent (cumulative); drafted hidden", () => {

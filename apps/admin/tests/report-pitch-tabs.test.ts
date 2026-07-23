@@ -4,6 +4,7 @@ import {
   tabForSlug,
   pitchesForTab,
   countsByTab,
+  pitchStatusLabel,
   toDomain,
   timeAgo,
 } from "../src/lib/report-pitch-tabs";
@@ -54,17 +55,27 @@ describe("PITCH_STATUS_TABS — status mapping", () => {
     ]);
   });
 
-  it("has exactly 4 tabs in reverse-funnel order with a dateLabel each", () => {
+  it("All = every sent pitch (same set as Pitched)", () => {
+    expect(tabForSlug("all")?.statuses).toEqual([
+      "submitted",
+      "selected",
+      "published",
+    ]);
+  });
+
+  it("has exactly 5 tabs in reverse-funnel order (All last) with a dateLabel each", () => {
     expect(PITCH_STATUS_TABS.map((t) => t.slug)).toEqual([
       "published",
       "selected",
       "in-review",
       "pitched",
+      "all",
     ]);
     expect(PITCH_STATUS_TABS.map((t) => t.dateLabel)).toEqual([
       "Published",
       "Selected",
       "Submitted",
+      "Pitched",
       "Pitched",
     ]);
   });
@@ -89,9 +100,18 @@ describe("countsByTab / pitchesForTab", () => {
       selected: 0,
       "in-review": 2,
       pitched: 3, // 2 submitted + 0 selected + 1 published
+      all: 3, // same set as Pitched
     });
     expect(pitchesForTab(pitches, tabForSlug("in-review")!)).toHaveLength(2);
     expect(pitchesForTab(pitches, tabForSlug("pitched")!)).toHaveLength(3);
+  });
+});
+
+describe("pitchStatusLabel — All-tab Status column", () => {
+  it("maps the wire status onto the funnel-stage vocabulary", () => {
+    expect(pitchStatusLabel("submitted")).toBe("In Review");
+    expect(pitchStatusLabel("selected")).toBe("Selected");
+    expect(pitchStatusLabel("published")).toBe("Published");
   });
 });
 
