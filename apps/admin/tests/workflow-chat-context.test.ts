@@ -33,10 +33,21 @@ describe("Workflow viewer page — chat context", () => {
 
   it("should not put featureSlug in the workflow object (it belongs to feature)", () => {
     // featureSlug should not appear inside the workflow context object
-    const workflowBlock = content.match(/workflow:\s*\{[\s\S]*?\},\s*dag:/);
+    const workflowBlock = content.match(/workflow:\s*\{[\s\S]*?\},\s*summary:/);
     if (workflowBlock) {
       expect(workflowBlock[0]).not.toContain("featureSlug");
     }
+  });
+
+  it("should NOT inline the full DAG in context (too large for the 100KB gateway)", () => {
+    // The DAG for a large workflow serializes to >300KB and blew the api-service
+    // 100KB JSON body limit → PayloadTooLargeError on every chat message. The model
+    // reads the DAG on demand via the get_workflow_details tool instead.
+    expect(content).not.toContain("dag: workflow.dag");
+  });
+
+  it("should tell the model to fetch the DAG via get_workflow_details", () => {
+    expect(content).toContain("get_workflow_details");
   });
 
   it("should instruct the LLM NOT to ask which workflow the user means", () => {
