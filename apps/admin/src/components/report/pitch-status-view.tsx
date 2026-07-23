@@ -54,13 +54,10 @@ function buildRow(
     drValue: dr,
     attributionLabel: attributionLabel(pitch.backlinkAttribution),
     timestampIso: pitchTimestamp(pitch, tabSlug),
-    // Detail-panel: the journalist's question (quote request) + our submitted
-    // answer (the pitch draft).
-    question: request?.question ?? null,
+    // Answer (pitch draft) is already on the wire → instant. The question is
+    // fetched on click by this id (kept out of the page-load path).
     answer: pitch.draft ?? null,
-    journalistName: request?.journalistName ?? null,
-    category: request?.category ?? null,
-    deadlineIso: request?.deadline ?? null,
+    quoteRequestId: pitch.quoteRequestId ?? null,
   };
 }
 
@@ -110,7 +107,11 @@ export async function PitchStatusView({
         {rows.length === 0 ? (
           <EmptyState message={`No quotes at the "${tab.label}" stage yet.`} />
         ) : (
-          <SortablePitchTable rows={rows} dateLabel={tab.dateLabel} />
+          <SortablePitchTable
+            rows={rows}
+            dateLabel={tab.dateLabel}
+            detailBase={`/api/report/${orgId}/${brandId}/${featureSlug}/quote-request`}
+          />
         )}
       </SectionCard>
     </div>

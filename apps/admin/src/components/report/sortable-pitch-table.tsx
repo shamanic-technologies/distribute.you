@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
 import { timeAgo } from "@/lib/report-pitch-tabs";
 
@@ -17,12 +17,11 @@ export interface PitchRow {
   drValue: number | null;
   attributionLabel: string;
   timestampIso: string | null;
-  // Detail-panel fields (shown when the row is clicked).
-  question: string | null;
+  // Detail panel: the answer (pitch draft) is already loaded so it shows
+  // instantly; the question + journalist/category/deadline are fetched ON
+  // DEMAND by `quoteRequestId` when the row is clicked (keeps page load fast).
   answer: string | null;
-  journalistName: string | null;
-  category: string | null;
-  deadlineIso: string | null;
+  quoteRequestId: string | null;
 }
 
 type SortKey = "publication" | "article" | "dr" | "attribution" | "date";
@@ -50,9 +49,13 @@ function compare(a: PitchRow, b: PitchRow, key: SortKey): number {
 export function SortablePitchTable({
   rows,
   dateLabel,
+  detailBase,
 }: {
   rows: PitchRow[];
   dateLabel: string;
+  /** `/api/report/{orgId}/{brandId}/{featureSlug}/quote-request` — the panel
+   *  appends `/{quoteRequestId}` to fetch the question on demand. */
+  detailBase: string;
 }) {
   // Default: DR desc (a present DR outranks an absent one), then most-recent.
   const [sortKey, setSortKey] = useState<SortKey>("dr");
@@ -173,26 +176,75 @@ export function SortablePitchTable({
       <PitchDetailPanel
         row={selected}
         dateLabel={dateLabel}
+        detailBase={detailBase}
         onClose={() => setSelectedId(null)}
       />
     </div>
   );
 }
 
+interface QuestionDetail {
+  question: string | null;
+  journalistName: string | null;
+  category: string | null;
+  deadline: string | null;
+}
+
 // Slide-over detail panel: the journalist's QUESTION (the quote request) + the
-// ANSWER we submitted (the pitch draft). Read-only. All text is rendered as
-// escaped plain text with `whitespace-pre-wrap` — never dangerouslySetInnerHTML
-// — so a pitch/question body can't inject markup (XSS-safe by construction).
+// ANSWER we submitted (the pitch draft). The answer is already loaded so it
+// shows instantly; the question is fetched ON DEMAND when the panel opens (so
+// the heavy question body never slows the page load). Read-only. All text is
+// rendered as escaped plain text with `whitespace-pre-wrap` — never
+// dangerouslySetInnerHTML — so a body can't inject markup (XSS-safe).
 function PitchDetailPanel({
   row,
   dateLabel,
+  detailBase,
   onClose,
 }: {
   row: PitchRow | null;
   dateLabel: string;
+  detailBase: string;
   onClose: () => void;
 }) {
   const open = row !== null;
+  const [detail, setDetail] = useState<QuestionDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errored, setErrored] = useState(false);
+  // Cache resolved details per quote-request so re-opening a row is instant.
+  const cacheRef = useRef<Map<string, QuestionDetail>>(new Map());
+
+  const requestId = row?.quoteRequestId ?? null;
+  useEffect(() => {
+    setErrored(false);
+    if (!requestId) {
+      setDetail(null);
+      setLoading(false);
+      return;
+    }
+    const cached = cacheRef.current.get(requestId);
+    if (cached) {
+      setDetail(cached);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setDetail(null);
+    fetch(`${detailBase}/${requestId}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d: QuestionDetail) => {
+        if (cancelled) return;
+        cacheRef.current.set(requestId, d);
+        setDetail(d);
+      })
+      .catch(() => !cancelled && setErrored(true))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId, detailBase]);
+
   return (
     <>
       {/* Scrim */}
@@ -242,29 +294,41 @@ function PitchDetailPanel({
             </header>
 
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
-              {/* Meta chips */}
+              {/* Meta chips (journalist / category / deadline load with the question) */}
               <div className="flex flex-wrap gap-2">
-                {row.journalistName && <MetaChip label="Journalist" value={row.journalistName} />}
-                {row.category && <MetaChip label="Category" value={row.category} />}
-                {row.deadlineIso && (
-                  <MetaChip label="Deadline" value={formatDate(row.deadlineIso)} />
+                {detail?.journalistName && (
+                  <MetaChip label="Journalist" value={detail.journalistName} />
+                )}
+                {detail?.category && <MetaChip label="Category" value={detail.category} />}
+                {detail?.deadline && (
+                  <MetaChip label="Deadline" value={formatDate(detail.deadline)} />
                 )}
                 <AttributionBadge label={row.attributionLabel} />
               </div>
 
-              {/* Question */}
+              {/* Question — fetched on demand */}
               <section>
                 <SectionLabel>Question asked</SectionLabel>
-                {row.question ? (
+                {loading ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="h-3.5 w-3/4 rounded bg-gray-100 animate-pulse" />
+                    <div className="h-3.5 w-full rounded bg-gray-100 animate-pulse" />
+                    <div className="h-3.5 w-2/3 rounded bg-gray-100 animate-pulse" />
+                  </div>
+                ) : errored ? (
+                  <p className="mt-2 text-sm text-gray-400">
+                    Couldn&apos;t load the question — reopen to retry.
+                  </p>
+                ) : detail?.question ? (
                   <blockquote className="mt-2 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap break-words leading-relaxed">
-                    {row.question}
+                    {detail.question}
                   </blockquote>
                 ) : (
                   <p className="mt-2 text-sm text-gray-400">Not available</p>
                 )}
               </section>
 
-              {/* Answer */}
+              {/* Answer — already loaded, instant */}
               <section>
                 <SectionLabel>Answer submitted</SectionLabel>
                 {row.answer ? (
