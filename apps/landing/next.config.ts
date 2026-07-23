@@ -24,9 +24,6 @@ const nextConfig: NextConfig = {
       { source: "/performance/brands", destination: "/performance", permanent: true },
       { source: "/performance/models", destination: "/performance", permanent: true },
       { source: "/performance/prompts", destination: "/performance", permanent: true },
-      // Old per-feature /benchmarks pages collapsed into /performance.
-      { source: "/benchmarks", destination: "/performance", permanent: true },
-      { source: "/benchmarks/:slug*", destination: "/performance", permanent: true },
       { source: "/sign-in", destination: "https://dashboard.distribute.you/sign-in", permanent: false },
       { source: "/sign-up", destination: "https://dashboard.distribute.you/sign-up", permanent: false },
     ];
