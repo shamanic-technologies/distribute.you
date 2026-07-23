@@ -12,24 +12,34 @@ import {
   timeAgo,
 } from "@/lib/report-pitch-tabs";
 
-// One row of the read-only press tracker. Publication + Article + Timestamp
-// come from real backend data (pitch + its originating quote request). DR and
-// Attribution are placeholders — the quote-pitch record does NOT yet carry a
-// domain rating or the published backlink's dofollow/nofollow attribution
-// (journalists-quotes-service follow-up). They render "—" / "Unknown" and are
-// NEVER fabricated client-side; the columns auto-populate once the backend
-// enriches the pitch.
+// One row of the read-only press tracker. Every column now comes from real
+// backend data: Publication (pitch's originating quote request, or the pitch's
+// own `publicationSource` when the request join misses), Article (title/url),
+// DR (`outletDomainRating`), Attribution (`backlinkAttribution` dofollow/
+// nofollow), Timestamp (`publishedAt`). Values are NEVER fabricated client-
+// side — a genuinely-absent field renders "—" / "Unknown".
 interface PitchRow {
   id: string;
   publicationName: string;
   logoDomain: string | null;
   articleUrl: string | null;
+  articleTitle: string | null;
   drLabel: string;
+  drValue: number | null;
   attributionLabel: string;
   timestampIso: string | null;
 }
 
 const COLUMN_LABELS = ["Publication", "Article", "DR", "Attribution", "Updated"];
+
+// Normalise the wire `backlinkAttribution` (e.g. "DoFollow" / "NoFollow" /
+// "Unknown" / null) to the badge's display label, case-insensitively.
+function attributionLabel(raw: string | null | undefined): string {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (v === "dofollow" || v === "do follow") return "Do follow";
+  if (v === "nofollow" || v === "no follow") return "No follow";
+  return "Unknown";
+}
 
 function buildRow(
   pitch: QuotePitch,
@@ -40,17 +50,20 @@ function buildRow(
   // → use it directly for the logo. Fall back to the published article's host.
   // NEVER the pitchUrl (a connectively.us platform link = same logo everywhere).
   const logoDomain = toDomain(outletName) ?? toDomain(pitch.featuredArticleUrl);
+  // Publication name: the joined quote-request outlet, else the pitch's own
+  // `publicationSource` (the placement outlet name from Connectively) so a
+  // request-join miss still shows the outlet instead of "—".
+  const publicationName = outletName ?? pitch.publicationSource ?? "—";
+  const dr = pitch.outletDomainRating ?? null;
   return {
     id: pitch.id,
-    publicationName: outletName ?? "—",
+    publicationName,
     logoDomain,
     articleUrl: pitch.featuredArticleUrl,
-    // DR lives in ahref keyed by the outlet domain; the pitch does not carry
-    // it yet. Placeholder — sorting falls back to recency until it lands.
-    drLabel: "—",
-    // Backlink attribution (dofollow/nofollow) requires inspecting the
-    // published article; not on the wire yet.
-    attributionLabel: "Unknown",
+    articleTitle: pitch.articleTitle ?? null,
+    drLabel: dr != null ? String(dr) : "—",
+    drValue: dr,
+    attributionLabel: attributionLabel(pitch.backlinkAttribution),
     timestampIso: pitchTimestamp(pitch, tabSlug),
   };
 }
@@ -76,12 +89,10 @@ export async function PitchStatusView({
       const outlet = requestIndex[p.quoteRequestId];
       return buildRow(p, outlet?.mediaOutlet ?? null, tab.slug);
     })
-    // Sort by DR desc (all "—" today → equal), then most-recent first. DR is a
-    // string placeholder now; numeric DR sorting activates once the backend
-    // supplies the value (this comparator already puts a present DR first).
+    // Sort by DR desc (a present DR outranks an absent one), then most-recent.
     .sort((a, b) => {
-      const drA = a.drLabel === "—" ? -1 : Number(a.drLabel);
-      const drB = b.drLabel === "—" ? -1 : Number(b.drLabel);
+      const drA = a.drValue ?? -1;
+      const drB = b.drValue ?? -1;
       if (drB !== drA) return drB - drA;
       const tA = a.timestampIso ? new Date(a.timestampIso).getTime() : 0;
       const tB = b.timestampIso ? new Date(b.timestampIso).getTime() : 0;
@@ -90,6 +101,7 @@ export async function PitchStatusView({
 
   const csvColumns: CsvColumn<PitchRow>[] = [
     { label: "Publication", value: (r) => r.publicationName },
+    { label: "Article", value: (r) => r.articleTitle ?? "" },
     { label: "Article URL", value: (r) => r.articleUrl ?? "" },
     { label: "DR", value: (r) => r.drLabel },
     { label: "Attribution", value: (r) => r.attributionLabel },
@@ -157,8 +169,10 @@ function Row({ row }: { row: PitchRow }) {
             rel="noopener noreferrer"
             className="text-brand-600 hover:underline text-xs break-all"
           >
-            {row.logoDomain ?? "View article"} →
+            {row.articleTitle ?? row.logoDomain ?? "View article"} →
           </a>
+        ) : row.articleTitle ? (
+          <span className="text-xs text-gray-700">{row.articleTitle}</span>
         ) : (
           <span className="text-xs text-gray-400">—</span>
         )}
