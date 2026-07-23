@@ -157,24 +157,52 @@ function reportTags(orgId: string, brandId: string, featureSlug: string): string
   ];
 }
 
+/** Run a report fetch through `unstable_cache` so that ONLY a SUCCESSFUL
+ *  upstream response is ever cached. `unstable_cache` stores whatever the
+ *  inner fn RETURNS for the full `revalidate` window — so a `try/catch →
+ *  return <fallback>` INSIDE the cache poisons the report to that fallback
+ *  for 4h on a single transient upstream timeout (the "all tabs show 0 even
+ *  though 16 published exist" bug: one cold-window fill timed out, `[]` got
+ *  cached, and the report stayed blank for 4h after the backend recovered).
+ *
+ *  Keeping the catch OUTSIDE the cache means a rejection is never stored:
+ *  Next serves the last-good value if one is cached, else re-attempts on the
+ *  next visit, and `fallback` degrades ONLY the current render. This honours
+ *  `adminGet`'s original throw-on-failure contract instead of defeating it. */
+async function cachedReportFetch<T>(
+  fetchFn: () => Promise<T>,
+  keyParts: string[],
+  opts: { tags: string[]; revalidate: number },
+  fallback: () => T,
+  label: string,
+): Promise<T> {
+  try {
+    return await unstable_cache(fetchFn, keyParts, opts)();
+  } catch (err) {
+    console.error(
+      `[dashboard-report] ${label} failed (render-only fallback, not cached):`,
+      err,
+    );
+    return fallback();
+  }
+}
+
 export const REPORT_FETCH_LIMIT = 50;
 
 export async function fetchBrand(orgId: string, brandId: string): Promise<Brand | null> {
-  return unstable_cache(
+  return cachedReportFetch(
     async () => {
-      try {
-        const result = await adminGet<{ brand: Brand }>("getBrand", `/brands/${brandId}`, orgId);
-        return result.brand ?? null;
-      } catch {
-        return null;
-      }
+      const result = await adminGet<{ brand: Brand }>("getBrand", `/brands/${brandId}`, orgId);
+      return result.brand ?? null;
     },
     [`fetchBrand`, orgId, brandId],
     {
       tags: [`brand:${brandId}`, `report:org:${orgId}`],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
-  )();
+    () => null,
+    `fetchBrand(${brandId})`,
+  );
 }
 
 /** Clerk org display name. Cached for 4h — org renames are rare and we
@@ -187,40 +215,39 @@ export async function fetchBrand(orgId: string, brandId: string): Promise<Brand 
  *  the recipient saw as "Prepared by org_3ANN…"). A bare fetch has no
  *  request-context dependency and surfaces real failures in the log. */
 export async function fetchOrgName(orgId: string): Promise<string> {
-  return unstable_cache(
+  return cachedReportFetch(
     async () => {
       const secret = process.env.CLERK_SECRET_KEY;
       if (!secret) {
-        console.error(`[dashboard-report] fetchOrgName(${orgId}): CLERK_SECRET_KEY missing`);
-        return orgId;
+        // Config error, not a transient failure — throw so it is never cached
+        // (self-corrects the render the moment the secret is present).
+        throw new Error(`fetchOrgName(${orgId}): CLERK_SECRET_KEY missing`);
       }
-      try {
-        const res = await fetch(`https://api.clerk.com/v1/organizations/${orgId}`, {
-          headers: {
-            Authorization: `Bearer ${secret}`,
-            "Content-Type": "application/json",
-          },
-          cache: "no-store",
-          signal: AbortSignal.timeout(10_000),
-        });
-        if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          console.error(`[dashboard-report] fetchOrgName(${orgId}) → ${res.status}: ${body.slice(0, 300)}`);
-          return orgId;
-        }
-        const org = (await res.json()) as { name?: string | null };
-        return org.name || orgId;
-      } catch (err) {
-        console.error(`[dashboard-report] fetchOrgName(${orgId}) threw:`, err);
-        return orgId;
+      const res = await fetch(`https://api.clerk.com/v1/organizations/${orgId}`, {
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(
+          `fetchOrgName(${orgId}) → ${res.status}: ${body.slice(0, 300)}`,
+        );
       }
+      const org = (await res.json()) as { name?: string | null };
+      return org.name || orgId;
     },
     [`fetchOrgName`, orgId],
     {
       tags: [`report:org:${orgId}`],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
-  )();
+    () => orgId,
+    `fetchOrgName(${orgId})`,
+  );
 }
 
 export async function fetchLeads(orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> {
@@ -404,36 +431,30 @@ export async function getReportWorkflowProjection(
   brandId: string,
   featureSlug: string,
 ): Promise<WorkflowRoiProjection[]> {
-  return unstable_cache(
+  return cachedReportFetch(
     async () => {
-      try {
-        const raw = await adminGet<WorkflowProjectionResponse>(
-          "featureWorkflowProjection",
-          `/features/${encodeURIComponent(featureSlug)}/workflow-projection?brandId=${brandId}&objective=meeting-booked&budgetUsd=1`,
-          orgId,
-          { "x-brand-id": brandId },
-        );
-        return (raw.workflows ?? []).map((w) => {
-          const cacPct = w.projection?.cacPct;
-          return {
-            workflowDynastySlug: w.workflowDynastySlug,
-            roi: cacPct != null && cacPct > 0 ? 100 / cacPct : null,
-          };
-        });
-      } catch (err) {
-        console.error(
-          `[dashboard-report] getReportWorkflowProjection ${featureSlug} failed; ROI omitted:`,
-          err,
-        );
-        return [];
-      }
+      const raw = await adminGet<WorkflowProjectionResponse>(
+        "featureWorkflowProjection",
+        `/features/${encodeURIComponent(featureSlug)}/workflow-projection?brandId=${brandId}&objective=meeting-booked&budgetUsd=1`,
+        orgId,
+        { "x-brand-id": brandId },
+      );
+      return (raw.workflows ?? []).map((w) => {
+        const cacPct = w.projection?.cacPct;
+        return {
+          workflowDynastySlug: w.workflowDynastySlug,
+          roi: cacPct != null && cacPct > 0 ? 100 / cacPct : null,
+        };
+      });
     },
     [`getReportWorkflowProjection`, orgId, brandId, featureSlug],
     {
       tags: reportTags(orgId, brandId, featureSlug),
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
-  )();
+    () => [],
+    `getReportWorkflowProjection(${featureSlug})`,
+  );
 }
 
 export async function fetchCampaigns(orgId: string, brandId: string, featureSlug: string): Promise<Campaign[]> {
@@ -521,27 +542,19 @@ export async function fetchRankedOpportunitiesByBrand(
   brandId: string,
   limit = 50,
 ): Promise<RankedOpportunityRow[]> {
-  return unstable_cache(
+  return cachedReportFetch(
     async () => {
-      try {
-        const result = await adminGet<RankedOpportunitiesResponse>(
-          "rankedOpportunitiesByBrand",
-          `/orgs/opportunities?limit=${limit}`,
-          orgId,
-          { "x-brand-id": brandId },
-        );
-        // Hide opportunities already pitched for the brand-set — same complement
-        // as the authed surfaces (they move to the pitches view).
-        return (result.opportunities ?? []).filter((o) =>
-          isOpportunityOpen(o.pitchStatus),
-        );
-      } catch (err) {
-        console.error(
-          `[dashboard-report] fetchRankedOpportunitiesByBrand(${brandId}) failed:`,
-          err,
-        );
-        return [];
-      }
+      const result = await adminGet<RankedOpportunitiesResponse>(
+        "rankedOpportunitiesByBrand",
+        `/orgs/opportunities?limit=${limit}`,
+        orgId,
+        { "x-brand-id": brandId },
+      );
+      // Hide opportunities already pitched for the brand-set — same complement
+      // as the authed surfaces (they move to the pitches view).
+      return (result.opportunities ?? []).filter((o) =>
+        isOpportunityOpen(o.pitchStatus),
+      );
     },
     [`fetchRankedOpportunitiesByBrand`, orgId, brandId, String(limit)],
     {
@@ -552,7 +565,9 @@ export async function fetchRankedOpportunitiesByBrand(
       ],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
-  )();
+    () => [],
+    `fetchRankedOpportunitiesByBrand(${brandId})`,
+  );
 }
 
 /** Per-request outlet metadata for the press-report status tables. A quote
@@ -579,39 +594,34 @@ export async function fetchQuoteRequestIndex(
   orgId: string,
   brandId: string,
 ): Promise<Record<string, QuoteRequestOutlet>> {
-  return unstable_cache(
+  return cachedReportFetch(
     async () => {
+      // Throw on any page failure so an INCOMPLETE index is never cached for
+      // 4h (a truncated map renders the Publication column as "—" and, cached,
+      // would stick). A rejection falls to `{}` for this render only and the
+      // full index is rebuilt on the next visit.
       const index: Record<string, QuoteRequestOutlet> = {};
-      try {
-        for (let page = 0; page < QUOTE_REQUESTS_MAX_PAGES; page++) {
-          const result = await adminGet<{
-            providerQuoteRequests: Array<{
-              id: string;
-              mediaOutlet: string | null;
-              pitchUrl: string | null;
-            }>;
-          }>(
-            "listQuoteRequests",
-            `/orgs/quote-requests?limit=${QUOTE_REQUESTS_PAGE}&offset=${page * QUOTE_REQUESTS_PAGE}`,
-            orgId,
-            { "x-brand-id": brandId },
-          );
-          const rows = result.providerQuoteRequests ?? [];
-          for (const r of rows) {
-            index[r.id] = { mediaOutlet: r.mediaOutlet, pitchUrl: r.pitchUrl };
-          }
-          // Last page reached (short page) — stop.
-          if (rows.length < QUOTE_REQUESTS_PAGE) break;
-        }
-        return index;
-      } catch (err) {
-        // Return whatever pages we did resolve (partial > empty), fail loud.
-        console.error(
-          `[dashboard-report] fetchQuoteRequestIndex(${brandId}) failed after ${Object.keys(index).length} rows:`,
-          err,
+      for (let page = 0; page < QUOTE_REQUESTS_MAX_PAGES; page++) {
+        const result = await adminGet<{
+          providerQuoteRequests: Array<{
+            id: string;
+            mediaOutlet: string | null;
+            pitchUrl: string | null;
+          }>;
+        }>(
+          "listQuoteRequests",
+          `/orgs/quote-requests?limit=${QUOTE_REQUESTS_PAGE}&offset=${page * QUOTE_REQUESTS_PAGE}`,
+          orgId,
+          { "x-brand-id": brandId },
         );
-        return index;
+        const rows = result.providerQuoteRequests ?? [];
+        for (const r of rows) {
+          index[r.id] = { mediaOutlet: r.mediaOutlet, pitchUrl: r.pitchUrl };
+        }
+        // Last page reached (short page) — stop.
+        if (rows.length < QUOTE_REQUESTS_PAGE) break;
       }
+      return index;
     },
     [`fetchQuoteRequestIndex`, orgId, brandId],
     {
@@ -622,7 +632,9 @@ export async function fetchQuoteRequestIndex(
       ],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
-  )();
+    () => ({}),
+    `fetchQuoteRequestIndex(${brandId})`,
+  );
 }
 
 export async function fetchWorkflows(orgId: string, featureSlug: string): Promise<Workflow[]> {
@@ -653,24 +665,16 @@ export async function fetchQuotePitchesByBrand(
   brandId: string,
   limit = 500,
 ): Promise<QuotePitch[]> {
-  return unstable_cache(
+  return cachedReportFetch(
     async () => {
-      try {
-        const result = await adminGet<{ quotePitches: QuotePitch[] }>(
-          "listQuotePitchesByBrand",
-          `/orgs/quote-pitches?limit=${limit}`,
-          orgId,
-        );
-        return (result.quotePitches ?? []).filter((p) =>
-          p.brandIds.includes(brandId),
-        );
-      } catch (err) {
-        console.error(
-          `[dashboard-report] fetchQuotePitchesByBrand(${brandId}) failed:`,
-          err,
-        );
-        return [];
-      }
+      const result = await adminGet<{ quotePitches: QuotePitch[] }>(
+        "listQuotePitchesByBrand",
+        `/orgs/quote-pitches?limit=${limit}`,
+        orgId,
+      );
+      return (result.quotePitches ?? []).filter((p) =>
+        p.brandIds.includes(brandId),
+      );
     },
     [`fetchQuotePitchesByBrand`, orgId, brandId, String(limit)],
     {
@@ -681,7 +685,9 @@ export async function fetchQuotePitchesByBrand(
       ],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
-  )();
+    () => [],
+    `fetchQuotePitchesByBrand(${brandId})`,
+  );
 }
 
 /** The resolved generation prompt assigned to this feature (platform default
@@ -692,26 +698,20 @@ export async function fetchPromptAssignment(
   orgId: string,
   featureSlug: string,
 ): Promise<PromptAssignment | null> {
-  return unstable_cache(
+  return cachedReportFetch(
     async () => {
-      try {
-        return await adminGet<PromptAssignment>(
-          "promptAssignment",
-          `/content/prompt-assignments?featureSlug=${encodeURIComponent(featureSlug)}`,
-          orgId,
-        );
-      } catch (err) {
-        console.error(
-          `[dashboard-report] fetchPromptAssignment(${featureSlug}) failed:`,
-          err,
-        );
-        return null;
-      }
+      return await adminGet<PromptAssignment>(
+        "promptAssignment",
+        `/content/prompt-assignments?featureSlug=${encodeURIComponent(featureSlug)}`,
+        orgId,
+      );
     },
     [`fetchPromptAssignment`, orgId, featureSlug],
     {
       tags: [`prompt-assignment:${orgId}:${featureSlug}`, `report:org:${orgId}`],
       revalidate: REPORT_REVALIDATE_SECONDS,
     },
-  )();
+    () => null,
+    `fetchPromptAssignment(${featureSlug})`,
+  );
 }
