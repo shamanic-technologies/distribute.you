@@ -63,6 +63,16 @@ export default async function ReportLayout({ children, params }: LayoutProps) {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Report-scoped theme: the public client report DEFAULTS to LIGHT
+          regardless of the admin app's `theme` key or the visitor's OS
+          preference — it reads its own `report-theme` key and only goes dark
+          when the client explicitly toggled it. Runs before paint to avoid a
+          flash of the inherited (possibly dark) admin theme. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){try{var t=localStorage.getItem("report-theme");document.documentElement.classList.toggle("dark",t==="dark")}catch(e){}})()`,
+        }}
+      />
       <Suspense fallback={<HeaderSkeleton leftSlot={mobileNav} />}>
         <BrandHeader
           orgId={orgId}

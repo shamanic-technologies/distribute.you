@@ -25,6 +25,10 @@ const statusViewPath = path.resolve(
   __dirname,
   "../src/components/report/pitch-status-view.tsx",
 );
+const sortableTablePath = path.resolve(
+  __dirname,
+  "../src/components/report/sortable-pitch-table.tsx",
+);
 const tabsLibPath = path.resolve(__dirname, "../src/lib/report-pitch-tabs.ts");
 const reportHeaderPath = path.resolve(
   __dirname,
@@ -37,6 +41,7 @@ const reportOverviewContent = fs.readFileSync(reportOverviewPath, "utf-8");
 const reportSidebarContent = fs.readFileSync(reportSidebarPath, "utf-8");
 const statusPageContent = fs.readFileSync(statusPagePath, "utf-8");
 const statusViewContent = fs.readFileSync(statusViewPath, "utf-8");
+const sortableTableContent = fs.readFileSync(sortableTablePath, "utf-8");
 const tabsLibContent = fs.readFileSync(tabsLibPath, "utf-8");
 
 /** Strip block + line comments so assertions don't false-positive on doc
@@ -62,23 +67,25 @@ describe("Sidebar — Report link enabled for pr-expert-quote-opportunities", ()
 });
 
 describe("report-pitch-tabs — read-only status tab model", () => {
-  it("declares exactly the 4 tabs Published / Selected / In Review / Pitched", () => {
+  it("declares exactly the 3 tabs Published / Selected / Pitched", () => {
     expect(tabsLibContent).toContain('slug: "published"');
     expect(tabsLibContent).toContain('slug: "selected"');
-    expect(tabsLibContent).toContain('slug: "in-review"');
     expect(tabsLibContent).toContain('slug: "pitched"');
     expect(tabsLibContent).toContain('label: "Published"');
     expect(tabsLibContent).toContain('label: "Selected"');
-    expect(tabsLibContent).toContain('label: "In Review"');
     expect(tabsLibContent).toContain('label: "Pitched"');
+    // The retired "In Review" tab is gone from the model.
+    expect(stripComments(tabsLibContent)).not.toContain('slug: "in-review"');
   });
 
-  it("maps each tab to its wire pitch status (Pitched←drafted, In Review←submitted)", () => {
+  it("maps each tab to its wire pitch status (Pitched←submitted; drafted hidden)", () => {
     const block = stripComments(tabsLibContent);
     expect(block).toMatch(/slug:\s*"published"[\s\S]*?statuses:\s*\[\s*"published"\s*\]/);
     expect(block).toMatch(/slug:\s*"selected"[\s\S]*?statuses:\s*\[\s*"selected"\s*\]/);
-    expect(block).toMatch(/slug:\s*"in-review"[\s\S]*?statuses:\s*\[\s*"submitted"\s*\]/);
-    expect(block).toMatch(/slug:\s*"pitched"[\s\S]*?statuses:\s*\[\s*"drafted"\s*\]/);
+    expect(block).toMatch(/slug:\s*"pitched"[\s\S]*?statuses:\s*\[\s*"submitted"\s*\]/);
+    // drafted (un-sent) is never a tab status.
+    const tabsArray = block.split("PITCH_STATUS_TABS")[1]?.split("];")[0] ?? "";
+    expect(tabsArray).not.toContain('"drafted"');
   });
 
   it("does NOT surface not_selected / error statuses in any tab", () => {
@@ -179,16 +186,27 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
     expect(statusViewContent).not.toContain("useAuthQuery");
   });
 
-  it("renders the 5 columns Publication / Article / DR / Attribution / Updated", () => {
-    expect(statusViewContent).toContain("Publication");
-    expect(statusViewContent).toContain("Article");
-    expect(statusViewContent).toContain("DR");
-    expect(statusViewContent).toContain("Attribution");
-    expect(statusViewContent).toContain("Updated");
+  it("renders the columns Publication / Article / DR / Attribution + a per-tab date label", () => {
+    // The sortable client table owns the static column headers; the per-tab
+    // date column label is dynamic (tab.dateLabel — Published/Selected/Pitched),
+    // replacing the old constant "Updated".
+    expect(sortableTableContent).toContain('label: "Publication"');
+    expect(sortableTableContent).toContain('label: "Article"');
+    expect(sortableTableContent).toContain('label: "DR"');
+    expect(sortableTableContent).toContain('label: "Attribution"');
+    expect(sortableTableContent).toContain("dateLabel");
+    // No hardcoded "Updated" header anymore.
+    expect(stripComments(sortableTableContent)).not.toContain('"Updated"');
+  });
+
+  it("headers are clickable to sort (all tabs)", () => {
+    expect(sortableTableContent).toContain("onSort");
+    expect(sortableTableContent).toContain("aria-sort");
+    expect(sortableTableContent).toContain("<button");
   });
 
   it("renders the Publication logo via ProviderLogo keyed on the outlet domain (never the pitchUrl)", () => {
-    expect(statusViewContent).toContain("ProviderLogo");
+    expect(sortableTableContent).toContain("ProviderLogo");
     expect(statusViewContent).toContain("toDomain");
     // The connectively.us platform link must never feed the logo (it would put
     // the same Connectively logo on every row).

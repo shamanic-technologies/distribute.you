@@ -40,19 +40,25 @@ describe("toDomain — logo domain from a bare outlet OR a URL, never the pitchU
 });
 
 describe("PITCH_STATUS_TABS — 1:1 status mapping", () => {
-  it("maps the 4 tabs to their single wire status", () => {
+  it("maps the 3 tabs to their single wire status (Pitched←submitted)", () => {
     expect(tabForSlug("published")?.statuses).toEqual(["published"]);
     expect(tabForSlug("selected")?.statuses).toEqual(["selected"]);
-    expect(tabForSlug("in-review")?.statuses).toEqual(["submitted"]);
-    expect(tabForSlug("pitched")?.statuses).toEqual(["drafted"]);
+    // Pitched = SENT and still in flight (not yet selected/published/rejected).
+    expect(tabForSlug("pitched")?.statuses).toEqual(["submitted"]);
+    // The old drafted-backed "pitched" and the "in-review" tab are retired.
+    expect(tabForSlug("in-review")).toBeNull();
   });
 
-  it("has exactly 4 tabs in reverse-funnel order", () => {
+  it("has exactly 3 tabs in reverse-funnel order with a dateLabel each", () => {
     expect(PITCH_STATUS_TABS.map((t) => t.slug)).toEqual([
       "published",
       "selected",
-      "in-review",
       "pitched",
+    ]);
+    expect(PITCH_STATUS_TABS.map((t) => t.dateLabel)).toEqual([
+      "Published",
+      "Selected",
+      "Pitched",
     ]);
   });
 
@@ -62,22 +68,21 @@ describe("PITCH_STATUS_TABS — 1:1 status mapping", () => {
 });
 
 describe("countsByTab / pitchesForTab", () => {
-  it("buckets pitches by status (submitted → In Review)", () => {
+  it("buckets pitches by status (submitted → Pitched; drafted hidden)", () => {
     const pitches = [
       pitch("submitted"),
       pitch("submitted"),
       pitch("published"),
-      pitch("drafted"),
-      pitch("not_selected"), // hidden — no tab
+      pitch("drafted"), // hidden — un-sent pre-send state, no tab
+      pitch("not_selected"), // hidden — rejected, no tab
     ];
     const counts = countsByTab(pitches);
     expect(counts).toEqual({
       published: 1,
       selected: 0,
-      "in-review": 2,
-      pitched: 1,
+      pitched: 2,
     });
-    expect(pitchesForTab(pitches, tabForSlug("in-review")!)).toHaveLength(2);
+    expect(pitchesForTab(pitches, tabForSlug("pitched")!)).toHaveLength(2);
   });
 });
 
