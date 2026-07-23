@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Brand } from "@/lib/api";
 import { GeneratedAt } from "./generated-at";
+import { ReportThemeToggle } from "./theme-toggle";
 
 interface ReportHeaderProps {
   brand: Brand | null;
@@ -48,11 +49,14 @@ export function ReportHeader({ brand, brandId, orgName, featureSlug, generatedAt
             <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate">{featureLabel} report</p>
           </div>
         </div>
-        <div className="text-left sm:text-right text-xs text-gray-500 w-full sm:w-auto">
-          <div>
-            Generated <GeneratedAt iso={generatedAt.toISOString()} />
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="text-left sm:text-right text-xs text-gray-500">
+            <div>
+              Generated <GeneratedAt iso={generatedAt.toISOString()} />
+            </div>
+            <div className="text-gray-500 mt-0.5">Prepared by {orgName}</div>
           </div>
-          <div className="text-gray-500 mt-0.5">Prepared by {orgName}</div>
+          <ReportThemeToggle />
         </div>
       </div>
     </header>
