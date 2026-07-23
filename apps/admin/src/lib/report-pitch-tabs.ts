@@ -28,7 +28,7 @@ import type { QuotePitch, QuotePitchStatus } from "./api";
  */
 export interface PitchStatusTab {
   /** URL slug + sidebar id. */
-  slug: "published" | "selected" | "in-review" | "pitched";
+  slug: "published" | "selected" | "in-review" | "pitched" | "all";
   label: string;
   /** Column header for the timestamp on this tab. */
   dateLabel: string;
@@ -41,7 +41,28 @@ export const PITCH_STATUS_TABS: readonly PitchStatusTab[] = [
   { slug: "selected", label: "Selected", dateLabel: "Selected", statuses: ["selected"] },
   { slug: "in-review", label: "In Review", dateLabel: "Submitted", statuses: ["submitted"] },
   { slug: "pitched", label: "Pitched", dateLabel: "Pitched", statuses: ["submitted", "selected", "published"] },
+  // All — every pitch we sent (same set as Pitched), with an added Status
+  // column so the client sees each pitch's current funnel stage at a glance.
+  { slug: "all", label: "All", dateLabel: "Pitched", statuses: ["submitted", "selected", "published"] },
 ];
+
+/** Display label for a pitch's current funnel stage — used by the "All" tab's
+ *  Status column. Maps the wire status onto the same vocabulary as the tabs:
+ *  submitted = still awaiting a decision (In Review), selected = journalist
+ *  picked it, published = article live. Any other/failure status renders its
+ *  raw value (they are not surfaced on this read-only tracker today). */
+export function pitchStatusLabel(status: QuotePitchStatus): string {
+  switch (status) {
+    case "submitted":
+      return "In Review";
+    case "selected":
+      return "Selected";
+    case "published":
+      return "Published";
+    default:
+      return status;
+  }
+}
 
 export function tabForSlug(slug: string): PitchStatusTab | null {
   return PITCH_STATUS_TABS.find((t) => t.slug === slug) ?? null;
@@ -66,6 +87,7 @@ export function countsByTab(
     selected: 0,
     "in-review": 0,
     pitched: 0,
+    all: 0,
   } as Record<PitchStatusTab["slug"], number>;
   for (const tab of PITCH_STATUS_TABS) {
     counts[tab.slug] = pitchesForTab(pitches, tab).length;
@@ -84,8 +106,9 @@ export function pitchTimestamp(
 ): string | null {
   switch (tabSlug) {
     case "pitched":
+    case "all":
     case "in-review":
-      // Both key on when the pitch was SENT.
+      // All key on when the pitch was SENT.
       return pitch.submittedAt ?? pitch.createdAt ?? pitch.updatedAt ?? null;
     case "published":
       return pitch.publishedAt ?? pitch.outcomeObservedAt ?? pitch.updatedAt ?? null;

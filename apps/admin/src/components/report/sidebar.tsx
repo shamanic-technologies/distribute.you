@@ -63,11 +63,19 @@ const PublishedIcon = () => (
   </svg>
 );
 
+// All = every pitch across every stage (stacked layers).
+const AllIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3l9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5" />
+  </svg>
+);
+
 const TAB_ICONS: Record<PitchStatusTab["slug"], ReactNode> = {
   published: <PublishedIcon />,
   selected: <SelectedIcon />,
   "in-review": <InReviewIcon />,
   pitched: <PitchedIcon />,
+  all: <AllIcon />,
 };
 
 interface ReportSidebarProps {
