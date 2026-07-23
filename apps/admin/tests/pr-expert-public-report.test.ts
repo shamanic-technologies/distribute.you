@@ -67,38 +67,43 @@ describe("Sidebar — Report link enabled for pr-expert-quote-opportunities", ()
 });
 
 describe("report-pitch-tabs — read-only status tab model", () => {
-  it("declares the 5 tabs Published / Selected / In Review / Pitched / All", () => {
+  it("declares the 4 tabs Published / Selected / In Review / All (Pitched removed)", () => {
     expect(tabsLibContent).toContain('slug: "published"');
     expect(tabsLibContent).toContain('slug: "selected"');
     expect(tabsLibContent).toContain('slug: "in-review"');
-    expect(tabsLibContent).toContain('slug: "pitched"');
     expect(tabsLibContent).toContain('slug: "all"');
     expect(tabsLibContent).toContain('label: "Published"');
     expect(tabsLibContent).toContain('label: "Selected"');
     expect(tabsLibContent).toContain('label: "In Review"');
-    expect(tabsLibContent).toContain('label: "Pitched"');
     expect(tabsLibContent).toContain('label: "All"');
+    // The redundant Pitched tab was removed.
+    expect(tabsLibContent).not.toContain('slug: "pitched"');
   });
 
-  it("maps tabs: In Review←submitted, Pitched←all-sent (cumulative); drafted hidden", () => {
+  it("maps tabs: In Review←submitted, All←everything-submitted (incl rejected); drafted hidden", () => {
     const block = stripComments(tabsLibContent);
     expect(block).toMatch(/slug:\s*"published"[\s\S]*?statuses:\s*\[\s*"published"\s*\]/);
     expect(block).toMatch(/slug:\s*"selected"[\s\S]*?statuses:\s*\[\s*"selected"\s*\]/);
     expect(block).toMatch(/slug:\s*"in-review"[\s\S]*?statuses:\s*\[\s*"submitted"\s*\]/);
     expect(block).toMatch(
-      /slug:\s*"pitched"[\s\S]*?statuses:\s*\[\s*"submitted",\s*"selected",\s*"published"\s*\]/,
+      /slug:\s*"all"[\s\S]*?statuses:\s*\[\s*"submitted",\s*"selected",\s*"published",\s*"not_selected"\s*\]/,
     );
     // drafted (un-sent) is never a tab status.
     const tabsArray = block.split("PITCH_STATUS_TABS")[1]?.split("];")[0] ?? "";
     expect(tabsArray).not.toContain('"drafted"');
   });
 
-  it("does NOT surface not_selected / error statuses in any tab", () => {
+  it("surfaces not_selected ONLY in the All tab, never a pre-send failure status", () => {
     const block = stripComments(tabsLibContent);
-    // The tab definitions array must not reference a rejected/failure status.
-    const tabsArray = block.split("PITCH_STATUS_TABS")[1]?.split("]")[0] ?? "";
-    expect(tabsArray).not.toContain("not_selected");
+    // not_selected (a real rejection) is allowed — but ONLY on the All tab.
+    const stageTabs = block
+      .split("PITCH_STATUS_TABS")[1]
+      ?.split('slug: "all"')[0] ?? "";
+    expect(stageTabs).not.toContain("not_selected");
+    // Pre-send failure statuses are never surfaced on any tab.
+    const tabsArray = block.split("PITCH_STATUS_TABS")[1]?.split("];")[0] ?? "";
     expect(tabsArray).not.toContain("length_violation");
+    expect(tabsArray).not.toContain("template_missing");
   });
 
   it("exposes countsByTab for the sidebar badges", () => {
@@ -247,7 +252,7 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
 
   it("gives each sidebar tab a distinct icon (not one shared glyph)", () => {
     expect(reportSidebarContent).toContain("TAB_ICONS");
-    expect(reportSidebarContent).toContain("PitchedIcon");
+    expect(reportSidebarContent).toContain("AllIcon");
     expect(reportSidebarContent).toContain("InReviewIcon");
     expect(reportSidebarContent).toContain("SelectedIcon");
     expect(reportSidebarContent).toContain("PublishedIcon");

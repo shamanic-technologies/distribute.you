@@ -35,14 +35,8 @@ const WorkflowsIcon = () => (
 );
 
 // A distinct glyph per pitch-status stage so each sidebar tab reads at a
-// glance: Pitched = sent (paper plane), In Review = awaiting (clock),
-// Selected = picked (star), Published = live (globe).
-const PitchedIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
-  </svg>
-);
-
+// glance: In Review = awaiting (clock), Selected = picked (star),
+// Published = live (globe), All = every pitch (stacked layers).
 const InReviewIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
@@ -74,7 +68,6 @@ const TAB_ICONS: Record<PitchStatusTab["slug"], ReactNode> = {
   published: <PublishedIcon />,
   selected: <SelectedIcon />,
   "in-review": <InReviewIcon />,
-  pitched: <PitchedIcon />,
   all: <AllIcon />,
 };
 
