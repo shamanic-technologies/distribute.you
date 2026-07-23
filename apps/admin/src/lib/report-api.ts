@@ -558,49 +558,62 @@ export async function fetchRankedOpportunitiesByBrand(
 /** Per-request outlet metadata for the press-report status tables. A quote
  *  PITCH carries no `mediaOutlet` (only `quoteRequestId`), so the Publication
  *  column joins pitch → its originating quote request. Keyed by request id.
- *  `mediaOutlet` is the outlet name; `pitchUrl` is the Featured/pitch URL (a
- *  weak logo-domain fallback when the pitch has no published `featuredArticleUrl`).
- *  Fail-soft: an empty map degrades the Publication column to "—" rather than
- *  poisoning the 4h cache. */
+ *  `mediaOutlet` is already a bare outlet domain (`azbigmedia.com`).
+ *  Fail-soft: a partial/empty map degrades the Publication column to "—"
+ *  rather than poisoning the 4h cache. */
 export interface QuoteRequestOutlet {
   mediaOutlet: string | null;
   pitchUrl: string | null;
 }
 
+// The quote-requests endpoint is ORG-scoped (a request = a journalist question,
+// not brand-tagged; only the PITCH links a brand), and it has no id filter — so
+// the index MUST cover every org request to resolve any brand's published
+// pitches. A single ?limit= page silently truncates: an org with 2.4k+ requests
+// dropped ~80% of the map → published rows rendered "—" for the outlet. Page
+// through all of them (offset), capped so a runaway org can't hang the fill.
+const QUOTE_REQUESTS_PAGE = 500;
+const QUOTE_REQUESTS_MAX_PAGES = 60; // 30k requests ceiling
+
 export async function fetchQuoteRequestIndex(
   orgId: string,
   brandId: string,
-  limit = 500,
 ): Promise<Record<string, QuoteRequestOutlet>> {
   return unstable_cache(
     async () => {
+      const index: Record<string, QuoteRequestOutlet> = {};
       try {
-        const result = await adminGet<{
-          providerQuoteRequests: Array<{
-            id: string;
-            mediaOutlet: string | null;
-            pitchUrl: string | null;
-          }>;
-        }>(
-          "listQuoteRequests",
-          `/orgs/quote-requests?limit=${limit}`,
-          orgId,
-          { "x-brand-id": brandId },
-        );
-        const index: Record<string, QuoteRequestOutlet> = {};
-        for (const r of result.providerQuoteRequests ?? []) {
-          index[r.id] = { mediaOutlet: r.mediaOutlet, pitchUrl: r.pitchUrl };
+        for (let page = 0; page < QUOTE_REQUESTS_MAX_PAGES; page++) {
+          const result = await adminGet<{
+            providerQuoteRequests: Array<{
+              id: string;
+              mediaOutlet: string | null;
+              pitchUrl: string | null;
+            }>;
+          }>(
+            "listQuoteRequests",
+            `/orgs/quote-requests?limit=${QUOTE_REQUESTS_PAGE}&offset=${page * QUOTE_REQUESTS_PAGE}`,
+            orgId,
+            { "x-brand-id": brandId },
+          );
+          const rows = result.providerQuoteRequests ?? [];
+          for (const r of rows) {
+            index[r.id] = { mediaOutlet: r.mediaOutlet, pitchUrl: r.pitchUrl };
+          }
+          // Last page reached (short page) — stop.
+          if (rows.length < QUOTE_REQUESTS_PAGE) break;
         }
         return index;
       } catch (err) {
+        // Return whatever pages we did resolve (partial > empty), fail loud.
         console.error(
-          `[dashboard-report] fetchQuoteRequestIndex(${brandId}) failed:`,
+          `[dashboard-report] fetchQuoteRequestIndex(${brandId}) failed after ${Object.keys(index).length} rows:`,
           err,
         );
-        return {};
+        return index;
       }
     },
-    [`fetchQuoteRequestIndex`, orgId, brandId, String(limit)],
+    [`fetchQuoteRequestIndex`, orgId, brandId],
     {
       tags: [
         `quote-requests:brand:${brandId}`,
