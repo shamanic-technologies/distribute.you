@@ -212,9 +212,20 @@ describe("QuotePitch type + listQuotePitches — matches journalists-quotes-serv
     expect(quotePitchBlock).not.toMatch(/\bexpertName:/);
     expect(quotePitchBlock).not.toMatch(/\bexpertTitle:/);
     expect(quotePitchBlock).not.toMatch(/\bselectedAt:/);
-    expect(quotePitchBlock).not.toMatch(/\bpublishedAt:/);
     expect(quotePitchBlock).not.toMatch(/\bpublishedUrl:/);
     expect(quotePitchBlock).not.toMatch(/\berrorMessage:/);
+  });
+
+  it("declares the publication-outcome enrichment fields the wire now returns", () => {
+    // journalists-quotes-service reconcile populates these on published/
+    // selected pitches (drizzle `db.select()` serialises every column); the
+    // public report renders them (DR / Attribution / publish date / title).
+    expect(quotePitchBlock).toMatch(/\barticleTitle\??:\s*string \| null/);
+    expect(quotePitchBlock).toMatch(/\bpublishedAt\??:\s*string \| null/);
+    expect(quotePitchBlock).toMatch(/\boutcomeObservedAt\??:\s*string \| null/);
+    expect(quotePitchBlock).toMatch(/\bpublicationSource\??:\s*string \| null/);
+    expect(quotePitchBlock).toMatch(/\boutletDomainRating\??:\s*number \| null/);
+    expect(quotePitchBlock).toMatch(/\bbacklinkAttribution\??:\s*string \| null/);
   });
 
   it("QuotePitchStatus enum declares all 10 wire statuses", () => {

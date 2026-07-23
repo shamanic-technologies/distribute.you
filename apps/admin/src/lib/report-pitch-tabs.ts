@@ -72,8 +72,11 @@ export function pitchTimestamp(
     case "in-review":
       return pitch.submittedAt ?? pitch.updatedAt ?? null;
     case "published":
+      // Real publication date (per-article), not the bulk reconcile
+      // `updatedAt` which is identical across every row.
+      return pitch.publishedAt ?? pitch.outcomeObservedAt ?? pitch.updatedAt ?? null;
     case "selected":
-      return pitch.updatedAt ?? null;
+      return pitch.outcomeObservedAt ?? pitch.updatedAt ?? null;
   }
 }
 

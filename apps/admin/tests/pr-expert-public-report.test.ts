@@ -195,11 +195,16 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
     expect(statusViewContent).not.toContain("outletPitchUrl");
   });
 
-  it("never fabricates DR / Attribution — they render placeholders until the backend enriches", () => {
-    // DR + Attribution are not on the wire yet; the view must NOT compute them
-    // from names/heuristics. Placeholders only.
-    expect(statusViewContent).toContain('drLabel: "—"');
-    expect(statusViewContent).toContain('attributionLabel: "Unknown"');
+  it("renders DR / Attribution / publish date from the wire, never fabricated", () => {
+    // DR + Attribution + publish date now arrive on the pitch (journalists-
+    // quotes-service reconcile). The view reads them straight off the wire —
+    // a genuinely-absent value falls back to "—" / "Unknown", never computed
+    // from names/heuristics.
+    expect(statusViewContent).toContain("pitch.outletDomainRating");
+    expect(statusViewContent).toContain("pitch.backlinkAttribution");
+    expect(statusViewContent).toContain("pitch.publicationSource");
+    // publish date drives the timestamp (not the bulk reconcile updatedAt)
+    expect(tabsLibContent).toContain("pitch.publishedAt");
   });
 });
 

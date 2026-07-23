@@ -3207,6 +3207,16 @@ export interface QuotePitch {
   replyInThreadMessageId: string | null;
   bounceStatus: string | null;
   featuredArticleUrl: string | null;
+  // Publication-outcome enrichment (journalists-quotes-service reconcile from
+  // Connectively). All on the wire (drizzle `db.select()` returns every
+  // column) and populated once a pitch reaches published/selected — the
+  // public report renders these directly (no Zod strip on the report path).
+  articleTitle?: string | null;
+  publishedAt?: string | null;
+  outcomeObservedAt?: string | null;
+  publicationSource?: string | null;
+  outletDomainRating?: number | null;
+  backlinkAttribution?: string | null;
   error: string | null;
   errorDetails: unknown;
   parentRunId: string | null;
@@ -3353,6 +3363,15 @@ const QuotePitchSchema = z.object({
   replyInThreadMessageId: z.string().nullable(),
   bounceStatus: z.string().nullable(),
   featuredArticleUrl: z.string().nullable(),
+  // Publication-outcome enrichment — `.optional()` so an older wire missing a
+  // field never fails safeParse, `.nullable()` because they are null until a
+  // pitch is published/selected. Present-value is kept (never stripped).
+  articleTitle: z.string().nullable().optional(),
+  publishedAt: z.string().nullable().optional(),
+  outcomeObservedAt: z.string().nullable().optional(),
+  publicationSource: z.string().nullable().optional(),
+  outletDomainRating: z.number().nullable().optional(),
+  backlinkAttribution: z.string().nullable().optional(),
   error: z.string().nullable(),
   errorDetails: z.unknown(),
   parentRunId: z.string().nullable(),
