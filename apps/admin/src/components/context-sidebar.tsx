@@ -17,6 +17,8 @@ import {
   listBrandEmails,
   listBrandArticles,
   listAllRankedOpportunities,
+  listCrmContacts,
+  listCrmUploads,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
@@ -292,7 +294,7 @@ function getFeatureIcon(featureSlug: string, icon?: string): React.ReactNode {
 }
 
 interface NavigationLevel {
-  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "featureSettings" | "workflow" | "campaign";
+  type: "app" | "appFeature" | "org" | "brand" | "brandSettings" | "feature" | "featureSettings" | "workflow" | "campaign" | "crm";
   orgId?: string;
   brandId?: string;
   featureSlug?: string;
@@ -309,6 +311,9 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
       const brandId = segments[3];
       if (segments[4] === "settings" || segments[4] === "brand-info" || segments[4] === "usage") {
           return { type: "brandSettings", orgId, brandId };
+        }
+        if (segments[4] === "services" && segments[5] === "crm") {
+          return { type: "crm", orgId, brandId };
         }
         if (segments[4] === "features" && segments[5]) {
         const featureSlug = segments[5];
@@ -646,6 +651,13 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
             </div>
           )}
           <div className="pt-2 mt-2 border-t border-gray-100">
+            <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Services</h4>
+            <SidebarLink
+              item={{ id: "crm", label: "CRM", href: `${basePath}/services/crm`, icon: <CrmIcon /> }}
+              isActive={pathname.startsWith(`${basePath}/services/crm`)}
+            />
+          </div>
+          <div className="pt-2 mt-2 border-t border-gray-100">
             <SidebarLink
               item={{ id: "settings", label: "Brand Settings", href: `${basePath}/settings`, icon: <SettingsIcon /> }}
               isActive={pathname.startsWith(`${basePath}/settings`)}
@@ -698,6 +710,48 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
         <SidebarLink
           key={item.id}
           item={item}
+          isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
+        />
+      ))}
+    </SidebarSection>
+  );
+}
+
+// CRM Level Sidebar — the brand-level "Services > CRM" surface (uploaded CSV
+// contacts via crm-service). Leads = the concatenated silver contacts pool;
+// Sources = the CSV uploads that fed it. Distinct from the org-level "CRM
+// (Google)" Gmail surface.
+function CrmLevelSidebar({ orgId, brandId, pathname }: {
+  orgId: string;
+  brandId: string;
+  pathname: string;
+}) {
+  const basePath = `/orgs/${orgId}/brands/${brandId}/services/crm`;
+
+  const { data: contactsData, isPending: contactsPending } = useAuthQuery(
+    ["crmContacts", brandId],
+    () => listCrmContacts(brandId),
+    { refetchInterval: 5_000 },
+  );
+  const { data: uploadsData, isPending: uploadsPending } = useAuthQuery(
+    ["crmUploads", brandId],
+    () => listCrmUploads(brandId),
+    { refetchInterval: 5_000 },
+  );
+  const badgesRevealed = useCoordinatedReveal([!contactsPending, !uploadsPending]);
+
+  const items: SidebarItem[] = [
+    { id: "crm-leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: contactsData?.contacts?.length },
+    { id: "crm-sources", label: "Sources", href: `${basePath}/sources`, icon: <DocumentIcon />, badge: uploadsData?.uploads?.length },
+  ];
+
+  return (
+    <SidebarSection title="CRM" backHref={`/orgs/${orgId}/brands/${brandId}`} backLabel="Brand">
+      {items.map((item) => (
+        <SidebarLink
+          key={item.id}
+          item={item}
+          badgePending={!badgesRevealed}
           isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
         />
       ))}
@@ -1097,6 +1151,8 @@ export function ContextSidebar() {
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "brandSettings":
       return <BrandSettingsLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
+    case "crm":
+      return <CrmLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
     case "feature":
       return <FeatureLevelSidebar orgId={level.orgId!} brandId={level.brandId!} featureSlug={level.featureSlug!} pathname={pathname} />;
     case "featureSettings":

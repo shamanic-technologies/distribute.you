@@ -5476,3 +5476,110 @@ export async function getCrossOrgLifetimeCostPerOutcome(
   }
   return parsed.data;
 }
+
+// ── CRM service (uploaded CSV contacts) ──────────────────────────────────────
+// crm-service silver contacts + upload sources for a brand, reached via the
+// api-service transparent proxy `/v1/orgs/contacts*`. Distinct from the Google
+// (Gmail) CRM readers above — that surface is org-level Gmail sync; this one is
+// the brand-level pool of contacts the user uploaded as CSVs.
+
+export interface CrmContact {
+  id: string;
+  orgId: string;
+  brandId: string;
+  primaryEmail: string | null;
+  phoneE164: string | null;
+  fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  rawAttributes: Record<string, string>;
+  consentStatus: string;
+  unsubscribed: boolean;
+  sourceUploadId: string;
+  sourceRowId: string;
+  lastRebuiltAt: string;
+}
+
+export interface CrmUpload {
+  id: string;
+  brandId: string;
+  filename: string;
+  rowCount: number;
+  status: string;
+  mappingProvenance: string | null;
+  columnMapping: Record<string, string> | null;
+  uploadedAt: string;
+}
+
+const CrmContactSchema = z
+  .object({
+    id: z.string(),
+    orgId: z.string().nullish(),
+    brandId: z.string().nullish(),
+    primaryEmail: z.string().nullish(),
+    phoneE164: z.string().nullish(),
+    fullName: z.string().nullish(),
+    firstName: z.string().nullish(),
+    lastName: z.string().nullish(),
+    rawAttributes: z.record(z.string(), z.string()).optional(),
+    consentStatus: z.string().nullish(),
+    unsubscribed: z.boolean().optional(),
+    sourceUploadId: z.string().nullish(),
+    sourceRowId: z.string().nullish(),
+    lastRebuiltAt: z.string().nullish(),
+  })
+  .passthrough();
+
+const CrmUploadSchema = z
+  .object({
+    id: z.string(),
+    brandId: z.string().nullish(),
+    filename: z.string().nullish(),
+    rowCount: z.coerce.number().nullish(),
+    status: z.string().nullish(),
+    mappingProvenance: z.string().nullish(),
+    columnMapping: z.record(z.string(), z.string()).nullish(),
+    uploadedAt: z.string().nullish(),
+  })
+  .passthrough();
+
+const CrmContactsResponseSchema = z.object({ contacts: z.array(CrmContactSchema) });
+const CrmUploadsResponseSchema = z.object({ uploads: z.array(CrmUploadSchema) });
+
+export async function listCrmContacts(
+  brandId: string,
+  token?: string,
+): Promise<{ contacts: CrmContact[] }> {
+  const raw = await apiCall<unknown>(
+    `/orgs/contacts?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = CrmContactsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listCrmContacts: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] listCrmContacts: invalid response shape");
+  }
+  return parsed.data as unknown as { contacts: CrmContact[] };
+}
+
+export async function listCrmUploads(
+  brandId: string,
+  token?: string,
+): Promise<{ uploads: CrmUpload[] }> {
+  const raw = await apiCall<unknown>(
+    `/orgs/contacts/uploads?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = CrmUploadsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listCrmUploads: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] listCrmUploads: invalid response shape");
+  }
+  return parsed.data as unknown as { uploads: CrmUpload[] };
+}
