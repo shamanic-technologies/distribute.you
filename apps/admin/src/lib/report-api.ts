@@ -570,15 +570,19 @@ export async function fetchRankedOpportunitiesByBrand(
   );
 }
 
-/** Per-request outlet metadata for the press-report status tables. A quote
- *  PITCH carries no `mediaOutlet` (only `quoteRequestId`), so the Publication
- *  column joins pitch → its originating quote request. Keyed by request id.
- *  `mediaOutlet` is already a bare outlet domain (`azbigmedia.com`).
- *  Fail-soft: a partial/empty map degrades the Publication column to "—"
- *  rather than poisoning the 4h cache. */
+/** Per-request metadata for the press-report status tables. A quote PITCH
+ *  carries no outlet/question (only `quoteRequestId`), so the row joins pitch →
+ *  its originating quote request. Keyed by request id. `mediaOutlet` is already
+ *  a bare outlet domain (`azbigmedia.com`); `question` is the journalist's
+ *  query (`opportunityText`) shown in the row detail panel. Fail-soft: a
+ *  partial/empty map degrades to "—" rather than poisoning the 4h cache. */
 export interface QuoteRequestOutlet {
   mediaOutlet: string | null;
   pitchUrl: string | null;
+  question: string | null;
+  journalistName: string | null;
+  category: string | null;
+  deadline: string | null;
 }
 
 // The quote-requests endpoint is ORG-scoped (a request = a journalist question,
@@ -607,6 +611,10 @@ export async function fetchQuoteRequestIndex(
             id: string;
             mediaOutlet: string | null;
             pitchUrl: string | null;
+            opportunityText: string | null;
+            journalistName: string | null;
+            category: string | null;
+            deadline: string | null;
           }>;
         }>(
           "listQuoteRequests",
@@ -616,7 +624,14 @@ export async function fetchQuoteRequestIndex(
         );
         const rows = result.providerQuoteRequests ?? [];
         for (const r of rows) {
-          index[r.id] = { mediaOutlet: r.mediaOutlet, pitchUrl: r.pitchUrl };
+          index[r.id] = {
+            mediaOutlet: r.mediaOutlet,
+            pitchUrl: r.pitchUrl,
+            question: r.opportunityText ?? null,
+            journalistName: r.journalistName ?? null,
+            category: r.category ?? null,
+            deadline: r.deadline ?? null,
+          };
         }
         // Last page reached (short page) — stop.
         if (rows.length < QUOTE_REQUESTS_PAGE) break;

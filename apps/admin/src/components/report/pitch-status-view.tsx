@@ -5,7 +5,11 @@ import {
   SortablePitchTable,
   type PitchRow,
 } from "@/components/report/sortable-pitch-table";
-import { fetchQuotePitchesByBrand, fetchQuoteRequestIndex } from "@/lib/report-api";
+import {
+  fetchQuotePitchesByBrand,
+  fetchQuoteRequestIndex,
+  type QuoteRequestOutlet,
+} from "@/lib/report-api";
 import type { QuotePitch } from "@/lib/api";
 import {
   type PitchStatusTab,
@@ -25,9 +29,10 @@ function attributionLabel(raw: string | null | undefined): string {
 
 function buildRow(
   pitch: QuotePitch,
-  outletName: string | null,
+  request: QuoteRequestOutlet | undefined,
   tabSlug: PitchStatusTab["slug"],
 ): PitchRow {
+  const outletName = request?.mediaOutlet ?? null;
   // The outlet `mediaOutlet` is already a bare domain (e.g. `azbigmedia.com`)
   // → use it directly for the logo. Fall back to the published article's host.
   // NEVER the pitchUrl (a connectively.us platform link = same logo everywhere).
@@ -49,6 +54,13 @@ function buildRow(
     drValue: dr,
     attributionLabel: attributionLabel(pitch.backlinkAttribution),
     timestampIso: pitchTimestamp(pitch, tabSlug),
+    // Detail-panel: the journalist's question (quote request) + our submitted
+    // answer (the pitch draft).
+    question: request?.question ?? null,
+    answer: pitch.draft ?? null,
+    journalistName: request?.journalistName ?? null,
+    category: request?.category ?? null,
+    deadlineIso: request?.deadline ?? null,
   };
 }
 
@@ -68,10 +80,9 @@ export async function PitchStatusView({
     fetchQuoteRequestIndex(orgId, brandId),
   ]);
 
-  const rows: PitchRow[] = pitchesForTab(pitches, tab).map((p) => {
-    const outlet = requestIndex[p.quoteRequestId];
-    return buildRow(p, outlet?.mediaOutlet ?? null, tab.slug);
-  });
+  const rows: PitchRow[] = pitchesForTab(pitches, tab).map((p) =>
+    buildRow(p, requestIndex[p.quoteRequestId], tab.slug),
+  );
 
   const csvColumns: CsvColumn<PitchRow>[] = [
     { label: "Publication", value: (r) => r.publicationName },
