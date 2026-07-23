@@ -5610,6 +5610,11 @@ export async function uploadCrmContacts(brandId: string, file: File): Promise<Cr
   const headers: Record<string, string> = {};
   const activeOrgId = activeOrgIdFromPath();
   if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
+  // crm-service attributes the upload's cost/run via the x-brand-id header (the
+  // gateway forwards it downstream). Without it, run-tracking rejects the upload
+  // (runs-service requires >=1 brandId) → 502. The brandId is also in the form
+  // body for the ingest itself; the header is purely for run attribution.
+  headers["x-brand-id"] = brandId;
   const res = await fetch(`/api/v1/orgs/contacts/upload`, {
     method: "POST",
     body: form,
