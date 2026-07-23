@@ -42,8 +42,13 @@ async function proxyRequest(
       url.searchParams.set(key, value);
     });
 
+    // Multipart uploads (CRM CSV import) must forward the raw body + the original
+    // Content-Type (boundary intact); everything else stays JSON as before.
+    const incomingContentType = req.headers.get("content-type") || "";
+    const isMultipart = incomingContentType.includes("multipart/form-data");
+
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      "Content-Type": isMultipart ? incomingContentType : "application/json",
       "X-API-Key": API_KEY,
       "x-external-org-id": clerkOrgId,
       "x-external-user-id": clerkUserId,
@@ -70,7 +75,9 @@ async function proxyRequest(
 
     const body =
       req.method !== "GET" && req.method !== "HEAD"
-        ? await req.text()
+        ? isMultipart
+          ? Buffer.from(await req.arrayBuffer())
+          : await req.text()
         : undefined;
 
     const res = await fetch(url.toString(), {

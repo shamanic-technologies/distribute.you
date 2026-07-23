@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCrmContacts, type CrmContact } from "@/lib/api";
+import { listCrmContacts, getCrmServeStats, type CrmContact } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
 // Brand-level CRM "Leads" page — the concatenated pool of silver contacts the
@@ -40,6 +40,15 @@ export default function CrmLeadsPage() {
     { refetchInterval: 5_000 },
   );
 
+  // Served-vs-remaining counts. Reached via a sibling api-service proxy route
+  // (`/v1/orgs/contacts/serve-stats`); until it deploys the read errors and the
+  // strip stays hidden (tolerant — a reassurance stat, not a hard dependency).
+  const { data: serveStats } = useAuthQuery(
+    ["crmServeStats", brandId],
+    () => getCrmServeStats(brandId),
+    { refetchInterval: 30_000, retry: false },
+  );
+
   const contacts = data?.contacts ?? [];
 
   const filtered = useMemo(() => {
@@ -64,6 +73,21 @@ export default function CrmLeadsPage() {
           </span>
         </h1>
       </div>
+
+      {serveStats && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            { label: "Served", value: serveStats.served },
+            { label: "Remaining sendable", value: serveStats.remainingSendable },
+            { label: "Total sendable", value: serveStats.totalSendable },
+          ].map((s) => (
+            <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-3">
+              <p className="text-xs text-gray-500">{s.label}</p>
+              <p className="text-lg font-bold text-gray-800">{s.value.toLocaleString("en-US")}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <EntitySearchBar
         value={search}

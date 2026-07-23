@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { listCrmUploads, type CrmUpload } from "@/lib/api";
+import { listCrmUploads, uploadCrmContacts, type CrmUpload } from "@/lib/api";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 
 // Brand-level CRM "Sources" page — every CSV upload imported into crm-service
@@ -40,6 +41,29 @@ export default function CrmSourcesPage() {
   const params = useParams();
   const brandId = params.brandId as string;
   const [search, setSearch] = useState("");
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      await uploadCrmContacts(brandId, file);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["crmUploads", brandId] }),
+        queryClient.invalidateQueries({ queryKey: ["crmContacts", brandId] }),
+      ]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const { data, isPending } = useAuthQuery(
     ["crmUploads", brandId],
@@ -71,14 +95,40 @@ export default function CrmSourcesPage() {
 
   return (
     <div className="p-4 md:p-8 overflow-y-auto h-full">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-4 gap-3">
         <h1 className="font-display text-xl font-bold text-gray-800">
           Sources
           <span className="ml-2 text-sm font-normal text-gray-500">
             ({uploads.length.toLocaleString("en-US")} CSV {uploads.length === 1 ? "upload" : "uploads"})
           </span>
         </h1>
+        <div className="shrink-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className={`text-sm px-3 py-2 rounded-lg border font-medium transition ${
+              uploading
+                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-wait"
+                : "bg-brand-50 text-brand-700 border-brand-200 hover:bg-brand-100"
+            }`}
+          >
+            {uploading ? "Uploading…" : "Upload CSV"}
+          </button>
+        </div>
       </div>
+
+      {uploadError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+          {uploadError}
+        </div>
+      )}
 
       <EntitySearchBar
         value={search}
