@@ -73,18 +73,21 @@ async function proxyRequest(
     if (sessionClaims?.firstName) headers["x-first-name"] = sessionClaims.firstName;
     if (sessionClaims?.lastName) headers["x-last-name"] = sessionClaims.lastName;
 
-    const body =
-      req.method !== "GET" && req.method !== "HEAD"
-        ? isMultipart
-          ? Buffer.from(await req.arrayBuffer())
-          : await req.text()
-        : undefined;
+    // For multipart, stream the body through untouched (no Content-Length →
+    // chunked). Buffering it would set a Content-Length the downstream gateway
+    // then re-forwards while ALSO re-streaming its own inbound request, which
+    // makes undici throw `fetch failed` on the gateway→crm-service hop. JSON
+    // bodies stay buffered as text (small, and the JSON path is unchanged).
+    const hasBody = req.method !== "GET" && req.method !== "HEAD";
+    const body = hasBody ? (isMultipart ? req.body : await req.text()) : undefined;
 
     const res = await fetch(url.toString(), {
       method: req.method,
       headers,
       body,
-    });
+      // Required by undici when the body is a stream (multipart passthrough).
+      ...(isMultipart && body ? { duplex: "half" } : {}),
+    } as RequestInit & { duplex?: "half" });
 
     const contentType = res.headers.get("Content-Type") || "application/json";
 
