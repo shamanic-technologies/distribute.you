@@ -208,6 +208,32 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
     expect(sortableTableContent).toContain("<button");
   });
 
+  it("row click opens a detail panel with the Question + Answer, XSS-safe", () => {
+    // Clicking a row selects it and opens the slide-over.
+    expect(sortableTableContent).toContain("setSelectedId");
+    expect(sortableTableContent).toContain("PitchDetailPanel");
+    expect(sortableTableContent).toContain("Question asked");
+    expect(sortableTableContent).toContain("Answer submitted");
+    // The question (opportunityText) + answer (pitch.draft) are threaded in.
+    expect(statusViewContent).toContain("question: request?.question");
+    expect(statusViewContent).toContain("answer: pitch.draft");
+    // Bodies render as escaped plain text — NEVER raw HTML injection.
+    expect(sortableTableContent).toContain("whitespace-pre-wrap");
+    // Strip comments: the source's own explanatory comment names the forbidden
+    // API, which would false-trip a raw substring guard.
+    expect(stripComments(sortableTableContent)).not.toContain(
+      "dangerouslySetInnerHTML",
+    );
+  });
+
+  it("gives each sidebar tab a distinct icon (not one shared glyph)", () => {
+    expect(reportSidebarContent).toContain("TAB_ICONS");
+    expect(reportSidebarContent).toContain("PitchedIcon");
+    expect(reportSidebarContent).toContain("InReviewIcon");
+    expect(reportSidebarContent).toContain("SelectedIcon");
+    expect(reportSidebarContent).toContain("PublishedIcon");
+  });
+
   it("renders the Publication logo via ProviderLogo keyed on the outlet domain (never the pitchUrl)", () => {
     expect(sortableTableContent).toContain("ProviderLogo");
     expect(statusViewContent).toContain("toDomain");

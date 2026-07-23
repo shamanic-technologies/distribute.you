@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { ProviderLogo } from "@/components/provider-logo";
 import { timeAgo } from "@/lib/report-pitch-tabs";
 
@@ -17,6 +17,12 @@ export interface PitchRow {
   drValue: number | null;
   attributionLabel: string;
   timestampIso: string | null;
+  // Detail-panel fields (shown when the row is clicked).
+  question: string | null;
+  answer: string | null;
+  journalistName: string | null;
+  category: string | null;
+  deadlineIso: string | null;
 }
 
 type SortKey = "publication" | "article" | "dr" | "attribution" | "date";
@@ -51,6 +57,8 @@ export function SortablePitchTable({
   // Default: DR desc (a present DR outranks an absent one), then most-recent.
   const [sortKey, setSortKey] = useState<SortKey>("dr");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = rows.find((r) => r.id === selectedId) ?? null;
 
   const columns: { key: SortKey; label: string }[] = [
     { key: "publication", label: "Publication" },
@@ -123,7 +131,14 @@ export function SortablePitchTable({
         </thead>
         <tbody>
           {sorted.map((row) => (
-            <tr key={row.id} className="border-t border-gray-100 align-top">
+            <tr
+              key={row.id}
+              onClick={() => setSelectedId(row.id)}
+              aria-selected={row.id === selectedId}
+              className={`border-t border-gray-100 align-top cursor-pointer transition-colors ${
+                row.id === selectedId ? "bg-brand-50" : "hover:bg-gray-50"
+              }`}
+            >
               <td className="px-4 py-3.5">
                 <div className="flex items-center gap-2.5">
                   <ProviderLogo domain={row.logoDomain} size={28} />
@@ -133,17 +148,10 @@ export function SortablePitchTable({
                 </div>
               </td>
               <td className="px-4 py-3.5 max-w-sm">
-                {row.articleUrl ? (
-                  <a
-                    href={row.articleUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-brand-600 hover:underline text-sm break-words"
-                  >
-                    {row.articleTitle ?? "View article"} →
-                  </a>
-                ) : row.articleTitle ? (
+                {row.articleTitle ? (
                   <span className="text-sm text-gray-700">{row.articleTitle}</span>
+                ) : row.articleUrl ? (
+                  <span className="text-sm text-gray-500">View article</span>
                 ) : (
                   <span className="text-sm text-gray-400">—</span>
                 )}
@@ -161,8 +169,156 @@ export function SortablePitchTable({
           ))}
         </tbody>
       </table>
+
+      <PitchDetailPanel
+        row={selected}
+        dateLabel={dateLabel}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   );
+}
+
+// Slide-over detail panel: the journalist's QUESTION (the quote request) + the
+// ANSWER we submitted (the pitch draft). Read-only. All text is rendered as
+// escaped plain text with `whitespace-pre-wrap` — never dangerouslySetInnerHTML
+// — so a pitch/question body can't inject markup (XSS-safe by construction).
+function PitchDetailPanel({
+  row,
+  dateLabel,
+  onClose,
+}: {
+  row: PitchRow | null;
+  dateLabel: string;
+  onClose: () => void;
+}) {
+  const open = row !== null;
+  return (
+    <>
+      {/* Scrim */}
+      <div
+        onClick={onClose}
+        aria-hidden={!open}
+        className={`fixed inset-0 z-40 bg-gray-900/30 transition-opacity duration-200 ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+      {/* Panel */}
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Quote detail"
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-white shadow-2xl border-l border-gray-200 flex flex-col transition-transform duration-300 ease-out ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {row && (
+          <>
+            <header className="flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-3 min-w-0">
+                <ProviderLogo domain={row.logoDomain} size={32} />
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">
+                    {row.publicationName}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {dateLabel} {timeAgo(row.timestampIso)}
+                    {row.drValue != null && (
+                      <span className="ml-2 text-gray-400">· DR {row.drValue}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="flex-shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+              {/* Meta chips */}
+              <div className="flex flex-wrap gap-2">
+                {row.journalistName && <MetaChip label="Journalist" value={row.journalistName} />}
+                {row.category && <MetaChip label="Category" value={row.category} />}
+                {row.deadlineIso && (
+                  <MetaChip label="Deadline" value={formatDate(row.deadlineIso)} />
+                )}
+                <AttributionBadge label={row.attributionLabel} />
+              </div>
+
+              {/* Question */}
+              <section>
+                <SectionLabel>Question asked</SectionLabel>
+                {row.question ? (
+                  <blockquote className="mt-2 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap break-words leading-relaxed">
+                    {row.question}
+                  </blockquote>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-400">Not available</p>
+                )}
+              </section>
+
+              {/* Answer */}
+              <section>
+                <SectionLabel>Answer submitted</SectionLabel>
+                {row.answer ? (
+                  <div className="mt-2 rounded-xl bg-white border border-gray-200 px-4 py-3 text-sm text-gray-800 whitespace-pre-wrap break-words leading-relaxed">
+                    {row.answer}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-400">Not available</p>
+                )}
+              </section>
+
+              {row.articleUrl && (
+                <a
+                  href={row.articleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline"
+                >
+                  Read the published article →
+                </a>
+              )}
+            </div>
+          </>
+        )}
+      </aside>
+    </>
+  );
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+      {children}
+    </h3>
+  );
+}
+
+function MetaChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+      <span className="text-gray-400">{label}:</span>
+      <span className="font-medium">{value}</span>
+    </span>
+  );
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function AttributionBadge({ label }: { label: string }) {

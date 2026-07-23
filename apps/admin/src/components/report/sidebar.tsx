@@ -34,13 +34,41 @@ const WorkflowsIcon = () => (
   </svg>
 );
 
-// One shared icon for every pitch-status tab (Published / Selected / In Review
-// / Pitched) — the count badge carries the distinction, not the glyph.
-const QuotesIcon = () => (
+// A distinct glyph per pitch-status stage so each sidebar tab reads at a
+// glance: Pitched = sent (paper plane), In Review = awaiting (clock),
+// Selected = picked (star), Published = live (globe).
+const PitchedIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 7h3v6H7zM7 13c0 2 1 3 3 3M14 7h3v6h-3zM14 13c0 2 1 3 3 3" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
   </svg>
 );
+
+const InReviewIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 7v5l3 2" />
+  </svg>
+);
+
+const SelectedIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3l2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 17.8 6.75 20.5l1-5.85L3.5 9.2l5.9-.9L12 3z" />
+  </svg>
+);
+
+const PublishedIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12h18M12 3c2.5 2.5 3.75 5.75 3.75 9S14.5 18.5 12 21c-2.5-2.5-3.75-5.75-3.75-9S9.5 5.5 12 3z" />
+  </svg>
+);
+
+const TAB_ICONS: Record<PitchStatusTab["slug"], ReactNode> = {
+  published: <PublishedIcon />,
+  selected: <SelectedIcon />,
+  "in-review": <InReviewIcon />,
+  pitched: <PitchedIcon />,
+};
 
 interface ReportSidebarProps {
   basePath: string;
@@ -63,7 +91,7 @@ function buildItems(
       id: tab.slug,
       label: tab.label,
       href: `${basePath}/${tab.slug}`,
-      icon: <QuotesIcon />,
+      icon: TAB_ICONS[tab.slug],
       count: counts?.[tab.slug],
     }));
   }
