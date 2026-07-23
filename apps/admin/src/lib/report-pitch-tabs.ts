@@ -3,20 +3,23 @@ import type { QuotePitch, QuotePitchStatus } from "./api";
 /**
  * The public press-report for the PR-Expert quote feature is a READ-ONLY
  * tracker: the client watches each quote move down the placement funnel
- * (Pitched → Selected → Published). It is NOT interactive — the old HITL
- * "write/send a reply" surface was removed.
+ * (Pitched → In Review → Selected → Published). It is NOT interactive — the
+ * old HITL "write/send a reply" surface was removed.
  *
- * The report sidebar is these three status tabs (most-advanced first), each a
+ * The report sidebar is these four status tabs (most-advanced first), each a
  * page rendering the SAME table filtered to that tab's pitch status(es).
  *
- * A pitch holds ONE current status, so the tabs partition cleanly:
+ * The funnel is CUMULATIVE at the top and current-state below:
  *  - Published : status `published` (article live).
  *  - Selected  : status `selected` (journalist picked it, awaiting publish).
- *  - Pitched   : status `submitted` — SENT and still in flight, i.e. NOT yet
- *                selected/published (those have their own status) and NOT
- *                rejected. This is the "many still awaiting a response" bucket.
- * `drafted` (generated, not yet sent — an internal pre-send state), plus
- * `not_selected` and the failure statuses, are NOT surfaced: a client tracks
+ *  - In Review : status `submitted` — SENT and still awaiting a decision, i.e.
+ *                NOT yet in the Selected/Published pages ("not in the other
+ *                pages"). The "many still waiting" bucket.
+ *  - Pitched   : EVERY pitch we sent = `submitted` + `selected` + `published`
+ *                (the funnel top / total pitched — a Selected or Published
+ *                pitch was also pitched). This is why Pitched ⊇ the others.
+ * `drafted` (generated, not yet sent — an internal pre-send state) and
+ * `not_selected` / failure statuses are NOT surfaced: a client tracks
  * placements, not un-sent drafts or rejections.
  *
  * `dateLabel` is the column header + meaning of the row's timestamp on that
@@ -25,7 +28,7 @@ import type { QuotePitch, QuotePitchStatus } from "./api";
  */
 export interface PitchStatusTab {
   /** URL slug + sidebar id. */
-  slug: "published" | "selected" | "pitched";
+  slug: "published" | "selected" | "in-review" | "pitched";
   label: string;
   /** Column header for the timestamp on this tab. */
   dateLabel: string;
@@ -36,7 +39,8 @@ export interface PitchStatusTab {
 export const PITCH_STATUS_TABS: readonly PitchStatusTab[] = [
   { slug: "published", label: "Published", dateLabel: "Published", statuses: ["published"] },
   { slug: "selected", label: "Selected", dateLabel: "Selected", statuses: ["selected"] },
-  { slug: "pitched", label: "Pitched", dateLabel: "Pitched", statuses: ["submitted"] },
+  { slug: "in-review", label: "In Review", dateLabel: "Submitted", statuses: ["submitted"] },
+  { slug: "pitched", label: "Pitched", dateLabel: "Pitched", statuses: ["submitted", "selected", "published"] },
 ];
 
 export function tabForSlug(slug: string): PitchStatusTab | null {
@@ -60,6 +64,7 @@ export function countsByTab(
   const counts = {
     published: 0,
     selected: 0,
+    "in-review": 0,
     pitched: 0,
   } as Record<PitchStatusTab["slug"], number>;
   for (const tab of PITCH_STATUS_TABS) {
@@ -79,6 +84,8 @@ export function pitchTimestamp(
 ): string | null {
   switch (tabSlug) {
     case "pitched":
+    case "in-review":
+      // Both key on when the pitch was SENT.
       return pitch.submittedAt ?? pitch.createdAt ?? pitch.updatedAt ?? null;
     case "published":
       return pitch.publishedAt ?? pitch.outcomeObservedAt ?? pitch.updatedAt ?? null;

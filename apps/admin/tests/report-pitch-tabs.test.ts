@@ -39,25 +39,32 @@ describe("toDomain — logo domain from a bare outlet OR a URL, never the pitchU
   });
 });
 
-describe("PITCH_STATUS_TABS — 1:1 status mapping", () => {
-  it("maps the 3 tabs to their single wire status (Pitched←submitted)", () => {
+describe("PITCH_STATUS_TABS — status mapping", () => {
+  it("maps each tab; In Review = submitted, Pitched = all sent (cumulative)", () => {
     expect(tabForSlug("published")?.statuses).toEqual(["published"]);
     expect(tabForSlug("selected")?.statuses).toEqual(["selected"]);
-    // Pitched = SENT and still in flight (not yet selected/published/rejected).
-    expect(tabForSlug("pitched")?.statuses).toEqual(["submitted"]);
-    // The old drafted-backed "pitched" and the "in-review" tab are retired.
-    expect(tabForSlug("in-review")).toBeNull();
+    // In Review = SENT, still awaiting (not in the Selected/Published pages).
+    expect(tabForSlug("in-review")?.statuses).toEqual(["submitted"]);
+    // Pitched = the funnel top: everything we sent (a Selected/Published pitch
+    // was also pitched) — so Pitched ⊇ In Review/Selected/Published.
+    expect(tabForSlug("pitched")?.statuses).toEqual([
+      "submitted",
+      "selected",
+      "published",
+    ]);
   });
 
-  it("has exactly 3 tabs in reverse-funnel order with a dateLabel each", () => {
+  it("has exactly 4 tabs in reverse-funnel order with a dateLabel each", () => {
     expect(PITCH_STATUS_TABS.map((t) => t.slug)).toEqual([
       "published",
       "selected",
+      "in-review",
       "pitched",
     ]);
     expect(PITCH_STATUS_TABS.map((t) => t.dateLabel)).toEqual([
       "Published",
       "Selected",
+      "Submitted",
       "Pitched",
     ]);
   });
@@ -68,7 +75,7 @@ describe("PITCH_STATUS_TABS — 1:1 status mapping", () => {
 });
 
 describe("countsByTab / pitchesForTab", () => {
-  it("buckets pitches by status (submitted → Pitched; drafted hidden)", () => {
+  it("buckets: In Review = submitted, Pitched = submitted+selected+published", () => {
     const pitches = [
       pitch("submitted"),
       pitch("submitted"),
@@ -80,9 +87,11 @@ describe("countsByTab / pitchesForTab", () => {
     expect(counts).toEqual({
       published: 1,
       selected: 0,
-      pitched: 2,
+      "in-review": 2,
+      pitched: 3, // 2 submitted + 0 selected + 1 published
     });
-    expect(pitchesForTab(pitches, tabForSlug("pitched")!)).toHaveLength(2);
+    expect(pitchesForTab(pitches, tabForSlug("in-review")!)).toHaveLength(2);
+    expect(pitchesForTab(pitches, tabForSlug("pitched")!)).toHaveLength(3);
   });
 });
 
