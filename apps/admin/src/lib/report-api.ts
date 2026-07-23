@@ -570,19 +570,17 @@ export async function fetchRankedOpportunitiesByBrand(
   );
 }
 
-/** Per-request metadata for the press-report status tables. A quote PITCH
- *  carries no outlet/question (only `quoteRequestId`), so the row joins pitch →
- *  its originating quote request. Keyed by request id. `mediaOutlet` is already
- *  a bare outlet domain (`azbigmedia.com`); `question` is the journalist's
- *  query (`opportunityText`) shown in the row detail panel. Fail-soft: a
+/** Per-request outlet metadata for the press-report status tables. A quote
+ *  PITCH carries no `mediaOutlet` (only `quoteRequestId`), so the row joins
+ *  pitch → its originating quote request for the Publication logo/name
+ *  fallback. Keyed by request id. Deliberately LIGHTWEIGHT (no question text)
+ *  so the page load stays fast — the row detail panel fetches the full
+ *  question ON DEMAND per click (see `fetchQuoteRequestDetail`). `mediaOutlet`
+ *  is already a bare outlet domain (`azbigmedia.com`). Fail-soft: a
  *  partial/empty map degrades to "—" rather than poisoning the 4h cache. */
 export interface QuoteRequestOutlet {
   mediaOutlet: string | null;
   pitchUrl: string | null;
-  question: string | null;
-  journalistName: string | null;
-  category: string | null;
-  deadline: string | null;
 }
 
 // The quote-requests endpoint is ORG-scoped (a request = a journalist question,
@@ -611,10 +609,6 @@ export async function fetchQuoteRequestIndex(
             id: string;
             mediaOutlet: string | null;
             pitchUrl: string | null;
-            opportunityText: string | null;
-            journalistName: string | null;
-            category: string | null;
-            deadline: string | null;
           }>;
         }>(
           "listQuoteRequests",
@@ -624,14 +618,7 @@ export async function fetchQuoteRequestIndex(
         );
         const rows = result.providerQuoteRequests ?? [];
         for (const r of rows) {
-          index[r.id] = {
-            mediaOutlet: r.mediaOutlet,
-            pitchUrl: r.pitchUrl,
-            question: r.opportunityText ?? null,
-            journalistName: r.journalistName ?? null,
-            category: r.category ?? null,
-            deadline: r.deadline ?? null,
-          };
+          index[r.id] = { mediaOutlet: r.mediaOutlet, pitchUrl: r.pitchUrl };
         }
         // Last page reached (short page) — stop.
         if (rows.length < QUOTE_REQUESTS_PAGE) break;
@@ -650,6 +637,43 @@ export async function fetchQuoteRequestIndex(
     () => ({}),
     `fetchQuoteRequestIndex(${brandId})`,
   );
+}
+
+/** The full detail of ONE quote request, fetched ON DEMAND when a report row
+ *  is clicked (keeps the heavy `opportunityText` question body OUT of the
+ *  page-load path). Server-side, admin-keyed, org-scoped — journalists-quotes
+ *  filters by org, so a request id from another org resolves to nothing.
+ *  Cached briefly so repeated opens of the same row don't refetch. */
+export interface QuoteRequestDetail {
+  question: string | null;
+  journalistName: string | null;
+  category: string | null;
+  deadline: string | null;
+}
+
+export async function fetchQuoteRequestDetail(
+  orgId: string,
+  requestId: string,
+): Promise<QuoteRequestDetail> {
+  const result = await adminGet<{
+    quoteRequest: {
+      opportunityText: string | null;
+      journalistName: string | null;
+      category: string | null;
+      deadline: string | null;
+    };
+  }>(
+    "getQuoteRequest",
+    `/orgs/quote-requests/${encodeURIComponent(requestId)}`,
+    orgId,
+  );
+  const r = result.quoteRequest;
+  return {
+    question: r?.opportunityText ?? null,
+    journalistName: r?.journalistName ?? null,
+    category: r?.category ?? null,
+    deadline: r?.deadline ?? null,
+  };
 }
 
 export async function fetchWorkflows(orgId: string, featureSlug: string): Promise<Workflow[]> {

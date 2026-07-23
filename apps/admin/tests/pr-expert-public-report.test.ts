@@ -185,7 +185,9 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
   it("server-fetches pitches + the quote-request outlet index (read-only)", () => {
     expect(statusViewContent).toContain("fetchQuotePitchesByBrand");
     expect(statusViewContent).toContain("fetchQuoteRequestIndex");
-    expect(statusViewContent).not.toMatch(/\/api\/report\//);
+    // The on-demand question GET (/api/report/.../quote-request) is read-only;
+    // the old WRITE handlers (draft/reply) must stay gone.
+    expect(statusViewContent).not.toMatch(/\/api\/report\/[^"'`]*\/(draft|reply)/);
     expect(statusViewContent).not.toContain("useAuthQuery");
   });
 
@@ -214,9 +216,12 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
     expect(sortableTableContent).toContain("PitchDetailPanel");
     expect(sortableTableContent).toContain("Question asked");
     expect(sortableTableContent).toContain("Answer submitted");
-    // The question (opportunityText) + answer (pitch.draft) are threaded in.
-    expect(statusViewContent).toContain("question: request?.question");
+    // Answer (pitch.draft) is already loaded → in the row; the question is
+    // fetched ON DEMAND by quoteRequestId (kept off the page-load path).
     expect(statusViewContent).toContain("answer: pitch.draft");
+    expect(statusViewContent).toContain("quoteRequestId: pitch.quoteRequestId");
+    expect(sortableTableContent).toContain("detailBase");
+    expect(sortableTableContent).toContain("fetch(");
     // Bodies render as escaped plain text — NEVER raw HTML injection.
     expect(sortableTableContent).toContain("whitespace-pre-wrap");
     // Strip comments: the source's own explanatory comment names the forbidden
@@ -224,6 +229,18 @@ describe("PitchStatusView — the shared read-only press-tracker table", () => {
     expect(stripComments(sortableTableContent)).not.toContain(
       "dangerouslySetInnerHTML",
     );
+  });
+
+  it("keeps the bulk quote-request index LIGHT (question fetched on demand)", () => {
+    // The heavy question body must NOT ride the page-load index fetch — the
+    // per-row panel fetches it lazily via the by-id detail helper + route.
+    const idxBlock =
+      stripComments(reportApiContent)
+        .split("export async function fetchQuoteRequestIndex")[1]
+        ?.split("export ")[0] ?? "";
+    expect(idxBlock).not.toContain("opportunityText");
+    expect(reportApiContent).toContain("export async function fetchQuoteRequestDetail");
+    expect(reportApiContent).toContain("/orgs/quote-requests/");
   });
 
   it("gives each sidebar tab a distinct icon (not one shared glyph)", () => {
