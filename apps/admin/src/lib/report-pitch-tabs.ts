@@ -41,9 +41,17 @@ export const PITCH_STATUS_TABS: readonly PitchStatusTab[] = [
   { slug: "selected", label: "Selected", dateLabel: "Selected", statuses: ["selected"] },
   { slug: "in-review", label: "In Review", dateLabel: "Submitted", statuses: ["submitted"] },
   { slug: "pitched", label: "Pitched", dateLabel: "Pitched", statuses: ["submitted", "selected", "published"] },
-  // All — every pitch we sent (same set as Pitched), with an added Status
-  // column so the client sees each pitch's current funnel stage at a glance.
-  { slug: "all", label: "All", dateLabel: "Pitched", statuses: ["submitted", "selected", "published"] },
+  // All — EVERYTHING we submitted to the journalist platform, including
+  // rejected pitches (`not_selected`). This matches Connectively's own
+  // "pitched" total (a rejected pitch was still pitched), unlike the Pitched
+  // tab which is the placement funnel (in-play + placed only). The added
+  // Status column distinguishes the rejected rows from the live ones.
+  {
+    slug: "all",
+    label: "All",
+    dateLabel: "Pitched",
+    statuses: ["submitted", "selected", "published", "not_selected"],
+  },
 ];
 
 /** Display label for a pitch's current funnel stage — used by the "All" tab's
@@ -59,6 +67,8 @@ export function pitchStatusLabel(status: QuotePitchStatus): string {
       return "Selected";
     case "published":
       return "Published";
+    case "not_selected":
+      return "Not selected";
     default:
       return status;
   }

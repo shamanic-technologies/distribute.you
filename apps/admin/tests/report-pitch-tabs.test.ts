@@ -55,11 +55,12 @@ describe("PITCH_STATUS_TABS — status mapping", () => {
     ]);
   });
 
-  it("All = every sent pitch (same set as Pitched)", () => {
+  it("All = everything submitted incl rejected (Connectively's pitched total)", () => {
     expect(tabForSlug("all")?.statuses).toEqual([
       "submitted",
       "selected",
       "published",
+      "not_selected",
     ]);
   });
 
@@ -99,8 +100,8 @@ describe("countsByTab / pitchesForTab", () => {
       published: 1,
       selected: 0,
       "in-review": 2,
-      pitched: 3, // 2 submitted + 0 selected + 1 published
-      all: 3, // same set as Pitched
+      pitched: 3, // 2 submitted + 0 selected + 1 published (placements funnel)
+      all: 4, // Pitched (3) + 1 not_selected (everything submitted, incl rejected)
     });
     expect(pitchesForTab(pitches, tabForSlug("in-review")!)).toHaveLength(2);
     expect(pitchesForTab(pitches, tabForSlug("pitched")!)).toHaveLength(3);
@@ -112,6 +113,7 @@ describe("pitchStatusLabel — All-tab Status column", () => {
     expect(pitchStatusLabel("submitted")).toBe("In Review");
     expect(pitchStatusLabel("selected")).toBe("Selected");
     expect(pitchStatusLabel("published")).toBe("Published");
+    expect(pitchStatusLabel("not_selected")).toBe("Not selected");
   });
 });
 

@@ -411,7 +411,9 @@ function StatusBadge({ label }: { label: string | null }) {
         ? "bg-brand-50 text-brand-700 border-brand-200"
         : label === "In Review"
           ? "bg-amber-100 text-amber-700 border-amber-200"
-          : "bg-gray-100 text-gray-600 border-gray-200";
+          : label === "Not selected"
+            ? "bg-rose-100 text-rose-700 border-rose-200"
+            : "bg-gray-100 text-gray-600 border-gray-200";
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full border ${style}`}>
       {label}
