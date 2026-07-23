@@ -3,32 +3,33 @@ import type { QuotePitch, QuotePitchStatus } from "./api";
 /**
  * The public press-report for the PR-Expert quote feature is a READ-ONLY
  * tracker: the client watches each quote move down the placement funnel
- * (Pitched → In Review → Selected → Published). It is NOT interactive — the
- * old HITL "write/send a reply" surface was removed.
+ * (In Review → Selected → Published), plus an "All" tab holding everything
+ * we ever submitted. It is NOT interactive — the old HITL "write/send a
+ * reply" surface was removed.
  *
  * The report sidebar is these four status tabs (most-advanced first), each a
- * page rendering the SAME table filtered to that tab's pitch status(es).
- *
- * The funnel is CUMULATIVE at the top and current-state below:
+ * page rendering the SAME table filtered to that tab's pitch status(es):
  *  - Published : status `published` (article live).
  *  - Selected  : status `selected` (journalist picked it, awaiting publish).
  *  - In Review : status `submitted` — SENT and still awaiting a decision, i.e.
- *                NOT yet in the Selected/Published pages ("not in the other
- *                pages"). The "many still waiting" bucket.
- *  - Pitched   : EVERY pitch we sent = `submitted` + `selected` + `published`
- *                (the funnel top / total pitched — a Selected or Published
- *                pitch was also pitched). This is why Pitched ⊇ the others.
- * `drafted` (generated, not yet sent — an internal pre-send state) and
- * `not_selected` / failure statuses are NOT surfaced: a client tracks
- * placements, not un-sent drafts or rejections.
+ *                NOT yet in the Selected/Published pages. The "still waiting"
+ *                bucket.
+ *  - All       : EVERYTHING we submitted to the journalist platform =
+ *                `submitted` + `selected` + `published` + `not_selected`
+ *                (a rejected pitch was still pitched). This matches
+ *                Connectively's own "pitched" total. Its added Status column
+ *                distinguishes each row's stage (incl. the rejected ones).
+ * The old "Pitched" tab (the in-play placement funnel, minus rejections) was
+ * removed as redundant with All. `drafted` (generated, not yet sent) and the
+ * pre-send failure statuses are NOT surfaced.
  *
  * `dateLabel` is the column header + meaning of the row's timestamp on that
- * tab (a published row's date = when it was published, a pitched row's = when
- * it was sent), replacing the old generic "Updated".
+ * tab (a published row's date = when it was published, an All row's = when it
+ * was sent), replacing the old generic "Updated".
  */
 export interface PitchStatusTab {
   /** URL slug + sidebar id. */
-  slug: "published" | "selected" | "in-review" | "pitched" | "all";
+  slug: "published" | "selected" | "in-review" | "all";
   label: string;
   /** Column header for the timestamp on this tab. */
   dateLabel: string;
@@ -40,12 +41,10 @@ export const PITCH_STATUS_TABS: readonly PitchStatusTab[] = [
   { slug: "published", label: "Published", dateLabel: "Published", statuses: ["published"] },
   { slug: "selected", label: "Selected", dateLabel: "Selected", statuses: ["selected"] },
   { slug: "in-review", label: "In Review", dateLabel: "Submitted", statuses: ["submitted"] },
-  { slug: "pitched", label: "Pitched", dateLabel: "Pitched", statuses: ["submitted", "selected", "published"] },
   // All — EVERYTHING we submitted to the journalist platform, including
-  // rejected pitches (`not_selected`). This matches Connectively's own
-  // "pitched" total (a rejected pitch was still pitched), unlike the Pitched
-  // tab which is the placement funnel (in-play + placed only). The added
-  // Status column distinguishes the rejected rows from the live ones.
+  // rejected pitches (`not_selected`). Matches Connectively's own "pitched"
+  // total (a rejected pitch was still pitched). The added Status column
+  // distinguishes each row's stage.
   {
     slug: "all",
     label: "All",
@@ -96,7 +95,6 @@ export function countsByTab(
     published: 0,
     selected: 0,
     "in-review": 0,
-    pitched: 0,
     all: 0,
   } as Record<PitchStatusTab["slug"], number>;
   for (const tab of PITCH_STATUS_TABS) {
@@ -115,10 +113,9 @@ export function pitchTimestamp(
   tabSlug: PitchStatusTab["slug"],
 ): string | null {
   switch (tabSlug) {
-    case "pitched":
     case "all":
     case "in-review":
-      // All key on when the pitch was SENT.
+      // Both key on when the pitch was SENT.
       return pitch.submittedAt ?? pitch.createdAt ?? pitch.updatedAt ?? null;
     case "published":
       return pitch.publishedAt ?? pitch.outcomeObservedAt ?? pitch.updatedAt ?? null;
