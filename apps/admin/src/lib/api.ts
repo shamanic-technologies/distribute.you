@@ -5583,3 +5583,78 @@ export async function listCrmUploads(
   }
   return parsed.data as unknown as { uploads: CrmUpload[] };
 }
+
+export interface CrmUploadResult {
+  uploadId: string;
+  rowCount: number;
+  status: string;
+  mappingProvenance?: string;
+}
+
+const CrmUploadResultSchema = z
+  .object({
+    uploadId: z.string(),
+    rowCount: z.coerce.number(),
+    status: z.string(),
+    mappingProvenance: z.string().nullish(),
+  })
+  .passthrough();
+
+// Multipart CSV upload — bypasses apiCall (JSON-only) with a direct FormData
+// POST so the browser sets the multipart boundary; the admin proxy forwards the
+// raw body + Content-Type through to crm-service. Mirrors apiCall's org header.
+export async function uploadCrmContacts(brandId: string, file: File): Promise<CrmUploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("brandId", brandId);
+  const headers: Record<string, string> = {};
+  const activeOrgId = activeOrgIdFromPath();
+  if (activeOrgId) headers["x-active-org-id"] = activeOrgId;
+  const res = await fetch(`/api/v1/orgs/contacts/upload`, {
+    method: "POST",
+    body: form,
+    headers,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("[admin] uploadCrmContacts: upload failed", { status: res.status, detail });
+    throw new Error(`[admin] uploadCrmContacts: ${res.status} ${detail.slice(0, 200)}`);
+  }
+  const raw = await res.json();
+  const parsed = CrmUploadResultSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] uploadCrmContacts: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] uploadCrmContacts: invalid response shape");
+  }
+  return parsed.data as unknown as CrmUploadResult;
+}
+
+export interface CrmServeStats {
+  served: number;
+  remainingSendable: number;
+  totalSendable: number;
+}
+
+const CrmServeStatsSchema = z
+  .object({
+    served: z.coerce.number(),
+    remainingSendable: z.coerce.number(),
+    totalSendable: z.coerce.number(),
+  })
+  .passthrough();
+
+// Served vs remaining sendable counts for a brand's uploaded contacts. Reached
+// via the api-service proxy `/v1/orgs/contacts/serve-stats` (added alongside this
+// consumer); the caller renders nothing until that proxy route is live.
+export async function getCrmServeStats(brandId: string, token?: string): Promise<CrmServeStats> {
+  const raw = await apiCall<unknown>(
+    `/orgs/contacts/serve-stats?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = CrmServeStatsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getCrmServeStats: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] getCrmServeStats: invalid response shape");
+  }
+  return parsed.data as unknown as CrmServeStats;
+}
