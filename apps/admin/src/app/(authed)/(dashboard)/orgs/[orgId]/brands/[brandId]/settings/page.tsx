@@ -12,6 +12,7 @@ import {
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
+import { BrandClickDestinationCard } from "@/components/settings/brand-click-destination-card";
 
 export default function BrandSettingsPage() {
   const params = useParams();
@@ -72,6 +73,12 @@ export default function BrandSettingsPage() {
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Daily Budget</h2>
         <BrandDailyBudgetCard brandId={brandId} />
+      </div>
+
+      {/* Click Destination */}
+      <div className="mb-10">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Click Destination</h2>
+        <BrandClickDestinationCard brandId={brandId} />
       </div>
 
       {/* Sales Economics */}
