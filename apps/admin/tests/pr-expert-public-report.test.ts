@@ -67,22 +67,25 @@ describe("Sidebar — Report link enabled for pr-expert-quote-opportunities", ()
 });
 
 describe("report-pitch-tabs — read-only status tab model", () => {
-  it("declares exactly the 3 tabs Published / Selected / Pitched", () => {
+  it("declares exactly the 4 tabs Published / Selected / In Review / Pitched", () => {
     expect(tabsLibContent).toContain('slug: "published"');
     expect(tabsLibContent).toContain('slug: "selected"');
+    expect(tabsLibContent).toContain('slug: "in-review"');
     expect(tabsLibContent).toContain('slug: "pitched"');
     expect(tabsLibContent).toContain('label: "Published"');
     expect(tabsLibContent).toContain('label: "Selected"');
+    expect(tabsLibContent).toContain('label: "In Review"');
     expect(tabsLibContent).toContain('label: "Pitched"');
-    // The retired "In Review" tab is gone from the model.
-    expect(stripComments(tabsLibContent)).not.toContain('slug: "in-review"');
   });
 
-  it("maps each tab to its wire pitch status (Pitched←submitted; drafted hidden)", () => {
+  it("maps tabs: In Review←submitted, Pitched←all-sent (cumulative); drafted hidden", () => {
     const block = stripComments(tabsLibContent);
     expect(block).toMatch(/slug:\s*"published"[\s\S]*?statuses:\s*\[\s*"published"\s*\]/);
     expect(block).toMatch(/slug:\s*"selected"[\s\S]*?statuses:\s*\[\s*"selected"\s*\]/);
-    expect(block).toMatch(/slug:\s*"pitched"[\s\S]*?statuses:\s*\[\s*"submitted"\s*\]/);
+    expect(block).toMatch(/slug:\s*"in-review"[\s\S]*?statuses:\s*\[\s*"submitted"\s*\]/);
+    expect(block).toMatch(
+      /slug:\s*"pitched"[\s\S]*?statuses:\s*\[\s*"submitted",\s*"selected",\s*"published"\s*\]/,
+    );
     // drafted (un-sent) is never a tab status.
     const tabsArray = block.split("PITCH_STATUS_TABS")[1]?.split("];")[0] ?? "";
     expect(tabsArray).not.toContain('"drafted"');
