@@ -27,6 +27,43 @@ const DESCRIPTION_BY_EXTRACT_KEY: Record<string, string> = Object.fromEntries(
   SALES_PROFILE_FIELDS.map((f) => [f.key, f.description]),
 );
 
+// Per-lever guidance for the Hormozi offer-lever generation. Keyed by the user-field
+// key. Each is the concrete "what this lever is" instruction; the shared template
+// below wraps it with the Alex-Hormozi framing + the infer-don't-fabricate rule.
+const HORMOZI_LEVER_GUIDANCE: Record<string, string> = {
+  dreamOutcome:
+    "The single most desirable result the buyer wants from this kind of offer. Make it specific, tangible and worth wanting, not a generic slogan.",
+  perceivedLikelihood:
+    "The proof that the buyer will actually get that result: track record, numbers, named results, credentials, guarantees, or any evidence that raises belief.",
+  socialProof:
+    "Recognizable clients, testimonials, case studies and concrete results that make the promise credible. Return several short items, one per proof point.",
+  riskReversal:
+    "How the downside of saying yes is removed: a guarantee, free trial, refund policy, or done-with-you support that lowers the perceived risk.",
+  urgency:
+    "A genuine reason to act now rather than later: deadlines, cohorts, seasonal windows, or time-boxed offers.",
+  scarcity:
+    "Genuine limited availability that raises perceived value: limited seats, a waitlist, or capped capacity. Only what is plausibly true for this business.",
+};
+
+// Wrap a lever's guidance in the Alex-Hormozi framing + the infer-don't-fabricate rule.
+// The user reviews and edits every output, so a smart best-effort beats a blank field.
+function hormoziLeverDescription(
+  fieldLabel: string,
+  guidance: string,
+  services: string[],
+): string {
+  const ctx = services.length
+    ? `This brand sells the following services / products: ${services.join("; ")}. `
+    : "";
+  return [
+    `Act as Alex Hormozi, a world-class offer strategist. ${ctx}`,
+    `Scrape the brand's most relevant pages and, using them plus the services above, write the most relevant, logical and compelling "${fieldLabel}" for this brand's cold-email offer.`,
+    guidance,
+    "Ground it in concrete details found on the site. Where the site is silent or incomplete, infer the most sensible and likely answer from the business and its services — think like an expert marketer filling a reasonable gap. Never fabricate absurd, false, or unverifiable claims (no invented numbers, named customers, or guarantees that clearly do not exist).",
+    "Keep it to 1-3 short, specific sentences. A reasonable best-effort is expected rather than a blank or 'Unknown' — the user will read and edit the result.",
+  ].join(" ");
+}
+
 /** Confirmed user-fields map → the plain fields bag the inline editors work with. */
 export function userFieldsToProfile(fields: BrandUserFields | undefined): ProfileFields {
   const out: ProfileFields = {};
@@ -89,22 +126,22 @@ export const isEmptyField = (v: string | string[] | undefined): boolean =>
   Array.isArray(v) ? v.length === 0 : !(typeof v === "string" && v.trim());
 
 /**
- * Build the extract-fields request defs for a card's subset. When `servicesContext`
- * is non-empty, it is prepended to every field's description — so the offer-lever
- * extraction is CONDITIONED on the services the user entered. The description is part
- * of the extract-fields cache key, so a changed services context forces a fresh
- * extraction (no stale collision), which is exactly what we want.
+ * Build the extract-fields request defs for a card's subset. Offer levers use a rich
+ * Alex-Hormozi generation prompt (inferring a sensible answer from partial/absent
+ * info, never fabricating) CONDITIONED on the entered services; the services card
+ * keeps the plain literal-extraction description. The description is part of the
+ * extract-fields cache key, so a changed services context (or the richer prompt)
+ * forces a fresh extraction — no stale collision.
  */
 export function buildExtractDefs(defs: FieldDef[], servicesContext?: string[]): ExtractFieldDef[] {
   const services = (servicesContext ?? []).map((s) => s.trim()).filter(Boolean);
-  const prefix = services.length
-    ? `This brand sells the following services/products: ${services.join("; ")}. Using that as context, `
-    : "";
   return defs.map((f) => {
     const extractKey = EXTRACT_KEY_FOR_FIELD[f.key] ?? f.key;
-    const base = DESCRIPTION_BY_EXTRACT_KEY[extractKey] ?? f.label;
-    // Keep the ORIGINAL user-field key on the returned def so the response maps back
-    // to the field; the description carries the (optionally services-conditioned) prompt.
-    return { key: extractKey, description: prefix ? `${prefix}${base}` : base };
+    const guidance = HORMOZI_LEVER_GUIDANCE[f.key];
+    // Levers → rich Hormozi prompt; services (or any non-lever) → plain extraction.
+    const description = guidance
+      ? hormoziLeverDescription(f.label, guidance, services)
+      : (DESCRIPTION_BY_EXTRACT_KEY[extractKey] ?? f.label);
+    return { key: extractKey, description };
   });
 }
