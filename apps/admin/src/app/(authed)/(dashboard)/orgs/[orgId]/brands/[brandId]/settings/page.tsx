@@ -12,7 +12,8 @@ import {
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
-import { BrandOfferCard } from "@/components/settings/brand-offer-card";
+import { BrandUserFieldsCard } from "@/components/settings/brand-user-fields-card";
+import { SERVICES_FIELDS, LEVER_FIELDS } from "@/lib/user-fields-form";
 import { BrandClickDestinationCard } from "@/components/settings/brand-click-destination-card";
 
 export default function BrandSettingsPage() {
@@ -88,10 +89,25 @@ export default function BrandSettingsPage() {
         <BrandSalesEconomicsCard brandId={brandId} />
       </div>
 
-      {/* Your offer (services + Hormozi value-equation levers, AI-prefilled) */}
+      {/* Services sold (AI-prefilled from the brand site) */}
+      <div className="mb-10">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Services sold</h2>
+        <BrandUserFieldsCard
+          brandId={brandId}
+          defs={SERVICES_FIELDS}
+          blurb="The distinct paid services or products this brand sells. AI prefills them from the brand site; review and confirm."
+        />
+      </div>
+
+      {/* Your offer — the 6 Hormozi value-equation levers, prefilled FROM the services */}
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Your offer</h2>
-        <BrandOfferCard brandId={brandId} />
+        <BrandUserFieldsCard
+          brandId={brandId}
+          defs={LEVER_FIELDS}
+          conditionOnServices
+          blurb="The 6 offer levers we write every email around. Prefill uses the services above as context; review and confirm."
+        />
       </div>
 
       {/* Danger Zone */}
