@@ -2356,6 +2356,31 @@ export async function upsertBrand(
   );
 }
 
+// ── No-website brand creation (beta) ──────────────────────────────
+// Creates a brand with NO website URL from a user-typed name + a large free-form block
+// the user pasted about their business, then persists that context so field extraction
+// reads it instead of scraping a site (brand-service #366, api-service #760 + business-
+// context passthrough). MUST persist the context BEFORE extract-fields runs.
+export async function createBrandWithoutWebsite(
+  name: string,
+  context: string,
+  token?: string,
+): Promise<{ brandId: string }> {
+  // POST /orgs/brands accepts EITHER { url } OR { name }; no-website brand = { name }.
+  const { brandId } = await apiCall<{ brandId: string }>(`/brands`, {
+    token,
+    method: "POST",
+    body: { name },
+  });
+  // PUT /orgs/brands/:id/business-context { content } — the extraction source.
+  await apiCall(`/brands/${brandId}/business-context`, {
+    token,
+    method: "PUT",
+    body: { content: context },
+  });
+  return { brandId };
+}
+
 /** POST /brands/:brandId/transfer — transfer brand to another org */
 export async function transferBrand(
   brandId: string,
@@ -3599,7 +3624,10 @@ export async function createCampaignWithoutBrandEnrichment(
   params: {
     name: string;
     workflowSlug: string;
-    brandUrls: string[];
+    // Exactly one of brandUrls (website brand) or brandIds (no-website brand,
+    // already created by name) — the gateway resolves/forwards accordingly.
+    brandUrls?: string[];
+    brandIds?: string[];
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;

@@ -25,6 +25,7 @@ import {
 import posthog from "posthog-js";
 import {
   upsertBrand,
+  createBrandWithoutWebsite,
   getBrand,
   extractBrandFields,
   SALES_PROFILE_FIELDS,
@@ -117,7 +118,9 @@ const CHECKOUT_PENDING_KEY = "distribute:onboarding-checkout-launch";
 const ONBOARDING_STATE_KEY = "distribute:onboarding-beta-state";
 // v7: the profile bag keys the offer levers by the confirmed user-field keys
 // (`valueProposition` → `dreamOutcome`); bump busts pre-migration snapshots.
-const ONBOARDING_STATE_VERSION = 7;
+// v8: adds the no-website path (`noWebsiteMode` + `brandName` + `brandContext`) —
+// a brand with no site the user describes in a free-form block instead of a URL.
+const ONBOARDING_STATE_VERSION = 8;
 const AUTO_TOPUP_THRESHOLD_CENTS = 500;
 // Shown on the pricing step when a user returns from Stripe checkout without paying.
 // Reassuring, not an error: the brand/budget setup is intact and they finish from here.
@@ -297,7 +300,8 @@ type PendingCheckoutLaunch = {
   version: 1;
   brandId: string;
   orgId: string;
-  brandUrl: string;
+  // null for a no-website brand (created from a name + pasted context, no URL).
+  brandUrl: string | null;
   hostname: string;
   outcome: Outcome;
   budgetUsd: number;
@@ -326,6 +330,11 @@ type PersistedOnboardingState = {
   flowKey: OnboardingFlowKey;
   step: Step;
   url: string;
+  // No-website path: the user has no site → they give a brand name + a free-form
+  // block describing the business instead of a URL. `url` stays "" in this mode.
+  noWebsiteMode: boolean;
+  brandName: string;
+  brandContext: string;
   outcome: Outcome;
   rates: Record<RateKey, number>;
   rateText: Record<RateKey, string>;
@@ -440,6 +449,9 @@ function reconstructCheckoutOnboardingState(
     flowKey: "signup",
     step: "pricing",
     url: (p.brandUrl ?? "").replace(/^https?:\/\//i, ""),
+    noWebsiteMode: p.brandUrl == null,
+    brandName: "",
+    brandContext: "",
     outcome: p.outcome as Outcome,
     rates: { ...DEFAULT_RATES },
     rateText: { ...DEFAULT_RATE_TEXT },
@@ -473,7 +485,7 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     parsed.version !== 1 ||
     typeof parsed.brandId !== "string" ||
     typeof parsed.orgId !== "string" ||
-    typeof parsed.brandUrl !== "string" ||
+    !(parsed.brandUrl === null || typeof parsed.brandUrl === "string") ||
     typeof parsed.hostname !== "string" ||
     !OUTCOMES.some((o) => o.key === parsed.outcome) ||
     typeof parsed.budgetUsd !== "number" ||
@@ -600,6 +612,8 @@ function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
     (p.flowKey !== "signup" && p.flowKey !== "add" && p.flowKey !== "new") ||
     typeof p.step !== "string" || !ALL_STEPS.includes(p.step as Step) ||
     typeof p.url !== "string" ||
+    typeof p.noWebsiteMode !== "boolean" ||
+    typeof p.brandName !== "string" || typeof p.brandContext !== "string" ||
     !OUTCOMES.some((o) => o.key === p.outcome) ||
     !isRateRecord(p.rates) || !isRateTextRecord(p.rateText) ||
     !isStringList(p.services) || typeof p.clickDestinationUrl !== "string" || !isProfileRecord(p.profile) ||
@@ -721,6 +735,13 @@ export function Onboarding() {
           : "welcome",
   );
   const [url, setUrl] = useState(() => restored?.url ?? searchParams.get("url")?.trim() ?? "");
+  // No-website path (beta): the user has no site, so instead of a URL they enter a
+  // brand name + a large free-form block about their business. `noWebsiteMode` gates
+  // the URL-step UI, skips the click-destination step, and locks the goal to
+  // positive_replies (no site means no clicks/visits to optimize for).
+  const [noWebsiteMode, setNoWebsiteMode] = useState<boolean>(() => restored?.noWebsiteMode ?? false);
+  const [brandName, setBrandName] = useState(() => restored?.brandName ?? "");
+  const [brandContext, setBrandContext] = useState(() => restored?.brandContext ?? "");
   const [error, setError] = useState<string | null>(null);
   // Reassuring (non-error) note shown on the pricing step after a cancelled checkout
   // return — the setup is saved and the user can finish payment from the same screen.
@@ -832,6 +853,10 @@ export function Onboarding() {
 
   const domain = extractDomain(url);
   const hostname = domain ?? url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  // A no-website brand has no domain/hostname — the step headers + loading copy use
+  // the typed brand name as the identity instead of an empty "Reading " line.
+  const headerDomain = noWebsiteMode ? null : domain;
+  const headerHostname = noWebsiteMode ? (brandName.trim() || "your brand") : hostname;
   // The default click destination = the brand's homepage (domain root). Used as
   // the pre-selected option on the destination step and the fallback when the
   // user leaves the custom field empty.
@@ -847,6 +872,12 @@ export function Onboarding() {
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
+  // A no-website brand has no clicks/visits, so the only supported goal is
+  // positive_replies — keep the goal pinned there whenever no-website mode is on
+  // (covers a restored snapshot whose outcome drifted).
+  useEffect(() => {
+    if (noWebsiteMode && outcome !== "positive_replies") setOutcome("positive_replies");
+  }, [noWebsiteMode, outcome]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
@@ -880,6 +911,9 @@ export function Onboarding() {
       flowKey,
       step: opts?.step ?? step,
       url,
+      noWebsiteMode,
+      brandName,
+      brandContext,
       outcome,
       rates,
       rateText,
@@ -908,7 +942,7 @@ export function Onboarding() {
   useEffect(() => {
     if (searchParams.get("launch_checkout") === "success") return;
     writeOnboardingState(buildOnboardingState());
-  }, [step, url, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion]);
+  }, [step, url, noWebsiteMode, brandName, brandContext, outcome, rates, rateText, services, clickDestinationUrl, profile, selectedBudget, customBudget, checkoutBudgetUsd, audiencePrompt, audienceCandidates, selectedAudienceIds, brandId, flowKey, searchParams, pricingHydrationVersion]);
 
   // Replay the loading screen ONCE to re-fetch the brand-backed data (services,
   // economics, projection, feature inputs) the deeper steps depend on, then land the
@@ -1230,6 +1264,99 @@ export function Onboarding() {
     }
   }
 
+  // Switch the URL step into the no-website path: swap the URL input for a brand
+  // name + free-form business-context block, and lock the goal to positive_replies
+  // (no site → no clicks/visits to optimize for).
+  function enterNoWebsiteMode() {
+    setError(null);
+    setNoWebsiteMode(true);
+    setOutcome("positive_replies");
+  }
+
+  // Create the no-website brand for real (null URL + pasted context), then block only
+  // on the services the next step needs. Mirrors createBrandAndFetchServices but with
+  // no URL: the org is named after the brand, the brand is created via the isolated
+  // createBrandWithoutWebsite helper (create null-url brand + persist context BEFORE
+  // extraction), and extraction reads that stored context instead of scraping a site.
+  async function createBrandNoWebsiteAndFetchServices(): Promise<void> {
+    const name = brandName.trim();
+    const context = brandContext.trim();
+    const workspaceStartedAt = performance.now();
+    const reuseOrgId = organization?.id ?? orgIdRef.current ?? null;
+    const reuseOrg = !forceNew && !!reuseOrgId;
+    let targetOrgId: string;
+    if (reuseOrg) {
+      targetOrgId = reuseOrgId!;
+    } else {
+      if (!createOrganization || !setActive) {
+        throw new Error("Organization setup is not ready yet. Please try again.");
+      }
+      const org = await createOrganization({ name });
+      await setActive({ organization: org.id });
+      targetOrgId = org.id;
+    }
+    captureSetupMilestone("organization_ready", workspaceStartedAt);
+    setLoadStep(1);
+    const brandStartedAt = performance.now();
+    // Isolated best-guess seam: create the null-url brand + persist the pasted
+    // context BEFORE extraction. The orchestrator conforms this to the real
+    // brand-service contract once deployed.
+    const { brandId: newBrandId } = await createBrandWithoutWebsite(name, context);
+    captureSetupMilestone("brand_upserted", brandStartedAt);
+    setLoadStep(2);
+    const servicesStartedAt = performance.now();
+    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS).catch((e) => {
+      console.error("[dashboard] extractBrandFields (no-website) failed:", e);
+      captureSetupMilestone("services_extract_failed", servicesStartedAt);
+      return null;
+    });
+    if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
+    brandIdRef.current = newBrandId;
+    orgIdRef.current = targetOrgId;
+    setBrandId(newBrandId);
+    posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId, no_website: true });
+    const serviceValue = serviceFields?.fields.services?.value;
+    if (serviceValue != null) {
+      const nextServices = normalizeServices(serviceValue);
+      if (nextServices.length > 0) {
+        setProfile((prev) => ({
+          ...prev,
+          services: servicesEditedRef.current ? prev.services ?? nextServices : nextServices,
+        }));
+        if (!servicesEditedRef.current) setServices(nextServices);
+      }
+    }
+    fetchDoneRef.current = true;
+    setLoadStep(LOADING_STEPS.length);
+    const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
+      console.error("[dashboard] onboarding background hydrate (no-website) failed:", e);
+    });
+    hydrationPromiseRef.current = hydration;
+  }
+
+  async function startAnalyzeNoWebsite() {
+    if (!brandName.trim() || !brandContext.trim()) return;
+    setError(null);
+    setStep("loading");
+    resetLoadingProgress();
+    posthog.capture("onboarding_workspace_create_started", { flow: "beta", no_website: true });
+    captureSetupMilestone("started");
+    try {
+      await createBrandNoWebsiteAndFetchServices();
+      maybeAdvancePastLoading();
+    } catch (err) {
+      if (isInsufficientCredit(err)) {
+        creditRetryRef.current = () => startAnalyzeNoWebsite();
+        return;
+      }
+      posthog.capture("onboarding_workspace_create_failed", { flow: "beta", no_website: true });
+      timers.current.forEach(clearTimeout);
+      console.error("[dashboard] onboarding no-website setup failed:", err);
+      setError(displaySetupError(err));
+      setStep("url");
+    }
+  }
+
   async function fetchFreshWorkflowProjectionForRates(
     id: string,
     nextRates: Record<RateKey, number>,
@@ -1469,7 +1596,12 @@ export function Onboarding() {
     const { campaign } = await createCampaignWithoutBrandEnrichment({
       name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
       workflowSlug: pending.workflowSlug,
-      brandUrls: [pending.brandUrl],
+      // A no-website brand carries no URL; it's already created by name, so the
+      // gateway takes its brandId directly (a website brand passes brandUrls, which
+      // the gateway upserts to a brandId). Exactly one is sent.
+      ...(pending.brandUrl
+        ? { brandUrls: [pending.brandUrl] }
+        : { brandIds: [pending.brandId] }),
       featureSlug: SALES_FEATURE_SLUG,
       featureInputs,
       maxBudgetDailyUsd: String(pending.budgetUsd),
@@ -1559,10 +1691,12 @@ export function Onboarding() {
     const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
     const trimmed = url.trim();
     const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
-    const brandUrl = normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
-    const launchHostname = hostname || storedPending?.hostname || "";
+    // A no-website brand has no URL; its identity/hostname is the typed brand name.
+    const brandUrl = noWebsiteMode ? null : normalizedCurrentUrl ?? storedPending?.brandUrl ?? null;
+    const launchHostname = (noWebsiteMode ? brandName.trim() : hostname) || storedPending?.hostname || "";
     const launchOutcome = brandIdRef.current ? outcome : storedPending?.outcome ?? outcome;
-    if (!id || !orgId || budget == null || !brandUrl || !launchHostname) {
+    // brandUrl is required EXCEPT for a no-website brand (it legitimately has none).
+    if (!id || !orgId || budget == null || (!brandUrl && !noWebsiteMode) || !launchHostname) {
       throw new Error("Checkout state is missing. Go back to pricing and try again.");
     }
     // Block launch when no audience is picked — outreach can't run without one, so
@@ -1595,8 +1729,10 @@ export function Onboarding() {
       topupAmountCents: checkoutAmountCents,
       topupThresholdCents: AUTO_TOPUP_THRESHOLD_CENTS,
       featureInputs: storedPending?.featureInputs,
-      profile: brandIdRef.current === id && normalizedCurrentUrl ? profile : storedPending?.profile,
-      services: brandIdRef.current === id && normalizedCurrentUrl ? services : storedPending?.services,
+      // "brand in memory matches this launch" holds for a URL brand (url resolved) OR
+      // a no-website brand (no url, identified by noWebsiteMode) whose id matches.
+      profile: brandIdRef.current === id && (noWebsiteMode || normalizedCurrentUrl) ? profile : storedPending?.profile,
+      services: brandIdRef.current === id && (noWebsiteMode || normalizedCurrentUrl) ? services : storedPending?.services,
       selectedAudienceIds: launchAudienceIds,
       onboardingState: checkoutState,
       createdAt: new Date().toISOString(),
@@ -1650,7 +1786,7 @@ export function Onboarding() {
       pendingCheckoutRef.current = pending;
       applyRestoredOnboardingState(pending.onboardingState, { step: "celebrate" });
       setCheckoutBudgetUsd(pending.budgetUsd);
-      setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
+      setLaunchingBrand({ domain: extractDomain(pending.brandUrl ?? ""), hostname: pending.hostname });
       setLaunchStep(0);
       setOfferIndex(0);
       setStep("celebrate");
@@ -1685,7 +1821,7 @@ export function Onboarding() {
     try {
       const pending = buildPendingLaunchBlob();
       pendingCheckoutRef.current = pending;
-      setLaunchingBrand({ domain: extractDomain(pending.brandUrl), hostname: pending.hostname });
+      setLaunchingBrand({ domain: extractDomain(pending.brandUrl ?? ""), hostname: pending.hostname });
       setLaunchStep(0);
       setOfferIndex(0);
       setStep("celebrate");
@@ -1841,6 +1977,9 @@ export function Onboarding() {
 
   function applyRestoredOnboardingState(state: PersistedOnboardingState, opts?: { step?: Step }) {
     setUrl(state.url);
+    setNoWebsiteMode(state.noWebsiteMode);
+    setBrandName(state.brandName);
+    setBrandContext(state.brandContext);
     setOutcome(state.outcome);
     setRates(state.rates);
     setRateText(state.rateText);
@@ -2039,25 +2178,62 @@ export function Onboarding() {
   }
 
   if (step === "url") {
+    const urlFooter = noWebsiteMode ? (
+      <button onClick={startAnalyzeNoWebsite} disabled={!brandName.trim() || !brandContext.trim()} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        Build my strategy <ArrowRightIcon className="h-4 w-4" />
+      </button>
+    ) : (
+      <button onClick={startAnalyze} disabled={!domain} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+        Analyze my product <ArrowRightIcon className="h-4 w-4" />
+      </button>
+    );
     return (
       <StepShell
         maxWidth="sm:max-w-md"
         pad="p-5 sm:p-6 md:p-8"
-        footer={
-          <button onClick={startAnalyze} disabled={!domain} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
-            Analyze my product <ArrowRightIcon className="h-4 w-4" />
-          </button>
-        }
+        footer={urlFooter}
       >
-        <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
-        <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
-        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        <input
-          type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. acme.com" autoFocus
-          onKeyDown={(e) => { if (e.key === "Enter" && domain) startAnalyze(); }}
-          className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
-        />
-        {url.trim() && !domain && <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>}
+        {noWebsiteMode ? (
+          <>
+            <h2 className="font-display text-2xl font-bold text-gray-900">Tell us about your business</h2>
+            <p className="mt-2 mb-6 text-gray-500">No website? No problem. Give us your brand name and everything about what you sell, and we build the outreach from it.</p>
+            {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+            <label htmlFor="ob-brand-name" className="block text-sm font-medium text-gray-700">Brand name</label>
+            <input
+              id="ob-brand-name"
+              type="text" value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="e.g. Acme Consulting" autoFocus
+              className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <label htmlFor="ob-brand-context" className="mt-5 block text-sm font-medium text-gray-700">About your business</label>
+            <textarea
+              id="ob-brand-context"
+              value={brandContext} onChange={(e) => setBrandContext(e.target.value)} rows={10} maxLength={300000}
+              placeholder="Paste everything about your business: what you sell, who you sell it to, your pricing, and what makes you different. The more you give us, the better we target."
+              className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm leading-6 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <button type="button" onClick={() => setNoWebsiteMode(false)} className="mt-4 text-sm font-medium text-brand-600 transition hover:text-brand-700">
+              I have a website
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="font-display text-2xl font-bold text-gray-900">What are we promoting?</h2>
+            <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
+            {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+            <input
+              type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. acme.com" autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter" && domain) startAnalyze(); }}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            {url.trim() && !domain && <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>}
+            {isBeta && (
+              <button type="button" onClick={enterNoWebsiteMode} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-brand-600 transition hover:text-brand-700">
+                I have no website
+                <MaturityBadge level="beta" />
+              </button>
+            )}
+          </>
+        )}
       </StepShell>
     );
   }
@@ -2068,10 +2244,10 @@ export function Onboarding() {
       <StepShell
         maxWidth="sm:max-w-md"
         pad="p-5 sm:p-6 md:p-8"
-        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
       >
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
-          <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{hostname}</span></p>
+          <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{headerHostname}</span></p>
           <div className="space-y-2">
             {LOADING_STEPS.map((s, i) => {
               const isDone = loadingComplete || i < loadStep;
@@ -2096,8 +2272,8 @@ export function Onboarding() {
   if (step === "services") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
-        footer={<NextButton onClick={() => { addService(serviceDraft); setStep("destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        footer={<NextButton onClick={() => { addService(serviceDraft); setStep(noWebsiteMode ? "objective" : "destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
       >
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
@@ -2137,7 +2313,7 @@ export function Onboarding() {
       `mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${active ? "border-brand-500 bg-brand-500" : "border-gray-300"}`;
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={saveDestinationAndContinue} busy={busy} disabled={busy} />}
       >
           <BackButton onClick={() => setStep("services")} />
@@ -2193,17 +2369,18 @@ export function Onboarding() {
   if (step === "objective") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("rates")} />}
       >
-          <BackButton onClick={() => setStep("destination")} />
+          <BackButton onClick={() => setStep(noWebsiteMode ? "services" : "destination")} />
           <h2 className="font-display text-2xl font-bold text-gray-900">What is your primary sales goal?</h2>
           <p className="mt-2 mb-6 text-gray-500">Pick the one outcome this campaign optimizes for. The budget is shown per this outcome.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {OUTCOMES
-              // Beta goals show only to beta users — but never hide the currently
-              // selected goal (a beta teammate's restored pick stays visible for all).
-              .filter((o) => !o.beta || isBeta || o.key === outcome)
+              // No-website brands have no clicks/visits → only positive_replies is
+              // supported. Otherwise beta goals show only to beta users, but the
+              // currently selected goal always stays visible.
+              .filter((o) => (noWebsiteMode ? o.key === "positive_replies" : !o.beta || isBeta || o.key === outcome))
               .map((o) => (
                 <ChoiceCard
                   key={o.key}
@@ -2223,7 +2400,7 @@ export function Onboarding() {
     const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />}
       >
         <BackButton onClick={() => setStep("objective")} />
@@ -2302,8 +2479,8 @@ export function Onboarding() {
     return (
       <OnboardingAudiences
         brandId={brandId}
-        brandDomain={domain}
-        hostname={hostname}
+        brandDomain={headerDomain}
+        hostname={headerHostname}
         services={services}
         prefetch={audiencePrefetch}
         prompt={audiencePrompt}
@@ -2322,7 +2499,7 @@ export function Onboarding() {
   if (step === "consent") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
       >
           <BackButton onClick={() => setStep("audiences")} />
@@ -2364,7 +2541,7 @@ export function Onboarding() {
   if (step === "phone") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
         footer={<NextButton onClick={savePhoneAndContinue} busy={busy} label="Continue" />}
       >
         <div className="mb-4 flex items-start gap-2">
@@ -2386,7 +2563,7 @@ export function Onboarding() {
   if (step === "ltr") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
         footer={<NextButton onClick={saveLtrAndContinue} busy={busy} label="Continue" />}
       >
         <BackButton onClick={() => setStep("phone")} />
@@ -2434,7 +2611,7 @@ export function Onboarding() {
     return (
       <StepShell
         maxWidth="sm:max-w-2xl"
-        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
         footer={<NextButton onClick={() => setStep("offer")} label="Continue" />}
       >
         <BackButton onClick={() => setStep("ltr")} />
@@ -2488,7 +2665,7 @@ export function Onboarding() {
     const isLast = offerIndex === POST_PAYMENT_OFFER_LEVERS.length - 1;
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
         footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
       >
         <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("model"))} />
@@ -2572,7 +2749,7 @@ export function Onboarding() {
     const amount = derivedBudget() ?? checkoutBudgetUsd;
     return (
       <StepShell
-        header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
         footer={
           <button onClick={beginCheckoutAndLaunch} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
             {busy ? (
@@ -2608,7 +2785,7 @@ export function Onboarding() {
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   return (
     <StepShell
-      header={<BrandStepHeader domain={domain} hostname={hostname} onEdit={() => setStep("url")} />}
+      header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
       footer={
         <button onClick={continueFromPricing} disabled={displayBudget == null || busy} className={`mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50"}`}>
           {busy ? (

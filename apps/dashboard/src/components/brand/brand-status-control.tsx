@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
 import {
+  getBrand,
   getBrandPause,
   setBrandPause,
   getBrandDailyBudget,
@@ -197,14 +198,24 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
   );
+  const { data: brandData } = useAuthQuery(
+    ["brand", brandId],
+    () => getBrand(brandId),
+  );
+  // A brand with no website (url == null) has no clicks/visits, so the only
+  // supported optimization goal is positive_replies. Restrict the goal picker and
+  // coerce the displayed goal to it (a brand stored on a visit-driven goal must
+  // still show positive_replies without crashing). Only true once the brand resolved.
+  const noWebsite = !!brandData?.brand && brandData.brand.url == null;
   const paused = pauseData?.paused;
   const pauseReady = typeof paused === "boolean";
-  const goal =
+  const storedGoal =
     econ === undefined
       ? null
       : econ.salesEconomics?.optimizationGoal ?? "positive_replies";
+  const goal = noWebsite && storedGoal ? "positive_replies" : storedGoal;
   const budget = budgetLabel(budgetData?.dailyBudgetCents ?? null);
-  const goalForBudget = goal ?? "positive_replies";
+  const goalForBudget = noWebsite ? "positive_replies" : goal ?? "positive_replies";
 
   const { data: projection, isPending: projectionPending, error: projectionError } =
     useAuthQuery(
@@ -292,7 +303,8 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   });
 
   function openGoalDialog() {
-    if (goal) setSelectedGoal(goal);
+    if (noWebsite) setSelectedGoal("positive_replies");
+    else if (goal) setSelectedGoal(goal);
     setGoalDialogOpen(true);
   }
 
@@ -450,8 +462,11 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
             </div>
 
             <div className="space-y-2">
-              {GOAL_OPTIONS.filter(
-                (option) => !option.beta || isBeta || option.value === selectedGoal,
+              {(noWebsite
+                ? GOAL_OPTIONS.filter((option) => option.value === "positive_replies")
+                : GOAL_OPTIONS.filter(
+                    (option) => !option.beta || isBeta || option.value === selectedGoal,
+                  )
               ).map((option) => {
                 const active = selectedGoal === option.value;
                 return (
