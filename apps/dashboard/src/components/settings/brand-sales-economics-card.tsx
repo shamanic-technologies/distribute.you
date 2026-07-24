@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
+  getBrand,
   getBrandSalesEconomics,
   saveBrandSalesEconomics,
   type BrandOptimizationGoal,
@@ -237,6 +238,14 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
   );
+  const { data: brandData } = useAuthQuery(
+    ["brand", brandId],
+    () => getBrand(brandId),
+  );
+  // A brand with no website (url == null) has no clicks/visits, so the only
+  // supported optimization goal is positive_replies. Only true once the brand
+  // resolved (a load flash must not mis-restrict a real website brand).
+  const noWebsite = !!brandData?.brand && brandData.brand.url == null;
 
   const [form, setForm] = useState<FormState>(() =>
     formFromEconomics(initialData?.salesEconomics),
@@ -367,15 +376,22 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
     });
   }
 
+  // A no-website brand displays positive_replies regardless of any stale stored goal
+  // (fallback: never crash on a brand saved on a visit-driven goal).
+  const effectiveGoal: BrandOptimizationGoal = noWebsite
+    ? "positive_replies"
+    : form.optimizationGoal;
   const visiblePctFields = PCT_FIELDS.filter((f) =>
-    f.goals.includes(form.optimizationGoal),
+    f.goals.includes(effectiveGoal),
   );
 
-  // Beta goals show only for beta users — but never hide the currently-active goal
-  // (a goal a beta teammate already saved must still render its button for everyone).
-  const visibleGoals = OPTIMIZATION_GOALS.filter(
-    (g) => !g.beta || isBeta || g.value === form.optimizationGoal,
-  );
+  // No-website brands can only pick positive_replies. Otherwise beta goals show only
+  // for beta users, but the currently-active goal always stays visible.
+  const visibleGoals = noWebsite
+    ? OPTIMIZATION_GOALS.filter((g) => g.value === "positive_replies")
+    : OPTIMIZATION_GOALS.filter(
+        (g) => !g.beta || isBeta || g.value === form.optimizationGoal,
+      );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200">
@@ -390,7 +406,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
           <label className="block text-xs text-gray-500 mb-1.5">Optimization goal</label>
           <div className="inline-flex flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-0.5">
             {visibleGoals.map((g) => {
-              const active = form.optimizationGoal === g.value;
+              const active = effectiveGoal === g.value;
               return (
                 <button
                   key={g.value}

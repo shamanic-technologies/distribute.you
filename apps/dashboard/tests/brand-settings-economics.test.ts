@@ -188,7 +188,9 @@ describe("BrandSalesEconomicsCard component", () => {
 
   it("shows only the conversion fields relevant to the selected optimization goal", () => {
     expect(content).toContain("visiblePctFields");
-    expect(content).toContain("f.goals.includes(form.optimizationGoal)");
+    // effectiveGoal == form.optimizationGoal for a website brand; a no-website brand
+    // coerces it to positive_replies (see the no-website goal-restriction change).
+    expect(content).toContain("f.goals.includes(effectiveGoal)");
     expect(content).toContain('goals: ["sales_meetings"]');
     expect(content).toContain('goals: ["signups", "website_purchase"]');
   });

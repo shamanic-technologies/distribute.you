@@ -2356,6 +2356,34 @@ export async function upsertBrand(
   );
 }
 
+// ── No-website brand creation (beta) ──────────────────────────────
+// TODO conform to deployed brand-service contract (null-url brand + pasted context).
+// Creates a brand with NO website URL (url = null) from a user-typed name + a large
+// free-form block the user pasted about their business, then persists that context so
+// field extraction reads it instead of scraping a site. Both writes are ISOLATED here
+// as the single seam the orchestrator conforms to the real brand-service / api-service
+// endpoints once they ship — every other part of the no-website flow is contract-stable.
+export async function createBrandWithoutWebsite(
+  name: string,
+  context: string,
+  token?: string,
+): Promise<{ brandId: string }> {
+  // Best-guess: POST /brands with url:null + a name (mirrors upsertBrand's POST /brands).
+  const { brandId } = await apiCall<{ brandId: string }>(`/brands`, {
+    token,
+    method: "POST",
+    body: { url: null, name },
+  });
+  // Best-guess: persist the pasted business context on the brand. MUST run BEFORE
+  // extract-fields so extraction has the context to read (there is no site to scrape).
+  await apiCall(`/brands/${brandId}/context`, {
+    token,
+    method: "PUT",
+    body: { context },
+  });
+  return { brandId };
+}
+
 /** POST /brands/:brandId/transfer — transfer brand to another org */
 export async function transferBrand(
   brandId: string,
