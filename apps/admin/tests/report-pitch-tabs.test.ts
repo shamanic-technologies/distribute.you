@@ -41,18 +41,11 @@ describe("toDomain — logo domain from a bare outlet OR a URL, never the pitchU
 });
 
 describe("PITCH_STATUS_TABS — status mapping", () => {
-  it("maps each tab; In Review = submitted, Pitched = all sent (cumulative)", () => {
+  it("maps each stage tab; In Review = submitted", () => {
     expect(tabForSlug("published")?.statuses).toEqual(["published"]);
     expect(tabForSlug("selected")?.statuses).toEqual(["selected"]);
     // In Review = SENT, still awaiting (not in the Selected/Published pages).
     expect(tabForSlug("in-review")?.statuses).toEqual(["submitted"]);
-    // Pitched = the funnel top: everything we sent (a Selected/Published pitch
-    // was also pitched) — so Pitched ⊇ In Review/Selected/Published.
-    expect(tabForSlug("pitched")?.statuses).toEqual([
-      "submitted",
-      "selected",
-      "published",
-    ]);
   });
 
   it("All = everything submitted incl rejected (Connectively's pitched total)", () => {
@@ -64,19 +57,21 @@ describe("PITCH_STATUS_TABS — status mapping", () => {
     ]);
   });
 
-  it("has exactly 5 tabs in reverse-funnel order (All last) with a dateLabel each", () => {
+  it("Pitched tab was removed (redundant with All) → unknown slug", () => {
+    expect(tabForSlug("pitched")).toBeNull();
+  });
+
+  it("has exactly 4 tabs in reverse-funnel order (All last) with a dateLabel each", () => {
     expect(PITCH_STATUS_TABS.map((t) => t.slug)).toEqual([
       "published",
       "selected",
       "in-review",
-      "pitched",
       "all",
     ]);
     expect(PITCH_STATUS_TABS.map((t) => t.dateLabel)).toEqual([
       "Published",
       "Selected",
       "Submitted",
-      "Pitched",
       "Pitched",
     ]);
   });
@@ -87,24 +82,23 @@ describe("PITCH_STATUS_TABS — status mapping", () => {
 });
 
 describe("countsByTab / pitchesForTab", () => {
-  it("buckets: In Review = submitted, Pitched = submitted+selected+published", () => {
+  it("buckets: In Review = submitted, All = submitted+selected+published+not_selected", () => {
     const pitches = [
       pitch("submitted"),
       pitch("submitted"),
       pitch("published"),
       pitch("drafted"), // hidden — un-sent pre-send state, no tab
-      pitch("not_selected"), // hidden — rejected, no tab
+      pitch("not_selected"), // rejected — only in All
     ];
     const counts = countsByTab(pitches);
     expect(counts).toEqual({
       published: 1,
       selected: 0,
       "in-review": 2,
-      pitched: 3, // 2 submitted + 0 selected + 1 published (placements funnel)
-      all: 4, // Pitched (3) + 1 not_selected (everything submitted, incl rejected)
+      all: 4, // 2 submitted + 0 selected + 1 published + 1 not_selected
     });
     expect(pitchesForTab(pitches, tabForSlug("in-review")!)).toHaveLength(2);
-    expect(pitchesForTab(pitches, tabForSlug("pitched")!)).toHaveLength(3);
+    expect(pitchesForTab(pitches, tabForSlug("all")!)).toHaveLength(4);
   });
 });
 
