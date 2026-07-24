@@ -8,69 +8,43 @@ import {
   extractBrandFields,
   fieldResultsToMap,
   flattenFieldValue,
-  SALES_PROFILE_FIELDS,
-  USER_FIELD_KEYS,
-  type BrandUserFields,
-  type UserFieldKey,
-  type UserFieldValue,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
-  ALL_FIELDS,
-  cloneFields,
-  fieldsEqual,
   ListEditor,
   TextEditor,
+  type FieldDef,
   type ProfileFields,
 } from "@/components/brand-profile/field-editor";
+import {
+  buildExtractDefs,
+  cloneSubset,
+  coerceListField,
+  EXTRACT_KEY_FOR_FIELD,
+  isEmptyField,
+  profileToPayload,
+  subsetEqual,
+  userFieldsToProfile,
+} from "@/lib/user-fields-form";
 
-// The 6 Hormozi value-equation offer levers + the paid `services` list — the same
-// confirmed user-fields the customer dashboard onboarding walks through, AI-prefilled
-// from the brand's site. Staff can review + edit them here. Mirrors the dashboard
-// Strategy page's inline offer editor (getBrandUserFields ↔ saveBrandUserFields).
-
-// The extract-fields key that seeds each user-field. dreamOutcome is seeded from the
-// `valueProposition` extraction (it REPLACED valueProposition); the rest match 1:1.
-const EXTRACT_KEY_FOR_FIELD: Record<string, string> = {
-  dreamOutcome: "valueProposition",
-};
-
-/** Confirmed user-fields map → the plain fields bag the inline editors work with. */
-function userFieldsToProfile(fields: BrandUserFields | undefined): ProfileFields {
-  const out: ProfileFields = {};
-  for (const key of USER_FIELD_KEYS) {
-    const v = fields?.[key]?.value;
-    if (v != null) out[key] = v;
-  }
-  return out;
-}
-
-/** Fields bag → the saveBrandUserFields PUT body. Only the 7 user-field keys are
- *  sent (every sent key is confirmed); empty values are omitted so a blank field
- *  never clobbers a confirmed one. */
-function profileToUserFieldsPayload(
-  fields: ProfileFields,
-): Partial<Record<UserFieldKey, UserFieldValue>> {
-  const out: Partial<Record<UserFieldKey, UserFieldValue>> = {};
-  for (const key of USER_FIELD_KEYS) {
-    const v = fields[key];
-    if (Array.isArray(v)) {
-      const cleaned = v.map((s) => s.trim()).filter(Boolean);
-      if (cleaned.length) out[key] = cleaned;
-    } else if (typeof v === "string" && v.trim()) {
-      out[key] = v;
-    }
-  }
-  return out;
-}
-
-const coerceListField = (v: string | string[] | undefined): string[] =>
-  Array.isArray(v) ? v : typeof v === "string" && v.trim() ? [v.trim()] : [];
-
-const isEmptyField = (v: string | string[] | undefined): boolean =>
-  Array.isArray(v) ? v.length === 0 : !(typeof v === "string" && v.trim());
-
-export function BrandOfferCard({ brandId }: { brandId: string }) {
+// A Brand-Settings editor card for ONE subset of the confirmed user-fields. Two
+// instances are mounted: Services sold (its own AI prefill) and the Hormozi offer
+// levers (its own AI prefill, CONDITIONED on the entered services). Both read/write
+// the shared ["brandUserFields", brandId] store, so the levers card sees the services
+// the Services card saved.
+export function BrandUserFieldsCard({
+  brandId,
+  defs,
+  blurb,
+  // When true, read the saved `services` from the shared cache and feed it into the
+  // AI-prefill extraction (so the levers are generated with the services as context).
+  conditionOnServices = false,
+}: {
+  brandId: string;
+  defs: FieldDef[];
+  blurb: string;
+  conditionOnServices?: boolean;
+}) {
   const queryClient = useQueryClient();
 
   const { data, isPending } = useAuthQuery(
@@ -78,47 +52,52 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
     () => getBrandUserFields(brandId),
   );
 
-  const [offerDraft, setOfferDraft] = useState<ProfileFields | null>(null);
+  const [draft, setDraft] = useState<ProfileFields | null>(null);
   const [saved, setSaved] = useState(false);
   const [prefillError, setPrefillError] = useState<string | null>(null);
 
-  const offerBaseline = cloneFields(userFieldsToProfile(data?.fields));
-  const offerFields = offerDraft ?? offerBaseline;
-  const offerDirty = offerDraft !== null && !fieldsEqual(offerDraft, offerBaseline);
+  const baseline = cloneSubset(userFieldsToProfile(data?.fields), defs);
+  const fields = draft ?? baseline;
+  const dirty = draft !== null && !subsetEqual(draft, baseline, defs);
+
+  const servicesContext = conditionOnServices
+    ? coerceListField(data?.fields?.services?.value ?? undefined)
+    : undefined;
 
   const saveMut = useMutation({
-    mutationFn: (fields: ProfileFields) =>
-      saveBrandUserFields(brandId, profileToUserFieldsPayload(fields)),
+    mutationFn: (f: ProfileFields) => saveBrandUserFields(brandId, profileToPayload(f, defs)),
     onSuccess: (res) => {
       queryClient.setQueryData(["brandUserFields", brandId], res);
       queryClient.invalidateQueries({ queryKey: ["brandUserFields", brandId] });
-      setOfferDraft(null);
+      setDraft(null);
       setSaved(true);
     },
   });
 
-  // Re-run the site extraction and fill EMPTY offer fields with the AI suggestions.
-  // Only fills blanks — never overwrites a value the user already has. The user still
-  // reviews + Saves (values land in the draft, not persisted until Save).
+  // Re-run the site extraction and fill EMPTY fields with the AI suggestions. Only
+  // fills blanks — never overwrites an existing value. Values land in the draft; the
+  // user reviews + Saves. For the levers card, the extraction is conditioned on the
+  // saved services (buildExtractDefs prepends them to each field's description).
   const prefillMut = useMutation({
     mutationFn: () =>
-      extractBrandFields([brandId], SALES_PROFILE_FIELDS, { resetCache: true }),
+      extractBrandFields(
+        [brandId],
+        buildExtractDefs(defs, servicesContext),
+        { resetCache: true },
+      ),
     onSuccess: (resp) => {
       const map = fieldResultsToMap(resp.fields);
-      setOfferDraft((prev) => {
-        const cur = prev ?? offerBaseline;
+      setDraft((prev) => {
+        const cur = prev ?? baseline;
         const next: ProfileFields = { ...cur };
-        for (const f of ALL_FIELDS) {
+        for (const f of defs) {
           if (!isEmptyField(cur[f.key])) continue;
           const raw = map[EXTRACT_KEY_FOR_FIELD[f.key] ?? f.key];
           if (raw == null) continue;
           if (f.kind === "list") {
             const items = Array.isArray(raw)
               ? raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-              : flattenFieldValue(raw)
-                  .split(/\r?\n/)
-                  .map((s) => s.trim())
-                  .filter(Boolean);
+              : flattenFieldValue(raw).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
             if (items.length) next[f.key] = items;
           } else {
             const text = flattenFieldValue(raw).trim();
@@ -128,43 +107,48 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
         return next;
       });
     },
-    onError: (err) =>
-      setPrefillError(err instanceof Error ? err.message : "Prefill failed"),
+    onError: (err) => setPrefillError(err instanceof Error ? err.message : "Prefill failed"),
   });
 
-  const setOfferText = (key: string, value: string) =>
-    setOfferDraft((prev) => ({ ...(prev ?? offerBaseline), [key]: value }));
+  const setText = (key: string, value: string) =>
+    setDraft((prev) => ({ ...(prev ?? baseline), [key]: value }));
 
-  const addOfferItem = (key: string, raw: string) => {
+  const addItem = (key: string, raw: string) => {
     const value = raw.trim();
     if (!value) return;
-    setOfferDraft((prev) => {
-      const cur = prev ?? offerBaseline;
+    setDraft((prev) => {
+      const cur = prev ?? baseline;
       const arr = coerceListField(cur[key]);
       if (arr.some((v) => v.toLowerCase() === value.toLowerCase())) return cur;
       return { ...cur, [key]: [...arr, value] };
     });
   };
 
-  const removeOfferItem = (key: string, value: string) =>
-    setOfferDraft((prev) => {
-      const cur = prev ?? offerBaseline;
+  const removeItem = (key: string, value: string) =>
+    setDraft((prev) => {
+      const cur = prev ?? baseline;
       const arr = coerceListField(cur[key]);
       return { ...cur, [key]: arr.filter((v) => v !== value) };
     });
 
   const handleSave = () => {
-    if (!offerDirty || saveMut.isPending) return;
+    if (!dirty || saveMut.isPending) return;
     setSaved(false);
-    saveMut.mutate(offerFields);
+    saveMut.mutate(fields);
   };
+
+  const prefillLabel = prefillMut.isPending
+    ? "Prefilling…"
+    : conditionOnServices
+      ? "✨ Prefill from services"
+      : "✨ Prefill with AI";
 
   if (isPending) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="h-4 w-48 bg-gray-100 rounded animate-pulse mb-4" />
         <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: Math.min(defs.length, 4) }).map((_, i) => (
             <div key={i}>
               <div className="h-3 w-32 bg-gray-100 rounded animate-pulse mb-2" />
               <div className="h-9 w-full bg-gray-100 rounded-lg animate-pulse" />
@@ -179,10 +163,7 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
     <div className="bg-white rounded-xl border border-gray-200">
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
-          <p className="text-sm text-gray-500">
-            The services you sell + the 6 offer levers we write every email around. AI
-            prefills them from the brand site; review and confirm.
-          </p>
+          <p className="text-sm text-gray-500">{blurb}</p>
           <button
             type="button"
             onClick={() => {
@@ -192,12 +173,12 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
             disabled={prefillMut.isPending}
             className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            {prefillMut.isPending ? "Prefilling…" : "✨ Prefill with AI"}
+            {prefillLabel}
           </button>
         </div>
 
         <div className="space-y-4">
-          {ALL_FIELDS.map((f) => {
+          {defs.map((f) => {
             const provenance = data?.fields?.[f.key]?.provenance;
             const suggested = provenance === "suggested" || provenance === "extracted";
             return (
@@ -212,16 +193,16 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
                 </label>
                 {f.kind === "list" ? (
                   <ListEditor
-                    values={coerceListField(offerFields[f.key])}
+                    values={coerceListField(fields[f.key])}
                     placeholder={f.placeholder}
-                    onAdd={(v) => addOfferItem(f.key, v)}
-                    onRemove={(v) => removeOfferItem(f.key, v)}
+                    onAdd={(v) => addItem(f.key, v)}
+                    onRemove={(v) => removeItem(f.key, v)}
                   />
                 ) : (
                   <TextEditor
-                    value={typeof offerFields[f.key] === "string" ? (offerFields[f.key] as string) : ""}
+                    value={typeof fields[f.key] === "string" ? (fields[f.key] as string) : ""}
                     placeholder={f.placeholder}
-                    onText={(v) => setOfferText(f.key, v)}
+                    onText={(v) => setText(f.key, v)}
                   />
                 )}
               </div>
@@ -240,14 +221,12 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
         <div className="mt-5 flex items-center gap-3">
           <button
             onClick={handleSave}
-            disabled={!offerDirty || saveMut.isPending}
+            disabled={!dirty || saveMut.isPending}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             {saveMut.isPending ? "Saving..." : "Save"}
           </button>
-          {saved && !offerDirty && (
-            <span className="text-sm text-green-600">Saved ✓</span>
-          )}
+          {saved && !dirty && <span className="text-sm text-green-600">Saved ✓</span>}
         </div>
       </div>
     </div>
