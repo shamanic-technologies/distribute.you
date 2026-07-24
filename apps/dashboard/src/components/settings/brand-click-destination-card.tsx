@@ -30,6 +30,10 @@ export function BrandClickDestinationCard({
   const brand = data?.brand ?? null;
   const brandDomain = brand?.domain ?? null;
   const defaultUrl = brandDomain ? `https://${bareHost(brandDomain)}` : "";
+  // A no-website brand (domain === null) must set its domain first (Brand Domain
+  // section above). Until then there is no on-domain URL to validate against, so
+  // the input + Save are locked.
+  const domainLocked = brandDomain === null;
 
   // null until hydrated; "" = unset (placeholder = homepage default).
   const [value, setValue] = useState<string | null>(null);
@@ -110,12 +114,15 @@ export function BrandClickDestinationCard({
             type="url"
             inputMode="url"
             value={value}
+            disabled={domainLocked}
             placeholder={defaultUrl || "https://yoursite.com/pricing"}
             onChange={(e) => update(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
           />
           <p className="mt-1.5 text-xs text-gray-400">
-            Leave empty to send clicks to your homepage.
+            {domainLocked
+              ? "Set your brand domain above first."
+              : "Leave empty to send clicks to your homepage."}
           </p>
         </div>
 
@@ -129,7 +136,7 @@ export function BrandClickDestinationCard({
         <div className="mt-5 flex items-center gap-3">
           <button
             onClick={handleSave}
-            disabled={!dirty || saving}
+            disabled={domainLocked || !dirty || saving}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             {saving ? "Saving..." : "Save"}
