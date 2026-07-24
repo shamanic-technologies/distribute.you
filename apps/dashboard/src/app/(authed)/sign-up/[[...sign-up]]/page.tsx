@@ -18,6 +18,11 @@ function clerkErrorMessage(err: unknown): string {
   );
 }
 
+// Credentials stashed by the sign-in page when the user typed an unknown email
+// and chose "Sign up". Read-once + cleared so the plaintext password does not
+// linger in sessionStorage.
+const PREFILL_AUTH_KEY = "distribute_prefill_auth";
+
 export default function SignUpPage() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const { isSignedIn } = useAuth();
@@ -39,6 +44,22 @@ export default function SignUpPage() {
       router.replace("/orgs");
     }
   }, [isSignedIn, router]);
+
+  // Seed email + password from the sign-in "unknown email → sign up" handoff, so
+  // the user does not re-type what they just entered. Consume-once: cleared
+  // immediately so the plaintext password never persists.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PREFILL_AUTH_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(PREFILL_AUTH_KEY);
+      const parsed = JSON.parse(raw) as { email?: string; password?: string };
+      if (parsed.email) setEmail(parsed.email);
+      if (parsed.password) setPassword(parsed.password);
+    } catch {
+      // Malformed / storage disabled — ignore, user types manually.
+    }
+  }, []);
 
   useEffect(() => {
     if (

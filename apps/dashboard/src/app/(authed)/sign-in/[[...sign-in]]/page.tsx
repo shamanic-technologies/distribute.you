@@ -18,6 +18,11 @@ function clerkErrorMessage(err: unknown): string {
   );
 }
 
+function clerkErrorCode(err: unknown): string | undefined {
+  const e = err as { errors?: Array<{ code?: string }> };
+  return e?.errors?.[0]?.code;
+}
+
 // Clerk returns `strategy_for_user_invalid` ("The verification strategy is not
 // valid for this account") when the identified account has no password factor —
 // i.e. it was created via Google OAuth. This instance only offers Google +
@@ -33,6 +38,11 @@ function isGoogleOnlyAccountError(err: unknown): boolean {
   );
 }
 
+// SessionStorage key carrying the typed email/password from the sign-in form to
+// the sign-up page when an unknown email is entered. Consumed-once + cleared on
+// read by the sign-up page so the plaintext password never lingers on disk.
+const PREFILL_AUTH_KEY = "distribute_prefill_auth";
+
 export default function SignInPage() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { isSignedIn } = useAuth();
@@ -45,6 +55,9 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Distinct from `error`: shown when the email has no account, so we offer a
+  // "Sign up" CTA (carrying the typed email+password) instead of a red error.
+  const [emailNotFound, setEmailNotFound] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -94,6 +107,7 @@ export default function SignInPage() {
     e.preventDefault();
     if (!isLoaded || !signIn || submitting) return;
     setError("");
+    setEmailNotFound(false);
     setSubmitting(true);
     try {
       posthog.capture("signin_email_started");
@@ -111,16 +125,38 @@ export default function SignInPage() {
     } catch (err) {
       posthog.capture("signin_email_failed");
       console.error("Email sign in error:", err);
+      const code = clerkErrorCode(err);
       if (isGoogleOnlyAccountError(err)) {
         setError(
           'This email is registered with Google. Use "Continue with Google" above.'
         );
+      } else if (code === "form_identifier_not_found") {
+        // Email has no account — likely meant to sign up. Offer the CTA instead
+        // of a red error, carrying the typed credentials forward.
+        setEmailNotFound(true);
+      } else if (code === "form_password_incorrect") {
+        setError("That password doesn't match. Try again or reset it below.");
       } else {
         setError(clerkErrorMessage(err));
       }
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Carry the typed email + password to the sign-up page. Password lives only in
+  // ephemeral sessionStorage and is cleared on read by sign-up (consume-once).
+  const handleSignUpWithPrefill = () => {
+    try {
+      sessionStorage.setItem(
+        PREFILL_AUTH_KEY,
+        JSON.stringify({ email, password })
+      );
+    } catch {
+      // Private mode / storage disabled — proceed without prefill.
+    }
+    posthog.capture("signin_email_not_found_signup");
+    router.push("/sign-up");
   };
 
   if (isSignedIn) {
@@ -495,6 +531,35 @@ export default function SignInPage() {
                 >
                   {error}
                 </p>
+              )}
+              {emailNotFound && (
+                <div
+                  className="rounded-xl p-3"
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.8125rem",
+                    lineHeight: 1.5,
+                    background: "oklch(97% 0.02 264)",
+                    border: "1px solid oklch(90% 0.03 264)",
+                    color: "oklch(35% 0.008 264)",
+                  }}
+                >
+                  No account found for this email. Want to create one?
+                  <button
+                    type="button"
+                    onClick={handleSignUpWithPrefill}
+                    className="ml-1 font-semibold hover:opacity-75 transition-opacity"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                      color: "oklch(42% 0.2 264)",
+                    }}
+                  >
+                    Sign up →
+                  </button>
+                </div>
               )}
               <button
                 type="submit"
