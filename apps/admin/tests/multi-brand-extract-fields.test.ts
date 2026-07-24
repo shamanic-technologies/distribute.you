@@ -30,7 +30,7 @@ describe("Multi-brand extract-fields response types", () => {
     const fn = apiContent.slice(fnStart, fnEnd);
     expect(fn).toContain("`/brands/extract-fields`");
     expect(fn).not.toContain("${brandId}");
-    expect(fn).toContain("body: { brandIds, fields, resetCache }");
+    expect(fn).toContain("body: { brandIds, fields, resetCache, mode }");
   });
 
   it("defines PrefillFullFieldResult with byBrand for format=full", () => {

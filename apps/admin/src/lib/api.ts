@@ -1141,16 +1141,20 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 }
 
 /** POST /brands/extract-fields — extract specific fields (cached 30 days per field).
- *  brandIds is required and must be a non-empty array. */
+ *  brandIds is required and must be a non-empty array.
+ *  `mode` selects extraction behavior (brand-service default is "extract"):
+ *  "extract" = site-grounded, returns "Unknown" for info absent from the site;
+ *  "suggest" = generative best-effort (Hormozi + top-3-expert persona, infers a
+ *  sensible answer where the site is silent, never "Unknown"). Omitted → extract. */
 export async function extractBrandFields(
   brandIds: string[],
   fields: ExtractFieldDef[],
-  opts?: { token?: string; resetCache?: boolean },
+  opts?: { token?: string; resetCache?: boolean; mode?: "extract" | "suggest" },
 ): Promise<ExtractFieldsResponse> {
-  const { token, resetCache } = opts ?? {};
+  const { token, resetCache, mode } = opts ?? {};
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields, resetCache } },
+    { token, method: "POST", body: { brandIds, fields, resetCache, mode } },
   );
 }
 
