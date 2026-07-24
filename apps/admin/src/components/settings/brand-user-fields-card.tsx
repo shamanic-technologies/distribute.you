@@ -83,7 +83,11 @@ export function BrandUserFieldsCard({
       extractBrandFields(
         [brandId],
         buildExtractDefs(defs, servicesContext),
-        { resetCache: true },
+        // The offer-levers card (conditionOnServices) uses "suggest" mode: brand-
+        // service flips its hardcoded prompt to generate a best-effort Hormozi-style
+        // answer for every lever instead of returning "Unknown" for levers absent
+        // from the site. The services card stays on the default "extract" mode.
+        { resetCache: true, mode: conditionOnServices ? "suggest" : "extract" },
       ),
     onSuccess: (resp) => {
       const map = fieldResultsToMap(resp.fields);

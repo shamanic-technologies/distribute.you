@@ -51,11 +51,9 @@ describe("user-fields-form — split field subsets + services-conditioned extrac
     expect(content).toContain("This brand sells the following services / products:");
   });
 
-  it("uses a rich Alex-Hormozi generation prompt that infers without fabricating", () => {
+  it("sends per-lever guidance conditioned on services (Hormozi framing is server-side)", () => {
     expect(content).toContain("HORMOZI_LEVER_GUIDANCE");
-    expect(content).toContain("Act as Alex Hormozi");
-    expect(content).toContain("infer the most sensible");
-    expect(content).toContain("Never fabricate");
+    expect(content).toContain("leverDescription");
     // A guidance entry exists for every lever key.
     for (const key of [
       "dreamOutcome",
@@ -101,6 +99,10 @@ describe("BrandUserFieldsCard — generic subset editor", () => {
 
   it("reads the saved services from the shared cache as the levers' context", () => {
     expect(content).toContain("data?.fields?.services?.value");
+  });
+
+  it("requests suggest mode for the levers card, extract for the services card", () => {
+    expect(content).toContain('mode: conditionOnServices ? "suggest" : "extract"');
   });
 
   it("uses a live dirty-compare against the saved baseline (no sticky latch)", () => {
