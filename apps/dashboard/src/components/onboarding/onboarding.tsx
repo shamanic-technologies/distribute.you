@@ -1905,11 +1905,14 @@ export function Onboarding() {
     setRates(nextRates);
     setRateText((t) => ({ ...t, ltv: rateToText(ltv) }));
     if (id) {
-      // Fire-and-forget the economics save, THEN refetch the best-model projection
-      // with the new lifetime revenue — never block the button on the cold write. We
-      // advance immediately; the model step shows the celebrate-prewarmed numbers
-      // (or a skeleton if the prewarm hasn't landed yet) and swaps to the updated
-      // projection when the refetch resolves — no reset, so no skeleton flash.
+      // The celebrate-prewarmed ladder was computed BEFORE this lifetime-revenue
+      // entry, so its LTV-derived fields (ROI multiple, cost-of-acquisition %) reflect
+      // the DEFAULT economics — showing them on the model step would display wrong
+      // numbers for the ~30s cold refetch, then silently swap. Reset to null so the
+      // model step shows a skeleton until the new-LTV projection lands (a loader beats
+      // wrong data). Fire-and-forget the economics save, THEN refetch the best-model
+      // projection with the new lifetime revenue — never block the button on the cold write.
+      setBestModelLadder(null);
       void (async () => {
         try {
           await saveBrandSalesEconomics(id, {
