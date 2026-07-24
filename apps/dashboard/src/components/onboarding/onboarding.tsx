@@ -2232,12 +2232,9 @@ export function Onboarding() {
               className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             {url.trim() && !domain && <p className="mt-2 text-sm text-red-500">Please enter a valid URL (e.g. acme.com)</p>}
-            {isBeta && (
-              <button type="button" onClick={enterNoWebsiteMode} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-brand-600 transition hover:text-brand-700">
-                I have no website
-                <MaturityBadge level="beta" />
-              </button>
-            )}
+            <button type="button" onClick={enterNoWebsiteMode} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-brand-600 transition hover:text-brand-700">
+              I have no website
+            </button>
           </>
         )}
       </StepShell>

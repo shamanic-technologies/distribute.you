@@ -30,11 +30,12 @@ describe("Onboarding — no-website path (beta)", () => {
     expect(src).toContain('typeof p.brandContext !== "string"');
   });
 
-  it("shows a beta-gated 'I have no website' button carrying a MaturityBadge", () => {
-    // Gated on isBeta, with a visible beta badge (a gated element must have one).
+  it("shows a GA 'I have no website' button (no beta gate, no badge)", () => {
+    // GA: the button renders for everyone, ungated, with no MaturityBadge.
     expect(src).toContain("I have no website");
     expect(src).toContain("enterNoWebsiteMode");
-    expect(src).toMatch(/isBeta &&[\s\S]{0,400}I have no website[\s\S]{0,200}MaturityBadge level="beta"/);
+    expect(src).not.toMatch(/isBeta &&[\s\S]{0,400}I have no website/);
+    expect(src).not.toMatch(/I have no website[\s\S]{0,200}MaturityBadge level="beta"/);
   });
 
   it("swaps the URL input for a brand name + free-form context textarea", () => {
