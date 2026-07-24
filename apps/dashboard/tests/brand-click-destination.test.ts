@@ -50,6 +50,31 @@ describe("validateDestination — must be on the brand domain", () => {
   });
 });
 
+describe("validateDestination — WhatsApp links are accepted off-domain", () => {
+  const domain = "acme.com";
+
+  it("accepts a wa.me link with a pre-filled message", () => {
+    const r = validateDestination(
+      "https://wa.me/6287779242054?text=Hello",
+      domain,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.url).toContain("wa.me/6287779242054");
+  });
+
+  it("accepts the other WhatsApp hosts", () => {
+    expect(validateDestination("https://api.whatsapp.com/send?phone=1555", domain).ok).toBe(true);
+    expect(validateDestination("https://chat.whatsapp.com/ABC123", domain).ok).toBe(true);
+    expect(validateDestination("https://whatsapp.com/x", domain).ok).toBe(true);
+  });
+
+  it("still rejects a non-WhatsApp off-domain URL", () => {
+    const r = validateDestination("https://evil.com/phish", domain);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("acme.com");
+  });
+});
+
 describe("settings page wires the click-destination section", () => {
   const page = read(
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",

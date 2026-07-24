@@ -7,10 +7,10 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { bareHost, validateDestination } from "@/lib/click-destination-validation";
 
 // The page outreach clicks land on. Must be a URL on the brand's OWN domain
-// (or a subdomain of it) — a click destination pointing off-domain is rejected
-// both here (UX) and by brand-service (fail-loud). Empty input = the brand
-// homepage default (https://<domain>). Validation logic lives in the api-free
-// lib module so it's unit-testable.
+// (or a subdomain of it) OR a WhatsApp link (wa.me / whatsapp.com) — any other
+// off-domain URL is rejected both here (UX) and by brand-service (fail-loud).
+// Empty input = the brand homepage default (https://<domain>). Validation logic
+// lives in the api-free lib module so it's unit-testable.
 
 type BrandClickDestinationCardProps = {
   brandId: string;
@@ -101,7 +101,7 @@ export function BrandClickDestinationCard({
         <p className="text-sm text-gray-500 mb-4">
           When a prospect clicks the link in your outreach, this is the page they land on.
           It must be a page on your brand domain
-          {brandDomain ? ` (${bareHost(brandDomain)})` : ""}. Defaults to your homepage.
+          {brandDomain ? ` (${bareHost(brandDomain)})` : ""}, or a WhatsApp link. Defaults to your homepage.
         </p>
 
         <div className="max-w-sm">
