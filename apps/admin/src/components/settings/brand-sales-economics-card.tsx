@@ -5,10 +5,18 @@ import { useMutation } from "@tanstack/react-query";
 import {
   getBrandSalesEconomics,
   saveBrandSalesEconomics,
-  type BrandBusinessModel,
+  type BrandOptimizationGoal,
+  type BrandSalesEconomics,
   type BrandSalesEconomicsInput,
 } from "@/lib/api";
+import {
+  formatLocaleInteger,
+  formatLocaleNumberInputValue,
+  parseLocaleNumberInput,
+} from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { MaturityBadge } from "@/components/maturity-badge";
 
 // Seed values when a brand has never saved economics — mirrors the campaign-creation
 // form's SALES_ECON_DEFAULTS so both surfaces start from the same numbers.
@@ -17,80 +25,244 @@ const DEFAULTS = {
   replyToMeetingPct: "40",
   visitToMeetingPct: "20",
   meetingToClosePct: "25",
-  visitToClosePct: "5",
+  // Self-serve close is now two steps: visit→signup × signup→paid = the old
+  // visit→close (25 × 20% = 5%, matching the prior default).
+  visitToSignupPct: "25",
+  signupToPaidClientPct: "20",
+  // Single-step conversions for the beta website_visits / positive_replies goals.
+  visitToPaidClientPct: "5",
+  replyToPaidClientPct: "25",
+  // Two-step conversions for the beta form_submissions goal (mirror the signup pair).
+  visitToFormSubmissionPct: "25",
+  formSubmissionToPaidClientPct: "20",
 } as const;
 
 type PctKey =
   | "replyToMeetingPct"
   | "visitToMeetingPct"
   | "meetingToClosePct"
-  | "visitToClosePct";
+  | "visitToSignupPct"
+  | "signupToPaidClientPct"
+  | "visitToPaidClientPct"
+  | "replyToPaidClientPct"
+  | "visitToFormSubmissionPct"
+  | "formSubmissionToPaidClientPct";
+type RequiredFieldKey =
+  | "lifetimeRevenueUsd"
+  | "replyToMeetingPct"
+  | "visitToMeetingPct"
+  | "meetingToClosePct"
+  | "visitToSignupPct"
+  | "signupToPaidClientPct"
+  | "visitToPaidClientPct"
+  | "replyToPaidClientPct"
+  | "visitToFormSubmissionPct"
+  | "formSubmissionToPaidClientPct";
 
 type FormState = {
   lifetimeRevenueUsd: string;
   replyToMeetingPct: string;
   visitToMeetingPct: string;
   meetingToClosePct: string;
-  visitToClosePct: string;
-  businessModel: BrandBusinessModel | null;
+  visitToSignupPct: string;
+  signupToPaidClientPct: string;
+  visitToPaidClientPct: string;
+  replyToPaidClientPct: string;
+  visitToFormSubmissionPct: string;
+  formSubmissionToPaidClientPct: string;
+  optimizationGoal: BrandOptimizationGoal;
 };
 
-const PCT_FIELDS: { key: PctKey; label: string; tip: string }[] = [
+type SalesEconomicsQueryData = { salesEconomics: BrandSalesEconomics | null };
+
+function defaultForm(): FormState {
+  return {
+    lifetimeRevenueUsd: formatLocaleInteger(Number(DEFAULTS.lifetimeRevenueUsd)),
+    replyToMeetingPct: formatLocaleNumberInputValue(Number(DEFAULTS.replyToMeetingPct)),
+    visitToMeetingPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToMeetingPct)),
+    meetingToClosePct: formatLocaleNumberInputValue(Number(DEFAULTS.meetingToClosePct)),
+    visitToSignupPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToSignupPct)),
+    signupToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.signupToPaidClientPct)),
+    visitToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToPaidClientPct)),
+    replyToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.replyToPaidClientPct)),
+    visitToFormSubmissionPct: formatLocaleNumberInputValue(Number(DEFAULTS.visitToFormSubmissionPct)),
+    formSubmissionToPaidClientPct: formatLocaleNumberInputValue(Number(DEFAULTS.formSubmissionToPaidClientPct)),
+    optimizationGoal: "positive_replies",
+  };
+}
+
+function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState {
+  if (!e) return defaultForm();
+  return {
+    lifetimeRevenueUsd: formatLocaleInteger(e.lifetimeRevenueUsd),
+    replyToMeetingPct: formatLocaleNumberInputValue(e.replyToMeetingPct),
+    visitToMeetingPct: formatLocaleNumberInputValue(e.visitToMeetingPct),
+    meetingToClosePct: formatLocaleNumberInputValue(e.meetingToClosePct),
+    visitToSignupPct: formatLocaleNumberInputValue(e.visitToSignupPct),
+    signupToPaidClientPct: formatLocaleNumberInputValue(e.signupToPaidClientPct),
+    visitToPaidClientPct: formatLocaleNumberInputValue(e.visitToPaidClientPct),
+    replyToPaidClientPct: formatLocaleNumberInputValue(e.replyToPaidClientPct),
+    // Optional on the wire until brand-service prod serves them — fall back to the seed default.
+    visitToFormSubmissionPct: formatLocaleNumberInputValue(
+      e.visitToFormSubmissionPct ?? Number(DEFAULTS.visitToFormSubmissionPct),
+    ),
+    formSubmissionToPaidClientPct: formatLocaleNumberInputValue(
+      e.formSubmissionToPaidClientPct ?? Number(DEFAULTS.formSubmissionToPaidClientPct),
+    ),
+    optimizationGoal: e.optimizationGoal,
+  };
+}
+
+const OPTIMIZATION_GOALS: {
+  value: BrandOptimizationGoal;
+  label: string;
+  beta?: boolean;
+}[] = [
+  { value: "signups", label: "# Signups" },
+  { value: "sales_meetings", label: "# Sales Meetings", beta: true },
+  { value: "website_visits", label: "# Website visits" },
+  { value: "positive_replies", label: "# Positive Replies" },
+  { value: "form_submissions", label: "# Form submissions" },
+  { value: "website_purchase", label: "# Website purchases" },
+  { value: "sales", label: "# Sales" },
+];
+
+const PCT_FIELDS: {
+  key: PctKey;
+  label: string;
+  tip: string;
+  goals: BrandOptimizationGoal[];
+}[] = [
   {
     key: "replyToMeetingPct",
     label: "Positive reply → meeting",
     tip: "Of leads who reply positively, the share you turn into a booked meeting.",
+    goals: ["sales_meetings"],
   },
   {
     key: "visitToMeetingPct",
     label: "Website visit → meeting",
     tip: "Of leads who click through to your website, the share that book a meeting.",
+    goals: ["sales_meetings"],
   },
   {
     key: "meetingToClosePct",
-    label: "Meeting → close",
-    tip: "Of booked meetings, the share that become paying customers.",
+    label: "Meeting → Paid client",
+    tip: "Of leads who book a meeting, the share that become paying customers.",
+    goals: ["sales_meetings"],
   },
   {
-    key: "visitToClosePct",
-    label: "Website visit → close",
-    tip: "Of leads who visit your website, the share that buy without a meeting (self-serve).",
+    key: "visitToSignupPct",
+    label: "Website visit → signup",
+    tip: "Of leads who visit your website, the share that sign up.",
+    goals: ["signups", "website_purchase"],
+  },
+  {
+    key: "signupToPaidClientPct",
+    label: "Signup → Paid client",
+    tip: "Of leads who sign up, the share that become paying customers.",
+    goals: ["signups", "website_purchase"],
+  },
+  {
+    key: "visitToPaidClientPct",
+    label: "Website visit → Paid client",
+    tip: "Of leads who click through to your website, the share that become paying customers.",
+    goals: ["website_visits", "sales"],
+  },
+  {
+    key: "replyToPaidClientPct",
+    label: "Positive reply → Paid client",
+    tip: "Of leads who reply positively, the share that become paying customers.",
+    goals: ["positive_replies", "sales"],
+  },
+  {
+    key: "visitToFormSubmissionPct",
+    label: "Website visit → form submission",
+    tip: "Of leads who visit your website, the share that submit a form.",
+    goals: ["form_submissions"],
+  },
+  {
+    key: "formSubmissionToPaidClientPct",
+    label: "Form submission → Paid client",
+    tip: "Of leads who submit a form, the share that become paying customers.",
+    goals: ["form_submissions"],
   },
 ];
 
-const toInt = (v: string) => Math.round(parseFloat(v) || 0);
+const REQUIRED_FIELDS_BY_GOAL: Record<BrandOptimizationGoal, RequiredFieldKey[]> = {
+  signups: ["visitToSignupPct", "signupToPaidClientPct"],
+  sales_meetings: ["replyToMeetingPct", "visitToMeetingPct", "meetingToClosePct"],
+  website_visits: ["visitToPaidClientPct"],
+  positive_replies: ["replyToPaidClientPct"],
+  form_submissions: ["visitToFormSubmissionPct", "formSubmissionToPaidClientPct"],
+  website_purchase: ["visitToSignupPct", "signupToPaidClientPct"],
+  // Combined goal: a paying client won via EITHER path → both single-step paid rates.
+  sales: ["visitToPaidClientPct", "replyToPaidClientPct"],
+};
+
+const REQUIRED_FIELD_LABELS: Record<RequiredFieldKey, string> = {
+  lifetimeRevenueUsd: "Customer Lifetime Revenue",
+  replyToMeetingPct: "Positive reply → meeting",
+  visitToMeetingPct: "Website visit → meeting",
+  meetingToClosePct: "Meeting → Paid client",
+  visitToSignupPct: "Website visit → signup",
+  signupToPaidClientPct: "Signup → Paid client",
+  visitToPaidClientPct: "Website visit → Paid client",
+  replyToPaidClientPct: "Positive reply → Paid client",
+  visitToFormSubmissionPct: "Website visit → form submission",
+  formSubmissionToPaidClientPct: "Form submission → Paid client",
+};
+
+function formsEqual(a: FormState, b: FormState): boolean {
+  return (Object.keys(a) as (keyof FormState)[]).every((k) => a[k] === b[k]);
+}
+
+const hasNumericValue = (v: string) => parseLocaleNumberInput(v) !== null;
+const parseNumberOrDefault = (v: string, fallback: string) =>
+  parseLocaleNumberInput(v) ?? Number(fallback);
+const toIntOrDefault = (v: string, fallback: string) =>
+  Math.round(parseNumberOrDefault(v, fallback));
+const toPctOrDefault = (v: string, fallback: string) =>
+  parseNumberOrDefault(v, fallback);
 
 export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
+  const isBeta = useIsBetaUser();
   const queryClient = useQueryClient();
+  const initialData = queryClient.getQueryData<SalesEconomicsQueryData>([
+    "brandSalesEconomics",
+    brandId,
+  ]);
 
-  const { data, isPending } = useAuthQuery(
+  const { data } = useAuthQuery(
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
   );
 
-  const [form, setForm] = useState<FormState | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [form, setForm] = useState<FormState>(() =>
+    formFromEconomics(initialData?.salesEconomics),
+  );
+  // The last SAVED (or hydrated) values. Save is enabled only while the live form
+  // differs from this — so flipping a goal tab and returning, or editing a field
+  // and reverting it, correctly disables Save again (no sticky-dirty latch).
+  const [baseline, setBaseline] = useState<FormState>(() =>
+    formFromEconomics(initialData?.salesEconomics),
+  );
   const [saved, setSaved] = useState(false);
-  const hydrated = useRef(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const hydrated = useRef(initialData !== undefined);
 
-  // Seed the form once from the saved set (or defaults when unset). Mark hydrated even
-  // when unset so a later background refetch never clobbers in-progress edits.
+  const dirty = !formsEqual(form, baseline);
+
+  // The editor paints immediately from cache/defaults; the backend read only hydrates
+  // it once. Baseline always tracks the server value; the visible form is only
+  // overwritten when the user hasn't started editing (form still equals baseline).
   useEffect(() => {
     if (hydrated.current || data === undefined) return;
-    const e = data.salesEconomics;
-    setForm(
-      e
-        ? {
-            lifetimeRevenueUsd: String(e.lifetimeRevenueUsd),
-            replyToMeetingPct: String(e.replyToMeetingPct),
-            visitToMeetingPct: String(e.visitToMeetingPct),
-            meetingToClosePct: String(e.meetingToClosePct),
-            visitToClosePct: String(e.visitToClosePct),
-            businessModel: e.businessModel,
-          }
-        : { ...DEFAULTS, businessModel: null },
-    );
     hydrated.current = true;
+    const next = formFromEconomics(data.salesEconomics);
+    const untouched = formsEqual(form, baseline);
+    setBaseline(next);
+    if (untouched) setForm(next);
   }, [data]);
 
   const { mutate, isPending: saving, error } = useMutation({
@@ -100,73 +272,138 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
       // Write the fresh row to the shared cache so the campaign form + revenue
       // overview read the new values without waiting on a refetch.
       queryClient.setQueryData(["brandSalesEconomics", brandId], res);
-      // Economics drive the server-computed revenue overview — nudge it to refetch.
-      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
-      setDirty(false);
+      // Economics drive every server-computed metric (revenue overview, pipeline
+      // activity, workflow/strategy projections). Invalidate the whole cache so no
+      // econ-derived number stays stale anywhere — one-time burst on a user save.
+      queryClient.invalidateQueries();
+      // Re-baseline to the canonical saved values so Save disables and a later
+      // edit-then-revert clears it again.
+      const next = formFromEconomics(res.salesEconomics);
+      setForm(next);
+      setBaseline(next);
       setSaved(true);
     },
   });
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((f) => (f ? { ...f, [key]: value } : f));
-    setDirty(true);
+    setForm((f) => ({ ...f, [key]: value }));
     setSaved(false);
+    setValidationError(null);
+  }
+
+  function normalizeNumberInput(key: Exclude<keyof FormState, "optimizationGoal">) {
+    const parsed = parseLocaleNumberInput(form[key]);
+    if (parsed === null) return;
+    setForm((f) => ({ ...f, [key]: formatLocaleNumberInputValue(parsed) }));
+  }
+
+  // Customer Lifetime Revenue is whole dollars only — strip every non-digit on
+  // input so a decimal separator can never be typed, regroup on blur.
+  function updateInteger(key: "lifetimeRevenueUsd", raw: string) {
+    update(key, raw.replace(/\D/g, ""));
+  }
+
+  function normalizeIntegerInput(key: "lifetimeRevenueUsd") {
+    const parsed = parseLocaleNumberInput(form[key]);
+    if (parsed === null) return;
+    setForm((f) => ({ ...f, [key]: formatLocaleInteger(parsed) }));
   }
 
   function handleSave() {
-    if (!form) return;
+    const requiredFields: RequiredFieldKey[] = [
+      "lifetimeRevenueUsd",
+      ...REQUIRED_FIELDS_BY_GOAL[form.optimizationGoal],
+    ];
+    const missing = requiredFields.filter((key) => !hasNumericValue(form[key]));
+    if (missing.length > 0) {
+      setValidationError(
+        `Fill ${missing.map((key) => REQUIRED_FIELD_LABELS[key]).join(", ")} before saving.`,
+      );
+      return;
+    }
+
     mutate({
-      lifetimeRevenueUsd: toInt(form.lifetimeRevenueUsd),
-      replyToMeetingPct: toInt(form.replyToMeetingPct),
-      visitToMeetingPct: toInt(form.visitToMeetingPct),
-      meetingToClosePct: toInt(form.meetingToClosePct),
-      visitToClosePct: toInt(form.visitToClosePct),
-      businessModel: form.businessModel,
+      lifetimeRevenueUsd: toIntOrDefault(
+        form.lifetimeRevenueUsd,
+        DEFAULTS.lifetimeRevenueUsd,
+      ),
+      replyToMeetingPct: toPctOrDefault(
+        form.replyToMeetingPct,
+        DEFAULTS.replyToMeetingPct,
+      ),
+      visitToMeetingPct: toPctOrDefault(
+        form.visitToMeetingPct,
+        DEFAULTS.visitToMeetingPct,
+      ),
+      meetingToClosePct: toPctOrDefault(
+        form.meetingToClosePct,
+        DEFAULTS.meetingToClosePct,
+      ),
+      visitToSignupPct: toPctOrDefault(
+        form.visitToSignupPct,
+        DEFAULTS.visitToSignupPct,
+      ),
+      signupToPaidClientPct: toPctOrDefault(
+        form.signupToPaidClientPct,
+        DEFAULTS.signupToPaidClientPct,
+      ),
+      visitToPaidClientPct: toPctOrDefault(
+        form.visitToPaidClientPct,
+        DEFAULTS.visitToPaidClientPct,
+      ),
+      replyToPaidClientPct: toPctOrDefault(
+        form.replyToPaidClientPct,
+        DEFAULTS.replyToPaidClientPct,
+      ),
+      visitToFormSubmissionPct: toPctOrDefault(
+        form.visitToFormSubmissionPct,
+        DEFAULTS.visitToFormSubmissionPct,
+      ),
+      formSubmissionToPaidClientPct: toPctOrDefault(
+        form.formSubmissionToPaidClientPct,
+        DEFAULTS.formSubmissionToPaidClientPct,
+      ),
+      optimizationGoal: form.optimizationGoal,
     });
   }
 
-  if (isPending || !form) {
-    return (
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="h-4 w-48 bg-gray-100 rounded animate-pulse mb-4" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i}>
-              <div className="h-3 w-32 bg-gray-100 rounded animate-pulse mb-2" />
-              <div className="h-9 w-full bg-gray-100 rounded-lg animate-pulse" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const visiblePctFields = PCT_FIELDS.filter((f) =>
+    f.goals.includes(form.optimizationGoal),
+  );
+
+  // Beta goals show only for beta users — but never hide the currently-active goal
+  // (a goal a beta teammate already saved must still render its button for everyone).
+  const visibleGoals = OPTIMIZATION_GOALS.filter(
+    (g) => !g.beta || isBeta || g.value === form.optimizationGoal,
+  );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200">
       <div className="p-5">
         <p className="text-sm text-gray-500 mb-4">
-          Customer value + conversion funnel, reused across every sales campaign for this
+          Customer value + conversion rates, reused across every sales campaign for this
           brand. These power the revenue projections.
         </p>
 
-        {/* Business model */}
+        {/* Optimization goal (single-choice) */}
         <div className="mb-5">
-          <label className="block text-xs text-gray-500 mb-1.5">Business model</label>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-            {(["b2c", "b2b"] as const).map((m) => {
-              const active = form.businessModel === m;
+          <label className="block text-xs text-gray-500 mb-1.5">Optimization goal</label>
+          <div className="inline-flex flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+            {visibleGoals.map((g) => {
+              const active = form.optimizationGoal === g.value;
               return (
                 <button
-                  key={m}
+                  key={g.value}
                   type="button"
-                  onClick={() => update("businessModel", m)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${
+                  onClick={() => update("optimizationGoal", g.value)}
+                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-md transition ${
                     active
                       ? "bg-white shadow-sm text-brand-700 ring-1 ring-brand-200"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
-                  {m.toUpperCase()}
+                  {g.label}
+                  {g.beta && <MaturityBadge level="beta" />}
                 </button>
               );
             })}
@@ -187,30 +424,29 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
                 $
               </span>
               <input
-                type="number"
-                min="0"
-                step="100"
+                type="text"
+                inputMode="numeric"
                 value={form.lifetimeRevenueUsd}
-                onChange={(e) => update("lifetimeRevenueUsd", e.target.value)}
+                onChange={(e) => updateInteger("lifetimeRevenueUsd", e.target.value)}
+                onBlur={() => normalizeIntegerInput("lifetimeRevenueUsd")}
                 className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </div>
           </div>
 
-          {/* Conversion rates */}
-          {PCT_FIELDS.map((f) => (
+          {/* Conversion rates — only those relevant to the selected goal */}
+          {visiblePctFields.map((f) => (
             <div key={f.key}>
               <label className="block text-xs text-gray-500 mb-1" title={f.tip}>
                 {f.label}
               </label>
               <div className="relative">
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
+                  type="text"
+                  inputMode="decimal"
                   value={form[f.key]}
                   onChange={(e) => update(f.key, e.target.value)}
+                  onBlur={() => normalizeNumberInput(f.key)}
                   className="w-full pl-3 pr-7 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-300"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
@@ -225,6 +461,9 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
           <p className="mt-4 text-sm text-red-600">
             Could not save: {error instanceof Error ? error.message : "unknown error"}
           </p>
+        )}
+        {validationError && (
+          <p className="mt-4 text-sm text-red-600">{validationError}</p>
         )}
 
         <div className="mt-5 flex items-center gap-3">

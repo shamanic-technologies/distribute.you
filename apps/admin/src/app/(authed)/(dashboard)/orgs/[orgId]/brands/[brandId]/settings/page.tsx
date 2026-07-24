@@ -12,6 +12,7 @@ import {
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
 import { BrandDailyBudgetCard } from "@/components/settings/brand-daily-budget-card";
+import { BrandOfferCard } from "@/components/settings/brand-offer-card";
 
 export default function BrandSettingsPage() {
   const params = useParams();
@@ -78,6 +79,12 @@ export default function BrandSettingsPage() {
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Sales Economics</h2>
         <BrandSalesEconomicsCard brandId={brandId} />
+      </div>
+
+      {/* Your offer (services + Hormozi value-equation levers, AI-prefilled) */}
+      <div className="mb-10">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Your offer</h2>
+        <BrandOfferCard brandId={brandId} />
       </div>
 
       {/* Danger Zone */}
