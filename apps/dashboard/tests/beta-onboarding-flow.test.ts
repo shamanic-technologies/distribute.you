@@ -98,10 +98,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain('"unknown"');
   });
 
-  it("uses landing-only extraction for the blocking services step", () => {
-    expect(src).toContain('extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing" })');
+  it("uses landing-only suggest extraction for the blocking services step", () => {
+    expect(src).toContain('extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing", mode: "suggest" })');
     expect(src).toContain("hydrateOnboardingInBackground");
-    expect(src).toContain("extractBrandFields([id], SALES_PROFILE_FIELDS)");
+    // Background hydrate warms ONLY the 7 user-facing fields in suggest mode (services +
+    // the 6 offer levers), never the backend-only SALES_PROFILE_FIELDS the flow never reads.
+    expect(src).toContain('extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest" })');
   });
 
   it("offers the two sales goals and prices in the chosen unit", () => {

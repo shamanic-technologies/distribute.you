@@ -1696,6 +1696,26 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "additionalContext", description: "Additional context and notable information" },
 ];
 
+/**
+ * The 7 USER-FACING fields (services + the 6 Hormozi offer levers) that onboarding
+ * prefills and the user confirms — the exact `USER_FIELD_KEYS` set. Onboarding extracts
+ * ONLY these (in `mode:"suggest"`, so every lever gets a best-effort inferred value and
+ * never "Unknown"); it does NOT extract the backend-only fields in SALES_PROFILE_FIELDS
+ * (funding/competitors/leadership/...), which the onboarding flow never reads (the
+ * brand-info alpha page regenerates those on demand). `dreamOutcome` MUST be here — it is
+ * a user-field key that SALES_PROFILE_FIELDS never listed (it kept the legacy
+ * `valueProposition`), so the Dream-outcome lever had no extraction source and prefilled empty.
+ */
+export const USER_PROFILE_FIELDS: ExtractFieldDef[] = [
+  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. Said differently, what package / product / service customers will pay for when they think about it. If one offering, list one. If different offerings appear in the content provided, list all. List each as a short phrase." },
+  { key: "dreamOutcome", description: "Dream outcome: the specific end result or transformation the customer most wants from this brand — the core promise every outreach email is written around. Make it concrete and worth wanting." },
+  { key: "perceivedLikelihood", description: "Perceived likelihood of success: proof the outcome is achievable — track record, data, guarantees, named results and outcomes" },
+  { key: "socialProof", description: "Social proof: case studies, testimonials, and results" },
+  { key: "riskReversal", description: "Risk reversal: trials, guarantees, refund policy" },
+  { key: "urgency", description: "Urgency elements and time pressure" },
+  { key: "scarcity", description: "Scarcity and limited availability" },
+];
+
 
 /**
  * Persists the user's OPTIONAL onboarding phone number to Clerk user
@@ -1754,12 +1774,16 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 export async function extractBrandFields(
   brandIds: string[],
   fields: ExtractFieldDef[],
-  opts?: { token?: string; resetCache?: boolean; urlStrategy?: "url_map" | "landing" },
+  opts?: { token?: string; resetCache?: boolean; urlStrategy?: "url_map" | "landing"; mode?: "extract" | "suggest" },
 ): Promise<ExtractFieldsResponse> {
-  const { token, resetCache, urlStrategy } = opts ?? {};
+  const { token, resetCache, urlStrategy, mode } = opts ?? {};
+  // `mode` (brand-service): omitted/"extract" = site-grounded (returns "Unknown" when
+  // absent); "suggest" = a generative Hormozi + top-3-expert persona that infers a
+  // best-effort value where the source is silent and never returns "Unknown". Onboarding
+  // passes "suggest" for the user-facing offer levers + services (USER_PROFILE_FIELDS).
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy } },
+    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy, mode } },
   );
 }
 
