@@ -29,6 +29,7 @@ import {
   getBrand,
   extractBrandFields,
   SALES_PROFILE_FIELDS,
+  USER_PROFILE_FIELDS,
   getBrandUserFields,
   saveBrandUserFields,
   USER_FIELD_KEYS,
@@ -1038,7 +1039,12 @@ export function Onboarding() {
   }
 
   async function hydrateOnboardingInBackground(id: string): Promise<void> {
-    await extractBrandFields([id], SALES_PROFILE_FIELDS).catch((e) => {
+    // Warm ONLY the 7 user-facing fields (services + the 6 offer levers) in suggest
+    // mode — the offer step reads these via getBrandUserFields and needs a best-effort
+    // value for every lever (never "Unknown"). The backend-only SALES_PROFILE_FIELDS
+    // (funding/competitors/leadership/...) are NOT extracted here: onboarding never reads
+    // them, and the brand-info alpha page regenerates them on demand.
+    await extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest" }).catch((e) => {
       console.error("[dashboard] extractBrandFields (background) failed:", e);
     });
 
@@ -1196,7 +1202,7 @@ export function Onboarding() {
     // Extract only the service list before moving forward. The heavier profile,
     // persona, economics and projection work continues after the services step is usable.
     const servicesStartedAt = performance.now();
-    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing" }).catch((e) => {
+    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { urlStrategy: "landing", mode: "suggest" }).catch((e) => {
       console.error("[dashboard] extractBrandFields failed:", e);
       captureSetupMilestone("services_extract_failed", servicesStartedAt);
       return null;
@@ -1305,7 +1311,7 @@ export function Onboarding() {
     captureSetupMilestone("brand_upserted", brandStartedAt);
     setLoadStep(2);
     const servicesStartedAt = performance.now();
-    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS).catch((e) => {
+    const serviceFields = await extractBrandFields([newBrandId], SERVICES_PROFILE_FIELDS, { mode: "suggest" }).catch((e) => {
       console.error("[dashboard] extractBrandFields (no-website) failed:", e);
       captureSetupMilestone("services_extract_failed", servicesStartedAt);
       return null;
