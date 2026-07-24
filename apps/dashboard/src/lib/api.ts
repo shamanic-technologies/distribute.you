@@ -974,6 +974,42 @@ export async function saveBrandClickDestination(
   return parsed.data;
 }
 
+// ── Attach a website to a no-website brand (one-time domain setup) ──
+// A brand created via the "I have no website" onboarding path has domain === null.
+// This attaches a website URL, which brand-service sets as brands.url + domain; the
+// next post-cache-expiry field extraction re-sources from the site automatically.
+// Reached via api-service PATCH /v1/brands/:brandId { url } → response { brandId,
+// domain, name, url } (owned by brand-service). Downstream 4xx validation + 409
+// domain-conflict propagate verbatim (fail-loud — surfaced in the settings card).
+// One-time: the setup section is hidden once domain !== null.
+const AttachBrandWebsiteResponseSchema = z.object({
+  brandId: z.string().optional(),
+  domain: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+});
+
+export async function attachBrandWebsite(
+  brandId: string,
+  url: string,
+  token?: string,
+): Promise<{ domain: string | null; url: string | null }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}`, {
+    token,
+    method: "PATCH",
+    body: { url },
+  });
+  const parsed = AttachBrandWebsiteResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] attachBrandWebsite: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] attachBrandWebsite: invalid response shape");
+  }
+  return { domain: parsed.data.domain ?? null, url: parsed.data.url ?? null };
+}
+
 // ── Conversion tracking token (per-brand publishable write-key) ──
 // A per-brand token the client embeds in a snippet on their own site to fire
 // "Signup" / "Meeting Booked" events back to us; lead-service ingests them and
