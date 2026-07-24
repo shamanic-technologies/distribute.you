@@ -60,10 +60,13 @@ describe("Onboarding — no-website path (beta)", () => {
     expect(src).toContain('if (noWebsiteMode && outcome !== "positive_replies") setOutcome("positive_replies")');
   });
 
-  it("isolates the create+context API calls behind one TODO-commented helper", () => {
+  it("isolates the create+context API calls behind one helper conformed to the deployed contract", () => {
     const api = read("src/lib/api.ts");
     expect(api).toContain("export async function createBrandWithoutWebsite");
-    expect(api).toContain("TODO conform to deployed brand-service contract");
+    // Conformed to brand-service #366: POST /brands { name } then
+    // PUT /brands/:id/business-context { content } before extraction.
+    expect(api).toContain("/business-context");
+    expect(api).toContain("body: { content: context }");
   });
 });
 

@@ -1596,9 +1596,12 @@ export function Onboarding() {
     const { campaign } = await createCampaignWithoutBrandEnrichment({
       name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
       workflowSlug: pending.workflowSlug,
-      // A no-website brand carries no URL. TODO conform to the deployed campaign
-      // contract for null-url brands (empty brandUrls for now).
-      brandUrls: pending.brandUrl ? [pending.brandUrl] : [],
+      // A no-website brand carries no URL; it's already created by name, so the
+      // gateway takes its brandId directly (a website brand passes brandUrls, which
+      // the gateway upserts to a brandId). Exactly one is sent.
+      ...(pending.brandUrl
+        ? { brandUrls: [pending.brandUrl] }
+        : { brandIds: [pending.brandId] }),
       featureSlug: SALES_FEATURE_SLUG,
       featureInputs,
       maxBudgetDailyUsd: String(pending.budgetUsd),

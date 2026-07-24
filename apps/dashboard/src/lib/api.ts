@@ -2357,29 +2357,26 @@ export async function upsertBrand(
 }
 
 // ── No-website brand creation (beta) ──────────────────────────────
-// TODO conform to deployed brand-service contract (null-url brand + pasted context).
-// Creates a brand with NO website URL (url = null) from a user-typed name + a large
-// free-form block the user pasted about their business, then persists that context so
-// field extraction reads it instead of scraping a site. Both writes are ISOLATED here
-// as the single seam the orchestrator conforms to the real brand-service / api-service
-// endpoints once they ship — every other part of the no-website flow is contract-stable.
+// Creates a brand with NO website URL from a user-typed name + a large free-form block
+// the user pasted about their business, then persists that context so field extraction
+// reads it instead of scraping a site (brand-service #366, api-service #760 + business-
+// context passthrough). MUST persist the context BEFORE extract-fields runs.
 export async function createBrandWithoutWebsite(
   name: string,
   context: string,
   token?: string,
 ): Promise<{ brandId: string }> {
-  // Best-guess: POST /brands with url:null + a name (mirrors upsertBrand's POST /brands).
+  // POST /orgs/brands accepts EITHER { url } OR { name }; no-website brand = { name }.
   const { brandId } = await apiCall<{ brandId: string }>(`/brands`, {
     token,
     method: "POST",
-    body: { url: null, name },
+    body: { name },
   });
-  // Best-guess: persist the pasted business context on the brand. MUST run BEFORE
-  // extract-fields so extraction has the context to read (there is no site to scrape).
-  await apiCall(`/brands/${brandId}/context`, {
+  // PUT /orgs/brands/:id/business-context { content } — the extraction source.
+  await apiCall(`/brands/${brandId}/business-context`, {
     token,
     method: "PUT",
-    body: { context },
+    body: { content: context },
   });
   return { brandId };
 }
@@ -3627,7 +3624,10 @@ export async function createCampaignWithoutBrandEnrichment(
   params: {
     name: string;
     workflowSlug: string;
-    brandUrls: string[];
+    // Exactly one of brandUrls (website brand) or brandIds (no-website brand,
+    // already created by name) — the gateway resolves/forwards accordingly.
+    brandUrls?: string[];
+    brandIds?: string[];
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
