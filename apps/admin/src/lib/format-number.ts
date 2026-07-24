@@ -3,6 +3,70 @@
  * All numbers displayed to users should go through these functions.
  */
 
+type NumberLocale = Intl.LocalesArgument;
+
+function viewerLocale(): NumberLocale {
+  if (typeof navigator === "undefined") return undefined;
+  return navigator.languages.length > 0 ? navigator.languages : navigator.language;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function localeSeparators(locale: NumberLocale = viewerLocale()): {
+  group: string | null;
+  decimal: string;
+} {
+  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6);
+  return {
+    group: parts.find((part) => part.type === "group")?.value ?? null,
+    decimal: parts.find((part) => part.type === "decimal")?.value ?? ".",
+  };
+}
+
+export function formatLocaleNumber(
+  value: number,
+  options: Intl.NumberFormatOptions = {},
+  locale: NumberLocale = viewerLocale(),
+): string {
+  return new Intl.NumberFormat(locale, options).format(value);
+}
+
+export function parseLocaleNumberInput(
+  raw: string,
+  locale: NumberLocale = viewerLocale(),
+): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const { group, decimal } = localeSeparators(locale);
+  let compact = trimmed.replace(/[\s\u00a0\u202f]/g, "");
+  if (group) compact = compact.replace(new RegExp(escapeRegExp(group), "g"), "");
+  if (decimal !== ".") {
+    compact = compact.replace(new RegExp(escapeRegExp(decimal), "g"), ".");
+  }
+
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(compact)) return null;
+  const value = Number(compact);
+  return Number.isFinite(value) ? value : null;
+}
+
+export function formatLocaleNumberInputValue(
+  value: number,
+  locale: NumberLocale = viewerLocale(),
+): string {
+  if (!Number.isFinite(value)) return "";
+  return formatLocaleNumber(value, { maximumFractionDigits: 10 }, locale);
+}
+
+export function formatLocaleInteger(
+  value: number,
+  locale: NumberLocale = viewerLocale(),
+): string {
+  return formatLocaleNumber(Math.round(value), { maximumFractionDigits: 0 }, locale);
+}
+
 /** Format a USD dollar amount with thousand separators. */
 export function formatUsd(usd: number, decimals = 2): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;

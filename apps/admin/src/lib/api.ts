@@ -628,31 +628,132 @@ export async function saveBrandClickDestination(
 // the revenue-overview pipeline applies. Both GET and PUT responses always include it.
 export type BrandBusinessModel = "b2c" | "b2b";
 
+// The brand's single optimization goal. website_visits / positive_replies are beta
+// single-step goals (visit→paid, reply→paid) — their wire values match the local names
+// 1:1 (no rename). website_purchase = the RENAMED former `purchase` goal (multi-step
+// self-serve close); sales = the beta COMBINED goal (a paying client won via EITHER the
+// visit→paid OR the reply→paid path, valued at CLTV). Both terminate in a `sale`.
+export type BrandOptimizationGoal =
+  | "signups"
+  | "sales_meetings"
+  | "website_visits"
+  | "positive_replies"
+  | "form_submissions"
+  | "website_purchase"
+  | "sales";
+type BrandOptimizationGoalWire =
+  | BrandOptimizationGoal
+  | "booked_meetings"
+  | "combined_sales"
+  | "purchase";
+
+function normalizeBrandOptimizationGoal(
+  goal: BrandOptimizationGoalWire,
+): BrandOptimizationGoal {
+  if (goal === "signups") return "signups";
+  if (goal === "website_visits") return "website_visits";
+  if (goal === "positive_replies") return "positive_replies";
+  if (goal === "form_submissions") return "form_submissions";
+  // The combined-sales goal is `combined_sales` on the brand-service wire.
+  if (goal === "combined_sales") return "sales";
+  // The renamed website-purchase goal reads as `website_purchase`. The LEGACY `sales`
+  // wire (brand-service used to persist the old purchase goal as `sales`) + the legacy
+  // `purchase` spelling both collapse to the renamed website_purchase goal.
+  if (goal === "website_purchase" || goal === "sales" || goal === "purchase") return "website_purchase";
+  // booked_meetings / sales_meetings collapse to sales_meetings.
+  return "sales_meetings";
+}
+
+function serializeBrandOptimizationGoal(
+  goal: BrandOptimizationGoal,
+): "signups" | "booked_meetings" | "website_visits" | "positive_replies" | "form_submissions" | "website_purchase" | "combined_sales" {
+  if (goal === "signups") return "signups";
+  if (goal === "website_visits") return "website_visits";
+  if (goal === "positive_replies") return "positive_replies";
+  if (goal === "form_submissions") return "form_submissions";
+  // website_purchase serialises 1:1; sales → the combined-sales wire value.
+  if (goal === "website_purchase") return "website_purchase";
+  if (goal === "sales") return "combined_sales";
+  return "booked_meetings";
+}
+
 export interface BrandSalesEconomics {
   lifetimeRevenueUsd: number;
   replyToMeetingPct: number;
   visitToMeetingPct: number;
   meetingToClosePct: number;
+  // Self-serve close decomposed into two steps. visitToClosePct is now DERIVED
+  // server-side (= visitToSignupPct × signupToPaidClientPct) and stays on the
+  // response for the projection engine — never sent on the PUT (see Input).
+  visitToSignupPct: number;
+  signupToPaidClientPct: number;
   visitToClosePct: number;
+  // Single-step conversions for the beta website_visits / positive_replies goals.
+  visitToPaidClientPct: number;
+  replyToPaidClientPct: number;
+  // Two-step conversions for the beta form_submissions goal (visit → form submission → paid),
+  // the sibling of signups. brand-service serves them PRESENT-BUT-NULLABLE: a brand that never
+  // set form-submission rates gets `null` (not absent). Hence `number | null` — a bare `number`
+  // (or a non-nullable schema) makes the GET safeParse throw on every such brand.
+  visitToFormSubmissionPct?: number | null;
+  formSubmissionToPaidClientPct?: number | null;
   businessModel: BrandBusinessModel | null;
+  optimizationGoal: BrandOptimizationGoal;
   updatedAt: string;
 }
 
-// businessModel is a partial-update field on PUT: omit = leave unchanged, null = clear
-// (brand-service contract). The campaign form omits it (edits only the 5 metrics); the
-// Brand Settings editor sends it explicitly. Hence optional in the input, not required.
+// businessModel / optimizationGoal are partial-update fields on PUT:
+// omit = leave unchanged. Hence optional in the input.
+// visitToClosePct is derived server-side, never sent — omit it from the input.
+// visitToPaidClientPct / replyToPaidClientPct are partial-update too: omit = leave
+// unchanged (brand-service defaults 5 / 25). Only the beta settings card sends them.
 export type BrandSalesEconomicsInput = Omit<
   BrandSalesEconomics,
-  "updatedAt" | "businessModel"
-> & { businessModel?: BrandBusinessModel | null };
+  | "updatedAt"
+  | "businessModel"
+  | "optimizationGoal"
+  | "visitToClosePct"
+  | "visitToPaidClientPct"
+  | "replyToPaidClientPct"
+  | "visitToFormSubmissionPct"
+  | "formSubmissionToPaidClientPct"
+> & {
+  businessModel?: BrandBusinessModel | null;
+  optimizationGoal?: BrandOptimizationGoal;
+  visitToPaidClientPct?: number;
+  replyToPaidClientPct?: number;
+  visitToFormSubmissionPct?: number;
+  formSubmissionToPaidClientPct?: number;
+};
 
 const BrandSalesEconomicsSchema = z.object({
   lifetimeRevenueUsd: z.number(),
   replyToMeetingPct: z.number(),
   visitToMeetingPct: z.number(),
   meetingToClosePct: z.number(),
+  visitToSignupPct: z.number(),
+  signupToPaidClientPct: z.number(),
   visitToClosePct: z.number(),
+  visitToPaidClientPct: z.number(),
+  replyToPaidClientPct: z.number(),
+  // Present-but-NULLABLE on the wire: brand-service returns these in `required[]` but serves `null`
+  // for a brand that never set form-submission rates. `.nullable().optional()` tolerates BOTH null
+  // (the common case) and absent (older prod) — a bare `.optional()` rejects null → the whole GET
+  // safeParse throws, breaking every econ-reading surface. Consumers already `?? default`-guard.
+  visitToFormSubmissionPct: z.number().nullable().optional(),
+  formSubmissionToPaidClientPct: z.number().nullable().optional(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
+  optimizationGoal: z.union([
+    z.literal("signups"),
+    z.literal("sales_meetings"),
+    z.literal("booked_meetings"),
+    z.literal("website_purchase"),
+    z.literal("combined_sales"),
+    z.literal("sales"),
+    z.literal("website_visits"),
+    z.literal("positive_replies"),
+    z.literal("form_submissions"),
+  ]).transform(normalizeBrandOptimizationGoal),
   updatedAt: z.string(),
 });
 
@@ -698,11 +799,31 @@ export async function saveBrandSalesEconomics(
       replyToMeetingPct: input.replyToMeetingPct,
       visitToMeetingPct: input.visitToMeetingPct,
       meetingToClosePct: input.meetingToClosePct,
-      visitToClosePct: input.visitToClosePct,
+      // Self-serve close as two steps; brand-service derives visitToClosePct.
+      visitToSignupPct: input.visitToSignupPct,
+      signupToPaidClientPct: input.signupToPaidClientPct,
+      // Single-step conversions (partial-update): send only when the caller set them.
+      ...(input.visitToPaidClientPct !== undefined
+        ? { visitToPaidClientPct: input.visitToPaidClientPct }
+        : {}),
+      ...(input.replyToPaidClientPct !== undefined
+        ? { replyToPaidClientPct: input.replyToPaidClientPct }
+        : {}),
+      // Two-step form-submission conversions (partial-update): send only when set.
+      ...(input.visitToFormSubmissionPct !== undefined
+        ? { visitToFormSubmissionPct: input.visitToFormSubmissionPct }
+        : {}),
+      ...(input.formSubmissionToPaidClientPct !== undefined
+        ? { formSubmissionToPaidClientPct: input.formSubmissionToPaidClientPct }
+        : {}),
       // Partial-update: send businessModel only when the caller set it (settings
       // editor). Omitting it leaves the stored value unchanged; null clears it.
       ...(input.businessModel !== undefined
         ? { businessModel: input.businessModel }
+        : {}),
+      // Same partial-update semantics for the sales goal: omit = leave unchanged.
+      ...(input.optimizationGoal !== undefined
+        ? { optimizationGoal: serializeBrandOptimizationGoal(input.optimizationGoal) }
         : {}),
     },
   });
@@ -885,6 +1006,7 @@ export interface CachedField {
 
 /** Core sales profile fields — reproduces the old /sales-profile extraction */
 export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
+  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. Said differently, what package / product / service customers will pay for when they think about it. If one offering, list one. If different offerings appear in the content provided, list all. List each as a short phrase." },
   { key: "companyOverview", description: "Company overview" },
   { key: "valueProposition", description: "Core value proposition" },
   { key: "targetAudience", description: "Target audience description" },
@@ -897,12 +1019,93 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "awardsAndRecognition", description: "Awards, recognition, and industry accolades" },
   { key: "revenueMilestones", description: "Revenue milestones and key business metrics" },
   { key: "socialProof", description: "Social proof: case studies, testimonials, and results" },
+  { key: "perceivedLikelihood", description: "Perceived likelihood of success: proof the outcome is achievable — track record, data, guarantees, named results and outcomes" },
   { key: "callToAction", description: "Primary CTA" },
   { key: "urgency", description: "Urgency elements and time pressure" },
   { key: "scarcity", description: "Scarcity and limited availability" },
   { key: "riskReversal", description: "Risk reversal: trials, guarantees, refund policy" },
   { key: "additionalContext", description: "Additional context and notable information" },
 ];
+
+// ── Confirmed user-fields (the 2-layer brand-fields model) ──
+// The 7 keys the user validates: services + the 6 Hormozi value-equation offer
+// levers. Everything else in SALES_PROFILE_FIELDS is auto-extracted + backend-only.
+// `dreamOutcome` REPLACES the old `valueProposition` (label "Dream outcome") — the
+// backend seeds the suggested dreamOutcome from the valueProposition extraction.
+export const USER_FIELD_KEYS = [
+  "services",
+  "dreamOutcome",
+  "perceivedLikelihood",
+  "socialProof",
+  "riskReversal",
+  "urgency",
+  "scarcity",
+] as const;
+export type UserFieldKey = (typeof USER_FIELD_KEYS)[number];
+
+export type FieldProvenance = "confirmed" | "suggested" | "extracted";
+export type UserFieldValue = string | string[];
+export interface UserField {
+  // The confirmed value OR the AI-suggested prefill. `null` when unconfirmed and
+  // its prefill is empty/expired (or a legacy/degenerate row).
+  value: UserFieldValue | null;
+  provenance: FieldProvenance;
+}
+/** The confirmed user-fields map, keyed by user-field key. */
+export type BrandUserFields = Record<string, UserField>;
+
+// A user-field VALUE as it can arrive on the wire — LOOSELY typed by the backend
+// (a "suggested"/expired prefill resolves to null; legacy rows can be array-with-
+// null-items or object). Normalize ANY non-(string | non-empty string[]) shape to
+// null so a single degenerate field can never throw the whole read and hide the
+// sibling CONFIRMED values.
+const UserFieldValueSchema = z.unknown().transform((v): UserFieldValue | null => {
+  if (typeof v === "string") return v.trim().length > 0 ? v : null;
+  if (Array.isArray(v)) {
+    const strings = v.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+    return strings.length > 0 ? strings : null;
+  }
+  return null;
+});
+const UserFieldSchema = z.object({
+  value: UserFieldValueSchema,
+  provenance: z.enum(["confirmed", "suggested", "extracted"]),
+});
+export const BrandUserFieldsResponseSchema = z.object({
+  fields: z.record(z.string(), UserFieldSchema),
+});
+
+/** GET /brands/:brandId/user-fields — the confirmed user-fields, each with its
+ *  value + provenance ("confirmed" | "suggested"). "suggested" = the AI prefill. */
+export async function getBrandUserFields(
+  brandId: string,
+  token?: string,
+): Promise<{ fields: BrandUserFields }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/user-fields`, { token });
+  const parsed = BrandUserFieldsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getBrandUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] getBrandUserFields: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PUT /brands/:brandId/user-fields — save (confirm) one or more user-fields.
+ *  Body is `{ fields: { <key>: value } }`; every key sent is marked "confirmed".
+ *  Omit a key to leave its current value/provenance untouched. */
+export async function saveBrandUserFields(
+  brandId: string,
+  fields: Partial<Record<UserFieldKey, UserFieldValue>>,
+  token?: string,
+): Promise<{ fields: BrandUserFields }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/user-fields`, { token, method: "PUT", body: { fields } });
+  const parsed = BrandUserFieldsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] saveBrandUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] saveBrandUserFields: invalid response shape");
+  }
+  return parsed.data;
+}
 
 
 /** Convert extract-fields results map to a key→value map (preserves raw types) */

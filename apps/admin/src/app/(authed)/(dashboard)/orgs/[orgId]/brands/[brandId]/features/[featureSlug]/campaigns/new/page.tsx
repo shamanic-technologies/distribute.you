@@ -384,12 +384,19 @@ export default function FeatureCreateCampaignPage() {
     if (!isSalesFunnel) return;
     if (econSaveTimer.current) clearTimeout(econSaveTimer.current);
     econSaveTimer.current = setTimeout(() => {
+      // brand-service requires the self-serve close as TWO steps (visit→signup ×
+      // signup→paid) and DERIVES visitToClosePct = their product. This legacy
+      // page only models the single visit→close rate, so encode it losslessly:
+      // visitToSignupPct = the entered rate, signupToPaidClientPct = 100 → the
+      // derived visitToClose equals the entered rate exactly. (The full goal-aware
+      // two-field editor lives in the Brand Settings sales-economics card.)
       mutateSalesEcon({
         lifetimeRevenueUsd: Math.round(parseFloat(next.ltv) || 0),
         replyToMeetingPct: Math.round(parseFloat(next.replyToMeeting) || 0),
         visitToMeetingPct: Math.round(parseFloat(next.visitToMeeting) || 0),
         meetingToClosePct: Math.round(parseFloat(next.meetingToClose) || 0),
-        visitToClosePct: Math.round(parseFloat(next.clickToClose) || 0),
+        visitToSignupPct: Math.round(parseFloat(next.clickToClose) || 0),
+        signupToPaidClientPct: 100,
       });
     }, 700);
   };
