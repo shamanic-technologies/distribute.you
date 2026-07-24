@@ -45,10 +45,28 @@ describe("user-fields-form — split field subsets + services-conditioned extrac
     expect(content).toContain('f.key !== "services"');
   });
 
-  it("conditions the extraction on the entered services (prepends them to each description)", () => {
+  it("conditions the extraction on the entered services (feeds them into each description)", () => {
     expect(content).toContain("export function buildExtractDefs");
     expect(content).toContain("servicesContext");
-    expect(content).toContain("This brand sells the following services/products:");
+    expect(content).toContain("This brand sells the following services / products:");
+  });
+
+  it("uses a rich Alex-Hormozi generation prompt that infers without fabricating", () => {
+    expect(content).toContain("HORMOZI_LEVER_GUIDANCE");
+    expect(content).toContain("Act as Alex Hormozi");
+    expect(content).toContain("infer the most sensible");
+    expect(content).toContain("Never fabricate");
+    // A guidance entry exists for every lever key.
+    for (const key of [
+      "dreamOutcome",
+      "perceivedLikelihood",
+      "socialProof",
+      "riskReversal",
+      "urgency",
+      "scarcity",
+    ]) {
+      expect(content).toContain(`${key}:`);
+    }
   });
 
   it("saves only the subset's keys + seeds dreamOutcome from valueProposition", () => {
