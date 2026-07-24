@@ -1512,6 +1512,7 @@
         form.addEventListener('submit',function(event){
           event.preventDefault();
           let value=input.value.trim();
+          if(!value){window.location.href='https://dashboard.distribute.you/sign-up';return;}
           if(value&&!/^https?:\/\//i.test(value)){value='https://'+value;}
           try{
             const parsed=new URL(value);
