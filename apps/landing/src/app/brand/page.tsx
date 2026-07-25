@@ -46,7 +46,7 @@ const LOGOS: Asset[] = [
 
 const ICONS: Asset[] = [
   { name: "Icon", file: "icon.svg", tile: "checker", note: "App icon and social avatar." },
-  { name: "Mark", file: "logo-mark.svg", tile: "checker", note: "The dot, on transparent." },
+  { name: "Mark", file: "logo-mark.svg", tile: "checker", note: "The D, on transparent." },
   { name: "Favicon", file: "favicon.svg", tile: "checker", note: "SVG favicon." },
 ];
 
@@ -54,7 +54,7 @@ const COLORS: { name: string; hex: string; text: "light" | "dark" }[] = [
   { name: "Ink", hex: "#070A0F", text: "light" },
   { name: "Surface", hex: "#10151D", text: "light" },
   { name: "Line", hex: "#26303D", text: "light" },
-  { name: "Signal green", hex: "#2563eb", text: "dark" },
+  { name: "Signal blue", hex: "#2563eb", text: "dark" },
   { name: "Text", hex: "#F2F5F7", text: "dark" },
   { name: "Muted", hex: "#99A4B6", text: "dark" },
 ];
@@ -62,14 +62,14 @@ const COLORS: { name: string; hex: string; text: "light" | "dark" }[] = [
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 .bp{--bg:#070a0f;--panel:#10151d;--panel-2:#151b25;--line:#26303d;--text:#f2f5f7;--muted:#99a4b6;--faint:#657184;--green:#2563eb;
-  background:radial-gradient(circle at 78% 2%,rgba(69,227,142,.08),transparent 30rem),var(--bg);
+  background:radial-gradient(circle at 78% 2%,rgba(37,99,235,.10),transparent 30rem),var(--bg);
   color:var(--text);font-family:'Inter',sans-serif;line-height:1.55;min-height:100vh;-webkit-font-smoothing:antialiased}
 .bp *{box-sizing:border-box}
 .bp a{color:inherit;text-decoration:none}
 .bp-wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 .bp-top{display:flex;align-items:center;justify-content:space-between;padding:22px 0;border-bottom:1px solid var(--line)}
 .bp-logo{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:19px;letter-spacing:-.4px}
-.bp-dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 16px rgba(69,227,142,.8)}
+.bp-dmark{width:24px;height:24px;border-radius:6px;display:block}
 .bp-back{font-size:14px;color:var(--muted)}
 .bp-hero{padding:64px 0 40px}
 .bp-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--green)}
@@ -92,7 +92,7 @@ const CSS = `
 .bp-meta .nt{font-size:12px;color:var(--faint);margin-top:2px}
 .bp-dls{display:flex;gap:8px}
 .bp-dl{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--green);white-space:nowrap;border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-decoration:none}
-.bp-dl:hover{border-color:var(--green);background:rgba(69,227,142,.08)}
+.bp-dl:hover{border-color:var(--green);background:rgba(37,99,235,.08)}
 .bp-favi{margin-top:16px;display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted);flex-wrap:wrap}
 .bp-swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .bp-sw{border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -144,7 +144,7 @@ export default function BrandPage() {
       <div className="bp-wrap">
         <header className="bp-top">
           <a className="bp-logo" href="/">
-            <span className="bp-dot" aria-hidden="true" />
+            <img className="bp-dmark" src="/brand/logo-mark.svg" alt="" aria-hidden="true" />
             distribute
           </a>
           <a className="bp-back" href="/">
@@ -168,7 +168,7 @@ export default function BrandPage() {
         <section className="bp-sec">
           <h2>Logo</h2>
           <p className="sub">
-            The full logo is the dot and the wordmark together. Keep the dot to
+            The full logo is the mark and the wordmark together. Keep the mark to
             the left of the word.
           </p>
           <div className="bp-grid">
@@ -180,7 +180,7 @@ export default function BrandPage() {
 
         <section className="bp-sec">
           <h2>Icon &amp; favicon</h2>
-          <p className="sub">Square icon for avatars and app tiles. The mark is the dot on its own.</p>
+          <p className="sub">Square icon for avatars and app tiles. The mark is the D on its own.</p>
           <div className="bp-grid">
             {ICONS.map((a) => (
               <AssetCard key={a.file} a={a} />
@@ -222,7 +222,7 @@ export default function BrandPage() {
 
         <section className="bp-sec">
           <h2>Colors</h2>
-          <p className="sub">Ink and signal green are the core. Everything else supports them.</p>
+          <p className="sub">Ink and signal blue are the core. Everything else supports them.</p>
           <div className="bp-swatches">
             {COLORS.map((c) => (
               <div className="bp-sw" key={c.hex}>
@@ -270,7 +270,7 @@ export default function BrandPage() {
             <div className="bp-rule">
               <h3>Do</h3>
               <ul>
-                <li>Keep clear space around the logo, at least the height of the dot.</li>
+                <li>Keep clear space around the logo, at least the height of the mark.</li>
                 <li>Use the on-dark logo on dark, the on-light logo on light.</li>
                 <li>Write the name lowercase: distribute.</li>
                 <li>Scale the SVG. It stays sharp at any size.</li>
@@ -279,7 +279,7 @@ export default function BrandPage() {
             <div className="bp-rule">
               <h3>Don&apos;t</h3>
               <ul>
-                <li>Recolor the mark or change the green.</li>
+                <li>Recolor the mark or change the blue.</li>
                 <li>Stretch, rotate, or add effects.</li>
                 <li>Put the logo on a busy or low-contrast background.</li>
                 <li>Recreate the wordmark in another font.</li>
