@@ -5923,3 +5923,149 @@ export async function getCrmServeStats(brandId: string, token?: string): Promise
   }
   return parsed.data as unknown as CrmServeStats;
 }
+
+// ---------------------------------------------------------------------------
+// human-service audiences, reached through the api-service gateway
+// (`/v1/orgs/audiences*`). human-service OWNS these rows. Mirrors the dashboard
+// readers (apps/dashboard/src/lib/api.ts) — keep the two in lockstep, they are
+// the same contract and have drifted before.
+//
+// The admin CRM "Audiences" section binds ONE audience to ONE imported CRM
+// source (a CSV upload), so each source can be switched on/off independently
+// and carries its own outreach economics.
+// ---------------------------------------------------------------------------
+
+export type AudienceStatus = "suggested" | "active" | "paused" | "archived" | "deprecated";
+
+const AudienceStatusSchema = z.union([
+  z.literal("suggested"),
+  z.literal("active"),
+  z.literal("paused"),
+  z.literal("archived"),
+  z.literal("deprecated"),
+]);
+
+export interface AudienceWire {
+  id: string;
+  orgId: string;
+  brandId: string;
+  name: string;
+  nlPrompt: string | null;
+  description?: string | null;
+  provider: string | null;
+  status: AudienceStatus;
+  source: string | null;
+  filters: Record<string, unknown> | null;
+  avatarUrl: string | null;
+  apolloCount: number | null;
+  apifyCount: number | null;
+  countedAt: string | null;
+  createdByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** For a `provider: "crm"` audience: the crm-service upload (the imported CSV
+   *  "source") this audience is bound to. Optional until human-service serves it
+   *  in prod — decoupled rollout, absent renders the source as "not an audience
+   *  yet". Never guessed client-side. */
+  crmSourceUploadId?: string | null;
+}
+
+// `.passthrough()` so a field human-service adds later still reaches the wire
+// object untouched (the two apps' readers drift; stripping is how that bites).
+const AudienceSchema = z
+  .object({
+    id: z.string(),
+    orgId: z.string(),
+    brandId: z.string(),
+    name: z.string(),
+    nlPrompt: z.string().nullable(),
+    description: z.string().nullable().optional(),
+    provider: z.string().nullable(),
+    status: AudienceStatusSchema,
+    source: z.string().nullable(),
+    filters: z.record(z.string(), z.unknown()).nullable(),
+    avatarUrl: z.string().nullable(),
+    apolloCount: z.number().nullable(),
+    apifyCount: z.number().nullable(),
+    countedAt: z.string().nullable(),
+    createdByUserId: z.string().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    crmSourceUploadId: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const AudienceResponseSchema = z.object({ audience: AudienceSchema });
+
+const ListAudiencesResponseSchema = z.object({
+  audiences: z.array(AudienceSchema),
+  total: z.coerce.number(),
+});
+
+/** GET /orgs/audiences?brandId= — saved audiences for a brand. */
+export async function listAudiences(
+  brandId: string,
+  params?: { status?: AudienceStatus; limit?: number; offset?: number },
+  token?: string,
+): Promise<{ audiences: AudienceWire[]; total: number }> {
+  const query = new URLSearchParams({ brandId });
+  if (params?.status) query.set("status", params.status);
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  const raw = await apiCall<unknown>(`/orgs/audiences?${query.toString()}`, { token });
+  const parsed = ListAudiencesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listAudiences: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] listAudiences: invalid response shape");
+  }
+  return {
+    audiences: parsed.data.audiences as unknown as AudienceWire[],
+    total: parsed.data.total,
+  };
+}
+
+/**
+ * POST /orgs/audiences — create an audience. The CRM flavour binds the audience
+ * to one imported source (`crmSourceUploadId`) and carries no filters: the
+ * people come from crm-service, not from a provider search.
+ */
+export async function createAudience(
+  input: {
+    brandId: string;
+    name: string;
+    provider?: "apollo" | "apify" | "crm";
+    crmSourceUploadId?: string;
+  },
+  token?: string,
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences`, {
+    token,
+    method: "POST",
+    body: input,
+  });
+  const parsed = AudienceResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] createAudience: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] createAudience: invalid response shape");
+  }
+  return parsed.data as unknown as { audience: AudienceWire };
+}
+
+/** PATCH /orgs/audiences/:audienceId/status — lifecycle status only. */
+export async function setAudienceStatus(
+  audienceId: string,
+  status: AudienceStatus,
+  token?: string,
+): Promise<{ audience: AudienceWire }> {
+  const raw = await apiCall<unknown>(`/orgs/audiences/${audienceId}/status`, {
+    token,
+    method: "PATCH",
+    body: { status },
+  });
+  const parsed = AudienceResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] setAudienceStatus: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[admin] setAudienceStatus: invalid response shape");
+  }
+  return parsed.data as unknown as { audience: AudienceWire };
+}
