@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
-import { BRAND_LOGO_URL } from "@/lib/seo";
+import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "edge";
-export const alt = "distribute — Investor Information";
+export const alt = "distribute: Investor Information";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -18,13 +18,13 @@ export default async function OG() {
           justifyContent: "space-between",
           padding: "80px",
           background:
-            "linear-gradient(135deg, #050510 0%, #0e0a1f 50%, #1a1030 100%)",
+            "linear-gradient(135deg, #06060f 0%, #0a0f1e 55%, #0b1226 100%)",
           color: "white",
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <img src={BRAND_LOGO_URL} width={36} height={36} alt="" />
+          <img src={`${SITE_URL}/brand/icon.png`} width={44} height={44} style={{ borderRadius: 11 }} alt="" />
           <div style={{ fontSize: 28, fontWeight: 700 }}>
             distribute · Investors
           </div>
@@ -49,8 +49,8 @@ export default async function OG() {
               maxWidth: 1000,
             }}
           >
-            Growth, revenue, infrastructure, and what we need from investors —
-            all public, updated on every load.
+            Growth, revenue, infrastructure, and what we need from investors.
+            All public, updated on every load.
           </div>
         </div>
         <div

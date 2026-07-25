@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
+import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "edge";
-export const alt = "distribute Performance — Public Leaderboard";
+export const alt = "distribute Performance: Public Leaderboard";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -17,20 +18,18 @@ export default async function OG() {
           justifyContent: "space-between",
           padding: "80px",
           background:
-            "linear-gradient(135deg, #0b0b13 0%, #1a2540 50%, #16384a 100%)",
+            "linear-gradient(135deg, #06060f 0%, #0a0f1e 55%, #0b1226 100%)",
           color: "white",
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: 999,
-              background: "#2563eb",
-              boxShadow: "0 0 24px #2563eb",
-            }}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <img
+            src={`${SITE_URL}/brand/icon.png`}
+            width={44}
+            height={44}
+            style={{ borderRadius: 11 }}
+            alt=""
           />
           <div style={{ fontSize: 28, fontWeight: 700 }}>
             distribute · Performance
