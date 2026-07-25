@@ -5,7 +5,7 @@ import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $25 welcome credits, no subscription.";
+const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $25 welcome credits, cancel anytime.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "distribute - Sales cold email outreach done for you",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "distribute - Sales cold email outreach done for you",
     description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
-    images: ["/og-image.jpg"],
+    images: ["/opengraph-image"],
     creator: "@distribute_you",
   },
   robots: {

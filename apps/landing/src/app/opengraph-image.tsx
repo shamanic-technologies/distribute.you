@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "edge";
 export const alt = "distribute - Sales cold email outreach done for you.";
@@ -17,35 +18,21 @@ export default async function OG() {
           justifyContent: "space-between",
           padding: "80px",
           background:
-            "linear-gradient(135deg, #0b0b13 0%, #1a1730 50%, #2a1547 100%)",
+            "linear-gradient(135deg, #06060f 0%, #0a0f1e 55%, #0b1226 100%)",
           color: "white",
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: 999,
-              background: "#2563eb",
-              boxShadow: "0 0 24px #2563eb",
-            }}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <img
+            src={`${SITE_URL}/brand/icon.png`}
+            width={52}
+            height={52}
+            style={{ borderRadius: 13 }}
+            alt=""
           />
-          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5 }}>
+          <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>
             distribute
-          </div>
-          <div
-            style={{
-              fontSize: 14,
-              padding: "3px 10px",
-              borderRadius: 999,
-              background: "rgba(69, 227, 142, 0.15)",
-              color: "#67e8f9",
-              border: "1px solid rgba(69, 227, 142, 0.4)",
-            }}
-          >
-            BETA
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
