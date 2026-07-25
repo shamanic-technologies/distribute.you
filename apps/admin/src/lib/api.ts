@@ -5964,10 +5964,11 @@ export interface AudienceWire {
   createdAt: string;
   updatedAt: string;
   /** For a `provider: "crm"` audience: the crm-service upload (the imported CSV
-   *  "source") this audience is bound to. Optional until human-service serves it
-   *  in prod — decoupled rollout, absent renders the source as "not an audience
-   *  yet". Never guessed client-side. */
-  crmSourceUploadId?: string | null;
+   *  "source") this audience is bound to. Set at creation, immutable afterwards,
+   *  validated by human-service against the brand's own uploads (400 otherwise).
+   *  null = unbound, meaning the serve covers the brand's whole imported list.
+   *  Declared optional so the reader tolerates a pre-rollout row. */
+  crmUploadId?: string | null;
 }
 
 // `.passthrough()` so a field human-service adds later still reaches the wire
@@ -5991,7 +5992,7 @@ const AudienceSchema = z
     createdByUserId: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
-    crmSourceUploadId: z.string().nullable().optional(),
+    crmUploadId: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -6026,7 +6027,7 @@ export async function listAudiences(
 
 /**
  * POST /orgs/audiences — create an audience. The CRM flavour binds the audience
- * to one imported source (`crmSourceUploadId`) and carries no filters: the
+ * to one imported source (`crmUploadId`) and carries no filters: the
  * people come from crm-service, not from a provider search.
  */
 export async function createAudience(
@@ -6034,7 +6035,7 @@ export async function createAudience(
     brandId: string;
     name: string;
     provider?: "apollo" | "apify" | "crm";
-    crmSourceUploadId?: string;
+    crmUploadId?: string;
   },
   token?: string,
 ): Promise<{ audience: AudienceWire }> {

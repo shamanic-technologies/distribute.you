@@ -108,7 +108,7 @@ export function CrmSourceAudiencesCard({ brandId }: { brandId: string }) {
         name: a.name,
         provider: a.provider,
         status: a.status,
-        crmSourceUploadId: a.crmSourceUploadId ?? null,
+        crmUploadId: a.crmUploadId ?? null,
       })),
     [audiencesData],
   );
@@ -129,11 +129,16 @@ export function CrmSourceAudiencesCard({ brandId }: { brandId: string }) {
       let audienceId = row.audienceId;
       if (!audienceId) {
         if (!row.filename) throw new Error("Source has no filename to name the audience after");
+        // The audience is named after the file. human-service enforces a unique
+        // name per (org, brand) and 409s on a collision — two imports sharing a
+        // filename surface that error verbatim rather than getting a fabricated
+        // suffixed name. human-service also 400s a crmUploadId that is not one
+        // of this brand's uploads.
         const created = await createAudience({
           brandId,
           name: row.filename,
           provider: "crm",
-          crmSourceUploadId: row.uploadId,
+          crmUploadId: row.uploadId,
         });
         audienceId = created.audience.id;
       }

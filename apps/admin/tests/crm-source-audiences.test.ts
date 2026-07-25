@@ -22,7 +22,7 @@ const audience = (over: Partial<AudienceLike> & { id: string }): AudienceLike =>
   name: "list.csv",
   provider: "crm",
   status: "active",
-  crmSourceUploadId: null,
+  crmUploadId: null,
   ...over,
 });
 
@@ -50,7 +50,7 @@ describe("buildCrmSourceAudienceRows", () => {
   it("marks a source with an active bound audience as ON", () => {
     const rows = buildCrmSourceAudienceRows(
       [upload({ id: "u1" })],
-      [audience({ id: "a1", crmSourceUploadId: "u1", status: "active" })],
+      [audience({ id: "a1", crmUploadId: "u1", status: "active" })],
     );
     expect(rows).toHaveLength(1);
     expect(rows[0].enabled).toBe(true);
@@ -61,7 +61,7 @@ describe("buildCrmSourceAudienceRows", () => {
   it("marks a paused bound audience as OFF but keeps the audience id", () => {
     const rows = buildCrmSourceAudienceRows(
       [upload({ id: "u1" })],
-      [audience({ id: "a1", crmSourceUploadId: "u1", status: "paused" })],
+      [audience({ id: "a1", crmUploadId: "u1", status: "paused" })],
     );
     expect(rows[0].enabled).toBe(false);
     expect(rows[0].audienceId).toBe("a1");
@@ -78,8 +78,8 @@ describe("buildCrmSourceAudienceRows", () => {
     const rows = buildCrmSourceAudienceRows(
       [upload({ id: "u1" })],
       [
-        audience({ id: "a1", crmSourceUploadId: "u2", status: "active" }),
-        audience({ id: "a2", provider: "apollo", crmSourceUploadId: "u1", status: "active" }),
+        audience({ id: "a1", crmUploadId: "u2", status: "active" }),
+        audience({ id: "a2", provider: "apollo", crmUploadId: "u1", status: "active" }),
       ],
     );
     expect(rows[0].enabled).toBe(false);
@@ -90,8 +90,8 @@ describe("buildCrmSourceAudienceRows", () => {
     const rows = buildCrmSourceAudienceRows(
       [upload({ id: "u1" })],
       [
-        audience({ id: "stale", crmSourceUploadId: "u1", status: "archived" }),
-        audience({ id: "live", crmSourceUploadId: "u1", status: "active" }),
+        audience({ id: "stale", crmUploadId: "u1", status: "archived" }),
+        audience({ id: "live", crmUploadId: "u1", status: "active" }),
       ],
     );
     expect(rows[0].audienceId).toBe("live");
@@ -123,9 +123,9 @@ describe("buildCrmSourceAudienceRows", () => {
 describe("unboundCrmAudiences", () => {
   it("returns crm audiences with no source binding", () => {
     const found = unboundCrmAudiences([
-      audience({ id: "whole-brand", crmSourceUploadId: null }),
-      audience({ id: "bound", crmSourceUploadId: "u1" }),
-      audience({ id: "apollo", provider: "apollo", crmSourceUploadId: null }),
+      audience({ id: "whole-brand", crmUploadId: null }),
+      audience({ id: "bound", crmUploadId: "u1" }),
+      audience({ id: "apollo", provider: "apollo", crmUploadId: null }),
     ]);
     expect(found.map((a) => a.id)).toEqual(["whole-brand"]);
   });
@@ -151,7 +151,7 @@ describe("crm source audiences card wiring", () => {
   });
 
   it("creates the audience bound to the source it was toggled from", () => {
-    expect(cardSrc).toContain("crmSourceUploadId: row.uploadId");
+    expect(cardSrc).toContain("crmUploadId: row.uploadId");
     expect(cardSrc).toContain('provider: "crm"');
   });
 

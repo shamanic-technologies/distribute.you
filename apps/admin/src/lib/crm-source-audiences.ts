@@ -28,7 +28,7 @@ export interface AudienceLike {
   name: string;
   provider: string | null;
   status: AudienceLifecycle;
-  crmSourceUploadId?: string | null;
+  crmUploadId?: string | null;
 }
 
 export interface CrmSourceAudienceRow {
@@ -67,7 +67,7 @@ export function audienceNameForSource(filename: string | null | undefined): stri
  * surfaces them so the two readings can never silently disagree.
  */
 export function unboundCrmAudiences(audiences: AudienceLike[]): AudienceLike[] {
-  return audiences.filter((a) => isCrmAudience(a) && !a.crmSourceUploadId);
+  return audiences.filter((a) => isCrmAudience(a) && !a.crmUploadId);
 }
 
 /**
@@ -82,10 +82,10 @@ export function buildCrmSourceAudienceRows(
 ): CrmSourceAudienceRow[] {
   const bound = new Map<string, AudienceLike>();
   for (const a of audiences) {
-    if (!isCrmAudience(a) || !a.crmSourceUploadId) continue;
-    const current = bound.get(a.crmSourceUploadId);
+    if (!isCrmAudience(a) || !a.crmUploadId) continue;
+    const current = bound.get(a.crmUploadId);
     if (!current || (current.status !== "active" && a.status === "active")) {
-      bound.set(a.crmSourceUploadId, a);
+      bound.set(a.crmUploadId, a);
     }
   }
 
