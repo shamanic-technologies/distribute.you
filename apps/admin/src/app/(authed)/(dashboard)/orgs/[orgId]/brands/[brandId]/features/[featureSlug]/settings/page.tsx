@@ -3,6 +3,8 @@
 import { useParams } from "next/navigation";
 import { useFeatures } from "@/lib/features-context";
 import { BrandSalesEconomicsCard } from "@/components/settings/brand-sales-economics-card";
+import { CrmSourceAudiencesCard } from "@/components/settings/crm-source-audiences-card";
+import { isCrmOutreachFeature } from "@/lib/crm-outreach-feature";
 
 // Feature Settings landing — mirrors the Brand Settings "Sales Economics"
 // section. The economics are brand-scoped (one set per brand, reused across the
@@ -30,6 +32,20 @@ export default function FeatureSettingsPage() {
         </p>
         <BrandSalesEconomicsCard brandId={brandId} />
       </div>
+
+      {/* Audiences — CRM-outreach only: the people come from the brand's own
+          imported CSVs, so the audiences ARE those files. Other features source
+          their audiences from a provider search and have their own surface. */}
+      {isCrmOutreachFeature(featureSlug) && (
+        <div className="mb-10">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Audiences</h2>
+          <p className="text-sm text-gray-500 mb-3">
+            Which of this brand&apos;s imported CRM files are used as audiences for{" "}
+            {featureName}. Brand-scoped, like the economics above.
+          </p>
+          <CrmSourceAudiencesCard brandId={brandId} />
+        </div>
+      )}
     </div>
   );
 }
