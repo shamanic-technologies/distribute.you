@@ -1148,6 +1148,22 @@ export function Onboarding() {
     await hydrationPromiseRef.current;
   }
 
+  // Clerk auto-creates an org at signup (it is active BEFORE onboarding runs), so
+  // onboarding always takes the org-REUSE path below and its create-time naming
+  // (`createOrganization({ name })`) never applies — the breadcrumb then shows
+  // Clerk's auto-name, observed as junk like "404: NOT_FOUND". On a FRESH signup
+  // (flowKey "signup" — NOT "add"/"new", so a multi-brand org's name is never
+  // clobbered and the "new"-org create path already names its own org) rename the
+  // reused active org to the brand identity. Best-effort + fail-loud: a cosmetic
+  // breadcrumb rename must never block the paid launch, but a failure is logged.
+  function maybeRenameFreshSignupOrg(orgId: string, orgName: string) {
+    if (flowKey !== "signup") return;
+    if (!organization || organization.id !== orgId || !orgName) return;
+    void organization.update({ name: orgName }).catch((e) => {
+      console.error("[dashboard] onboarding fresh-signup org rename failed:", e);
+    });
+  }
+
   // Create the brand for real, then block only on the services needed by the next step.
   // On a RESUME (refresh after the brand was already created) the org + brand already
   // exist: force org reuse so we never spin up a duplicate org, and the idempotent
@@ -1165,6 +1181,7 @@ export function Onboarding() {
     let targetOrgId: string;
     if (reuseOrg) {
       targetOrgId = reuseOrgId!;
+      maybeRenameFreshSignupOrg(targetOrgId, domain ?? hostname);
     } else {
       if (!createOrganization || !setActive) {
         throw new Error("Organization setup is not ready yet. Please try again.");
@@ -1293,6 +1310,7 @@ export function Onboarding() {
     let targetOrgId: string;
     if (reuseOrg) {
       targetOrgId = reuseOrgId!;
+      maybeRenameFreshSignupOrg(targetOrgId, name);
     } else {
       if (!createOrganization || !setActive) {
         throw new Error("Organization setup is not ready yet. Please try again.");
