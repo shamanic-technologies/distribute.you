@@ -569,8 +569,18 @@ function normalizeServices(value: unknown): string[] {
 
 // Build the saveBrandUserFields PUT body from the onboarding profile bag + the
 // picked services. Only the 7 confirmed user-fields are sent (each sent key is
-// confirmed server-side); empty values are omitted so a blank field never
-// clobbers a confirmed one.
+// confirmed server-side).
+//
+// A lever the bag CARRIES is sent even when the user emptied it: the PUT replaces
+// the value of each key it receives and leaves an omitted key untouched, and a key
+// with no confirmed row falls back to the AI `suggested` prefill on the next read —
+// so omitting empties made "clear this lever" impossible, the deleted text came back
+// on the next read. A lever ABSENT from the bag is still omitted: the offer step
+// never rendered it, so we have no user intent to record.
+//
+// `services` keeps its non-empty guard: it is the services step's own picked list,
+// onboarding requires at least one, and confirming an empty list here would clobber
+// the extracted services rather than express a deletion.
 function buildUserFieldsPayload(
   profile: Record<string, string | string[]>,
   services: string[],
@@ -580,12 +590,12 @@ function buildUserFieldsPayload(
   if (cleanServices.length) out.services = cleanServices;
   for (const key of USER_FIELD_KEYS) {
     if (key === "services") continue;
+    if (!(key in profile)) continue;
     const v = profile[key];
     if (Array.isArray(v)) {
-      const cleaned = v.map((s) => s.trim()).filter(Boolean);
-      if (cleaned.length) out[key] = cleaned;
-    } else if (typeof v === "string" && v.trim()) {
-      out[key] = v;
+      out[key] = v.map((s) => s.trim()).filter(Boolean);
+    } else {
+      out[key] = typeof v === "string" ? v.trim() : "";
     }
   }
   return out;

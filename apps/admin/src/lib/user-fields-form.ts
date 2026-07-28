@@ -92,7 +92,16 @@ export function subsetEqual(a: ProfileFields, b: ProfileFields, defs: FieldDef[]
 }
 
 /** Fields bag → the saveBrandUserFields PUT body, restricted to the given subset's
- *  keys. Empty values are omitted so a blank field never clobbers a confirmed one. */
+ *  keys.
+ *
+ *  EVERY key this card owns is sent, INCLUDING when the user emptied it. The PUT
+ *  replaces the value of each key it receives and leaves an omitted key untouched,
+ *  and a key with no confirmed row falls back to the AI `suggested` prefill on the
+ *  next read — so omitting empties (the old behaviour) made "clear this field"
+ *  impossible: the deleted entry came straight back on the next read. Sending the
+ *  empty value writes a confirmed-empty row, which both clears the field and stops
+ *  the suggestion resurfacing. `cloneSubset` guarantees every def key is present in
+ *  the bag, so this never invents a key the card does not render. */
 export function profileToPayload(
   fields: ProfileFields,
   defs: FieldDef[],
@@ -102,21 +111,18 @@ export function profileToPayload(
     const key = f.key as UserFieldKey;
     if (!(USER_FIELD_KEYS as readonly string[]).includes(key)) continue;
     const v = fields[key];
-    if (Array.isArray(v)) {
-      const cleaned = v.map((s) => s.trim()).filter(Boolean);
-      if (cleaned.length) out[key] = cleaned;
-    } else if (typeof v === "string" && v.trim()) {
-      out[key] = v;
-    }
+    out[key] =
+      f.kind === "list"
+        ? coerceListField(v).map((s) => s.trim()).filter(Boolean)
+        : typeof v === "string"
+          ? v.trim()
+          : "";
   }
   return out;
 }
 
 export const coerceListField = (v: string | string[] | undefined): string[] =>
   Array.isArray(v) ? v : typeof v === "string" && v.trim() ? [v.trim()] : [];
-
-export const isEmptyField = (v: string | string[] | undefined): boolean =>
-  Array.isArray(v) ? v.length === 0 : !(typeof v === "string" && v.trim());
 
 /**
  * Build the extract-fields request defs for a card's subset. Offer levers send their
