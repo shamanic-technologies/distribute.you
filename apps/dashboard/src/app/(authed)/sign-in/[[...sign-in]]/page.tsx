@@ -8,35 +8,12 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
 import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
-
-function clerkErrorMessage(err: unknown): string {
-  const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
-  return (
-    e?.errors?.[0]?.longMessage ||
-    e?.errors?.[0]?.message ||
-    "Something went wrong. Please try again."
-  );
-}
-
-function clerkErrorCode(err: unknown): string | undefined {
-  const e = err as { errors?: Array<{ code?: string }> };
-  return e?.errors?.[0]?.code;
-}
-
-// Clerk returns `strategy_for_user_invalid` ("The verification strategy is not
-// valid for this account") when the identified account has no password factor —
-// i.e. it was created via Google OAuth. This instance only offers Google +
-// email/password, so a password-less account is always a Google account.
-function isGoogleOnlyAccountError(err: unknown): boolean {
-  const e = err as {
-    errors?: Array<{ code?: string; message?: string }>;
-  };
-  const first = e?.errors?.[0];
-  return (
-    first?.code === "strategy_for_user_invalid" ||
-    /verification strategy is not valid/i.test(first?.message ?? "")
-  );
-}
+import {
+  authFailureProps,
+  clerkErrorCode,
+  clerkErrorMessage,
+  isGoogleOnlyAccountError,
+} from "@/lib/clerk-error";
 
 // SessionStorage key carrying the typed email/password from the sign-in form to
 // the sign-up page when an unknown email is entered. Consumed-once + cleared on
@@ -89,7 +66,10 @@ export default function SignInPage() {
         });
       } catch (error) {
         redirectStartedRef.current = false;
-        posthog.capture("signin_google_oauth_failed", { provider: "google" });
+        posthog.capture(
+          "signin_google_oauth_failed",
+          authFailureProps(error, { provider: "google" })
+        );
         console.error("Sign in error:", error);
         setLoading(false);
       }
@@ -123,7 +103,7 @@ export default function SignInPage() {
         setError("Additional verification required. Try Google sign-in.");
       }
     } catch (err) {
-      posthog.capture("signin_email_failed");
+      posthog.capture("signin_email_failed", authFailureProps(err));
       console.error("Email sign in error:", err);
       const code = clerkErrorCode(err);
       if (isGoogleOnlyAccountError(err)) {
