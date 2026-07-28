@@ -76,7 +76,9 @@ export default function WorkflowViewerPage() {
   const { data: siblingData } = useAuthQuery(
     ["workflow-siblings", activeWorkflowId, featureSlug],
     () => listWorkflows({ featureSlug }),
-    { refetchInterval: 5000, enabled: needsForkPoll },
+    // Fork detection drives an immediate navigation, so it keeps the same fast
+    // cadence as the workflow poll above rather than the shared 30s one.
+    { refetchInterval: 3000, enabled: needsForkPoll },
   );
 
   const detectedForkOrUpgradeId = useMemo(() => {

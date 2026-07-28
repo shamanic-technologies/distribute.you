@@ -103,8 +103,15 @@ async function proxyRequest(
       });
     }
 
-    const data = await res.text();
-    return new NextResponse(data, {
+    // Stream the upstream body straight through. Reading it into a string first
+    // held the whole payload TWICE — once as a JS string, once re-encoded into the
+    // NextResponse — so a large list response (e.g. GET /v1/emails, which returns
+    // every email with bodyHtml + bodyText + the full generationRun cost tree)
+    // OOM-killed the function instance. Under fluid compute one instance serves
+    // several concurrent invocations, so the kill also 500s whatever else is in
+    // flight — a long-running POST /v1/brands/extract-fields died that way, and the
+    // client saw Vercel's HTML error page as "API returned a non-JSON response".
+    return new NextResponse(res.body, {
       status: res.status,
       headers: { "Content-Type": contentType },
     });

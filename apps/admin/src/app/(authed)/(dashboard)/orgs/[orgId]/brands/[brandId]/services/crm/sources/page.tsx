@@ -188,7 +188,7 @@ export default function CrmSourcesPage() {
   const { data, isPending } = useAuthQuery(
     ["crmUploads", brandId],
     () => listCrmUploads(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
 
   // Contacts feed the per-column example values; shared cache key with the Leads
@@ -196,7 +196,7 @@ export default function CrmSourcesPage() {
   const { data: contactsData } = useAuthQuery(
     ["crmContacts", brandId],
     () => listCrmContacts(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
   const contacts = contactsData?.contacts ?? [];
 

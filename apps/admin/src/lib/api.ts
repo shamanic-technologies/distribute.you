@@ -54,13 +54,22 @@ async function readJsonResponse(response: Response, endpoint: string): Promise<u
   const contentType = response.headers?.get?.("Content-Type") ?? "application/json";
   if (!contentType.toLowerCase().includes("application/json")) {
     const text = await response.text().catch(() => "");
-    throw new ApiError("API returned a non-JSON response", response.status, {
-      error: "Non-JSON API response",
-      endpoint,
-      status: response.status,
-      contentType: contentType || null,
-      preview: text.trim().slice(0, 200),
-    });
+    const preview = text.trim().slice(0, 200);
+    // Carry the status + body preview in the MESSAGE, not only in the error body:
+    // most call sites render `err.message` alone, and a bare "non-JSON response"
+    // hides whether the platform 500'd (Vercel HTML error page), the gateway
+    // timed out, or the route is missing.
+    throw new ApiError(
+      `API returned a non-JSON response (HTTP ${response.status}, ${contentType || "no content-type"}) from ${endpoint}${preview ? `: ${preview}` : ""}`,
+      response.status,
+      {
+        error: "Non-JSON API response",
+        endpoint,
+        status: response.status,
+        contentType: contentType || null,
+        preview,
+      },
+    );
   }
 
   try {

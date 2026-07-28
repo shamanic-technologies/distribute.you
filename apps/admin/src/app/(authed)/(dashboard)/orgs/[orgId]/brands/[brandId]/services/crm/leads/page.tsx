@@ -37,7 +37,7 @@ export default function CrmLeadsPage() {
   const { data, isPending } = useAuthQuery(
     ["crmContacts", brandId],
     () => listCrmContacts(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
 
   // Served-vs-remaining counts. Reached via a sibling api-service proxy route

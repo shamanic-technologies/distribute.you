@@ -50,8 +50,8 @@ describe("Campaign runs page", () => {
       expect(runsPageContent).toContain("listCampaignRuns(campaignId)");
     });
 
-    it("should poll every 5 seconds", () => {
-      expect(runsPageContent).toContain("refetchInterval: 5_000");
+    it("should poll on the shared 30s cadence", () => {
+      expect(runsPageContent).toContain("refetchInterval: 30_000");
     });
 
     it("should build a parent/child run tree from flat list", () => {

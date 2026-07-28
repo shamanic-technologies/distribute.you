@@ -551,27 +551,27 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId],
     () => listBrandOutlets(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
   const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId],
     () => listJournalistsEnriched(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
   const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
   const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
   const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
 
   // Nav items reveal as one group once the feature list (which the Features
@@ -731,12 +731,12 @@ function CrmLevelSidebar({ orgId, brandId, pathname }: {
   const { data: contactsData, isPending: contactsPending } = useAuthQuery(
     ["crmContacts", brandId],
     () => listCrmContacts(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
   const { data: uploadsData, isPending: uploadsPending } = useAuthQuery(
     ["crmUploads", brandId],
     () => listCrmUploads(brandId),
-    { refetchInterval: 5_000 },
+    { refetchInterval: 30_000 },
   );
   const badgesRevealed = useCoordinatedReveal([!contactsPending, !uploadsPending]);
 
@@ -796,7 +796,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: featureStatsData, isPending: statsPending } = useAuthQuery(
     ["featureStats", resolvedFeatureSlug, "brand", brandId],
     () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
-    { enabled: statsEnabled, refetchInterval: 5_000, placeholderData: keepPreviousData },
+    { enabled: statsEnabled, refetchInterval: 30_000, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
@@ -805,31 +805,31 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId, featureSlug],
     () => listBrandOutlets(brandId, featureSlug),
-    { enabled: outletsEnabled, refetchInterval: 5_000 },
+    { enabled: outletsEnabled, refetchInterval: 30_000 },
   );
   const journalistsEnabled = entityNames.includes("journalists");
   const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
     () => listJournalistsEnriched(brandId, { featureSlug }),
-    { enabled: journalistsEnabled, refetchInterval: 5_000 },
+    { enabled: journalistsEnabled, refetchInterval: 30_000 },
   );
   const leadsEnabled = entityNames.includes("leads");
   const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { enabled: leadsEnabled, refetchInterval: 5_000 },
+    { enabled: leadsEnabled, refetchInterval: 30_000 },
   );
   const emailsEnabled = entityNames.includes("emails");
   const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { enabled: emailsEnabled, refetchInterval: 5_000 },
+    { enabled: emailsEnabled, refetchInterval: 30_000 },
   );
   const articlesEnabled = entityNames.includes("articles");
   const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId, featureSlug],
     () => listBrandArticles(brandId, featureSlug),
-    { enabled: articlesEnabled, refetchInterval: 5_000 },
+    { enabled: articlesEnabled, refetchInterval: 30_000 },
   );
   // Gold catalog (GET /orgs/opportunities) — same source the feature
   // quote-requests page renders, so the badge equals the page count.
@@ -837,7 +837,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
     () => listAllRankedOpportunities({ brandId }),
-    { enabled: rankedOppsEnabled, refetchInterval: 5_000 },
+    { enabled: rankedOppsEnabled, refetchInterval: 30_000 },
   );
 
   // Reveal EVERY entity badge together (one paint), then keep the numbers
