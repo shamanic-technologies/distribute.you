@@ -35,26 +35,26 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const { data: featureStatsData, isLoading: featureStatsLoading } = useAuthQuery(
     ["featureStats", featureSlug, "campaign", campaignId],
     () => fetchFeatureStats(featureSlug, { campaignId }),
-    { enabled: true, refetchInterval: 5_000, placeholderData: keepPreviousData },
+    { enabled: true, refetchInterval: 30_000, placeholderData: keepPreviousData },
   );
   const fStats = featureStatsData?.stats ?? {};
 
   const { data: outletsData, isLoading: outletsLoading } = useAuthQuery(
     ["campaignOutlets", campaignId],
     () => listCampaignOutlets(campaignId),
-    { enabled: entityNames.includes("outlets"), refetchInterval: 5_000 },
+    { enabled: entityNames.includes("outlets"), refetchInterval: 30_000 },
   );
 
   const { data: journalistsData, isLoading: journalistsLoading } = useAuthQuery(
     ["enrichedJournalists", brandId, campaignId],
     () => listJournalistsEnriched(brandId, { campaignId }),
-    { enabled: entityNames.includes("journalists"), refetchInterval: 5_000 },
+    { enabled: entityNames.includes("journalists"), refetchInterval: 30_000 },
   );
 
   const { data: pressKitsData, isLoading: pressKitsLoading } = useAuthQuery(
     ["campaignPressKits", campaignId],
     () => listMediaKitsByCampaign(campaignId),
-    { enabled: entityNames.includes("press-kits"), refetchInterval: 5_000 },
+    { enabled: entityNames.includes("press-kits"), refetchInterval: 30_000 },
   );
 
   // Gold catalog (GET /orgs/opportunities) — same source the quote-requests
@@ -63,7 +63,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const { data: rankedOppsData, isLoading: rankedOppsLoading } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
     () => listAllRankedOpportunities({ brandId }),
-    { enabled: entityNames.includes("quote-requests"), refetchInterval: 5_000 },
+    { enabled: entityNames.includes("quote-requests"), refetchInterval: 30_000 },
   );
 
   // Campaign pitches — SAME queryKey + fetch as the Pitches page
@@ -75,7 +75,7 @@ export function WorkflowCampaignSidebarWrapper({ orgId, brandId, featureSlug }: 
   const { data: pitchesData, isLoading: pitchesLoading } = useAuthQuery(
     ["quotePitches", { campaignId, status: "" }],
     () => listAllQuotePitches({ campaign_id: campaignId }),
-    { enabled: entityNames.includes("quote-pitches"), refetchInterval: 5_000 },
+    { enabled: entityNames.includes("quote-pitches"), refetchInterval: 30_000 },
   );
 
   const entityLoading: Record<string, boolean> = {

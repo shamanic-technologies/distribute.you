@@ -59,8 +59,8 @@ describe("Campaign logs page", () => {
       expect(logsPageContent).toContain("listCampaignEvents(campaignId");
     });
 
-    it("should poll every 5 seconds", () => {
-      expect(logsPageContent).toContain("refetchInterval: 5_000");
+    it("should poll on the shared 30s cadence", () => {
+      expect(logsPageContent).toContain("refetchInterval: 30_000");
     });
 
     it("should render event fields: service, event, detail", () => {
