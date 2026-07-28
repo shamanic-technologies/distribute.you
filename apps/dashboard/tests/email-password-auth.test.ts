@@ -11,6 +11,9 @@ const forgot = read(
   "src/app/(authed)/forgot-password/[[...rest]]/page.tsx"
 );
 const proxy = read("src/proxy.ts");
+// The Clerk error helpers were extracted out of the three auth pages into one
+// shared module, so the codes they key on now live here, not in the pages.
+const clerkErrorLib = read("src/lib/clerk-error.ts");
 
 describe("sign-up email/password flow", () => {
   it("keeps the Google OAuth path", () => {
@@ -56,7 +59,7 @@ describe("sign-in email/password flow", () => {
   it("guides a Google-registered email away from the password box", () => {
     // A Google-OAuth account has no password factor -> Clerk returns
     // strategy_for_user_invalid; surface a Google hint, not the raw error.
-    expect(signIn).toMatch(/strategy_for_user_invalid/);
+    expect(clerkErrorLib).toMatch(/strategy_for_user_invalid/);
     expect(signIn).toMatch(/registered with Google/);
     expect(signIn).toMatch(/isGoogleOnlyAccountError/);
   });
@@ -71,7 +74,7 @@ describe("forgot-password reset flow", () => {
   });
 
   it("routes a Google-registered email to Google instead of a reset code", () => {
-    expect(forgot).toMatch(/strategy_for_user_invalid/);
+    expect(clerkErrorLib).toMatch(/strategy_for_user_invalid/);
     expect(forgot).toMatch(/registered with Google/);
     expect(forgot).toMatch(/isGoogleOnlyAccountError/);
   });

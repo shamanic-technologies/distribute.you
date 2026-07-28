@@ -8,20 +8,22 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { LastUsedBadge, rememberAuthMethod } from "@/components/auth/last-used-badge";
-
-function clerkErrorMessage(err: unknown): string {
-  const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
-  return (
-    e?.errors?.[0]?.longMessage ||
-    e?.errors?.[0]?.message ||
-    "Something went wrong. Please try again."
-  );
-}
+import {
+  authFailureProps,
+  clerkErrorCode,
+  clerkErrorMessage,
+  sanitizeVerificationCode,
+  VERIFICATION_CODE_LENGTH,
+} from "@/lib/clerk-error";
 
 // Credentials stashed by the sign-in page when the user typed an unknown email
 // and chose "Sign up". Read-once + cleared so the plaintext password does not
 // linger in sessionStorage.
 const PREFILL_AUTH_KEY = "distribute_prefill_auth";
+
+// Long enough that a user cannot chain resends and lose track of which code is
+// live (only the newest one works), short enough to not feel punitive.
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function SignUpPage() {
   const { signUp, setActive, isLoaded } = useSignUp();
@@ -38,12 +40,24 @@ export default function SignUpPage() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Set when Clerk rejects the code, so we can add recovery guidance under the
+  // bare "Incorrect code" that Clerk returns.
+  const [codeRejected, setCodeRejected] = useState(false);
+  const [resendNotice, setResendNotice] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     if (isSignedIn) {
       router.replace("/orgs");
     }
   }, [isSignedIn, router]);
+
+  // Tick the resend cooldown down to zero.
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   // Seed email + password from the sign-in "unknown email → sign up" handoff, so
   // the user does not re-type what they just entered. Consume-once: cleared
@@ -94,7 +108,10 @@ export default function SignUpPage() {
         });
       } catch (error) {
         redirectStartedRef.current = false;
-        posthog.capture("signup_google_oauth_failed", { provider: "google" });
+        posthog.capture(
+          "signup_google_oauth_failed",
+          authFailureProps(error, { provider: "google" })
+        );
         console.error("Sign up error:", error);
         setLoading(false);
       }
@@ -127,8 +144,9 @@ export default function SignUpPage() {
       await signUp.create({ emailAddress: email, password });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setPendingVerification(true);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      posthog.capture("signup_email_failed", { stage: "create" });
+      posthog.capture("signup_email_failed", authFailureProps(err, { stage: "create" }));
       console.error("Email sign up error:", err);
       setError(clerkErrorMessage(err));
     } finally {
@@ -140,6 +158,8 @@ export default function SignUpPage() {
     e.preventDefault();
     if (!isLoaded || !signUp || submitting) return;
     setError("");
+    setCodeRejected(false);
+    setResendNotice("");
     setSubmitting(true);
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
@@ -152,8 +172,9 @@ export default function SignUpPage() {
         setError("Verification incomplete. Please check the code and retry.");
       }
     } catch (err) {
-      posthog.capture("signup_email_failed", { stage: "verify" });
+      posthog.capture("signup_email_failed", authFailureProps(err, { stage: "verify" }));
       console.error("Email verification error:", err);
+      setCodeRejected(clerkErrorCode(err) === "form_code_incorrect");
       setError(clerkErrorMessage(err));
     } finally {
       setSubmitting(false);
@@ -161,11 +182,17 @@ export default function SignUpPage() {
   };
 
   const handleResendCode = async () => {
-    if (!isLoaded || !signUp) return;
+    if (!isLoaded || !signUp || resendCooldown > 0) return;
     setError("");
+    setCodeRejected(false);
+    setResendNotice("");
     try {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setCode("");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setResendNotice(`New code sent to ${email}`);
     } catch (err) {
+      posthog.capture("signup_email_failed", authFailureProps(err, { stage: "resend" }));
       console.error("Resend code error:", err);
       setError(clerkErrorMessage(err));
     }
@@ -420,21 +447,47 @@ export default function SignUpPage() {
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
+                  maxLength={VERIFICATION_CODE_LENGTH}
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => setCode(sanitizeVerificationCode(e.target.value))}
                   placeholder="Enter 6-digit code"
                   style={{ ...inputStyle, textAlign: "center", letterSpacing: "0.3em" }}
                   required
                 />
                 {error && (
+                  <div>
+                    <p
+                      style={{
+                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontSize: "0.8125rem",
+                        color: "oklch(55% 0.2 25)",
+                      }}
+                    >
+                      {error}
+                    </p>
+                    {codeRejected && (
+                      <p
+                        style={{
+                          fontFamily: '"Inter", system-ui, sans-serif',
+                          fontSize: "0.8125rem",
+                          color: "oklch(48% 0.006 264)",
+                          marginTop: "0.375rem",
+                        }}
+                      >
+                        {"Use the code from the most recent email. Codes expire after 10 minutes, so send a fresh one if yours is older."}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {resendNotice && (
                   <p
                     style={{
                       fontFamily: '"Inter", system-ui, sans-serif',
                       fontSize: "0.8125rem",
-                      color: "oklch(55% 0.2 25)",
+                      color: "oklch(45% 0.14 155)",
                     }}
                   >
-                    {error}
+                    {resendNotice}
                   </p>
                 )}
                 <button
@@ -449,16 +502,27 @@ export default function SignUpPage() {
                 <button
                   type="button"
                   onClick={handleResendCode}
-                  className="transition-opacity hover:opacity-75"
+                  disabled={resendCooldown > 0}
+                  className={
+                    resendCooldown > 0
+                      ? "cursor-not-allowed"
+                      : "transition-opacity hover:opacity-75"
+                  }
                   style={{
                     fontFamily: '"Inter", system-ui, sans-serif',
                     fontSize: "0.8125rem",
-                    color: "oklch(42% 0.2 264)",
+                    fontWeight: 500,
+                    color:
+                      resendCooldown > 0
+                        ? "oklch(62% 0.006 264)"
+                        : "oklch(42% 0.2 264)",
                     background: "none",
                     border: "none",
                   }}
                 >
-                  Resend code
+                  {resendCooldown > 0
+                    ? `Resend code in ${resendCooldown}s`
+                    : "Send me a new code"}
                 </button>
               </form>
             ) : (

@@ -7,29 +7,13 @@ import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
-
-function clerkErrorMessage(err: unknown): string {
-  const e = err as { errors?: Array<{ longMessage?: string; message?: string }> };
-  return (
-    e?.errors?.[0]?.longMessage ||
-    e?.errors?.[0]?.message ||
-    "Something went wrong. Please try again."
-  );
-}
-
-// A Google-OAuth account has no password factor, so `reset_password_email_code`
-// is not a valid strategy for it — Clerk returns `strategy_for_user_invalid`.
-// There is nothing to reset; route the user back to Google sign-in.
-function isGoogleOnlyAccountError(err: unknown): boolean {
-  const e = err as {
-    errors?: Array<{ code?: string; message?: string }>;
-  };
-  const first = e?.errors?.[0];
-  return (
-    first?.code === "strategy_for_user_invalid" ||
-    /verification strategy is not valid/i.test(first?.message ?? "")
-  );
-}
+import {
+  authFailureProps,
+  clerkErrorMessage,
+  isGoogleOnlyAccountError,
+  sanitizeVerificationCode,
+  VERIFICATION_CODE_LENGTH,
+} from "@/lib/clerk-error";
 
 export default function ForgotPasswordPage() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -63,7 +47,10 @@ export default function ForgotPasswordPage() {
       });
       setStage("reset");
     } catch (err) {
-      posthog.capture("password_reset_failed", { stage: "request" });
+      posthog.capture(
+        "password_reset_failed",
+        authFailureProps(err, { stage: "request" })
+      );
       console.error("Password reset request error:", err);
       if (isGoogleOnlyAccountError(err)) {
         setError(
@@ -96,7 +83,10 @@ export default function ForgotPasswordPage() {
         setError("Reset incomplete. Please check the code and try again.");
       }
     } catch (err) {
-      posthog.capture("password_reset_failed", { stage: "reset" });
+      posthog.capture(
+        "password_reset_failed",
+        authFailureProps(err, { stage: "reset" })
+      );
       console.error("Password reset error:", err);
       setError(clerkErrorMessage(err));
     } finally {
@@ -350,8 +340,9 @@ export default function ForgotPasswordPage() {
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
+                  maxLength={VERIFICATION_CODE_LENGTH}
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  onChange={(e) => setCode(sanitizeVerificationCode(e.target.value))}
                   placeholder="6-digit code"
                   style={{ ...inputStyle, textAlign: "center", letterSpacing: "0.3em" }}
                   required
