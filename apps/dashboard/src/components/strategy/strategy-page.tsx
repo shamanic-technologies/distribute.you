@@ -72,19 +72,26 @@ function userFieldsToProfile(fields: BrandUserFields | undefined): ProfileFields
 }
 
 /**
- * A fields bag → the saveBrandUserFields PUT body. Only the 7 user-field keys are
- * sent (every sent key is confirmed server-side); empty values are omitted so a
- * blank field never clobbers a confirmed one.
+ * A fields bag → the saveBrandUserFields PUT body. All 7 user-field keys are sent
+ * (every sent key is confirmed server-side), INCLUDING the ones the user emptied.
+ * The PUT replaces the value of each key it receives and leaves an omitted key
+ * untouched, and a key with no confirmed row falls back to the AI `suggested`
+ * prefill on the next read — so omitting empties (the old behaviour) made "clear
+ * this field" impossible: the deleted entry came back on the next read. Sending the
+ * empty value writes a confirmed-empty row, which clears the field for good.
+ * `cloneFields` defaults every key ([] for list, "" for text), so the bag always
+ * carries all 7.
  */
 function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserFieldKey, UserFieldValue>> {
   const out: Partial<Record<UserFieldKey, UserFieldValue>> = {};
   for (const key of USER_FIELD_KEYS) {
     const v = fields[key];
-    if (Array.isArray(v)) {
-      const cleaned = v.map((s) => s.trim()).filter(Boolean);
-      if (cleaned.length) out[key] = cleaned;
-    } else if (typeof v === "string" && v.trim()) {
-      out[key] = v;
+    const isList = ALL_FIELDS.find((f) => f.key === key)?.kind === "list";
+    if (isList) {
+      const arr = Array.isArray(v) ? v : typeof v === "string" && v.trim() ? [v] : [];
+      out[key] = arr.map((s) => s.trim()).filter(Boolean);
+    } else {
+      out[key] = typeof v === "string" ? v.trim() : "";
     }
   }
   return out;

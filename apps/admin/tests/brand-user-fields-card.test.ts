@@ -90,11 +90,14 @@ describe("BrandUserFieldsCard — generic subset editor", () => {
     expect(content).toContain("ListEditor");
   });
 
-  it("has an AI-prefill that fills empty fields, optionally conditioned on services", () => {
+  it("has an AI-prefill that RESETS every field in the subset, optionally conditioned on services", () => {
     expect(content).toContain("buildExtractDefs(defs, servicesContext)");
-    expect(content).toContain("isEmptyField");
     expect(content).toContain("conditionOnServices");
     expect(content).toContain("Prefill from services");
+    // A reset, not a top-up: no skip-if-already-filled guard, and a field the
+    // extraction does not answer is cleared rather than left alone.
+    expect(content).not.toContain("isEmptyField");
+    expect(content).toContain("resetCache: true");
   });
 
   it("reads the saved services from the shared cache as the levers' context", () => {

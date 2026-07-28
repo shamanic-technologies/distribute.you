@@ -21,7 +21,6 @@ import {
   cloneSubset,
   coerceListField,
   EXTRACT_KEY_FOR_FIELD,
-  isEmptyField,
   profileToPayload,
   subsetEqual,
   userFieldsToProfile,
@@ -74,10 +73,16 @@ export function BrandUserFieldsCard({
     },
   });
 
-  // Re-run the site extraction and fill EMPTY fields with the AI suggestions. Only
-  // fills blanks — never overwrites an existing value. Values land in the draft; the
-  // user reviews + Saves. For the levers card, the extraction is conditioned on the
-  // saved services (buildExtractDefs prepends them to each field's description).
+  // Re-run the site extraction and RESET every field in this card to what it
+  // returns. This is a reset, not a top-up: a field the extraction answers is
+  // overwritten, and a field it does not answer is cleared, so what you see after a
+  // prefill is exactly what the extraction produced. `resetCache: true` bypasses
+  // every cache layer so the answer is fresh, and `suggest` mode makes brand-service
+  // generate a best-effort answer for every lever rather than skipping the ones the
+  // site does not state outright. Values land in the DRAFT — nothing is persisted
+  // until the user reviews and hits Save. For the levers card, the extraction is
+  // conditioned on the saved services (buildExtractDefs prepends them to each
+  // field's description).
   const prefillMut = useMutation({
     mutationFn: () =>
       extractBrandFields(
@@ -92,20 +97,19 @@ export function BrandUserFieldsCard({
     onSuccess: (resp) => {
       const map = fieldResultsToMap(resp.fields);
       setDraft((prev) => {
-        const cur = prev ?? baseline;
-        const next: ProfileFields = { ...cur };
+        const next: ProfileFields = { ...(prev ?? baseline) };
         for (const f of defs) {
-          if (!isEmptyField(cur[f.key])) continue;
           const raw = map[EXTRACT_KEY_FOR_FIELD[f.key] ?? f.key];
-          if (raw == null) continue;
           if (f.kind === "list") {
-            const items = Array.isArray(raw)
-              ? raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-              : flattenFieldValue(raw).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-            if (items.length) next[f.key] = items;
+            const items =
+              raw == null
+                ? []
+                : Array.isArray(raw)
+                  ? raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+                  : flattenFieldValue(raw).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+            next[f.key] = items;
           } else {
-            const text = flattenFieldValue(raw).trim();
-            if (text) next[f.key] = text;
+            next[f.key] = raw == null ? "" : flattenFieldValue(raw).trim();
           }
         }
         return next;
