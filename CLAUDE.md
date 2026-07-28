@@ -41,6 +41,28 @@ pnpm --filter @distribute/<package> test tests/unit/specific.test.ts  # single f
 
 - **The admin WORKFLOW-EDIT chat (`apps/admin/.../workflows/[workflowId]/page.tsx` → `WorkflowChat`) MUST NOT inline the full workflow DAG (`workflow.dag`) in the chat `context` — api-service caps the JSON request body at 100KB (`express.json()` default `limit:102400`), and a large workflow's DAG serializes to >300KB → `PayloadTooLargeError: request entity too large` on api-service → 500 → `{"error":"Internal server error"}` in the chat panel on EVERY message.** The `context` is re-sent on every turn (chat-service `buildSystemPrompt` JSON.stringifies it fresh each turn from the client payload — it is NOT persisted per session), and it travels through the api-service gateway, so the 100KB cap bites on the very first message. The model reads the DAG ON DEMAND via its existing `get_workflow_details(<uuid>)` tool (already the HARD RULE for edits); the page's `instructions` point at that tool, and only small fields (`summary`, `feature`, identity) stay inline for a tool-free overview. Guarded by `apps/admin/tests/workflow-chat-context.test.ts` (`not.toContain("dag: workflow.dag")`). RULE for ANY chat/Edit-with-AI surface (admin OR dashboard): never inline a large payload (DAG, full lead list, big profile) into `context` — fetch it via a tool on demand. Persisting context server-side by session does NOT fix this (the first message already carries the full payload). (#2978)
 
+## The 7 confirmed user-fields (the offer): a PUT that OMITS a key cannot clear it, so an emptied field MUST be sent
+
+The brand offer fields (`USER_FIELD_KEYS` = `services` + the 6 Hormozi levers) are written through brand-service `PUT /orgs/brands/:brandId/user-fields`. Two backend semantics drive everything on the consumer side:
+- **`upsertUserFields` REPLACES the value of each key the body CARRIES and leaves an OMITTED key untouched.** No merge, no partial-array append.
+- **`buildUserFieldsView` falls back to the AI `suggested` prefill (from `brand_extracted_fields`) whenever a key has NO confirmed row.** So a key that was never confirmed keeps re-serving the AI suggestion.
+
+Consequence — **a payload builder that omits empty values makes "clear this field" IMPOSSIBLE, and the deleted entry visibly comes BACK on the next read** (either the old confirmed value or the suggestion behind it). All three builders shipped with an `if (cleaned.length) out[key] = cleaned;` guard and a comment claiming it protected a confirmed value; that guard WAS the bug. They now send the key with `[]` / `""`, which writes a confirmed-EMPTY row — clearing the field AND stopping the suggestion resurfacing. The PUT body is `z.record(z.string(), z.unknown())` with no minimum, so empties are accepted and **no backend change is needed**. (#3027, #3028)
+
+**THREE copies of this builder exist and must stay coherent — fixing one is not fixing the bug:**
+
+| App | File | Function | Scope rule |
+|---|---|---|---|
+| admin | `src/lib/user-fields-form.ts` | `profileToPayload` | every key of the card's `defs` subset (`cloneSubset` defaults them all) |
+| dashboard | `src/components/strategy/strategy-page.tsx` | `profileToUserFieldsPayload` | all 7 (`cloneFields` defaults them all) |
+| dashboard | `src/components/onboarding/onboarding.tsx` | `buildUserFieldsPayload` | a lever only when `key in profile` — a lever the offer step never rendered carries no user intent |
+
+**Onboarding keeps a non-empty guard on `services` ONLY** (`if (cleanServices.length)`): that is the services step's own picked list, so an empty one there is an incomplete step, not a deletion. Do not "unify" it away.
+
+**A prefill/extract button on these fields is a RESET, not a top-up.** The admin card's `✨ Prefill from services` overwrites every field in its subset with what the extraction returns and CLEARS the ones it does not answer, so what you see after a prefill is exactly what the extraction produced. It pairs `resetCache: true` (bypass every cache layer) with `mode: "suggest"` (brand-service generates a best-effort answer for every lever instead of skipping what the site does not state outright). Values land in the DRAFT — nothing is persisted until Save — which is what makes a destructive reset safe. The old fill-blanks-only guard (`isEmptyField`) is REMOVED; do not re-add it, it made the button read as dead on a populated card. Guards: `apps/{admin,dashboard}/tests/user-fields-clear.test.ts` + the prefill assertions in `apps/admin/tests/brand-user-fields-card.test.ts`.
+
+**Testing note:** these modules import through the `@` alias, which vitest does not resolve in this repo, so the guards are source-substring over the function body (`src.slice(indexOf(marker), +1200)`), not unit calls.
+
 ## A CRM "source" is ONE crm-service CSV upload, and ONE source = ONE human-service audience bound via `crmUploadId`
 
 For the CRM-outreach feature (`sales-crm-email-outreach`, the slug lives in ONE place: `apps/admin/src/lib/crm-outreach-feature.ts` — gate on `isCrmOutreachFeature`, never a scattered literal) the people are the brand's OWN imported contacts, not a provider search. Model as of `#3017`:
