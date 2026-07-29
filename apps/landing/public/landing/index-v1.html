@@ -755,18 +755,6 @@
     .not-fit h3{font-size:15px}
     .not-fit p{margin-top:5px;color:var(--muted);font-size:12px;line-height:1.6}
 
-    .agency-band{
-      display:grid;
-      grid-template-columns:1fr auto;
-      gap:35px;
-      align-items:center;
-      padding:35px;
-      border:1px solid var(--line);
-      border-radius:17px;
-      background:linear-gradient(120deg,var(--panel-2),var(--panel));
-    }
-    .agency-band h3{font-size:27px;line-height:1.15}
-    .agency-band p{max-width:710px;margin-top:10px;color:var(--muted);font-size:13.5px;line-height:1.7}
     .agency-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
     .agency-tag{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#eef1f8;color:var(--faint);font-family:var(--mono);font-size:9px}
 
@@ -848,8 +836,6 @@
       .category-definition{grid-template-columns:1fr}
       .category-formula{justify-content:flex-start}
       .fit-grid{grid-template-columns:1fr}
-      .agency-band{grid-template-columns:1fr}
-      .agency-band .button{justify-self:start}
       .footer-grid{grid-template-columns:1fr 1fr}
     }
     @media(max-width:620px){
@@ -880,7 +866,6 @@
       .included-status{grid-column:2}
       .price-card,.billing-card,.proof-main,.proof-side,.cac-card{padding:23px}
       .cac-price{font-size:52px}
-      .agency-band{padding:25px}
       .closing{padding:78px 0}
       .closing-box{padding:50px 20px}
       .closing-actions{flex-direction:column}
@@ -1188,6 +1173,65 @@
       .roi-formula{grid-template-columns:1fr;row-gap:6px}
       .roi-op{grid-column:1;justify-self:start;padding:2px 0}
       .roi-card{padding:24px 18px 20px}
+    }
+
+        /* ---- #agencies : one org, many brands ---- */
+    .ag-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:34px;align-items:start}
+    /* the switcher preview mirrors the real dashboard component: a workspace
+       menu with the brand row nested under the org by a 1px rail, and the brand
+       list flying out to the right. */
+    .ag-ui{position:relative;display:flex;align-items:flex-start;padding:14px 0 14px 4px}
+    .ag-menu,.ag-fly{
+      background:var(--panel);border:1px solid var(--line);border-radius:12px;
+      padding:5px 0;box-shadow:0 18px 44px rgba(20,30,60,.13);
+    }
+    .ag-menu{width:246px;flex:0 0 auto}
+    .ag-fly{width:232px;flex:0 0 auto;margin-left:8px;align-self:flex-start;margin-top:44px}
+    .ag-menu-h{
+      padding:8px 12px 5px;font-family:var(--mono);font-size:9.5px;font-weight:600;
+      letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    }
+    .ag-row{
+      display:flex;align-items:center;gap:9px;margin:0 5px;padding:8px 8px;
+      border-radius:7px;font-size:13px;color:var(--text);
+    }
+    .ag-row.is-open{background:var(--bg-soft)}
+    .ag-row.is-sel{background:var(--green-dim);color:var(--green)}
+    .ag-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+    .ag-av{
+      flex:0 0 auto;width:20px;height:20px;border-radius:5px;
+      display:flex;align-items:center;justify-content:center;
+      font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0;
+      background:var(--green);color:#fff;
+    }
+    .ag-av.is-brand{background:var(--bg-soft);color:var(--muted);border:1px solid var(--line)}
+    .ag-av.is-new{background:transparent;color:var(--faint);border:1px dashed var(--line);font-size:12px}
+    .ag-chev{color:var(--faint);font-size:15px;line-height:1;flex:0 0 auto}
+    .ag-chev.is-open{color:var(--green)}
+    .ag-check{color:var(--green);font-size:12px;flex:0 0 auto}
+    .ag-ic{
+      flex:0 0 auto;width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+      font-family:var(--mono);font-size:11px;color:var(--faint);
+    }
+    .ag-billing{margin-top:5px;padding-top:12px;border-top:1px solid var(--line-soft);border-radius:0;color:var(--muted)}
+    .ag-new{margin-top:4px;padding-top:11px;border-top:1px solid var(--line-soft);border-radius:0;color:var(--muted)}
+    .ag-nest{position:relative;padding-left:18px}
+    .ag-rail-v{position:absolute;left:19px;top:-4px;width:1px;height:22px;background:var(--line)}
+    .ag-rail-h{position:absolute;left:19px;top:18px;width:10px;height:1px;background:var(--line)}
+    .ag-points{display:flex;flex-direction:column;gap:14px}
+    .ag-point{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px}
+    .ag-point-k{font-family:var(--mono);font-size:10px;letter-spacing:.09em;color:var(--green);margin-bottom:9px}
+    .ag-point h3{font-size:16px;font-weight:650;letter-spacing:-.012em;margin-bottom:6px}
+    .ag-point p{font-size:13.5px;color:var(--muted);line-height:1.62}
+    .ag-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+    @media (max-width:980px){
+      .ag-grid{grid-template-columns:1fr;gap:28px}
+      .ag-ui{justify-content:flex-start}
+    }
+    @media (max-width:620px){
+      .ag-ui{flex-direction:column;align-items:stretch;padding-left:0}
+      .ag-menu,.ag-fly{width:100%}
+      .ag-fly{margin-left:0;margin-top:10px}
     }
 
     </style>
@@ -1808,14 +1852,68 @@
     })();
     </script>
 
-    <section>
+    <section id="agencies">
       <div class="wrap">
-        <div class="agency-band">
-          <div>
-            <div class="eyebrow">For agencies and operators</div>
-            <h3>Run your own pipeline and client campaigns from one account.</h3>
-            <p>Give each brand its own website, audience, budget, and reporting. Use the dashboard directly or connect programmatic workflows through the API and MCP integrations.</p>
-            <div class="agency-tags"><span class="agency-tag">MULTI-CAMPAIGN</span><span class="agency-tag">SEPARATE BUDGETS</span><span class="agency-tag">API</span><span class="agency-tag">MCP</span><span class="agency-tag">EXPORTS</span></div>
+        <div class="section-head">
+          <div class="eyebrow">For agencies and operators</div>
+          <h2>One account. <span class="accent">Every client, kept apart.</span></h2>
+          <p class="section-copy">Add a client the way you started your own: drop their website. They become a brand inside your organisation, with their own audience, their own daily budget and their own cost of acquisition. You switch between them from the sidebar. Nothing is shared, nothing is rebuilt.</p>
+        </div>
+
+        <div class="ag-grid">
+          <div class="ag-ui" aria-label="Workspace switcher preview">
+            <div class="ag-menu">
+              <div class="ag-menu-h">Workspace</div>
+
+              <div class="ag-row">
+                <span class="ag-av">YA</span>
+                <span class="ag-name">Your agency</span>
+                <span class="ag-chev" aria-hidden="true">&rsaquo;</span>
+              </div>
+
+              <div class="ag-nest">
+                <span class="ag-rail-v" aria-hidden="true"></span>
+                <span class="ag-rail-h" aria-hidden="true"></span>
+                <div class="ag-row is-open">
+                  <span class="ag-av is-brand">A</span>
+                  <span class="ag-name">clienta.com</span>
+                  <span class="ag-chev is-open" aria-hidden="true">&rsaquo;</span>
+                </div>
+              </div>
+
+              <div class="ag-row ag-billing">
+                <span class="ag-ic" aria-hidden="true">$</span>
+                <span class="ag-name">Billing</span>
+              </div>
+            </div>
+
+            <div class="ag-fly">
+              <div class="ag-menu-h">Switch brand</div>
+              <div class="ag-row is-sel"><span class="ag-av is-brand">A</span><span class="ag-name">clienta.com</span><span class="ag-check" aria-hidden="true">&checkmark;</span></div>
+              <div class="ag-row"><span class="ag-av is-brand">B</span><span class="ag-name">clientb.com</span></div>
+              <div class="ag-row"><span class="ag-av is-brand">C</span><span class="ag-name">clientc.com</span></div>
+              <div class="ag-row"><span class="ag-av is-brand">D</span><span class="ag-name">clientd.com</span></div>
+              <div class="ag-row ag-new"><span class="ag-av is-new" aria-hidden="true">+</span><span class="ag-name">New brand</span></div>
+            </div>
+          </div>
+
+          <div class="ag-points">
+            <article class="ag-point">
+              <div class="ag-point-k">SEPARATE</div>
+              <h3>A budget per client, not a shared pot</h3>
+              <p>Each brand carries its own daily cap. Pause one client without touching the others, and no client can spend another one's budget.</p>
+            </article>
+            <article class="ag-point">
+              <div class="ag-point-k">REPORTED</div>
+              <h3>A cost of acquisition per client</h3>
+              <p>Every brand reports its own cost per interested reply, account wide and per segment. That is the number you put in front of the client.</p>
+            </article>
+            <article class="ag-point">
+              <div class="ag-point-k">PROGRAMMATIC</div>
+              <h3>Or skip the dashboard entirely</h3>
+              <p>Create brands, launch campaigns and pull results through the API and the MCP integrations, so onboarding a client can be a step in your own workflow.</p>
+            </article>
+            <div class="ag-tags"><span class="agency-tag">MULTI-BRAND</span><span class="agency-tag">SEPARATE BUDGETS</span><span class="agency-tag">PER-CLIENT CAC</span><span class="agency-tag">API</span><span class="agency-tag">MCP</span><span class="agency-tag">EXPORTS</span></div>
           </div>
         </div>
       </div>

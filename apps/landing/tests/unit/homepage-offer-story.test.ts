@@ -118,3 +118,32 @@ describe("homepage copy discipline", () => {
     expect(html).toContain("<style>");
   });
 });
+
+describe("homepage agency multi-tenant section", () => {
+  it("gives agencies a real section, not a footer band", () => {
+    expect(html).toContain('<section id="agencies">');
+    expect(html).not.toContain("agency-band");
+  });
+
+  it("mirrors the real dashboard tenant switcher rather than inventing a menu", () => {
+    // Strings and structure come from apps/dashboard/src/components/tenant-switcher.tsx.
+    // If that component is renamed or restructured, this preview is now a lie.
+    expect(html).toContain(">Workspace<");
+    expect(html).toContain(">Switch brand<");
+    expect(html).toContain(">New brand<");
+    expect(html).toContain("ag-rail-v");
+    expect(html).toContain("ag-rail-h");
+  });
+
+  it("shows one organisation holding several brands, which is the whole point", () => {
+    const fly = html.slice(html.indexOf('class="ag-fly"'), html.indexOf("</section>", html.indexOf('class="ag-fly"')));
+    const brands = fly.match(/client[a-z]\.com/g) ?? [];
+    expect(new Set(brands).size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("names no real or invented client", () => {
+    // Placeholder domains only, in the same spirit as the hero's yourcompany.com.
+    expect(html).toContain("Your agency");
+    expect(html).toMatch(/clienta\.com/);
+  });
+});
