@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { attachBrandWebsite, getBrand, type BrandDetail } from "@/lib/api";
+import { ApiError, attachBrandWebsite, getBrand, listBrands, type BrandDetail } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 
 // One-time brand-domain setup for a no-website brand (domain === null). Once a
@@ -11,8 +13,15 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 // moment a domain is set. Attaching a domain also unlocks the Click Destination
 // card below (its default lands on the new domain's homepage).
 
+/** `www.` is not part of a brand's identity — brand-service strips it when it derives the domain. */
+function bareHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, "");
+}
+
 /** Normalize + validate a user-supplied website URL. Requires a real http(s) host. */
-function validateWebsite(input: string): { ok: true; url: string } | { ok: false; error: string } {
+function validateWebsite(
+  input: string,
+): { ok: true; url: string; host: string } | { ok: false; error: string } {
   const trimmed = input.trim();
   if (!trimmed) return { ok: false, error: "Enter your brand's website URL (e.g. https://acme.com)." };
   let parsed: URL;
@@ -28,18 +37,26 @@ function validateWebsite(input: string): { ok: true; url: string } | { ok: false
   if (!parsed.hostname.includes(".") || parsed.hostname.startsWith(".") || parsed.hostname.endsWith(".")) {
     return { ok: false, error: "Enter a full domain (e.g. https://acme.com)." };
   }
-  return { ok: true, url: parsed.toString() };
+  return { ok: true, url: parsed.toString(), host: bareHost(parsed.hostname) };
 }
 
 export function BrandDomainCard({ brandId }: { brandId: string }) {
   const queryClient = useQueryClient();
+  const params = useParams<{ orgId?: string }>();
+  const orgId = params?.orgId ?? null;
 
   // Reuse the shared brand query (overview + click-destination) → one fetch.
   const { data, isPending } = useAuthQuery(["brand", brandId], () => getBrand(brandId));
   const brand = data?.brand ?? null;
   const brandDomain = brand?.domain ?? null;
 
+  // Same key the tenant switcher + org overview already use → deduped, served
+  // from the local-first cache. Only read to NAME the brand that already holds a
+  // conflicting domain; a pure display lookup, never a saved value.
+  const { data: brandsData } = useAuthQuery(["brands"], () => listBrands());
+
   const [value, setValue] = useState("");
+  const [attemptedHost, setAttemptedHost] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const { mutate, isPending: saving, error } = useMutation({
@@ -55,6 +72,10 @@ export function BrandDomainCard({ brandId }: { brandId: string }) {
             : prev,
       );
     },
+    onError: (err) => {
+      // Fail loud in the console (status + body), quiet on screen.
+      console.error("[dashboard] attachBrandWebsite failed", err);
+    },
   });
 
   function handleSave() {
@@ -64,8 +85,19 @@ export function BrandDomainCard({ brandId }: { brandId: string }) {
       return;
     }
     setValidationError(null);
+    setAttemptedHost(result.host);
     mutate(result.url);
   }
+
+  // The brand that already holds the domain the user just tried to attach, when
+  // this org is a member of it. Names the blocker instead of leaving the user
+  // guessing which of their brands is in the way.
+  const conflictingBrand =
+    attemptedHost === null
+      ? null
+      : (brandsData?.brands ?? []).find(
+          (b) => b.id !== brandId && b.domain !== null && bareHost(b.domain) === attemptedHost,
+        ) ?? null;
 
   // While the brand is loading, don't flash the section (avoids a section that
   // appears then disappears for the common website-brand case).
@@ -104,9 +136,38 @@ export function BrandDomainCard({ brandId }: { brandId: string }) {
 
           {validationError && <p className="mt-4 text-sm text-red-600">{validationError}</p>}
           {error && (
-            <p className="mt-4 text-sm text-red-600">
-              Could not save: {error instanceof Error ? error.message : "unknown error"}
-            </p>
+            // NEVER render the raw error text here. api-service returns the
+            // downstream error body stringified into `message`, so printing it
+            // put a JSON blob in front of a real customer. The reason is carried
+            // by the HTTP status; the details stay in the console.
+            <div className="mt-4 text-sm text-red-600">
+              {error instanceof ApiError && error.status === 409 ? (
+                conflictingBrand ? (
+                  <p>
+                    {attemptedHost} is already attached to your brand{" "}
+                    <span className="font-medium">
+                      {conflictingBrand.name ?? conflictingBrand.domain}
+                    </span>
+                    . A website belongs to one brand at a time.{" "}
+                    {orgId && (
+                      <Link
+                        href={`/orgs/${orgId}/brands/${conflictingBrand.id}`}
+                        className="underline hover:no-underline"
+                      >
+                        Open that brand
+                      </Link>
+                    )}
+                  </p>
+                ) : (
+                  <p>
+                    {attemptedHost ?? "That website"} is already in use by another account. Contact
+                    us and we will sort it out.
+                  </p>
+                )
+              ) : (
+                <p>We could not save your website. Try again in a moment.</p>
+              )}
+            </div>
           )}
 
           <div className="mt-5">
