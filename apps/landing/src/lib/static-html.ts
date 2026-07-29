@@ -731,10 +731,32 @@ async function resolveCacBoot(): Promise<{
   return { best: best ?? FALLBACK_BEST.positiveReply, points, renderedAt };
 }
 
+// ROI calculator defaults. They live HERE rather than as literals in the HTML so
+// the server-rendered multiple and the two input values can never drift apart,
+// and so the raw HTML a scraper reads already carries a correct number instead
+// of an empty box the client script fills in later.
+const ROI_DEFAULT_LTR_USD = 2500;
+const ROI_DEFAULT_WIN_RATE_PCT = 30;
+
+// Shared by the server render and the client script, which must agree exactly or
+// the number visibly changes on the first keystroke. Whole numbers above 10, one
+// decimal below, so a 14x reads as "14x" and a 3.4x keeps its precision.
+export function formatRoiMultiple(
+  ltrUsd: number,
+  winRatePct: number,
+  costPerMeetingUsd: number,
+): string | null {
+  if (!(costPerMeetingUsd > 0) || !(ltrUsd >= 0) || !(winRatePct >= 0)) return null;
+  const value = (ltrUsd * (winRatePct / 100)) / costPerMeetingUsd;
+  if (!Number.isFinite(value)) return null;
+  return value >= 10 ? `${Math.round(value)}×` : `${value.toFixed(1)}×`;
+}
+
 async function withCacBoot(html: string) {
   if (
     !html.includes(CAC_BOOT_TOKEN) &&
     !html.includes("__CAC_PRICE__") &&
+    !html.includes("__CAC_PRICE_NUMERIC__") &&
     !html.includes("__CAC_MULT__")
   ) {
     return html;
@@ -750,8 +772,18 @@ async function withCacBoot(html: string) {
       CAC_BOOT_TOKEN,
       `<script>window.__CAC_BOOT__=${JSON.stringify(boot)}</script>`,
     )
+    // Raw number for arithmetic (the ROI calculator divides by it). Replaced
+    // BEFORE the formatted token, since "__CAC_PRICE__" is a prefix of
+    // "__CAC_PRICE_NUMERIC__" and would otherwise rewrite it to "$53_NUMERIC__".
+    .replaceAll("__CAC_PRICE_NUMERIC__", String(boot.best))
     .replaceAll("__CAC_PRICE__", price)
-    .replaceAll("__CAC_MULT__", mult);
+    .replaceAll("__CAC_MULT__", mult)
+    .replaceAll("__ROI_LTR__", ROI_DEFAULT_LTR_USD.toLocaleString("en-US"))
+    .replaceAll("__ROI_WIN_RATE__", String(ROI_DEFAULT_WIN_RATE_PCT))
+    .replaceAll(
+      "__ROI_MULT__",
+      formatRoiMultiple(ROI_DEFAULT_LTR_USD, ROI_DEFAULT_WIN_RATE_PCT, boot.best) ?? "–",
+    );
 }
 
 // Time-to-first-interested-reply. The homepage answers "how long before
