@@ -113,9 +113,12 @@ describe("Context sidebar", () => {
   });
 
   it("should have brand back link point to the org overview, labelled by org name", () => {
+    // Pre-beta chrome only: in the beta chrome the org is a row inside the
+    // sidebar-top tenant switcher, so the org back-link is redundant and drops.
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('backLabel={organization?.name || "Overview"}');
-    expect(content).toContain('backHref={`/orgs/${orgId}`}');
+    expect(content).toContain('organization?.name || "Overview"');
+    expect(content).toContain('`/orgs/${orgId}`');
+    expect(content).toContain("isBeta ? undefined :");
   });
 
   it("should have unified Keys entry at org level", () => {

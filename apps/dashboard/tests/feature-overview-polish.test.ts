@@ -58,7 +58,11 @@ describe("Tables paginate 20 rows/page (item 3)", () => {
 describe("Org logos render Clerk imageUrl (item 4)", () => {
   const breadcrumb = read("components/breadcrumb-nav.tsx");
   it("breadcrumb root + switcher use organization.imageUrl via OrgAvatar", () => {
-    expect(breadcrumb).toContain("function OrgAvatar(");
+    // OrgAvatar is a shared component now — the breadcrumb and the beta
+    // sidebar-top TenantSwitcher both render it, so it can't drift.
+    expect(read("components/org-avatar.tsx")).toContain("export function OrgAvatar(");
+    expect(breadcrumb).toContain("OrgAvatar");
+    expect(read("components/tenant-switcher.tsx")).toContain("OrgAvatar");
     // Root avatar uses the per-tab URL org's cached image (#1948); the switcher
     // list still maps each membership's own imageUrl.
     expect(breadcrumb).toContain("imageUrl={displayOrgImageUrl}");

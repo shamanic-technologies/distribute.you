@@ -1,191 +1,48 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  useOrganization,
-  useOrganizationList,
-  useSession,
-  useUser,
-} from "@clerk/nextjs";
-import { useState, useRef, useEffect, useCallback } from "react";
-import { isAdminEmail } from "@/lib/admin-allowlist";
+import { useState, useRef, useEffect } from "react";
 import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
+import { OrgAvatar } from "./org-avatar";
 import { explicitHierarchyHref } from "@/lib/last-brand";
+import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 
-interface Brand {
-  id: string;
-  name: string;
-  domain: string;
-}
-
-interface OrgOption {
-  id: string;
-  name: string;
-  slug: string | null;
-  imageUrl?: string | null;
-  hasImage?: boolean;
-}
-
-// Caches — the brand LIST is keyed by org id. `/api/v1/brands` is org-scoped, so a
-// single global cache bled one org's brands into another org's dropdown on a
-// god-mode / cross-tab / direct-URL nav (any path that skips handleOrgSwitch, the
-// only place the cache cleared) → the current brand missing from the list.
-const brandListCache: Record<string, { data: Brand[]; timestamp: number }> = {};
-const CACHE_TTL = 60000;
-
-/** Clear module-level breadcrumb caches (called on org switch) */
-export function clearBreadcrumbCaches() {
-  for (const key of Object.keys(brandListCache)) delete brandListCache[key];
-}
-
-const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
-
-/** The org's domain when its name is domain-shaped. Onboarding creates the org
- *  with `name: <brand domain>`, so self-serve orgs carry a usable domain here;
- *  a renamed / non-domain org name returns null and falls back to the initial. */
-function orgDomainFromName(name?: string | null): string | null {
-  if (!name) return null;
-  const candidate = name.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
-  return /^[^\s]+\.[^\s]+$/.test(candidate) ? candidate : null;
-}
-
-/** Organization avatar. Resolution order:
- *  1. A real *uploaded* Clerk logo (`hasImage` — Clerk's `imageUrl` is ALWAYS
- *     populated, defaulting to a generated gradient-initials avatar we don't want).
- *  2. logo.dev keyed on the org's domain-shaped name.
- *  3. The org's initial.
- *  Plain `<img>` — no Next/Image domain config needed, mirrors lead photos. */
-function OrgAvatar({
-  name,
-  imageUrl,
-  hasImage,
-  sizeClass,
-}: {
-  name: string;
-  imageUrl?: string | null;
-  hasImage?: boolean;
-  sizeClass: string;
-}) {
-  const [broken, setBroken] = useState(false);
-  const domain = orgDomainFromName(name);
-  const src = hasImage && imageUrl
-    ? imageUrl
-    : domain
-      ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}`
-      : null;
-  if (src && !broken) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return (
-      <img
-        src={src}
-        alt={name}
-        onError={() => setBroken(true)}
-        className={`${sizeClass} rounded object-cover bg-brand-100 flex-shrink-0`}
-      />
-    );
-  }
-  return (
-    <div className={`${sizeClass} bg-brand-100 rounded flex items-center justify-center flex-shrink-0`}>
-      <span className="text-brand-600 font-semibold text-xs">{name?.[0]?.toUpperCase() || "O"}</span>
-    </div>
-  );
-}
+// Org/brand identity, the display caches and the switch handlers live in
+// `@/lib/use-tenant-switcher` — the SINGLE source shared with the beta
+// sidebar-top `TenantSwitcher`, so the two tenant surfaces can never drift.
+export { clearBreadcrumbCaches } from "@/lib/use-tenant-switcher";
 
 export function BreadcrumbNav() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  // `?new=1` = the "create a NEW org" onboarding flow → there is no target org
-  // yet and the Clerk active org is a DIFFERENT org, so it must NOT stand in as
-  // the crumb. `?from=add` (new BRAND) reuses the existing active org → its name
-  // IS the right crumb. Only the new-brand flow gets the active-org fallback.
-  const isNewOrgFlow = searchParams.get("new") === "1";
-  const router = useRouter();
-  const { organization } = useOrganization();
-  const { userMemberships, setActive } = useOrganizationList({
-    userMemberships: { infinite: true },
-  });
-  const { session } = useSession();
-  // Staff get a "god-mode" org switcher (ALL platform orgs); regular customers
-  // see only their own memberships (unchanged). isStaff gates the UI only — the
-  // real security boundary is the `isAdminEmail` 403 on the /api/admin/* routes.
-  const { user } = useUser();
-  const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
+  const {
+    pathParts,
+    orgId,
+    brandId,
+    section,
+    isStaff,
+    memberships,
+    allOrgs,
+    orgsLoading,
+    orgSearch,
+    setOrgSearch,
+    fetchOrgs,
+    brands,
+    brandsLoading,
+    fetchBrands,
+    displayOrgName,
+    displayOrgImageUrl,
+    displayOrgHasImage,
+    displayBrand,
+    handleOrgSwitch,
+    handleBrandSwitch,
+    router,
+  } = useTenantSwitcher();
+
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  // Self-serve create flows (distinct from /onboarding): "brand" adds a brand to
-  // the active org; "org" creates a new org + its first brand.
   const dropdownRef = useRef<HTMLDivElement>(null);
-  // Per-URL-org display label cache (name/avatar) — keeps the breadcrumb from
-  // flipping when Clerk's shared active org momentarily points at another tab's org.
-  const orgDisplayCacheRef = useRef<
-    Record<string, { name?: string; imageUrl?: string; hasImage?: boolean }>
-  >({});
-  // Per-URL-brand display cache (keep-last-good) — the twin of orgDisplayCacheRef.
-  // The brand crumb reads `brands.find(...)`, which returns undefined when a
-  // transient/degenerate `/api/v1/brands` response (cold Neon 200 with an empty
-  // or partial list, or a stale 60s cache missing the current brand) drops the
-  // current brand from state — blanking the name to the "Brand" placeholder while
-  // the org crumb stays put. Cache each brand's label the moment it resolves so
-  // the name survives the transient; "Brand" only shows on a genuine cold first load.
-  const brandDisplayCacheRef = useRef<
-    Record<string, { name?: string; domain?: string | null }>
-  >({});
-  const [brands, setBrands] = useState<Brand[]>([]);
-  // Authoritative per-URL-brand label — fetched by id, exactly like the overview
-  // page (`getBrand(brandId)`). The dropdown `brands` LIST is org-scoped + cached
-  // and can legitimately not contain the URL brand (god-mode / cross-tab / a stale
-  // 60s cache), which left the crumb stuck on the "Brand" placeholder forever
-  // (the keep-last-good cache never got a first value to keep). This by-id fetch
-  // resolves the name regardless of the list, under the same active org the page
-  // already renders the brand with.
-  const [byIdBrand, setByIdBrand] = useState<Brand | null>(null);
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [workflowName, setWorkflowName] = useState<string | null>(null);
   const [campaignName, setCampaignName] = useState<string | null>(null);
-  const [allOrgs, setAllOrgs] = useState<OrgOption[]>([]);
-  const [orgSearch, setOrgSearch] = useState("");
-  const [orgsLoading, setOrgsLoading] = useState(false);
 
-  // Parse path structure: /orgs/[orgId]/brands/[brandId]/<section>/[id]
-  // The product ships ONE feature → no `/features/[featureSlug]` segment.
-  const pathParts = pathname.split("/").filter(Boolean);
-  const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
-  const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
-  const section = brandId ? pathParts[4] ?? null : null;
-
-  // Display the org from the URL (per-tab), NOT `useOrganization()`. Clerk's active
-  // org is a SHARED browser-global value that flips when another tab switches org —
-  // binding the breadcrumb to it made the org name visibly oscillate between tabs.
-  // The URL org is stable per tab. We cache each org's label the moment the active
-  // org matches the URL (the normal focused case), so the name stays put even while
-  // the shared active org is briefly pointing elsewhere; falls back to the god-mode
-  // all-orgs list / the user's memberships when we haven't cached it yet. (#1948)
-  if (organization && organization.id === orgId) {
-    orgDisplayCacheRef.current[orgId] = {
-      name: organization.name,
-      imageUrl: organization.imageUrl,
-      hasImage: organization.hasImage,
-    };
-  }
-  const displayOrg = orgId
-    ? orgDisplayCacheRef.current[orgId] ??
-      allOrgs.find((o) => o.id === orgId) ??
-      userMemberships?.data?.find((m) => m.organization.id === orgId)?.organization
-    : // Off the /orgs/ tree (the onboarding create flow: `/onboarding?from=add`),
-      // there is no URL org to key on, so fall back to Clerk's active org — the
-      // add-BRAND flow reuses the existing active org, so its name is the right
-      // crumb label. The add-ORG flow (`?new=1`) is EXCLUDED: it targets a brand-
-      // new org that isn't the active one, so the active-org name would mislead —
-      // it keeps the neutral "Dashboard" placeholder + the org switcher.
-      // Sanctioned by CLAUDE.md: `useOrganization()` may feed off-/orgs/ fallbacks.
-      isNewOrgFlow
-      ? undefined
-      : organization ?? undefined;
-  const displayOrgName = displayOrg?.name || "Dashboard";
-  const displayOrgImageUrl = displayOrg?.imageUrl;
-  const displayOrgHasImage =
-    (displayOrg as { hasImage?: boolean } | undefined)?.hasImage;
   const workflowId =
     brandId && section === "workflows" && pathParts[5] && pathParts[5] !== "new"
       ? pathParts[5]
@@ -205,22 +62,6 @@ export function BreadcrumbNav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Staff-only: fetch ALL platform orgs (god-mode switcher). No-op for customers.
-  const fetchOrgs = useCallback(async (q: string) => {
-    setOrgsLoading(true);
-    try {
-      const res = await fetch(`/api/admin/orgs?q=${encodeURIComponent(q)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAllOrgs(data.organizations || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch orgs:", err);
-    } finally {
-      setOrgsLoading(false);
-    }
-  }, []);
-
   // Fetch the all-orgs list when a staff member opens the org dropdown; debounce
   // on search. Never fires for non-staff (the route would 403 anyway).
   useEffect(() => {
@@ -228,46 +69,6 @@ export function BreadcrumbNav() {
     const t = setTimeout(() => fetchOrgs(orgSearch), 250);
     return () => clearTimeout(t);
   }, [isStaff, openDropdown, orgSearch, fetchOrgs]);
-
-  const fetchBrands = useCallback(async () => {
-    if (!orgId) return;
-    const cached = brandListCache[orgId];
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setBrands(cached.data);
-      return;
-    }
-    setLoading((l) => ({ ...l, brands: true }));
-    try {
-      const res = await fetch("/api/v1/brands");
-      if (res.ok) {
-        const data = await res.json();
-        const list = data.brands || [];
-        brandListCache[orgId] = { data: list, timestamp: Date.now() };
-        setBrands(list);
-      }
-    } catch (err) {
-      console.error("Failed to fetch brands:", err);
-    } finally {
-      setLoading((l) => ({ ...l, brands: false }));
-    }
-  }, [orgId]);
-
-  useEffect(() => {
-    if (brandId) fetchBrands();
-  }, [brandId, fetchBrands]);
-
-  useEffect(() => {
-    if (!brandId) { setByIdBrand(null); return; }
-    let cancelled = false;
-    fetch(`/api/v1/brands/${brandId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled || !data?.brand) return;
-        setByIdBrand({ id: brandId, name: data.brand.name, domain: data.brand.domain });
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [brandId]);
 
   useEffect(() => {
     if (!workflowId) { setWorkflowName(null); return; }
@@ -299,73 +100,15 @@ export function BreadcrumbNav() {
     }
   };
 
-  const handleOrgSwitch = async (clerkOrgId: string) => {
+  const switchOrg = (clerkOrgId: string) => {
     setOpenDropdown(null);
-    clearBreadcrumbCaches();
-    // Update Clerk's client-side active org so useOrganization() reflects the switch
-    // immediately (breadcrumb name, OrgCacheInvalidator firing, QueryProvider remount).
-    // Then push the URL so middleware's organizationSyncOptions confirms server-side
-    // and /api/v1/* calls run under the new org. Both directions are required:
-    // setActive alone left the URL stale (PR #1058 prod incident, polls 404'd);
-    // router.push alone left the client UI stale until the session cookie refreshed.
-    //
-    // AWAIT setActive before navigating: it resolves once the Clerk session (and its
-    // org claim) has rotated to the new org. Navigating / firing an API call before
-    // that resolves carries the OLD org in the lag window → write commits under the
-    // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
-    // is the backstop; awaiting closes the race at the source.
-    //
-    // STAFF god-mode: the target may be a customer org the staff member is NOT a
-    // member of. Clerk `setActive` rejects a non-member org, so first make them a
-    // real member (role org:admin) server-side. Idempotent. Only staff hit this
-    // (the route 403s otherwise); customers always switch to an org they own.
-    if (isStaff) {
-      try {
-        await fetch(`/api/admin/orgs/${clerkOrgId}/join`, { method: "POST" });
-      } catch (err) {
-        console.error("Failed to join org:", err);
-      }
-    }
-    if (setActive) {
-      await setActive({ organization: clerkOrgId });
-    }
-    // Re-mint the session token so the new active org (and, for staff god-mode, the
-    // freshly-added membership) are in the cookie BEFORE the navigation hits the
-    // middleware. `setActive` resolves on the client before its Set-Cookie has
-    // propagated, so without this the next request reaches `proxy.ts`
-    // `organizationSyncOptions` carrying the STALE token (active = previous org /
-    // not-a-member of the target) → Clerk bounces the URL back → OrgActivator
-    // re-syncs the client to the previous org → the switch reverts on its own.
-    // Forcing a fresh mint closes that race at the source (CLAUDE.md "Stale token —
-    // a claim is frozen at JWT mint, force getToken({ skipCache: true }) before
-    // navigating"; same fix proven in onboarding's onboarding-complete hop).
-    await session?.getToken({ skipCache: true }).catch(() => {});
-    router.push(`/orgs/${clerkOrgId}`);
+    handleOrgSwitch(clerkOrgId);
   };
 
-  const handleBrandSwitch = (newBrandId: string) => {
+  const switchBrand = (newBrandId: string) => {
     setOpenDropdown(null);
-    if (orgId) {
-      router.push(`/orgs/${orgId}/brands/${newBrandId}`);
-    }
+    handleBrandSwitch(newBrandId);
   };
-
-  // Resolve the brand from the dropdown list first, then the authoritative by-id
-  // fetch (which resolves even when the list doesn't contain the URL brand).
-  const currentBrand =
-    brands.find((b) => b.id === brandId) ??
-    (byIdBrand && byIdBrand.id === brandId ? byIdBrand : undefined);
-  // Keep-last-good: cache the label when the brand resolves, read from cache when a
-  // transient fetch drops it, so the crumb never flips to the "Brand" placeholder.
-  if (brandId && currentBrand) {
-    brandDisplayCacheRef.current[brandId] = {
-      name: currentBrand.name,
-      domain: currentBrand.domain,
-    };
-  }
-  const displayBrand = brandId
-    ? currentBrand ?? brandDisplayCacheRef.current[brandId]
-    : undefined;
 
   const Chevron = ({ open }: { open: boolean }) => (
     <svg className={`w-3 h-3 text-gray-400 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -425,7 +168,7 @@ export function BreadcrumbNav() {
                 {allOrgs.map((o) => (
                   <button
                     key={o.id}
-                    onClick={() => handleOrgSwitch(o.id)}
+                    onClick={() => switchOrg(o.id)}
                     className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
                       orgId === o.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                     }`}
@@ -441,10 +184,10 @@ export function BreadcrumbNav() {
                 ))}
               </div>
             ) : (
-              userMemberships?.data?.map((m) => (
+              memberships.map((m) => (
                 <button
                   key={m.organization.id}
-                  onClick={() => handleOrgSwitch(m.organization.id)}
+                  onClick={() => switchOrg(m.organization.id)}
                   className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
                     orgId === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                   }`}
@@ -491,7 +234,7 @@ export function BreadcrumbNav() {
                 <div className="px-3 py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 font-medium">Switch brand</p>
                 </div>
-                {loading.brands ? (
+                {brandsLoading ? (
                   <div className="px-3 py-4 text-center text-gray-400 text-sm">Loading...</div>
                 ) : brands.length === 0 ? (
                   <div className="px-3 py-4 text-center text-gray-400 text-sm">No brands</div>
@@ -499,7 +242,7 @@ export function BreadcrumbNav() {
                   brands.map((b) => (
                     <button
                       key={b.id}
-                      onClick={() => handleBrandSwitch(b.id)}
+                      onClick={() => switchBrand(b.id)}
                       className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition ${
                         brandId === b.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
                       }`}

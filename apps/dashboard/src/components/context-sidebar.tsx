@@ -11,6 +11,8 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { useIsAdminUser } from "@/lib/use-admin-user";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { TenantSwitcher } from "@/components/tenant-switcher";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -96,7 +98,12 @@ function BackLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-function SidebarSection({ title, backHref, backLabel, children, footer }: {
+function SidebarSection({ topSlot, title, backHref, backLabel, children, footer }: {
+  // Beta chrome: the tenant switcher, rendered flush at the very top of the
+  // sidebar so it sits level with the header row (the sidebar is a full-height
+  // column to the LEFT of the header in the beta shell). It owns its own bottom
+  // border at the header's height — do not wrap it in padding.
+  topSlot?: React.ReactNode;
   title?: string;
   backHref?: string;
   backLabel?: string;
@@ -105,6 +112,7 @@ function SidebarSection({ title, backHref, backLabel, children, footer }: {
 }) {
   return (
     <aside className="h-full w-56 max-w-[85vw] flex-shrink-0 flex-col border-r border-gray-200 bg-white flex">
+      {topSlot}
       {(title || backHref) && (
         <div className="px-4 py-3 border-b border-gray-100">
           {backHref && backLabel && <BackLink href={backHref} label={backLabel} />}
@@ -270,15 +278,88 @@ function AppLevelSidebar() {
   return null;
 }
 
+// Org Settings Level Sidebar (BETA chrome).
+//
+// The org NAV LEVEL is gone in the beta chrome: its "Overview" item was only a
+// brand picker, and the brand picker now lives in the tenant switcher. What is
+// left of the org granularity is a settings surface — Billing (GA) plus the two
+// flag-gated org services — so it gets its own dedicated sidebar, reached from
+// the switcher's Billing entry. Billing keeps its URL (`/orgs/[orgId]/billing`);
+// billing-guard, credit-alerts and onboarding all deep-link to it.
+//
+// On the bare org landing (`/orgs/[orgId]`, the last-brand resolver / empty-org
+// state) there is nothing to navigate to, so the sidebar is the switcher alone.
+function OrgSettingsLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
+  const crmEnabled = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
+  const keysEnabled = useFeatureFlag(FEATURE_GATES["keys"].flag);
+  const isSettingsPath =
+    pathname.startsWith(`/orgs/${orgId}/billing`) ||
+    pathname.startsWith(`/orgs/${orgId}/api-keys`) ||
+    pathname.startsWith(`/orgs/${orgId}/provider-keys`) ||
+    pathname.startsWith(`/orgs/${orgId}/services`);
+
+  return (
+    <SidebarSection topSlot={<TenantSwitcher />}>
+      {isSettingsPath && (
+        <>
+          {/* Back to the org's own landing, which the edge redirects to the
+              last-visited brand — no `?view=overview`, that would pin the
+              (now nav-less) org overview page instead. */}
+          <Link
+            href={`/orgs/${orgId}`}
+            className="mb-1 flex items-center gap-1.5 px-3 py-1 text-[10px] text-gray-400 transition hover:text-gray-600"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to dashboard
+          </Link>
+          <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Organization</h4>
+          <SidebarLink
+            item={{ id: "billing", label: "Billing", href: `/orgs/${orgId}/billing`, icon: <BillingIcon /> }}
+            isActive={pathname.startsWith(`/orgs/${orgId}/billing`)}
+          />
+          {keysEnabled && (
+            <SidebarLink
+              item={{
+                id: "api-keys",
+                label: "Keys",
+                href: `/orgs/${orgId}/api-keys`,
+                icon: <KeyIcon />,
+                maturity: FEATURE_GATES["keys"].maturity,
+              }}
+              isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
+            />
+          )}
+          {crmEnabled && (
+            <SidebarLink
+              item={{
+                id: "crm",
+                label: "CRM (Google)",
+                href: `/orgs/${orgId}/services/crm`,
+                icon: <CrmIcon />,
+                maturity: FEATURE_GATES["services-crm"].maturity,
+              }}
+              isActive={pathname.startsWith(`/orgs/${orgId}/services/crm`)}
+            />
+          )}
+        </>
+      )}
+    </SidebarSection>
+  );
+}
+
 // Org Level Sidebar
 function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
   // Features are no longer surfaced at the org granularity — they live under
   // brands and the app-level nav. CRM + Keys are alpha (staff-only); Billing is GA.
+  const isBeta = useIsBetaUser();
   const crmEnabled = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
   const keysEnabled = useFeatureFlag(FEATURE_GATES["keys"].flag);
   const topItems: SidebarItem[] = [
     { id: "overview", label: "Overview", href: explicitHierarchyHref(`/orgs/${orgId}`), icon: <HomeIcon /> },
   ];
+  if (isBeta) return <OrgSettingsLevelSidebar orgId={orgId} pathname={pathname} />;
   return (
     <SidebarSection title="Organization">
       {topItems.map((item) => (
@@ -403,6 +484,10 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const featureSlug = useSoleFeatureSlug();
   const { isLoading: featuresLoading } = useFeatures();
   const { organization } = useOrganization();
+  // Beta chrome: the tenant switcher takes the top of the sidebar, so the "Brand"
+  // section title and the back-link to the org both become redundant — the org is
+  // one row inside the switcher panel.
+  const isBeta = useIsBetaUser();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   // Campaigns (v2, campaign-centered) — staff/god-mode PREVIEW while the campaign
   // concept is progressively re-introduced. Gated on the staff allowlist (isAdmin),
@@ -486,9 +571,10 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 
   return (
     <SidebarSection
-      title="Brand"
-      backHref={`/orgs/${orgId}`}
-      backLabel={organization?.name || "Overview"}
+      topSlot={isBeta ? <TenantSwitcher /> : undefined}
+      title={isBeta ? undefined : "Brand"}
+      backHref={isBeta ? undefined : `/orgs/${orgId}`}
+      backLabel={isBeta ? undefined : organization?.name || "Overview"}
       footer={
         // Anchored to the bottom (outside the scrollable nav): Brand Settings,
         // then the referral card.
@@ -574,8 +660,8 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
   pathname: string;
 }) {
   const featureSlug = useSoleFeatureSlug();
-  const { organization } = useOrganization();
   const isAdmin = useIsAdminUser();
+  const isBeta = useIsBetaUser();
   const revenueOk = isRevenueFeature(featureSlug);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const campaignBase = `${basePath}/channels/${campaignId}`;
@@ -617,7 +703,10 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
 
   return (
     <SidebarSection
-      title="Channel"
+      topSlot={isBeta ? <TenantSwitcher /> : undefined}
+      title={isBeta ? undefined : "Channel"}
+      // The back-link is intra-BRAND (up to the channels list), so it survives the
+      // beta chrome — only the org back-link was made redundant by the switcher.
       backHref={`${basePath}/channels`}
       backLabel="Channels"
       footer={

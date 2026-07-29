@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useOrganization } from "@clerk/nextjs";
-import { clearBreadcrumbCaches } from "@/components/breadcrumb-nav";
+import { clearBreadcrumbCaches } from "@/lib/use-tenant-switcher";
 
 /**
  * Clears the breadcrumb module-level caches when Clerk's active org changes.
