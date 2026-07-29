@@ -740,15 +740,6 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   const statusOf = (lead: Lead): LeadConsolidatedStatus =>
     (latchedStatus.get(lead.id) as LeadConsolidatedStatus | undefined) ?? getLeadConsolidatedStatus(lead);
 
-  // CSV export = the WHOLE leads list (every tab), not the active-tab/search
-  // subset. Status label uses the same latched `statusOf` the badge renders, so
-  // the exported Status matches on-screen. Recomputed only when leads/latch move.
-  const leadsCsv = useMemo(
-    () => buildLeadsCsv(leads, (l) => leadStatusLabel(statusOf(l))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [leads, latchedStatus],
-  );
-
   const groupedByTab = useMemo(() => {
     const positive: Lead[] = [];
     const clicks: Lead[] = [];
@@ -799,6 +790,32 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
     ...(outcomeAvailable && outcomeTab ? [outcomeTab.tab] : []),
     ...goalLeadTabs(goal),
   ];
+
+  // The population the tabs can actually reach — every tab is an ENGAGEMENT step
+  // (contacted, clicked, replied, outcome), so a lead that lead-service served but
+  // that carries no delivery evidence belongs to no bucket and is unreachable from
+  // this page. Counting the raw list in the header therefore advertised rows the
+  // table could never show (reported: "(6 leads)" above a 5-row Outreach tab whose
+  // stat card also read 5). Header count, CSV export and the empty state all read
+  // this set so the page describes one population. Deduped (the tabs are nested
+  // subsets, not a partition) and kept in the base "all" order.
+  const coveredLeads = useMemo(() => {
+    const covered = new Set<string>();
+    for (const tab of visibleTabs) {
+      for (const lead of groupedByTab.get(tab) ?? []) covered.add(lead.id);
+    }
+    return sortedLeads.filter((l) => covered.has(l.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupedByTab, sortedLeads, visibleTabs.join("|")]);
+
+  // CSV export = the WHOLE covered list (every tab), not the active-tab/search
+  // subset. Status label uses the same latched `statusOf` the badge renders, so
+  // the exported Status matches on-screen. Recomputed only when leads/latch move.
+  const leadsCsv = useMemo(
+    () => buildLeadsCsv(coveredLeads, (l) => leadStatusLabel(statusOf(l))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [coveredLeads, latchedStatus],
+  );
 
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
@@ -903,11 +920,11 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
             {loading ? (
               <Skeleton className="ml-2 inline-block h-4 w-56 align-middle" />
             ) : (
-              <span className="ml-2 text-sm font-normal text-gray-500">({leads.length.toLocaleString("en-US")} leads)</span>
+              <span className="ml-2 text-sm font-normal text-gray-500">({coveredLeads.length.toLocaleString("en-US")} leads)</span>
             )}
           </h1>
           {!loading && (
-            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={leads.length === 0} label="Export leads" />
+            <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={coveredLeads.length === 0} label="Export leads" />
           )}
         </div>
 
@@ -934,7 +951,7 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
 
             <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
 
-            {leads.length === 0 ? (
+            {coveredLeads.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
                 <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
