@@ -67,12 +67,21 @@ export function userFieldsToProfile(fields: BrandUserFields | undefined): Profil
   return out;
 }
 
-/** Clone only the given field subset (list default [], text default ""). */
+/** Clone only the given field subset, normalised to each field's declared KIND
+ *  (list default [], text default "").
+ *
+ *  Coercing by kind is load-bearing, not defensive polish: extraction is generative and
+ *  free-form, so a stored value's shape does not track the field's kind (a text-kind
+ *  lever regularly arrives as string[], a list-kind one as a bare string). This is the
+ *  ONE boundary this card reads through, so normalising here fixes both the render
+ *  (TextEditor gets a real string instead of "") and the SAVE (profileToPayload's text
+ *  branch would otherwise coerce the array to "" and write a confirmed-empty row over a
+ *  value the user never touched). It also heals the stored row on the next save. */
 export function cloneSubset(fields: ProfileFields, defs: FieldDef[]): ProfileFields {
   const out: ProfileFields = {};
   for (const f of defs) {
     const v = fields[f.key];
-    out[f.key] = Array.isArray(v) ? [...v] : (v ?? (f.kind === "list" ? [] : ""));
+    out[f.key] = f.kind === "list" ? coerceListField(v) : coerceTextField(v);
   }
   return out;
 }
@@ -111,18 +120,46 @@ export function profileToPayload(
     const key = f.key as UserFieldKey;
     if (!(USER_FIELD_KEYS as readonly string[]).includes(key)) continue;
     const v = fields[key];
-    out[key] =
-      f.kind === "list"
-        ? coerceListField(v).map((s) => s.trim()).filter(Boolean)
-        : typeof v === "string"
-          ? v.trim()
-          : "";
+    // Coerce by kind on the way OUT too. cloneSubset already normalised the bag, so this
+    // is belt-and-braces — but the old `typeof v === "string" ? v.trim() : ""` was the
+    // destructive half of the shape-mismatch bug: an array in a text-kind lever was
+    // written back as a confirmed-EMPTY row, silently deleting a value the user never
+    // touched. Coercing heals the row instead of blanking it.
+    out[key] = f.kind === "list" ? coerceListField(v) : coerceTextField(v).trim();
   }
   return out;
 }
 
-export const coerceListField = (v: string | string[] | undefined): string[] =>
-  Array.isArray(v) ? v : typeof v === "string" && v.trim() ? [v.trim()] : [];
+/** Coerce a user-field LIST-kind value to a string[] for display / editing. Always
+ *  returns a NEW array (cloneSubset relies on that so an edit never mutates the saved
+ *  baseline). A legacy bare STRING is split on newlines / commas rather than kept as one
+ *  blob, so a clobbered list still reads as its items. Byte-equal with the dashboard's
+ *  coerceListField (lib/strategy-model.ts) — keep the twins in lockstep. */
+export const coerceListField = (v: string | string[] | undefined | null): string[] => {
+  if (Array.isArray(v)) return v.map((s) => s.trim()).filter((s) => s.length > 0);
+  if (typeof v !== "string") return [];
+  return v
+    .split(/\r?\n|,/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+};
+
+/** Coerce a user-field TEXT-kind value to a string — the mirror of coerceListField and
+ *  the other half of the same bug. Extraction is generative and free-form, so a
+ *  text-kind lever (riskReversal, urgency, scarcity, perceivedLikelihood) regularly
+ *  comes back as string[]; the raw `typeof v === "string" ? v : ""` in the editors and
+ *  in profileToPayload turned that into "not set" on screen and, on the next save, into
+ *  a confirmed-EMPTY row. Joined on newline because these levers are proof points that
+ *  read as lines. Byte-equal with the dashboard's coerceTextField. */
+export const coerceTextField = (v: string | string[] | undefined | null): string => {
+  if (Array.isArray(v)) {
+    return v
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .join("\n");
+  }
+  return typeof v === "string" ? v : "";
+};
 
 /**
  * Build the extract-fields request defs for a card's subset. Offer levers send their

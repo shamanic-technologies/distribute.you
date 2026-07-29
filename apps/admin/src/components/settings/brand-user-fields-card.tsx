@@ -20,6 +20,7 @@ import {
   buildExtractDefs,
   cloneSubset,
   coerceListField,
+  coerceTextField,
   EXTRACT_KEY_FOR_FIELD,
   profileToPayload,
   subsetEqual,
@@ -208,7 +209,7 @@ export function BrandUserFieldsCard({
                   />
                 ) : (
                   <TextEditor
-                    value={typeof fields[f.key] === "string" ? (fields[f.key] as string) : ""}
+                    value={coerceTextField(fields[f.key])}
                     placeholder={f.placeholder}
                     onText={(v) => setText(f.key, v)}
                   />
