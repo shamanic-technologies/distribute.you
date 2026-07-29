@@ -18,7 +18,6 @@ import {
   fetchFeatureAudienceStats,
   listAudiences,
   getWorkflowProjection,
-  isVisitDrivenGoal,
   optimizationGoalForRuntimeGoal,
   salesObjectiveForOptimizationGoal,
   keepLastGoodWorkflowProjection,
@@ -35,6 +34,7 @@ import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
+import { goalForOptimizationGoal, isVisitDrivenStatsGoal } from "@/lib/strategy-model";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -229,8 +229,9 @@ export function CampaignOverviewPage() {
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =
     economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
-  const audienceStatsGoal = isVisitDrivenGoal(optimizationGoal) ? "signup" : "meetingBooked";
-  const audienceStatsMetric = audienceStatsGoal === "signup" ? "cpc" : "cppr";
+  // One shared mapping with the brand Overview + Audiences page — see goalForOptimizationGoal.
+  const audienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
+  const audienceStatsMetric = isVisitDrivenStatsGoal(audienceStatsGoal) ? "cpc" : "cppr";
 
   const { data: budgetData, isError: budgetIsError } = useAuthQuery(
     ["brandDailyBudget", brandId],

@@ -21,7 +21,6 @@ import {
   generateAudienceAvatar,
   getBrandConversionToken,
   getBrandSalesEconomics,
-  isVisitDrivenGoal,
   listAudiences,
   setAudienceStatus,
   type AudienceStatus,
@@ -29,6 +28,7 @@ import {
   type FeatureAudienceStatsRow,
   type FeatureAudienceStatsGoal,
 } from "@/lib/api";
+import { goalForOptimizationGoal } from "@/lib/strategy-model";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 
@@ -274,19 +274,12 @@ export function CustomerAudiencesPage() {
   const trackerSetUp =
     conversionTokenData?.status === "live" ||
     conversionTokenData?.status === "live_waiting";
-  const audienceStatsGoal: FeatureAudienceStatsGoal =
-    optimizationGoal === "form_submissions"
-      ? "formSubmission"
-      : optimizationGoal === "website_purchase"
-        ? "websitePurchase"
-        : optimizationGoal === "sales"
-          ? "sales"
-          : isVisitDrivenGoal(optimizationGoal)
-            ? "signup"
-            : "meetingBooked";
-  // Sales-meetings goal → surface reply economics: extra "Positive Replies" +
-  // "CPPR" columns (left of Cost per click), and default the sort to CPPR asc.
-  const showMeetingCols = audienceStatsGoal === "meetingBooked";
+  const audienceStatsGoal: FeatureAudienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
+  // Reply-driven goals → surface reply economics: extra "Positive Replies" + "CPPR" columns
+  // (left of Cost per click), and default the sort to CPPR asc. BOTH reply goals qualify:
+  // positive_replies is the goal whose outcome IS the reply, so gating on meetingBooked alone
+  // would hide the reply columns on the very brand that optimises for replies.
+  const showMeetingCols = audienceStatsGoal === "meetingBooked" || audienceStatsGoal === "positiveReply";
   // positive_replies is single-step (reply → paid) — clicks/website visits aren't in the
   // funnel, so hide the "Cost per website visit" (CPC) + "Website Visits" columns. The CPPR +
   // Positive replies columns (showMeetingCols) stay, and the sort default is already CPPR-asc.
