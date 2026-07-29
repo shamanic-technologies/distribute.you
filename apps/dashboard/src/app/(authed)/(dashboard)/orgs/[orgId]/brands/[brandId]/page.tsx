@@ -17,7 +17,6 @@ import {
   fetchFeatureAudienceStats,
   listAudiences,
   getWorkflowProjection,
-  isVisitDrivenGoal,
   salesObjectiveForOptimizationGoal,
   keepLastGoodWorkflowProjection,
   keepLastGoodFeatureRevenue,
@@ -32,6 +31,7 @@ import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
+import { goalForOptimizationGoal, isVisitDrivenStatsGoal } from "@/lib/strategy-model";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -214,8 +214,11 @@ export default function BrandOverviewPage() {
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =
     economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
-  const audienceStatsGoal = isVisitDrivenGoal(optimizationGoal) ? "signup" : "meetingBooked";
-  const audienceStatsMetric = audienceStatsGoal === "signup" ? "cpc" : "cppr";
+  // One shared mapping with the Audiences page + Strategy. The local ternary this replaces was
+  // 2-branch, so a sales / form_submissions / website_purchase / positive_replies brand asked
+  // audience-stats to rank workflows on an outcome the brand does not pursue.
+  const audienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
+  const audienceStatsMetric = isVisitDrivenStatsGoal(audienceStatsGoal) ? "cpc" : "cppr";
 
   const { data: budgetData, isError: budgetIsError } = useAuthQuery(
     ["brandDailyBudget", brandId],

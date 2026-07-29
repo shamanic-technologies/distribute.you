@@ -2019,11 +2019,17 @@ export interface PipelineActivityResponse {
   summary: PipelineActivitySummary;
 }
 
+/** features-service's canonical Goal enum, minus the goals no brand can pick today.
+ *  `websiteVisit` + `positiveReply` are the SINGLE-STEP goals (visit -> paid, reply -> paid);
+ *  they are native on audience-stats, so a brand on either MUST send its own goal rather than
+ *  borrow the nearest multi-step family — the borrow ranked workflows on the wrong outcome. */
 export type FeatureAudienceStatsGoal =
   | "signup"
   | "meetingBooked"
   | "websitePurchase"
   | "sales"
+  | "websiteVisit"
+  | "positiveReply"
   | "formSubmission";
 export type FeatureAudienceStatsSortMetric = "cpc" | "cppr";
 
@@ -2122,6 +2128,8 @@ const FeatureAudienceStatsResponseSchema = z.object({
     z.literal("meetingBooked"),
     z.literal("websitePurchase"),
     z.literal("sales"),
+    z.literal("websiteVisit"),
+    z.literal("positiveReply"),
     z.literal("formSubmission"),
   ]),
   brandProfileId: z.string().nullable(),
