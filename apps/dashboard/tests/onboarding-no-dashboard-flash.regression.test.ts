@@ -7,7 +7,7 @@ import * as path from "path";
  * the user's org. Otherwise users land briefly on dashboard pages with empty data while
  * the onboarding redirect is queued.
  *
- * Note: the layout shell (Header, sidebar, QueryProvider, OrgCacheInvalidator) stays
+ * Note: the layout shell (Header, sidebar, QueryProvider) stays
  * mounted across Clerk re-loads so React Query observers in `children` don't unmount
  * mid-session and re-paint as skeletons. Only the `<main>` area swaps to a blank
  * placeholder when the org is missing.

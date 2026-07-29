@@ -15,7 +15,9 @@ describe("Breadcrumb hierarchy", () => {
     const content = fs.readFileSync(switcherPath, "utf-8");
     expect(content).toContain("useOrganization");
     expect(content).toContain("displayOrgName");
-    expect(content).toContain("orgDisplayCacheRef");
+    // Snapshotted into a persisted query (was an in-memory ref) so the name paints
+    // from disk before Clerk hydrates — see tenant-switcher-swr.test.ts.
+    expect(content).toContain('queryKey: ["orgIdentity", orgId]');
     // The breadcrumb renders that resolved name (it no longer resolves it itself).
     expect(fs.readFileSync(breadcrumbPath, "utf-8")).toContain("displayOrgName");
   });

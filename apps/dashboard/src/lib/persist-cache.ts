@@ -86,6 +86,10 @@ export const SENSITIVE_QUERY_ROOTS = new Set(["apiKeys", "byokKeys", "keySources
  * SENSITIVE_QUERY_ROOTS; a future UNKNOWN root is default-OFF until listed here.
  */
 export const PERSISTABLE_QUERY_ROOTS = new Set([
+  // Tenant identity — the sidebar switcher's org label + Clerk avatar. Clerk is the
+  // only source of an org's name and it hydrates asynchronously, so without a disk
+  // snapshot the switcher reads "Dashboard" for the first second of every load.
+  "orgIdentity",
   // Navigation / config / registries
   "features",
   "feature",
