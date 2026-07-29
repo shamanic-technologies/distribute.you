@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef, Fragment } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -259,8 +260,15 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
 // Right-panel "Audience" card — which saved audience this lead was attributed to.
 // `inline` = the {id,name,avatarUrl} served on the lead row (always present when
 // attributed); `full` = the matching human-service audience row looked up by id
-// (description / Size / Remaining), null until listAudiences resolves or when the
-// audience was archived away. Renders nothing when the lead has no audience.
+// (description only), null until listAudiences resolves or when the audience was
+// archived away. Renders nothing when the lead has no audience.
+//
+// Size / remaining-to-contact deliberately do NOT live here: the Audiences page
+// owns every audience number and the targeting filters. The card links there with
+// `?audienceId=` (the deep-link seed CustomerAudiencesPage reads on first paint,
+// same as the brand-overview Top-3-audiences card), which opens that audience's
+// detail panel with its colored targeting tags. The link renders off `inline.id`,
+// so it is present even before / without the human-service lookup.
 function AudienceSection({
   inline,
   full,
@@ -268,10 +276,11 @@ function AudienceSection({
   inline: { id: string; name: string; avatarUrl: string | null };
   full: AudienceWire | null;
 }) {
+  const params = useParams();
+  const orgId = params.orgId as string;
+  const brandId = params.brandId as string;
   const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
   const description = full?.description ?? null;
-  const size = full?.sizeCount;
-  const remainingPct = full?.availableToContactPct;
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Audience</h3>
@@ -291,22 +300,25 @@ function AudienceSection({
         <p className="font-medium text-gray-800 text-sm">{inline.name}</p>
       </div>
       {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
-      {(size != null || remainingPct != null) && (
-        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-          {size != null && (
-            <div><span className="text-gray-500">Size:</span><p className="font-medium">{size.toLocaleString("en-US")}</p></div>
-          )}
-          {remainingPct != null && (
-            <div><span className="text-gray-500">Remaining:</span><p className="font-medium">{remainingPct}%</p></div>
-          )}
-        </div>
-      )}
+      <Link
+        href={`/orgs/${orgId}/brands/${brandId}/audiences?audienceId=${inline.id}`}
+        className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
+      >
+        View audience details
+      </Link>
     </div>
   );
 }
 
-// Right-panel email: click to copy to clipboard. Shows a transient "Copied!"
-// ack for ~1.5s, then reverts to the address.
+// Right-panel email: click anywhere on it to copy the address to the clipboard.
+//
+// The address itself is PLAIN TEXT (`text-gray-800`, no underline) on purpose —
+// link styling on a value that does not navigate reads as a `mailto:` and the
+// click then does something else entirely. The copy intent is carried the way
+// Stripe / PatternFly / Shoelace carry it instead: a persistent copy glyph beside
+// the value that darkens on hover, a hover surface on the whole hit area, and a
+// "Copy" tooltip that becomes "Copied" once it lands. Confirms with a check +
+// "Copied" for ~1.5s, then reverts.
 function CopyableEmail({ email }: { email: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -322,14 +334,18 @@ function CopyableEmail({ email }: { email: string }) {
     <button
       type="button"
       onClick={copy}
-      title="Click to copy"
-      className="font-medium text-left inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 hover:underline break-all cursor-pointer"
+      title={copied ? "Copied" : "Copy"}
+      aria-label={`Copy email address ${email}`}
+      className="group -mx-1 rounded px-1 py-0.5 font-medium text-left inline-flex items-center gap-1.5 text-gray-800 break-all cursor-pointer transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
     >
       <span>{email}</span>
       {copied ? (
-        <span className="text-xs text-green-600 shrink-0">Copied!</span>
+        <span className="shrink-0 inline-flex items-center gap-1 text-xs text-green-600">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          Copied
+        </span>
       ) : (
-        <svg className="w-3.5 h-3.5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+        <svg className="w-3.5 h-3.5 shrink-0 text-gray-300 transition-colors group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
       )}
     </button>
   );
