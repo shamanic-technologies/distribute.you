@@ -25,6 +25,10 @@ describe("Org switch cross-org isolation framework", () => {
   const layoutPath = "src/app/(authed)/(dashboard)/layout.tsx";
   const orgActivatorPath = "src/components/org-activator.tsx";
   const breadcrumbPath = "src/components/breadcrumb-nav.tsx";
+  // Org identity + the switch handlers were extracted out of breadcrumb-nav into
+  // this shared hook so the pre-beta breadcrumb and the beta sidebar-top
+  // TenantSwitcher run ONE implementation. The race guards follow the code.
+  const tenantSwitchPath = "src/lib/use-tenant-switcher.ts";
   const queryProviderPath = "src/lib/query-provider.tsx";
   const useAuthQueryPath = "src/lib/use-auth-query.ts";
   const apiPath = "src/lib/api.ts";
@@ -181,7 +185,7 @@ describe("Org switch cross-org isolation framework", () => {
   // --- Source: close the race ----------------------------------------------
 
   it("handleOrgSwitch awaits setActive before navigating", () => {
-    const content = read(breadcrumbPath);
+    const content = read(tenantSwitchPath);
     expect(content).toContain("await setActive({ organization: clerkOrgId })");
   });
 
@@ -190,7 +194,7 @@ describe("Org switch cross-org isolation framework", () => {
     // fires → the middleware's organizationSyncOptions reads the STALE token (active =
     // previous org / not-a-member of the target) and bounces the URL back → the
     // god-mode switch reverts on its own. The fresh mint closes that race.
-    const content = read(breadcrumbPath);
+    const content = read(tenantSwitchPath);
     expect(content).toContain('await session?.getToken({ skipCache: true })');
     const match = content.match(
       /handleOrgSwitch[\s\S]*?setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
@@ -199,14 +203,17 @@ describe("Org switch cross-org isolation framework", () => {
   });
 
   it("handleOrgSwitch clears breadcrumb caches before setActive", () => {
-    const content = read(breadcrumbPath);
+    const content = read(tenantSwitchPath);
     const match = content.match(
       /handleOrgSwitch[\s\S]*?clearBreadcrumbCaches[\s\S]*?setActive/,
     );
     expect(match).not.toBeNull();
   });
 
-  it("breadcrumb-nav exports clearBreadcrumbCaches", () => {
-    expect(read(breadcrumbPath)).toContain("export function clearBreadcrumbCaches");
+  it("the tenant-switch hook exports clearBreadcrumbCaches", () => {
+    expect(read(tenantSwitchPath)).toContain("export function clearBreadcrumbCaches");
+    // Both tenant surfaces read the same hook — no second copy to drift.
+    expect(read(breadcrumbPath)).toContain("@/lib/use-tenant-switcher");
+    expect(read("src/components/tenant-switcher.tsx")).toContain("@/lib/use-tenant-switcher");
   });
 });

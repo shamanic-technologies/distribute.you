@@ -11,9 +11,11 @@ describe("Clerk org/URL sync guards", () => {
     expect(src).toMatch(/organizationPatterns\s*:\s*\[\s*['"]\/orgs\/:id['"]\s*,\s*['"]\/orgs\/:id\/\(\.\*\)['"]\s*\]/);
   });
 
-  it("breadcrumb handleOrgSwitch calls BOTH setActive and router.push to prevent client/URL drift", () => {
-    const src = readFileSync(resolve(ROOT, "src/components/breadcrumb-nav.tsx"), "utf8");
-    const handlerMatch = src.match(/const handleOrgSwitch[\s\S]*?\n\s*\};/);
+  it("handleOrgSwitch calls BOTH setActive and router.push to prevent client/URL drift", () => {
+    // Lives in the shared tenant-switch hook — consumed by BOTH the pre-beta
+    // breadcrumb and the beta sidebar switcher, so there is one implementation.
+    const src = readFileSync(resolve(ROOT, "src/lib/use-tenant-switcher.ts"), "utf8");
+    const handlerMatch = src.match(/const handleOrgSwitch[\s\S]*?\n\s*\}, \[/);
     expect(handlerMatch, "handleOrgSwitch handler not found").toBeTruthy();
     const handler = handlerMatch![0];
     // router.push updates the URL so middleware's organizationSyncOptions confirms server-side

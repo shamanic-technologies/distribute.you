@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useState, useRef, useEffect } from "react";
 import { BreadcrumbNav } from "./breadcrumb-nav";
+import { MobileTenantChip } from "./tenant-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { useMobileSidebar } from "./mobile-sidebar-context";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -46,8 +47,17 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
             </button>
           )}
 
-          {/* Brand mark — non-clickable in minimal mode so onboarding setup can't be navigated away from */}
-          {minimal ? (
+          {/* BETA chrome: the product mark, the wordmark and the breadcrumb all
+              leave the top bar. Tenant identity + switching move to the top of the
+              sidebar (`TenantSwitcher`), which is where the research put them —
+              NN/g rates a breadcrumb useless at 2 levels, and Notion/Slack/Linear
+              (single-product SaaS) carry no product logo in the bar at all. The
+              bar keeps only universal actions (theme, account), per Atlassian.
+              On mobile the sidebar is a drawer, so a compact tenant chip stands in
+              and opens it — otherwise the mobile bar would carry no identity. */}
+          {isBeta && !minimal ? (
+            <MobileTenantChip />
+          ) : minimal ? (
             <div className="flex items-center gap-2">
               <Image src="/logo-distribute.svg" alt="distribute.you" width={28} height={28} className="rounded-md" />
               <span className="font-display font-extrabold text-lg tracking-tight text-gray-900 hidden sm:block">distribute.you</span>
@@ -61,7 +71,7 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
             </Link>
           )}
 
-          {!minimal && (
+          {!minimal && !isBeta && (
             <div className="min-w-0 flex-1">
               <BreadcrumbNav />
             </div>
