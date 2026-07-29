@@ -29,6 +29,11 @@ export interface TenantOrgOption {
 // god-mode / cross-tab / direct-URL nav (any path that skips handleOrgSwitch, the
 // only place the cache cleared) → the current brand missing from the list.
 const brandListCache: Record<string, { data: TenantBrand[]; timestamp: number }> = {};
+// The by-id brand label, keyed by brand id. The beta chrome mounts this hook up
+// to three times at once (desktop sidebar + the mobile drawer's sidebar + the
+// mobile header chip), and each instance would otherwise re-fetch the same brand
+// on every navigation. Same 60s TTL as the list.
+const brandByIdCache: Record<string, { data: TenantBrand; timestamp: number }> = {};
 const CACHE_TTL = 60000;
 
 /** Clear module-level tenant caches (called on org switch). Named
@@ -36,6 +41,7 @@ const CACHE_TTL = 60000;
  *  `OrgCacheInvalidator` import site. */
 export function clearBreadcrumbCaches() {
   for (const key of Object.keys(brandListCache)) delete brandListCache[key];
+  for (const key of Object.keys(brandByIdCache)) delete brandByIdCache[key];
 }
 
 /** The org's domain when its name is domain-shaped. Onboarding creates the org
@@ -186,12 +192,19 @@ export function useTenantSwitcher() {
 
   useEffect(() => {
     if (!brandId) { setByIdBrand(null); return; }
+    const cached = brandByIdCache[brandId];
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      setByIdBrand(cached.data);
+      return;
+    }
     let cancelled = false;
     fetch(`/api/v1/brands/${brandId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled || !data?.brand) return;
-        setByIdBrand({ id: brandId, name: data.brand.name, domain: data.brand.domain });
+        const resolved = { id: brandId, name: data.brand.name, domain: data.brand.domain };
+        brandByIdCache[brandId] = { data: resolved, timestamp: Date.now() };
+        setByIdBrand(resolved);
       })
       .catch(() => {});
     return () => { cancelled = true; };

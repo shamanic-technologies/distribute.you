@@ -9,6 +9,7 @@ import { MobileTenantChip } from "./tenant-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { useMobileSidebar } from "./mobile-sidebar-context";
 import { explicitHierarchyHref } from "@/lib/last-brand";
+import { CHROME_ROW_HEIGHT } from "@/lib/chrome-row";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "./maturity-badge";
 
@@ -32,7 +33,12 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div className="px-4 py-2.5 flex items-center justify-between">
+      {/* Beta chrome: a FIXED row height shared with the sidebar's tenant-switcher
+          block (`CHROME_ROW_HEIGHT`). In the L-shaped shell the two sit side by
+          side, so an auto height derived from whatever control happens to be
+          tallest (`py-2.5` around a 36px account button ≈ 57px) never lines up
+          with a hand-tuned sidebar value. One token, both rows, seam gone. */}
+      <div className={`px-4 flex items-center justify-between ${isBeta ? CHROME_ROW_HEIGHT : "py-2.5"}`}>
         {/* Left: Hamburger + Logo + Breadcrumb */}
         <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
           {/* Mobile hamburger — hidden in minimal mode (no sidebar to toggle) */}

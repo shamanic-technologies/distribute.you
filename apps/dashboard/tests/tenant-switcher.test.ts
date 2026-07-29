@@ -52,7 +52,17 @@ describe("Tenant switcher (beta chrome)", () => {
   it("mobile keeps a tenant identity in the bar (the sidebar is a drawer there)", () => {
     expect(switcher).toContain("export function MobileTenantChip");
     expect(switcher).toContain("md:hidden");
-    expect(switcher).toContain("useMobileSidebar");
+  });
+
+  it("the mobile chip opens the FULL menu itself, not the drawer", () => {
+    // Routing through the drawer would cost two taps and drop a right-hand
+    // flyout inside a 224px panel. The chip anchors the same menu under the
+    // header instead, and it must not reach for the drawer toggle.
+    const chip = switcher.slice(switcher.indexOf("export function MobileTenantChip"));
+    expect(chip).toContain("<TenantMenu");
+    expect(chip).not.toContain("useMobileSidebar");
+    // Bounded to the viewport so a long org list can't run off a short screen.
+    expect(chip).toContain("overflow-y-auto");
   });
 
   it("the panel carries org, brand and org-scoped Billing", () => {
@@ -65,9 +75,23 @@ describe("Tenant switcher (beta chrome)", () => {
     expect(switcher).toContain('"/onboarding?from=add"');
   });
 
-  it("expresses org → brand as an accordion, never a third tier", () => {
-    // One section open at a time — a two-tier dropdown is what NN/g warns about,
-    // and Carbon / GitLab Pajamas both cap a left panel at two tiers.
+  it("opens each submenu to the RIGHT of the panel on desktop, stacked on mobile", () => {
+    // Atlassian's app switcher is the canonical two-level-in-one-menu shape and
+    // it is side-by-side, not nested. Below `md` a flyout would run off-screen
+    // (the sidebar is 224px and becomes a drawer), so it stacks instead.
+    const submenu = switcher.slice(
+      switcher.indexOf("function Submenu("),
+      switcher.indexOf("function TenantMenu("),
+    );
+    expect(submenu).toContain("md:absolute");
+    expect(submenu).toContain("md:left-full");
+    expect(submenu).toContain("md:top-0");
+    // Stacked by default = no UNPREFIXED absolute positioning. (`\b` alone would
+    // match inside `md:absolute`, since `:` is not a word character.)
+    expect(submenu).not.toMatch(/(?:^|[\s"])absolute[\s"]/);
+  });
+
+  it("never opens more than one submenu, so a third tier stays impossible", () => {
     expect(switcher).toContain('useState<"org" | "brand" | null>');
     expect(switcher).toContain("setExpanded((prev) => (prev === key ? null : key))");
   });
@@ -83,10 +107,24 @@ describe("Tenant switcher (beta chrome)", () => {
     expect(switcher).toContain('<MaturityBadge level="beta" />');
   });
 
-  it("sits flush at the top of the sidebar, level with the header row", () => {
-    // The header is a 28px row inside py-2.5 + a 1px border → 49px. The switcher
-    // block matches it so the two read as one continuous band.
-    expect(switcher).toContain("h-[49px]");
+  it("sits flush at the top of the sidebar, exactly level with the header row", () => {
+    // The two rows sit SIDE BY SIDE in the L-shaped shell, so they must be the
+    // same height by construction — one shared token, never a hand-tuned pixel
+    // value (the first attempt hardcoded a miscounted `h-[49px]` against a header
+    // that actually renders ~57px, and the seam showed).
+    const chromeRow = read("src/lib/chrome-row.ts");
+    expect(chromeRow).toContain("export const CHROME_ROW_HEIGHT");
+    for (const [name, src] of [["switcher", switcher], ["header", header]] as const) {
+      expect(src, `${name} must derive its row height from the shared token`).toContain(
+        "CHROME_ROW_HEIGHT",
+      );
+    }
+    expect(switcher).not.toContain("h-[49px]");
+    // Same border colour on both so the edge reads as one continuous line — and
+    // on the WRAPPER, never on the sized element (border-box would otherwise
+    // shave 1px off the switcher and re-open the seam).
+    expect(switcher).toContain('className="relative border-b border-gray-200"');
+    expect(header).toContain("border-b border-gray-200");
     expect(sidebar).toContain("topSlot");
     expect(sidebar).toContain("{topSlot}");
     expect(sidebar).toContain("<TenantSwitcher />");
