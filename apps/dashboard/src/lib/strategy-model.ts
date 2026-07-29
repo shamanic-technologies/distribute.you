@@ -100,8 +100,10 @@ export function outcomeNounPlural(goal: BrandOptimizationGoal): string {
       return "signups";
     case "website_visits":
       return "website visits";
+    // Not "replies": a plain reply includes the negative ones, which are not the
+    // outcome the brand is optimizing for.
     case "positive_replies":
-      return "replies";
+      return "positive replies";
     case "form_submissions":
       return "form submissions";
     case "website_purchase":
