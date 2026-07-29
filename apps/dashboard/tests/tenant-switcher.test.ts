@@ -3,16 +3,16 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Beta chrome: sidebar-top tenant switcher.
+ * Sidebar-top tenant switcher (GA — the only dashboard chrome).
  *
- * The top bar loses the product mark, the wordmark and the breadcrumb; the org →
- * brand hierarchy and org-scoped Billing move into ONE menu anchored at the top
- * of the sidebar, level with the header row.
+ * The top bar carries no product mark, no wordmark and no breadcrumb; the org →
+ * brand hierarchy and org-scoped Billing live in ONE menu anchored at the top of
+ * the sidebar, level with the header row.
  *
  * Source-substring guards (the dashboard convention — these modules import through
  * the `@` alias, which vitest does not resolve in this repo).
  */
-describe("Tenant switcher (beta chrome)", () => {
+describe("Tenant switcher", () => {
   const read = (rel: string) =>
     fs.readFileSync(path.join(__dirname, "..", rel), "utf-8");
 
@@ -22,31 +22,36 @@ describe("Tenant switcher (beta chrome)", () => {
   const layout = read("src/app/(authed)/(dashboard)/layout.tsx");
   const hook = read("src/lib/use-tenant-switcher.ts");
 
-  it("is gated on the beta allowlist on every surface it touches", () => {
+  it("ships to everyone — no chrome branch is left gated behind an allowlist", () => {
+    // GA: the pre-switcher chrome is deleted, not gated off. A surviving
+    // `useIsBetaUser` in the sidebar or the shell would mean a second chrome
+    // path is still alive and can rot unnoticed.
     for (const [name, src] of [
-      ["header", header],
       ["context-sidebar", sidebar],
       ["layout", layout],
     ] as const) {
-      expect(src, `${name} must gate the new chrome on useIsBetaUser`).toContain(
-        "useIsBetaUser",
-      );
+      expect(src, `${name} must not gate the chrome`).not.toContain("useIsBetaUser");
     }
+    // The header still reads `useIsBetaUser`, but ONLY for the unrelated beta
+    // Profile entry in the account menu — never to branch the chrome.
+    expect(header).not.toContain("!isBeta");
+    expect(header).toContain("/account");
   });
 
-  it("header drops the logo, the wordmark and the breadcrumb for beta users", () => {
-    // The beta branch renders the mobile tenant chip instead of the brand mark,
-    // and the breadcrumb is gated off.
-    expect(header).toContain("isBeta && !minimal ? (");
+  it("header carries no product mark, no wordmark and no breadcrumb", () => {
     expect(header).toContain("<MobileTenantChip />");
-    expect(header).toContain("{!minimal && !isBeta && (");
+    expect(header).not.toContain("logo-distribute.svg");
+    expect(header).not.toContain("BreadcrumbNav");
+    // The dead `minimal` prop went with the logo it was the last user of.
+    expect(header).not.toContain("minimal");
   });
 
-  it("header keeps the pre-beta chrome intact for everyone else", () => {
-    // Non-beta users must still get the logo link + wordmark + breadcrumb.
-    expect(header).toContain('src="/logo-distribute.svg"');
-    expect(header).toContain("distribute.you");
-    expect(header).toContain("<BreadcrumbNav />");
+  it("breadcrumb-nav survives for the onboarding chrome", () => {
+    // It is no longer mounted in the dashboard, but `onboarding-top-chrome`
+    // still renders it (guarded by onboarding-escape-chrome.test.ts).
+    expect(read("src/components/onboarding/onboarding-top-chrome.tsx")).toContain(
+      "BreadcrumbNav",
+    );
   });
 
   it("mobile keeps a tenant identity in the bar (the sidebar is a drawer there)", () => {
@@ -103,8 +108,8 @@ describe("Tenant switcher (beta chrome)", () => {
     expect(switcher).toContain("h-px w-2.5 bg-gray-200");
   });
 
-  it("labels itself beta inside the panel", () => {
-    expect(switcher).toContain('<MaturityBadge level="beta" />');
+  it("no longer labels itself beta", () => {
+    expect(switcher).not.toContain("MaturityBadge");
   });
 
   it("sits flush at the top of the sidebar, exactly level with the header row", () => {
@@ -130,25 +135,25 @@ describe("Tenant switcher (beta chrome)", () => {
     expect(sidebar).toContain("<TenantSwitcher />");
   });
 
-  it("beta shell is L-shaped: sidebar column beside the header column", () => {
-    expect(layout).toContain("if (isBeta) {");
+  it("the shell is L-shaped: sidebar column beside the header column", () => {
     expect(layout).toContain('<div className="h-screen flex bg-gray-50 overflow-hidden">');
     expect(layout).toContain('<div className="flex min-w-0 flex-1 flex-col overflow-hidden">');
+    // The old full-width-header-on-top shell is deleted, not branched around.
+    expect(layout).not.toContain('"h-screen flex flex-col bg-gray-50 overflow-hidden"');
   });
 
-  it("beta drops the org nav level but keeps Billing on its own URL", () => {
-    expect(sidebar).toContain("function OrgSettingsLevelSidebar");
-    expect(sidebar).toContain("if (isBeta) return <OrgSettingsLevelSidebar");
+  it("there is no org nav level, and Billing keeps its own URL", () => {
     // Billing keeps its route — billing-guard, credit-alerts and onboarding
     // deep-link to it, so moving it would be pure link rot.
     expect(sidebar).toContain("`/orgs/${orgId}/billing`");
-    // The org "Overview" item (a brand picker) is gone from the beta surface —
-    // the tenant switcher is the brand picker now.
-    const orgSettings = sidebar.slice(
-      sidebar.indexOf("function OrgSettingsLevelSidebar"),
-      sidebar.indexOf("// Org Level Sidebar"),
+    // The org "Overview" item was only a brand picker; the switcher is the brand
+    // picker now, so the whole org nav level is gone.
+    const orgLevel = sidebar.slice(
+      sidebar.indexOf("function OrgLevelSidebar"),
+      sidebar.indexOf("function orgDomainFromName"),
     );
-    expect(orgSettings).not.toContain('label: "Overview"');
+    expect(orgLevel).not.toContain('label: "Overview"');
+    expect(orgLevel).toContain("<SidebarSection topSlot={<TenantSwitcher />}>");
   });
 
   it("both tenant surfaces share ONE switch implementation", () => {

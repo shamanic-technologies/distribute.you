@@ -37,7 +37,10 @@ describe("Dashboard mobile responsiveness", () => {
   );
 
   it("keeps the dashboard shell from horizontal overflow", () => {
-    expect(dashboardLayout).toContain("relative flex min-h-0 flex-1 overflow-hidden");
+    // L-shaped shell: the sidebar is a full-height column and the header + main
+    // are the column beside it, so the row wrapper is the shell root itself.
+    expect(dashboardLayout).toContain("h-screen flex bg-gray-50 overflow-hidden");
+    expect(dashboardLayout).toContain("flex min-w-0 flex-1 flex-col overflow-hidden");
     expect(dashboardLayout).toContain("min-w-0 flex-1 overflow-y-auto");
     expect(contextSidebar).toContain("max-w-[85vw]");
     expect(contextSidebar).toContain("min-w-0 flex-1 truncate");
