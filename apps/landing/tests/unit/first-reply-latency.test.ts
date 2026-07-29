@@ -155,7 +155,10 @@ describe("ROI calculator wiring", () => {
     expect(page).not.toContain('id="roi-cost"');
   });
 
-  it("states that the cost shown is the live cost per interested reply", () => {
-    expect(page).toContain("our live cost per interested reply");
+  it("attributes the cost to the client, who is the one paying it", () => {
+    // Not "our" cost. The client authorises a budget and is charged what the
+    // campaign spent, so the measured cost per interested reply is theirs.
+    expect(page).toContain("the live cost per interested reply our clients are paying");
+    expect(page).not.toContain("our live cost per interested reply");
   });
 });

@@ -147,3 +147,39 @@ describe("homepage agency multi-tenant section", () => {
     expect(html).toMatch(/clienta\.com/);
   });
 });
+
+describe("the cost of a meeting belongs to the client, never to us", () => {
+  // The client authorises a daily budget and is charged the budget spent. The
+  // measured cost per interested reply is THEIR cost of acquisition, which is
+  // why the page may never phrase it as ours: we have no cost per meeting to
+  // put in front of a buyer.
+
+  // Prose only. The inline stylesheet is full of `margin:` declarations, so a
+  // whole-file word check would fire on CSS instead of copy.
+  const copy = html
+    .replace(/<style[\s\S]*?<\/style>/g, "")
+    .replace(/<script[\s\S]*?<\/script>/g, "");
+
+  it("never frames the measured cost as ours", () => {
+    expect(copy).not.toMatch(/costs? us\b/i);
+    expect(copy).not.toMatch(/\bour (?:live )?cost per\b/i);
+    expect(copy).not.toMatch(/\bwe deliver a positive reply\b/i);
+  });
+
+  it("says plainly that the cost is what the client pays", () => {
+    expect(copy).toContain("actually cost you");
+    expect(copy).toContain("our clients are paying");
+  });
+
+  it("claims no at-cost or zero-margin pricing, which would be false", () => {
+    expect(copy).not.toMatch(/\bat cost\b|pass[- ]through|no mark[- ]?up/i);
+    expect(copy).not.toMatch(/\bmargin\b|\bmark[- ]?up\b/i);
+  });
+
+  it("stays out of which model produced the number", () => {
+    // Every client is served the best model, so the rate needs no qualifier and
+    // the buyer does not care which workflow produced it.
+    expect(copy).not.toMatch(/\bbest model\b|\bbest[- ]performing (?:model|workflow|playbook)\b/i);
+    expect(copy).not.toMatch(/\bcheapest workflow\b/i);
+  });
+});
