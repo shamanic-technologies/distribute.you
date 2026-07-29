@@ -175,7 +175,11 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?
   { key: "signups", label: "Sign-ups", unit: "sign-ups", desc: "Maximize free signups / trial starts." },
   { key: "sales_meetings", label: "Book appointments", unit: "appointments", desc: "Maximize booked sales meetings.", beta: true },
   { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits." },
-  { key: "positive_replies", label: "Positive replies for sales meetings", unit: "contacts", desc: "Maximize positive replies for a sales meeting from prospects." },
+  // The unit is what the budget BUYS, not who we email. "contacts" named the people
+  // reached, so the budget modal read "50 contacts / mo" for a goal that buys 50
+  // interested replies - and contradicted this row's own label. Byte-equal with
+  // brand-status-control's OUTCOME_UNIT so the two budget surfaces agree.
+  { key: "positive_replies", label: "Positive replies for sales meetings", unit: "positive replies", desc: "Maximize positive replies for a sales meeting from prospects." },
   { key: "form_submissions", label: "Form submissions", unit: "lead forms", desc: "Maximize form submissions." },
   { key: "website_purchase", label: "Website purchases", unit: "website purchases", desc: "Maximize direct website purchases." },
   { key: "sales", label: "Sales", unit: "sales", desc: "Maximize paying clients won via website visits or positive replies." },
@@ -243,6 +247,23 @@ function parseRateTextInput(raw: string, key: RateKey): number {
 
 function rateToText(n: number): string {
   return formatLocaleNumberInputValue(n);
+}
+
+/** The custom "Other" $/day, parsed. null when the field is empty or not a positive amount. */
+function parseCustomBudget(raw: string): number | null {
+  const parsed = parseLocaleNumberInput(raw);
+  return parsed !== null && parsed > 0 ? Math.round(parsed) : null;
+}
+
+/**
+ * Was the persisted selection the custom card? A restored snapshot carries the $/day and
+ * the "Other" text but not which card owned it, so it is recovered by matching: an
+ * unmatched tier selection wins, otherwise a typed custom amount does.
+ */
+function customBudgetMatchesSelection(customText: string, selected: number | null): boolean {
+  const custom = parseCustomBudget(customText);
+  if (custom === null) return false;
+  return selected === null || custom === selected;
 }
 
 // The five agency-model benefits (landing how-it-works "Sent on your behalf").
@@ -805,6 +826,13 @@ export function Onboarding() {
   // equivalent outcomes/mo is derived for the secondary label only.
   const [selectedBudget, setSelectedBudget] = useState<number | null>(() => restored?.selectedBudget ?? null);
   const [customBudget, setCustomBudget] = useState(() => restored?.customBudget ?? "");
+  // Which card owns the selection. When it is the custom one, `derivedBudget` reads the
+  // TYPED TEXT rather than the mirrored number, so the amount charged can never lag what
+  // the field shows. Derived on restore by matching the two persisted values, so no
+  // ONBOARDING_STATE_VERSION bump (a bump strands an in-flight checkout).
+  const [customBudgetSelected, setCustomBudgetSelected] = useState<boolean>(() =>
+    customBudgetMatchesSelection(restored?.customBudget ?? "", restored?.selectedBudget ?? null),
+  );
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(() => restored?.checkoutBudgetUsd ?? null);
   const [audiencePrompt, setAudiencePrompt] = useState(() => restored?.audiencePrompt ?? "");
   const [audienceCandidates, setAudienceCandidates] = useState<AudienceCandidate[] | null>(() => restored?.audienceCandidates ?? null);
@@ -831,6 +859,11 @@ export function Onboarding() {
   // loading; the step shows a skeleton until it lands.
   const [bestModelLadder, setBestModelLadder] = useState<WorkflowProjectionLadderResponse | null>(null);
   const bestModelFetchRef = useRef<Promise<void> | null>(null);
+  // The model step lets the user edit the two things the ROI is computed from
+  // (lifetime revenue and the goal's conversion rate) and recompute, because a return
+  // under 1x is otherwise unexplainable on a screen that shows neither number.
+  const [modelEconomicsBusy, setModelEconomicsBusy] = useState(false);
+  const [modelEconomicsError, setModelEconomicsError] = useState<string | null>(null);
   // Aggressive parallel launch. The whole launch (audiences, auto-topup, budget,
   // campaign create, onboarding-complete) is kicked off in the BACKGROUND the moment
   // the checkout returns — while the user fills the optional post-payment steps — so
@@ -1817,12 +1850,11 @@ export function Onboarding() {
     const storedPending = readPendingCheckoutLaunchOrNull();
     const id = brandIdRef.current ?? storedPending?.brandId ?? null;
     const orgId = orgIdRef.current ?? storedPending?.orgId ?? null;
-    // Live selection wins, matching the display precedence (derivedBudget() ??
-    // checkoutBudgetUsd at the bonus/pricing steps). checkoutBudgetUsd is only ever
-    // written from a restored/resumed snapshot, so after a checkout cancel it holds
-    // the PRIOR budget — putting it first would charge the stale amount even though
-    // the user re-picked a different tier.
-    const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;
+    // Same helper the summary callout and the checkout CTA read, so the charged amount
+    // is the displayed amount by construction. Live selection wins: checkoutBudgetUsd is
+    // only ever written from a restored/resumed snapshot, so after a checkout cancel it
+    // holds the PRIOR budget and leading with it would charge the stale amount.
+    const budget = budgetForCharge() ?? storedPending?.budgetUsd;
     const trimmed = url.trim();
     const normalizedCurrentUrl = trimmed ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`) : null;
     // A no-website brand has no URL; its identity/hostname is the typed brand name.
@@ -2001,6 +2033,74 @@ export function Onboarding() {
       console.error("[dashboard] onboarding: billing-account check failed, falling back to checkout", err);
       setBusy(false);
       setStep("bonus");
+    }
+  }
+
+  // The economics the best-model ROI is computed from: lifetime revenue and whichever
+  // conversion rate(s) this goal asks for. Same set the LTR + rates steps rendered.
+  function modelEconomicsKeys(): RateKey[] {
+    return ["ltv", ...RATE_KEYS_FOR_OUTCOME[outcome]];
+  }
+
+  // Save the edited economics and recompute the best-model projection. Mirrors
+  // saveLtrAndContinue's write discipline: only the fields this block RENDERED come
+  // from the form, the rest are read from the wire. Load-bearing here in particular —
+  // the model step runs on a fresh page load after Stripe, where the client copy can be
+  // a reconstructed snapshot full of placeholders.
+  async function saveModelEconomics() {
+    const id = brandIdRef.current;
+    if (!id) return;
+    const keys = modelEconomicsKeys();
+    let next: Record<RateKey, number>;
+    try {
+      next = { ...rates };
+      for (const key of keys) next[key] = parseRateTextInput(rateText[key], key);
+    } catch (err) {
+      setModelEconomicsError(err instanceof Error ? err.message : "Please enter valid numbers.");
+      return;
+    }
+    setModelEconomicsError(null);
+    setModelEconomicsBusy(true);
+    let payload: BrandSalesEconomicsInput;
+    try {
+      payload = await buildEconomicsPayload(id, keys, next);
+    } catch (err) {
+      setModelEconomicsError(
+        err instanceof Error ? err.message : "Your conversion rates could not be loaded. Please try again.",
+      );
+      setModelEconomicsBusy(false);
+      return;
+    }
+    try {
+      const { salesEconomics } = await saveBrandSalesEconomics(id, payload);
+      rememberSavedEconomics(salesEconomics);
+      // Adopt what was PERSISTED, not the client copy — they differ for every metric
+      // this block did not render.
+      const saved: Record<RateKey, number> = {
+        ...next,
+        ltv: salesEconomics.lifetimeRevenueUsd,
+        r2m: salesEconomics.replyToMeetingPct,
+        v2m: salesEconomics.visitToMeetingPct,
+        m2c: salesEconomics.meetingToClosePct,
+        v2s: salesEconomics.visitToSignupPct,
+        s2c: salesEconomics.signupToPaidClientPct,
+      };
+      setRates(saved);
+      setRateText((t) => ({
+        ...t,
+        ...Object.fromEntries(keys.map((key) => [key, rateToText(saved[key])])),
+      }));
+      ltvEditedRef.current = true;
+      ratesEditedRef.current = true;
+      // A stale ROI sitting beside freshly typed inputs is an incoherent surface, so the
+      // ladder is dropped and the step skeletons until the new projection lands.
+      setBestModelLadder(null);
+      await fetchBestModelLadder(id, outcome);
+    } catch (err) {
+      console.error("[dashboard] onboarding: failed to update economics from the model step", err);
+      setModelEconomicsError(err instanceof Error ? err.message : "Could not update your projection.");
+    } finally {
+      setModelEconomicsBusy(false);
     }
   }
 
@@ -2257,9 +2357,20 @@ export function Onboarding() {
     return Math.max(0, Math.round((b * 30) / uc));
   }
 
-  // The $/day for the current selection (or null if nothing selected yet).
+  // The $/day for the current selection (or null if nothing selected yet). When the
+  // custom card owns the selection the TYPED TEXT is authoritative — reading the
+  // mirrored `selectedBudget` instead is what let a keystroke-lagging number reach
+  // Stripe while the summary showed the freshly typed one.
   function derivedBudget(): number | null {
+    if (customBudgetSelected) return parseCustomBudget(customBudget);
     return selectedBudget;
+  }
+
+  // ONE source for every $/day the user is shown or charged: the pricing summary, the
+  // checkout CTA and the Stripe amount. They each carried their own copy of this
+  // expression, which is precisely how a displayed amount and a charged amount drift.
+  function budgetForCharge(): number | null {
+    return derivedBudget() ?? checkoutBudgetUsd;
   }
 
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
@@ -2754,6 +2865,14 @@ export function Onboarding() {
     const bestSlug = brandRow?.workflow.workflowDynastySlug ?? null;
     const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
     const pending = bestModelLadder === null;
+    const economicsKeys = modelEconomicsKeys();
+    // Live compare against the last saved set, never a sticky "edited" latch: typing a
+    // value and undoing it must disarm the button again.
+    const economicsDirty = economicsKeys.some((k) => {
+      const parsed = parseLocaleNumberInput(rateText[k]);
+      return parsed === null ? rateText[k].trim() !== rateToText(rates[k]) : parsed !== rates[k];
+    });
+    const roiUnderOne = resolved?.roiMultiple != null && resolved.roiMultiple < 1;
     return (
       <StepShell
         maxWidth="sm:max-w-2xl"
@@ -2765,6 +2884,59 @@ export function Onboarding() {
         <p className="mt-2 mb-6 text-gray-500">
           Based on your numbers, here is the model we will run for you and what each outcome should cost. These are the same projections you will see on your Strategy page.
         </p>
+        {/* The numbers the projection below is computed from. Without them on screen a
+            return under 1x reads as the model being bad, when it is almost always the
+            lifetime revenue being small. Editable, because the fix is to correct them. */}
+        <div
+          className={`mb-5 rounded-xl border p-4 ${roiUnderOne ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-white"}`}
+        >
+          <div className="text-sm font-semibold text-gray-900">Your numbers</div>
+          <p className="mt-1 text-xs leading-5 text-gray-600">
+            {roiUnderOne
+              ? "The return below is under 1x because these do not yet cover what one outcome costs. Correct them and we will recompute."
+              : "The projection below is computed from these. Change them and we will recompute."}
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {economicsKeys.map((k) => (
+              <label key={k} className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-gray-700">{RATE_META[k].label}</span>
+                <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
+                  {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-500">$</span>}
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={rateText[k]}
+                    onChange={(e) => setRateText((t) => ({ ...t, [k]: e.target.value }))}
+                    onBlur={() => {
+                      const value = parseLocaleNumberInput(rateText[k]);
+                      if (value !== null) setRateText((t) => ({ ...t, [k]: rateToText(value) }));
+                    }}
+                    className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
+                  />
+                  {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-500">%</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+          {modelEconomicsError && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {modelEconomicsError}
+            </div>
+          )}
+          <button
+            onClick={saveModelEconomics}
+            disabled={!economicsDirty || modelEconomicsBusy}
+            className={`mt-3 flex items-center gap-2 rounded-lg border border-brand-500 px-4 py-2 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 ${modelEconomicsBusy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40"}`}
+          >
+            {modelEconomicsBusy ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Updating…
+              </>
+            ) : (
+              "Update projection"
+            )}
+          </button>
+        </div>
         {pending ? (
           <div className="space-y-4">
             <Skeleton className="h-14 w-full" />
@@ -2889,7 +3061,7 @@ export function Onboarding() {
   }
 
   if (step === "bonus") {
-    const amount = derivedBudget() ?? checkoutBudgetUsd;
+    const amount = budgetForCharge();
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
@@ -2924,7 +3096,7 @@ export function Onboarding() {
   }
 
   // pricing — daily-budget selection ($/day is the primary value; outcomes/mo secondary)
-  const displayBudget = derivedBudget() ?? checkoutBudgetUsd;
+  const displayBudget = budgetForCharge();
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   return (
     <StepShell
@@ -2959,9 +3131,9 @@ export function Onboarding() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {COUNT_TIERS.map((n, i) => {
           const b = budgetForCount(n);
-          const active = b != null && selectedBudget === b;
+          const active = !customBudgetSelected && b != null && selectedBudget === b;
           return (
-            <button key={n} disabled={b == null} onClick={() => { if (b != null) setSelectedBudget(b); }} className={`rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
+            <button key={n} disabled={b == null} onClick={() => { if (b != null) { setCustomBudgetSelected(false); setSelectedBudget(b); } }} className={`rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
               {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
               <div className="text-xl font-bold text-gray-950">{b != null ? fmtUsd0(b) : "—"}<span className="text-sm font-normal text-gray-500"> / day</span></div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -2973,14 +3145,13 @@ export function Onboarding() {
         })}
         {/* Other — custom $/day */}
         {(() => {
-          const parsed = parseLocaleNumberInput(customBudget);
-          const customB = parsed === null ? null : Math.round(parsed);
-          const isCustom = customB !== null && customB > 0;
-          const active = isCustom && selectedBudget === customB;
+          const customB = parseCustomBudget(customBudget);
+          const isCustom = customB !== null;
+          const active = customBudgetSelected && isCustom;
           const cnt = isCustom ? countForBudget(customB) : null;
           return (
             <div
-              onClick={() => { if (isCustom) setSelectedBudget(customB); }}
+              onClick={() => { if (isCustom) setCustomBudgetSelected(true); }}
               className={`rounded-xl border-2 p-4 transition ${isCustom ? "cursor-pointer" : ""} ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}
             >
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
@@ -2991,9 +3162,12 @@ export function Onboarding() {
                   inputMode="numeric"
                   value={customBudget}
                   onChange={(e) => {
+                    // Typing an amount here IS choosing it, so the card takes the
+                    // selection. `selectedBudget` is kept in step purely so the snapshot
+                    // persists a number; `derivedBudget` reads this text, not that copy.
                     setCustomBudget(e.target.value);
-                    const v = parseLocaleNumberInput(e.target.value);
-                    setSelectedBudget(v !== null && v > 0 ? Math.round(v) : null);
+                    setCustomBudgetSelected(true);
+                    setSelectedBudget(parseCustomBudget(e.target.value));
                   }}
                   onBlur={() => {
                     const v = parseLocaleNumberInput(customBudget);
@@ -3075,6 +3249,10 @@ function OnboardingAudiences({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // A successful suggest APPENDS below the already-picked cards, so with a full
+  // selection above the fold the user sees nothing move and reads the click as a
+  // no-op. `notice` reports what the run actually produced, next to the button.
+  const [notice, setNotice] = useState<string | null>(null);
   const selectedAudienceIdSet = new Set(selectedAudienceIds);
   const candidateCount = candidates?.length ?? 0;
   const audienceMaxWidth =
@@ -3156,6 +3334,7 @@ function OnboardingAudiences({
       return;
     }
     setErr(null);
+    setNotice(null);
     setLoading(true);
     // Preserve already-selected candidates across a re-fetch — keep them selected,
     // visible during load, and merged ahead of the new results. Editing the prompt
@@ -3167,10 +3346,20 @@ function OnboardingAudiences({
       const keepIds = new Set(keep.map((c) => c.audienceId));
       const merged = [...keep, ...res.candidates.filter((c) => !keepIds.has(c.audienceId))];
       onCandidatesChange(merged);
-      if (res.candidates.length === 0 && keep.length === 0)
+      const added = merged.length - keep.length;
+      if (added > 0) {
+        setNotice(`${added} new ${added === 1 ? "audience" : "audiences"} generated`);
+      } else if (keep.length > 0) {
+        // Every candidate came back as one we already hold. This branch used to be
+        // SILENT: no cards moved, no message, so the run was indistinguishable from a
+        // dead button and one user re-clicked five times before giving up.
+        setErr("No new audiences this time. Try rephrasing your description.");
+      } else if (res.candidates.length === 0) {
         setErr("No audiences matched that description. Try rephrasing.");
+      }
     } catch (e) {
       console.error("[dashboard] suggestAudiences failed:", e);
+      setNotice(null);
       setErr("We couldn't generate audiences right now. Try again.");
     } finally {
       setLoading(false);
@@ -3233,21 +3422,30 @@ function OnboardingAudiences({
             </div>
           )}
         </div>
-        <button
-          onClick={() => runSuggest()}
-          disabled={loading || icpLoading || !prompt.trim()}
-          className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? (
-            <>
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
-            </>
-          ) : (
-            <>
-              <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
-            </>
+        {/* The outcome of the run sits BESIDE the button: the new cards render below the
+            already-picked ones, which on a full selection is off-screen. */}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => runSuggest()}
+            disabled={loading || icpLoading || !prompt.trim()}
+            className="flex items-center justify-center gap-2 rounded-xl border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-600 transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" /> Generating…
+              </>
+            ) : (
+              <>
+                <MagnifyingGlassIcon className="h-4 w-4" /> {candidates ? "Find new audiences" : "Find my perfect audiences"}
+              </>
+            )}
+          </button>
+          {notice && (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+              <CheckIcon className="h-4 w-4" /> {notice}
+            </span>
           )}
-        </button>
+        </div>
 
         {err && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{err}</div>

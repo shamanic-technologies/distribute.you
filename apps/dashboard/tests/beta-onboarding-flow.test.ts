@@ -210,8 +210,9 @@ describe("Beta onboarding guided flow", () => {
     // Canonical selection is the $/day budget, not the outcome count.
     expect(src).toContain("setSelectedBudget");
     expect(src).toContain("countForBudget");
-    // Other card: custom $ input drives selectedBudget, reselectable after another tier.
-    expect(src).toContain("const active = isCustom && selectedBudget === customB");
-    expect(src).toContain("if (isCustom) setSelectedBudget(customB)");
+    // Other card: the typed $ IS the selection (read at render time, not mirrored into a
+    // second state), and the card is reselectable after another tier.
+    expect(src).toContain("const active = customBudgetSelected && isCustom;");
+    expect(src).toContain("if (isCustom) setCustomBudgetSelected(true);");
   });
 });

@@ -74,12 +74,15 @@ describe("Beta onboarding resume persistence", () => {
 
   it("checkout amount prefers the LIVE selection over a stale restored budget", () => {
     // After a checkout cancel, checkoutBudgetUsd holds the PRIOR tier; re-picking a
-    // different tier updates derivedBudget() (selectedCount), so the charge must read
-    // derivedBudget() FIRST — same precedence as the bonus/pricing display.
-    expect(src).toContain("const budget = derivedBudget() ?? checkoutBudgetUsd ?? storedPending?.budgetUsd;");
+    // different tier updates derivedBudget(), so the charge must read derivedBudget()
+    // FIRST. That precedence now lives in ONE helper rather than being restated at each
+    // surface, which is what keeps the displayed and the charged amount identical.
+    expect(src).toContain("return derivedBudget() ?? checkoutBudgetUsd;");
     expect(src).not.toContain("const budget = checkoutBudgetUsd ?? storedPending?.budgetUsd ?? derivedBudget();");
-    // display precedence the charge now matches
-    expect(src).toContain("const amount = derivedBudget() ?? checkoutBudgetUsd;");
+    // Summary callout, checkout CTA and the Stripe amount all read that one helper.
+    expect(src).toContain("const displayBudget = budgetForCharge();");
+    expect(src).toContain("const amount = budgetForCharge();");
+    expect(src).toContain("const budget = budgetForCharge() ?? storedPending?.budgetUsd;");
   });
 
   it("opportunistic checkout read tolerates a stale/invalid blob (purge + null, no throw)", () => {
