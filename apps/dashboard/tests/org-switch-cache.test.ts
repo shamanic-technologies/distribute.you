@@ -24,10 +24,9 @@ describe("Org switch cross-org isolation framework", () => {
   const invalidatorPath = "src/components/org-cache-invalidator.tsx";
   const layoutPath = "src/app/(authed)/(dashboard)/layout.tsx";
   const orgActivatorPath = "src/components/org-activator.tsx";
-  const breadcrumbPath = "src/components/breadcrumb-nav.tsx";
-  // Org identity + the switch handlers were extracted out of breadcrumb-nav into
-  // this shared hook so the pre-beta breadcrumb and the beta sidebar-top
-  // TenantSwitcher run ONE implementation. The race guards follow the code.
+  // Org identity + the switch handlers live in this shared hook, consumed by
+  // every tenant surface (sidebar switcher + inline chip). The race guards read
+  // it rather than any single component.
   const tenantSwitchPath = "src/lib/use-tenant-switcher.ts";
   const queryProviderPath = "src/lib/query-provider.tsx";
   const useAuthQueryPath = "src/lib/use-auth-query.ts";
@@ -212,8 +211,7 @@ describe("Org switch cross-org isolation framework", () => {
 
   it("the tenant-switch hook exports clearBreadcrumbCaches", () => {
     expect(read(tenantSwitchPath)).toContain("export function clearBreadcrumbCaches");
-    // Both tenant surfaces read the same hook — no second copy to drift.
-    expect(read(breadcrumbPath)).toContain("@/lib/use-tenant-switcher");
+    // Every tenant surface reads the same hook — no second copy to drift.
     expect(read("src/components/tenant-switcher.tsx")).toContain("@/lib/use-tenant-switcher");
   });
 });

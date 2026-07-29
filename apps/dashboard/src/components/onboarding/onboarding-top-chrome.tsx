@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useOrganizationList, useUser } from "@clerk/nextjs";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { BreadcrumbNav } from "@/components/breadcrumb-nav";
+import { TenantChip } from "@/components/tenant-switcher";
 import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -23,23 +23,24 @@ import { explicitHierarchyHref } from "@/lib/last-brand";
  * org×brand to return to, so trapping them is wrong. Multitenant-onboarding UX (Vercel
  * / Linear / Stripe) keeps the org/brand switcher + a clear exit visible during a
  * create flow — the create step is a layer ON TOP of the app, never a full-screen
- * takeover. Mount the dashboard breadcrumb (org→brand switcher = jump to any existing
- * tenant), a clickable logo, and a Cancel link (both → the dashboard, which resolves
- * to the last-visited brand via the `last-brand` cookie). The flow itself is unchanged
+ * takeover. Mount the dashboard's tenant switcher (jump to any existing tenant), a
+ * clickable logo, and a Cancel link (both → the dashboard, which resolves to the
+ * last-visited brand via the `last-brand` cookie). The flow itself is unchanged
  * (#1985 "real flow" stays intact) — this only ADDS the escape hatch.
  *
- * Note: `BreadcrumbNav` needs only Clerk hooks (global `ClerkProvider`) + `fetch`, no
+ * Note: `TenantChip` needs only Clerk hooks (global `ClerkProvider`) + `fetch`, no
  * dashboard providers (OrgContext / Features / React Query), so it mounts here cleanly.
- * On `/onboarding` there is no `/orgs/:id` in the URL, so it renders the org switcher
- * (Dashboard ▾) with the user's memberships; the brand switcher appears once an org is
- * picked. The Cancel target works for `from=add` (active org stays the existing,
- * complete one); for `new=1` the reliable "go back" affordance is the org switcher.
+ * On `/onboarding` there is no `/orgs/:id` in the URL, so it renders the org row alone
+ * (labelled from Clerk's active org, or a neutral placeholder in the `?new=1` flow);
+ * the brand row and Billing are org-scoped and hide themselves. The Cancel target works
+ * for `from=add` (active org stays the existing, complete one); for `new=1` the reliable
+ * "go back" affordance is the org switcher.
  *
  * STAFF (god-mode) ALSO get the escape chrome on bare `/onboarding`. A staff member
  * whose active org is an incomplete/never-onboarded tenant (e.g. dropped there by the
  * god-mode org switch) is otherwise pinned on `/onboarding` by the edge gate with no
  * way back — the first-run "trap" is wrong for them since they already have live
- * tenants to return to. `BreadcrumbNav` renders the staff all-orgs switcher (its own
+ * tenants to return to. `TenantChip` renders the staff all-orgs switcher (its own
  * `isStaff` gate), so switching to any complete org clears the edge gate and escapes.
  *
  * ANY user who ALREADY has a COMPLETED org gets the escape chrome too. A non-staff
@@ -104,7 +105,7 @@ export function OnboardingTopChrome() {
         </Link>
 
         <div className="min-w-0 flex-1">
-          <BreadcrumbNav />
+          <TenantChip />
         </div>
 
         <Link

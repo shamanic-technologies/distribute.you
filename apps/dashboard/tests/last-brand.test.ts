@@ -165,9 +165,9 @@ describe("org landing page — client fallback redirect", () => {
 // brand-level feature home → no feature/create-campaign choice to
 // make).
 
-describe("hierarchy links — breadcrumb, header, sidebar", () => {
-  const breadcrumb = fs.readFileSync(
-    path.join(__dirname, "../src/components/breadcrumb-nav.tsx"),
+describe("hierarchy links — header, sidebar", () => {
+  const switcher = fs.readFileSync(
+    path.join(__dirname, "../src/components/tenant-switcher.tsx"),
     "utf-8",
   );
   const header = fs.readFileSync(
@@ -180,14 +180,13 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
   );
   // campaign-sidebar.tsx was removed with the campaign concept.
 
-  it("marks breadcrumb parent links as explicit hierarchy navigation", () => {
-    // The header no longer carries a logo link — the sidebar-top tenant switcher
-    // replaced it — so there is no header hierarchy link left to mark. The
-    // breadcrumb still serves the onboarding chrome.
+  it("leaves no stale hierarchy link in the chrome the switcher replaced", () => {
+    // The header carries no logo link and the top-bar breadcrumb is deleted, so
+    // the only hierarchy links left are the sidebar rows below. The switcher
+    // navigates via router.push, not `explicitHierarchyHref`, because switching
+    // tenant is not "walk up the hierarchy".
     expect(header).not.toContain("explicitHierarchyHref");
-    // Org root link uses the per-tab URL org, not the shared active org (#1948).
-    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
-    expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
+    expect(switcher).not.toContain("explicitHierarchyHref");
   });
 
   it("marks sidebar back links and overview rows as explicit hierarchy navigation", () => {

@@ -48,7 +48,7 @@ describe("Onboarding escape chrome", () => {
   });
 
   it("add/new flow mounts the org→brand switcher + a logo + a Cancel exit", () => {
-    expect(chrome).toContain("BreadcrumbNav");
+    expect(chrome).toContain("TenantChip");
     // Both the logo and Cancel point at the dashboard (resolves to last-visited
     // brand via the last-brand cookie at the edge).
     expect(chrome).toContain("explicitHierarchyHref");

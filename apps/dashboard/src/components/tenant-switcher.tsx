@@ -358,23 +358,36 @@ export function TenantSwitcher() {
 }
 
 /**
- * Mobile header chip  The sidebar is a drawer below `md`, so the
- * chip is a FULL switcher in its own right — tapping it opens the same menu
- * anchored under the header. Routing it through the drawer instead would cost
- * two taps and put a right-hand flyout inside a 224px panel.
+ * Inline chip form of the switcher — a compact `[logo] name ▾` button with the
+ * menu hanging directly under it, instead of a full-width sidebar row.
+ *
+ * Two callers:
+ *  - the dashboard header below `md`, where the sidebar is a drawer, so the chip
+ *    is a FULL switcher in its own right (routing it through the drawer would
+ *    cost two taps and put a right-hand flyout inside a 224px panel);
+ *  - the onboarding escape chrome, which has no sidebar at all and needs the org
+ *    switcher inline so a staff member — or anyone with an already-completed org
+ *    — can jump back out to a live tenant.
+ *
+ * Works with NO org in the URL: on `/onboarding` the hook falls back to Clerk's
+ * active org for the label (except in the `?new=1` create-an-org flow, where the
+ * active org would mislead, so it keeps the neutral placeholder), and the menu's
+ * brand row + Billing hide themselves since both are org-scoped.
+ *
+ * The panel is anchored to the chip (`absolute top-full`), NOT to a hardcoded
+ * header offset — the two callers' headers are different heights.
  */
-export function MobileTenantChip() {
+export function TenantChip({ className = "" }: { className?: string }) {
   const t = useTenantSwitcher();
   const [open, setOpen] = useState(false);
   const rootRef = useCloseOnOutsideClick(() => setOpen(false));
 
-  if (!t.orgId) return null;
   const label = t.brandId
     ? t.displayBrand?.name || t.displayBrand?.domain || "Brand"
     : t.displayOrgName;
 
   return (
-    <div ref={rootRef} className="relative min-w-0 md:hidden">
+    <div ref={rootRef} className={`relative min-w-0 ${className}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -400,10 +413,15 @@ export function MobileTenantChip() {
       </button>
 
       {open && (
-        <div className="fixed left-2 right-2 top-[calc(3.5rem+0.25rem)] z-[60] max-h-[calc(100vh-4.5rem)] overflow-y-auto">
+        <div className="absolute left-0 top-full z-[60] mt-1 max-h-[calc(100vh-6rem)] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto">
           <TenantMenu t={t} onDone={() => setOpen(false)} />
         </div>
       )}
     </div>
   );
+}
+
+/** The dashboard header's chip — the sidebar carries the switcher from `md` up. */
+export function MobileTenantChip() {
+  return <TenantChip className="md:hidden" />;
 }

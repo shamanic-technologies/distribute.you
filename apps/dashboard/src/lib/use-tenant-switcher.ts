@@ -57,11 +57,12 @@ export function orgDomainFromName(name?: string | null): string | null {
  * The single source of truth for org → brand identity + switching.
  *
  * Consumed by BOTH tenant surfaces so they can never drift:
- *  - `breadcrumb-nav.tsx` (the pre-beta top-bar breadcrumb + the onboarding chrome)
- *  - `tenant-switcher.tsx` (the beta sidebar-top switcher)
+ *  - `<TenantSwitcher>` (the sidebar-top block, dashboard)
+ *  - `<TenantChip>` (the inline chip: the dashboard header below `md`, and the
+ *    onboarding escape chrome, which has no sidebar)
  *
- * Everything here was extracted verbatim from breadcrumb-nav.tsx; the source
- * guards that used to read that file now read this one.
+ * Extracted from the old top-bar breadcrumb (now deleted); the source guards
+ * that used to read that file read this one.
  */
 export function useTenantSwitcher() {
   const pathname = usePathname();

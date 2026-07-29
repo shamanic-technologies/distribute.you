@@ -56,19 +56,18 @@ describe("Tables paginate 20 rows/page (item 3)", () => {
 });
 
 describe("Org logos render Clerk imageUrl (item 4)", () => {
-  const breadcrumb = read("components/breadcrumb-nav.tsx");
-  it("breadcrumb root + switcher use organization.imageUrl via OrgAvatar", () => {
-    // OrgAvatar is a shared component now — the breadcrumb and the beta
-    // sidebar-top TenantSwitcher both render it, so it can't drift.
+  const switcher = read("components/tenant-switcher.tsx");
+  it("the tenant switcher uses organization.imageUrl via OrgAvatar", () => {
+    // OrgAvatar is a shared component; the switcher is the only tenant surface
+    // left (the old top-bar breadcrumb was deleted at GA).
     expect(read("components/org-avatar.tsx")).toContain("export function OrgAvatar(");
-    expect(breadcrumb).toContain("OrgAvatar");
-    expect(read("components/tenant-switcher.tsx")).toContain("OrgAvatar");
+    expect(switcher).toContain("OrgAvatar");
     // Root avatar uses the per-tab URL org's cached image (#1948); the switcher
     // list still maps each membership's own imageUrl.
-    expect(breadcrumb).toContain("imageUrl={displayOrgImageUrl}");
-    expect(breadcrumb).toContain("imageUrl={m.organization.imageUrl}");
+    expect(switcher).toContain("imageUrl={t.displayOrgImageUrl}");
+    expect(switcher).toContain("imageUrl={m.organization.imageUrl}");
     // No more hardcoded-initial-only org badge.
-    expect(breadcrumb).not.toContain("{organization?.name?.[0] || \"O\"}");
+    expect(switcher).not.toContain("{organization?.name?.[0] || \"O\"}");
   });
 });
 

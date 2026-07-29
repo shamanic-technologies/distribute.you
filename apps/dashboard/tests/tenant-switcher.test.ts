@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { existsSync } from "fs";
+import { join } from "path";
 
 /**
  * Sidebar-top tenant switcher (GA — the only dashboard chrome).
@@ -46,11 +48,14 @@ describe("Tenant switcher", () => {
     expect(header).not.toContain("minimal");
   });
 
-  it("breadcrumb-nav survives for the onboarding chrome", () => {
-    // It is no longer mounted in the dashboard, but `onboarding-top-chrome`
-    // still renders it (guarded by onboarding-escape-chrome.test.ts).
+  it("the onboarding escape chrome reuses the SAME switcher, not a second one", () => {
+    // The old top-bar breadcrumb was the last other tenant surface; it is gone,
+    // so there is exactly one implementation left in the app.
     expect(read("src/components/onboarding/onboarding-top-chrome.tsx")).toContain(
-      "BreadcrumbNav",
+      "<TenantChip />",
+    );
+    expect(existsSync(join(__dirname, "..", "src/components/breadcrumb-nav.tsx"))).toBe(
+      false,
     );
   });
 
@@ -59,15 +64,18 @@ describe("Tenant switcher", () => {
     expect(switcher).toContain("md:hidden");
   });
 
-  it("the mobile chip opens the FULL menu itself, not the drawer", () => {
+  it("the chip opens the FULL menu itself, not the drawer", () => {
     // Routing through the drawer would cost two taps and drop a right-hand
-    // flyout inside a 224px panel. The chip anchors the same menu under the
-    // header instead, and it must not reach for the drawer toggle.
-    const chip = switcher.slice(switcher.indexOf("export function MobileTenantChip"));
+    // flyout inside a 224px panel. The chip anchors the same menu under itself,
+    // and it must not reach for the drawer toggle.
+    const chip = switcher.slice(switcher.indexOf("export function TenantChip"));
     expect(chip).toContain("<TenantMenu");
     expect(chip).not.toContain("useMobileSidebar");
     // Bounded to the viewport so a long org list can't run off a short screen.
     expect(chip).toContain("overflow-y-auto");
+    // Anchored to the chip, not to a hardcoded header offset — its two callers
+    // (dashboard header, onboarding escape chrome) have different heights.
+    expect(chip).toContain("absolute left-0 top-full");
   });
 
   it("the panel carries org, brand and org-scoped Billing", () => {
@@ -158,7 +166,6 @@ describe("Tenant switcher", () => {
 
   it("both tenant surfaces share ONE switch implementation", () => {
     expect(hook).toContain("export function useTenantSwitcher");
-    expect(read("src/components/breadcrumb-nav.tsx")).toContain("useTenantSwitcher()");
     expect(switcher).toContain("useTenantSwitcher()");
     // God-mode (staff all-orgs list + join-then-setActive) survives the move.
     expect(hook).toContain("isAdminEmail");

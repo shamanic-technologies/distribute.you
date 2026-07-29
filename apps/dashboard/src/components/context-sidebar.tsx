@@ -349,7 +349,7 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
 }
 
 // Derive a domain-shaped string from the org name (onboarding sets org name =
-// brand domain). Mirrors the helper in breadcrumb-nav.tsx.
+// brand domain). Mirrors the helper in lib/use-tenant-switcher.ts.
 function orgDomainFromName(name?: string | null): string | null {
   if (!name) return null;
   const candidate = name.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
