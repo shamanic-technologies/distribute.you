@@ -3864,6 +3864,10 @@ export interface Payment {
   status: string;
   createdAt: string; // ISO 8601
   description: string | null;
+  // Settled refunds + lost disputes on this payment, minor units. Stripe leaves a
+  // refunded payment `succeeded` at its full amount, so this is the only signal
+  // that the money came back. See lib/payment-return.ts.
+  amountReturnedCents: number;
 }
 
 // stripe-service mirrors raw Stripe PaymentIntents; `amount` is cents (number),
@@ -3876,6 +3880,10 @@ const PaymentIntentSchema = z
     status: z.string(),
     created: z.coerce.number(),
     description: z.string().nullable().optional(),
+    // stripe-service v0.27.0 derives this on every mirrored PaymentIntent. Required
+    // on purpose: an absent value would silently read as "nothing came back", which
+    // is exactly the wrong story to tell. Absent => loud shape mismatch.
+    amount_returned: z.coerce.number(),
   })
   .passthrough();
 
@@ -3907,6 +3915,7 @@ export async function getBillingPayments(token?: string): Promise<{ payments: Pa
     status: pi.status,
     createdAt: new Date(pi.created * 1000).toISOString(),
     description: pi.description ?? null,
+    amountReturnedCents: pi.amount_returned,
   }));
   // Most recent first.
   payments.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));

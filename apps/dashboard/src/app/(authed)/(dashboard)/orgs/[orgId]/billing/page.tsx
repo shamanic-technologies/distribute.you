@@ -20,6 +20,7 @@ import {
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
+import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -864,7 +865,14 @@ export default function BillingPage() {
           ) : (
             <ul className="divide-y divide-gray-100">
               {payments.map((payment) => {
-                const badge = paymentStatusBadge(payment.status);
+                // Stripe keeps a refunded top-up `succeeded` at its full amount, so the
+                // returned total is what decides the badge and the amount shown. Nothing
+                // is hidden or filtered out: the charge stays in the history, tagged.
+                const returned = paymentReturnBadge(
+                  paymentReturnState(payment.amountCents, payment.amountReturnedCents)
+                );
+                const badge = returned ?? paymentStatusBadge(payment.status);
+                const keptCents = Math.max(0, payment.amountCents - payment.amountReturnedCents);
                 return (
                   <li key={payment.id} className="flex items-center justify-between gap-3 py-2.5">
                     <div className="min-w-0">
@@ -872,14 +880,30 @@ export default function BillingPage() {
                         {payment.description || "Credit top-up"}
                       </p>
                       <p className="text-xs text-gray-500">{formatGrantDate(payment.createdAt)}</p>
+                      {returned && (
+                        <p className="text-xs text-gray-500">
+                          {formatBillingCents(payment.amountReturnedCents)} returned to your card
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 whitespace-nowrap">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
                         {badge.label}
                       </span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {formatBillingCents(payment.amountCents)}
-                      </span>
+                      {returned ? (
+                        <span className="flex items-baseline gap-1.5">
+                          <span className="text-sm text-gray-400 line-through">
+                            {formatBillingCents(payment.amountCents)}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {formatBillingCents(keptCents)}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatBillingCents(payment.amountCents)}
+                        </span>
+                      )}
                     </div>
                   </li>
                 );

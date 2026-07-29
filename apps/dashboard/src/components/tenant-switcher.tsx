@@ -3,12 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { BrandLogo } from "./brand-logo";
 import { OrgAvatar } from "./org-avatar";
-import { MaturityBadge } from "./maturity-badge";
 import { CHROME_ROW_HEIGHT } from "@/lib/chrome-row";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 
 /**
- * Sidebar-top tenant switcher (beta chrome).
+ * Sidebar-top tenant switcher.
  *
  * Replaces the top-bar breadcrumb: the tenant identity lives at the top of the
  * sidebar, level with the header row, and ONE menu carries the whole hierarchy.
@@ -120,9 +119,8 @@ function TenantMenu({
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
-      <div className="flex items-center gap-2 px-3 py-2">
+      <div className="px-3 py-2">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Workspace</p>
-        <MaturityBadge level="beta" />
       </div>
 
       {/* ORG — tier 1 */}
@@ -360,7 +358,7 @@ export function TenantSwitcher() {
 }
 
 /**
- * Mobile header chip (beta chrome). The sidebar is a drawer below `md`, so the
+ * Mobile header chip  The sidebar is a drawer below `md`, so the
  * chip is a FULL switcher in its own right — tapping it opens the same menu
  * anchored under the header. Routing it through the drawer instead would cost
  * two taps and put a right-hand flyout inside a 224px panel.

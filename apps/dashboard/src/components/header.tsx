@@ -4,16 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useState, useRef, useEffect } from "react";
-import { BreadcrumbNav } from "./breadcrumb-nav";
 import { MobileTenantChip } from "./tenant-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { useMobileSidebar } from "./mobile-sidebar-context";
-import { explicitHierarchyHref } from "@/lib/last-brand";
 import { CHROME_ROW_HEIGHT } from "@/lib/chrome-row";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "./maturity-badge";
 
-export function Header({ minimal = false }: { minimal?: boolean }) {
+export function Header() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const isBeta = useIsBetaUser();
@@ -33,55 +31,32 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-      {/* Beta chrome: a FIXED row height shared with the sidebar's tenant-switcher
-          block (`CHROME_ROW_HEIGHT`). In the L-shaped shell the two sit side by
-          side, so an auto height derived from whatever control happens to be
-          tallest (`py-2.5` around a 36px account button ≈ 57px) never lines up
-          with a hand-tuned sidebar value. One token, both rows, seam gone. */}
-      <div className={`px-4 flex items-center justify-between ${isBeta ? CHROME_ROW_HEIGHT : "py-2.5"}`}>
-        {/* Left: Hamburger + Logo + Breadcrumb */}
+      {/* A FIXED row height shared with the sidebar's tenant-switcher block
+          (`CHROME_ROW_HEIGHT`). In the L-shaped shell the two sit side by side,
+          so an auto height derived from whatever control happens to be tallest
+          (`py-2.5` around a 36px account button ≈ 57px) never lines up with a
+          hand-tuned sidebar value. One token, both rows, seam gone. */}
+      <div className={`px-4 flex items-center justify-between ${CHROME_ROW_HEIGHT}`}>
+        {/* Left: hamburger + tenant chip (mobile only) */}
         <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
-          {/* Mobile hamburger — hidden in minimal mode (no sidebar to toggle) */}
-          {!minimal && (
-            <button
-              onClick={toggleMobileSidebar}
-              className="md:hidden p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 transition"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          )}
+          <button
+            onClick={toggleMobileSidebar}
+            className="md:hidden p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 transition"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
 
-          {/* BETA chrome: the product mark, the wordmark and the breadcrumb all
-              leave the top bar. Tenant identity + switching move to the top of the
-              sidebar (`TenantSwitcher`), which is where the research put them —
-              NN/g rates a breadcrumb useless at 2 levels, and Notion/Slack/Linear
+          {/* The product mark, the wordmark and the breadcrumb do NOT live in the
+              top bar. Tenant identity + switching sit at the top of the sidebar
+              (`TenantSwitcher`), which is where the research put them — NN/g
+              rates a breadcrumb useless at 2 levels, and Notion/Slack/Linear
               (single-product SaaS) carry no product logo in the bar at all. The
               bar keeps only universal actions (theme, account), per Atlassian.
-              On mobile the sidebar is a drawer, so a compact tenant chip stands in
-              and opens it — otherwise the mobile bar would carry no identity. */}
-          {isBeta && !minimal ? (
-            <MobileTenantChip />
-          ) : minimal ? (
-            <div className="flex items-center gap-2">
-              <Image src="/logo-distribute.svg" alt="distribute.you" width={28} height={28} className="rounded-md" />
-              <span className="font-display font-extrabold text-lg tracking-tight text-gray-900 hidden sm:block">distribute.you</span>
-              <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase hidden sm:block">beta</span>
-            </div>
-          ) : (
-            <Link href={explicitHierarchyHref("/")} className="flex items-center gap-2 pr-4 border-r border-gray-200">
-              <Image src="/logo-distribute.svg" alt="distribute.you" width={28} height={28} className="rounded-md" />
-              <span className="font-display font-extrabold text-lg tracking-tight text-gray-900 hidden sm:block">distribute.you</span>
-              <span className="text-[10px] text-brand-500 font-medium bg-brand-50 px-1.5 py-0.5 rounded uppercase hidden sm:block">beta</span>
-            </Link>
-          )}
-
-          {!minimal && !isBeta && (
-            <div className="min-w-0 flex-1">
-              <BreadcrumbNav />
-            </div>
-          )}
+              On mobile the sidebar is a drawer, so the chip carries identity and
+              opens the same switcher menu. */}
+          <MobileTenantChip />
         </div>
 
         {/* Right: User menu */}
