@@ -374,6 +374,11 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   // (GET /keys/platform/twilio/decrypt) and JSON.parses { accountSid, authToken },
   // so this env var's value must be that JSON string.
   { provider: "twilio", envVar: "TWILIO_PLATFORM_KEY" },
+  // Clerk backend secret — the identity root. client-service is the only backend
+  // that calls the Clerk API, and it resolves this through key-service
+  // (GET /keys/platform/clerk/decrypt) instead of holding its own Railway env var.
+  // This app already holds the same secret for its own Clerk auth, so it registers it.
+  { provider: "clerk", envVar: "CLERK_SECRET_KEY" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.

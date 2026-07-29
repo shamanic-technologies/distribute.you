@@ -255,6 +255,11 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
   { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
   { provider: "posthog", envVar: "POSTHOG_PERSONAL_API_KEY" },
+  // Clerk backend secret — the identity root. client-service is the only backend
+  // that calls the Clerk API, and it resolves this through key-service
+  // (GET /keys/platform/clerk/decrypt) instead of holding its own Railway env var.
+  // This app already holds the same secret for its own Clerk auth, so it registers it.
+  { provider: "clerk", envVar: "CLERK_SECRET_KEY" },
 ];
 
 const COLD_EMAIL_PROMPT = `Today is \${new Date().toISOString().split("T")[0]}.
