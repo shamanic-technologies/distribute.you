@@ -9,7 +9,6 @@ import { AdsPurchaseTracker } from "@/components/ads-purchase-tracker";
 import { DistributeSaleTracker } from "@/components/distribute-sale-tracker";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
-import { OrgCacheInvalidator } from "@/components/org-cache-invalidator";
 import { CreditAlerts } from "@/components/billing/credit-alerts";
 import { NoAudienceBanner } from "@/components/onboarding/no-audience-banner";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
@@ -115,11 +114,6 @@ export default function DashboardLayout({
 }) {
   return (
     <>
-      {/* Mounted ABOVE QueryProvider on purpose: the QueryProvider remounts the
-          whole authed subtree under `key={org.id}` to reset the cache on org
-          switch, so the org-change navigator must live outside it to survive that
-          remount and fire its router.push. */}
-      <OrgCacheInvalidator />
       <QueryProvider>
         <MobileSidebarProvider>
           <OrgContextProvider>

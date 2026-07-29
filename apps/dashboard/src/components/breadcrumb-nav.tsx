@@ -8,10 +8,9 @@ import { OrgAvatar } from "./org-avatar";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
 
-// Org/brand identity, the display caches and the switch handlers live in
-// `@/lib/use-tenant-switcher` — the SINGLE source shared with the beta
-// sidebar-top `TenantSwitcher`, so the two tenant surfaces can never drift.
-export { clearBreadcrumbCaches } from "@/lib/use-tenant-switcher";
+// Org/brand identity and the switch handlers live in `@/lib/use-tenant-switcher`
+// — the SINGLE source shared with the sidebar-top `TenantSwitcher`, so the two
+// tenant surfaces can never drift.
 
 export function BreadcrumbNav() {
   const {

@@ -253,9 +253,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   // the new org's JWT (the DIS-143 cross-org 404). Paired with the proxy's
   // server-side fail-closed org guard (`checkProxyOrg`) for defense in depth.
   //
-  // NOTE: this remounts the whole authed subtree on switch, so org-change navigation
-  // lives in `OrgCacheInvalidator`, mounted ABOVE this provider (it must survive the
-  // remount to fire its `router.push`).
+  // NOTE: this remounts the whole authed subtree on switch, which is ALSO what
+  // resets the tenant-switcher's org/brand labels — there is no separate cache to
+  // clear (the labels are ordinary persisted queries under this org's prefix).
   // Monotonic org latch for the remount `key`. Clerk's `useOrganization()` blinks
   // `organization: null` transiently during background JWT rotation (~1/min) and on
   // tab focus/reconnect (CLAUDE.md "Readiness gates MUST be monotonic — never blank a

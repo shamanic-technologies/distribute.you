@@ -61,41 +61,21 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("persistEnabled ? idbStorage : undefined");
   });
 
-  it("OrgCacheInvalidator no longer clears the React Query cache (remount supersedes)", () => {
-    const content = read(invalidatorPath);
-    expect(content).not.toContain("queryClient.clear()");
-    expect(content).not.toContain("useQueryClient");
-  });
-
-  it("OrgCacheInvalidator clears breadcrumb caches on org change", () => {
-    const content = read(invalidatorPath);
-    expect(content).toContain("useOrganization");
-    expect(content).toContain("prevOrgId");
-    expect(content).toContain("clearBreadcrumbCaches");
-  });
-
-  it("OrgCacheInvalidator NEVER navigates on a (possibly cross-tab) active-org change", () => {
-    // The URL is the per-tab source of truth; the Clerk active-org signal is the
-    // shared/global one and flips when ANOTHER tab switches. Navigating this tab on
-    // that signal yanked tab A onto tab B's org (the cross-tab "switches by itself"
-    // bug). In-tab switches navigate via handleOrgSwitch; URL→active via OrgActivator.
-    const content = read(invalidatorPath);
-    expect(content).not.toContain("router.push");
-    expect(content).not.toContain("useRouter");
-    expect(content).not.toContain("usePathname");
-  });
-
-  it("OrgCacheInvalidator does NOT act on initial mount", () => {
-    expect(read(invalidatorPath)).toContain("prevOrgId.current !== null");
-  });
-
-  it("OrgCacheInvalidator is mounted ABOVE QueryProvider so navigation survives the remount", () => {
-    const content = read(layoutPath);
-    const navIdx = content.indexOf("<OrgCacheInvalidator />");
-    const providerIdx = content.indexOf("<QueryProvider>");
-    expect(navIdx).toBeGreaterThanOrEqual(0);
-    expect(providerIdx).toBeGreaterThanOrEqual(0);
-    expect(navIdx).toBeLessThan(providerIdx);
+  it("the keyed remount is the ONLY org-switch cache reset (no side cache to clear)", () => {
+    // The tenant switcher used to hold org/brand labels in module-level caches, so a
+    // switch needed an `OrgCacheInvalidator` mounted above the provider to clear them.
+    // Those labels are now ordinary persisted queries under this org's persister
+    // prefix, so the keyed remount resets memory AND the disk key space at once —
+    // the invalidator and its `clearBreadcrumbCaches` were deleted as dead code.
+    expect(fs.existsSync(path.join(__dirname, "..", invalidatorPath))).toBe(false);
+    for (const p of [layoutPath, tenantSwitchPath, breadcrumbPath, queryProviderPath]) {
+      expect(read(p), `${p} must not reference the deleted invalidator`).not.toContain(
+        "OrgCacheInvalidator",
+      );
+      expect(read(p), `${p} must not reference the deleted cache clear`).not.toContain(
+        "clearBreadcrumbCaches",
+      );
+    }
   });
 
   it("OrgActivator activates the URL org on direct org deep links", () => {
@@ -202,17 +182,8 @@ describe("Org switch cross-org isolation framework", () => {
     expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
   });
 
-  it("handleOrgSwitch clears breadcrumb caches before setActive", () => {
-    const content = read(tenantSwitchPath);
-    const match = content.match(
-      /handleOrgSwitch[\s\S]*?clearBreadcrumbCaches[\s\S]*?setActive/,
-    );
-    expect(match).not.toBeNull();
-  });
-
-  it("the tenant-switch hook exports clearBreadcrumbCaches", () => {
-    expect(read(tenantSwitchPath)).toContain("export function clearBreadcrumbCaches");
-    // Both tenant surfaces read the same hook — no second copy to drift.
+  it("both tenant surfaces read the ONE tenant-switch hook", () => {
+    // No second copy of the org/brand identity + switch logic to drift.
     expect(read(breadcrumbPath)).toContain("@/lib/use-tenant-switcher");
     expect(read("src/components/tenant-switcher.tsx")).toContain("@/lib/use-tenant-switcher");
   });

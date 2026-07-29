@@ -7,13 +7,16 @@ import {
   useSession,
   useUser,
 } from "@clerk/nextjs";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
+import { useAuthQuery } from "@/lib/use-auth-query";
+import { getBrand, listBrands } from "@/lib/api";
 
 export interface TenantBrand {
   id: string;
-  name: string;
-  domain: string;
+  name: string | null;
+  domain: string | null;
 }
 
 export interface TenantOrgOption {
@@ -24,24 +27,11 @@ export interface TenantOrgOption {
   hasImage?: boolean;
 }
 
-// Caches — the brand LIST is keyed by org id. `/api/v1/brands` is org-scoped, so a
-// single global cache bled one org's brands into another org's dropdown on a
-// god-mode / cross-tab / direct-URL nav (any path that skips handleOrgSwitch, the
-// only place the cache cleared) → the current brand missing from the list.
-const brandListCache: Record<string, { data: TenantBrand[]; timestamp: number }> = {};
-// The by-id brand label, keyed by brand id. The beta chrome mounts this hook up
-// to three times at once (desktop sidebar + the mobile drawer's sidebar + the
-// mobile header chip), and each instance would otherwise re-fetch the same brand
-// on every navigation. Same 60s TTL as the list.
-const brandByIdCache: Record<string, { data: TenantBrand; timestamp: number }> = {};
-const CACHE_TTL = 60000;
-
-/** Clear module-level tenant caches (called on org switch). Named
- *  `clearBreadcrumbCaches` for continuity with its original home + the
- *  `OrgCacheInvalidator` import site. */
-export function clearBreadcrumbCaches() {
-  for (const key of Object.keys(brandListCache)) delete brandListCache[key];
-  for (const key of Object.keys(brandByIdCache)) delete brandByIdCache[key];
+/** The org label persisted alongside every other query (name + Clerk avatar). */
+interface TenantOrgIdentity {
+  name: string;
+  imageUrl?: string;
+  hasImage?: boolean;
 }
 
 /** The org's domain when its name is domain-shaped. Onboarding creates the org
@@ -57,11 +47,32 @@ export function orgDomainFromName(name?: string | null): string | null {
  * The single source of truth for org → brand identity + switching.
  *
  * Consumed by BOTH tenant surfaces so they can never drift:
- *  - `breadcrumb-nav.tsx` (the pre-beta top-bar breadcrumb + the onboarding chrome)
- *  - `tenant-switcher.tsx` (the beta sidebar-top switcher)
+ *  - `breadcrumb-nav.tsx` (the onboarding chrome)
+ *  - `tenant-switcher.tsx` (the sidebar-top switcher)
  *
- * Everything here was extracted verbatim from breadcrumb-nav.tsx; the source
- * guards that used to read that file now read this one.
+ * LOCAL-FIRST: every identity read here goes through React Query, so the
+ * per-query IndexedDB persister paints the last-known org name, brand name and
+ * brand domain (→ the logo.dev logo) on the FIRST frame of a cold load and
+ * revalidates silently behind it. Before this, the hook was the one dashboard
+ * surface bypassing that cache: it fetched `/api/v1/brands` + `/api/v1/brands/:id`
+ * with a raw `fetch` behind module-level 60s caches, and held the org label in a
+ * `useRef` — none of which survive a page load, so every hard navigation showed
+ * the `Dashboard` / `Brand` placeholders and an empty logo slot for as long as the
+ * cold gateway → brand-service chain took to answer.
+ *
+ * Three consequences worth keeping in mind when editing:
+ *  - `["brands"]` and `["brand", brandId]` are the SAME keys the org-overview,
+ *    billing and brand pages already use, so those reads dedupe instead of
+ *    doubling. All three roots (incl. `orgIdentity`) are in
+ *    `PERSISTABLE_QUERY_ROOTS` — a new identity read must be added there too or
+ *    it silently loses the instant paint.
+ *  - `listBrands`/`getBrand` go through the shared api client, which scopes each
+ *    request to THIS tab's Clerk session. The raw `fetch` they replace rode the
+ *    shared session cookie (last-focused tab wins), so a multi-tab user could
+ *    resolve the label under another tab's org.
+ *  - The org switch no longer needs a manual cache clear: the QueryProvider
+ *    remounts under the org key and the persister is org-prefixed, so neither
+ *    memory nor disk can carry org A's labels into org B.
  */
 export function useTenantSwitcher() {
   const pathname = usePathname();
@@ -83,29 +94,6 @@ export function useTenantSwitcher() {
   const { user } = useUser();
   const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
 
-  // Per-URL-org display label cache (name/avatar) — keeps the label from flipping
-  // when Clerk's shared active org momentarily points at another tab's org.
-  const orgDisplayCacheRef = useRef<
-    Record<string, { name?: string; imageUrl?: string; hasImage?: boolean }>
-  >({});
-  // Per-URL-brand display cache (keep-last-good) — the twin of orgDisplayCacheRef.
-  // The brand label reads `brands.find(...)`, which returns undefined when a
-  // transient/degenerate `/api/v1/brands` response (cold Neon 200 with an empty
-  // or partial list, or a stale 60s cache missing the current brand) drops the
-  // current brand from state. Cache each brand's label the moment it resolves so
-  // the name survives the transient.
-  const brandDisplayCacheRef = useRef<
-    Record<string, { name?: string; domain?: string | null }>
-  >({});
-
-  const [brands, setBrands] = useState<TenantBrand[]>([]);
-  // Authoritative per-URL-brand label — fetched by id, exactly like the overview
-  // page (`getBrand(brandId)`). The dropdown `brands` LIST is org-scoped + cached
-  // and can legitimately not contain the URL brand (god-mode / cross-tab / a stale
-  // 60s cache), which left the label stuck on the "Brand" placeholder forever
-  // (the keep-last-good cache never got a first value to keep).
-  const [byIdBrand, setByIdBrand] = useState<TenantBrand | null>(null);
-  const [brandsLoading, setBrandsLoading] = useState(false);
   const [allOrgs, setAllOrgs] = useState<TenantOrgOption[]>([]);
   const [orgSearch, setOrgSearch] = useState("");
   const [orgsLoading, setOrgsLoading] = useState(false);
@@ -117,20 +105,36 @@ export function useTenantSwitcher() {
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
   const section = brandId ? pathParts[4] ?? null : null;
 
+  // ── Org identity ────────────────────────────────────────────────────────────
   // Display the org from the URL (per-tab), NOT `useOrganization()`. Clerk's active
   // org is a SHARED browser-global value that flips when another tab switches org —
-  // binding the label to it made the org name visibly oscillate between tabs.
-  // The URL org is stable per tab. We cache each org's label the moment the active
-  // org matches the URL (the normal focused case). (#1948)
-  if (organization && organization.id === orgId) {
-    orgDisplayCacheRef.current[orgId] = {
-      name: organization.name,
-      imageUrl: organization.imageUrl,
-      hasImage: organization.hasImage,
-    };
-  }
-  const displayOrg = orgId
-    ? orgDisplayCacheRef.current[orgId] ??
+  // binding the label to it made the org name visibly oscillate between tabs. The
+  // URL org is stable per tab. (#1948)
+  //
+  // Clerk itself is the only source of an org's name (client-service `orgs.name` is
+  // null for everyone), and it hydrates asynchronously — which is why the label read
+  // `Dashboard` for the first second of every load. Snapshotting it into a query
+  // means the persister writes it to disk, so the NEXT load paints the last-known
+  // name before Clerk has loaded at all, then revalidates. `enabled` is the same
+  // condition that used to guard the ref write: only snapshot the org the URL is on.
+  const orgIdentityQuery = useQuery<TenantOrgIdentity>({
+    queryKey: ["orgIdentity", orgId],
+    queryFn: async () => ({
+      name: organization!.name,
+      imageUrl: organization!.imageUrl,
+      hasImage: organization!.hasImage,
+    }),
+    enabled: !!orgId && organization?.id === orgId,
+  });
+
+  // Live Clerk value first (freshest, e.g. an org just renamed in another surface),
+  // then the persisted snapshot, then the lists we already hold.
+  const liveOrg = organization && organization.id === orgId ? organization : null;
+  const displayOrg:
+    | { name?: string; imageUrl?: string | null; hasImage?: boolean }
+    | undefined = orgId
+    ? liveOrg ??
+      orgIdentityQuery.data ??
       allOrgs.find((o) => o.id === orgId) ??
       userMemberships?.data?.find((m) => m.organization.id === orgId)?.organization
     : // Off the /orgs/ tree (the onboarding create flow: `/onboarding?from=add`),
@@ -143,11 +147,12 @@ export function useTenantSwitcher() {
       ? undefined
       : organization ?? undefined;
   const displayOrgName = displayOrg?.name || "Dashboard";
-  const displayOrgImageUrl = displayOrg?.imageUrl;
-  const displayOrgHasImage =
-    (displayOrg as { hasImage?: boolean } | undefined)?.hasImage;
+  const displayOrgImageUrl = displayOrg?.imageUrl ?? undefined;
+  const displayOrgHasImage = displayOrg?.hasImage;
 
   // Staff-only: fetch ALL platform orgs (god-mode switcher). No-op for customers.
+  // Search-driven and debounced by the caller, so it stays a plain fetch — there is
+  // no stable key to cache it under and nothing to paint from disk.
   const fetchOrgs = useCallback(async (q: string) => {
     setOrgsLoading(true);
     try {
@@ -163,61 +168,38 @@ export function useTenantSwitcher() {
     }
   }, []);
 
-  const fetchBrands = useCallback(async () => {
-    if (!orgId) return;
-    const cached = brandListCache[orgId];
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setBrands(cached.data);
-      return;
-    }
-    setBrandsLoading(true);
-    try {
-      const res = await fetch("/api/v1/brands");
-      if (res.ok) {
-        const data = await res.json();
-        const list = data.brands || [];
-        brandListCache[orgId] = { data: list, timestamp: Date.now() };
-        setBrands(list);
-      }
-    } catch (err) {
-      console.error("Failed to fetch brands:", err);
-    } finally {
-      setBrandsLoading(false);
-    }
-  }, [orgId]);
+  // ── Brands ──────────────────────────────────────────────────────────────────
+  // The dropdown list. Same key as the org-overview + billing pages, so opening the
+  // submenu costs nothing once any of them has run.
+  const brandsQuery = useAuthQuery(["brands"], () => listBrands(), {
+    enabled: !!orgId,
+  });
+  const brands: TenantBrand[] = brandsQuery.data?.brands ?? [];
+  // Reveal on SETTLE: a failed list must fall through to the "No brands" empty
+  // state, never sit on "Loading…" forever.
+  const brandsLoading = brandsQuery.isPending && !brandsQuery.isError;
 
-  useEffect(() => {
-    if (brandId) fetchBrands();
-  }, [brandId, fetchBrands]);
-
-  useEffect(() => {
-    if (!brandId) { setByIdBrand(null); return; }
-    const cached = brandByIdCache[brandId];
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setByIdBrand(cached.data);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/v1/brands/${brandId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled || !data?.brand) return;
-        const resolved = { id: brandId, name: data.brand.name, domain: data.brand.domain };
-        brandByIdCache[brandId] = { data: resolved, timestamp: Date.now() };
-        setByIdBrand(resolved);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [brandId]);
+  // The authoritative label for the URL brand. The org-scoped LIST can legitimately
+  // not contain it (god-mode / a brand created in another tab), which used to leave
+  // the label pinned to the "Brand" placeholder; the by-id read always resolves it.
+  // Same key the brand overview page uses → warm on arrival.
+  const brandQuery = useAuthQuery(
+    ["brand", brandId],
+    () => getBrand(brandId!),
+    { enabled: !!brandId },
+  );
 
   const handleOrgSwitch = useCallback(async (clerkOrgId: string) => {
-    clearBreadcrumbCaches();
     // Update Clerk's client-side active org so useOrganization() reflects the switch
-    // immediately (label, OrgCacheInvalidator firing, QueryProvider remount). Then
-    // push the URL so middleware's organizationSyncOptions confirms server-side and
-    // /api/v1/* calls run under the new org. Both directions are required:
-    // setActive alone left the URL stale (PR #1058 prod incident, polls 404'd);
-    // router.push alone left the client UI stale until the session cookie refreshed.
+    // immediately (label, QueryProvider remount). Then push the URL so middleware's
+    // organizationSyncOptions confirms server-side and /api/v1/* calls run under the
+    // new org. Both directions are required: setActive alone left the URL stale
+    // (PR #1058 prod incident, polls 404'd); router.push alone left the client UI
+    // stale until the session cookie refreshed.
+    //
+    // No cache clear here: the QueryProvider remounts under the org key (fresh empty
+    // in-memory cache) and the per-query persister is org-prefixed, so org A's
+    // labels can reach neither org B's memory nor its disk key space.
     //
     // AWAIT setActive before navigating: it resolves once the Clerk session (and its
     // org claim) has rotated to the new org. Navigating / firing an API call before
@@ -255,20 +237,13 @@ export function useTenantSwitcher() {
   }, [orgId, router]);
 
   // Resolve the brand from the dropdown list first, then the authoritative by-id
-  // fetch (which resolves even when the list doesn't contain the URL brand).
-  const currentBrand =
-    brands.find((b) => b.id === brandId) ??
-    (byIdBrand && byIdBrand.id === brandId ? byIdBrand : undefined);
-  // Keep-last-good: cache the label when the brand resolves, read from cache when a
-  // transient fetch drops it, so the label never flips to the "Brand" placeholder.
-  if (brandId && currentBrand) {
-    brandDisplayCacheRef.current[brandId] = {
-      name: currentBrand.name,
-      domain: currentBrand.domain,
-    };
-  }
-  const displayBrand = brandId
-    ? currentBrand ?? brandDisplayCacheRef.current[brandId]
+  // read. Both are disk-backed, so whichever answers first paints instantly.
+  const byIdBrand = brandQuery.data?.brand;
+  const displayBrand: TenantBrand | undefined = brandId
+    ? brands.find((b) => b.id === brandId) ??
+      (byIdBrand
+        ? { id: byIdBrand.id, name: byIdBrand.name, domain: byIdBrand.domain }
+        : undefined)
     : undefined;
 
   return {
@@ -286,7 +261,7 @@ export function useTenantSwitcher() {
     fetchOrgs,
     brands,
     brandsLoading,
-    fetchBrands,
+    fetchBrands: brandsQuery.refetch,
     displayOrgName,
     displayOrgImageUrl,
     displayOrgHasImage,
