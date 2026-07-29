@@ -788,7 +788,7 @@ export function Onboarding() {
   // Per-field provenance for the offer levers ("confirmed" once the user saved a
   // value, else "suggested" = the AI prefill). Seeded from getBrandUserFields at
   // hydrate; NOT persisted in the snapshot (re-derived on resume, defaults to
-  // "suggested"). Drives the "AI-suggested" badge on the offer step.
+  // "suggested"). Drives the "Confirmed" badge on the offer step.
   const [fieldProvenance, setFieldProvenance] = useState<Record<string, FieldProvenance>>({});
   // Budget selection. selectedBudget IS the $/day sent to the campaign (the primary
   // value shown). Tier $/day is derived from a STABLE base (the projection unit cost),
@@ -1098,8 +1098,8 @@ export function Onboarding() {
 
     salesInputsRef.current = feat.feature.inputs ?? [];
     // Seed the profile bag + provenance from the confirmed user-fields. Each of
-    // the 7 keys carries a value (confirmed or AI-suggested prefill); the offer
-    // levers read their prefill from here + show the provenance badge.
+    // the 7 keys carries a value (confirmed, else the model prefill); the offer
+    // levers read their prefill from here + badge the confirmed ones.
     {
       const uf = prof.fields;
       const seeded: Record<string, string | string[]> = {};
@@ -2708,13 +2708,11 @@ export function Onboarding() {
         </div>
         <div className="flex items-center gap-2">
           <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
-          {fieldProvenance[lever.key] === "confirmed" ? (
+          {/* Only the confirmed state is badged. A prefilled lever is obviously
+              a draft, so labelling it adds nothing. */}
+          {fieldProvenance[lever.key] === "confirmed" && (
             <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
               Confirmed
-            </span>
-          ) : (
-            <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600">
-              AI-suggested
             </span>
           )}
         </div>

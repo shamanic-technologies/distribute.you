@@ -84,6 +84,10 @@ describe("post-payment step wiring in onboarding.tsx", () => {
     expect(onboardingSrc).toContain("POST_PAYMENT_OFFER_LEVERS[offerIndex]");
     expect(onboardingSrc).toContain("function continueOffer");
   });
+  it("badges only the confirmed lever, never the prefilled one", () => {
+    expect(onboardingSrc).toContain("Confirmed");
+    expect(onboardingSrc).not.toContain("AI-suggested");
+  });
 });
 
 describe("phone server route", () => {
@@ -151,6 +155,12 @@ describe("phone-countries module", () => {
     expect(COUNTRIES.length).toBeGreaterThan(50);
     expect(DEFAULT_COUNTRY.code).toBe("US");
     expect(DEFAULT_COUNTRY.dial).toBe("1");
+  });
+  it("lists countries alphabetically ascending by name", () => {
+    const names = COUNTRIES.map((c) => c.name);
+    const sorted = [...names].sort((a, b) => a.localeCompare(b, "en"));
+    expect(names).toEqual(sorted);
+    expect(COUNTRIES[0].name).toBe("Albania");
   });
   it("searches by name, code and dial", () => {
     expect(searchCountries("franc").some((c) => c.code === "FR")).toBe(true);

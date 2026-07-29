@@ -6,8 +6,8 @@
 
 export type PhoneCountry = { code: string; name: string; dial: string };
 
-// [ISO 3166-1 alpha-2, name, dial code (no +)]. Ordered roughly by market size
-// so the default list is useful before the user types; search covers the rest.
+// [ISO 3166-1 alpha-2, name, dial code (no +)]. Source order is irrelevant —
+// COUNTRIES sorts by name ascending so the picker reads alphabetically.
 const RAW: ReadonlyArray<readonly [string, string, string]> = [
   ["US", "United States", "1"],
   ["GB", "United Kingdom", "44"],
@@ -122,9 +122,17 @@ const RAW: ReadonlyArray<readonly [string, string, string]> = [
   ["FJ", "Fiji", "679"],
 ];
 
-export const COUNTRIES: ReadonlyArray<PhoneCountry> = RAW.map(([code, name, dial]) => ({ code, name, dial }));
+export const COUNTRIES: ReadonlyArray<PhoneCountry> = RAW.map(([code, name, dial]) => ({
+  code,
+  name,
+  dial,
+})).sort((a, b) => a.name.localeCompare(b.name, "en"));
 
-export const DEFAULT_COUNTRY: PhoneCountry = COUNTRIES[0];
+// Pinned to US, NOT COUNTRIES[0] — the list is alphabetical, so index 0 is
+// Albania. The default dial code must stay +1.
+const US = COUNTRIES.find((c) => c.code === "US");
+if (!US) throw new Error("[phone-countries] US missing from COUNTRIES — default dial code cannot be resolved");
+export const DEFAULT_COUNTRY: PhoneCountry = US;
 
 /**
  * ISO alpha-2 → emoji flag. Each letter maps to its regional-indicator symbol
