@@ -121,7 +121,9 @@ describe("Beta onboarding guided flow", () => {
   it("uses the selected goal for workflow projection and persisted economics", () => {
     expect(src).toContain("salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome))");
     expect(src).toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
-    expect(src).toContain("fetchFreshWorkflowProjectionForRates(id, nextRates, outcome)");
+    // Projected against what was PERSISTED, not the client copy — the two differ for
+    // every metric the rates step did not render.
+    expect(src).toContain("fetchFreshWorkflowProjectionForRates(id, savedRates, outcome)");
     expect(src).toContain("workflowProjectionMatchesOutcomeRates(proj, goal");
     expect(src).toContain("PRICING_REFRESH_RETRIES");
     expect(src).toContain("Pricing is still refreshing from your new rates");
