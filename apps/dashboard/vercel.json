@@ -4,5 +4,6 @@
       "path": "/api/cron/outcome-digest",
       "schedule": "0 1 * * *"
     }
-  ]
+  ],
+  "ignoreCommand": "bash ../../scripts/vercel-ignore.sh @distribute/dashboard"
 }
