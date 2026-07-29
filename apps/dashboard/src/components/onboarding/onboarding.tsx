@@ -59,6 +59,8 @@ import {
   salesObjectiveForOptimizationGoal,
   sendAuthNotification,
   type BrandOptimizationGoal,
+  type BrandSalesEconomics,
+  type BrandSalesEconomicsInput,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
   type FeatureInput,
@@ -285,8 +287,12 @@ const COUNT_TIERS = [25, 50, 100];
 // the minimal checkout-state reconstruction (a version bump that lands mid-checkout).
 // Shown on the (i) beside each tier's outcomes/mo — the count is a projection, not a guarantee.
 const ESTIMATE_TOOLTIP = "Estimated conversion based on your provided information and the outcomes of our current client database.";
-const DEFAULT_RATES: Record<RateKey, number> = { ltv: 2500, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25, v2p: 1, r2p: 5, v2f: 5, f2p: 10 };
-const DEFAULT_RATE_TEXT: Record<RateKey, string> = { ltv: "2,500", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25", v2p: "1", r2p: "5", v2f: "5", f2p: "10" };
+// `ltv` carries NO default: a lifetime revenue we invented would be divided into the
+// fleet cost-per-outcome and printed as a projected ROI, so a placeholder there reads
+// as a promise. It stays blank until the brand's stored value is read or the user
+// types one (the step refuses to advance on an empty field).
+const DEFAULT_RATES: Record<RateKey, number> = { ltv: 0, v2s: 5, s2c: 10, v2m: 3, r2m: 30, m2c: 25, v2p: 1, r2p: 5, v2f: 5, f2p: 10 };
+const DEFAULT_RATE_TEXT: Record<RateKey, string> = { ltv: "", v2s: "5", s2c: "10", v2m: "3", r2m: "30", m2c: "25", v2p: "1", r2p: "5", v2f: "5", f2p: "10" };
 
 
 const fmtUsd0 = (n: number) => "$" + formatLocaleInteger(n);
@@ -861,6 +867,10 @@ export function Onboarding() {
   // InBackground / createBrandAndFetchServices, which both respect these refs).
   const servicesEditedRef = useRef(restored?.servicesEdited ?? false);
   const ratesEditedRef = useRef(restored?.ratesEdited ?? false);
+  // Separate from `ratesEditedRef`: the lifetime-revenue field lives on a POST-payment
+  // step, so it must still be seeded from the wire on a checkout return even when the
+  // user edited a conversion rate before checkout (which sets `ratesEditedRef`).
+  const ltvEditedRef = useRef(false);
   // The sales feature's declared input definitions — needed to build the
   // `featureInputs` map the /campaigns create endpoint requires at launch.
   const salesInputsRef = useRef<FeatureInput[]>(restored?.salesInputs ?? []);
@@ -1467,6 +1477,86 @@ export function Onboarding() {
     );
   }
 
+  // ── Sales-economics writes: never restate a metric from client state ──
+  // brand-service requires all six core metrics on every sales-economics write, so a
+  // step that edits ONE of them has to restate the other five. Restating them from
+  // client state is what silently destroyed a brand's confirmed rates in prod
+  // (2026-07-29): a checkout return whose snapshot failed to parse was rebuilt from
+  // DEFAULT_RATES, and the lifetime-revenue step wrote those placeholders over rates
+  // the same user had confirmed minutes earlier (visit→signup 8.4% → 5%,
+  // signup→paid 16.2% → 10%). So every core metric the current step did NOT render is
+  // read from the WIRE, and the four optional beta rates are omitted when not rendered
+  // (brand-service leaves an omitted optional unchanged). Fails loud — a placeholder is
+  // never persisted.
+  async function resolveStoredEconomics(brandId: string): Promise<EffectiveSalesEconomics> {
+    if (econRef.current) return econRef.current;
+    const { economics } = await getSalesEconomicsEffective(brandId);
+    if (!economics) {
+      throw new Error("Your conversion rates could not be loaded. Please try again.");
+    }
+    econRef.current = economics;
+    return economics;
+  }
+
+  // The post-payment steps run on a FRESH page load (the Stripe return), where the
+  // loading-screen hydration never ran — warm the stored economics so the lifetime
+  // revenue field shows the brand's real number instead of a blank, and so its save
+  // does not wait on a cold read. Best-effort: the save resolves them again, fail-loud,
+  // if this did not land.
+  function prewarmStoredEconomics(brandId: string): void {
+    void resolveStoredEconomics(brandId)
+      .then((economics) => {
+        if (ltvEditedRef.current) return;
+        const ltv = Math.round(economics.lifetimeRevenueUsd);
+        setRates((current) => ({ ...current, ltv }));
+        setRateText((current) => ({ ...current, ltv: rateToText(ltv) }));
+      })
+      .catch((err) => {
+        console.error("[dashboard] onboarding: stored economics prewarm failed", err);
+      });
+  }
+
+  // Body for a step that rendered `renderedKeys`: those carry user intent, everything
+  // else mirrors what is already stored.
+  async function buildEconomicsPayload(
+    brandId: string,
+    renderedKeys: RateKey[],
+    values: Record<RateKey, number>,
+  ): Promise<BrandSalesEconomicsInput> {
+    const stored = await resolveStoredEconomics(brandId);
+    const rendered = new Set(renderedKeys);
+    const pick = (key: RateKey, storedValue: number) => (rendered.has(key) ? values[key] : storedValue);
+    return {
+      lifetimeRevenueUsd: Math.round(pick("ltv", stored.lifetimeRevenueUsd)),
+      replyToMeetingPct: pick("r2m", stored.replyToMeetingPct),
+      visitToMeetingPct: pick("v2m", stored.visitToMeetingPct),
+      meetingToClosePct: pick("m2c", stored.meetingToClosePct),
+      visitToSignupPct: pick("v2s", stored.visitToSignupPct),
+      signupToPaidClientPct: pick("s2c", stored.signupToPaidClientPct),
+      // The four beta rates have no counterpart on the effective read, so they are sent
+      // ONLY when the step rendered them — omitting leaves the stored value untouched.
+      ...(rendered.has("v2p") ? { visitToPaidClientPct: values.v2p } : {}),
+      ...(rendered.has("r2p") ? { replyToPaidClientPct: values.r2p } : {}),
+      ...(rendered.has("v2f") ? { visitToFormSubmissionPct: values.v2f } : {}),
+      ...(rendered.has("f2p") ? { formSubmissionToPaidClientPct: values.f2p } : {}),
+      optimizationGoal: optimizationGoalForOutcome(outcome),
+    };
+  }
+
+  // Keep the cached wire copy in step with what we just persisted, so a later step
+  // restating the untouched metrics restates the NEW values, not the pre-save ones.
+  function rememberSavedEconomics(saved: BrandSalesEconomics): void {
+    econRef.current = {
+      lifetimeRevenueUsd: saved.lifetimeRevenueUsd,
+      replyToMeetingPct: saved.replyToMeetingPct,
+      visitToMeetingPct: saved.visitToMeetingPct,
+      meetingToClosePct: saved.meetingToClosePct,
+      visitToSignupPct: saved.visitToSignupPct,
+      signupToPaidClientPct: saved.signupToPaidClientPct,
+      visitToClosePct: saved.visitToClosePct,
+    };
+  }
+
   // ── Step transitions that persist ────────────────────────────────
   async function saveRatesAndContinue() {
     const id = brandIdRef.current;
@@ -1491,22 +1581,23 @@ export function Onboarding() {
     }));
     setBusy(true);
     try {
-      await saveBrandSalesEconomics(id, {
-        lifetimeRevenueUsd: nextRates.ltv,
-        replyToMeetingPct: nextRates.r2m,
-        visitToMeetingPct: nextRates.v2m,
-        meetingToClosePct: nextRates.m2c,
-        visitToSignupPct: nextRates.v2s,
-        signupToPaidClientPct: nextRates.s2c,
-        // Beta-goal conversion steps (partial-update, optional on the wire): the
-        // single-step goals (website_visits/positive_replies) + form_submissions
-        // need their own rates so the server computes cost-per-outcome / ROI.
-        visitToPaidClientPct: nextRates.v2p,
-        replyToPaidClientPct: nextRates.r2p,
-        visitToFormSubmissionPct: nextRates.v2f,
-        formSubmissionToPaidClientPct: nextRates.f2p,
-        optimizationGoal: optimizationGoalForOutcome(outcome),
-      });
+      // Only the rates this step rendered come from the form; the rest mirror the
+      // stored set, so a metric the user never saw can never be overwritten.
+      const payload = await buildEconomicsPayload(id, rateKeys, nextRates);
+      const { salesEconomics } = await saveBrandSalesEconomics(id, payload);
+      rememberSavedEconomics(salesEconomics);
+      // Project against what was actually PERSISTED, not the client copy — the two
+      // differ for every metric this step did not render.
+      const savedRates: Record<RateKey, number> = {
+        ...nextRates,
+        ltv: salesEconomics.lifetimeRevenueUsd,
+        r2m: salesEconomics.replyToMeetingPct,
+        v2m: salesEconomics.visitToMeetingPct,
+        m2c: salesEconomics.meetingToClosePct,
+        v2s: salesEconomics.visitToSignupPct,
+        s2c: salesEconomics.signupToPaidClientPct,
+      };
+      setRates(savedRates);
       // Refresh the projection BEST-EFFORT — never block the step on it. The
       // projection comes off a cold Neon chain and can return stale/degenerate
       // (no usable workflow cost data) for a given brand; throwing there left
@@ -1514,7 +1605,7 @@ export function Onboarding() {
       // pricing/budget step refreshes it and degrades gracefully
       // (derivedBudget → recommendedBudgetUsd). (#1766)
       try {
-        projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, nextRates, outcome);
+        projectionRef.current = await fetchFreshWorkflowProjectionForRates(id, savedRates, outcome);
         setPricingHydrationVersion((value) => value + 1);
       } catch (projErr) {
         if (isInsufficientCredit(projErr)) throw projErr;
@@ -1840,7 +1931,10 @@ export function Onboarding() {
       // best-model projection (refetched after the LTR save) so the model step is warm.
       startBackgroundLaunch().catch(() => {});
       const prewarmId = pending.brandId;
-      if (prewarmId) void fetchBestModelLadder(prewarmId, pending.outcome);
+      if (prewarmId) {
+        void fetchBestModelLadder(prewarmId, pending.outcome);
+        prewarmStoredEconomics(prewarmId);
+      }
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "checkout_return" });
       const detail = err instanceof Error ? err.message : "unknown error";
@@ -1871,7 +1965,10 @@ export function Onboarding() {
       setBusy(false);
       startBackgroundLaunch().catch(() => {});
       const prewarmId = pending.brandId;
-      if (prewarmId) void fetchBestModelLadder(prewarmId, pending.outcome);
+      if (prewarmId) {
+        void fetchBestModelLadder(prewarmId, pending.outcome);
+        prewarmStoredEconomics(prewarmId);
+      }
     } catch (err) {
       posthog.capture("onboarding_launch_failed", { flow: "beta", stage: "direct_launch" });
       setError(err instanceof Error ? err.message : "Launch failed. Your brand was not launched.");
@@ -1938,33 +2035,38 @@ export function Onboarding() {
       return;
     }
     setError(null);
-    const nextRates = { ...rates, ltv };
-    setRates(nextRates);
+    setRates((current) => ({ ...current, ltv }));
     setRateText((t) => ({ ...t, ltv: rateToText(ltv) }));
     if (id) {
+      // This step renders ONLY the lifetime revenue, so the other five core metrics
+      // come from the wire — and the body is built BEFORE advancing so a failed read
+      // stops the step instead of persisting whatever the client happens to hold. On a
+      // checkout return that client copy can be a reconstructed snapshot full of
+      // placeholders, which is exactly how a brand's confirmed rates were overwritten.
+      let payload: BrandSalesEconomicsInput;
+      setBusy(true);
+      try {
+        payload = await buildEconomicsPayload(id, ["ltv"], { ...rates, ltv });
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Your conversion rates could not be loaded. Please try again.",
+        );
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
       // The celebrate-prewarmed ladder was computed BEFORE this lifetime-revenue
       // entry, so its LTV-derived fields (ROI multiple, cost-of-acquisition %) reflect
-      // the DEFAULT economics — showing them on the model step would display wrong
+      // the earlier economics — showing them on the model step would display wrong
       // numbers for the ~30s cold refetch, then silently swap. Reset to null so the
       // model step shows a skeleton until the new-LTV projection lands (a loader beats
-      // wrong data). Fire-and-forget the economics save, THEN refetch the best-model
-      // projection with the new lifetime revenue — never block the button on the cold write.
+      // wrong data). Fire-and-forget the write, THEN refetch the best-model projection
+      // with the new lifetime revenue — never block the button on the cold write.
       setBestModelLadder(null);
       void (async () => {
         try {
-          await saveBrandSalesEconomics(id, {
-            lifetimeRevenueUsd: nextRates.ltv,
-            replyToMeetingPct: nextRates.r2m,
-            visitToMeetingPct: nextRates.v2m,
-            meetingToClosePct: nextRates.m2c,
-            visitToSignupPct: nextRates.v2s,
-            signupToPaidClientPct: nextRates.s2c,
-            visitToPaidClientPct: nextRates.v2p,
-            replyToPaidClientPct: nextRates.r2p,
-            visitToFormSubmissionPct: nextRates.v2f,
-            formSubmissionToPaidClientPct: nextRates.f2p,
-            optimizationGoal: optimizationGoalForOutcome(outcome),
-          });
+          const { salesEconomics } = await saveBrandSalesEconomics(id, payload);
+          rememberSavedEconomics(salesEconomics);
         } catch (err) {
           console.error("[dashboard] onboarding: failed to save lifetime revenue; advancing", err);
         }
@@ -2626,6 +2728,7 @@ export function Onboarding() {
               value={rateText.ltv}
               onChange={(e) => {
                 ratesEditedRef.current = true;
+                ltvEditedRef.current = true;
                 launchFeatureInputsRef.current = null;
                 setRateText((t) => ({ ...t, ltv: e.target.value }));
               }}

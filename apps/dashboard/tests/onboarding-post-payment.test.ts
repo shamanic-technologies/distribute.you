@@ -76,7 +76,10 @@ describe("post-payment step wiring in onboarding.tsx", () => {
 
   it("saves lifetime revenue via sales-economics and the phone via savePhoneNumber", () => {
     expect(onboardingSrc).toContain("function saveLtrAndContinue");
-    expect(onboardingSrc).toContain("lifetimeRevenueUsd: nextRates.ltv");
+    // The step renders only the lifetime revenue, so it is the only metric taken from
+    // the form — the other five are restated from the stored set (see
+    // onboarding-economics-write.test.ts).
+    expect(onboardingSrc).toContain('await buildEconomicsPayload(id, ["ltv"], { ...rates, ltv })');
     expect(onboardingSrc).toContain("await savePhoneNumber(phone);");
   });
 
