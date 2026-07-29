@@ -71,6 +71,14 @@ export function isListLever(key: string): boolean {
   return LIST_LEVER_KEYS.has(key);
 }
 
+/** Is this USER-FIELD key list-kind? Superset of isListLever: it also covers
+ *  "services", which is a list but is collected in the pre-payment step rather than
+ *  as an offer lever. Use this when normalising the whole 7-key user-fields bag
+ *  (mirrors ALL_FIELDS' `kind`); use isListLever when walking the offer steps. */
+export function isListLeverKey(key: string): boolean {
+  return key === "services" || isListLever(key);
+}
+
 /** The <textarea> string for a list lever — one item per line, so the round-trip
  *  with parseListLeverInput is lossless. Accepts a legacy string or the array. */
 export function formatListLeverValue(value: string | string[] | undefined | null): string {
