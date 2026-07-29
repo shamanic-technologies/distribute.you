@@ -51,7 +51,12 @@ export function ScoreCard(props: ScoreCardProps) {
       ? formatDelta(props.delta, props.deltaFormat, props.deltaInverted ?? false)
       : null;
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    // h-full so a row of cards reads as one band: the stat row is a stretch flex
+    // container, so a card whose label wraps to two lines (or that swaps the value
+    // for the tracker button) sets the row height and the shorter cards would
+    // otherwise stop short of it. Outside a stretch context this resolves against
+    // an auto-height parent, i.e. no-op.
+    <div className="bg-white rounded-xl border border-gray-200 p-4 h-full">
       <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 inline-flex items-center gap-1">
         {label}
         {tooltip && <InfoTooltip tip={tooltip} placement="top" />}

@@ -59,8 +59,12 @@ export function modelAvatar(dynastySlug: string): { emoji: string; color: string
 }
 
 /** The brand's saved objective → the candidates / audience-stats goal enum.
- *  The two beta goals borrow the nearest family (visit → signup, reply → meetingBooked);
- *  the enum has no single-step variant. */
+ *  Every goal maps to its OWN native features-service goal — no borrowing. audience-stats
+ *  ranks workflows by the goal it is given, so asking for a neighbouring family returns the
+ *  cost of a DIFFERENT outcome's winner: a `positive_replies` brand asked for `meetingBooked`
+ *  got the cheapest-per-CLICK workflow and rendered ITS cost per reply ($183.85) beside the
+ *  Strategy page's cheapest-per-REPLY workflow ($61.73), 3x apart on one screen.
+ *  Mirrors `objectiveForOptimizationGoal`, which was migrated off the same borrow earlier. */
 export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAudienceStatsGoal {
   // website_purchase (renamed) + sales (combined) each have their own native
   // audience-stats goal, carrying per-audience sales + cpsaleCents evidence.
@@ -69,7 +73,24 @@ export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAud
   // form_submissions has its own native audience-stats goal (visit-driven, sorts on
   // CPC like signup, but carries per-audience formSubmissions + cpfsCents evidence).
   if (goal === "form_submissions") return "formSubmission";
+  // The two SINGLE-STEP goals: one rate applied to the click (visit) or reply population.
+  if (goal === "website_visits") return "websiteVisit";
+  if (goal === "positive_replies") return "positiveReply";
   return isVisitDrivenGoal(goal) ? "signup" : "meetingBooked";
+}
+
+/** The stats goals whose outcome rides the CLICK (website-visit) funnel — they sort on cost
+ *  per click. Exact image of `isVisitDrivenGoal` under `goalForOptimizationGoal`, so the four
+ *  pre-existing visit goals keep the metric they already had and only `websiteVisit` is new.
+ *  The reply-driven goals (meetingBooked, positiveReply) are the complement and sort on CPPR. */
+export function isVisitDrivenStatsGoal(goal: FeatureAudienceStatsGoal): boolean {
+  return (
+    goal === "signup" ||
+    goal === "websiteVisit" ||
+    goal === "formSubmission" ||
+    goal === "websitePurchase" ||
+    goal === "sales"
+  );
 }
 
 /** Human noun for one outcome of the brand's objective. */
