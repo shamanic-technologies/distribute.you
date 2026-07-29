@@ -1124,6 +1124,72 @@
       .mz-row .mz-bar{grid-column:1 / -1}
     }
 
+        /* ---- #roi : your numbers over our measured cost ---- */
+    .roi-card{
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:30px 26px 24px;
+    }
+    .roi-formula{
+      display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;
+      align-items:start;gap:14px;
+    }
+    .roi-cell{display:flex;flex-direction:column;gap:9px;min-width:0}
+    .roi-k{
+      display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;
+      letter-spacing:.07em;text-transform:uppercase;color:var(--faint);line-height:1.4;
+    }
+    .roi-lock{
+      font-size:9px;letter-spacing:.09em;color:var(--green);
+      border:1px solid var(--green-line);background:var(--green-dim);
+      border-radius:999px;padding:2px 6px;
+    }
+    .roi-field{
+      display:flex;align-items:center;gap:3px;
+      border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--bg-soft);
+      padding:11px 13px;transition:border-color .15s,background .15s;
+    }
+    .roi-field:focus-within{border-color:var(--green-line);background:var(--panel)}
+    .roi-field.is-locked{
+      border-color:var(--green-line);background:var(--green-dim);cursor:not-allowed;
+    }
+    .roi-input{
+      width:100%;min-width:0;border:0;background:transparent;outline:none;
+      font-family:var(--display);font-size:23px;font-weight:700;letter-spacing:-.03em;color:var(--text);
+    }
+    .roi-prefix,.roi-suffix{
+      font-family:var(--display);font-size:23px;font-weight:700;letter-spacing:-.03em;color:var(--faint);
+    }
+    .roi-static{
+      font-family:var(--display);font-size:23px;font-weight:700;letter-spacing:-.03em;color:var(--green);
+    }
+    .roi-hint{font-size:12px;color:var(--faint);line-height:1.45}
+    .roi-op{
+      font-family:var(--display);font-size:20px;font-weight:600;color:var(--faint);
+      align-self:center;padding-top:18px;user-select:none;
+    }
+    .roi-eq{color:var(--green)}
+    .roi-out .roi-result{
+      display:block;font-family:var(--display);
+      font-size:clamp(2rem,4.4vw,2.9rem);font-weight:800;letter-spacing:-.035em;
+      line-height:1.05;color:var(--green);padding:6px 0 2px;
+    }
+    .roi-fine{
+      margin-top:24px;padding-top:18px;border-top:1px solid var(--line-soft);
+      font-size:12.5px;color:var(--faint);line-height:1.6;
+    }
+    @media (max-width:980px){
+      .roi-formula{grid-template-columns:1fr auto 1fr;row-gap:18px}
+      .roi-op{padding-top:0;align-self:center}
+      .roi-eq{grid-column:1 / -1;padding-top:4px}
+      .roi-out{grid-column:1 / -1}
+      .roi-out .roi-result{font-size:2.6rem}
+    }
+    @media (max-width:560px){
+      .roi-formula{grid-template-columns:1fr;row-gap:6px}
+      .roi-op{grid-column:1;justify-self:start;padding:2px 0}
+      .roi-card{padding:24px 18px 20px}
+    }
+
     </style>
 
   <script type="application/ld+json">
@@ -1655,6 +1721,92 @@
         </div>
       </div>
     </section>
+
+    <section id="roi">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">Run your own numbers</div>
+          <h2>What one client is worth to you, <span class="accent">against what a meeting costs us.</span></h2>
+          <p class="section-copy">Two numbers you know better than we do, divided by the one we measure. Change them and the answer moves.</p>
+        </div>
+
+        <div class="roi-card">
+          <div class="roi-formula">
+            <div class="roi-cell">
+              <label class="roi-k" for="roi-ltr">Client lifetime revenue</label>
+              <div class="roi-field">
+                <span class="roi-prefix">$</span>
+                <input id="roi-ltr" class="roi-input" type="text" inputmode="numeric" value="__ROI_LTR__" aria-label="Client lifetime revenue in dollars">
+              </div>
+              <div class="roi-hint">What one customer pays you in total</div>
+            </div>
+
+            <div class="roi-op" aria-hidden="true">&times;</div>
+
+            <div class="roi-cell">
+              <label class="roi-k" for="roi-win">Sales meeting win rate</label>
+              <div class="roi-field">
+                <input id="roi-win" class="roi-input" type="text" inputmode="decimal" value="__ROI_WIN_RATE__" aria-label="Sales meeting win rate in percent">
+                <span class="roi-suffix">%</span>
+              </div>
+              <div class="roi-hint">Meetings that become customers</div>
+            </div>
+
+            <div class="roi-op" aria-hidden="true">&divide;</div>
+
+            <div class="roi-cell is-live">
+              <span class="roi-k">Cost per sales meeting<span class="roi-lock" title="Live rate, not editable">LIVE</span></span>
+              <div class="roi-field is-locked" data-roi-cost="__CAC_PRICE_NUMERIC__">
+                <span class="roi-static">__CAC_PRICE__</span>
+              </div>
+              <div class="roi-hint">Measured across our clients right now</div>
+            </div>
+
+            <div class="roi-op roi-eq" aria-hidden="true">=</div>
+
+            <div class="roi-cell roi-out">
+              <span class="roi-k">Return on every dollar</span>
+              <output class="roi-result" id="roi-result" for="roi-ltr roi-win">__ROI_MULT__</output>
+              <div class="roi-hint">Client revenue earned per dollar spent</div>
+            </div>
+          </div>
+
+          <p class="roi-fine">Cost per sales meeting is our live cost per interested reply, the point where a buyer tells you they want to talk. Your two inputs are your own, so this is your arithmetic, not a projection of your results.</p>
+        </div>
+      </div>
+    </section>
+
+    <script>
+    (function(){
+      var ltr=document.getElementById('roi-ltr'),win=document.getElementById('roi-win'),
+          out=document.getElementById('roi-result'),
+          field=document.querySelector('[data-roi-cost]');
+      if(!ltr||!win||!out||!field) return;
+      var cost=parseFloat(field.getAttribute('data-roi-cost'));
+      function num(el){ var v=parseFloat(String(el.value).replace(/[^0-9.]/g,'')); return isFinite(v)?v:NaN; }
+      /* Mirrors formatRoiMultiple in static-html.ts. The two must agree exactly
+         or the server-rendered number visibly jumps on the first keystroke. */
+      function render(){
+        var a=num(ltr),b=num(win);
+        if(!(cost>0)||!isFinite(a)||!isFinite(b)||a<0||b<0){ out.textContent='–'; return; }
+        var v=a*(b/100)/cost;
+        if(!isFinite(v)){ out.textContent='–'; return; }
+        out.textContent=(v>=10?Math.round(v):v.toFixed(1))+'×';
+      }
+      /* Thousands separators on the revenue field only, applied on blur so they
+         never fight the caret while typing. num() strips them back out. */
+      function group(el){ var v=num(el); if(isFinite(v)) el.value=v.toLocaleString('en-US'); }
+      [ltr,win].forEach(function(el){
+        el.addEventListener('input',render);
+        el.addEventListener('blur',function(){
+          if(!isFinite(num(el))){ el.value=el.defaultValue; }
+          else if(el===ltr){ group(el); }
+          render();
+        });
+      });
+      render();
+    })();
+    </script>
 
     <section>
       <div class="wrap">
