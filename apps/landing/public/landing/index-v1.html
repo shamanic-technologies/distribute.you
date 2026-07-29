@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Turn your website into a live B2B outbound campaign in 30 seconds. distribute.you finds prospects, writes and sends personalized cold emails, filters replies, and forwards interested buyers.">
+  <meta name="description" content="Autonomous Sales Meetings Acquisition. distribute.you is an acquisition agency that buys you interested B2B buyers at a cost per reply we measure live, account wide and per segment. Drop your website, approve the audience, set a daily cap.">
   <meta name="theme-color" content="#ffffff">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="distribute.you: Turn your website into B2B outbound">
-  <meta property="og:description" content="Drop your website, approve the buyers, and set the budget. distribute.you handles prospecting, research, cold email, follow-ups, and reply filtering.">
+  <meta property="og:title" content="distribute.you: sales meetings at a cost you can see">
+  <meta property="og:description" content="An acquisition agency for B2B sales meetings. We invest your budget, split and test your market, and report what each interested reply actually cost you.">
   <meta property="og:url" content="https://distribute.you/">
   <link rel="canonical" href="https://distribute.you/">
   <meta property="og:image" content="https://distribute.you/opengraph-image">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="distribute.you: Turn your website into B2B outbound">
+  <meta property="og:image:alt" content="distribute.you: sales meetings at a cost you can see">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://distribute.you/opengraph-image">
-  <title>distribute.you: Turn your website into B2B outbound</title>
+  <title>distribute.you: sales meetings at a cost you can see</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -925,8 +925,201 @@
     .tm-link{display:inline-flex;align-items:center;text-decoration:none;opacity:.75;transition:opacity .15s}
     .tm-link:hover{opacity:1}
     .tm-logo{height:19px;width:auto;display:block}
-    @media(max-width:760px){.tm-grid{grid-template-columns:1fr}}
-</style>
+    @media(max-width:760px){
+      .tm-grid{grid-template-columns:1fr}
+      /* The Doc Dinners chip carries a full sentence of real numbers, which is
+         wider than the card at phone widths. Let the footer wrap and give the
+         metric its own row instead of forcing the card past the viewport. */
+      .tm-foot{flex-wrap:wrap}
+      .tm-meta{margin-left:0;width:100%;flex-direction:row;align-items:center;justify-content:space-between;text-align:left}
+      .tm-roi{white-space:normal}
+    }
+    /* ---- #measure : cost-of-acquisition dashboard preview ---- */
+    .mz-card{
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);overflow:hidden;
+    }
+    .mz-top{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+      padding:14px 18px;border-bottom:1px solid var(--line-soft);background:var(--bg-soft);
+    }
+    .mz-title{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+    .mz-live{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px var(--green-dim)}
+    .mz-tabs{display:flex;gap:6px;flex-wrap:wrap}
+    .mz-tab{
+      font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+      color:var(--faint);border:1px solid var(--line);border-radius:999px;padding:4px 11px;background:var(--panel);
+    }
+    .mz-tab.is-on{color:var(--green);border-color:var(--green-line);background:var(--green-dim)}
+    .mz-headline{
+      display:flex;align-items:flex-end;justify-content:space-between;gap:28px;flex-wrap:wrap;
+      padding:24px 22px;border-bottom:1px solid var(--line-soft);
+    }
+    .mz-big{font-family:var(--display);font-size:clamp(2.4rem,7vw,3.4rem);font-weight:800;letter-spacing:-.035em;line-height:1;color:var(--text)}
+    .mz-unit{margin-top:7px;font-size:13.5px;color:var(--muted)}
+    .mz-headline-side{display:flex;flex-direction:column;gap:7px;min-width:190px}
+    .mz-side-row{display:flex;align-items:center;justify-content:space-between;gap:18px;font-size:13px;color:var(--muted)}
+    .mz-side-row b{color:var(--text);font-weight:600}
+    .mz-ok{color:var(--green)}
+    .mz-rows{padding:6px 0}
+    .mz-row{
+      display:grid;grid-template-columns:minmax(0,2.4fr) 64px 84px minmax(96px,1fr);
+      align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid var(--line-soft);
+    }
+    .mz-row:last-child{border-bottom:0}
+    .mz-row-head{
+      font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+      color:var(--faint);padding-top:10px;padding-bottom:10px;
+    }
+    .mz-seg{font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mz-n{font-family:var(--mono);font-size:13px;color:var(--faint)}
+    .mz-bar{display:block;height:8px;border-radius:999px;background:var(--bg-soft);overflow:hidden}
+    .mz-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--green-bright))}
+    .mz-foot{padding:13px 22px;border-top:1px solid var(--line-soft);background:var(--bg-soft);font-size:12.5px;color:var(--faint)}
+
+    /* ---- #engine : split-and-test tree ---- */
+    .eng-tree{margin-top:8px}
+    .eng-root{display:flex;flex-direction:column;align-items:center}
+    .eng-node{
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);
+      padding:11px 16px;font-size:13.5px;color:var(--text);text-align:center;
+      box-shadow:0 6px 18px rgba(20,30,60,.05);
+    }
+    .eng-node-root{
+      font-family:var(--mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;
+      color:var(--green);border-color:var(--green-line);background:var(--green-dim);
+    }
+    .eng-stem{width:1px;height:26px;background:var(--line)}
+    .eng-branches{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:20px;position:relative;padding-top:22px;
+    }
+    .eng-branches::before{
+      content:"";position:absolute;top:0;left:16.6%;right:16.6%;height:1px;background:var(--line);
+    }
+    .eng-branch{display:flex;flex-direction:column;align-items:center;position:relative}
+    .eng-branch::before{
+      content:"";position:absolute;top:-22px;left:50%;width:1px;height:22px;background:var(--line);
+    }
+    .eng-drop{width:1px;height:20px;background:var(--line)}
+    .eng-variants{display:flex;flex-direction:column;gap:8px;width:100%}
+    .eng-variant{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      border:1px solid var(--line);border-radius:999px;padding:7px 14px;background:var(--panel);
+      font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--faint);
+    }
+    .eng-variant b{font-weight:600;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase}
+    .eng-variant.is-win{color:var(--green);border-color:var(--green-line);background:var(--green-dim)}
+    .eng-notes{
+      display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:16px;margin-top:40px;
+    }
+    .eng-note{
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
+    }
+    .eng-note-k{
+      font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;color:var(--green);margin-bottom:10px;
+    }
+    .eng-note h3{font-size:15.5px;font-weight:650;letter-spacing:-.01em;margin-bottom:7px}
+    .eng-note p{font-size:13.5px;color:var(--muted);line-height:1.6}
+
+    /* ---- #speed : time before the first email ---- */
+    .sp-track{display:flex;flex-direction:column;gap:18px}
+    .sp-lane{
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;
+    }
+    .sp-lane.is-us{border-color:var(--green-line);background:var(--green-dim)}
+    .sp-lane-id{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:12px}
+    .sp-lane-id h3{font-size:16px;font-weight:650;letter-spacing:-.012em}
+    .sp-lane-t{font-family:var(--mono);font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+    .sp-lane.is-us .sp-lane-t{color:var(--green)}
+    .sp-bar{display:block;height:9px;border-radius:999px;background:var(--bg-soft);overflow:hidden}
+    .sp-lane.is-us .sp-bar{background:rgba(255,255,255,.75)}
+    .sp-fill{display:block;height:100%;border-radius:999px}
+    .sp-slow{background:linear-gradient(90deg,#c8cfdd,#aab3c6)}
+    .sp-slowest{background:linear-gradient(90deg,#d7dbe5,#b9c0d0)}
+    .sp-fast{background:linear-gradient(90deg,var(--green),var(--green-bright));min-width:14px}
+    .sp-note{margin-top:11px;font-size:13.5px;color:var(--muted);line-height:1.6}
+    .speed-observed{
+      display:flex;align-items:flex-start;gap:10px;margin-top:22px;
+      border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);
+      padding:14px 18px;font-size:13.5px;color:var(--muted);
+    }
+    .speed-live-dot{
+      flex:0 0 auto;width:7px;height:7px;margin-top:7px;border-radius:50%;
+      background:var(--green);box-shadow:0 0 0 4px var(--green-dim);
+    }
+
+    /* ---- #stack : what you stop paying for ---- */
+    .stack-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:26px;align-items:start}
+    .stack-list{display:flex;flex-direction:column;gap:10px}
+    .stack-row{
+      display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px 18px;
+    }
+    .stack-icon{
+      font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--green);
+      border:1px solid var(--green-line);background:var(--green-dim);border-radius:8px;padding:7px 9px;
+    }
+    .stack-row h3{font-size:15px;font-weight:650;letter-spacing:-.01em;margin-bottom:4px}
+    .stack-row p{font-size:13px;color:var(--muted);line-height:1.55}
+    .stack-status{
+      font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+      color:var(--green);border:1px solid var(--green-line);border-radius:999px;padding:4px 10px;white-space:nowrap;
+    }
+    .stack-compare{
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:var(--shadow);overflow:hidden;position:sticky;top:118px;
+    }
+    .stack-compare-h{
+      padding:13px 18px;border-bottom:1px solid var(--line-soft);background:var(--bg-soft);
+      font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+    }
+    .stack-price{padding:16px 18px;border-bottom:1px solid var(--line-soft)}
+    .stack-price:last-child{border-bottom:0}
+    .stack-price.is-us{background:var(--green-dim)}
+    .stack-price-k{font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px}
+    .stack-price-v{
+      font-family:var(--display);font-size:22px;font-weight:750;letter-spacing:-.03em;color:var(--text);
+    }
+    .stack-price.is-us .stack-price-v{color:var(--green)}
+    .stack-price-v span{
+      display:inline-block;margin-left:7px;font-family:var(--body);font-size:12px;font-weight:450;
+      letter-spacing:0;color:var(--faint);
+    }
+    .stack-price-n{margin-top:6px;font-size:12.5px;color:var(--muted);line-height:1.55}
+
+    /* ---- #pricing : the guarantee ---- */
+    .guarantee-card{
+      background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+      padding:26px 24px;box-shadow:var(--shadow);
+    }
+    .guarantee-mark{
+      display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;
+      color:var(--green);border:1px solid var(--green-line);background:var(--green-dim);
+      border-radius:999px;padding:4px 11px;margin-bottom:14px;
+    }
+    .guarantee-card h3{font-size:19px;font-weight:700;letter-spacing:-.022em;line-height:1.32;margin-bottom:10px}
+    .guarantee-card > p{font-size:14px;color:var(--muted);line-height:1.62;margin-bottom:16px}
+    .guarantee-list{list-style:none;display:flex;flex-direction:column;gap:12px}
+    .guarantee-list li{
+      position:relative;padding-left:24px;font-size:13.5px;color:var(--muted);line-height:1.6;
+    }
+    .guarantee-list li::before{
+      content:"";position:absolute;left:0;top:7px;width:11px;height:11px;border-radius:50%;
+      background:var(--green-dim);border:1px solid var(--green-line);
+    }
+    .guarantee-list b{color:var(--text);font-weight:600}
+
+    @media (max-width:900px){
+      .stack-grid{grid-template-columns:1fr}
+      .stack-compare{position:static}
+      .eng-branches{grid-template-columns:1fr;gap:26px}
+      .eng-branches::before{display:none}
+      .eng-branch::before{display:none}
+      .mz-row{grid-template-columns:minmax(0,1fr) 52px 68px;row-gap:10px}
+      .mz-row .mz-bar{grid-column:1 / -1}
+    }
+
+    </style>
 
   <script type="application/ld+json">
   {
@@ -936,7 +1129,7 @@
     "applicationCategory":"BusinessApplication",
     "operatingSystem":"Web",
     "url":"https://distribute.you/",
-    "description":"Done-for-you B2B cold email outreach. Add your website, confirm the buyers, set a daily budget, and distribute.you handles prospecting, research, personalized sending, follow-ups, reply filtering, and reporting.",
+    "description":"Autonomous Sales Meetings Acquisition. distribute.you is a done-for-you B2B acquisition agency: add your website, confirm the buyers, set a daily budget, and we run prospecting, research, personalised outreach, follow-ups, reply filtering, and per-segment cost-of-acquisition reporting.",
     "offers":{
       "@type":"Offer",
       "price":"1",
@@ -974,7 +1167,7 @@
         </a>
 
         <div class="nav-links" id="nav-links" data-open="false">
-          <a href="#category">Why distribute.you</a>
+          <a href="#engine">Why distribute.you</a>
           <a href="#how">How it works</a>
           <a href="#proof">Proof</a>
           <a href="#pricing">Pricing</a>
@@ -1052,6 +1245,48 @@
       </div>
     </section>
 
+    <section id="testimonials" class="s-testimonials">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">What clients say</div>
+          <h2>Results people <span class="accent">stake their name on</span>.</h2>
+        </div>
+        <div class="tm-grid">
+
+          <article class="tm-card">
+            <div class="tm-stars" aria-label="Rated 5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote class="tm-quote">"This platform is incredible! Excellent click-through rate... I can literally see everything at a glance... Seriously, amazing work here, this is next-level!"</blockquote>
+            <div class="tm-foot">
+              <img class="tm-av" src="/landing/testimonials/katherine-fleishman.jpeg" width="52" height="52" alt="Katherine Fleishman" loading="lazy">
+              <div class="tm-id">
+                <span class="tm-name">Katherine Fleishman</span>
+                <span class="tm-role">Marketing expert, 20+ years experience</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="tm-card">
+            <div class="tm-stars" aria-label="Rated 5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote class="tm-quote">"Kevin is a very intelligent person with insights on how to expand and grow a business. I am happy to work with an ethical and hard working individual who brings results. Highly recommended!"</blockquote>
+            <div class="tm-foot">
+              <img class="tm-av" src="/landing/testimonials/ryan-parenti.jpg" width="52" height="52" alt="Ryan W.D. Parenti" loading="lazy">
+              <div class="tm-id">
+                <span class="tm-name">Ryan W.D. Parenti</span>
+                <span class="tm-role">Founder, Doc Dinners</span>
+              </div>
+              <div class="tm-meta">
+                <span class="tm-roi">$50 per sales meeting &middot; 10&times; ROI</span>
+                <a class="tm-link" href="https://docdinners.com/" target="_blank" rel="noopener" aria-label="Doc Dinners">
+                  <img class="tm-logo" src="/landing/testimonials/docdinners-logo.webp" height="19" alt="Doc Dinners" loading="lazy">
+                </a>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
     <section id="proof" class="cac">
       <div class="wrap cac-grid">
         <div class="cac-left">
@@ -1082,55 +1317,120 @@
       </div>
     </section>
 
-    <section id="category">
+    <section id="measure">
       <div class="wrap">
         <div class="section-head">
-          <div class="eyebrow">A different way to sell</div>
-          <h2>Software gives you tools. AI SDRs give you an agent. Agencies give you a vendor. <span class="accent">distribute.you gives you the outcome.</span></h2>
-          <p class="section-copy">You keep three decisions: what you sell, who should hear it, and how much to spend. distribute.you handles everything between your website and an interested reply.</p>
+          <div class="eyebrow">Cost of acquisition, measured</div>
+          <h2>Nobody can quote you a cost per meeting in advance. <span class="accent">We are the ones who measure it.</span></h2>
+          <p class="section-copy">We invest your budget, run the campaign, and report what each interested reply actually cost you. Live, for the whole account and for every segment separately. An agency sends you a slide at the end of the month. You get the number the moment it moves.</p>
         </div>
 
-        <div class="model-grid">
-          <article class="model-card">
-            <div class="model-type">Cold email software</div>
-            <h3>You get tools</h3>
-            <p>You still source data, connect inboxes, write sequences, protect deliverability, and read every reply.</p>
-            <div class="model-bottom">You operate the system</div>
-          </article>
+        <div class="mz-card" aria-label="Dashboard layout preview">
+          <div class="mz-top">
+            <div class="mz-title"><span class="mz-live"></span>Cost of acquisition</div>
+            <div class="mz-tabs"><span class="mz-tab is-on">Account</span><span class="mz-tab">By segment</span><span class="mz-tab">By campaign</span></div>
+          </div>
 
-          <article class="model-card">
-            <div class="model-type">AI SDR platforms</div>
-            <h3>You get an agent</h3>
-            <p>You configure it, connect systems, define playbooks, monitor the output, and carry the subscription.</p>
-            <div class="model-bottom">You manage the agent</div>
-          </article>
+          <div class="mz-headline">
+            <div>
+              <div class="mz-big">__CAC_PRICE__</div>
+              <div class="mz-unit">per interested reply, account wide</div>
+            </div>
+            <div class="mz-headline-side">
+              <div class="mz-side-row"><span>Daily budget</span><b>your cap</b></div>
+              <div class="mz-side-row"><span>Status</span><b class="mz-ok">Running</b></div>
+            </div>
+          </div>
 
-          <article class="model-card">
-            <div class="model-type">Lead generation agencies</div>
-            <h3>You get a vendor</h3>
-            <p>You attend onboarding, approve the work, pay a retainer, and wait through the ramp before seeing results.</p>
-            <div class="model-bottom">You manage the vendor</div>
-          </article>
+          <div class="mz-rows">
+            <div class="mz-row mz-row-head"><span>Segment</span><span>Sent</span><span>Interested</span><span>Cost per reply</span></div>
+            <div class="mz-row">
+              <span class="mz-seg">Founders &middot; United States &middot; 11 to 50</span>
+              <span class="mz-n">&ndash;</span><span class="mz-n">&ndash;</span>
+              <span class="mz-bar"><i style="width:38%"></i></span>
+            </div>
+            <div class="mz-row">
+              <span class="mz-seg">Heads of Growth &middot; United Kingdom &middot; 51 to 200</span>
+              <span class="mz-n">&ndash;</span><span class="mz-n">&ndash;</span>
+              <span class="mz-bar"><i style="width:61%"></i></span>
+            </div>
+            <div class="mz-row">
+              <span class="mz-seg">Operations &middot; Germany &middot; 11 to 50</span>
+              <span class="mz-n">&ndash;</span><span class="mz-n">&ndash;</span>
+              <span class="mz-bar"><i style="width:92%"></i></span>
+            </div>
+          </div>
 
-          <article class="model-card highlight">
-            <div class="model-type">distribute.you</div>
-            <h3>You get a running campaign</h3>
-            <p>Your website becomes the brief. You approve the buyers and angle. distribute.you handles prospecting, sending, follow-ups, filtering, and reporting.</p>
-            <div class="model-bottom">You handle interested buyers</div>
-          </article>
+          <div class="mz-foot">Layout preview. The headline rate is live across our clients. Your per-segment numbers are your own, and they appear as soon as your campaign produces them.</div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <section id="engine">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">Why the number goes down</div>
+          <h2>We are not sending emails. <span class="accent">We are running experiments.</span></h2>
+          <p class="section-copy">Your cost per interested reply is not a price we set. It is a number we drive down, because we never send the same campaign twice. Your market gets cut into segments, every segment competes on its own measured cost, and inside each one the messages compete against each other.</p>
         </div>
 
-        <div class="category-definition">
-          <div>
-            <h3>Outbound without operating outbound</h3>
-            <p>Your website becomes the brief. Your budget controls the pace. You only step in when someone is interested. No sequencer to learn, database to search, or vendor to manage.</p>
+        <div class="eng-tree" aria-label="How a campaign splits and tests">
+          <div class="eng-root">
+            <div class="eng-node eng-node-root">Your market</div>
+            <div class="eng-stem" aria-hidden="true"></div>
           </div>
-          <div class="category-formula" aria-label="Campaign launch formula">
-            <span class="formula-chip">WEBSITE</span><span class="formula-plus">+</span>
-            <span class="formula-chip">APPROVAL</span><span class="formula-plus">+</span>
-            <span class="formula-chip">DAILY BUDGET</span><span class="formula-plus">=</span>
-            <span class="formula-chip">CAMPAIGN LIVE</span>
+
+          <div class="eng-branches">
+            <article class="eng-branch">
+              <div class="eng-node">Founders &middot; United States &middot; 11 to 50</div>
+              <div class="eng-drop" aria-hidden="true"></div>
+              <div class="eng-variants">
+                <span class="eng-variant is-win">Angle A <b>winning</b></span>
+                <span class="eng-variant">Angle B</span>
+              </div>
+            </article>
+            <article class="eng-branch">
+              <div class="eng-node">Heads of Growth &middot; United Kingdom &middot; 51 to 200</div>
+              <div class="eng-drop" aria-hidden="true"></div>
+              <div class="eng-variants">
+                <span class="eng-variant">Angle A</span>
+                <span class="eng-variant is-win">Angle B <b>winning</b></span>
+              </div>
+            </article>
+            <article class="eng-branch">
+              <div class="eng-node">Operations &middot; Germany &middot; 11 to 50</div>
+              <div class="eng-drop" aria-hidden="true"></div>
+              <div class="eng-variants">
+                <span class="eng-variant is-win">Angle A <b>winning</b></span>
+                <span class="eng-variant">Angle C</span>
+              </div>
+            </article>
           </div>
+        </div>
+
+        <div class="eng-notes">
+          <article class="eng-note">
+            <div class="eng-note-k">SPLIT</div>
+            <h3>Your market, cut into testable slices</h3>
+            <p>We do not send one campaign to one audience. Geography, company size and role each split the market, and every slice runs as its own experiment with its own measured cost.</p>
+          </article>
+          <article class="eng-note">
+            <div class="eng-note-k">SHIFT</div>
+            <h3>Budget follows what answers</h3>
+            <p>Each slice reports its own cost per interested reply. Spend moves toward the ones that convert and away from the ones that do not, without you touching anything.</p>
+          </article>
+          <article class="eng-note">
+            <div class="eng-note-k">TEST</div>
+            <h3>Every angle tested, inside every slice</h3>
+            <p>Within a slice the outreach templates compete head to head. A message that wins with founders in the US often loses with operations in Germany, which is exactly why the split matters.</p>
+          </article>
+          <article class="eng-note">
+            <div class="eng-note-k">WRITE</div>
+            <h3>Written for one person, built to convert</h3>
+            <p>Every message is written for the specific prospect receiving it, not merged from a template. And each template is built on the Hormozi offer formula, so what gets pitched is engineered rather than improvised.</p>
+          </article>
         </div>
       </div>
     </section>
@@ -1177,87 +1477,102 @@
       </div>
     </section>
 
-    <section id="testimonials" class="s-testimonials">
+    <section id="speed">
       <div class="wrap">
         <div class="section-head">
-          <div class="eyebrow">What clients say</div>
-          <h2>Results people <span class="accent">stake their name on</span>.</h2>
+          <div class="eyebrow">Time to first signal</div>
+          <h2>Your first email goes out today. <span class="accent">Not in three weeks.</span></h2>
+          <p class="section-copy">There is no domain to buy, no inbox to warm, no sequence to write, no deliverability tool to wire up. We already own and operate all of it. That is the part of outbound that normally eats a month before a single prospect hears from you.</p>
         </div>
-        <div class="tm-grid">
 
-          <article class="tm-card">
-            <div class="tm-stars" aria-label="Rated 5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-            <blockquote class="tm-quote">"This platform is incredible! Excellent click-through rate... I can literally see everything at a glance... Seriously, amazing work here, this is next-level!"</blockquote>
-            <div class="tm-foot">
-              <img class="tm-av" src="/landing/testimonials/katherine-fleishman.jpeg" width="52" height="52" alt="Katherine Fleishman" loading="lazy">
-              <div class="tm-id">
-                <span class="tm-name">Katherine Fleishman</span>
-                <span class="tm-role">Marketing expert, 20+ years experience</span>
-              </div>
-            </div>
+        <div class="sp-track" aria-label="Time before the first email is sent">
+          <article class="sp-lane">
+            <div class="sp-lane-id"><h3>Build it yourself</h3><span class="sp-lane-t">2 to 4 weeks</span></div>
+            <div class="sp-bar"><i class="sp-fill sp-slow" style="width:100%"></i></div>
+            <p class="sp-note">Buy domains, warm the inboxes, source the data, write the sequences, watch the deliverability. Nothing has been sent yet.</p>
           </article>
-
-          <article class="tm-card">
-            <div class="tm-stars" aria-label="Rated 5 out of 5">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-            <blockquote class="tm-quote">"Kevin is a very intelligent person with insights on how to expand and grow a business. I am happy to work with an ethical and hard working individual who brings results. Highly recommended!"</blockquote>
-            <div class="tm-foot">
-              <img class="tm-av" src="/landing/testimonials/ryan-parenti.jpg" width="52" height="52" alt="Ryan W.D. Parenti" loading="lazy">
-              <div class="tm-id">
-                <span class="tm-name">Ryan W.D. Parenti</span>
-                <span class="tm-role">Founder, Doc Dinners</span>
-              </div>
-              <div class="tm-meta">
-                <span class="tm-roi">10.6&times; ROI</span>
-                <a class="tm-link" href="https://docdinners.com/" target="_blank" rel="noopener" aria-label="Doc Dinners">
-                  <img class="tm-logo" src="/landing/testimonials/docdinners-logo.webp" height="19" alt="Doc Dinners" loading="lazy">
-                </a>
-              </div>
-            </div>
+          <article class="sp-lane">
+            <div class="sp-lane-id"><h3>Hire an SDR</h3><span class="sp-lane-t">3 to 6 months</span></div>
+            <div class="sp-bar"><i class="sp-fill sp-slowest" style="width:100%"></i></div>
+            <p class="sp-note">Recruit, onboard, ramp. Between $4,000 and $7,000 a month from the first payslip, before the pipeline exists.</p>
           </article>
-
+          <article class="sp-lane is-us">
+            <div class="sp-lane-id"><h3>distribute.you</h3><span class="sp-lane-t">today</span></div>
+            <div class="sp-bar"><i class="sp-fill sp-fast" style="width:4%"></i></div>
+            <p class="sp-note">Drop the URL, confirm the buyers and the angle we already prefilled, set a daily cap. The campaign starts producing measured numbers the same day.</p>
+          </article>
         </div>
+
+        __FIRST_REPLY_LINE__
       </div>
     </section>
 
-    <section class="included-section">
-      <div class="wrap included-grid">
-        <div class="included-statement">
-          <div class="eyebrow">You do not build the stack</div>
-          <h2>You used to need a PhD to <span class="accent">execute sales automation</span></h2>
-          <p class="section-copy">No separate lead database, email writer, sending platform, warmed inbox setup, deliverability tool, or reply-triage process. distribute.you operates the complete campaign.</p>
+
+    <section id="stack">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">What you stop paying for</div>
+          <h2>You used to need a whole department to <span class="accent">run this properly</span></h2>
+          <p class="section-copy">Prospect data, research, domains, warmed inboxes, copywriting, sending, deliverability, reply triage, reporting. Every one of those is a tool, a hire or a retainer. All of them are inside your daily budget.</p>
         </div>
 
-        <div class="included-list">
-          <div class="included-row">
-            <div class="included-icon">ICP</div>
-            <div><h3>Build the prospect list</h3><p>Companies and contacts are sourced, filtered, verified, and matched to the audience you approved.</p></div>
-            <span class="included-status">handled</span>
+        <div class="stack-grid">
+          <div class="stack-list">
+            <div class="stack-row">
+              <div class="stack-icon">ICP</div>
+              <div><h3>Build the prospect list</h3><p>Companies and contacts sourced, filtered, verified, and matched to the audience you approved.</p></div>
+              <span class="stack-status">included</span>
+            </div>
+            <div class="stack-row">
+              <div class="stack-icon">RCH</div>
+              <div><h3>Research every prospect</h3><p>Company context is analysed before each message is generated. This is well past a first-name mail merge.</p></div>
+              <span class="stack-status">included</span>
+            </div>
+            <div class="stack-row">
+              <div class="stack-icon">INF</div>
+              <div><h3>Domains and warmed inboxes</h3><p>Campaigns run from inboxes we own and warm. Your company domain is never connected and never exposed.</p></div>
+              <span class="stack-status">included</span>
+            </div>
+            <div class="stack-row">
+              <div class="stack-icon">SEQ</div>
+              <div><h3>Write, send, and follow up</h3><p>Personalised messages, follow-ups, pacing and bounce handling, all tested against each other.</p></div>
+              <span class="stack-status">included</span>
+            </div>
+            <div class="stack-row">
+              <div class="stack-icon">INT</div>
+              <div><h3>Read and filter the replies</h3><p>Interested replies are surfaced. Out-of-office, rejections and opt-outs are handled inside the campaign and never reach you.</p></div>
+              <span class="stack-status">included</span>
+            </div>
+            <div class="stack-row">
+              <div class="stack-icon">DAT</div>
+              <div><h3>Report the cost of acquisition</h3><p>Your cost per visit, per interested reply and per signup, account wide and per segment.</p></div>
+              <span class="stack-status">included</span>
+            </div>
           </div>
-          <div class="included-row">
-            <div class="included-icon">RCH</div>
-            <div><h3>Research every prospect</h3><p>Company context is analyzed before each message is generated. This is more than a first-name mail merge.</p></div>
-            <span class="included-status">handled</span>
-          </div>
-          <div class="included-row">
-            <div class="included-icon">INF</div>
-            <div><h3>Handle domains and inboxes</h3><p>Campaigns run from inboxes managed by distribute.you. You do not need to connect or warm your main company domain.</p></div>
-            <span class="included-status">handled</span>
-          </div>
-          <div class="included-row">
-            <div class="included-icon">SEQ</div>
-            <div><h3>Write, send, and follow up</h3><p>Personalized messages, follow-ups, pacing, and bounce handling run inside the platform.</p></div>
-            <span class="included-status">handled</span>
-          </div>
-          <div class="included-row">
-            <div class="included-icon">INT</div>
-            <div><h3>Read and filter the replies</h3><p>Interested replies are surfaced. Out-of-office messages, clear rejections, and opt-outs are classified inside the workflow.</p></div>
-            <span class="included-status">handled</span>
-          </div>
-          <div class="included-row">
-            <div class="included-icon">DAT</div>
-            <div><h3>Show what the campaign costs</h3><p>Track activity and your resulting cost per visit, positive reply, or signup when those events are available.</p></div>
-            <span class="included-status">included</span>
-          </div>
+
+          <aside class="stack-compare" aria-label="What the same job costs elsewhere">
+            <div class="stack-compare-h">What the same job costs elsewhere</div>
+            <div class="stack-price">
+              <div class="stack-price-k">Lead generation agency</div>
+              <div class="stack-price-v">$1,500 to $5,000<span>/ month</span></div>
+              <div class="stack-price-n">Plus $80 to $200 per qualified reply, on a 3 to 12 month retainer.</div>
+            </div>
+            <div class="stack-price">
+              <div class="stack-price-k">In-house SDR</div>
+              <div class="stack-price-v">$4,000 to $7,000<span>/ month</span></div>
+              <div class="stack-price-n">Plus $50 to $120 per qualified reply, and 3 to 6 months of ramp first.</div>
+            </div>
+            <div class="stack-price">
+              <div class="stack-price-k">A booked B2B meeting</div>
+              <div class="stack-price-v">$700<span>market rate</span></div>
+              <div class="stack-price-n">What one meeting clears at on the open market, before you source it yourself.</div>
+            </div>
+            <div class="stack-price is-us">
+              <div class="stack-price-k">distribute.you</div>
+              <div class="stack-price-v">$1<span>/ day minimum</span></div>
+              <div class="stack-price-n">No seats, no retainer, no separate tool bill. Everything on the left is inside that budget.</div>
+            </div>
+          </aside>
         </div>
       </div>
     </section>
@@ -1268,9 +1583,9 @@
     <section id="pricing">
       <div class="wrap">
         <div class="section-head">
-          <div class="eyebrow">Budget like an ad campaign</div>
-          <h2>Set the budget. <span class="accent">Pilot your ROI</span></h2>
-          <p class="section-copy">No seats, no retainer, no separate tool bill. Choose the outcome you want us to pursue and set the maximum daily spend. distribute.you spends the budget to maximize your ROI and reports the actual cost per outcome.</p>
+          <div class="eyebrow">What you actually risk</div>
+          <h2>Budget it like an ad campaign. <span class="accent">Stop it whenever you want.</span></h2>
+          <p class="section-copy">You set a maximum daily spend and you can pause from the dashboard at any instant, so the most you are ever exposed to is one day. No engagement, no retainer, no seats, no contract, and nothing sends until you have approved the offer and the audience we prefilled from your site.</p>
         </div>
 
         <div class="economics-grid">
@@ -1278,38 +1593,26 @@
             <h3>Start with one day. No commitment.</h3>
             <div class="price">$1 <span>/ day minimum campaign budget</span></div>
             <ul class="price-list">
-              <li>No monthly software subscription</li>
-              <li>No seat fee</li>
-              <li>No agency retainer</li>
-              <li>Prospecting, copy, sending, and filtering included</li>
+              <li>$25 in matched credits on a new account</li>
+              <li>No subscription, no seat fee, no retainer</li>
+              <li>Raise it, lower it, or pause it at any instant</li>
+              <li>Prospecting, copy, sending and filtering included</li>
               <li>Live cost per measured result</li>
-              <li>Change the budget or pause anytime</li>
+              <li>Your company domain is never used or exposed</li>
             </ul>
-            <a class="button primary" href="https://dashboard.distribute.you/sign-up">Launch my first campaign. $25 free →</a>
+            <a class="button primary" href="https://dashboard.distribute.you/sign-up">Launch my first campaign. $25 free &rarr;</a>
           </div>
 
-          <div class="billing-card">
-            <h3>What happens after you launch</h3>
-            <p>You choose the goal and spending limit. distribute.you handles the campaign.</p>
-
-            <div class="billing-steps">
-              <div class="billing-row">
-                <div class="billing-num">01</div>
-                <div><h4>Choose the outcome</h4><p>Website visits, positive replies, meetings, or signups. Pick the result that matters to your funnel.</p></div>
-              </div>
-              <div class="billing-row">
-                <div class="billing-num">02</div>
-                <div><h4>Set the daily budget</h4><p>Choose the maximum pace. Raise it, lower it, or pause the campaign from the dashboard.</p></div>
-              </div>
-              <div class="billing-row">
-                <div class="billing-num">03</div>
-                <div><h4>distribute.you runs the work</h4><p>Prospect research, personalized messages, managed inboxes, follow-ups, and reply filtering happen inside the campaign.</p></div>
-              </div>
-              <div class="billing-row">
-                <div class="billing-num">04</div>
-                <div><h4>See your cost of acquisition</h4><p>The dashboard shows what the campaign produced and the resulting cost per measured outcome. Scale, adjust, or stop.</p></div>
-              </div>
-            </div>
+          <div class="guarantee-card">
+            <div class="guarantee-mark">OUR GUARANTEE</div>
+            <h3>We do not guarantee the result. We guarantee the measurement.</h3>
+            <p>Market size, offer quality, targeting and your own sales execution all move the outcome, so anyone promising you a number of meetings is guessing on your behalf. What we will commit to is the part we control.</p>
+            <ul class="guarantee-list">
+              <li><b>You always see the real cost.</b> Your cost per interested reply is computed from your own campaign and shown live, account wide and per segment.</li>
+              <li><b>You always see the whole picture.</b> Who we contacted, what was sent, who answered and who said no. The dashboard is the complete record, not a curated extract.</li>
+              <li><b>You always control the spend.</b> A daily cap you set, a pause that takes effect immediately, and no charge for a day you did not authorise.</li>
+              <li><b>We publish our own numbers.</b> The live rate on this page is the same figure we run the business on, not a marketing headline.</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -1372,12 +1675,12 @@
 
         <details open>
           <summary>What is distribute.you, in one sentence?</summary>
-          <p>distribute.you is done-for-you B2B cold email outreach. Give it your website, confirm who you want to reach, choose the campaign objective, and set a daily limit. distribute.you handles prospecting, research, writing, sending, follow-ups, reply filtering, and reporting.</p>
+          <p>distribute.you is a done-for-you B2B acquisition agency. The offer is Autonomous Sales Meetings Acquisition: give us your website, confirm who you want to reach, choose the objective, and set a daily limit. We run prospecting, research, writing, sending, follow-ups, reply filtering, and reporting, and we report what each interested reply cost you.</p>
         </details>
 
         <details>
-          <summary>Is this just another cold email tool?</summary>
-          <p>No. A cold email tool gives you software to operate. distribute.you runs the campaign on your behalf. You review the audience and angle, then handle the interested conversations.</p>
+          <summary>Is this a tool I have to operate?</summary>
+          <p>No. A tool hands you software and leaves the work with you. We run the campaign on your behalf. You review the audience and the angle, then handle the interested conversations. If you would rather never log in, send us your website and we set the whole thing up for you at the same price, with the interested replies arriving in your normal inbox.</p>
         </details>
 
         <details>
@@ -1452,7 +1755,7 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <a href="#top" class="logo"><span class="logo-mark" aria-hidden="true"></span>distribute.you <span class="beta">beta</span></a>
-          <p>Done-for-you B2B outbound. Your website in. Interested buyers out.</p>
+          <p>Autonomous Sales Meetings Acquisition. Your website in. Interested buyers out.</p>
         </div>
         <div class="footer-col">
           <h4>Product</h4>
@@ -1681,7 +1984,7 @@ __CAC_BOOT_SLOT__
     function renderCac(){
       /* Render ONCE from the server-baked boot (best-model price + real dated
          series). The price is already in the served HTML; the chart draws from
-         boot.points. NO client re-fetch — the values change only when the ISR
+         boot.points. NO client re-fetch. The values change only when the ISR
          snapshot re-renders (~every 300s). This is what kills the flash. */
       var boot=window.__CAC_BOOT__;
       if(boot){ if(boot.best!=null)bestPrice=boot.best; applyData(boot.best, boot.points||[]); }
