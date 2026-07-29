@@ -24,7 +24,7 @@ pnpm --filter @distribute/<package> test tests/unit/specific.test.ts  # single f
 
 **Build shared workspace packages before app tests/build.** Vitest/Vite resolve workspace deps via `dist/`; an unbuilt `shared/*` surfaces as `Failed to resolve entry for package "@distribute/<name>"`. Run `pnpm -r build` after install or after pulling `shared/` changes.
 
-**Source-substring page tests: a `not.toMatch(/X/)` guard trips on the fix's own explanatory comment** (a comment that writes the forbidden literal fails the test). Reword the comment, or assert against a comment-stripped copy (`pr-expert-public-report.test.ts` ships `stripComments(src)`). (#1235, DIS-112)
+**Source-substring page tests: a `not.toMatch(/X/)` guard trips on the fix's own explanatory comment** (a comment that writes the forbidden literal fails the test). Reword the comment, or assert against a comment-stripped copy (`pr-expert-public-report.test.ts` ships `stripComments(src)`). **Before adding a `not.toContain("<literal>")` guard, grep the WHOLE target file for that literal, not just the JSX you edited — a big page carries PRE-EXISTING comments mentioning it far from the code you touched, and each one fails the guard.** Reword every hit in the same commit. (#1235, DIS-112; #3033 removed an "AI-suggested" badge from `onboarding.tsx` and two unrelated comments ~1600 and ~300 lines away still wrote the literal.)
 
 **Run `pnpm --filter @distribute/dashboard test` before pushing a dashboard change — `tsc` alone misses source-substring guards** (many tests assert a page contains a literal expression/copy string). `tsc` stays green while the guard goes red in CI and silently blocks auto-merge. Run it (~3s, source-only) and update the matching guard in the same commit. (#1252)
 
