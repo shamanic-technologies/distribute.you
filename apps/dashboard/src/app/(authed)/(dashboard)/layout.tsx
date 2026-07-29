@@ -15,7 +15,6 @@ import { NoAudienceBanner } from "@/components/onboarding/no-audience-banner";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { SupportButton } from "@/components/support/support-button";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { QueryProvider } from "@/lib/query-provider";
 import { OrgContextProvider, useOrg } from "@/lib/org-context";
 import { BillingGuardProvider } from "@/lib/billing-guard";
@@ -25,7 +24,6 @@ import { EntityRegistryProvider } from "@/lib/entity-registry-context";
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isOpen, close } = useMobileSidebar();
   const { hasOrg, isLoading, isError } = useOrg();
-  const isBeta = useIsBetaUser();
 
   // First-run routing is decided at the edge (proxy.ts / DIS-111) from a session
   // claim — a user who reaches the dashboard already has an onboarded org. This
@@ -63,98 +61,45 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   if (!isLoading && hasOrg) hasResolvedOnce.current = true;
   const showContent = hasResolvedOnce.current || (!isLoading && hasOrg);
 
-  const trackers = (
-    <>
+  // The L-shaped shell. The sidebar is a FULL-HEIGHT column to the left of the
+  // header rather than sitting under a full-width bar, so its top block (the
+  // tenant switcher) lands level with the header row. That intersection is the
+  // whole point: the tenant name reads as the root of the navigation underneath
+  // it, not as a label floating above an unrelated bar. Same shell as Slack /
+  // Notion / Linear / Vercel.
+  return (
+    <div className="h-screen flex bg-gray-50 overflow-hidden">
       <OrgActivator />
       <AuthEventTracker />
       <AdsPurchaseTracker />
       <DistributeSaleTracker />
       <UserActivityTracker />
       <UserResolver />
-    </>
-  );
-  const banners = (
-    <>
-      <CreditAlerts />
-      <NoAudienceBanner />
-      <OnboardingFlow />
-      <SupportButton />
-    </>
-  );
-  const mobileSidebar = (
-    <>
+
+      {/* Mobile sidebar overlay */}
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={close} />
       )}
+
+      {/* Mobile sidebar drawer */}
       <div className={`
         fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out md:hidden
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
         <ContextSidebar />
       </div>
-    </>
-  );
 
-  // BETA chrome — the L-shaped shell. The sidebar becomes a FULL-HEIGHT column to
-  // the left of the header instead of sitting under a full-width bar, so its top
-  // block (the tenant switcher) lands level with the header row. That intersection
-  // is the whole point: the tenant name reads as the root of the navigation
-  // underneath it, not as a label floating above an unrelated bar. Same shell as
-  // Slack / Notion / Linear / Vercel.
-  if (isBeta) {
-    return (
-      <div className="h-screen flex bg-gray-50 overflow-hidden">
-        {trackers}
-        {mobileSidebar}
-        <div className="hidden md:flex h-full">
-          <ContextSidebar />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <Header />
-          {banners}
-          <main className="min-w-0 flex-1 overflow-y-auto">
-            {showContent ? children : <div className="h-full bg-gray-50" />}
-          </main>
-        </div>
+      {/* Desktop sidebar — content adapts via ContextSidebar */}
+      <div className="hidden md:flex h-full">
+        <ContextSidebar />
       </div>
-    );
-  }
 
-  return (
-    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
-      <OrgActivator />
-      <AuthEventTracker />
-      <AdsPurchaseTracker />
-      <DistributeSaleTracker />
-      <UserActivityTracker />
-      <UserResolver />
-      <Header />
-      <CreditAlerts />
-      <NoAudienceBanner />
-      <OnboardingFlow />
-      <SupportButton />
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        {/* Mobile sidebar overlay */}
-        {isOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={close}
-          />
-        )}
-
-        {/* Mobile sidebar drawer */}
-        <div className={`
-          fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out md:hidden
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        `}>
-          <ContextSidebar />
-        </div>
-
-        {/* Desktop sidebar — content adapts via ContextSidebar */}
-        <div className="hidden md:flex h-full">
-          <ContextSidebar />
-        </div>
-
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header />
+        <CreditAlerts />
+        <NoAudienceBanner />
+        <OnboardingFlow />
+        <SupportButton />
         <main className="min-w-0 flex-1 overflow-y-auto">
           {showContent ? children : <div className="h-full bg-gray-50" />}
         </main>

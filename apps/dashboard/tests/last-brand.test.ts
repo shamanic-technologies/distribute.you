@@ -180,8 +180,11 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
   );
   // campaign-sidebar.tsx was removed with the campaign concept.
 
-  it("marks logo and breadcrumb parent links as explicit hierarchy navigation", () => {
-    expect(header).toContain('explicitHierarchyHref("/")');
+  it("marks breadcrumb parent links as explicit hierarchy navigation", () => {
+    // The header no longer carries a logo link — the sidebar-top tenant switcher
+    // replaced it — so there is no header hierarchy link left to mark. The
+    // breadcrumb still serves the onboarding chrome.
+    expect(header).not.toContain("explicitHierarchyHref");
     // Org root link uses the per-tab URL org, not the shared active org (#1948).
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
@@ -189,7 +192,6 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
 
   it("marks sidebar back links and overview rows as explicit hierarchy navigation", () => {
     expect(contextSidebar).toContain("href={explicitHierarchyHref(href)}");
-    expect(contextSidebar).toContain("explicitHierarchyHref(`/orgs/${orgId}`)");
     expect(contextSidebar).toContain("explicitHierarchyHref(basePath)");
   });
 });
