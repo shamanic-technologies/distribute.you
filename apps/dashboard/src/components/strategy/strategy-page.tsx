@@ -38,6 +38,7 @@ import {
 } from "@/components/brand-profile/field-editor";
 import {
   coerceListField,
+  coerceTextField,
   isRowFloored,
   modelAvatar,
   objectiveForOptimizationGoal,
@@ -87,12 +88,12 @@ function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserF
   for (const key of USER_FIELD_KEYS) {
     const v = fields[key];
     const isList = ALL_FIELDS.find((f) => f.key === key)?.kind === "list";
-    if (isList) {
-      const arr = Array.isArray(v) ? v : typeof v === "string" && v.trim() ? [v] : [];
-      out[key] = arr.map((s) => s.trim()).filter(Boolean);
-    } else {
-      out[key] = typeof v === "string" ? v.trim() : "";
-    }
+    // Coerce by kind on the way OUT too. cloneFields already normalised the bag, so this
+    // is belt-and-braces — but the old `typeof v === "string" ? v.trim() : ""` was the
+    // destructive half of the shape-mismatch bug: an array in a text-kind lever was
+    // written back as a confirmed-EMPTY row, silently deleting a value the user never
+    // touched. Coercing heals the row instead of blanking it.
+    out[key] = isList ? coerceListField(v) : coerceTextField(v).trim();
   }
   return out;
 }
@@ -567,7 +568,7 @@ export function StrategyPage() {
                       </p>
                       {kind === "text" ? (
                         <TextEditor
-                          value={typeof value === "string" ? value : ""}
+                          value={coerceTextField(value)}
                           placeholder={placeholder}
                           onText={(v) => setOfferText(lever.key, v)}
                         />

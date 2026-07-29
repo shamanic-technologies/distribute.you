@@ -201,6 +201,32 @@ export function coerceListField(value: string | string[] | undefined | null): st
     .filter((v) => v.length > 0);
 }
 
+/**
+ * Coerce a user-field TEXT-kind value to a string for display / editing — the exact
+ * mirror of coerceListField, and the other half of the same bug.
+ *
+ * The stored shape is NOT guaranteed to match the field's declared kind. Field
+ * extraction is generative and free-form (brand-service takes {key, description} and
+ * returns whatever JSON the model emits — `kind` is a dashboard-only concept), so the
+ * SAME key comes back as a bare string on one run and a string[] of bullet points on
+ * the next. An array landing in a text-kind lever (riskReversal, urgency, scarcity,
+ * perceivedLikelihood) used to hit `typeof value === "string" ? value : ""` and render
+ * as the placeholder — the "my offer shows not set even though I filled it" bug — and,
+ * worse, the save path applied the same coercion, so editing any OTHER lever wrote a
+ * confirmed-EMPTY row over it. Join on newline: these levers are proof points /
+ * guarantees, they read as lines and TextEditor already renders whitespace-pre-line.
+ * Pure display normalisation — no metric, nothing invented.
+ */
+export function coerceTextField(value: string | string[] | undefined | null): string {
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0)
+      .join("\n");
+  }
+  return typeof value === "string" ? value : "";
+}
+
 /** Honest human label for which POPULATION produced a resolved cost number, so the UI
  *  never mislabels a fleet-benchmark or per-audience number as "this brand". */
 export const WORKFLOW_GRAIN_LABEL: Record<WorkflowProjectionGrain, string> = {

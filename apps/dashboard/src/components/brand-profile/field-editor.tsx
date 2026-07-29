@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+// Relative (not "@/") so this module stays runtime-importable by vitest, which has no
+// path-alias config in this repo.
+import { coerceListField, coerceTextField } from "../../lib/strategy-model";
 
 // ---------------------------------------------------------------------------
 // Field model — each user-field is either free `text` (textarea) or a `list` of
@@ -33,13 +36,23 @@ export const ALL_FIELDS: FieldDef[] = [
 
 export type ProfileFields = Record<string, string | string[]>;
 
-// Normalize a fields map to every known field key with the right empty type, and
-// clone arrays so edits never mutate the saved baseline.
+// Normalize a fields map to every known field key with the right empty type AND the
+// right SHAPE for its declared kind, and clone arrays so edits never mutate the saved
+// baseline.
+//
+// Coercing by kind here is load-bearing, not defensive polish: extraction is generative
+// and free-form, so a stored value's shape does not track the field's kind (a text-kind
+// lever regularly arrives as string[], a list-kind one as a bare string). This is the
+// ONE boundary every offer editor reads through, so normalising here fixes both the
+// render (TextEditor gets a real string instead of "") and the SAVE (the payload
+// builder's text branch would otherwise coerce the array to "" and write a
+// confirmed-empty row over a value the user never touched). It also heals the stored
+// row on the next save. Do NOT push this down into the individual editors.
 export function cloneFields(fields: ProfileFields): ProfileFields {
   const out: ProfileFields = {};
   for (const f of ALL_FIELDS) {
     const v = fields[f.key];
-    out[f.key] = Array.isArray(v) ? [...v] : (v ?? (f.kind === "list" ? [] : ""));
+    out[f.key] = f.kind === "list" ? coerceListField(v) : coerceTextField(v);
   }
   return out;
 }

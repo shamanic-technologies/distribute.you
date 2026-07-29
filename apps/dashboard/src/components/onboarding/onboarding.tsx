@@ -77,6 +77,8 @@ import {
   pickBestBrandRow,
   isRowFloored,
   modelAvatar,
+  coerceListField,
+  coerceTextField,
 } from "@/lib/strategy-model";
 import { BestModelStats, cpprFromRow } from "@/components/strategy/best-model-card";
 import { Skeleton } from "@/components/skeleton";
@@ -86,6 +88,7 @@ import {
   buildLeverLLMPrompt,
   formatListLeverValue,
   isListLever,
+  isListLeverKey,
   parseListLeverInput,
 } from "./offer-levers";
 import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
@@ -1115,7 +1118,13 @@ export function Onboarding() {
       const seeded: Record<string, string | string[]> = {};
       for (const key of USER_FIELD_KEYS) {
         const v = uf[key]?.value;
-        if (v != null) seeded[key] = v;
+        if (v == null) continue;
+        // Normalise to the lever's KIND on the way in. Extraction is generative, so a
+        // text-kind lever regularly comes back as string[]; seeding that array raw meant
+        // a lever the user never edited was SAVED as an array, and every text-kind editor
+        // downstream (Strategy, admin) then rendered it as "not set" and blanked it on the
+        // next save. This is where the bad rows were born, so it is where they stop.
+        seeded[key] = isListLeverKey(key) ? coerceListField(v) : coerceTextField(v);
       }
       const nextServices = normalizeServices(uf.services?.value);
       setProfile((prev) => ({
@@ -2792,13 +2801,12 @@ export function Onboarding() {
     const raw = profile[lever.key];
     // List-kind levers (socialProof) edit one item per line and persist as string[];
     // writing the raw textarea string back would clobber the array (the empty-on-
-    // Strategy bug). Free-text levers keep their plain string.
+    // Strategy bug). Free-text levers keep their plain string — and a text-kind lever
+    // the extractor returned as string[] is joined on newline, matching what the value
+    // is normalised to everywhere else, so leaving the box untouched persists that same
+    // string instead of the array.
     const isList = isListLever(lever.key);
-    const current = isList
-      ? formatListLeverValue(raw)
-      : Array.isArray(raw)
-        ? raw.join(", ")
-        : (raw ?? "");
+    const current = isList ? formatListLeverValue(raw) : coerceTextField(raw);
     const isLast = offerIndex === POST_PAYMENT_OFFER_LEVERS.length - 1;
     return (
       <StepShell
