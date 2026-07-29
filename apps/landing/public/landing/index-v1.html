@@ -692,6 +692,11 @@
          is NOT sticky; it never moves, the title simply scrolls up into place. */
       #pricing{padding-bottom:0}
       #pricing + section{padding-top:0}
+      /* the zero-padding pair above is what lets the pinned heading release
+         exactly on the next title, so the air between the two sections has to
+         live INSIDE #pricing. One section's worth of padding, not the usual
+         double, because the next section contributes none. */
+      #pricing .economics-grid{margin-bottom:102px}
       #pricing .section-head{position:sticky;top:116px;z-index:5;max-width:none;margin-bottom:0;padding-top:22px;padding-bottom:34px;background:var(--bg)}
       /* mask the transparent nav strip above the pinned heading so cards scrolling up
          are not visible behind the floating pill */
