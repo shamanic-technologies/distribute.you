@@ -3616,6 +3616,14 @@ export async function getWorkflowProjectionLadder(
   if (params.goal) query.set("goal", params.goal);
   if (params.objective) query.set("objective", params.objective);
   if (params.audienceId) query.set("audienceId", params.audienceId);
+  // pricing=net — MUST match `fetchFeatureAudienceStats`. At 0 outcomes a
+  // per-audience cost floors at max(own spend, best-workflow fleet cost), and
+  // that fleet cost is the very number this ladder serves, so the Audiences
+  // table and the Strategy page render the SAME benchmark. Omitting pricing
+  // here defaulted the ladder to GROSS while audience-stats asked for NET, so
+  // one benchmark showed at two prices (~9% apart once other orgs' frozen usage
+  // discounts land in the fleet spend). Net is also what the org actually pays.
+  query.set("pricing", "net");
   const raw = await apiCall<unknown>(
     `/features/${encodeURIComponent(params.featureSlug)}/workflow-projection?${query.toString()}`,
     { token },
