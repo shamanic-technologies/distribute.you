@@ -100,6 +100,19 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     expect(body).toContain('label: lead.replyClassification ? `Replied');
   });
 
+  it("spaces consecutive rows off the index, not a :last-child modifier", () => {
+    const body = sliceFrom("function LeadTimeline(", 11000);
+    // `last:` resolves to `:last-child` of the PARENT, and this div is the final
+    // child of its <li> on EVERY row — so `pb-4 last:pb-0` zeroed the padding
+    // everywhere and consecutive message cards sat edge to edge. Verified headlessly:
+    // the old markup computed padding-bottom 0px on the first of two rows.
+    expect(body).toContain('${i < sorted.length - 1 ? "pb-4" : ""}');
+    expect(body).not.toContain("last:pb-0");
+    // Same condition as the connector line right below it, so the line and the gap
+    // can never disagree about which row is last.
+    expect(body).toContain("{i < sorted.length - 1 && <span");
+  });
+
   it("draws a message as a demarcated block, never a thick side accent", () => {
     const body = sliceFrom("function LeadTimeline(", 11000);
     // Repo rule: tint + a full 1px border, no border-left accent.
