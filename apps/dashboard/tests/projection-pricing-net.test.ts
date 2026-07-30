@@ -50,3 +50,25 @@ describe("workflow-projection / audience-stats pricing basis", () => {
     expect(body).not.toContain("params.pricing");
   });
 });
+
+/**
+ * The whole Overview reads ONE pricing basis. The forecast is the case that made
+ * the rule visible: its expected-outreach bar is `daily budget / cost per outreach`,
+ * and the budget is money the org really spends — already discounted. Divide that by
+ * a gross divisor and a 50%-off brand is promised half the sends its budget buys
+ * (prod read 15.88 expected beside 30 actual, the ratio being exactly that org's
+ * net/gross). Counts and rates are identical either way; only money-derived values
+ * move, so every reader feeding a money-derived number asks for net.
+ */
+describe("every Overview money reader asks for net pricing", () => {
+  for (const reader of [
+    "getFeatureRevenue",
+    "fetchFeatureAudienceStats",
+    "getWorkflowProjectionLadder",
+    "getFeaturePipelineActivity",
+  ]) {
+    it(`${reader} requests net pricing`, () => {
+      expect(readerBody(reader)).toContain('query.set("pricing", "net")');
+    });
+  }
+});
