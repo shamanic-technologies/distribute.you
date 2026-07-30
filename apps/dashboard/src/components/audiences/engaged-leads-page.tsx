@@ -447,8 +447,15 @@ function deriveEmailRows(
 // The state the reader cares about is whether an email has actually LEFT. Instantly
 // holds a pushed lead until its next weekday sending window, so a lead can sit
 // queued for days: while that is true the timeline shows one queue row carrying the
-// waiting message, and once a real send exists that row is gone and the initial email
-// stands on its own at the send instant. The two are never both on screen.
+// waiting message, and once a real send exists that row is gone and the message
+// rides the Sent row instead. The two are never both on screen.
+//
+// EXACTLY ONE row ever carries the initial message, and it is always a row naming a
+// state that happened. "Initial email" used to be its own row anchored at `sentAt`,
+// which is the Sent row's instant — so the panel printed the same moment twice under
+// two labels, and the second told the reader nothing ("Initial email · Jul 30" beside
+// "Sent · Jul 30"). The message is not an event with a time of its own; it is what
+// left at the send.
 //
 // The email content is fetched on-demand by leadId (content-generation). Renders
 // nothing until at least one event timestamp OR an email is present.
@@ -484,7 +491,15 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
   }
 
   entries.push(
-    { kind: "event", label: "Sent", at: sentAt, dot: "bg-blue-400" },
+    // The message rides this row: it left at this instant, so it needs no row (and no
+    // date) of its own. Mirrors the queue row above, which carries it while it waits.
+    {
+      kind: "event",
+      label: "Sent",
+      at: sentAt,
+      dot: "bg-blue-400",
+      ...(queuedOnly || !initial ? {} : { subject: initial.subject, body: initial.body }),
+    },
     { kind: "event", label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
     { kind: "event", label: "Website visit", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
     {
@@ -497,19 +512,15 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     { kind: "event", label: "Unsubscribed", at: lead.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
   );
 
-  // Once a send anchors it, the initial email stands on its own row at that instant.
-  if (!queuedOnly && initial) {
-    entries.push({ kind: "email", label: "Initial email", at: anchor, dot: "bg-brand-500", subject: initial.subject, body: initial.body });
-  }
   entries.push(...(derived?.followUps ?? []));
 
   // Same-date tie-break: most-advanced stage on top, oldest at the bottom.
   // (Primary sort is still timestamp desc; this only orders entries sharing the
-  // same instant — e.g. Sent / Delivered / Initial email all at firstSentAt.)
+  // same instant — e.g. Sent and Delivered both at firstSentAt.)
   const stageRank = (e: TimelineEntry): number => {
     const l = e.label;
     if (l === QUEUED_LABEL) return 2;
-    if (e.kind === "email") return l === "Initial email" ? 1 : 3; // follow-ups above initial, below Sent
+    if (e.kind === "email") return 3; // a follow-up, the only email-kind row left
     if (l.startsWith("Replied")) return 9;
     if (l === "Unsubscribed") return 8;
     if (l === "Bounced") return 8;
@@ -565,7 +576,9 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                   {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
                   <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
                   <p className="text-sm font-medium text-gray-800">
-                    {e.kind === "email" && (
+                    {/* Carries a message, whatever the row is called — the queue row
+                        and the Sent row both do, and neither is `kind: "email"`. */}
+                    {!!e.body && (
                       <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     )}
                     {e.label}
@@ -1174,10 +1187,11 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
             {selectedAudienceInline && (
               <AudienceSection inline={selectedAudienceInline} full={selectedAudienceFull} />
             )}
+            {/* No `Served:` footer. It printed an internal pipeline instant, in a
+                different date format than every row above it, for a step the customer
+                has no use for. The one place `servedAt` is worth showing is the row's
+                own Status/Date pair while the lead still reads `Processing`. */}
             <LeadTimeline lead={selectedLead} email={leadEmailData?.generation ?? null} />
-            {selectedLead.servedAt && (
-              <div className="mt-4 text-xs text-gray-400">Served: {new Date(selectedLead.servedAt).toLocaleString()}</div>
-            )}
           </div>
         </div>
       )}
