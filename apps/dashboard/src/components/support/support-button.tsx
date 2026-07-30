@@ -9,6 +9,23 @@ import posthog from "posthog-js";
 // chat arrives identified (no anonymous "who is this").
 const SUPPORT_PHONE = "33680478702";
 
+/**
+ * Right-edge gutter that clears the floating support button.
+ *
+ * The FAB is `fixed right-4` and 48px wide (56px on sm+), so it covers the
+ * rightmost 64px / 72px of the viewport at every scroll position — and it sits
+ * at z-30, above page content. Any control pinned to the right edge of a page
+ * (a pagination `Next`, a row action) is therefore tappable only by luck.
+ *
+ * Padding is the fix rather than z-index (the FAB must stay on top to be
+ * reachable) or hiding the FAB (support access is the point). It lives here so
+ * the number stays coupled to the FAB's own size — bump both together.
+ *
+ * 80px covers the widest case (72px) and leaves a real gap rather than parking
+ * the control flush against the FAB, where a fat-finger tap still hits the FAB.
+ */
+export const SUPPORT_FAB_CLEARANCE = "pr-20";
+
 function WhatsAppGlyph() {
   return (
     <svg viewBox="0 0 32 32" fill="#ffffff" aria-hidden="true" className="h-6 w-6 sm:h-[30px] sm:w-[30px]">
