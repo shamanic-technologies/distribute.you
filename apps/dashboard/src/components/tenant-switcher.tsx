@@ -65,6 +65,23 @@ const PlusTile = ({ sizeClass }: { sizeClass: string }) => (
   </div>
 );
 
+/**
+ * Shown while a tenant is genuinely UNKNOWN — never as a loading state for one we
+ * already remember. The server-read cookie seed covers every org/brand this browser
+ * has opened before, so in practice this appears only on a first-ever visit to a
+ * tenant, where there is nothing truthful to display yet. The alternative (`Brand`
+ * beside a globe) is a FABRICATED identity: it reads as the product having lost the
+ * brand, which is the complaint this whole path exists to answer.
+ */
+function IdentitySkeleton({ markClass, barClass }: { markClass: string; barClass: string }) {
+  return (
+    <>
+      <div className={`${markClass} flex-shrink-0 animate-pulse rounded bg-gray-200`} />
+      <div className={`${barClass} animate-pulse rounded bg-gray-200`} />
+    </>
+  );
+}
+
 const BillingIcon = () => (
   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -132,15 +149,21 @@ function TenantMenu({
             expanded === "org" ? "bg-gray-50" : ""
           }`}
         >
-          <OrgAvatar
-            name={t.displayOrgName}
-            imageUrl={t.displayOrgImageUrl}
-            hasImage={t.displayOrgHasImage}
-            sizeClass="w-5 h-5"
-          />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
-            {t.displayOrgName}
-          </span>
+          {t.orgKnown ? (
+            <>
+              <OrgAvatar
+                name={t.displayOrgName}
+                imageUrl={t.displayOrgImageUrl}
+                hasImage={t.displayOrgHasImage}
+                sizeClass="w-5 h-5"
+              />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
+                {t.displayOrgName}
+              </span>
+            </>
+          ) : (
+            <IdentitySkeleton markClass="w-5 h-5" barClass="h-3.5 flex-1" />
+          )}
           <Chevron open={expanded === "org"} direction="right" />
         </button>
 
@@ -225,15 +248,21 @@ function TenantMenu({
               expanded === "brand" ? "bg-gray-50" : ""
             }`}
           >
-            <BrandLogo
-              domain={t.displayBrand?.domain ?? null}
-              size={20}
-              className="rounded flex-shrink-0"
-              fallbackClassName="w-5 h-5 text-gray-400 flex-shrink-0"
-            />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
-              {t.brandId ? brandLabel : "All brands"}
-            </span>
+            {t.brandId && !t.brandKnown ? (
+              <IdentitySkeleton markClass="w-5 h-5" barClass="h-3.5 flex-1" />
+            ) : (
+              <>
+                <BrandLogo
+                  domain={t.displayBrand?.domain ?? null}
+                  size={20}
+                  className="rounded flex-shrink-0"
+                  fallbackClassName="w-5 h-5 text-gray-400 flex-shrink-0"
+                />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
+                  {t.brandId ? brandLabel : "All brands"}
+                </span>
+              </>
+            )}
             <Chevron open={expanded === "brand"} direction="right" />
           </button>
 
@@ -314,6 +343,9 @@ export function TenantSwitcher() {
 
   const brandLabel = t.displayBrand?.name || t.displayBrand?.domain || "Brand";
   const buttonLabel = t.brandId ? brandLabel : t.displayOrgName;
+  // The row shows whichever tenant the URL is on, so it is only truthful once THAT
+  // one is known — a brand page must not fall back to the org's name.
+  const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;
 
   return (
     // The border lives on the WRAPPER, not on the `h-14` button: Tailwind sets
@@ -327,24 +359,30 @@ export function TenantSwitcher() {
         onClick={() => setOpen((v) => !v)}
         className={`flex ${CHROME_ROW_HEIGHT} w-full items-center gap-2 px-3 text-left transition hover:bg-gray-50`}
       >
-        {t.brandId ? (
-          <BrandLogo
-            domain={t.displayBrand?.domain ?? null}
-            size={22}
-            className="rounded flex-shrink-0"
-            fallbackClassName="w-[22px] h-[22px] text-gray-400 flex-shrink-0"
-          />
+        {!identityKnown ? (
+          <IdentitySkeleton markClass="w-[22px] h-[22px]" barClass="h-3.5 flex-1" />
         ) : (
-          <OrgAvatar
-            name={t.displayOrgName}
-            imageUrl={t.displayOrgImageUrl}
-            hasImage={t.displayOrgHasImage}
-            sizeClass="w-[22px] h-[22px]"
-          />
+          <>
+            {t.brandId ? (
+              <BrandLogo
+                domain={t.displayBrand?.domain ?? null}
+                size={22}
+                className="rounded flex-shrink-0"
+                fallbackClassName="w-[22px] h-[22px] text-gray-400 flex-shrink-0"
+              />
+            ) : (
+              <OrgAvatar
+                name={t.displayOrgName}
+                imageUrl={t.displayOrgImageUrl}
+                hasImage={t.displayOrgHasImage}
+                sizeClass="w-[22px] h-[22px]"
+              />
+            )}
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+              {buttonLabel}
+            </span>
+          </>
         )}
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
-          {buttonLabel}
-        </span>
         <Chevron open={open} />
       </button>
 
@@ -372,6 +410,7 @@ export function MobileTenantChip() {
   const label = t.brandId
     ? t.displayBrand?.name || t.displayBrand?.domain || "Brand"
     : t.displayOrgName;
+  const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;
 
   return (
     <div ref={rootRef} className="relative min-w-0 md:hidden">
@@ -380,22 +419,28 @@ export function MobileTenantChip() {
         onClick={() => setOpen((v) => !v)}
         className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-gray-100"
       >
-        {t.brandId ? (
-          <BrandLogo
-            domain={t.displayBrand?.domain ?? null}
-            size={20}
-            className="rounded flex-shrink-0"
-            fallbackClassName="w-5 h-5 text-gray-400 flex-shrink-0"
-          />
+        {!identityKnown ? (
+          <IdentitySkeleton markClass="w-5 h-5" barClass="h-3.5 w-24" />
         ) : (
-          <OrgAvatar
-            name={t.displayOrgName}
-            imageUrl={t.displayOrgImageUrl}
-            hasImage={t.displayOrgHasImage}
-            sizeClass="w-5 h-5"
-          />
+          <>
+            {t.brandId ? (
+              <BrandLogo
+                domain={t.displayBrand?.domain ?? null}
+                size={20}
+                className="rounded flex-shrink-0"
+                fallbackClassName="w-5 h-5 text-gray-400 flex-shrink-0"
+              />
+            ) : (
+              <OrgAvatar
+                name={t.displayOrgName}
+                imageUrl={t.displayOrgImageUrl}
+                hasImage={t.displayOrgHasImage}
+                sizeClass="w-5 h-5"
+              />
+            )}
+            <span className="min-w-0 truncate text-sm font-semibold text-gray-900">{label}</span>
+          </>
         )}
-        <span className="min-w-0 truncate text-sm font-semibold text-gray-900">{label}</span>
         <Chevron open={open} />
       </button>
 
