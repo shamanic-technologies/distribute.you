@@ -342,6 +342,38 @@
     .console-outcome span{display:block;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
     .console-outcome b{display:block;margin-top:6px;color:var(--green);font-family:var(--mono);font-size:17px;font-weight:500}
     .console-outcome i{font-style:normal;font-variant-numeric:tabular-nums}
+    /* Spend to return. Each arrow states the assumption it applies, so the two
+       figures the reader owns (their closing and their lifetime revenue) read
+       as inputs rather than as something we are claiming on their behalf. */
+    .chain-arrow{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:9px 0 0;
+      padding-left:2px;
+      color:var(--faint);
+      font-family:var(--mono);
+      font-size:9.5px;
+      letter-spacing:.03em;
+    }
+    .chain-arrow::before{content:'↓';color:var(--green);font-size:13px;line-height:1}
+    .console-return{
+      margin-top:9px;
+      padding:13px 15px;
+      border:1px solid var(--green);
+      border-radius:9px;
+      background:var(--green-dim);
+    }
+    .console-return span{display:block;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
+    .console-return b{display:block;margin-top:6px;color:var(--green);font-family:var(--mono);font-size:19px;font-weight:600}
+    /* Hidden only once the script has claimed the block, so a reader with JS
+       off keeps the whole chain. */
+    .console-chain[data-reveal="pending"]{opacity:0}
+    .console-chain[data-reveal="done"]>*{animation:chain-in .42s ease both}
+    .console-chain[data-reveal="done"]>*:nth-child(2){animation-delay:.1s}
+    .console-chain[data-reveal="done"]>*:nth-child(3){animation-delay:.28s}
+    .console-chain[data-reveal="done"]>*:nth-child(4){animation-delay:.38s}
+    @keyframes chain-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
     .proof-rail{
       border-top:1px solid var(--line-soft);
@@ -1256,7 +1288,7 @@
 
             <div class="console-metric"><span>Daily budget</span><b>__HERO_BUDGET__</b></div>
 
-            __HERO_OUTCOME_ROW__
+            __HERO_CHAIN__
           </div>
         </div>
       </div>
@@ -2155,9 +2187,20 @@ __CAC_BOOT_SLOT__
       var domainEl=document.querySelector('[data-hero-domain]');
       var okEl=document.querySelector('[data-hero-ok]');
       var countEl=document.querySelector('[data-hero-outcome]');
+      var chainEl=document.querySelector('[data-hero-chain]');
       var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var placeholder=domainEl?domainEl.textContent:'';
       var target=countEl?parseInt(countEl.getAttribute('data-hero-outcome'),10):NaN;
+
+      /* The chain reads as a consequence of the count, so it arrives once the
+         total has landed. It is hidden only after the script has claimed it and
+         a reveal is guaranteed: a reader with JS off, or a reduced-motion
+         preference, keeps the whole thing on screen from the first paint. */
+      function revealChain(){ if(chainEl)chainEl.setAttribute('data-reveal','done'); }
+      if(chainEl&&!reduce&&countEl&&isFinite(target)){
+        chainEl.setAttribute('data-reveal','pending');
+        setTimeout(revealChain,9000); /* nothing can leave it hidden */
+      }
 
       /* Only a bare dotted host is mirrored. A half-typed value keeps the
          placeholder rather than showing the visitor a broken version of their
@@ -2173,8 +2216,8 @@ __CAC_BOOT_SLOT__
          enough to keep a large total inside the budget. */
       var countRun=0;
       function countUp(){
-        if(!countEl||!isFinite(target))return;
-        if(reduce){countEl.textContent=String(target);return;}
+        if(!countEl||!isFinite(target)){revealChain();return;}
+        if(reduce){countEl.textContent=String(target);revealChain();return;}
         var HOLD_MS=150,MAX_TOTAL_MS=5000;
         var hold=Math.max(24,Math.min(HOLD_MS,MAX_TOTAL_MS/target));
         var run=++countRun,start=null,shown=-1;
@@ -2184,7 +2227,7 @@ __CAC_BOOT_SLOT__
           if(start===null)start=now;
           var n=Math.min(target,Math.floor((now-start)/hold));
           if(n!==shown){shown=n;countEl.textContent=String(n);}
-          if(n<target)requestAnimationFrame(step);
+          if(n<target)requestAnimationFrame(step); else revealChain();
         }
         requestAnimationFrame(step);
       }
