@@ -12,7 +12,13 @@ const list = (arr: string[] | null | undefined): string => (arr?.length ? arr.jo
  * so a single file carries all tabs (Positive replies, Website Visits, Outreach).
  * Tab membership is visible via the engagement booleans + Status column: a lead
  * in the Positive-replies tab has `Replied=yes, Reply sentiment=positive`, a
- * Website-Visits lead has `Clicked=yes`, an Outreach lead has `Contacted=yes`.
+ * Website-Visits lead has `Website visit=yes`, an Outreach lead has `Outreach=yes`.
+ *
+ * Column names are the words the dashboard itself uses, not the wire field names:
+ * `contacted` is the Outreach tab's own predicate and `clicked` the Website-Visits
+ * one, so a reader comparing the file to the screen finds the same vocabulary.
+ * `Replied` keeps its name because the flag covers negative replies too, which makes
+ * the Positive-replies tab a subset of it rather than a rename of it.
  *
  * `statusLabelFor` is the page's own latched display-status resolver (run through
  * `leadStatusLabel`), so the exported Status can't drift from the on-screen badge.
@@ -50,10 +56,10 @@ export function buildLeadsCsv(
     { label: "Company country", value: (l) => l.lead?.organization?.country ?? "" },
     // Engagement funnel (tab membership lives here)
     { label: "Status", value: (l) => statusLabelFor(l) },
-    { label: "Contacted", value: (l) => yesNo(l.contacted) },
+    { label: "Outreach", value: (l) => yesNo(l.contacted) },
     { label: "Sent", value: (l) => yesNo(l.sent) },
     { label: "Delivered", value: (l) => yesNo(l.delivered) },
-    { label: "Clicked", value: (l) => yesNo(l.clicked) },
+    { label: "Website visit", value: (l) => yesNo(l.clicked) },
     { label: "Replied", value: (l) => yesNo(l.replied) },
     { label: "Reply sentiment", value: (l) => l.replyClassification ?? "" },
     { label: "Bounced", value: (l) => yesNo(l.bounced) },
@@ -64,10 +70,10 @@ export function buildLeadsCsv(
     { label: "Audience", value: (l) => l.audience?.name ?? "" },
     // Per-event timestamps
     { label: "Served at", value: (l) => date(l.servedAt) },
-    { label: "First contacted at", value: (l) => date(l.firstContactedAt) },
+    { label: "First outreach at", value: (l) => date(l.firstContactedAt) },
     { label: "First sent at", value: (l) => date(l.firstSentAt) },
     { label: "First delivered at", value: (l) => date(l.firstDeliveredAt) },
-    { label: "First clicked at", value: (l) => date(l.firstClickedAt) },
+    { label: "First website visit at", value: (l) => date(l.firstClickedAt) },
     { label: "First replied at", value: (l) => date(l.firstRepliedAt) },
     { label: "First bounced at", value: (l) => date(l.firstBouncedAt) },
     { label: "First unsubscribed at", value: (l) => date(l.firstUnsubscribedAt) },

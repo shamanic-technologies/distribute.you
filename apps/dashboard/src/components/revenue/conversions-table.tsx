@@ -37,12 +37,16 @@ function initials(name: string): string {
   return (parts[0].charAt(0) + (parts[1]?.charAt(0) ?? "")).toUpperCase();
 }
 
-// Funnel-graded chips. Delivery stages (contacted → sent → delivered) read as a
+// Funnel-graded chips. Delivery stages (queued → sent → delivered) read as a
 // progression leading up to the engagement stages (visit, reply). The single
 // furthest delivery stage shows per org/lead row until engagement replaces it;
 // the Events tab itemises every stage. Backend is authoritative — do not derive.
+//
+// `contacted` is the QUEUE state: the lead is with Instantly, which sends only inside
+// the recipient's weekday business hours. It shares the Leads page's word so one
+// state is not called two things across two surfaces.
 const CHANNEL_META: Record<string, { label: string; className: string }> = {
-  contacted: { label: "Contacted", className: "bg-gray-50 text-gray-600 border-gray-200" },
+  contacted: { label: "Queued", className: "bg-gray-50 text-gray-600 border-gray-200" },
   sent: { label: "Sent", className: "bg-slate-100 text-slate-700 border-slate-300" },
   delivered: { label: "Delivered", className: "bg-amber-50 text-amber-700 border-amber-200" },
   visit: { label: "Website visit", className: "bg-blue-50 text-blue-700 border-blue-200" },

@@ -110,7 +110,10 @@ function leadStatusLabel(status: LeadConsolidatedStatus): string {
     case "sent": return "Sent";
     case "bounced": return "Bounced";
     case "unsubscribed": return "Unsubscribed";
-    case "contacted": return "Contacted";
+    // Handing the lead to Instantly is not reaching them: Instantly dispatches on
+    // weekdays inside the recipient's business hours, so this state can outlive the
+    // push by three days. The old wording claimed an email had already gone out.
+    case "contacted": return "Queued";
     case "served": return "Processing";
     case "skipped": return "Skipped";
     case "claimed": return "Claimed";
@@ -126,7 +129,8 @@ function leadStatusStyle(status: LeadConsolidatedStatus): string {
     case "sent": return "bg-cyan-100 text-cyan-700 border-cyan-200";
     case "bounced": return "bg-red-100 text-red-600 border-red-200";
     case "unsubscribed": return "bg-amber-100 text-amber-700 border-amber-200";
-    case "contacted": return "bg-teal-100 text-teal-700 border-teal-200";
+    // Slate, not a saturated hue: this is a wait, not a step the lead has cleared.
+    case "contacted": return "bg-slate-100 text-slate-700 border-slate-200";
     case "served": return "bg-orange-100 text-orange-700 border-orange-200";
     case "skipped": return "bg-gray-100 text-gray-500 border-gray-200";
     case "claimed": return "bg-yellow-100 text-yellow-700 border-yellow-200";
@@ -355,11 +359,34 @@ function StatusBadge({ status }: { status: LeadConsolidatedStatus }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full border ${leadStatusStyle(status)}`}>{leadStatusLabel(status)}</span>;
 }
 
-// A single merged timeline entry: a delivery EVENT (dot + label + date) or the
-// actual EMAIL we sent (subject + body, expandable), interleaved chronologically.
-type TimelineEntry =
-  | { kind: "event"; at: string; label: string; dot: string }
-  | { kind: "email"; at: string; label: string; subject: string | null; body: string };
+// The queue step, named for what it is. Instantly holds the lead until its next
+// weekday sending window, so this row routinely precedes the first email by days.
+const QUEUED_LABEL = "Queued for sending";
+const SEND_WINDOW_NOTE =
+  "We only send on weekdays, 8am to 5pm during the recipient's local business hours.";
+
+// A single merged timeline row: a delivery EVENT, or an EMAIL we generated (subject +
+// body, expandable), interleaved chronologically. One flat shape rather than a union,
+// because the queue row is BOTH — it reports a state and carries the message that is
+// still waiting to go out, and splitting the two made the timeline print an
+// "Initial email" row dated before any email existed.
+type TimelineEntry = {
+  // Drives the envelope icon only. A row can carry a body without being an `email`:
+  // the queue row is an event whose message has not been sent yet.
+  kind: "event" | "email";
+  at: string;
+  label: string;
+  dot: string;
+  // Explains a row whose label alone raises a question. Only the queue row uses it,
+  // to say why a pushed lead has not been emailed.
+  note?: string;
+  subject?: string | null;
+  body?: string;
+  // Replaces the absolute date when `at` is DERIVED rather than observed. An unsent
+  // follow-up is offset from the generation time, not from a real send, so its date
+  // drifts by however long the lead waits in the weekday queue.
+  estimate?: string;
+};
 
 function emailBodyText(html: string | null | undefined, text: string | null | undefined): string {
   if (text && text.trim()) return text.trim();
@@ -367,9 +394,58 @@ function emailBodyText(html: string | null | undefined, text: string | null | un
   return "";
 }
 
+// Split the generated message into its initial email and its follow-up steps.
+// `anchor` is when the initial email went out; each follow-up is offset by the
+// cumulative `daysSinceLastStep`. When `estimated`, the anchor is the generation time
+// instead of a real send, so the follow-up rows carry a relative label rather than a
+// date they cannot honour.
+function deriveEmailRows(
+  email: LeadEmailGeneration,
+  anchor: string,
+  estimated: boolean,
+): { initial: { subject: string | null; body: string } | null; followUps: TimelineEntry[] } {
+  const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
+  const topLevelBody = emailBodyText(email.bodyHtml, email.bodyText);
+  // Some generations leave the top-level body empty and carry the initial email as
+  // sequence step 1, so never claim an empty initial here — fall through and let the
+  // step claim it below.
+  let initial = topLevelBody ? { subject: email.subject ?? null, body: topLevelBody } : null;
+  const followUps: TimelineEntry[] = [];
+  let cumDays = 0;
+  for (const step of email.sequence ?? []) {
+    const body = emailBodyText(step.bodyHtml, step.bodyText);
+    if (!body) continue;
+    cumDays += step.daysSinceLastStep || 0;
+    // Step 1 IS the initial email. If the top-level body was empty this step becomes
+    // the initial; otherwise it duplicates it, so skip.
+    const isInitial = step.step === 1 || (cumDays === 0 && body === topLevelBody);
+    if (isInitial) {
+      if (!initial) initial = { subject: email.subject ?? null, body };
+      continue;
+    }
+    followUps.push({
+      kind: "email",
+      label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`,
+      at: Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "",
+      dot: "bg-brand-500",
+      subject: email.subject ?? null,
+      body,
+      ...(estimated ? { estimate: `~${cumDays}d after the first email` } : {}),
+    });
+  }
+  return { initial, followUps };
+}
+
 // Per-lead activity timeline: delivery events (from the email-gateway
 // first-occurrence timestamps forwarded by lead-service) interleaved with the
-// actual emails we sent — initial + each follow-up step — most-recent first.
+// generated message (initial + each follow-up step), oldest first.
+//
+// The state the reader cares about is whether an email has actually LEFT. Instantly
+// holds a pushed lead until its next weekday sending window, so a lead can sit
+// queued for days: while that is true the timeline shows one queue row carrying the
+// waiting message, and once a real send exists that row is gone and the initial email
+// stands on its own at the send instant. The two are never both on screen.
+//
 // The email content is fetched on-demand by leadId (content-generation). Renders
 // nothing until at least one event timestamp OR an email is present.
 function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration | null }) {
@@ -378,9 +454,33 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
       : lead.replyClassification === "negative" ? "bg-red-500"
         : "bg-violet-500";
 
-  const entries: TimelineEntry[] = [
-    { kind: "event", label: "Contacted", at: lead.firstContactedAt ?? "", dot: "bg-gray-400" },
-    { kind: "event", label: "Sent", at: lead.firstSentAt ?? "", dot: "bg-blue-400" },
+  // A lead handed to Instantly with no send observed yet. The push and the message
+  // still waiting to go out are ONE fact, so they share a row; the moment a real send
+  // exists the queue step becomes technical noise and disappears.
+  const sentAt = lead.firstSentAt ?? "";
+  const queuedOnly = !sentAt;
+  const anchor = sentAt || email?.createdAt || "";
+  const derived = email ? deriveEmailRows(email, anchor, queuedOnly) : null;
+  const initial = derived?.initial ?? null;
+
+  const entries: TimelineEntry[] = [];
+
+  if (queuedOnly) {
+    entries.push({
+      kind: "event",
+      label: QUEUED_LABEL,
+      // The push timestamp when we have it; otherwise the generation time, which is
+      // when the message started waiting. Either way the row claims no send.
+      at: lead.firstContactedAt || anchor,
+      dot: "bg-slate-400",
+      note: SEND_WINDOW_NOTE,
+      subject: initial?.subject ?? null,
+      body: initial?.body,
+    });
+  }
+
+  entries.push(
+    { kind: "event", label: "Sent", at: sentAt, dot: "bg-blue-400" },
     { kind: "event", label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
     { kind: "event", label: "Website visit", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
     {
@@ -391,61 +491,32 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
     },
     { kind: "event", label: "Bounced", at: lead.firstBouncedAt ?? "", dot: "bg-red-500" },
     { kind: "event", label: "Unsubscribed", at: lead.firstUnsubscribedAt ?? "", dot: "bg-amber-500" },
-  ];
+  );
 
-  // Place emails at their send time. The lead's firstSentAt is when the initial
-  // email went out; follow-up steps are offset by their cumulative daysSinceLastStep.
-  // Fall back to the generation createdAt when no send timestamp exists yet.
-  if (email) {
-    const anchor = lead.firstSentAt ?? email.createdAt ?? "";
-    const anchorMs = anchor ? new Date(anchor).getTime() : NaN;
-    const initialBody = emailBodyText(email.bodyHtml, email.bodyText);
-    // The initial "Initial email" entry: prefer the generation's top-level body. Some
-    // generations leave that empty and carry the initial email as sequence step 1 —
-    // so never push an empty "Initial email" row here; fall through to claim step 1 below.
-    let initialDone = false;
-    if (initialBody) {
-      entries.push({ kind: "email", label: "Initial email", at: anchor, subject: email.subject ?? null, body: initialBody });
-      initialDone = true;
-    }
-    let cumDays = 0;
-    for (const step of email.sequence ?? []) {
-      const body = emailBodyText(step.bodyHtml, step.bodyText);
-      if (!body) continue;
-      cumDays += step.daysSinceLastStep || 0;
-      // Step 1 IS the initial email. If the top-level body was empty, this step
-      // becomes the "Initial email" entry; otherwise it duplicates the initial — skip.
-      const isInitial = step.step === 1 || (cumDays === 0 && body === initialBody);
-      if (isInitial) {
-        if (!initialDone) {
-          entries.push({ kind: "email", label: "Initial email", at: anchor, subject: email.subject ?? null, body });
-          initialDone = true;
-        }
-        continue;
-      }
-      const at = Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "";
-      entries.push({ kind: "email", label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`, at, subject: email.subject ?? null, body });
-    }
+  // Once a send anchors it, the initial email stands on its own row at that instant.
+  if (!queuedOnly && initial) {
+    entries.push({ kind: "email", label: "Initial email", at: anchor, dot: "bg-brand-500", subject: initial.subject, body: initial.body });
   }
+  entries.push(...(derived?.followUps ?? []));
 
   // Same-date tie-break: most-advanced stage on top, oldest at the bottom.
   // (Primary sort is still timestamp desc; this only orders entries sharing the
   // same instant — e.g. Sent / Delivered / Initial email all at firstSentAt.)
   const stageRank = (e: TimelineEntry): number => {
-    if (e.kind === "email") return e.label === "Initial email" ? 1 : 3; // follow-ups above initial, below Sent
     const l = e.label;
+    if (l === QUEUED_LABEL) return 2;
+    if (e.kind === "email") return l === "Initial email" ? 1 : 3; // follow-ups above initial, below Sent
     if (l.startsWith("Replied")) return 9;
     if (l === "Unsubscribed") return 8;
     if (l === "Bounced") return 8;
     if (l === "Website visit") return 7;
     if (l === "Delivered") return 5;
     if (l === "Sent") return 4;
-    if (l === "Contacted") return 2;
     return 0;
   };
 
   // Oldest → newest, top → bottom (past reads down into the future). Same-instant
-  // tie-break: least-advanced stage first (Contacted before Sent before Delivered…).
+  // tie-break: least-advanced stage first (the queue row before Sent before Delivered…).
   const sorted = entries
     .filter((e) => !!e.at)
     .sort((a, b) => {
@@ -487,18 +558,29 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                 </div>
                 <div className={`relative flex-1 pl-4 pb-4 last:pb-0 ${isFuture ? "opacity-70" : ""}`}>
                   {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
-                  <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.kind === "email" ? "bg-brand-500" : e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
+                  <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
                   <p className="text-sm font-medium text-gray-800">
                     {e.kind === "email" && (
                       <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     )}
                     {e.label}
+                    {e.note && (
+                      <span
+                        className="ml-1 inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-gray-300 align-[1px] text-[9px] font-semibold text-gray-400"
+                        title={e.note}
+                        aria-label={e.note}
+                      >
+                        i
+                      </span>
+                    )}
                     {isFuture && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-gray-400">scheduled</span>}
                   </p>
-                  <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
-                    {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  <p className="text-xs text-gray-500" title={e.estimate ? undefined : new Date(e.at).toLocaleString()}>
+                    {/* A derived timestamp is stated as an offset: printing it as a date
+                        would promise a day the weekday queue can push back. */}
+                    {e.estimate ?? new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
-                  {e.kind === "email" && (
+                  {e.body && (
                     <details className="mt-1.5 group">
                       <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
                         {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
@@ -556,17 +638,17 @@ function LeadsLoadingSkeleton() {
   );
 }
 
-function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, forceContacted, outcomeDates }: {
+function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audienceOf, outcomeDates }: {
   leads: Lead[];
   tab: Tab;
   selectedLead: Lead | null;
   onSelectLead: (lead: Lead) => void;
+  // Every row states its OWN most-advanced status, on every tab. The Outreach tab
+  // used to overwrite the badge with the queue state for the whole flat universe,
+  // which meant a lead we had really sent to read as still waiting in the table
+  // while its own detail panel said Sent.
   statusOf: (lead: Lead) => LeadConsolidatedStatus;
   audienceOf: (lead: Lead) => LeadAudience | null;
-  // Outreach tab: every row is the flat universe we contacted, so show a single
-  // "Contacted" tag on all rows rather than each lead's most-advanced status
-  // (those leads also surface under Clicks/Replies with their real status).
-  forceContacted?: boolean;
   // Realized-outcome timestamp per leadId (from the /revenue join) — the Date column
   // for an outcome tab reads this, since the lead-service row carries no outcome date.
   outcomeDates?: Map<string, string | null>;
@@ -624,7 +706,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={forceContacted ? "contacted" : statusOf(lead)} /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   {(() => {
                     const at = isOutcomeTab(tab)
@@ -974,7 +1056,7 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
               </div>
             ) : (
               <>
-                <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} forceContacted={activeTab === "outreach"} outcomeDates={outcomeDates} />
+                <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} outcomeDates={outcomeDates} />
                 {filteredLeads.length > PAGE_SIZE && (
                   <div className="mt-4 flex items-center justify-between">
                     <span className="text-sm text-gray-500">
