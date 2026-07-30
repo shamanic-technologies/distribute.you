@@ -284,6 +284,13 @@
     .trust-strip span{display:flex;align-items:center;gap:8px}
     .trust-strip span::before{content:'✓';color:var(--green);font-weight:700}
 
+    /* The card grows as its rows arrive, and the hero grid centres its two
+       columns, so that growth used to re-centre the headline and shove every
+       section below it down, four seconds after the page settled. The slot
+       holds the card's finished height from the first paint (measured before
+       the rows are collapsed) and the card grows downward inside it, so the
+       reserved space is page background rather than an empty white card. */
+    .console-slot{position:relative}
     .console{
       position:relative;
       border:1px solid var(--line);
@@ -1319,13 +1326,15 @@
           </div>
         </div>
 
-        <div class="console" aria-label="Campaign preview">
-          <div class="console-top">
-            <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-            <span class="console-title"><span data-hero-domain>yourcompany.com</span><strong data-hero-ok>✓</strong></span>
-          </div>
-          <div class="console-body">
-            __HERO_CONSOLE__
+        <div class="console-slot" data-console-slot>
+          <div class="console" aria-label="Campaign preview">
+            <div class="console-top">
+              <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+              <span class="console-title"><span data-hero-domain>yourcompany.com</span><strong data-hero-ok>✓</strong></span>
+            </div>
+            <div class="console-body">
+              __HERO_CONSOLE__
+            </div>
           </div>
         </div>
       </div>
@@ -2248,6 +2257,13 @@ __CAC_BOOT_SLOT__
         }
       }
       if(chainEl&&!reduce&&countEl&&isFinite(target)){
+        /* Reserve the finished height BEFORE collapsing anything: at this
+           point every row is still in flow, so the slot measures what the card
+           will end up being. Without it the card's growth re-centres the
+           headline and pushes the rest of the page down mid-read. min-height
+           rather than height, so a later font swap can only add. */
+        var slot=document.querySelector('[data-console-slot]');
+        if(slot)slot.style.minHeight=slot.offsetHeight+'px';
         chainEl.setAttribute('data-reveal','pending');
         setTimeout(revealChain,9000); /* nothing can leave it hidden */
       }
