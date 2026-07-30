@@ -71,52 +71,18 @@ const LEAD_STATUS_ORDER: LeadConsolidatedStatus[] = [
   "buffered",
 ];
 
-// "all" is NOT a rendered tab — it's an internal sort-mode (base "most-recent
-// activity" ordering for `sortedLeads` + `leadDateForTab`). The All UI tab was
-// removed; the funnel tabs are the four below.
+// "all" is NOT a rendered tab — it's the base ordering for `sortedLeads`. The All
+// UI tab was removed; the funnel tabs are the four below.
 type Tab = "positive-replies" | "clicks" | "outreach" | "all" | OutcomeTab;
 
-// The Date column + sort key are PER-TAB: each tab shows the first-occurrence
-// timestamp of the engagement that tab is about (Clicks → first click,
-// Outreach → first contacted, Positive replies → first reply). The
-// "all" tab has no single engagement, so it uses the most-recent activity across
-// every first-occurrence timestamp.
-function leadDateForTab(lead: Lead, tab: Tab): string | null {
-  switch (tab) {
-    case "positive-replies": return lead.firstRepliedAt ?? null;
-    case "clicks": return lead.firstClickedAt ?? null;
-    case "outreach": return lead.firstContactedAt ?? null;
-    case "all": {
-      const ats = [
-        lead.firstRepliedAt,
-        lead.firstClickedAt,
-        lead.firstDeliveredAt,
-        lead.firstSentAt,
-        lead.firstContactedAt,
-      ].filter((a): a is string => !!a);
-      if (ats.length === 0) return null;
-      return ats.reduce((latest, a) => (new Date(a).getTime() > new Date(latest).getTime() ? a : latest));
-    }
-    // Outcome tabs (signups/meetings/form-submissions/sales): the date is the
-    // realized-outcome timestamp on the /revenue join, not on the lead-service row —
-    // resolved separately via `outcomeDates` in the table + grouping.
-    default: return null;
-  }
-}
-
-// The Status cell carries the date of the status it shows, so a column headed
-// just "Date" beside it says nothing about WHICH date. Each tab names the event
-// its own column reports, in the same words the tab uses.
-function dateColumnHeader(tab: Tab): string {
-  switch (tab) {
-    case "positive-replies": return "First reply";
-    case "clicks": return "First website visit";
-    case "outreach": return "First outreach";
-    case "all": return "Last activity";
-    default: return "Outcome";
-  }
-}
-
+// The Date column reports the date of the STATUS on the same row, so the two cells
+// state one fact together. It used to be per-TAB — Outreach dated every row at
+// `firstContactedAt` — so a row reading "Replied" was dated the day we handed the
+// lead to Instantly, days before the reply it names. Read as one line, which is how
+// a row is read, that was false. `leadDateForStatus` (lib/api.ts) is the single map
+// from a badge to the timestamp that proves it; the outcome tabs are the exception
+// (their date is the realized-outcome instant from the /revenue join, and a signup
+// has no delivery status to date).
 function leadStatusLabel(status: LeadConsolidatedStatus): string {
   switch (status) {
     case "replied": return "Replied";
@@ -717,7 +683,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 w-[38%] md:w-auto">Status</th>
-            <th className="px-4 py-3 hidden md:table-cell">{dateColumnHeader(tab)}</th>
+            <th className="px-4 py-3 hidden md:table-cell">Date</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -726,25 +692,18 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             const org = full?.organization ?? null;
             const audience = audienceOf(lead);
             const companyName = org?.name || "Unknown";
-            // Read once, rendered by BOTH the stacked line and the Date column — the
-            // two can never disagree about when it happened.
+            // The date belongs to the status on this row, so the Status and Date
+            // cells state one fact together. Read once, rendered by BOTH the stacked
+            // mobile line and the Date column — the two can never disagree.
+            const status = statusOf(lead);
             const dateAt = isOutcomeTab(tab)
               ? outcomeDates?.get(lead.id) ?? null
-              : leadDateForTab(lead, tab);
+              : leadDateForStatus(lead, status);
             const dateNode = dateAt ? (
               <span className="text-xs text-gray-500" title={new Date(dateAt).toLocaleString()}>{timeAgo(dateAt)}</span>
             ) : (
               <span className="text-xs text-gray-300">-</span>
             );
-            // The badge and the date under it are read from the SAME status, so the
-            // cell cannot say "Replied" over a contact date from days earlier. A
-            // status with no timestamp on the wire renders the tag alone — a dash
-            // here would read as a date we looked for and found empty.
-            const status = statusOf(lead);
-            const statusAt = leadDateForStatus(lead, status);
-            const statusDateNode = statusAt ? (
-              <span className="text-xs text-gray-500" title={new Date(statusAt).toLocaleString()}>{timeAgo(statusAt)}</span>
-            ) : null;
             return (
               <tr
                 key={lead.id}
@@ -788,10 +747,9 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audience} /></td>
                 <td className="px-4 py-3">
                   <StatusBadge status={status} />
-                  {/* At every width, because it belongs to the tag rather than to the
-                      column: the Date column reports the TAB's event, which is a
-                      different moment on every tab but "Positive replies". */}
-                  {statusDateNode && <div className="mt-1">{statusDateNode}</div>}
+                  {/* The Date column is hidden below `md`, so the tag carries the date
+                      underneath it — never both at once. */}
+                  <div className="mt-1 md:hidden">{dateNode}</div>
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">{dateNode}</td>
               </tr>
@@ -882,12 +840,15 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   const audienceOf = (lead: Lead): LeadAudience | null =>
     lead.audience ? { name: lead.audience.name, avatarUrl: lead.audience.avatarUrl } : null;
 
-  // Base "all" ordering — most-recent activity first (the "all" Date column).
-  // Each funnel tab re-sorts by ITS OWN date field below. Null sinks to bottom.
-  const sortByTabDate = (arr: Lead[], tab: Tab): Lead[] =>
+  // Ordered by the value the Date column SHOWS — the timestamp of each row's own
+  // status, newest first. Sorting on a different field than the column displays
+  // makes the column read as unordered, so the two move together. Null sinks to
+  // the bottom. (Unlatched status here: this decides row ORDER only, while the
+  // latch below exists to keep a row's rendered BUCKET from bouncing on a poll.)
+  const sortByStatusDate = (arr: Lead[]): Lead[] =>
     [...arr].sort((a, b) => {
-      const at = leadDateForTab(a, tab);
-      const bt = leadDateForTab(b, tab);
+      const at = leadDateForStatus(a, getLeadConsolidatedStatus(a));
+      const bt = leadDateForStatus(b, getLeadConsolidatedStatus(b));
       const d = (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
       // Deterministic tiebreak: leads sharing a timestamp (batch send → same
       // firstContactedAt) or both-null dates would otherwise fall back to the
@@ -896,7 +857,7 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
       // reshuffle on the 30s poll. Freeze ties by lead id.
       return d !== 0 ? d : a.id.localeCompare(b.id);
     });
-  const sortedLeads = useMemo(() => sortByTabDate(leads, "all"), [leads]);
+  const sortedLeads = useMemo(() => sortByStatusDate(leads), [leads]);
 
   // Monotonic status latch: each lead's tab is derived from the email-gateway
   // delivery overlay, which can transiently drop on a poll and bounce a lead
@@ -923,10 +884,11 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
       if (lead.contacted) outreach.push(lead);
     }
     const groups = new Map<Tab, Lead[]>();
-    // Each tab sorted desc by its OWN date column (Clicks → first click, etc.).
-    groups.set("positive-replies", sortByTabDate(positive, "positive-replies"));
-    groups.set("clicks", sortByTabDate(clicks, "clicks"));
-    groups.set("outreach", sortByTabDate(outreach, "outreach"));
+    // Every engagement tab sorts by the same thing its Date column shows: each
+    // row's own status date. The tabs differ in MEMBERSHIP, not in what a date means.
+    groups.set("positive-replies", sortByStatusDate(positive));
+    groups.set("clicks", sortByStatusDate(clicks));
+    groups.set("outreach", sortByStatusDate(outreach));
     // Realized-outcome bucket: leads the /revenue join flags for the goal's outcome,
     // sorted desc by the outcome timestamp. Only leads present in the join AND flagged
     // true qualify (null/undefined = not reached).
@@ -940,7 +902,7 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
         const at = outcomeDates.get(a.id);
         const bt = outcomeDates.get(b.id);
         const d = (bt ? new Date(bt).getTime() : 0) - (at ? new Date(at).getTime() : 0);
-        // Same deterministic tiebreak as sortByTabDate — freeze equal/null
+        // Same deterministic tiebreak as sortByStatusDate — freeze equal/null
         // outcome timestamps by lead id so the tab order is poll-stable.
         return d !== 0 ? d : a.id.localeCompare(b.id);
       });
