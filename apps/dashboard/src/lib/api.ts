@@ -2407,6 +2407,14 @@ export async function getFeaturePipelineActivity(
   const query = new URLSearchParams({ brandId: params.brandId });
   if (params.days != null) query.set("days", String(params.days));
   if (params.timezone) query.set("timezone", params.timezone);
+  // pricing=net — the forecast bar is `daily budget / cost per outreach`, and the
+  // budget is money the org really spends, i.e. already discounted. Reading the
+  // divisor at gross therefore promised a discounted org roughly half the sends
+  // its budget buys, right beside actual bars twice as tall (a 50%-off brand read
+  // 15.88 expected against 30 real). Net is also what every other money surface on
+  // this page asks for — `getFeatureRevenue`, `fetchFeatureAudienceStats` and
+  // `getWorkflowProjectionLadder` all send it, and this was the last reader left out.
+  query.set("pricing", "net");
   const raw = await apiCall<unknown>(
     `/features/${encodeURIComponent(featureSlug)}/pipeline-activity?${query.toString()}`,
     { token },
