@@ -847,6 +847,11 @@ export function heroRoiChain(
 // Each arrow carries the assumption it applies, so a reader can see that the
 // win rate and the lifetime revenue are THEIRS, not a result we are claiming.
 function heroChainRows(costPerOutcomeUsd: number): string {
+  const budgetRow =
+    `<div class="console-metric">` +
+    `<span>Daily budget</span><b>$${HERO_DAILY_BUDGET_USD} / day</b>` +
+    `</div>`;
+
   const chain = heroRoiChain(
     HERO_DAILY_BUDGET_USD,
     HERO_MONTH_DAYS,
@@ -855,14 +860,31 @@ function heroChainRows(costPerOutcomeUsd: number): string {
     HERO_WIN_RATE_LOW_PCT,
     HERO_WIN_RATE_HIGH_PCT,
   );
-  if (chain === null) return "";
+  // The budget is true whatever the rate does, but with nothing to hand over
+  // there are no two zones, and a lone "distribute.you handles" would name a
+  // division of work the card is no longer showing.
+  if (chain === null) return budgetRow;
+
   const sales = `${chain.salesLow} to ${chain.salesHigh}`;
   return (
+    // Who does what, by LABEL plus whitespace rather than a nested container.
+    // A boundary would be the stronger grouping (NN/g: common region overpowers
+    // proximity) but it is only the right tool when whitespace is unavailable,
+    // and here it is available; a second border inside a bordered card is ink
+    // that carries no data. The cost-of-acquisition row deliberately gets NO
+    // third label: it is already the visual arrival point, and naming it would
+    // restate what its own treatment says.
+    `<p class="zone-label">distribute.you handles</p>` +
+    budgetRow +
+    // The one link the chain never explained: why that budget buys that many.
+    // Every step is checkable now, $50 × 31 ÷ this rate is the count below.
+    `<p class="chain-arrow">${usdSmart(costPerOutcomeUsd)} per interested buyer</p>` +
     `<div class="console-outcome">` +
     `<span>Interested B2B buyers</span>` +
     `<b><i data-hero-outcome="${chain.buyers}">${chain.buyers}</i> per month 🎉</b>` +
     `</div>` +
     `<div class="console-chain" data-hero-chain>` +
+    `<p class="zone-label">You handle</p>` +
     `<p class="chain-arrow">${HERO_WIN_RATE_LOW_PCT}-${HERO_WIN_RATE_HIGH_PCT}% of them become customers</p>` +
     `<div class="console-metric"><span>Your sales</span><b>${sales} per month</b></div>` +
     `<p class="chain-arrow">${usdWhole(ROI_DEFAULT_LTR_USD)} lifetime value each</p>` +
@@ -877,8 +899,7 @@ async function withCacBoot(html: string) {
     !html.includes("__CAC_PRICE__") &&
     !html.includes("__CAC_PRICE_NUMERIC__") &&
     !html.includes("__CAC_MULT__") &&
-    !html.includes("__HERO_BUDGET__") &&
-    !html.includes("__HERO_CHAIN__")
+    !html.includes("__HERO_CONSOLE__")
   ) {
     return html;
   }
@@ -899,8 +920,7 @@ async function withCacBoot(html: string) {
     .replaceAll("__CAC_PRICE_NUMERIC__", String(boot.best))
     .replaceAll("__CAC_PRICE__", price)
     .replaceAll("__CAC_MULT__", mult)
-    .replaceAll("__HERO_BUDGET__", `$${HERO_DAILY_BUDGET_USD} / day`)
-    .replaceAll("__HERO_CHAIN__", heroChainRows(boot.best))
+    .replaceAll("__HERO_CONSOLE__", heroChainRows(boot.best))
     .replaceAll("__ROI_LTR__", ROI_DEFAULT_LTR_USD.toLocaleString("en-US"))
     .replaceAll("__ROI_WIN_RATE__", String(ROI_DEFAULT_WIN_RATE_PCT))
     .replaceAll(

@@ -311,31 +311,50 @@
       font-family:var(--mono);
       font-size:10px;
     }
-    .window-dots{display:flex;gap:6px}
+    .console-top{justify-content:flex-start;gap:12px}
+    .window-dots{display:flex;gap:6px;flex-shrink:0}
     .window-dots i{display:block;width:7px;height:7px;border-radius:50%;background:#c7cede}
-    .preview-label{display:flex;align-items:center;gap:7px}
-    .preview-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--amber)}
-    .console-body{position:relative;padding:20px}
-    .console-url{
+    /* The site the visitor types rides the window chrome, the way a browser
+       titles a tab. It used to be a full row of its own, restating the URL
+       field sitting inches to its left, which is a duplicate label costing a
+       whole row. Here it keeps the personalisation for nothing. */
+    .console-title{
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      gap:16px;
-      padding:13px 14px;
-      border:1px solid var(--line);
-      border-radius:9px;
-      background:#f5f7fc;
-      font-family:var(--mono);
-      font-size:11.5px;
+      gap:6px;
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      color:var(--text);
+      font-size:11px;
     }
-    .console-url strong{
+    .console-title strong{
       color:var(--green);
       font-weight:500;
       display:inline-block;
       transform-origin:center;
     }
-    .console-url strong.is-pop{animation:hero-pop .32s ease}
+    .console-title strong.is-pop{animation:hero-pop .32s ease}
     @keyframes hero-pop{0%{transform:scale(.62)}62%{transform:scale(1.12)}100%{transform:scale(1)}}
+    .console-body{position:relative;padding:20px}
+    /* Who owns which half, said with a label and a gap rather than a nested
+       box: a boundary is the stronger grouping, but it is the right tool only
+       when whitespace is unavailable, and a second border inside a bordered
+       card draws ink that carries no data. */
+    .zone-label{
+      margin:20px 0 9px;
+      color:var(--muted);
+      font-family:var(--mono);
+      font-size:9px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+    /* Scoped to the body: the second zone label is the first child of the
+       chain block, and an unscoped :first-child would strip the gap that
+       separates the two halves. */
+    .console-body>.zone-label:first-child{margin-top:0}
+    .zone-label+.console-metric{margin-top:0}
     .console-metric{
       margin-top:13px;
       padding:13px;
@@ -381,7 +400,8 @@
        paint. */
     .console-chain[data-reveal]>*{display:none}
     .console-chain[data-reveal]>.is-in{animation:chain-in .34s ease both}
-    .console-chain[data-reveal]>p.is-in{display:flex}
+    .console-chain[data-reveal]>.chain-arrow.is-in{display:flex}
+    .console-chain[data-reveal]>.zone-label.is-in{display:block}
     .console-chain[data-reveal]>div.is-in{display:block}
     @keyframes chain-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
@@ -1296,13 +1316,10 @@
         <div class="console" aria-label="Campaign preview">
           <div class="console-top">
             <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span class="console-title"><span data-hero-domain>yourcompany.com</span><strong data-hero-ok>✓</strong></span>
           </div>
           <div class="console-body">
-            <div class="console-url"><span data-hero-domain>yourcompany.com</span><strong data-hero-ok>analyzed ✓</strong></div>
-
-            <div class="console-metric"><span>Daily budget</span><b>__HERO_BUDGET__</b></div>
-
-            __HERO_CHAIN__
+            __HERO_CONSOLE__
           </div>
         </div>
       </div>
