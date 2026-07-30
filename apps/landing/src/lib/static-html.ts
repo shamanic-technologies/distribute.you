@@ -752,12 +752,55 @@ export function formatRoiMultiple(
   return value >= 10 ? `${Math.round(value)}×` : `${value.toFixed(1)}×`;
 }
 
+// Hero console. The budget is stated DAILY (a small number a visitor can own)
+// and the outcome MONTHLY, which is the house convention and the same pair the
+// onboarding budget picker uses — so the two numbers a visitor reads here are
+// the two they meet again 30 seconds later at signup. Both derive from the
+// SAME constants and the SAME live rate, so they cannot drift apart.
+const HERO_DAILY_BUDGET_USD = 50;
+const HERO_MONTH_DAYS = 31;
+
+// Whole interested buyers a month of the hero budget buys at the live rate.
+// Null when the rate cannot be graded: the row is then dropped, because "we
+// could not measure this" and "it buys N" are different statements.
+export function heroMonthlyOutcomes(
+  dailyBudgetUsd: number,
+  monthDays: number,
+  costPerOutcomeUsd: number,
+): number | null {
+  if (!(costPerOutcomeUsd > 0)) return null;
+  if (!(dailyBudgetUsd > 0) || !(monthDays > 0)) return null;
+  const count = Math.round((dailyBudgetUsd * monthDays) / costPerOutcomeUsd);
+  if (!Number.isFinite(count) || count < 1) return null;
+  return count;
+}
+
+// The count is rendered server-side into the text, and repeated on the
+// attribute the count-up animation reads, so a scraper (and a reader with JS
+// off) still sees the real figure rather than a zero that JS fills in.
+function heroOutcomeRow(costPerOutcomeUsd: number): string {
+  const count = heroMonthlyOutcomes(
+    HERO_DAILY_BUDGET_USD,
+    HERO_MONTH_DAYS,
+    costPerOutcomeUsd,
+  );
+  if (count === null) return "";
+  return (
+    `<div class="console-outcome">` +
+    `<span>Interested buyers</span>` +
+    `<b><i data-hero-outcome="${count}">${count}</i> per month 🎉</b>` +
+    `</div>`
+  );
+}
+
 async function withCacBoot(html: string) {
   if (
     !html.includes(CAC_BOOT_TOKEN) &&
     !html.includes("__CAC_PRICE__") &&
     !html.includes("__CAC_PRICE_NUMERIC__") &&
-    !html.includes("__CAC_MULT__")
+    !html.includes("__CAC_MULT__") &&
+    !html.includes("__HERO_BUDGET__") &&
+    !html.includes("__HERO_OUTCOME_ROW__")
   ) {
     return html;
   }
@@ -778,6 +821,8 @@ async function withCacBoot(html: string) {
     .replaceAll("__CAC_PRICE_NUMERIC__", String(boot.best))
     .replaceAll("__CAC_PRICE__", price)
     .replaceAll("__CAC_MULT__", mult)
+    .replaceAll("__HERO_BUDGET__", `$${HERO_DAILY_BUDGET_USD} / day`)
+    .replaceAll("__HERO_OUTCOME_ROW__", heroOutcomeRow(boot.best))
     .replaceAll("__ROI_LTR__", ROI_DEFAULT_LTR_USD.toLocaleString("en-US"))
     .replaceAll("__ROI_WIN_RATE__", String(ROI_DEFAULT_WIN_RATE_PCT))
     .replaceAll(
