@@ -212,6 +212,27 @@ describe("hero console markup", () => {
     expect(html).not.toContain('[data-reveal="pending"]{opacity:0}');
   });
 
+  it("reserves the finished height so the growth shifts nothing", () => {
+    // The hero grid centres its two columns, so the card growing used to
+    // re-centre the headline and push every section below it down, seconds
+    // after the page had settled.
+    expect(hero).toContain('class="console-slot" data-console-slot');
+    expect(html).toContain("slot.style.minHeight=slot.offsetHeight+'px'");
+    // Measured BEFORE the rows collapse, or it reserves the collapsed height.
+    const init = html.indexOf("var slot=document.querySelector('[data-console-slot]')");
+    const collapse = html.indexOf("chainEl.setAttribute('data-reveal','pending')");
+    expect(init).toBeGreaterThan(-1);
+    expect(init).toBeLessThan(collapse);
+  });
+
+  it("reserves on the slot, never on the card itself", () => {
+    // Height on the card would put the blank back inside a white box; on the
+    // slot the reserved space is page background.
+    expect(html).not.toContain("console.style.minHeight");
+    const slot = html.slice(html.indexOf(".console-slot{"), html.indexOf(".console-slot{") + 40);
+    expect(slot).not.toMatch(/height/);
+  });
+
   it("grows the card one row at a time", () => {
     expect(html).toContain("el.classList.add('is-in');},idx*140);");
   });
