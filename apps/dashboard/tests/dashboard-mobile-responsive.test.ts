@@ -49,7 +49,10 @@ describe("Dashboard mobile responsiveness", () => {
   const leadsTable = () => {
     const at = leadsPage.indexOf("function LeadsTable(");
     expect(at).toBeGreaterThan(-1);
-    return leadsPage.slice(at, at + 8000);
+    // The function measures ~7.6k; the headroom is for the next comment added
+    // inside it, which would otherwise silently push the last assertion's target
+    // out of the haystack and read as "the code is missing".
+    return leadsPage.slice(at, at + 12000);
   };
 
   it("fits the leads table in a phone viewport instead of scrolling sideways", () => {
@@ -75,17 +78,19 @@ describe("Dashboard mobile responsiveness", () => {
     expect(table).toContain('className="px-4 py-3 w-[62%] md:w-auto">Company</th>');
   });
 
-  it("folds the audience under the company name and the date under the tag", () => {
+  it("folds the audience under the company name and the status date under the tag", () => {
     const table = leadsTable();
     // One large company mark, then company name over audience name.
     expect(table).toContain('className="md:hidden flex items-center gap-3"');
     expect(table).toContain("size={40}");
     expect(table).toContain('<p className="truncate font-medium text-gray-800">{companyName}</p>');
     expect(table).toContain('{audience && <p className="truncate text-xs text-gray-500">{audience.name}</p>}');
-    expect(table).toContain('className="mt-1 md:hidden">{dateNode}');
+    // The date under the tag is the STATUS's date and stays at every width — it
+    // belongs to the badge, not to the column that folded away.
+    expect(table).toContain('{statusDateNode && <div className="mt-1">{statusDateNode}</div>}');
     // Complementary, never both at once: each folded column stays `hidden md:table-cell`.
     expect(table).toContain('hidden md:table-cell">Audience</th>');
-    expect(table).toContain('hidden md:table-cell">Date</th>');
+    expect(table).toContain('hidden md:table-cell">{dateColumnHeader(tab)}</th>');
   });
 
   it("sizes the company mark by style, since a class cannot be built from a prop", () => {
