@@ -8,10 +8,11 @@ import {
   useUser,
 } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listBrands } from "@/lib/api";
+import { useTenantIdentity } from "@/components/tenant-identity-provider";
 
 export interface TenantBrand {
   id: string;
@@ -49,6 +50,16 @@ export function orgDomainFromName(name?: string | null): string | null {
  * Consumed by BOTH tenant surfaces so they can never drift:
  *  - `breadcrumb-nav.tsx` (the onboarding chrome)
  *  - `tenant-switcher.tsx` (the sidebar-top switcher)
+ *
+ * FIRST FRAME: the identity comes from a SERVER-READ cookie (`useTenantIdentity`),
+ * so the real org name, brand name and brand domain (→ the logo.dev mark) are in
+ * the SSR HTML — on screen before any JS runs. The React Query + IndexedDB path
+ * below owns freshness, but it CANNOT own the first frame: its restore is
+ * asynchronous (a `useEffect` in query-provider), so it is structurally incapable
+ * of beating the initial paint, which is why `Brand` + the globe kept flashing on
+ * every hard refresh even after the identity reads were moved onto the persister.
+ * The cookie is the only store the server can read. Keep the two layers: drop the
+ * cookie and the flash returns; drop the queries and the labels go stale.
  *
  * LOCAL-FIRST: every identity read here goes through React Query, so the
  * per-query IndexedDB persister paints the last-known org name, brand name and
@@ -93,6 +104,9 @@ export function useTenantSwitcher() {
   // real security boundary is the `isAdminEmail` 403 on the /api/admin/* routes.
   const { user } = useUser();
   const isStaff = isAdminEmail(user?.primaryEmailAddress?.emailAddress);
+  // The server-read cookie snapshot. Available synchronously, on the very first
+  // render, on the server AND the client — the only source with that property.
+  const { seed: identitySeed, remember: rememberIdentity } = useTenantIdentity();
 
   const [allOrgs, setAllOrgs] = useState<TenantOrgOption[]>([]);
   const [orgSearch, setOrgSearch] = useState("");
@@ -128,7 +142,11 @@ export function useTenantSwitcher() {
   });
 
   // Live Clerk value first (freshest, e.g. an org just renamed in another surface),
-  // then the persisted snapshot, then the lists we already hold.
+  // then the persisted snapshot, then the lists we already hold, and LAST the
+  // server-read cookie seed. Ordering matters in both directions: a fresher source
+  // must always win, and the seed must always be reachable — it is the only entry
+  // that exists during SSR and the first client frame.
+  const seededOrg = orgId ? identitySeed?.orgs[orgId] : undefined;
   const liveOrg = organization && organization.id === orgId ? organization : null;
   const displayOrg:
     | { name?: string; imageUrl?: string | null; hasImage?: boolean }
@@ -136,7 +154,10 @@ export function useTenantSwitcher() {
     ? liveOrg ??
       orgIdentityQuery.data ??
       allOrgs.find((o) => o.id === orgId) ??
-      userMemberships?.data?.find((m) => m.organization.id === orgId)?.organization
+      userMemberships?.data?.find((m) => m.organization.id === orgId)?.organization ??
+      (seededOrg
+        ? { name: seededOrg.n, imageUrl: seededOrg.i, hasImage: !!seededOrg.i }
+        : undefined)
     : // Off the /orgs/ tree (the onboarding create flow: `/onboarding?from=add`),
       // there is no URL org to key on, so fall back to Clerk's active org — the
       // add-BRAND flow reuses the existing active org, so its name is the right
@@ -149,6 +170,12 @@ export function useTenantSwitcher() {
   const displayOrgName = displayOrg?.name || "Dashboard";
   const displayOrgImageUrl = displayOrg?.imageUrl ?? undefined;
   const displayOrgHasImage = displayOrg?.hasImage;
+  // "Do we actually know this tenant?" — distinct from the label being non-empty,
+  // because the label falls back to a generic word. A surface that shows identity
+  // renders a skeleton while this is false rather than asserting a name we do not
+  // have; `Dashboard` / `Brand` beside a globe is a fabricated identity, and the
+  // user reads it as the product having lost their brand.
+  const orgKnown = !!displayOrg?.name;
 
   // Staff-only: fetch ALL platform orgs (god-mode switcher). No-op for customers.
   // Search-driven and debounced by the caller, so it stays a plain fetch — there is
@@ -237,14 +264,59 @@ export function useTenantSwitcher() {
   }, [orgId, router]);
 
   // Resolve the brand from the dropdown list first, then the authoritative by-id
-  // read. Both are disk-backed, so whichever answers first paints instantly.
+  // read, and LAST the server-read cookie seed. The first two are disk-backed, so
+  // whichever answers first paints instantly once JS is running; the seed is what
+  // covers the window before that — SSR and the pre-hydration frames.
   const byIdBrand = brandQuery.data?.brand;
+  const seededBrand = brandId ? identitySeed?.brands[brandId] : undefined;
   const displayBrand: TenantBrand | undefined = brandId
     ? brands.find((b) => b.id === brandId) ??
       (byIdBrand
         ? { id: byIdBrand.id, name: byIdBrand.name, domain: byIdBrand.domain }
-        : undefined)
+        : seededBrand
+          ? { id: brandId, name: seededBrand.n, domain: seededBrand.d }
+          : undefined)
     : undefined;
+  const brandKnown = !!displayBrand;
+
+  // Write every freshly-resolved identity back to the cookie so the NEXT load
+  // paints it server-side. Deliberately keyed on the resolved VALUES, not on the
+  // queries: it must fire for whichever source answered (Clerk, the list, the
+  // by-id read), and `remember` no-ops when nothing changed, so a poll re-resolving
+  // the same name does not re-write the cookie on every tick.
+  // Depend on PRIMITIVES, never on `displayBrand` itself: that object is rebuilt on
+  // every render, so keeping it in the dep list would re-run this (and re-parse the
+  // cookie) on each one. Harmless but pointless — the values are what changed or not.
+  const rememberedOrgName = orgKnown ? displayOrg?.name : undefined;
+  const rememberedOrgImage = displayOrgHasImage ? displayOrgImageUrl : undefined;
+  // Only remember a brand we have a real half of — a `{name: null, domain: null}`
+  // row would just re-serve the placeholder from the cookie on the next load.
+  const rememberedBrandName = displayBrand?.name ?? null;
+  const rememberedBrandDomain = displayBrand?.domain ?? null;
+  useEffect(() => {
+    if (!orgId && !brandId) return;
+    rememberIdentity({
+      orgId,
+      org: rememberedOrgName
+        ? rememberedOrgImage
+          ? { n: rememberedOrgName, i: rememberedOrgImage }
+          : { n: rememberedOrgName }
+        : null,
+      brandId,
+      brand:
+        rememberedBrandName || rememberedBrandDomain
+          ? { n: rememberedBrandName, d: rememberedBrandDomain }
+          : null,
+    });
+  }, [
+    orgId,
+    brandId,
+    rememberedOrgName,
+    rememberedOrgImage,
+    rememberedBrandName,
+    rememberedBrandDomain,
+    rememberIdentity,
+  ]);
 
   return {
     pathname,
@@ -266,6 +338,8 @@ export function useTenantSwitcher() {
     displayOrgImageUrl,
     displayOrgHasImage,
     displayBrand,
+    orgKnown,
+    brandKnown,
     handleOrgSwitch,
     handleBrandSwitch,
     router,

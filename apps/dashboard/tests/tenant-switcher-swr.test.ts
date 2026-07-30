@@ -73,3 +73,83 @@ describe("Tenant switcher SWR identity", () => {
     expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
   });
 });
+
+/**
+ * The FIRST frame, which the SWR cache above structurally cannot reach.
+ *
+ * The IndexedDB restore runs in a `useEffect` (`persister.restoreQueries` /
+ * `reseedColdQueriesFromDisk`), i.e. strictly after paint — so moving the identity
+ * reads onto the persister fixed staleness but left every hard refresh painting
+ * `Brand` + the globe first and swapping the real values in a moment later. Only a
+ * cookie can be read by the SERVER, which is what puts the identity in the HTML.
+ */
+describe("Tenant switcher first-frame identity", () => {
+  const read = (rel: string) =>
+    fs.readFileSync(path.join(__dirname, "..", rel), "utf-8");
+
+  const hook = read("src/lib/use-tenant-switcher.ts");
+  const switcher = read("src/components/tenant-switcher.tsx");
+  const authedLayout = read("src/app/(authed)/layout.tsx");
+  const provider = read("src/components/tenant-identity-provider.tsx");
+
+  const sliceFrom = (src: string, marker: string, length: number) => {
+    const at = src.indexOf(marker);
+    expect(at, `marker not found: ${marker}`).toBeGreaterThan(-1);
+    return src.slice(at, at + length);
+  };
+
+  it("reads the identity cookie on the SERVER and seeds the client tree", () => {
+    // Client-only storage (localStorage / IndexedDB) cannot beat the initial paint,
+    // because the HTML is produced before any of it is reachable.
+    expect(authedLayout).toContain("parseTenantIdentityCookie");
+    expect(authedLayout).toContain("TENANT_IDENTITY_COOKIE");
+    expect(authedLayout).toContain("<TenantIdentityProvider seed={tenantSeed}>");
+    expect(authedLayout).toContain("export default async function AuthedLayout");
+  });
+
+  it("keeps the cookie server-readable and client-written", () => {
+    // httpOnly would make the client unable to write it; the client is what learns
+    // the identity (Clerk for the org, brand-service for the brand).
+    expect(provider).toContain("document.cookie = tenantIdentityCookieAssignment(next)");
+    expect(provider).toContain("readTenantIdentityFromDocumentCookie(document.cookie)");
+  });
+
+  it("falls back to the seed for BOTH the org and the brand", () => {
+    expect(hook).toContain("identitySeed?.orgs[orgId]");
+    expect(hook).toContain("identitySeed?.brands[brandId]");
+  });
+
+  it("ranks the seed LAST, so a fresher source always wins", () => {
+    // The seed is a memory of the previous visit; Clerk / the query cache are the
+    // live values. Ordering it first would pin a renamed brand to its old name.
+    const orgChain = sliceFrom(hook, "const displayOrg:", 700);
+    expect(orgChain.indexOf("liveOrg")).toBeLessThan(orgChain.indexOf("seededOrg"));
+    expect(orgChain.indexOf("orgIdentityQuery.data")).toBeLessThan(orgChain.indexOf("seededOrg"));
+
+    const brandChain = sliceFrom(hook, "const displayBrand: TenantBrand", 500);
+    expect(brandChain.indexOf("brands.find")).toBeLessThan(brandChain.indexOf("seededBrand"));
+    expect(brandChain.indexOf("byIdBrand")).toBeLessThan(brandChain.indexOf("seededBrand"));
+  });
+
+  it("writes a resolved identity back so the NEXT load paints it server-side", () => {
+    expect(hook).toContain("rememberIdentity({");
+  });
+
+  it("renders a skeleton for an unknown tenant, never a fabricated label", () => {
+    // `Brand` beside a globe asserts an identity we do not have; the user reads it
+    // as the product having lost their brand.
+    expect(switcher).toContain("function IdentitySkeleton");
+    expect(hook).toContain("const orgKnown = !!displayOrg?.name;");
+    expect(hook).toContain("const brandKnown = !!displayBrand;");
+
+    // Both switcher surfaces gate on the tenant the URL is on — a brand page must
+    // not fall back to the org's name.
+    const desktop = sliceFrom(switcher, "export function TenantSwitcher()", 1400);
+    expect(desktop).toContain("const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;");
+    expect(desktop).toContain("{!identityKnown ? (");
+
+    const mobile = sliceFrom(switcher, "export function MobileTenantChip()", 1400);
+    expect(mobile).toContain("const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;");
+    expect(mobile).toContain("{!identityKnown ? (");
+  });
+});
