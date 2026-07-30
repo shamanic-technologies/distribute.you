@@ -785,6 +785,13 @@ export function Onboarding() {
   // positive_replies (no site means no clicks/visits to optimize for).
   const [noWebsiteMode, setNoWebsiteMode] = useState<boolean>(() => restored?.noWebsiteMode ?? false);
   const [brandName, setBrandName] = useState(() => restored?.brandName ?? "");
+  // DISTINCT from `brandName` above, which is what the user TYPED on the no-website
+  // path. This is the company name brand-service resolved from the domain, returned
+  // by the brand-create call. Deliberately NOT part of the persisted snapshot: adding
+  // a field there means bumping ONBOARDING_STATE_VERSION, which strands an in-flight
+  // checkout, and the cost of not persisting it is only that a resumed session shows
+  // the domain again.
+  const [resolvedBrandName, setResolvedBrandName] = useState<string | null>(null);
   const [brandContext, setBrandContext] = useState(() => restored?.brandContext ?? "");
   const [error, setError] = useState<string | null>(null);
   // Reassuring (non-error) note shown on the pricing step after a cancelled checkout
@@ -917,6 +924,10 @@ export function Onboarding() {
   // the typed brand name as the identity instead of an empty "Reading " line.
   const headerDomain = noWebsiteMode ? null : domain;
   const headerHostname = noWebsiteMode ? (brandName.trim() || "your brand") : hostname;
+  // The company name brand-service resolved for this domain, so the header can read
+  // "Acme Consulting" instead of "acme.com". A no-website brand is identified by the
+  // name the user typed, which `headerHostname` already carries — nothing to resolve.
+  const headerName = noWebsiteMode ? null : resolvedBrandName;
   // The default click destination = the brand's homepage (domain root). Used as
   // the pre-selected option on the destination step and the fallback when the
   // user leaves the custom field empty.
@@ -1287,8 +1298,12 @@ export function Onboarding() {
     setLoadStep(1);
     const brandStartedAt = performance.now();
     const previousBrandId = brandIdRef.current;
-    const { brandId: newBrandId } = await upsertBrand(brandUrl);
+    const { brandId: newBrandId, name: createdBrandName } = await upsertBrand(brandUrl);
     captureSetupMilestone("brand_upserted", brandStartedAt);
+    // The step header switches from "acme.com" to "Acme Consulting" here. null while
+    // brand-service has not resolved a name yet, which the header reads as "keep
+    // showing the domain" rather than as an empty label.
+    setResolvedBrandName(createdBrandName);
     // Brand SWITCH (user edited the URL → a different brand): every brand-derived
     // prefill in state is now stale (ICP prompt, suggested audiences, rate defaults).
     // Drop them + clear the "user edited" guards so the fresh hydration reseeds the
@@ -2531,7 +2546,7 @@ export function Onboarding() {
       <StepShell
         maxWidth="sm:max-w-md"
         pad="p-5 sm:p-6 md:p-8"
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
       >
           <div className="mb-2 text-center text-lg font-semibold text-gray-950">{loadingComplete ? "Your strategy is ready." : "Building your strategy…"}</div>
           <p className="mb-6 text-center text-sm text-gray-500">Reading <span className="font-medium text-gray-700">{headerHostname}</span></p>
@@ -2559,7 +2574,7 @@ export function Onboarding() {
   if (step === "services") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => { addService(serviceDraft); setStep(noWebsiteMode ? "objective" : "destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
       >
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
@@ -2600,7 +2615,7 @@ export function Onboarding() {
       `mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${active ? "border-brand-500 bg-brand-500" : "border-gray-300"}`;
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={saveDestinationAndContinue} busy={busy} disabled={busy} />}
       >
           <BackButton onClick={() => setStep("services")} />
@@ -2656,7 +2671,7 @@ export function Onboarding() {
   if (step === "objective") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("rates")} />}
       >
           <BackButton onClick={() => setStep(noWebsiteMode ? "services" : "destination")} />
@@ -2687,7 +2702,7 @@ export function Onboarding() {
     const rateKeys = RATE_KEYS_FOR_OUTCOME[outcome];
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={saveRatesAndContinue} busy={busy} label="Continue" />}
       >
         <BackButton onClick={() => setStep("objective")} />
@@ -2767,6 +2782,7 @@ export function Onboarding() {
       <OnboardingAudiences
         brandId={brandId}
         brandDomain={headerDomain}
+        brandName={headerName}
         hostname={headerHostname}
         services={services}
         prefetch={audiencePrefetch}
@@ -2786,7 +2802,7 @@ export function Onboarding() {
   if (step === "consent") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
       >
           <BackButton onClick={() => setStep("audiences")} />
@@ -2828,7 +2844,7 @@ export function Onboarding() {
   if (step === "phone") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={savePhoneAndContinue} busy={busy} label="Continue" />}
       >
         <div className="mb-4 flex items-start gap-2">
@@ -2850,7 +2866,7 @@ export function Onboarding() {
   if (step === "ltr") {
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={saveLtrAndContinue} busy={busy} label="Continue" />}
       >
         <BackButton onClick={() => setStep("phone")} />
@@ -2907,7 +2923,7 @@ export function Onboarding() {
     return (
       <StepShell
         maxWidth="sm:max-w-2xl"
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={() => setStep("offer")} label="Continue" />}
       >
         <BackButton onClick={() => setStep("ltr")} />
@@ -3013,7 +3029,7 @@ export function Onboarding() {
     const isLast = offerIndex === POST_PAYMENT_OFFER_LEVERS.length - 1;
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={continueOffer} busy={busy} label={isLast ? "Launch my campaign" : "Continue"} />}
       >
         <BackButton onClick={() => (offerIndex > 0 ? setOfferIndex((i) => i - 1) : setStep("model"))} />
@@ -3095,7 +3111,7 @@ export function Onboarding() {
     const amount = budgetForCharge();
     return (
       <StepShell
-        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={
           <button onClick={beginCheckoutAndLaunch} disabled={busy} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
             {busy ? (
@@ -3138,7 +3154,7 @@ export function Onboarding() {
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   return (
     <StepShell
-      header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} onEdit={() => setStep("url")} />}
+      header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
       footer={
         <button onClick={continueFromPricing} disabled={displayBudget == null || busy} className={`mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50"}`}>
           {busy ? (
@@ -3251,6 +3267,7 @@ export function Onboarding() {
 function OnboardingAudiences({
   brandId,
   brandDomain,
+  brandName,
   hostname,
   services,
   prefetch,
@@ -3266,6 +3283,10 @@ function OnboardingAudiences({
 }: {
   brandId: string | null;
   brandDomain: string | null;
+  // Threaded so this step's header reads the same company name as every sibling
+  // step. Left on the domain here while the others show the name is an internally
+  // incoherent header, not a cosmetic gap.
+  brandName: string | null;
   hostname: string;
   services: string[];
   prefetch: AudiencePrefetch | null;
@@ -3433,7 +3454,7 @@ function OnboardingAudiences({
   return (
     <StepShell
       maxWidth={audienceMaxWidth}
-      header={<BrandStepHeader domain={brandDomain} hostname={hostname} onEdit={onEdit} />}
+      header={<BrandStepHeader domain={brandDomain} hostname={hostname} name={brandName} onEdit={onEdit} />}
       footer={<NextButton onClick={saveAndContinue} disabled={!candidates || candidates.every((c) => !selectedAudienceIdSet.has(c.audienceId))} label="Continue" />}
     >
       <div>
@@ -3564,13 +3585,21 @@ function AudienceCandidateCard({
   );
 }
 
-function BrandStepHeader({ domain, hostname, onEdit }: { domain: string | null; hostname: string; onEdit?: () => void }) {
-  const label = domain ?? hostname;
+function BrandStepHeader({ domain, hostname, name, onEdit }: { domain: string | null; hostname: string; name?: string | null; onEdit?: () => void }) {
+  // The logo is keyed on the DOMAIN and the label reads the company NAME — two
+  // different values that used to be one. `img.logo.dev/<name>` resolves nothing,
+  // so collapsing them again silently empties the logo slot.
+  const logoDomain = domain ?? hostname;
+  // The domain is what we can show on the very first frame (it is parsed from the
+  // typed URL, no network). The real company name arrives with the brand-create
+  // response and replaces it; a resumed session that never saw that response
+  // falls back to the domain rather than an empty header.
+  const label = name?.trim() || domain || hostname;
   return (
     <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white">
         <BrandLogo
-          domain={label}
+          domain={logoDomain}
           size={28}
           className="h-7 w-7 rounded-md object-contain"
           fallbackClassName="h-5 w-5 text-gray-400"
