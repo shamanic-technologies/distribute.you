@@ -1,0 +1,120 @@
+import { describe, it, expect } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+
+/**
+ * "Contacted" claimed we had emailed a lead we had only handed to Instantly.
+ *
+ * Instantly dispatches on weekdays between 08:00 and 17:00 in the recipient's
+ * timezone, so a lead pushed on a Friday evening sits in that queue for three days.
+ * The dashboard printed "Contacted" for the whole window, which is why a customer
+ * who had just been told we respect business hours read the page as contradicting us.
+ *
+ * The push is now "Queued", the send window is stated on the row that needs it, and
+ * the queue row disappears the moment a real send exists — a lead never shows the
+ * waiting state and the sent state at once.
+ *
+ * Source-substring guards: the page pulls Clerk/api through the `@` alias vitest does
+ * not resolve here, matching the repo's other page guards. Each guard is scoped to the
+ * function body it covers, because "Contacted"/"Clicked" remain legitimate words
+ * elsewhere in the tree (the wire field names, the admin console).
+ */
+describe("Leads — a queued lead is not a contacted lead", () => {
+  const pagePath = path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx");
+  const src = fs.readFileSync(pagePath, "utf-8");
+
+  const sliceFrom = (marker: string, length = 2600) => {
+    const at = src.indexOf(marker);
+    expect(at, `marker not found: ${marker}`).toBeGreaterThan(-1);
+    return src.slice(at, at + length);
+  };
+
+  it("names the queue state Queued and drops the Contacted claim", () => {
+    const body = sliceFrom("function leadStatusLabel(", 700);
+    expect(body).toContain('case "contacted": return "Queued"');
+    expect(body).not.toContain('"Contacted"');
+  });
+
+  it("styles the queue state as a wait, not as an acquired step", () => {
+    const body = sliceFrom("function leadStatusStyle(", 900);
+    expect(body).toContain('case "contacted": return "bg-slate-100 text-slate-700 border-slate-200"');
+    expect(body).not.toContain("teal");
+  });
+
+  it("states the send window on the queue row so the wait is explained", () => {
+    expect(src).toContain('const QUEUED_LABEL = "Queued for sending"');
+    expect(src).toContain(
+      "We only send on weekdays, 8am to 5pm during the recipient's local business hours.",
+    );
+    // Em-dash is banned in user-facing copy; the note is user-facing.
+    expect(src.slice(src.indexOf("const SEND_WINDOW_NOTE"), src.indexOf("const SEND_WINDOW_NOTE") + 300))
+      .not.toContain("—");
+  });
+
+  it("shows the queue row only while nothing has been sent", () => {
+    const body = sliceFrom("function LeadTimeline(");
+    // The queue row is gated on the absence of a real send, so Queued and Sent can
+    // never both appear for one lead.
+    expect(body).toContain("const queuedOnly = !sentAt");
+    expect(body).toContain("if (queuedOnly");
+    expect(body).toContain("label: QUEUED_LABEL");
+    expect(body).toContain("note: SEND_WINDOW_NOTE");
+    // No standalone "Contacted" event survives.
+    expect(body).not.toContain('label: "Contacted"');
+  });
+
+  it("carries the unsent email on the queue row instead of a standalone sent-looking row", () => {
+    const body = sliceFrom("function LeadTimeline(");
+    // The initial email becomes its own row only once a real send anchors it.
+    expect(body).toContain('if (!queuedOnly && initial)');
+    expect(body).toContain('label: "Initial email"');
+  });
+
+  it("labels an unsent follow-up relative to the first email rather than with a drifting date", () => {
+    const derive = sliceFrom("function deriveEmailRows(", 2200);
+    expect(derive).toContain("after the first email");
+    expect(derive).toContain("estimated");
+    // The row prints the estimate in place of the absolute date.
+    const render = sliceFrom("function LeadTimeline(", 9000);
+    expect(render).toContain("{e.estimate ?? new Date(e.at).toLocaleDateString(");
+  });
+
+  it("lets every Outreach row show its own status", () => {
+    // forceContacted painted "Contacted" on every row of the Outreach tab, so a lead
+    // that really was sent contradicted its own detail panel.
+    expect(src).not.toContain("forceContacted");
+  });
+
+  it("uses the same word for the queue state on the conversions chips", () => {
+    const conversions = fs.readFileSync(
+      path.join(__dirname, "../src/components/revenue/conversions-table.tsx"),
+      "utf-8",
+    );
+    expect(conversions).toContain('contacted: { label: "Queued"');
+    expect(conversions).not.toContain('label: "Contacted"');
+  });
+
+  it("exports the leads CSV in the words the dashboard uses", () => {
+    const csv = fs.readFileSync(path.join(__dirname, "../src/lib/leads-csv.ts"), "utf-8");
+    // `lead.contacted` IS the Outreach-tab predicate and `lead.clicked` the
+    // Website-Visits one, so the columns carry the tab's word.
+    expect(csv).toContain('{ label: "Outreach", value: (l) => yesNo(l.contacted) }');
+    expect(csv).toContain('{ label: "Website visit", value: (l) => yesNo(l.clicked) }');
+    expect(csv).toContain('{ label: "First outreach at", value: (l) => date(l.firstContactedAt) }');
+    expect(csv).toContain('{ label: "First website visit at", value: (l) => date(l.firstClickedAt) }');
+    // `Replied` stays: the flag covers negative replies too, so the Positive-replies
+    // tab is a subset of it and renaming the column would overstate what it means.
+    expect(csv).toContain('{ label: "Replied", value: (l) => yesNo(l.replied) }');
+  });
+
+  it("leaves the staff console on the raw technical state", () => {
+    const admin = fs.readFileSync(
+      path.join(
+        __dirname,
+        "../../admin/src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/leads/page.tsx",
+      ),
+      "utf-8",
+    );
+    expect(admin).toContain('case "contacted": return "Contacted"');
+  });
+});
