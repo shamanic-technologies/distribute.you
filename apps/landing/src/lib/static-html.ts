@@ -757,6 +757,30 @@ export function formatRoiMultiple(
   return formatMultiple((ltrUsd * (winRatePct / 100)) / costPerMeetingUsd);
 }
 
+// Per-segment cost of acquisition, on the #measure dashboard preview. The card
+// already headlines the live account-wide rate, and a segment line that sat on a
+// hardcoded dollar figure would freeze the day it was written while the headline
+// kept moving — the same number under two labels, disagreeing. So the three
+// segment prices are DERIVED from that one rate: one a little under, one on it,
+// one a little over, which is what a real per-segment spread looks like.
+const SEGMENT_COST_SPREAD_USD = 5;
+
+// Exported for unit tests. The low leg is clamped so it can never reach zero or
+// go negative on a very cheap rate; at any realistic rate the spread is exactly
+// the constant above.
+export function segmentCostBand(bestUsd: number): {
+  low: string;
+  mid: string;
+  high: string;
+} {
+  const spread = Math.min(SEGMENT_COST_SPREAD_USD, Math.max(0, bestUsd - 1));
+  return {
+    low: usdSmart(bestUsd - spread),
+    mid: usdSmart(bestUsd),
+    high: usdSmart(bestUsd + spread),
+  };
+}
+
 // Hero console. The budget is stated DAILY (a small number a visitor can own)
 // and the outcome MONTHLY, which is the house convention and the same pair the
 // onboarding budget picker uses — so the two numbers a visitor reads here are
@@ -899,6 +923,7 @@ async function withCacBoot(html: string) {
     !html.includes("__CAC_PRICE__") &&
     !html.includes("__CAC_PRICE_NUMERIC__") &&
     !html.includes("__CAC_MULT__") &&
+    !html.includes("__SEG_COST_MID__") &&
     !html.includes("__HERO_CONSOLE__")
   ) {
     return html;
@@ -909,6 +934,7 @@ async function withCacBoot(html: string) {
   // number only changes when the ISR snapshot re-renders (every ~300s).
   const price = usdSmart(boot.best);
   const mult = `${Math.round(700 / boot.best)}×`;
+  const segment = segmentCostBand(boot.best);
   return html
     .replaceAll(
       CAC_BOOT_TOKEN,
@@ -920,6 +946,9 @@ async function withCacBoot(html: string) {
     .replaceAll("__CAC_PRICE_NUMERIC__", String(boot.best))
     .replaceAll("__CAC_PRICE__", price)
     .replaceAll("__CAC_MULT__", mult)
+    .replaceAll("__SEG_COST_LOW__", segment.low)
+    .replaceAll("__SEG_COST_MID__", segment.mid)
+    .replaceAll("__SEG_COST_HIGH__", segment.high)
     .replaceAll("__HERO_CONSOLE__", heroChainRows(boot.best))
     .replaceAll("__ROI_LTR__", ROI_DEFAULT_LTR_USD.toLocaleString("en-US"))
     .replaceAll("__ROI_WIN_RATE__", String(ROI_DEFAULT_WIN_RATE_PCT))
