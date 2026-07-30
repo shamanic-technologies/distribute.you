@@ -145,9 +145,11 @@ describe("hero console markup", () => {
     expect(hero).toContain("console-body");
   });
 
-  it("reads both numbers from the live rate, never a literal", () => {
-    expect(hero).toContain("__HERO_BUDGET__");
-    expect(hero).toContain("__HERO_CHAIN__");
+  it("reads every number from the live rate, never a literal", () => {
+    // One token now, so the budget and everything derived from it are built in
+    // a single place and cannot be edited apart.
+    expect(hero).toContain("__HERO_CONSOLE__");
+    expect(hero).not.toContain("__HERO_BUDGET__");
     // The old card stated a budget and an outcome that came from nowhere and
     // could not move when the live cost per reply moved.
     expect(hero).not.toContain("$10 / day");
@@ -177,6 +179,13 @@ describe("hero console markup", () => {
   it("names the visitor's own site as they type it", () => {
     expect(html).toContain("data-hero-domain");
     expect(html).toContain('document.getElementById(\'website-url\')');
+  });
+
+  it("keeps the typed site in the window chrome, not in a row of its own", () => {
+    // A full row restated the URL field sitting inches to its left: a duplicate
+    // label costing a whole row. The title bar keeps the personalisation free.
+    expect(hero).toContain('class="console-title"');
+    expect(html).not.toContain("console-url");
   });
 
   it("keeps the placeholder when the typed value is not yet a domain", () => {
@@ -226,12 +235,41 @@ describe("hero console server render", () => {
     );
   });
 
-  it("omits the whole chain when the rate cannot be graded", () => {
-    expect(staticHtmlSrc).toContain("if (chain === null) return \"\";");
+  it("keeps only the budget when the rate cannot be graded", () => {
+    // The budget is true whatever the rate does, but with nothing to hand over
+    // there are no two zones to name.
+    expect(staticHtmlSrc).toContain("if (chain === null) return budgetRow;");
   });
 
   it("names the buyer the product actually finds", () => {
     expect(staticHtmlSrc).toContain("<span>Interested B2B buyers</span>");
+  });
+
+  it("says who does which half", () => {
+    expect(staticHtmlSrc).toContain('<p class="zone-label">distribute.you handles</p>');
+    expect(staticHtmlSrc).toContain('<p class="zone-label">You handle</p>');
+    // The cost of acquisition gets no third label: it is already the arrival
+    // point, and naming it would restate what its own treatment says.
+    expect(staticHtmlSrc).not.toContain("zone-label\">Together");
+  });
+
+  it("groups the zones with whitespace, never a nested box", () => {
+    // A boundary is the stronger grouping, but it is the right tool only when
+    // whitespace is unavailable; a second border inside a bordered card is ink
+    // carrying no data.
+    const zone = html.slice(html.indexOf(".zone-label{"), html.indexOf(".zone-label{") + 260);
+    expect(zone).not.toMatch(/border|background/);
+    expect(zone).toContain("margin:20px 0 9px");
+    // Scoped to the body: the second label is the first child of the chain
+    // block, and an unscoped :first-child strips the gap between the halves.
+    expect(html).toContain(".console-body>.zone-label:first-child{margin-top:0}");
+    expect(html).not.toContain("\n    .zone-label:first-child{margin-top:0}");
+  });
+
+  it("explains why the budget buys that many buyers", () => {
+    // The one link the chain never showed. Every step is checkable now.
+    expect(staticHtmlSrc).toContain("per interested buyer");
+    expect(staticHtmlSrc).toContain("usdSmart(costPerOutcomeUsd)");
   });
 
   it("labels the two chain figures as the reader's own", () => {
@@ -253,9 +291,7 @@ describe("hero console server render", () => {
   });
 
   it("derives the budget label from the same constant as the count", () => {
-    expect(staticHtmlSrc).toContain(
-      "`$${HERO_DAILY_BUDGET_USD} / day`",
-    );
     expect(staticHtmlSrc).toContain("heroChainRows(boot.best)");
+    expect(staticHtmlSrc).toContain("$${HERO_DAILY_BUDGET_USD} / day");
   });
 });
