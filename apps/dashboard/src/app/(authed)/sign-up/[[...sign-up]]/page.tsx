@@ -25,6 +25,17 @@ const PREFILL_AUTH_KEY = "distribute_prefill_auth";
 // live (only the newest one works), short enough to not feel punitive.
 const RESEND_COOLDOWN_SECONDS = 30;
 
+// Clerk's own minimum. A shorter password is rejected server-side with
+// `form_password_length_too_short`, so gating on it locally states a rule that
+// already exists rather than inventing one. If the instance is configured
+// stricter, an 8-char password still reaches Clerk and surfaces its error --
+// same behaviour as before the gate.
+const MIN_PASSWORD_LENGTH = 8;
+
+// Shape check only: whether the address exists is Clerk's answer, not ours. This
+// exists to stop the submit looking available on an empty or half-filled form.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function SignUpPage() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const { isSignedIn } = useAuth();
@@ -133,6 +144,11 @@ export default function SignUpPage() {
       prefillUrl ? `/onboarding?url=${encodeURIComponent(prefillUrl)}` : "/orgs"
     );
   };
+
+  // Derived on every render rather than latched in state: a boolean flipped true
+  // on the first keystroke would stay true after the user clears a field again.
+  const canSubmitEmail =
+    EMAIL_SHAPE.test(email.trim()) && password.length >= MIN_PASSWORD_LENGTH;
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -633,8 +649,22 @@ export default function SignUpPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password"
                     style={inputStyle}
+                    minLength={MIN_PASSWORD_LENGTH}
                     required
                   />
+                  {/* The submit is disabled until this is met, so the rule has to
+                      be on screen: a greyed-out button with no stated reason
+                      reads as broken. */}
+                  <p
+                    style={{
+                      fontFamily: '"Inter", system-ui, sans-serif',
+                      fontSize: "0.75rem",
+                      color: "oklch(58% 0.006 264)",
+                      marginTop: "-0.375rem",
+                    }}
+                  >
+                    {`At least ${MIN_PASSWORD_LENGTH} characters`}
+                  </p>
                   {/* Clerk renders a bot-protection challenge here when enabled */}
                   <div id="clerk-captcha" />
                   {error && (
@@ -650,10 +680,21 @@ export default function SignUpPage() {
                   )}
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || !canSubmitEmail}
                     aria-busy={submitting}
-                    className={submitting ? "cursor-wait" : "hover:brightness-105"}
-                    style={primaryBtnStyle}
+                    className={
+                      submitting
+                        ? "cursor-wait"
+                        : canSubmitEmail
+                          ? "hover:brightness-105"
+                          : "cursor-not-allowed"
+                    }
+                    style={{
+                      ...primaryBtnStyle,
+                      // Fade means unavailable. The in-flight label stays at full
+                      // opacity, else "Creating account..." reads as a dead button.
+                      ...(!submitting && !canSubmitEmail ? { opacity: 0.5 } : {}),
+                    }}
                   >
                     {submitting ? "Creating account..." : "Create account"}
                   </button>
