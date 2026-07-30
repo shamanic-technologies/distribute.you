@@ -84,11 +84,31 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     expect(body).not.toContain('label: "Contacted"');
   });
 
-  it("carries the unsent email on the queue row instead of a standalone sent-looking row", () => {
+  it("puts the initial message on exactly one row, and never on a row of its own", () => {
     const body = sliceFrom("function LeadTimeline(");
-    // The initial email becomes its own row only once a real send anchors it.
-    expect(body).toContain('if (!queuedOnly && initial)');
-    expect(body).toContain('label: "Initial email"');
+    // Unsent: the queue row carries it. Sent: the Sent row does. An "Initial email"
+    // row anchored at `sentAt` printed the Sent row's own instant a second time under
+    // a label that stated nothing.
+    expect(body).toContain("...(queuedOnly || !initial ? {} : { subject: initial.subject, body: initial.body })");
+    expect(body).not.toContain('label: "Initial email"');
+    expect(body).not.toContain("if (!queuedOnly && initial)");
+    // The queue row still carries it while nothing has left.
+    expect(body).toContain("body: initial?.body");
+  });
+
+  it("shows the envelope on whichever row carries the message", () => {
+    const body = sliceFrom("function LeadTimeline(", 9000);
+    // Neither the queue row nor the Sent row is `kind: "email"`, so keying the icon
+    // on `kind` hid it on both — including, before this, on the queue row that has
+    // always carried the waiting message.
+    expect(body).toContain("{!!e.body && (");
+    expect(body).not.toContain('{e.kind === "email" && (');
+  });
+
+  it("drops the Served footer from the lead panel", () => {
+    // An internal pipeline instant, in a different date format than every timeline
+    // row above it. `servedAt` still dates the row while it reads "Processing".
+    expect(src).not.toContain("Served: {new Date(");
   });
 
   it("marks an unsent follow-up as estimated rather than dating it", () => {
