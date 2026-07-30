@@ -28,13 +28,12 @@ import { Skeleton } from "@/components/skeleton";
 
 
 // Friendly label for a credit grant's `reason` (pure display lookup, no metric).
-// reason ∈ welcome | first_load_match | admin_grant | invite_* | <promo code>.
+// reason ∈ welcome | admin_grant | invite_* | <promo code>; anything else
+// (welcome_completion, brand_welcome, …) reads through as the promo code.
 function grantLabel(reason: string): string {
   switch (reason) {
     case "welcome":
       return "Welcome gift";
-    case "first_load_match":
-      return "First deposit match";
     case "admin_grant":
       return "Bonus credit";
     default:
