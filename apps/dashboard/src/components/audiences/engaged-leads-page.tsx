@@ -594,7 +594,14 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                 <div className={`w-14 shrink-0 text-right pr-1 pt-1 text-[11px] tabular-nums ${i === 0 ? "text-gray-500" : "text-gray-400"}`}>
                   {gutter}
                 </div>
-                <div className={`relative flex-1 pl-4 pb-4 last:pb-0 ${isFuture ? "opacity-70" : ""}`}>
+                {/* The gap below a row is keyed on the INDEX, like the connector line
+                    right under it. It used to be a `:last-child` modifier, which
+                    resolves against the PARENT — and this div is the second and final
+                    child of its `<li>` on every row, so the modifier fired every time
+                    and the padding never applied at all. Consecutive message cards
+                    therefore sat edge to edge; the rows before the "Now" divider only
+                    looked spaced because that divider carries its own `py-2`. */}
+                <div className={`relative flex-1 pl-4 ${i < sorted.length - 1 ? "pb-4" : ""} ${isFuture ? "opacity-70" : ""}`}>
                   {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
                   <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
                   {/* A message is a demarcated block; a lead-level event is a plain
