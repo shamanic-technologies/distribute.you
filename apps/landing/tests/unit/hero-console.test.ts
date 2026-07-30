@@ -94,6 +94,18 @@ describe("hero console markup", () => {
     expect(html).toContain("hostOf(input.value)||placeholder");
   });
 
+  it("shows every whole number rather than easing past most of them", () => {
+    // An eased ramp renders 0, 3, 7, 12, 16 and calls it a count. The clock has
+    // to pick the integer, so each one gets its own beat on screen.
+    expect(html).toContain("Math.floor((now-start)/hold)");
+    expect(html).not.toContain("Math.pow(1-p,3)");
+  });
+
+  it("lets a newer count take the element from the one still running", () => {
+    // Typing re-triggers the count, and two loops writing the same node race.
+    expect(html).toContain("if(run!==countRun)return;");
+  });
+
   it("honours a reduced-motion preference", () => {
     expect(html).toContain("prefers-reduced-motion: reduce");
     expect(html).toContain("if(reduce){countEl.textContent=String(target);return;}");
@@ -111,6 +123,10 @@ describe("hero console server render", () => {
 
   it("omits the whole row when the rate cannot be graded", () => {
     expect(staticHtmlSrc).toContain("if (count === null) return \"\";");
+  });
+
+  it("names the buyer the product actually finds", () => {
+    expect(staticHtmlSrc).toContain("<span>Interested B2B buyers</span>");
   });
 
   it("derives the budget label from the same constant as the count", () => {
