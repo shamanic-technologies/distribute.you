@@ -2833,6 +2833,38 @@ export function getLeadConsolidatedStatus(lead: Lead): LeadConsolidatedStatus {
   return lead.status;
 }
 
+/**
+ * When the status the badge SHOWS actually happened.
+ *
+ * The leads table's Date column is per-TAB (Outreach reads the first-contacted
+ * timestamp for every row it lists), while the badge states the lead's
+ * most-advanced state — so a row reading "Replied" sat next to a contact date
+ * from days earlier, two numbers about two different events with nothing on the
+ * row saying so. The Status cell states its own date instead, taken from the
+ * same status it renders.
+ *
+ * Exhaustive over `LeadConsolidatedStatus`, so a new status cannot ship without
+ * deciding which timestamp proves it. The three pre-serve states carry no
+ * timestamp on the wire and return null: the cell then renders nothing, because
+ * a dash reads as a value we looked for and found empty.
+ */
+export function leadDateForStatus(lead: Lead, status: LeadConsolidatedStatus): string | null {
+  switch (status) {
+    case "replied": return lead.firstRepliedAt ?? null;
+    case "clicked": return lead.firstClickedAt ?? null;
+    case "delivered": return lead.firstDeliveredAt ?? null;
+    case "sent": return lead.firstSentAt ?? null;
+    case "bounced": return lead.firstBouncedAt ?? null;
+    case "unsubscribed": return lead.firstUnsubscribedAt ?? null;
+    case "contacted": return lead.firstContactedAt ?? null;
+    case "served": return lead.servedAt;
+    case "skipped":
+    case "claimed":
+    case "buffered":
+      return null;
+  }
+}
+
 // Validate the leads envelope + the fields the consolidated-status logic
 // dereferences (id/email/status + the 7 delivery booleans — always present from
 // lead-service). `.passthrough()` keeps every other field (the nested FullLead,

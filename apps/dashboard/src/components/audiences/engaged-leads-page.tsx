@@ -11,6 +11,7 @@ import {
   listBrandLeads,
   listCampaignLeads,
   getLeadConsolidatedStatus,
+  leadDateForStatus,
   getBrandSalesEconomics,
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
@@ -100,6 +101,19 @@ function leadDateForTab(lead: Lead, tab: Tab): string | null {
     // realized-outcome timestamp on the /revenue join, not on the lead-service row —
     // resolved separately via `outcomeDates` in the table + grouping.
     default: return null;
+  }
+}
+
+// The Status cell carries the date of the status it shows, so a column headed
+// just "Date" beside it says nothing about WHICH date. Each tab names the event
+// its own column reports, in the same words the tab uses.
+function dateColumnHeader(tab: Tab): string {
+  switch (tab) {
+    case "positive-replies": return "First reply";
+    case "clicks": return "First website visit";
+    case "outreach": return "First outreach";
+    case "all": return "Last activity";
+    default: return "Outcome";
   }
 }
 
@@ -703,7 +717,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 w-[38%] md:w-auto">Status</th>
-            <th className="px-4 py-3 hidden md:table-cell">Date</th>
+            <th className="px-4 py-3 hidden md:table-cell">{dateColumnHeader(tab)}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -722,6 +736,15 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
             ) : (
               <span className="text-xs text-gray-300">-</span>
             );
+            // The badge and the date under it are read from the SAME status, so the
+            // cell cannot say "Replied" over a contact date from days earlier. A
+            // status with no timestamp on the wire renders the tag alone — a dash
+            // here would read as a date we looked for and found empty.
+            const status = statusOf(lead);
+            const statusAt = leadDateForStatus(lead, status);
+            const statusDateNode = statusAt ? (
+              <span className="text-xs text-gray-500" title={new Date(statusAt).toLocaleString()}>{timeAgo(statusAt)}</span>
+            ) : null;
             return (
               <tr
                 key={lead.id}
@@ -764,10 +787,11 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audience} /></td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={statusOf(lead)} />
-                  {/* The Date column is hidden below `md`, so the tag carries the date
-                      underneath it — never both at once. */}
-                  <div className="mt-1 md:hidden">{dateNode}</div>
+                  <StatusBadge status={status} />
+                  {/* At every width, because it belongs to the tag rather than to the
+                      column: the Date column reports the TAB's event, which is a
+                      different moment on every tab but "Positive replies". */}
+                  {statusDateNode && <div className="mt-1">{statusDateNode}</div>}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">{dateNode}</td>
               </tr>
