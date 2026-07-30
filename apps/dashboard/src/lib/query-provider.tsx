@@ -213,11 +213,24 @@ function OrgScopedQueryClientProvider({
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
-export function QueryProvider({ children }: { children: ReactNode }) {
+export function QueryProvider({
+  children,
+  scope,
+}: {
+  children: ReactNode;
+  /**
+   * `"onboarding"` opts this provider OUT of org-keyed remounting — see the
+   * `isOnboarding` block below. Declared by the layout that mounts it rather than
+   * sniffed from the pathname, so it cannot flip mid-flight while the router is
+   * navigating away at the end of the flow.
+   */
+  scope?: "onboarding";
+}) {
   // ClerkProvider lives in `(authed)/layout.tsx`, an ancestor of every consumer
   // of this provider (dashboard + onboarding), so `useOrganization` is safe.
   const { organization } = useOrganization();
   const pathname = usePathname();
+  const isOnboarding = scope === "onboarding";
 
   // PER-TAB org key. The cache MUST be scoped to the org THIS TAB is viewing —
   // the URL `/orgs/[id]`, NOT Clerk's active org. Clerk's active org is a SHARED,
@@ -269,10 +282,30 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   const lastOrgId = useRef<string | null>(null);
   if (orgId) lastOrgId.current = orgId;
   const stableOrgId = lastOrgId.current;
-  const orgKey = stableOrgId ?? "no-org";
+
+  // ONBOARDING opts out of org keying entirely, because the flow CREATES the org
+  // it will end up in. `/onboarding?new=1` calls Clerk `createOrganization` +
+  // `setActive` in the middle of the loading screen, so `useOrganization()` flips
+  // to a brand-new id — which, under an org-derived key, remounts this provider and
+  // therefore the whole onboarding component. Its `useState` resets, the persisted
+  // snapshot resolves a mid-flight "loading" step back to "url", and the user is
+  // thrown back to the step before while the detached create keeps running in the
+  // background (brand created, never shown). A constant key keeps the flow mounted
+  // across the org switch; the terminal `router.push("/orgs/<new>/…")` leaves this
+  // subtree for the dashboard's own provider, which keys on the new org and gets a
+  // fresh per-org cache — so DIS-143 isolation is unchanged.
+  //
+  // `orgId` is null here on purpose: the persister is org-prefixed, and writing
+  // queries fetched after the switch under the PREVIOUS org's prefix is exactly the
+  // cross-org disk bleed the prefix exists to prevent. Null disables persistence
+  // (`persistEnabled`), so onboarding runs on an in-memory cache. Nothing is lost —
+  // the route is transient, and the first-frame tenant identity comes from the
+  // server-read cookie, not from disk.
+  const scopedOrgId = isOnboarding ? null : stableOrgId;
+  const orgKey = isOnboarding ? "onboarding" : stableOrgId ?? "no-org";
 
   return (
-    <OrgScopedQueryClientProvider key={orgKey} orgId={stableOrgId}>
+    <OrgScopedQueryClientProvider key={orgKey} orgId={scopedOrgId}>
       {children}
     </OrgScopedQueryClientProvider>
   );

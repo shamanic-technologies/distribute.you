@@ -10,7 +10,10 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <QueryProvider>
+    <QueryProvider scope="onboarding">
+      {/* scope="onboarding": `?new=1` creates a Clerk org mid-flow, so this provider
+          must NOT remount when the active org changes — an org-keyed remount wipes the
+          wizard's state and drops the user back on the URL step. See query-provider. */}
       {/* BillingGuardProvider listens for the `billing:payment-required` event that
           apiCall dispatches on any 402, so an insufficient-credit failure ANYWHERE in
           onboarding opens the add-credit modal (in-modal Embedded Checkout) instead of
