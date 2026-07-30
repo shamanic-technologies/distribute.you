@@ -559,7 +559,11 @@
     .outcome-arrow{display:flex;align-items:center;color:var(--faint);font-size:18px}
 
     /* Live cost-of-acquisition section */
-    .cac{padding:24px 0 8px}
+    /* The card is taller than the left column and the grid centres them, so it
+       overhangs upward into whatever section sits above. Top padding carries
+       that overhang plus the gap; without it the card lands ~30px under the
+       testimonial cards while the text column reads a comfortable 88px. */
+    .cac{padding:72px 0 8px}
     .cac-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:34px;align-items:center}
     .cac-h{font-family:var(--display);font-size:clamp(32px,4.5vw,50px);line-height:1.08;letter-spacing:-.04em;margin-top:14px}
     .cac-left .section-copy{margin-top:16px;max-width:52ch}
@@ -1308,7 +1312,7 @@
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">What clients say</div>
-          <h2>Real clients, <span class="accent">with their real numbers</span>.</h2>
+          <h2>Real clients, and <span class="accent">what it cost one of them</span>.</h2>
         </div>
         <div class="tm-grid">
 
