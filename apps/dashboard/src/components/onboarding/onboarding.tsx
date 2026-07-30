@@ -3087,8 +3087,15 @@ export function Onboarding() {
               <GiftIcon className="h-7 w-7 text-brand-600" />
             </span>
             <h2 className="font-display text-2xl font-bold text-gray-900">Your first $25 is on us.</h2>
+            {/* The gift is earned on PAYMENTS RECEIVED, never on usage consumed: the
+                account is threshold-postpaid, so an org can consume on credit before
+                paying anything. This one sentence is true in BOTH branches — when the
+                first checkout is $50+ the $25 comes off it as a Stripe discount, so the
+                buyer still pays $25 and still crosses the threshold that lands the rest.
+                It is NOT a per-dollar match: a flat $25 gated at $25 of payments, so
+                paying $10 earns nothing yet. Guard: welcome-credits-promise.test.ts. */}
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
-              Once you spend $25, we gift you $25 in free credits, $1 for $1. Pay as you go, the gift lands the moment your spend reaches $25.
+              $5 is in your account already. The rest lands automatically once your payments reach $25.
             </p>
           </div>
       </StepShell>
