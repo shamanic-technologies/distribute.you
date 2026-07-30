@@ -5,22 +5,14 @@ import * as path from "path";
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
-describe("Conversion table company logos via logo.dev (DIS-246)", () => {
-  const table = read("components/revenue/conversions-table.tsx");
+/**
+ * The conversion tables that rendered these logos are retired — they sat behind a
+ * `conversions` prop both callers set to null (see conversions-cluster-retired).
+ * The wire guard stays: `/revenue` still carries `orgDomain` on both row shapes.
+ */
+describe("Conversion rows carry the company domain (DIS-246)", () => {
   const parse = read("lib/revenue-parse.ts");
   const view = read("lib/revenue-view.ts");
-
-  it("OrgLogo builds a logo.dev URL from the company domain", () => {
-    expect(table).toContain("img.logo.dev/");
-    expect(table).toContain("function orgLogoSrc(");
-    // backend logo wins, then domain → logo.dev, else initial fallback.
-    expect(table).toContain("if (logoUrl) return logoUrl;");
-  });
-
-  it("both org + lead rows pass orgDomain to OrgLogo", () => {
-    expect(table).toContain("domain={o.orgDomain}");
-    expect(table).toContain("domain={l.orgDomain}");
-  });
 
   it("parser accepts orgDomain (nullish so it survives until the backend field ships)", () => {
     // Appears on both the org and lead schemas.

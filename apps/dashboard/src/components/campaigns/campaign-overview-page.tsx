@@ -495,7 +495,6 @@ export function CampaignOverviewPage() {
             outreachOverride={outreachTotal}
           />
         }
-        conversions={null}
       />
     </DashboardPage>
   );

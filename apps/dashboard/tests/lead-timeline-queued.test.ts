@@ -104,14 +104,9 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     expect(src).not.toContain("forceContacted");
   });
 
-  it("uses the same word for the queue state on the conversions chips", () => {
-    const conversions = fs.readFileSync(
-      path.join(__dirname, "../src/components/revenue/conversions-table.tsx"),
-      "utf-8",
-    );
-    expect(conversions).toContain('contacted: { label: "Queued"');
-    expect(conversions).not.toContain('label: "Contacted"');
-  });
+  // The conversions chips that carried the same word are retired with their tabs (see
+  // conversions-cluster-retired.test.ts), so `leadStatusLabel` is now the only place
+  // the queue state is named for a customer.
 
   it("exports the leads CSV in the words the dashboard uses", () => {
     const csv = fs.readFileSync(path.join(__dirname, "../src/lib/leads-csv.ts"), "utf-8");

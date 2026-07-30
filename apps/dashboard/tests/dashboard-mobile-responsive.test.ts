@@ -11,12 +11,8 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/components/context-sidebar.tsx"),
     "utf-8",
   );
-  const tablePagination = fs.readFileSync(
-    path.join(__dirname, "../src/components/table-pagination.tsx"),
-    "utf-8",
-  );
-  const conversionsTable = fs.readFileSync(
-    path.join(__dirname, "../src/components/revenue/conversions-table.tsx"),
+  const leadsPage = fs.readFileSync(
+    path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
     "utf-8",
   );
   const billingPage = fs.readFileSync(
@@ -46,12 +42,63 @@ describe("Dashboard mobile responsiveness", () => {
     expect(contextSidebar).toContain("min-w-0 flex-1 truncate");
   });
 
-  it("lets shared dashboard tables and pagers reflow on mobile", () => {
-    expect(tablePagination).toContain("flex flex-col gap-3");
-    expect(tablePagination).toContain("sm:flex-row sm:items-center sm:justify-between");
-    expect(tablePagination).toContain("flex flex-wrap items-center gap-2");
-    expect(conversionsTable).toContain("overflow-x-auto");
-    expect(conversionsTable).toContain("min-w-[640px] w-full text-sm");
+  // The leads table is the dashboard's one dense table. Below `md` it narrows to two
+  // columns — Company and Status — and the Contact / Audience / Date columns fold into
+  // them, so a phone gets the whole row inside the viewport instead of a sideways
+  // scroll. The 720px floor only applies once every column is back.
+  const leadsTable = () => {
+    const at = leadsPage.indexOf("function LeadsTable(");
+    expect(at).toBeGreaterThan(-1);
+    return leadsPage.slice(at, at + 8000);
+  };
+
+  it("fits the leads table in a phone viewport instead of scrolling sideways", () => {
+    const table = leadsTable();
+    expect(table).toContain("overflow-x-auto");
+    expect(table).toContain('className="w-full table-fixed text-sm md:table-auto md:min-w-[720px]"');
+    // The old unconditional floor forced 720px at every width, so the card scrolled
+    // sideways on a phone even though four columns were already hidden.
+    expect(table).not.toContain("w-full min-w-[720px] text-sm");
+    // `table-fixed` is load-bearing, not decoration: in the default auto layout a
+    // column grows to its content, so a long audience/company name overflowed the row
+    // however many `truncate`s it carried (measured 649px in a 360px viewport).
+    expect(table).toContain('w-[62%] md:w-auto');
+    expect(table).toContain('w-[38%] md:w-auto');
+  });
+
+  it("keeps Company and Status as the two mobile columns", () => {
+    const table = leadsTable();
+    // Status was hidden below `sm`, which is why a phone never showed the tag.
+    expect(table).toContain('className="px-4 py-3 w-[38%] md:w-auto">Status</th>');
+    expect(table).toContain('hidden md:table-cell">Contact</th>');
+    // The first column leads with the audience below `md`, so its header says so.
+    expect(table).toContain('<span className="md:hidden">Audience</span>');
+    expect(table).toContain('<span className="hidden md:inline">Company</span>');
+  });
+
+  it("folds the audience above the company and the date under the tag", () => {
+    const table = leadsTable();
+    expect(table).toContain('className="md:hidden min-w-0"');
+    expect(table).toContain("<AudienceCell audience={audience} />");
+    expect(table).toContain('className="mt-1 md:hidden">{dateNode}');
+    // Complementary, never both at once: each folded column stays `hidden md:table-cell`.
+    expect(table).toContain('hidden md:table-cell">Audience</th>');
+    expect(table).toContain('hidden md:table-cell">Date</th>');
+  });
+
+  it("truncates the free-text audience name so a long one cannot widen the row", () => {
+    const at = leadsPage.indexOf("function AudienceCell(");
+    expect(at).toBeGreaterThan(-1);
+    const cell = leadsPage.slice(at, at + 1200);
+    expect(cell).toContain("flex min-w-0 items-center gap-2");
+    expect(cell).toContain('<span className="truncate text-gray-700">{audience.name}</span>');
+  });
+
+  it("reads each folded value once and renders it in both places", () => {
+    const table = leadsTable();
+    expect(table).toContain("const dateNode =");
+    // One read of the outcome date, rendered by the stacked line AND the column.
+    expect(table.match(/outcomeDates\?\.get\(lead\.id\)/g)?.length).toBe(1);
   });
 
   it("stacks billing controls instead of squeezing two-column forms", () => {

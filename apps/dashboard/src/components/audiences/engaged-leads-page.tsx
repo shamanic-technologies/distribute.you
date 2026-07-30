@@ -243,8 +243,11 @@ type LeadAudience = { name: string; avatarUrl: string | null };
 
 function AudienceCell({ audience }: { audience: LeadAudience | null }) {
   if (!audience) return <span className="text-xs text-gray-300">-</span>;
+  // `min-w-0` + `truncate`: an audience name is free text and a long one used to push
+  // the row past a phone's viewport (measured at 360px), which is the whole reason the
+  // table scrolled sideways.
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {audience.avatarUrl ? (
         <img
           src={audience.avatarUrl}
@@ -257,7 +260,7 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
           {audience.name.charAt(0).toUpperCase()}
         </span>
       )}
-      <span className="text-gray-700">{audience.name}</span>
+      <span className="truncate text-gray-700">{audience.name}</span>
     </div>
   );
 }
@@ -666,14 +669,27 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   }
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      {/* Below `md` the table narrows to two columns — the audience-and-company cell
+          and the status cell — because Contact, Audience and Date fold into them (see
+          the cells below). The 720px floor applies only once every column is back;
+          unconditional, it forced a sideways scroll on a phone even though four
+          columns were already hidden, which also hid the status tag entirely. */}
+      {/* `table-fixed` below `md` is what makes the truncation bite: in the default
+          auto layout a column grows to its content, so a long audience or company name
+          widened the row past the viewport no matter how many `truncate`s it carried
+          (measured at 360px: one cell reached 649px). Two columns, 62/38. */}
+      <table className="w-full table-fixed text-sm md:table-auto md:min-w-[720px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <th className="px-4 py-3">Company</th>
-            <th className="px-4 py-3">Contact</th>
+            <th className="px-4 py-3 w-[62%] md:w-auto">
+              {/* The cell leads with the audience below `md`, so the header says so. */}
+              <span className="md:hidden">Audience</span>
+              <span className="hidden md:inline">Company</span>
+            </th>
+            <th className="px-4 py-3 hidden md:table-cell">Contact</th>
             <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
-            <th className="px-4 py-3 hidden sm:table-cell">Status</th>
+            <th className="px-4 py-3 w-[38%] md:w-auto">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Date</th>
           </tr>
         </thead>
@@ -681,6 +697,18 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
           {leads.map((lead) => {
             const full = lead.lead;
             const org = full?.organization ?? null;
+            const audience = audienceOf(lead);
+            const companyName = org?.name || "Unknown";
+            // Read once, rendered by BOTH the stacked line and the Date column — the
+            // two can never disagree about when it happened.
+            const dateAt = isOutcomeTab(tab)
+              ? outcomeDates?.get(lead.id) ?? null
+              : leadDateForTab(lead, tab);
+            const dateNode = dateAt ? (
+              <span className="text-xs text-gray-500" title={new Date(dateAt).toLocaleString()}>{timeAgo(dateAt)}</span>
+            ) : (
+              <span className="text-xs text-gray-300">-</span>
+            );
             return (
               <tr
                 key={lead.id}
@@ -688,12 +716,32 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 className={`cursor-pointer hover:bg-gray-50 transition ${selectedLead?.id === lead.id ? 'bg-brand-50' : ''}`}
               >
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
+                  {/* Below `md` this cell carries the row's identity on two lines: the
+                      audience on top (its own column is hidden), the company under it
+                      in the lighter treatment. A lead attributed to no audience keeps
+                      the company as its heading — a dash is not a title. */}
+                  <div className="md:hidden min-w-0">
+                    {audience ? (
+                      <>
+                        <AudienceCell audience={audience} />
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} />
+                          <span className="truncate text-xs text-gray-500">{companyName}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2.5">
+                        <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} />
+                        <span className="font-medium text-gray-800 truncate">{companyName}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="hidden md:flex items-center gap-2.5">
                     <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} />
-                    <span className="font-medium text-gray-800 truncate max-w-[160px]">{org?.name || "Unknown"}</span>
+                    <span className="font-medium text-gray-800 truncate max-w-[160px]">{companyName}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 hidden md:table-cell">
                   <div className="flex items-center gap-2">
                     <div className="min-w-0">
                       <p className="font-medium text-gray-800 truncate">{full?.firstName ?? ""} {full?.lastName ?? ""}</p>
@@ -709,20 +757,14 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                   </div>
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
-                <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audienceOf(lead)} /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><StatusBadge status={statusOf(lead)} /></td>
-                <td className="px-4 py-3 hidden md:table-cell">
-                  {(() => {
-                    const at = isOutcomeTab(tab)
-                      ? outcomeDates?.get(lead.id) ?? null
-                      : leadDateForTab(lead, tab);
-                    return at ? (
-                      <span className="text-xs text-gray-500" title={new Date(at).toLocaleString()}>{timeAgo(at)}</span>
-                    ) : (
-                      <span className="text-xs text-gray-300">-</span>
-                    );
-                  })()}
+                <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audience} /></td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={statusOf(lead)} />
+                  {/* The Date column is hidden below `md`, so the tag carries the date
+                      underneath it — never both at once. */}
+                  <div className="mt-1 md:hidden">{dateNode}</div>
                 </td>
+                <td className="px-4 py-3 hidden md:table-cell">{dateNode}</td>
               </tr>
             );
           })}
