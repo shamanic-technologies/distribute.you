@@ -108,7 +108,7 @@ export const EMAIL_TEMPLATES = [
         Only interested prospects come back to you. You close.
       </p>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
-        Your first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.
+        Your first $25 is on us. $5 is in your account already, and the rest lands once your payments reach $25. Enough for a real first run, not a demo.
       </p>
       <p style="margin:0;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
@@ -116,7 +116,7 @@ export const EMAIL_TEMPLATES = [
       <p style="color:${EMAIL_MUTED};font-size:14px;line-height:1.6;margin:20px 0 0;">
         New to this? <a href="${HOW_IT_WORKS_URL}" style="color:${EMAIL_ACCENT_TEXT};">See how it works.</a>
       </p>`),
-    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first $25 is on us, matched dollar for dollar. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
+    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first $25 is on us. $5 is in your account already, and the rest lands once your payments reach $25. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
   },
   // Email 2 — sent AFTER the user pays and launches (completeLaunchAfterCheckout).
   // {{outcomeNoun}} is the plural of the brand's chosen optimization goal (clicks /
