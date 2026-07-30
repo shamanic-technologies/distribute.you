@@ -23,6 +23,12 @@ export function rememberAuthMethod(method: AuthMethod): void {
  * so there is no hydration mismatch, and renders nothing on a fresh browser.
  *
  * Anchors top-right of the nearest `position: relative` ancestor.
+ *
+ * The `zIndex` is load-bearing, not decoration. The pill overlaps the top edge of
+ * the control it labels, and the Google button dims itself on hover with a CSS
+ * filter. A non-none filter makes that button its own stacking context, which
+ * promotes it into the positioned-elements paint layer the pill lives in — later
+ * in DOM order, so it would paint over the pill on hover only.
  */
 export function LastUsedBadge({ method }: { method: AuthMethod }) {
   const [lastUsed, setLastUsed] = useState<AuthMethod | null>(null);
@@ -45,6 +51,7 @@ export function LastUsedBadge({ method }: { method: AuthMethod }) {
       aria-label="Last used sign-in method"
       style={{
         position: "absolute",
+        zIndex: 1,
         top: "-0.5rem",
         right: "0.5rem",
         fontFamily: '"JetBrains Mono", "Courier New", monospace',
