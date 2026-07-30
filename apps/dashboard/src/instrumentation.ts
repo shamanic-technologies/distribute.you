@@ -364,7 +364,13 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "cloudflare-r2-account-id", envVar: "CLOUDFLARE_R2_ACCOUNT_ID" },
   { provider: "cloudflare-r2-bucket-name", envVar: "CLOUDFLARE_R2_BUCKET_NAME" },
   { provider: "cloudflare-r2-public-domain", envVar: "CLOUDFLARE_R2_PUBLIC_DOMAIN" },
+  // Two logo.dev credentials, and they are NOT interchangeable. `logo-dev` is the
+  // PUBLISHABLE token (`pk_...`) that signs the `img.logo.dev` image URLs rendered
+  // in the browser. `logo-dev-secret` is the SECRET key (`sk_...`) required by the
+  // server-side REST APIs — brand-service uses it to resolve a company's real name
+  // from the Search API instead of scraping the customer's own page title.
   { provider: "logo-dev", envVar: "LOGO_DEV_TOKEN" },
+  { provider: "logo-dev-secret", envVar: "LOGO_DEV_SECRET_KEY" },
   { provider: "scrape-do", envVar: "SCRAPE_DO_API_KEY" },
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },

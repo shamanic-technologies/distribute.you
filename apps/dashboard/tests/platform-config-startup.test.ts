@@ -30,6 +30,9 @@ describe("Platform config registration at startup", () => {
       { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
       { provider: "apify", envVar: "APIFY_API_KEY" },
       { provider: "clerk", envVar: "CLERK_SECRET_KEY" },
+      // The logo.dev SECRET key, distinct from the publishable `logo-dev` token:
+      // only this one authenticates the server-side REST APIs.
+      { provider: "logo-dev-secret", envVar: "LOGO_DEV_SECRET_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -44,9 +47,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 30 platform keys", () => {
+    it("should register exactly 31 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(30);
+      expect(matches).toHaveLength(31);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
