@@ -8,34 +8,10 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 /**
  * The campaign-level revenue surface (CampaignRevenueSection + CampaignBudgetCard
  * + the campaign detail page) was removed with the campaign concept. The brand
- * Overview is the surviving revenue surface. The shared ConversionsTabs +
- * RevenueCostSummary primitives below still back it — those guards remain.
+ * Overview is the surviving revenue surface, and the ConversionsTabs it once
+ * composed are retired too (see conversions-cluster-retired). RevenueCostSummary
+ * is the shared primitive that still backs it.
  */
-describe("ConversionsTabs — extracted + reused (single source for the tabs)", () => {
-  const tabs = read("components/revenue/conversions-tabs.tsx");
-  const section = read("components/revenue/revenue-overview-section.tsx");
-
-  it("named-exports ConversionsTabs and wires the two tab ids + tables", () => {
-    expect(tabs).toMatch(/export function ConversionsTabs\b/);
-    for (const id of ["organizations", "leads"]) {
-      expect(tabs).toContain(`"${id}"`);
-    }
-    expect(tabs).toContain("OrgConversionsTable");
-    expect(tabs).toContain("LeadConversionsTable");
-  });
-
-  it("no longer wires the Events tab", () => {
-    expect(tabs).not.toContain('"events"');
-    expect(tabs).not.toContain("EventConversionsTable");
-  });
-
-  it("the feature Overview renders ConversionsTabs (single source for the tabs)", () => {
-    expect(section).toContain("ConversionsTabs");
-    // The inline tab state + tables moved into the shared component.
-    expect(section).not.toContain("OrgConversionsTable");
-  });
-});
-
 describe("RevenueCostSummary — replaceable bottom card", () => {
   const card = read("components/revenue/revenue-cost-summary.tsx");
   const overview = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");

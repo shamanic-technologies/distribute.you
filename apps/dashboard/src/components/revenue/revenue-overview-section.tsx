@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { PipelineActivityChart } from "@/components/revenue/pipeline-activity-chart";
 import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
-import { ConversionsTabs } from "@/components/revenue/conversions-tabs";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
 import { isVisitDrivenGoal } from "@/lib/api";
@@ -13,9 +12,11 @@ import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 /**
  * Outreach overview block — top row: the "Outcome" card (cumulative goal signal
  * since launch: clicks for signups / positive replies for meetings) beside the cost
- * summary; full-width "Outreach activity" per-day bars below; then the
- * Organizations / Leads / Events conversion tabs. Pure render — the page owns the
- * gate + query.
+ * summary; full-width "Outreach activity" per-day bars below. Pure render — the page
+ * owns the gate + query.
+ *
+ * Per-lead rows live on the Leads page, not here: the conversion tabs this section
+ * used to compose sat behind a prop both callers set to null, so they never rendered.
  */
 export function RevenueOverviewSection({
   data,
@@ -37,7 +38,6 @@ export function RevenueOverviewSection({
   costPending = false,
   todayCostPending = false,
   hideHeader = false,
-  conversions,
   trackerSetUp = false,
 }: {
   data?: RevenueOverview;
@@ -80,9 +80,6 @@ export function RevenueOverviewSection({
   /** Hide the "Outreach & Conversions" header (the Signups page provides its own
    *  header + Run Campaign action). */
   hideHeader?: boolean;
-  /** Replace the default Organizations/Leads conversion tabs (the Signups page
-   *  supplies its own engaged-leads table: clicked / signed up). */
-  conversions?: ReactNode;
   /** Conversion-tracker liveness — gates the Form-submissions bar in the
    *  Outreach-activity graph (hidden until the tracker fires). */
   trackerSetUp?: boolean;
@@ -181,11 +178,6 @@ export function RevenueOverviewSection({
           />
         )}
       </div>
-
-      {/* Conversions — the default Organizations / Leads tabs, OR a caller-
-          supplied replacement (the Signups page passes its own engaged-leads
-          table: clicked / signed up). */}
-      {conversions === undefined ? <ConversionsTabs data={data} pending={revenueLoading} /> : conversions}
     </div>
   );
 }

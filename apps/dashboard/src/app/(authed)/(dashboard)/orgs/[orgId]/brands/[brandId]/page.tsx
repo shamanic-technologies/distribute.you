@@ -465,7 +465,6 @@ export default function BrandOverviewPage() {
             outreachOverride={outreachTotal}
           />
         }
-        conversions={null}
       />
     </DashboardPage>
   );
