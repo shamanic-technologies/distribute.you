@@ -61,48 +61,59 @@ describe("Leads — a queued lead is not a contacted lead", () => {
   });
 
   it("states each piece of timing exactly once", () => {
-    const body = sliceFrom("function LeadTimeline(", 9000);
+    const body = sliceFrom("function LeadTimeline(", 11000);
     // The gutter carries the GAP only. It used to print the first row's own date,
     // one inch from that row's own "Jul 30, 2026".
     expect(body).toContain('const gutter = i === 0 ? "" : gapLabel(sorted[i - 1].at, e.at)');
-    // A derived timestamp gets no date line at all, so no second relative figure
-    // ("10d after the first email") sits beside the gutter's "+7d".
-    expect(body).toContain("{!e.estimated && (");
+    // A card with delivery rows states no date of its own — its instant IS its
+    // `Sent` row's — and a derived timestamp states none either, so no second
+    // relative figure ("10d after the first email") sits beside the gutter's "+7d".
+    expect(body).toContain("{!e.estimated && !e.events?.length && (");
     expect(body).not.toContain("after the first email");
     expect(body).not.toContain("~");
   });
 
   it("shows the queue row only while nothing has been sent", () => {
-    const body = sliceFrom("function LeadTimeline(");
+    const body = sliceFrom("function LeadTimeline(", 3000);
     // The queue row is gated on the absence of a real send, so Queued and Sent can
-    // never both appear for one lead.
+    // never both appear for one lead — they are the two branches of one ternary.
     expect(body).toContain("const queuedOnly = !sentAt");
-    expect(body).toContain("if (queuedOnly");
+    expect(body).toContain("const initialEvents: MessageEvent[] = queuedOnly");
     expect(body).toContain("label: QUEUED_LABEL");
     expect(body).toContain("note: SEND_WINDOW_NOTE");
+    expect(body).toContain('{ label: "Sent", at: sentAt, dot: "bg-blue-400" }');
     // No standalone "Contacted" event survives.
     expect(body).not.toContain('label: "Contacted"');
   });
 
-  it("puts the initial message on exactly one row, and never on a row of its own", () => {
-    const body = sliceFrom("function LeadTimeline(");
-    // Unsent: the queue row carries it. Sent: the Sent row does. An "Initial email"
-    // row anchored at `sentAt` printed the Sent row's own instant a second time under
-    // a label that stated nothing.
-    expect(body).toContain("...(queuedOnly || !initial ? {} : { subject: initial.subject, body: initial.body })");
-    expect(body).not.toContain('label: "Initial email"');
-    expect(body).not.toContain("if (!queuedOnly && initial)");
-    // The queue row still carries it while nothing has left.
-    expect(body).toContain("body: initial?.body");
+  it("groups each message's delivery rows inside that message", () => {
+    const body = sliceFrom("function LeadTimeline(", 3000);
+    // "Sent" on its own never said sent WHAT, and a lead receives several messages.
+    expect(body).toContain('label: "Initial email"');
+    expect(body).toContain("events: initialEvents");
+    // Delivered is dropped when absent rather than rendered empty.
+    expect(body).toContain("...(lead.firstDeliveredAt ? [{ label: \"Delivered\"");
+    // Engagement is NOT nested: the wire gives one first-occurrence per LEAD, and a
+    // reply can land after follow-up 2, so filing it under the initial email would
+    // state something we never observed.
+    expect(body).toContain('{ kind: "event", label: "Website visit"');
+    expect(body).toContain('label: lead.replyClassification ? `Replied');
   });
 
-  it("shows the envelope on whichever row carries the message", () => {
-    const body = sliceFrom("function LeadTimeline(", 9000);
-    // Neither the queue row nor the Sent row is `kind: "email"`, so keying the icon
-    // on `kind` hid it on both — including, before this, on the queue row that has
-    // always carried the waiting message.
-    expect(body).toContain("{!!e.body && (");
-    expect(body).not.toContain('{e.kind === "email" && (');
+  it("draws a message as a demarcated block, never a thick side accent", () => {
+    const body = sliceFrom("function LeadTimeline(", 11000);
+    // Repo rule: tint + a full 1px border, no border-left accent.
+    expect(body).toContain('e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2" : ""');
+    expect(body).not.toContain("border-l-2");
+    expect(body).not.toContain("border-l-4");
+    // The `html.dark` accent remap is a closed set: it covers `bg-brand-50` and
+    // `border-brand-200` exactly. An opacity modifier (`bg-brand-50/60`) compiles to
+    // a DIFFERENT class the remap never sees, and `border-brand-100` is not in it —
+    // either would paint a near-white block on the dark surface.
+    expect(body).not.toContain("bg-brand-50/");
+    expect(body).not.toContain("border-brand-100");
+    // The envelope marks a message, and only a message is a card.
+    expect(body).toContain('{e.kind === "message" && (');
   });
 
   it("drops the Served footer from the lead panel", () => {
