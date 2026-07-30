@@ -787,7 +787,7 @@ function heroOutcomeRow(costPerOutcomeUsd: number): string {
   if (count === null) return "";
   return (
     `<div class="console-outcome">` +
-    `<span>Interested buyers</span>` +
+    `<span>Interested B2B buyers</span>` +
     `<b><i data-hero-outcome="${count}">${count}</i> per month 🎉</b>` +
     `</div>`
   );

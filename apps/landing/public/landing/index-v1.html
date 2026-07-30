@@ -1266,7 +1266,7 @@
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">What clients say</div>
-          <h2>Results people <span class="accent">stake their name on</span>.</h2>
+          <h2>Real clients, <span class="accent">with their real numbers</span>.</h2>
         </div>
         <div class="tm-grid">
 
@@ -2166,15 +2166,25 @@ __CAC_BOOT_SLOT__
         var s=(v||'').trim().replace(/^https?:\/\//i,'').replace(/^www\./i,'').split(/[\/?#]/)[0];
         return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(s) ? s.toLowerCase() : '';
       }
+      /* Every whole number is shown, one at a time. An eased ramp skipped most
+         of them (0, 3, 7, 12, 16) and the whole point of the count is watching
+         the total build. So the clock decides WHICH integer is on screen rather
+         than a curve, holding each one for a fixed beat, shortened only far
+         enough to keep a large total inside the budget. */
+      var countRun=0;
       function countUp(){
         if(!countEl||!isFinite(target))return;
         if(reduce){countEl.textContent=String(target);return;}
-        var start=null,DUR=900;
+        var HOLD_MS=150,MAX_TOTAL_MS=5000;
+        var hold=Math.max(24,Math.min(HOLD_MS,MAX_TOTAL_MS/target));
+        var run=++countRun,start=null,shown=-1;
+        countEl.textContent='0';
         function step(now){
+          if(run!==countRun)return; /* a newer run owns the element */
           if(start===null)start=now;
-          var p=Math.min(1,(now-start)/DUR);
-          countEl.textContent=String(Math.round(target*(1-Math.pow(1-p,3))));
-          if(p<1)requestAnimationFrame(step);
+          var n=Math.min(target,Math.floor((now-start)/hold));
+          if(n!==shown){shown=n;countEl.textContent=String(n);}
+          if(n<target)requestAnimationFrame(step);
         }
         requestAnimationFrame(step);
       }
