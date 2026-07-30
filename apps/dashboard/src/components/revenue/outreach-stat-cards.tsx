@@ -7,7 +7,6 @@ import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrandConversionToken } from "@/lib/api";
-import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import { goalOutcomeStep } from "@/lib/goal-steps";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { Spend } from "@/lib/revenue-view";
@@ -201,15 +200,15 @@ export function OutreachStatCards({
         // max(committed net spend, the expected cost from the brand's best model), the same
         // cascade it applies per audience, so this card and the Strategy page print ONE
         // price instead of restating "Total spent" under a second label.
-        // `costSoFarFloorCents` stays as a passthrough guard — it returns the server value
-        // verbatim and only falls back to spend while a payload still carries a null.
-        costValue: formatCostCents(
-          costSoFarFloorCents(
-            spend?.cpprCents,
-            spend?.totalSpentCents,
-            spend?.positiveRepliesCount,
-          ),
-        ),
+        //
+        // Rendered VERBATIM, with no client fallback to spend. That fallback (the old
+        // `costSoFarFloorCents` call) is what produced "Cost per positive reply $29"
+        // directly above "Total spent $29". features-service's projection read is
+        // deliberately fail-soft: on a blip it returns null, meaning "we could not
+        // estimate this" — and the honest render for that is "—", not the nearest real
+        // number we happen to hold. Re-adding a spend fallback here reintroduces the bug
+        // one layer down, on exactly the branch no fixture covers.
+        costValue: formatCostCents(spend?.cpprCents),
         badge: undefined,
         showAction: false,
       }
@@ -278,13 +277,7 @@ export function OutreachStatCards({
             <ScoreCard
               label="Cost per positive reply"
               tooltip={`Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`}
-              value={formatCostCents(
-                costSoFarFloorCents(
-                  spend?.cpprCents,
-                  spend?.totalSpentCents,
-                  spend?.positiveRepliesCount,
-                ),
-              )}
+              value={formatCostCents(spend?.cpprCents)}
               pending={pending}
             />
           </Cell>

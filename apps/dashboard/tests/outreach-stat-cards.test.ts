@@ -49,12 +49,8 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
     // The zero-reply floor now lives in features-service (max(committed net spend, the
     // expected cost from the brand's best model), the same cascade it applies per audience),
-    // so the card matches the Strategy page. `costSoFarFloorCents` stays as a passthrough
-    // guard: it returns the server value verbatim and only falls back to spend while a
-    // payload still carries a null, so the card is never a blank "—" hiding real money.
-    expect(cards).toContain("costSoFarFloorCents(");
-    expect(cards).toContain("spend?.cpprCents,");
-    expect(cards).toContain("spend?.totalSpentCents,");
+    // so the card renders the server field VERBATIM and matches the Strategy page.
+    expect(cards).toContain("formatCostCents(spend?.cpprCents)");
     // GA outcome — the reply card carries no beta badge and no setup CTA.
     expect(cards).toContain("showAction: false");
     // CPPR abbreviation is not used as a card label here (full phrase instead).
@@ -74,6 +70,20 @@ describe("OutreachStatCards copy", () => {
     // ONE constant behind every cost tooltip on the row (website visit, both positive-reply
     // cards, and the goal's outcome card) so they cannot drift into describing two rules.
     expect(cards.match(/EXPECTED_COST_NOTE\}/g) ?? []).toHaveLength(4);
+  });
+
+  it("renders the server cost verbatim with no client fallback to total spend", () => {
+    // features-service's projection read is deliberately fail-soft: on a blip it returns
+    // null, which means "we could not estimate this". The honest render for that is "—".
+    // Falling back to the brand's committed spend (the old `costSoFarFloorCents(...)` call
+    // here) is what printed "Cost per positive reply $29" directly above "Total spent $29",
+    // so re-adding it would reintroduce the bug on the one branch no fixture covers.
+    expect(cards).not.toContain("costSoFarFloorCents(");
+    expect(cards).not.toContain("totalSpentCents");
+    expect(cards).toContain("formatCostCents(spend?.cpprCents)");
+    // The helper itself stays — the per-audience surfaces still hold a passthrough guard.
+    const floor = read("../src/lib/cost-so-far-floor.ts");
+    expect(floor).toContain("export function costSoFarFloorCents(");
   });
 
   it("derives the outcome card from the goal-steps single source (no borrowed card for 1-step goals)", () => {
