@@ -29,6 +29,7 @@ import {
   type AnyLeadTab,
   type OutcomeTab,
 } from "@/lib/goal-steps";
+import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
@@ -367,15 +368,25 @@ const QUEUED_LABEL = "Queued for sending";
 const SEND_WINDOW_NOTE =
   "We only send on weekdays, 8am to 5pm during the recipient's local business hours.";
 
-// A single merged timeline row: a delivery EVENT, or an EMAIL we generated (subject +
-// body, expandable), interleaved chronologically. One flat shape rather than a union,
-// because the queue row is BOTH — it reports a state and carries the message that is
-// still waiting to go out, and splitting the two made the timeline print an
-// "Initial email" row dated before any email existed.
+// The lifecycle of ONE message, rendered inside that message's card. A bare "Sent"
+// row on its own does not say sent WHAT, and a lead has several messages.
+type MessageEvent = { label: string; at: string; dot: string; note?: string };
+
+// A timeline entry: a MESSAGE we generated (a demarcated, expandable card carrying
+// its own delivery rows), or a lead-level EVENT that belongs to no single message.
+//
+// The split is what the wire can actually prove. lead-service forwards LEAD-level
+// first-occurrence timestamps, not per-step ones, so:
+//   - `Sent` / `Delivered` belong to the initial email — the first send IS it.
+//   - `Website visit` / `Replied` / `Bounced` / `Unsubscribed` belong to no message
+//     in particular: a reply can land after follow-up 2, so filing it under the
+//     initial email would state something we did not observe. They stay top-level,
+//     where their position in the chronology already says which send preceded them.
+//   - Follow-up cards carry NO delivery rows, because there is no per-step delivery
+//     data to carry. Inventing one is the thing not to do; the gap is a producer
+//     feature request (lead-service / email-gateway), not a client-side guess.
 type TimelineEntry = {
-  // Drives the envelope icon only. A row can carry a body without being an `email`:
-  // the queue row is an event whose message has not been sent yet.
-  kind: "event" | "email";
+  kind: "message" | "event";
   at: string;
   label: string;
   dot: string;
@@ -384,6 +395,10 @@ type TimelineEntry = {
   note?: string;
   subject?: string | null;
   body?: string;
+  // Delivery rows nested under a message card. A message that has any prints NO date
+  // of its own: its instant IS its `Sent` row's instant, and showing both is the
+  // duplication #3155 removed ("Initial email · Jul 30" over "Sent · Jul 30").
+  events?: MessageEvent[];
   // `at` is DERIVED rather than observed, so the row prints NO date. An unsent
   // follow-up is offset from the generation time rather than a real send, so any
   // date shown for it drifts by however long the lead waits in the weekday queue.
@@ -429,7 +444,7 @@ function deriveEmailRows(
       continue;
     }
     followUps.push({
-      kind: "email",
+      kind: "message",
       label: `Follow-up${step.step ? ` (step ${step.step})` : ""}`,
       at: Number.isFinite(anchorMs) ? new Date(anchorMs + cumDays * 86_400_000).toISOString() : "",
       dot: "bg-brand-500",
@@ -451,12 +466,11 @@ function deriveEmailRows(
 // waiting message, and once a real send exists that row is gone and the message
 // rides the Sent row instead. The two are never both on screen.
 //
-// EXACTLY ONE row ever carries the initial message, and it is always a row naming a
-// state that happened. "Initial email" used to be its own row anchored at `sentAt`,
-// which is the Sent row's instant — so the panel printed the same moment twice under
-// two labels, and the second told the reader nothing ("Initial email · Jul 30" beside
-// "Sent · Jul 30"). The message is not an event with a time of its own; it is what
-// left at the send.
+// The timeline is grouped BY MESSAGE. Each message is a demarcated card you can open
+// to read it, and its own delivery rows sit inside it — "Sent" alone never says sent
+// WHAT, and a lead receives several messages. A message card prints no date of its
+// own when it has delivery rows: its instant IS its `Sent` row's, and stating both is
+// the duplication removed in #3155.
 //
 // The email content is fetched on-demand by leadId (content-generation). Renders
 // nothing until at least one event timestamp OR an email is present.
@@ -477,31 +491,42 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
 
   const entries: TimelineEntry[] = [];
 
-  if (queuedOnly) {
+  // The initial email's own lifecycle. Queued: it has not left, so the single row
+  // says so and carries the send-window note. Sent: the rows we actually observed.
+  // `Delivered` is dropped when absent rather than shown empty.
+  const initialEvents: MessageEvent[] = queuedOnly
+    ? [{
+        label: QUEUED_LABEL,
+        // The push timestamp when we have it; otherwise the generation time, which is
+        // when the message started waiting. Either way the row claims no send.
+        at: lead.firstContactedAt || anchor,
+        dot: "bg-slate-400",
+        note: SEND_WINDOW_NOTE,
+      }]
+    : [
+        { label: "Sent", at: sentAt, dot: "bg-blue-400" },
+        ...(lead.firstDeliveredAt ? [{ label: "Delivered", at: lead.firstDeliveredAt, dot: "bg-blue-500" }] : []),
+      ];
+
+  // The card sits at the moment the message left (or started waiting), so it sorts
+  // into the chronology at the right place even though it prints no date itself.
+  const initialAt = queuedOnly ? (lead.firstContactedAt || anchor) : sentAt;
+  if (initialAt) {
     entries.push({
-      kind: "event",
-      label: QUEUED_LABEL,
-      // The push timestamp when we have it; otherwise the generation time, which is
-      // when the message started waiting. Either way the row claims no send.
-      at: lead.firstContactedAt || anchor,
-      dot: "bg-slate-400",
-      note: SEND_WINDOW_NOTE,
+      kind: "message",
+      label: "Initial email",
+      at: initialAt,
+      dot: "bg-brand-500",
       subject: initial?.subject ?? null,
       body: initial?.body,
+      events: initialEvents,
     });
   }
 
+  // Lead-level, deliberately NOT nested under a message: the wire gives one
+  // first-occurrence per lead, and a visit or a reply can follow any step. Their
+  // place in the chronology is what says which send preceded them.
   entries.push(
-    // The message rides this row: it left at this instant, so it needs no row (and no
-    // date) of its own. Mirrors the queue row above, which carries it while it waits.
-    {
-      kind: "event",
-      label: "Sent",
-      at: sentAt,
-      dot: "bg-blue-400",
-      ...(queuedOnly || !initial ? {} : { subject: initial.subject, body: initial.body }),
-    },
-    { kind: "event", label: "Delivered", at: lead.firstDeliveredAt ?? "", dot: "bg-blue-500" },
     { kind: "event", label: "Website visit", at: lead.firstClickedAt ?? "", dot: "bg-violet-500" },
     {
       kind: "event",
@@ -515,24 +540,20 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
 
   entries.push(...(derived?.followUps ?? []));
 
-  // Same-date tie-break: most-advanced stage on top, oldest at the bottom.
-  // (Primary sort is still timestamp desc; this only orders entries sharing the
-  // same instant — e.g. Sent and Delivered both at firstSentAt.)
+  // Same-instant tie-break only (the primary sort is the timestamp): a message card
+  // comes before the lead-level events sharing its instant, because those are
+  // responses to it. Delivery rows no longer compete here — they live inside a card.
   const stageRank = (e: TimelineEntry): number => {
     const l = e.label;
-    if (l === QUEUED_LABEL) return 2;
-    if (e.kind === "email") return 3; // a follow-up, the only email-kind row left
+    if (e.kind === "message") return 1;
     if (l.startsWith("Replied")) return 9;
     if (l === "Unsubscribed") return 8;
     if (l === "Bounced") return 8;
     if (l === "Website visit") return 7;
-    if (l === "Delivered") return 5;
-    if (l === "Sent") return 4;
     return 0;
   };
 
-  // Oldest → newest, top → bottom (past reads down into the future). Same-instant
-  // tie-break: least-advanced stage first (the queue row before Sent before Delivered…).
+  // Oldest → newest, top → bottom (past reads down into the future).
   const sorted = entries
     .filter((e) => !!e.at)
     .sort((a, b) => {
@@ -576,39 +597,64 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                 <div className={`relative flex-1 pl-4 pb-4 last:pb-0 ${isFuture ? "opacity-70" : ""}`}>
                   {i < sorted.length - 1 && <span className="absolute left-[3px] top-3 bottom-0 w-px bg-gray-200" aria-hidden />}
                   <span className={`absolute left-0 top-1.5 w-[7px] h-[7px] rounded-full ${e.dot} ${isFuture ? "ring-2 ring-white outline-1 outline-dashed outline-gray-300" : ""}`} aria-hidden />
-                  <p className="text-sm font-medium text-gray-800">
-                    {/* Carries a message, whatever the row is called — the queue row
-                        and the Sent row both do, and neither is `kind: "email"`. */}
-                    {!!e.body && (
-                      <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    )}
-                    {e.label}
-                    {e.note && (
-                      <span className="ml-1 inline-flex">
-                        <InfoTooltip tip={e.note} placement="bottom" />
-                      </span>
-                    )}
-                    {isFuture && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-gray-400">scheduled</span>}
-                  </p>
-                  {/* A derived timestamp gets no date line at all: the gutter's gap
-                      already states the cadence, and a date the weekday queue can push
-                      back is worse than no date. `scheduled` says it has not happened. */}
-                  {!e.estimated && (
-                    <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
-                      {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {/* A message is a demarcated block; a lead-level event is a plain
+                      row. Tint plus a full 1px border, never a thick side accent. */}
+                  <div className={e.kind === "message" ? "rounded-lg border border-brand-200 bg-brand-50 px-3 py-2" : ""}>
+                    <p className="text-sm font-medium text-gray-800">
+                      {e.kind === "message" && (
+                        <svg className="inline-block w-3.5 h-3.5 mr-1 -mt-0.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                      )}
+                      {e.label}
+                      {e.note && (
+                        <span className="ml-1 inline-flex">
+                          <InfoTooltip tip={e.note} placement="bottom" />
+                        </span>
+                      )}
+                      {isFuture && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-gray-400">scheduled</span>}
                     </p>
-                  )}
-                  {e.body && (
-                    <details className="mt-1.5 group">
-                      <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
-                        {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
-                      </summary>
-                      <div className="mt-1.5 bg-gray-50 border border-gray-100 rounded p-2">
-                        <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
-                        <EmailSignature className="text-xs" />
-                      </div>
-                    </details>
-                  )}
+                    {/* A message with delivery rows states no date here — its instant IS
+                        its `Sent` row's. A derived timestamp gets none either: the
+                        gutter's gap carries the cadence and `scheduled` says it has not
+                        happened. What is left is a scheduled send, and a FUTURE instant
+                        gets its plain calendar date with no clock time — Instantly sends
+                        inside a weekday window, so an exact minute would be invented. */}
+                    {!e.estimated && !e.events?.length && (
+                      <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
+                        {isFuture ? friendlyDate(e.at) : friendlyDateTime(e.at)}
+                      </p>
+                    )}
+                    {e.body && (
+                      <details className="mt-1.5 group">
+                        <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">
+                          {e.subject ? <span className="font-medium text-gray-700">{e.subject}</span> : "View email"}
+                        </summary>
+                        <div className="mt-1.5 bg-white border border-brand-200 rounded p-2">
+                          <pre className="whitespace-pre-wrap break-words font-sans text-xs text-gray-600">{e.body}</pre>
+                          <EmailSignature className="text-xs" />
+                        </div>
+                      </details>
+                    )}
+                    {/* This message's own delivery rows. "Sent" on its own never said
+                        sent WHAT; inside the card it does. */}
+                    {!!e.events?.length && (
+                      <ul className="mt-2 space-y-1 border-t border-brand-200 pt-2">
+                        {e.events.map((ev) => (
+                          <li key={`${ev.label}-${ev.at}`} className="flex items-baseline gap-2">
+                            <span className={`w-[5px] h-[5px] shrink-0 translate-y-[-1px] rounded-full ${ev.dot}`} aria-hidden />
+                            <span className="text-xs font-medium text-gray-700">{ev.label}</span>
+                            {ev.note && (
+                              <span className="inline-flex">
+                                <InfoTooltip tip={ev.note} placement="bottom" />
+                              </span>
+                            )}
+                            <span className="ml-auto text-xs text-gray-500" title={new Date(ev.at).toLocaleString()}>
+                              {friendlyDateTime(ev.at)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </li>
             </Fragment>
