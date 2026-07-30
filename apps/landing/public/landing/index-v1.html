@@ -941,7 +941,7 @@
     .mz-ok{color:var(--green)}
     .mz-rows{padding:6px 0}
     .mz-row{
-      display:grid;grid-template-columns:minmax(0,2.4fr) 64px 84px minmax(96px,1fr);
+      display:grid;grid-template-columns:minmax(0,2.4fr) 64px 84px minmax(150px,1fr);
       align-items:center;gap:14px;padding:12px 22px;border-bottom:1px solid var(--line-soft);
     }
     .mz-row:last-child{border-bottom:0}
@@ -951,6 +951,12 @@
     }
     .mz-seg{font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mz-n{font-family:var(--mono);font-size:13px;color:var(--faint)}
+    /* The price leads and the bar trails it: the number is the answer, the bar
+       is only the shape of the spread. A fixed min-width on the price keeps
+       every bar starting on the same vertical line. */
+    .mz-cost{display:flex;align-items:center;gap:11px}
+    .mz-cost b{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text);min-width:42px}
+    .mz-cost .mz-bar{flex:1;min-width:0}
     .mz-bar{display:block;height:8px;border-radius:999px;background:var(--bg-soft);overflow:hidden}
     .mz-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--green-bright))}
     .mz-foot{padding:13px 22px;border-top:1px solid var(--line-soft);background:var(--bg-soft);font-size:12.5px;color:var(--faint)}
@@ -1094,7 +1100,7 @@
       .eng-branches::before{display:none}
       .eng-branch::before{display:none}
       .mz-row{grid-template-columns:minmax(0,1fr) 52px 68px;row-gap:10px}
-      .mz-row .mz-bar{grid-column:1 / -1}
+      .mz-row .mz-cost{grid-column:1 / -1}
     }
 
         /* ---- #roi : your numbers over our measured cost ---- */
@@ -1427,17 +1433,17 @@
             <div class="mz-row">
               <span class="mz-seg">Founders &middot; United States &middot; 11 to 50</span>
               <span class="mz-n">&ndash;</span><span class="mz-n">&ndash;</span>
-              <span class="mz-bar"><i style="width:38%"></i></span>
+              <span class="mz-cost"><b>__SEG_COST_LOW__</b><span class="mz-bar"><i style="width:38%"></i></span></span>
             </div>
             <div class="mz-row">
               <span class="mz-seg">Heads of Growth &middot; United Kingdom &middot; 51 to 200</span>
               <span class="mz-n">&ndash;</span><span class="mz-n">&ndash;</span>
-              <span class="mz-bar"><i style="width:61%"></i></span>
+              <span class="mz-cost"><b>__SEG_COST_MID__</b><span class="mz-bar"><i style="width:61%"></i></span></span>
             </div>
             <div class="mz-row">
               <span class="mz-seg">Operations &middot; Germany &middot; 11 to 50</span>
               <span class="mz-n">&ndash;</span><span class="mz-n">&ndash;</span>
-              <span class="mz-bar"><i style="width:92%"></i></span>
+              <span class="mz-cost"><b>__SEG_COST_HIGH__</b><span class="mz-bar"><i style="width:92%"></i></span></span>
             </div>
           </div>
 
