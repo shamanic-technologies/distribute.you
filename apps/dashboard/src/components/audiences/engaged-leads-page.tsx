@@ -218,19 +218,36 @@ function htmlToText(html: string): string {
 // keep the company-avatar treatment consistent across the whole app.
 const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
 
-function CompanyLogo({ domain, name }: { domain: string | null; name: string | null }) {
+// `size` is a style rather than a Tailwind class because the class would have to be
+// built from the prop, which the compiler cannot see (same reason `AudienceAvatar`
+// does it this way). Requests twice the rendered size so it stays crisp on a retina
+// screen. `shrink-0` matters wherever the sibling text truncates.
+function CompanyLogo({
+  domain,
+  name,
+  size = 24,
+}: {
+  domain: string | null;
+  name: string | null;
+  size?: number;
+}) {
+  const box = { width: size, height: size };
   if (domain) {
     return (
       <img
-        src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=32`}
+        src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=${size * 2}`}
         alt=""
-        className="w-6 h-6 rounded"
+        style={box}
+        className="shrink-0 rounded"
         loading="lazy"
       />
     );
   }
   return (
-    <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-500">
+    <div
+      style={{ ...box, fontSize: Math.max(11, Math.round(size * 0.4)) }}
+      className="shrink-0 rounded bg-gray-200 flex items-center justify-center font-medium text-gray-500"
+    >
       {name ? name.charAt(0).toUpperCase() : "?"}
     </div>
   );
@@ -669,9 +686,9 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   }
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      {/* Below `md` the table narrows to two columns — the audience-and-company cell
-          and the status cell — because Contact, Audience and Date fold into them (see
-          the cells below). The 720px floor applies only once every column is back;
+      {/* Below `md` the table narrows to two columns — the company cell and the status
+          cell — because Contact, Audience and Date fold into them (see the cells
+          below). The 720px floor applies only once every column is back;
           unconditional, it forced a sideways scroll on a phone even though four
           columns were already hidden, which also hid the status tag entirely. */}
       {/* `table-fixed` below `md` is what makes the truncation bite: in the default
@@ -681,11 +698,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
       <table className="w-full table-fixed text-sm md:table-auto md:min-w-[720px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <th className="px-4 py-3 w-[62%] md:w-auto">
-              {/* The cell leads with the audience below `md`, so the header says so. */}
-              <span className="md:hidden">Audience</span>
-              <span className="hidden md:inline">Company</span>
-            </th>
+            <th className="px-4 py-3 w-[62%] md:w-auto">Company</th>
             <th className="px-4 py-3 hidden md:table-cell">Contact</th>
             <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
@@ -716,25 +729,17 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                 className={`cursor-pointer hover:bg-gray-50 transition ${selectedLead?.id === lead.id ? 'bg-brand-50' : ''}`}
               >
                 <td className="px-4 py-3">
-                  {/* Below `md` this cell carries the row's identity on two lines: the
-                      audience on top (its own column is hidden), the company under it
-                      in the lighter treatment. A lead attributed to no audience keeps
-                      the company as its heading — a dash is not a title. */}
-                  <div className="md:hidden min-w-0">
-                    {audience ? (
-                      <>
-                        <AudienceCell audience={audience} />
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} />
-                          <span className="truncate text-xs text-gray-500">{companyName}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2.5">
-                        <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} />
-                        <span className="font-medium text-gray-800 truncate">{companyName}</span>
-                      </div>
-                    )}
+                  {/* Below `md` this cell carries the row's identity: one large company
+                      mark, then the company name with the audience under it in the
+                      lighter treatment (the Audience column is hidden at this width).
+                      A lead attributed to no audience simply has no second line — a
+                      dash would read as a value. */}
+                  <div className="md:hidden flex items-center gap-3">
+                    <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} size={40} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-gray-800">{companyName}</p>
+                      {audience && <p className="truncate text-xs text-gray-500">{audience.name}</p>}
+                    </div>
                   </div>
                   <div className="hidden md:flex items-center gap-2.5">
                     <CompanyLogo domain={org?.primaryDomain ?? null} name={org?.name ?? null} />
