@@ -7,7 +7,6 @@ import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrandConversionToken } from "@/lib/api";
-import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import { goalOutcomeStep } from "@/lib/goal-steps";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { Spend } from "@/lib/revenue-view";
@@ -27,6 +26,19 @@ function formatCostCents(cents: number | null | undefined): string {
   const decimals = Math.abs(usd) < 10 ? 2 : 0;
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
+
+/**
+ * Shared closing sentence for every cost-per-outcome tooltip on this row.
+ *
+ * At zero outcomes features-service no longer returns null: it floors the aggregate to
+ * `max(committed net spend, the expected cost from the brand's best model)` — the SAME
+ * cascade it already applies to each audience, lifted to the brand/campaign aggregate.
+ * So the card shows the Strategy page's expected price until the brand has outspent it,
+ * and only then reports the spend. One constant so the three tooltips cannot drift into
+ * describing two different rules.
+ */
+const EXPECTED_COST_NOTE =
+  "Until the first one lands it shows what it is expected to cost, or your spend so far once that is higher.";
 
 // Each card is a fixed-min-width flex item so the whole set stays on ONE strict
 // row (CLAUDE.md "wide legit content scrolls internally" → overflow-x-auto on
@@ -129,11 +141,11 @@ export function OutreachStatCards({
       "Number of visits on your website via a click in the link shared in the conversation with the lead.",
     value: formatCount(clicks),
     costLabel: "Cost per website visit",
-    costTooltip:
-      "Cost per website visit: committed spend (billed plus reserved for scheduled follow-ups) divided by website visits. It can dip when a reserved follow-up sends or gets cancelled.",
+    costTooltip: `Cost per website visit: committed spend (billed plus reserved for scheduled follow-ups) divided by website visits. It can dip when a reserved follow-up sends or gets cancelled. ${EXPECTED_COST_NOTE}`,
     // Committed CPC (= actual + provisioned / clicks). Prefer the new `totalCpcCents`,
     // fall back to the legacy `cpcCents` until features-service lands. Server-provided
-    // either way — no client division.
+    // either way — no client division, including the zero-click case where the server
+    // floors it to the expected cost per visit rather than returning null.
     costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
   };
 
@@ -143,10 +155,12 @@ export function OutreachStatCards({
   // Signups/Sales-Meetings surfaces (the "half-wired goal" trap).
   const outcomeStep = goalOutcomeStep(goal);
   const outcome = outcomeStep?.outcome ?? null;
-  // The outcome COUNT + its cost are REAL tracker values, server-provided by
-  // features-service (sourced from the brand's live conversion tracker). `countField`/
-  // `costField` are null when even the brand-level aggregate is not on the wire yet
-  // (purchase) → the card renders "—" + the setup CTA. No projection, no client math.
+  // The outcome COUNT + its cost are server-provided by features-service: the count is a
+  // REAL tracker value (sourced from the brand's live conversion tracker), and the cost is
+  // that count's real ratio once one lands, or — at zero — the expected cost floored against
+  // committed spend, resolved server-side. `countField`/`costField` are null when even the
+  // brand-level aggregate is not on the wire yet (purchase) → the card renders "—" + the
+  // setup CTA. Rendered verbatim either way: no client math.
   const outcomeCount =
     outcome?.countField != null ? spend?.[outcome.countField] : undefined;
   const outcomeCost = outcome?.costField != null ? spend?.[outcome.costField] : null;
@@ -181,18 +195,20 @@ export function OutreachStatCards({
             ? formatCount(spend.positiveRepliesCount)
             : "—",
         costLabel: "Cost per positive reply",
-        costTooltip:
-          "Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. With no reply yet, it shows the committed spend so far (= Total spent).",
-        // Accounting "so far": 0 replies + real spend → floor to net committed spend
-        // (the same net figure shown as "Total spent"), never a blank "—". Server field,
-        // no client division (floor === spend at 0). features-service stays the source.
-        costValue: formatCostCents(
-          costSoFarFloorCents(
-            spend?.cpprCents,
-            spend?.totalSpentCents,
-            spend?.positiveRepliesCount,
-          ),
-        ),
+        costTooltip: `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`,
+        // features-service owns the zero-reply case: it floors the aggregate to
+        // max(committed net spend, the expected cost from the brand's best model), the same
+        // cascade it applies per audience, so this card and the Strategy page print ONE
+        // price instead of restating "Total spent" under a second label.
+        //
+        // Rendered VERBATIM, with no client fallback to spend. That fallback (the old
+        // `costSoFarFloorCents` call) is what produced "Cost per positive reply $29"
+        // directly above "Total spent $29". features-service's projection read is
+        // deliberately fail-soft: on a blip it returns null, meaning "we could not
+        // estimate this" — and the honest render for that is "—", not the nearest real
+        // number we happen to hold. Re-adding a spend fallback here reintroduces the bug
+        // one layer down, on exactly the branch no fixture covers.
+        costValue: formatCostCents(spend?.cpprCents),
         badge: undefined,
         showAction: false,
       }
@@ -201,7 +217,7 @@ export function OutreachStatCards({
           label: outcomeStep.label,
           countValue: outcomeCountValue,
           costLabel: outcome.costLabel,
-          costTooltip: `Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded.`,
+          costTooltip: `Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded. ${EXPECTED_COST_NOTE}`,
           costValue: formatCostCents(outcomeCost),
           badge: goalIsBeta ? beta : undefined,
           showAction: true,
@@ -260,14 +276,8 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label="Cost per positive reply"
-              tooltip="Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. With no reply yet, it shows the committed spend so far (= Total spent)."
-              value={formatCostCents(
-                costSoFarFloorCents(
-                  spend?.cpprCents,
-                  spend?.totalSpentCents,
-                  spend?.positiveRepliesCount,
-                ),
-              )}
+              tooltip={`Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`}
+              value={formatCostCents(spend?.cpprCents)}
               pending={pending}
             />
           </Cell>
