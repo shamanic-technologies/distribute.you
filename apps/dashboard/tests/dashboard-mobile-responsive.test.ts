@@ -71,19 +71,34 @@ describe("Dashboard mobile responsiveness", () => {
     // Status was hidden below `sm`, which is why a phone never showed the tag.
     expect(table).toContain('className="px-4 py-3 w-[38%] md:w-auto">Status</th>');
     expect(table).toContain('hidden md:table-cell">Contact</th>');
-    // The first column leads with the audience below `md`, so its header says so.
-    expect(table).toContain('<span className="md:hidden">Audience</span>');
-    expect(table).toContain('<span className="hidden md:inline">Company</span>');
+    // The company leads the cell at every width, so the header needs no variant.
+    expect(table).toContain('className="px-4 py-3 w-[62%] md:w-auto">Company</th>');
   });
 
-  it("folds the audience above the company and the date under the tag", () => {
+  it("folds the audience under the company name and the date under the tag", () => {
     const table = leadsTable();
-    expect(table).toContain('className="md:hidden min-w-0"');
-    expect(table).toContain("<AudienceCell audience={audience} />");
+    // One large company mark, then company name over audience name.
+    expect(table).toContain('className="md:hidden flex items-center gap-3"');
+    expect(table).toContain("size={40}");
+    expect(table).toContain('<p className="truncate font-medium text-gray-800">{companyName}</p>');
+    expect(table).toContain('{audience && <p className="truncate text-xs text-gray-500">{audience.name}</p>}');
     expect(table).toContain('className="mt-1 md:hidden">{dateNode}');
     // Complementary, never both at once: each folded column stays `hidden md:table-cell`.
     expect(table).toContain('hidden md:table-cell">Audience</th>');
     expect(table).toContain('hidden md:table-cell">Date</th>');
+  });
+
+  it("sizes the company mark by style, since a class cannot be built from a prop", () => {
+    const at = leadsPage.indexOf("function CompanyLogo(");
+    expect(at).toBeGreaterThan(-1);
+    const logo = leadsPage.slice(at, at + 1200);
+    expect(logo).toContain("size = 24");
+    expect(logo).toContain("style={box}");
+    // Twice the rendered size so the mark stays crisp on a retina screen.
+    expect(logo).toContain("size=${size * 2}");
+    // The sibling name truncates, so the mark must not be allowed to shrink.
+    expect(logo).toContain("shrink-0 rounded");
+    expect(logo).not.toContain("w-6 h-6");
   });
 
   it("truncates the free-text audience name so a long one cannot widen the row", () => {
