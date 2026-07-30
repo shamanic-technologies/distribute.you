@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  formatCacPercent,
   formatMultiple,
   heroMonthlyOutcomes,
   heroRoiChain,
@@ -58,40 +59,50 @@ describe("heroRoiChain", () => {
   // lifetime revenue, 30-70% closing.
   const chain = (cost: number) => heroRoiChain(50, 31, cost, 2500, 30, 70);
 
-  it("carries the whole chain from spend to return", () => {
+  it("carries the whole chain from spend to cost of acquisition", () => {
     expect(chain(72)).toEqual({
       buyers: 22,
       salesLow: 7,
       salesHigh: 15,
-      roiLow: "11×",
-      roiHigh: "24×",
+      cacPctLow: "4%",
+      cacPctHigh: "9%",
     });
   });
 
-  it("states a return a reader can check against the numbers on screen", () => {
-    // 7 × $2,500 = $17,500 against $1,550 spent is 11.3, and 15 × $2,500 is
-    // 24.2. Deriving from the ROUNDED sales is what makes the visible
-    // arithmetic hold; #roi does the exact version with the reader's inputs.
+  it("reports the band low to high, which INVERTS against the sales band", () => {
+    // Closing more of the same buyers earns more revenue for the same spend,
+    // so the best case is the CHEAPEST percentage. Getting this backwards
+    // would headline the worst case.
     const c = chain(72)!;
-    expect((c.salesLow * 2500) / (50 * 31)).toBeCloseTo(11.29, 1);
-    expect((c.salesHigh * 2500) / (50 * 31)).toBeCloseTo(24.19, 1);
+    expect(Number(c.cacPctLow.replace("%", ""))).toBeLessThan(
+      Number(c.cacPctHigh.replace("%", "")),
+    );
+  });
+
+  it("states a cost a reader can check against the numbers on screen", () => {
+    // $1,550 spent against 7 × $2,500 of revenue is 8.9%, and against
+    // 15 × $2,500 it is 4.1%. Deriving from the ROUNDED sales is what makes
+    // the visible arithmetic hold; #roi does the exact version.
+    const c = chain(72)!;
+    expect(((50 * 31) / (c.salesLow * 2500)) * 100).toBeCloseTo(8.86, 1);
+    expect(((50 * 31) / (c.salesHigh * 2500)) * 100).toBeCloseTo(4.13, 1);
   });
 
   it("never pairs the top of two bands", () => {
-    // A $20,000 ticket does not close at 70%, so multiplying both optimistic
-    // ends describes a client who does not exist and prints a 194x nobody
-    // believes. Only the win rate is banded.
+    // A $20,000 ticket does not close at 70%, so pairing both optimistic ends
+    // describes a client who does not exist and prints a 0.5% acquisition cost
+    // nobody believes. Only the win rate is banded.
     const c = chain(72)!;
-    expect(Number(c.roiHigh.replace("×", ""))).toBeLessThan(40);
+    expect(Number(c.cacPctLow.replace("%", ""))).toBeGreaterThan(1);
   });
 
-  it("follows the live rate: a cheaper reply buys more of everything", () => {
+  it("follows the live rate: a cheaper reply lowers the cost of acquisition", () => {
     const dear = chain(150)!;
     const cheap = chain(40)!;
     expect(cheap.buyers).toBeGreaterThan(dear.buyers);
     expect(cheap.salesHigh).toBeGreaterThan(dear.salesHigh);
-    expect(Number(cheap.roiLow.replace("×", ""))).toBeGreaterThan(
-      Number(dear.roiLow.replace("×", "")),
+    expect(Number(cheap.cacPctHigh.replace("%", ""))).toBeLessThan(
+      Number(dear.cacPctHigh.replace("%", "")),
     );
   });
 
@@ -114,6 +125,17 @@ describe("formatMultiple", () => {
     expect(formatMultiple(3.44)).toBe("3.4×");
     expect(formatMultiple(Number.NaN)).toBeNull();
     expect(formatMultiple(-1)).toBeNull();
+  });
+});
+
+describe("formatCacPercent", () => {
+  it("rounds whole percents and keeps a decimal below one", () => {
+    // Rounding 0.4% to "0%" would claim acquisition is free.
+    expect(formatCacPercent(8.86)).toBe("9%");
+    expect(formatCacPercent(4.13)).toBe("4%");
+    expect(formatCacPercent(0.42)).toBe("0.4%");
+    expect(formatCacPercent(0)).toBeNull();
+    expect(formatCacPercent(Number.NaN)).toBeNull();
   });
 });
 
@@ -174,6 +196,21 @@ describe("hero console markup", () => {
     expect(html).toContain("if(run!==countRun)return;");
   });
 
+  it("collapses the chain rows instead of hiding them in place", () => {
+    // An invisible row still occupies its space, which stretched the card to
+    // full height and left a tall blank under the counter while it counted.
+    expect(html).toContain('.console-chain[data-reveal]>*{display:none}');
+    expect(html).not.toContain('[data-reveal="pending"]{opacity:0}');
+  });
+
+  it("grows the card one row at a time", () => {
+    expect(html).toContain("el.classList.add('is-in');},idx*140);");
+  });
+
+  it("does not replay the reveal when the count re-runs", () => {
+    expect(html).toContain("chainEl.getAttribute('data-reveal')==='done')return;");
+  });
+
   it("honours a reduced-motion preference", () => {
     expect(html).toContain("prefers-reduced-motion: reduce");
     expect(html).toContain("if(reduce){countEl.textContent=String(target);revealChain();return;}");
@@ -201,9 +238,12 @@ describe("hero console server render", () => {
     // "Your sales" and "Your return", under arrows that state the assumption
     // being applied, so neither reads as a result we are claiming for them.
     expect(staticHtmlSrc).toContain("<span>Your sales</span>");
-    expect(staticHtmlSrc).toContain("<span>Your return</span>");
+    expect(staticHtmlSrc).toContain("<span>Your cost of acquisition</span>");
+    // The label and the arrow above it already give the denominator. Spelling
+    // out "of revenue" pushed the headline figure onto a second line at 320px.
+    expect(staticHtmlSrc).not.toContain("of revenue");
     expect(staticHtmlSrc).toContain("% of them become customers");
-    expect(staticHtmlSrc).toContain("lifetime revenue each");
+    expect(staticHtmlSrc).toContain("lifetime value each");
   });
 
   it("spends the same lifetime revenue the ROI calculator defaults to", () => {
