@@ -7,6 +7,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listBrandLeads,
   listCampaignLeads,
@@ -1107,8 +1108,11 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
             ) : (
               <>
                 <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} outcomeDates={outcomeDates} />
+                {/* The right gutter clears the floating WhatsApp support FAB, which
+                    sits at z-30 over the rightmost 64/72px at every scroll position
+                    — without it a tap on `Next` lands on the FAB. */}
                 {filteredLeads.length > PAGE_SIZE && (
-                  <div className="mt-4 flex items-center justify-between">
+                  <div className={`mt-4 flex items-center justify-between ${SUPPORT_FAB_CLEARANCE}`}>
                     <span className="text-sm text-gray-500">
                       {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filteredLeads.length)} of {filteredLeads.length.toLocaleString("en-US")}
                     </span>
@@ -1121,7 +1125,10 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
                       >
                         Previous
                       </button>
-                      <span className="text-sm text-gray-500">Page {safePage + 1} of {pageCount}</span>
+                      {/* Dropped below sm: the gutter above costs 80px, and at
+                          390px this indicator is what pushes the row to wrap.
+                          The range on the left already states the position. */}
+                      <span className="hidden sm:inline text-sm text-gray-500">Page {safePage + 1} of {pageCount}</span>
                       <button
                         type="button"
                         onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
