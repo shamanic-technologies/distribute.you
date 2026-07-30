@@ -1,7 +1,7 @@
 "use client";
 
-import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import { Skeleton } from "@/components/skeleton";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import { WORKFLOW_GRAIN_LABEL } from "@/lib/strategy-model";
 import { outcomeNoun } from "@/lib/strategy-model";
 import type { BrandOptimizationGoal, WorkflowProjectionResolved, WorkflowProjectionRow } from "@/lib/api";
@@ -80,12 +80,7 @@ export function Stat({
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
       <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
         {label}
-        {tooltip ? (
-          <InformationCircleIcon
-            className="h-3.5 w-3.5 shrink-0 cursor-help text-gray-300"
-            title={tooltip}
-          />
-        ) : null}
+        {tooltip ? <InfoTooltip tip={tooltip} placement="top" /> : null}
       </p>
       {pending ? (
         <Skeleton className="mt-1.5 h-6 w-20" />
@@ -148,11 +143,12 @@ export function BestModelStats({
               Best
             </span>
             {brandGrain ? (
-              <span
-                className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
-                title="Which population these numbers are based on — the finest grain with real data (this audience → this brand → fleet benchmark)."
-              >
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                 Based on {WORKFLOW_GRAIN_LABEL[brandGrain]}
+                <InfoTooltip
+                  tip="Which population these numbers are based on: the finest grain with real data (this audience, then this brand, then the fleet benchmark)."
+                  placement="top"
+                />
               </span>
             ) : null}
           </div>

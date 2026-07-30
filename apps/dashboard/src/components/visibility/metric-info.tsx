@@ -48,7 +48,9 @@ export type MetricKey = keyof typeof METRIC_INFO;
 
 /**
  * Info-icon with a styled tooltip bubble. Single primitive for every (i) in
- * the dashboard.
+ * the dashboard — never hand-roll a `title=` attribute for an info tip. A native
+ * `title` waits ~1s, cannot be styled, and shows NOTHING on a touch device (a
+ * finger produces no hover), so on a phone it is a dead affordance.
  *
  * - Opens on TAP/click (mobile) AND hover + keyboard focus (desktop).
  * - Always rendered in a body portal at `fixed z-50` viewport coords, so it
@@ -58,6 +60,29 @@ export type MetricKey = keyof typeof METRIC_INFO;
  *   edge. `placement` is the preferred side (above/below the icon); it flips
  *   automatically when there isn't room.
  * - Closes on outside tap, Escape, scroll, or resize.
+ *
+ * Three things about the TRIGGER are load-bearing; changing any of them silently
+ * breaks a whole class of call site:
+ *
+ * 1. Hover opens ONLY for `pointerType === "mouse"`. A touch tap emits
+ *    `pointerdown → touchend → mouseenter → click`: the compatibility mouse
+ *    events fire BEFORE the click. So an unguarded `onMouseEnter` opens the
+ *    bubble and the click handler immediately toggles it shut — the bubble
+ *    flashes and every (i) in the dashboard is unusable on a phone. Gating hover
+ *    on the pointer type leaves the tap purely to `onClick`. (#2026 set out to
+ *    make these tap-accessible; this ordering is what defeated it.)
+ * 2. The trigger is a `<span role="button">`, NOT a `<button>`. Several call sites
+ *    put the (i) INSIDE a clickable card — the budget tiers in onboarding and in
+ *    brand-status-control are `<button>`s — and a button nested in a button is
+ *    invalid HTML: the parser closes the outer one early and the card breaks. A
+ *    span carrying the role, `tabIndex` and Enter/Space handling is equivalent
+ *    for assistive tech and valid anywhere.
+ * 3. The hit area is padded to ~26px (`-m-1.5 p-1.5`) while the icon stays 14px.
+ *    WCAG 2.2 SC 2.5.8 asks 24x24 CSS px minimum; a bare 14px icon is very hard
+ *    to hit with a thumb. The negative margin keeps the surrounding layout put.
+ *
+ * `onClick` also stops propagation, so tapping the (i) inside a selectable card
+ * explains the number without also choosing that card.
  */
 const BUBBLE_CLASS =
   "w-52 max-w-[calc(100vw-16px)] rounded-lg bg-gray-900 text-white text-[11px] font-normal normal-case leading-snug px-2 py-1.5 shadow-lg whitespace-normal tracking-normal";
@@ -137,26 +162,43 @@ export function InfoTooltip({
     <span
       ref={iconRef}
       className="inline-flex align-middle"
-      // Hover (desktop) — pointer events keep mouse behavior while not
-      // interfering with the tap toggle below (touchscreens fire no hover).
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      // Hover is MOUSE-ONLY: a tap emits mouseenter before click, so opening on
+      // any pointer would let the click toggle it straight back shut.
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") setOpen(true);
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") setOpen(false);
+      }}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
     >
-      <button
-        type="button"
+      <span
+        // A span, not a button: this renders inside clickable cards and a nested
+        // button is invalid HTML. role + tabIndex + Enter/Space keep it operable.
+        role="button"
+        tabIndex={0}
         aria-label="More info"
-        className="inline-flex"
-        // Tap/click toggle (mobile + desktop click).
+        aria-expanded={open}
+        // -m-1.5 p-1.5 → ~26px hit area around a 14px icon (WCAG 2.2 SC 2.5.8)
+        // without moving anything around it.
+        className="-m-1.5 inline-flex cursor-help p-1.5"
         onClick={(e) => {
+          e.preventDefault();
+          // Tapping the (i) explains the number; it must not also select the
+          // card this sits inside.
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
           e.preventDefault();
           e.stopPropagation();
           setOpen((v) => !v);
         }}
       >
-        <InformationCircleIcon className="w-3.5 h-3.5 text-gray-400 cursor-help" />
-      </button>
+        <InformationCircleIcon className="w-3.5 h-3.5 text-gray-400" />
+      </span>
       {open &&
         typeof document !== "undefined" &&
         createPortal(

@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
   listBrandLeads,
   listCampaignLeads,
@@ -382,10 +383,13 @@ type TimelineEntry = {
   note?: string;
   subject?: string | null;
   body?: string;
-  // Replaces the absolute date when `at` is DERIVED rather than observed. An unsent
-  // follow-up is offset from the generation time, not from a real send, so its date
-  // drifts by however long the lead waits in the weekday queue.
-  estimate?: string;
+  // `at` is DERIVED rather than observed, so the row prints NO date. An unsent
+  // follow-up is offset from the generation time rather than a real send, so any
+  // date shown for it drifts by however long the lead waits in the weekday queue.
+  // The left gutter's gap (`+3d`) already carries the cadence, and it is the only
+  // place timing is stated — a second relative figure beside it ("10d after the
+  // first email" next to a `+7d` gutter) asks the reader to reconcile two numbers.
+  estimated?: boolean;
 };
 
 function emailBodyText(html: string | null | undefined, text: string | null | undefined): string {
@@ -397,8 +401,8 @@ function emailBodyText(html: string | null | undefined, text: string | null | un
 // Split the generated message into its initial email and its follow-up steps.
 // `anchor` is when the initial email went out; each follow-up is offset by the
 // cumulative `daysSinceLastStep`. When `estimated`, the anchor is the generation time
-// instead of a real send, so the follow-up rows carry a relative label rather than a
-// date they cannot honour.
+// instead of a real send, so the follow-up rows show no date at all rather than one
+// they cannot honour — the gutter's gap is left to carry the cadence.
 function deriveEmailRows(
   email: LeadEmailGeneration,
   anchor: string,
@@ -430,7 +434,7 @@ function deriveEmailRows(
       dot: "bg-brand-500",
       subject: email.subject ?? null,
       body,
-      ...(estimated ? { estimate: `~${cumDays}d after the first email` } : {}),
+      ...(estimated ? { estimated: true } : {}),
     });
   }
   return { initial, followUps };
@@ -538,11 +542,12 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
       <ol className="relative">
         {sorted.map((e, i) => {
           const isFuture = new Date(e.at).getTime() > nowMs;
-          // Left gutter: first row shows its absolute date; each later row shows
-          // the gap since the previous entry (+2d, +4h…).
-          const gutter = i === 0
-            ? new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-            : gapLabel(sorted[i - 1].at, e.at);
+          // Left gutter: the GAP since the previous entry (+2d, +4h…), and nothing
+          // else. The first row has no previous entry, so it has no gap — it used to
+          // repeat its own date here, which printed "Jul 30" one inch from the
+          // "Jul 30, 2026" on the row itself. Each piece of timing is stated once:
+          // the gap in the gutter, the calendar date on the row.
+          const gutter = i === 0 ? "" : gapLabel(sorted[i - 1].at, e.at);
           return (
             <Fragment key={`${e.kind}-${e.label}-${e.at}-${i}`}>
               {i === firstFutureIdx && firstFutureIdx !== -1 && (
@@ -565,21 +570,20 @@ function LeadTimeline({ lead, email }: { lead: Lead; email: LeadEmailGeneration 
                     )}
                     {e.label}
                     {e.note && (
-                      <span
-                        className="ml-1 inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-gray-300 align-[1px] text-[9px] font-semibold text-gray-400"
-                        title={e.note}
-                        aria-label={e.note}
-                      >
-                        i
+                      <span className="ml-1 inline-flex">
+                        <InfoTooltip tip={e.note} placement="bottom" />
                       </span>
                     )}
                     {isFuture && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-gray-400">scheduled</span>}
                   </p>
-                  <p className="text-xs text-gray-500" title={e.estimate ? undefined : new Date(e.at).toLocaleString()}>
-                    {/* A derived timestamp is stated as an offset: printing it as a date
-                        would promise a day the weekday queue can push back. */}
-                    {e.estimate ?? new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </p>
+                  {/* A derived timestamp gets no date line at all: the gutter's gap
+                      already states the cadence, and a date the weekday queue can push
+                      back is worse than no date. `scheduled` says it has not happened. */}
+                  {!e.estimated && (
+                    <p className="text-xs text-gray-500" title={new Date(e.at).toLocaleString()}>
+                      {new Date(e.at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+                  )}
                   {e.body && (
                     <details className="mt-1.5 group">
                       <summary className="cursor-pointer text-xs text-brand-600 hover:text-brand-700 select-none">

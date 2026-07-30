@@ -51,6 +51,27 @@ describe("Leads — a queued lead is not a contacted lead", () => {
       .not.toContain("—");
   });
 
+  it("carries the note on the shared InfoTooltip, never a native title", () => {
+    // A native `title` waits ~1s, cannot be styled, and shows NOTHING on touch —
+    // which is exactly how this shipped broken the first time.
+    const body = sliceFrom("function LeadTimeline(", 9000);
+    expect(body).toContain("<InfoTooltip tip={e.note}");
+    expect(body).not.toContain("title={e.note}");
+    expect(src).toContain('import { InfoTooltip } from "@/components/visibility/metric-info"');
+  });
+
+  it("states each piece of timing exactly once", () => {
+    const body = sliceFrom("function LeadTimeline(", 9000);
+    // The gutter carries the GAP only. It used to print the first row's own date,
+    // one inch from that row's own "Jul 30, 2026".
+    expect(body).toContain('const gutter = i === 0 ? "" : gapLabel(sorted[i - 1].at, e.at)');
+    // A derived timestamp gets no date line at all, so no second relative figure
+    // ("10d after the first email") sits beside the gutter's "+7d".
+    expect(body).toContain("{!e.estimated && (");
+    expect(body).not.toContain("after the first email");
+    expect(body).not.toContain("~");
+  });
+
   it("shows the queue row only while nothing has been sent", () => {
     const body = sliceFrom("function LeadTimeline(");
     // The queue row is gated on the absence of a real send, so Queued and Sent can
@@ -70,13 +91,11 @@ describe("Leads — a queued lead is not a contacted lead", () => {
     expect(body).toContain('label: "Initial email"');
   });
 
-  it("labels an unsent follow-up relative to the first email rather than with a drifting date", () => {
+  it("marks an unsent follow-up as estimated rather than dating it", () => {
     const derive = sliceFrom("function deriveEmailRows(", 2200);
-    expect(derive).toContain("after the first email");
-    expect(derive).toContain("estimated");
-    // The row prints the estimate in place of the absolute date.
-    const render = sliceFrom("function LeadTimeline(", 9000);
-    expect(render).toContain("{e.estimate ?? new Date(e.at).toLocaleDateString(");
+    expect(derive).toContain("estimated ? { estimated: true } : {}");
+    // A boolean, not a string: there is no second wording of the timing to drift.
+    expect(derive).not.toContain("after the first email");
   });
 
   it("lets every Outreach row show its own status", () => {

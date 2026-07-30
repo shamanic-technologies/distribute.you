@@ -18,6 +18,7 @@ import {
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 
 // Seed values when a brand has never saved economics — mirrors the campaign-creation
 // form's SALES_ECON_DEFAULTS so both surfaces start from the same numbers.
@@ -429,11 +430,12 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Customer Lifetime Revenue */}
           <div>
-            <label
-              className="block text-xs text-gray-500 mb-1"
-              title="Average total revenue (not gross margin) one customer brings over their lifetime."
-            >
+            <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
               Customer Lifetime Revenue
+              <InfoTooltip
+                tip="Average total revenue (not gross margin) one customer brings over their lifetime."
+                placement="top"
+              />
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
@@ -453,8 +455,9 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
           {/* Conversion rates — only those relevant to the selected goal */}
           {visiblePctFields.map((f) => (
             <div key={f.key}>
-              <label className="block text-xs text-gray-500 mb-1" title={f.tip}>
+              <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
                 {f.label}
+                <InfoTooltip tip={f.tip} placement="top" />
               </label>
               <div className="relative">
                 <input

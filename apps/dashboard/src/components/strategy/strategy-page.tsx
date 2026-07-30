@@ -57,7 +57,7 @@ import {
   grainHint,
   Stat,
 } from "@/components/strategy/best-model-card";
-import { MetricLabel } from "@/components/visibility/metric-info";
+import { InfoTooltip, MetricLabel } from "@/components/visibility/metric-info";
 
 /**
  * The confirmed user-fields map → a plain fields bag (key → value) the inline
@@ -223,11 +223,12 @@ function ExampleEmailCard({
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {otherSource ? (
-            <span
-              title="Example from another brand / workspace, shown so you can preview this model"
-              className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700"
-            >
+            <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">
               Example · {sourceLabel}
+              <InfoTooltip
+                tip="Example from another brand or workspace, shown so you can preview this model."
+                placement="bottom"
+              />
             </span>
           ) : null}
           {steps.length > 0 ? (
