@@ -47,8 +47,11 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain('label: "Positive Replies"');
     expect(cards).toContain('costLabel: "Cost per positive reply"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
-    // CPPR is floored to net committed spend "so far" (0 replies + spend → Total spent),
-    // never a blank "—" that hides real money spent. Server field, no client division.
+    // The zero-reply floor now lives in features-service (max(committed net spend, the
+    // expected cost from the brand's best model), the same cascade it applies per audience),
+    // so the card matches the Strategy page. `costSoFarFloorCents` stays as a passthrough
+    // guard: it returns the server value verbatim and only falls back to spend while a
+    // payload still carries a null, so the card is never a blank "—" hiding real money.
     expect(cards).toContain("costSoFarFloorCents(");
     expect(cards).toContain("spend?.cpprCents,");
     expect(cards).toContain("spend?.totalSpentCents,");
@@ -56,6 +59,21 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("showAction: false");
     // CPPR abbreviation is not used as a card label here (full phrase instead).
     expect(cards).not.toContain('costLabel: "CPPR"');
+  });
+
+  it("tells the reader a zero-outcome cost is the expected price, not a restatement of Total spent", () => {
+    // The old tooltip promised "it shows the committed spend so far (= Total spent)" —
+    // which described the client-side floor and put the SAME number under two labels one
+    // card apart. features-service now serves the floored figure, so the copy has to say
+    // what the reader is actually looking at.
+    expect(cards).not.toContain("it shows the committed spend so far (= Total spent)");
+    expect(cards).toContain("const EXPECTED_COST_NOTE =");
+    expect(cards).toContain(
+      "Until the first one lands it shows what it is expected to cost, or your spend so far once that is higher.",
+    );
+    // ONE constant behind every cost tooltip on the row (website visit, both positive-reply
+    // cards, and the goal's outcome card) so they cannot drift into describing two rules.
+    expect(cards.match(/EXPECTED_COST_NOTE\}/g) ?? []).toHaveLength(4);
   });
 
   it("derives the outcome card from the goal-steps single source (no borrowed card for 1-step goals)", () => {
