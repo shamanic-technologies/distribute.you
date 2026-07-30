@@ -321,78 +321,16 @@
       font-family:var(--mono);
       font-size:11.5px;
     }
-    .console-url strong{color:var(--green);font-weight:500}
-    .analysis-card{
-      margin-top:13px;
-      border:1px solid var(--line-soft);
-      border-radius:10px;
-      background:rgba(249,250,253,.85);
-      overflow:hidden;
-    }
-    .analysis-row{
-      display:grid;
-      grid-template-columns:118px 1fr auto;
-      gap:14px;
-      padding:11px 13px;
-      border-top:1px solid var(--line-soft);
-      font-size:11.5px;
-    }
-    .analysis-row:first-child{border-top:0}
-    .analysis-row span{color:var(--faint)}
-    .analysis-row b{font-weight:500;color:var(--text)}
-    .row-ok{color:var(--green);font-weight:500;font-size:10.5px;white-space:nowrap;align-self:center}
-    .flow-label{margin:18px 0 10px;color:var(--faint);font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
-    .flow{
-      display:grid;
-      grid-template-columns:repeat(5,1fr);
-      gap:7px;
-      align-items:center;
-    }
-    .flow-step{
-      position:relative;
-      min-height:72px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:7px;
-      padding:8px 5px;
-      border:1px solid var(--line);
-      border-radius:8px;
-      background:#f5f7fc;
-      text-align:center;
-      color:var(--muted);
-      font-size:8.5px;
-      line-height:1.3;
-    }
-    .flow-step:not(:last-child)::after{
-      content:'';
-      position:absolute;
-      z-index:2;
-      top:50%;
-      right:-8px;
-      width:8px;
-      height:1px;
-      background:var(--green-line);
-    }
-    .flow-icon{
-      width:24px;
-      height:24px;
-      display:grid;
-      place-items:center;
-      border-radius:6px;
-      background:var(--green-dim);
+    .console-url strong{
       color:var(--green);
-      font-family:var(--mono);
-      font-size:8px;
+      font-weight:500;
+      display:inline-block;
+      transform-origin:center;
     }
-    .console-bottom{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-      margin-top:13px;
-    }
+    .console-url strong.is-pop{animation:hero-pop .32s ease}
+    @keyframes hero-pop{0%{transform:scale(.62)}62%{transform:scale(1.12)}100%{transform:scale(1)}}
     .console-metric{
+      margin-top:13px;
       padding:13px;
       border:1px solid var(--line);
       border-radius:9px;
@@ -403,17 +341,7 @@
     .console-outcome{margin-top:10px;padding:13px 15px;border:1px solid var(--green-line);border-radius:9px;background:var(--green-dim)}
     .console-outcome span{display:block;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
     .console-outcome b{display:block;margin-top:6px;color:var(--green);font-family:var(--mono);font-size:17px;font-weight:500}
-    .console-outcome em{display:block;margin-top:4px;color:var(--muted);font-style:normal;font-size:11px;line-height:1.4}
-    .console-foot{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:16px;
-      margin-top:15px;
-      padding-top:15px;
-      border-top:1px solid var(--line);
-    }
-    .console-foot small{max-width:220px;color:var(--faint);font-size:9.5px;line-height:1.55}
+    .console-outcome i{font-style:normal;font-variant-numeric:tabular-nums}
 
     .proof-rail{
       border-top:1px solid var(--line-soft);
@@ -849,12 +777,6 @@
       .url-form{display:block;padding:5px}
       .url-form input{width:100%}
       .url-form .button{width:100%}
-      .flow{grid-template-columns:1fr 1fr}
-      .flow-step{min-height:62px}
-      .flow-step:not(:last-child)::after{display:none}
-      .flow-step:last-child{grid-column:1/-1}
-      .console-bottom{grid-template-columns:1fr}
-      .console-foot{align-items:flex-start;flex-direction:column}
       .proof-rail-grid{grid-template-columns:1fr}
       .proof-rail-item{padding:17px 0;border-left:0;border-top:1px solid var(--line-soft)}
       .proof-rail-item:first-child{border-top:0}
@@ -1325,36 +1247,16 @@
           </div>
         </div>
 
-        <div class="console" aria-label="Illustrative distribute.you campaign preview">
+        <div class="console" aria-label="Campaign preview">
           <div class="console-top">
             <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
           </div>
           <div class="console-body">
-            <div class="console-url"><span>yourcompany.com</span><strong>analyzed ✓</strong></div>
+            <div class="console-url"><span data-hero-domain>yourcompany.com</span><strong data-hero-ok>analyzed ✓</strong></div>
 
-            <div class="analysis-card">
-              <div class="analysis-row"><span>Offer</span><b>B2B implementation service</b><em class="row-ok">accepted ✓</em></div>
-              <div class="analysis-row"><span>Likely buyers</span><b>Founders · COOs · Heads of Growth</b><em class="row-ok">accepted ✓</em></div>
-            </div>
+            <div class="console-metric"><span>Daily budget</span><b>__HERO_BUDGET__</b></div>
 
-            <div class="flow-label">What distribute.you handles</div>
-            <div class="flow" aria-label="Campaign execution flow">
-              <div class="flow-step"><span class="flow-icon">URL</span><span>Website brief</span></div>
-              <div class="flow-step"><span class="flow-icon">ICP</span><span>Target market</span></div>
-              <div class="flow-step"><span class="flow-icon">RCH</span><span>Research</span></div>
-              <div class="flow-step"><span class="flow-icon">SND</span><span>Outreach</span></div>
-              <div class="flow-step"><span class="flow-icon">INT</span><span>Reply filtering</span></div>
-            </div>
-
-            <div class="console-bottom">
-              <div class="console-metric"><span>Daily spend cap</span><b>$10 / day</b></div>
-              <div class="console-metric"><span>Primary objective</span><b>Positive replies</b></div>
-            </div>
-
-            <div class="console-outcome">
-              <span>Outcome</span>
-              <b>126 positive replies for a sales meeting 🎉</b>
-            </div>
+            __HERO_OUTCOME_ROW__
           </div>
         </div>
       </div>
@@ -2244,10 +2146,59 @@ __CAC_BOOT_SLOT__
       var boot=window.__CAC_BOOT__;
       if(boot){ if(boot.best!=null)bestPrice=boot.best; applyData(boot.best, boot.points||[]); }
     }
+    /* Hero console. The card names the visitor's OWN site the moment they type
+       it, which is the whole reason it earns its place above the fold: the
+       product has already started before anything is clicked. Both numbers are
+       server-rendered, so this only animates what is already on screen. */
+    function heroConsole(){
+      var input=document.getElementById('website-url');
+      var domainEl=document.querySelector('[data-hero-domain]');
+      var okEl=document.querySelector('[data-hero-ok]');
+      var countEl=document.querySelector('[data-hero-outcome]');
+      var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var placeholder=domainEl?domainEl.textContent:'';
+      var target=countEl?parseInt(countEl.getAttribute('data-hero-outcome'),10):NaN;
+
+      /* Only a bare dotted host is mirrored. A half-typed value keeps the
+         placeholder rather than showing the visitor a broken version of their
+         own domain. */
+      function hostOf(v){
+        var s=(v||'').trim().replace(/^https?:\/\//i,'').replace(/^www\./i,'').split(/[\/?#]/)[0];
+        return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(s) ? s.toLowerCase() : '';
+      }
+      function countUp(){
+        if(!countEl||!isFinite(target))return;
+        if(reduce){countEl.textContent=String(target);return;}
+        var start=null,DUR=900;
+        function step(now){
+          if(start===null)start=now;
+          var p=Math.min(1,(now-start)/DUR);
+          countEl.textContent=String(Math.round(target*(1-Math.pow(1-p,3))));
+          if(p<1)requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+      if(input&&domainEl){
+        input.addEventListener('input',function(){
+          var next=hostOf(input.value)||placeholder;
+          if(next===domainEl.textContent)return;
+          domainEl.textContent=next;
+          if(okEl&&!reduce){okEl.classList.remove('is-pop');void okEl.offsetWidth;okEl.classList.add('is-pop');}
+          countUp();
+        });
+      }
+      /* Run once when the card is actually looked at, not on a load nobody saw. */
+      if(countEl&&!reduce&&isFinite(target)&&'IntersectionObserver' in window){
+        var io=new IntersectionObserver(function(entries){
+          entries.forEach(function(e){ if(e.isIntersecting){ io.disconnect(); countUp(); } });
+        },{threshold:.4});
+        io.observe(countEl);
+      }
+    }
     // The pricing modal (the real 2-step goal -> price + budget calculator)
     // lives in js/pricing-modal-v1.js and self-wires to [data-pricing-modal].
     // This inline block only renders the on-page live CAC numbers.
-    function init(){ renderCac(); }
+    function init(){ renderCac(); heroConsole(); }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init); else init();
   })();
 </script>
