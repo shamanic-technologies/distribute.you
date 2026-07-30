@@ -78,19 +78,17 @@ describe("Dashboard mobile responsiveness", () => {
     expect(table).toContain('className="px-4 py-3 w-[62%] md:w-auto">Company</th>');
   });
 
-  it("folds the audience under the company name and the status date under the tag", () => {
+  it("folds the audience under the company name and the date under the tag", () => {
     const table = leadsTable();
     // One large company mark, then company name over audience name.
     expect(table).toContain('className="md:hidden flex items-center gap-3"');
     expect(table).toContain("size={40}");
     expect(table).toContain('<p className="truncate font-medium text-gray-800">{companyName}</p>');
     expect(table).toContain('{audience && <p className="truncate text-xs text-gray-500">{audience.name}</p>}');
-    // The date under the tag is the STATUS's date and stays at every width — it
-    // belongs to the badge, not to the column that folded away.
-    expect(table).toContain('{statusDateNode && <div className="mt-1">{statusDateNode}</div>}');
+    expect(table).toContain('className="mt-1 md:hidden">{dateNode}');
     // Complementary, never both at once: each folded column stays `hidden md:table-cell`.
     expect(table).toContain('hidden md:table-cell">Audience</th>');
-    expect(table).toContain('hidden md:table-cell">{dateColumnHeader(tab)}</th>');
+    expect(table).toContain('hidden md:table-cell">Date</th>');
   });
 
   it("sizes the company mark by style, since a class cannot be built from a prop", () => {

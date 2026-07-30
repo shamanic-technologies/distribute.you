@@ -92,7 +92,7 @@ describe("leadDateForStatus", () => {
 
 // Source-substring, not a render test: the component imports through the `@` alias,
 // which vitest does not resolve in this repo.
-describe("leads table Status cell", () => {
+describe("leads table Date column", () => {
   const src = fs.readFileSync(
     path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
     "utf-8",
@@ -103,35 +103,42 @@ describe("leads table Status cell", () => {
     return src.slice(at, at + 12000);
   })();
 
-  it("dates the badge from the status it renders, never from the tab", () => {
+  it("dates the row from the status the row shows, not from the tab", () => {
     expect(table).toContain("const status = statusOf(lead);");
-    expect(table).toContain("const statusAt = leadDateForStatus(lead, status);");
+    expect(table).toContain("      : leadDateForStatus(lead, status);");
     expect(table).toContain("<StatusBadge status={status} />");
-    // The tab's date stays in its own column; the two reads must not be swapped.
+    // The per-tab date is gone: Outreach dated every row at firstContactedAt, so a
+    // row reading "Replied" was dated days before the reply it names.
+    expect(src).not.toContain("leadDateForTab");
+  });
+
+  it("keeps ONE date per row, read once and rendered in both places", () => {
+    // The Date column below `md` folds under the tag; a second, differently-sourced
+    // date beside the badge would put two answers on one row.
+    expect(table).toContain('className="mt-1 md:hidden">{dateNode}');
+    expect(table).not.toContain("statusDateNode");
+    expect(table.match(/leadDateForStatus\(lead, status\)/g)?.length).toBe(1);
+  });
+
+  it("leaves the outcome tabs on the realized-outcome instant", () => {
+    // A signup has no delivery status to date, so those tabs keep the /revenue join's
+    // timestamp — the one exception, and it is a different column meaning, not a bug.
     expect(table).toContain("const dateAt = isOutcomeTab(tab)");
-    expect(table).not.toContain("leadDateForStatus(lead, tab)");
+    expect(table).toContain("? outcomeDates?.get(lead.id) ?? null");
+    expect(table).toContain('hidden md:table-cell">Date</th>');
   });
 
-  it("renders nothing under the tag when the status has no timestamp", () => {
-    expect(table).toContain("const statusDateNode = statusAt ? (");
-    expect(table).toContain("{statusDateNode && <div className=\"mt-1\">{statusDateNode}</div>}");
-    // A dash reads as a date we looked for and found empty. The Date column keeps
-    // its own dash because a column must hold its cell shape.
-    const cellAt = table.indexOf("const statusDateNode =");
-    const cell = table.slice(cellAt, cellAt + 400);
-    expect(cell).not.toContain("text-gray-300");
-  });
-
-  it("names the event its own column reports, per tab", () => {
-    const at = src.indexOf("function dateColumnHeader(");
+  it("orders every row by the value the Date column shows", () => {
+    // Sorting on a different field than the column displays makes the column read
+    // as unordered.
+    const at = src.indexOf("const sortByStatusDate =");
     expect(at).toBeGreaterThan(-1);
-    const fn = src.slice(at, at + 600);
-    expect(fn).toContain('case "positive-replies": return "First reply";');
-    expect(fn).toContain('case "clicks": return "First website visit";');
-    expect(fn).toContain('case "outreach": return "First outreach";');
-    expect(fn).toContain('default: return "Outcome";');
-    expect(table).toContain("{dateColumnHeader(tab)}</th>");
-    // A bare "Date" beside a status date says nothing about which date it is.
-    expect(table).not.toContain('md:table-cell">Date</th>');
+    const sort = src.slice(at, at + 800);
+    expect(sort).toContain("leadDateForStatus(a, getLeadConsolidatedStatus(a))");
+    expect(sort).toContain("leadDateForStatus(b, getLeadConsolidatedStatus(b))");
+    // Membership is what differs per tab, never what a date means.
+    expect(src).toContain("sortByStatusDate(positive)");
+    expect(src).toContain("sortByStatusDate(clicks)");
+    expect(src).toContain("sortByStatusDate(outreach)");
   });
 });
