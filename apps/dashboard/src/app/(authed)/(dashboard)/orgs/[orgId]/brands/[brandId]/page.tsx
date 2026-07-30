@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ClockIcon } from "@heroicons/react/20/solid";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
@@ -32,6 +31,12 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { goalForOptimizationGoal, isVisitDrivenStatsGoal } from "@/lib/strategy-model";
+import {
+  goalOutcomeCount,
+  recommendedLearningSpendUsd,
+  shouldShowReassurance,
+} from "@/lib/first-outcome-reassurance";
+import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -58,25 +63,6 @@ function actualFrom(
 
 function withActual(metric: PipelineActivityMetric, actual: number | null): PipelineActivityMetric {
   return { ...metric, actual };
-}
-
-function FirstClickReassuranceBanner() {
-  return (
-    <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
-      <div className="flex gap-3">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
-          <ClockIcon className="h-4 w-4" aria-hidden="true" />
-        </div>
-        <div className="min-w-0">
-          <p className="font-medium text-slate-900">Your campaign is running.</p>
-          <p className="mt-0.5 leading-6">
-            We are sending and learning from the first leads. It can take a week or two before
-            the first website clicks appear here.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -299,17 +285,17 @@ export default function BrandOverviewPage() {
     outcomeProjection,
   ]);
 
-  const expectedMonthlyOutcome = useMemo(() => {
-    if (monthlyBudgetUsd == null || monthlyBudgetUsd <= 0 || activeOutcomeWorkflow == null) {
-      return null;
-    }
-    const unitCost = workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal, {
+  // The brand's expected cost for ONE of its goal outcomes. Its own memo because two
+  // surfaces read it: the expected monthly count below, and the reassurance banner's
+  // recommended learning budget.
+  const outcomeUnitCostUsd = useMemo(() => {
+    if (activeOutcomeWorkflow == null) return null;
+    return workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal, {
       visitToSignupPct: economicsData?.salesEconomics?.visitToSignupPct,
       replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct,
       visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct,
       projectionBudgetUsd: monthlyBudgetUsd,
     });
-    return unitCost != null && unitCost > 0 ? monthlyBudgetUsd / unitCost : null;
   }, [
     activeOutcomeWorkflow,
     economicsData?.salesEconomics?.replyToMeetingPct,
@@ -318,6 +304,13 @@ export default function BrandOverviewPage() {
     monthlyBudgetUsd,
     optimizationGoal,
   ]);
+
+  const expectedMonthlyOutcome = useMemo(() => {
+    if (monthlyBudgetUsd == null || monthlyBudgetUsd <= 0) return null;
+    return outcomeUnitCostUsd != null && outcomeUnitCostUsd > 0
+      ? monthlyBudgetUsd / outcomeUnitCostUsd
+      : null;
+  }, [monthlyBudgetUsd, outcomeUnitCostUsd]);
 
   // Real audience-level cost evidence from features-service. This replaces the
   // old provider-cost-source list; no dashboard-side mock/hash audience split.
@@ -377,8 +370,18 @@ export default function BrandOverviewPage() {
     economicsData !== undefined || economicsIsError,
     monthlyBudgetUsd == null || outcomeProjection !== undefined || outcomeIsError,
   ]);
-  const showFirstClickReassurance =
-    statsRevealed && totalWebsiteClicks < 1 && !isBrandPaused;
+  // The reassurance banner names the brand's OWN outcome, so it must also DISAPPEAR on
+  // that outcome — hiding a "waiting for your first positive replies" notice the moment
+  // an unrelated click lands would contradict the sentence it just showed. The outcome
+  // count rides `/revenue`, so the banner reveals with revenue too.
+  const recommendedLearningUsd = recommendedLearningSpendUsd(outcomeUnitCostUsd);
+  const showFirstOutcomeReassurance = shouldShowReassurance({
+    revealed: statsRevealed && revenueRevealed,
+    paused: isBrandPaused,
+    outcomeCount: goalOutcomeCount(optimizationGoal, data?.spend, totalWebsiteClicks),
+    recommendedSpendUsd: recommendedLearningUsd,
+    spentUsd: data?.spend?.totalSpentCents != null ? data.spend.totalSpentCents / 100 : null,
+  });
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
 
@@ -412,7 +415,13 @@ export default function BrandOverviewPage() {
     return (
       <DashboardPage width="wide" className="space-y-4">
         <BrandStatusControl brandId={brandId} />
-        {showFirstClickReassurance && <FirstClickReassuranceBanner />}
+        {showFirstOutcomeReassurance && (
+        <FirstOutcomeReassuranceBanner
+          subject="Your campaign"
+          goal={optimizationGoal}
+          recommendedSpendUsd={recommendedLearningUsd}
+        />
+      )}
         <RevenueEmptyState />
       </DashboardPage>
     );
@@ -420,7 +429,13 @@ export default function BrandOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
-      {showFirstClickReassurance && <FirstClickReassuranceBanner />}
+      {showFirstOutcomeReassurance && (
+        <FirstOutcomeReassuranceBanner
+          subject="Your campaign"
+          goal={optimizationGoal}
+          recommendedSpendUsd={recommendedLearningUsd}
+        />
+      )}
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
