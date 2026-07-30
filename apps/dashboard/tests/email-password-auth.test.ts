@@ -39,6 +39,53 @@ describe("sign-up email/password flow", () => {
   });
 });
 
+describe("sign-up submit is gated on both inputs being valid", () => {
+  // The button used to be `disabled={submitting}` only, so on an empty or
+  // half-filled form it looked live and the click did nothing visible (native
+  // `required` blocks the submit silently). A control that looks available and
+  // is not is a dead affordance.
+  const gate = signUp.slice(
+    signUp.indexOf("const canSubmitEmail"),
+    signUp.indexOf("const handleEmailSignUp"),
+  );
+
+  it("disables the submit until both fields are valid", () => {
+    expect(signUp).toContain("disabled={submitting || !canSubmitEmail}");
+  });
+
+  it("derives the gate live from the two fields rather than latching it", () => {
+    // A `useState<boolean>` flipped true on first edit stays true after the user
+    // clears a field, so the compare has to read the values on every render.
+    expect(gate).toContain("const canSubmitEmail =");
+    expect(gate).toContain("email.trim()");
+    expect(gate).toContain("password.length");
+    expect(signUp).not.toContain("setCanSubmitEmail");
+  });
+
+  it("names the password floor instead of inlining the number twice", () => {
+    expect(signUp).toContain("const MIN_PASSWORD_LENGTH = 8");
+    expect(gate).toContain("MIN_PASSWORD_LENGTH");
+  });
+
+  it("tells the user what the gate wants, so the disabled state is explained", () => {
+    // Clerk rejects a shorter password anyway; the point of the hint is that a
+    // greyed-out button with no stated reason reads as broken.
+    expect(signUp).toContain("MIN_PASSWORD_LENGTH} characters");
+  });
+
+  it("fades only the genuinely-unavailable state, never the in-flight label", () => {
+    // `Creating account...` must stay full-opacity: fade means unavailable, and
+    // a faded working label reads as a dead button.
+    expect(signUp).toContain("!submitting && !canSubmitEmail ? { opacity:");
+  });
+
+  it("leaves the Google button and the verification step ungated", () => {
+    // Google carries no form input, and the code field has its own length cap.
+    expect(signUp).toContain("disabled={loading}");
+    expect(signUp).toContain("disabled={submitting}");
+  });
+});
+
 describe("sign-in email/password flow", () => {
   it("keeps the Google OAuth path", () => {
     expect(signIn).toMatch(/authenticateWithRedirect/);
