@@ -82,12 +82,14 @@ describe("Billing API wrappers", () => {
     expect(content).toContain("topup_amount_cents: number");
   });
 
-  it("should export setupBillingWallet for first-load match wallet setup", () => {
-    expect(content).toContain("export async function setupBillingWallet");
-    expect(content).toContain("/billing/accounts/wallet_setup");
-    expect(content).toContain("initial_load_amount_cents: number");
-    expect(content).toContain("first_load_match_applied: boolean");
-    expect(content).toContain("first_load_match_cents: string");
+  // billing-service deleted the wallet-setup endpoint (migration 0031) and
+  // api-service dropped the gateway proxy; the "$25 once you deposit" promise
+  // it carried is served by the welcome gift on the checkout path onboarding
+  // already uses. Nothing may reintroduce the call or its result type.
+  it("should NOT have setupBillingWallet (removed endpoint)", () => {
+    expect(content).not.toContain("setupBillingWallet");
+    expect(content).not.toContain("WalletSetupResult");
+    expect(content).not.toContain("wallet_setup");
   });
 
   it("should export createPortalSession function", () => {

@@ -3784,14 +3784,6 @@ export interface EmbeddedCheckoutSession {
   session_id: string;
 }
 
-export type WalletSetupResult = BillingAccount & {
-  initial_load_amount_cents: number;
-  initial_load_payment_intent_id: string;
-  first_load_match_applied: boolean;
-  first_load_match_cents: string;
-  first_load_match_local_promo_id: string | null;
-};
-
 export async function getBillingAccount(token?: string): Promise<BillingAccount> {
   return apiCall<BillingAccount>("/billing/accounts", { token });
 }
@@ -3815,11 +3807,11 @@ export async function disableAutoTopup(token?: string): Promise<BillingAccount> 
 }
 
 // ── Credit grants ("gifts received") ──
-// The org's own credit-grants ledger: welcome gift, first-deposit match, staff
-// bonuses, referral credits, promo redemptions. Source: billing-service
+// The org's own credit-grants ledger: welcome gift, staff bonuses, referral
+// credits, promo redemptions. Source: billing-service
 // GET /v1/credits/grants (scoped to x-org-id) via api-service gateway
 // GET /v1/billing/credits/grants. `reason` is the grant kind (welcome,
-// first_load_match, admin_grant, invite_*) or a promo code; `amountCents` is a
+// admin_grant, invite_*) or a promo code; `amountCents` is a
 // string (Postgres numeric). Per-field schema verified against api-registry;
 // safeParse turns wire-rot into a caught fetch-error per CLAUDE.md.
 export interface CreditGrant {
@@ -3958,21 +3950,6 @@ export async function createEmbeddedCheckoutSession(
     token,
     method: "POST",
     body: { ui_mode: "embedded", topup_amount_cents },
-  });
-}
-
-export async function setupBillingWallet(
-  params: {
-    initial_load_amount_cents: number;
-    topup_amount_cents: number;
-    topup_threshold_cents: number;
-  },
-  token?: string
-): Promise<WalletSetupResult> {
-  return apiCall<WalletSetupResult>("/billing/accounts/wallet_setup", {
-    token,
-    method: "POST",
-    body: params,
   });
 }
 
