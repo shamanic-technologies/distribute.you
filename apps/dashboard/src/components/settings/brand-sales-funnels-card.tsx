@@ -161,7 +161,12 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     const state = states[def.key];
     if (state.selected) {
       patch(def.key, { selected: false, confirmed: false, error: null });
-      if (primary === def.key) setPrimary(null);
+      // Dropping the primary funnel hands the role to another selected one, so a
+      // set of funnels is never left with nothing to optimize for.
+      if (primary === def.key) {
+        const heir = SALES_FUNNELS.find((f) => f.key !== def.key && states[f.key].selected);
+        setPrimary(heir ? heir.key : null);
+      }
       return;
     }
     patch(def.key, { selected: true, error: null });

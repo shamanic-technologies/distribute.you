@@ -269,6 +269,13 @@ describe("Sales Funnels card", () => {
     expect(src).toContain('["brand", brandId]');
   });
 
+  // A set of selected funnels with no primary has nothing to optimize for, so
+  // dropping the primary hands the role on rather than clearing it.
+  it("passes the primary role to another selected funnel when the primary is dropped", () => {
+    expect(src).toContain("const heir = SALES_FUNNELS.find(");
+    expect(src).toContain("setPrimary(heir ? heir.key : null);");
+  });
+
   it("gives each funnel its own icon", () => {
     const icons = ["ChatBubbleLeftRightIcon", "UserPlusIcon", "ClipboardDocumentCheckIcon"];
     for (const icon of icons) expect(src).toContain(`${icon},`);
