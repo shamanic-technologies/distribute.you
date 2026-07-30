@@ -738,18 +738,23 @@ async function resolveCacBoot(): Promise<{
 const ROI_DEFAULT_LTR_USD = 2500;
 const ROI_DEFAULT_WIN_RATE_PCT = 30;
 
+// Whole numbers above 10, one decimal below, so a 14x reads as "14x" and a 3.4x
+// keeps its precision. One rule, so the calculator and the hero chain cannot
+// round a multiple two different ways.
+export function formatMultiple(value: number): string | null {
+  if (!Number.isFinite(value) || value < 0) return null;
+  return value >= 10 ? `${Math.round(value)}×` : `${value.toFixed(1)}×`;
+}
+
 // Shared by the server render and the client script, which must agree exactly or
-// the number visibly changes on the first keystroke. Whole numbers above 10, one
-// decimal below, so a 14x reads as "14x" and a 3.4x keeps its precision.
+// the number visibly changes on the first keystroke.
 export function formatRoiMultiple(
   ltrUsd: number,
   winRatePct: number,
   costPerMeetingUsd: number,
 ): string | null {
   if (!(costPerMeetingUsd > 0) || !(ltrUsd >= 0) || !(winRatePct >= 0)) return null;
-  const value = (ltrUsd * (winRatePct / 100)) / costPerMeetingUsd;
-  if (!Number.isFinite(value)) return null;
-  return value >= 10 ? `${Math.round(value)}×` : `${value.toFixed(1)}×`;
+  return formatMultiple((ltrUsd * (winRatePct / 100)) / costPerMeetingUsd);
 }
 
 // Hero console. The budget is stated DAILY (a small number a visitor can own)
@@ -775,20 +780,82 @@ export function heroMonthlyOutcomes(
   return count;
 }
 
-// The count is rendered server-side into the text, and repeated on the
-// attribute the count-up animation reads, so a scraper (and a reader with JS
-// off) still sees the real figure rather than a zero that JS fills in.
-function heroOutcomeRow(costPerOutcomeUsd: number): string {
-  const count = heroMonthlyOutcomes(
+// The win rate is banded because closing is the reader's job and it varies. The
+// lifetime revenue is NOT banded, and that is deliberate: a high ticket closes
+// at a LOW rate, so pairing the top of both bands describes a client who does
+// not exist, and $2,500 × 70% ÷ the live rate prints a multiple nobody believes
+// (a $20,000 top end reaches 194×, which would undo the five measured sections
+// below it). One band, anchored on the figure the #roi calculator already
+// defaults to, so the hero and the calculator cannot tell different stories.
+const HERO_WIN_RATE_LOW_PCT = 30;
+const HERO_WIN_RATE_HIGH_PCT = 70;
+
+export type HeroChain = {
+  buyers: number;
+  salesLow: number;
+  salesHigh: number;
+  roiLow: string;
+  roiHigh: string;
+};
+
+// Spend to return, in one derivation. Every figure below the buyers count is
+// computed from the ROUNDED count above it rather than from the raw ratio,
+// because a reader can multiply what is on screen and the chain has to survive
+// that: 22 buyers, 7 sales, 7 × $2,500 ÷ $1,550 really is 11×. The exact
+// unrounded arithmetic lives in #roi, where the reader supplies their own two
+// inputs and nothing is rounded to whole people.
+export function heroRoiChain(
+  dailyBudgetUsd: number,
+  monthDays: number,
+  costPerOutcomeUsd: number,
+  ltrUsd: number,
+  winLowPct: number,
+  winHighPct: number,
+): HeroChain | null {
+  const buyers = heroMonthlyOutcomes(dailyBudgetUsd, monthDays, costPerOutcomeUsd);
+  if (buyers === null) return null;
+  if (!(ltrUsd > 0) || !(winLowPct > 0) || !(winHighPct >= winLowPct)) return null;
+
+  const spendUsd = dailyBudgetUsd * monthDays;
+  const salesLow = Math.round((buyers * winLowPct) / 100);
+  const salesHigh = Math.round((buyers * winHighPct) / 100);
+  // A band that reads "0 to 1 sales" is not an argument, and its low end would
+  // print a 0x return beside a running campaign.
+  if (salesLow < 1 || salesHigh < salesLow) return null;
+
+  const roiLow = formatMultiple((salesLow * ltrUsd) / spendUsd);
+  const roiHigh = formatMultiple((salesHigh * ltrUsd) / spendUsd);
+  if (roiLow === null || roiHigh === null) return null;
+
+  return { buyers, salesLow, salesHigh, roiLow, roiHigh };
+}
+
+// The counts are rendered server-side into the text, and repeated on the
+// attributes the count-up animation reads, so a scraper (and a reader with JS
+// off) still sees the real figures rather than zeroes that JS fills in.
+// Each arrow carries the assumption it applies, so a reader can see that the
+// win rate and the lifetime revenue are THEIRS, not a result we are claiming.
+function heroChainRows(costPerOutcomeUsd: number): string {
+  const chain = heroRoiChain(
     HERO_DAILY_BUDGET_USD,
     HERO_MONTH_DAYS,
     costPerOutcomeUsd,
+    ROI_DEFAULT_LTR_USD,
+    HERO_WIN_RATE_LOW_PCT,
+    HERO_WIN_RATE_HIGH_PCT,
   );
-  if (count === null) return "";
+  if (chain === null) return "";
+  const sales = `${chain.salesLow} to ${chain.salesHigh}`;
   return (
     `<div class="console-outcome">` +
     `<span>Interested B2B buyers</span>` +
-    `<b><i data-hero-outcome="${count}">${count}</i> per month 🎉</b>` +
+    `<b><i data-hero-outcome="${chain.buyers}">${chain.buyers}</i> per month 🎉</b>` +
+    `</div>` +
+    `<div class="console-chain" data-hero-chain>` +
+    `<p class="chain-arrow">${HERO_WIN_RATE_LOW_PCT}-${HERO_WIN_RATE_HIGH_PCT}% of them become customers</p>` +
+    `<div class="console-metric"><span>Your sales</span><b>${sales} per month</b></div>` +
+    `<p class="chain-arrow">${usdWhole(ROI_DEFAULT_LTR_USD)} lifetime revenue each</p>` +
+    `<div class="console-return"><span>Your return</span><b>${chain.roiLow} to ${chain.roiHigh} ✨</b></div>` +
     `</div>`
   );
 }
@@ -800,7 +867,7 @@ async function withCacBoot(html: string) {
     !html.includes("__CAC_PRICE_NUMERIC__") &&
     !html.includes("__CAC_MULT__") &&
     !html.includes("__HERO_BUDGET__") &&
-    !html.includes("__HERO_OUTCOME_ROW__")
+    !html.includes("__HERO_CHAIN__")
   ) {
     return html;
   }
@@ -822,7 +889,7 @@ async function withCacBoot(html: string) {
     .replaceAll("__CAC_PRICE__", price)
     .replaceAll("__CAC_MULT__", mult)
     .replaceAll("__HERO_BUDGET__", `$${HERO_DAILY_BUDGET_USD} / day`)
-    .replaceAll("__HERO_OUTCOME_ROW__", heroOutcomeRow(boot.best))
+    .replaceAll("__HERO_CHAIN__", heroChainRows(boot.best))
     .replaceAll("__ROI_LTR__", ROI_DEFAULT_LTR_USD.toLocaleString("en-US"))
     .replaceAll("__ROI_WIN_RATE__", String(ROI_DEFAULT_WIN_RATE_PCT))
     .replaceAll(
