@@ -7,10 +7,10 @@ import {
   PauseIcon,
   PlayIcon,
   XMarkIcon,
-  InformationCircleIcon,
   CreditCardIcon,
 } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
   getBrand,
   getBrandPause,
@@ -615,12 +615,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                         <span>
                           {fmtCount(n)} {outcomeUnit} / mo
                         </span>
-                        <span
-                          title={ESTIMATE_TOOLTIP}
-                          className="inline-flex cursor-help"
-                        >
-                          <InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" />
-                        </span>
+                        <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
                       </div>
                     </button>
                   );
@@ -678,12 +673,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                             <span>
                               {fmtCount(cnt)} {outcomeUnit} / mo
                             </span>
-                            <span
-                              title={ESTIMATE_TOOLTIP}
-                              className="inline-flex cursor-help"
-                            >
-                              <InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" />
-                            </span>
+                            <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
                           </>
                         ) : (
                           " "

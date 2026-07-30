@@ -14,7 +14,6 @@ import {
   ChevronLeftIcon,
   CreditCardIcon,
   GiftIcon,
-  InformationCircleIcon,
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   PencilSquareIcon,
@@ -23,6 +22,7 @@ import {
   TrophyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import posthog from "posthog-js";
 import {
   upsertBrand,
@@ -3176,7 +3176,7 @@ export function Onboarding() {
               <div className="text-xl font-bold text-gray-950">{b != null ? fmtUsd0(b) : "—"}<span className="text-sm font-normal text-gray-500"> / day</span></div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <span>{fmtCount(n)} {outcomeMeta.unit} / mo</span>
-                <span title={ESTIMATE_TOOLTIP} className="inline-flex cursor-help"><InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" /></span>
+                <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
               </div>
             </button>
           );
@@ -3221,7 +3221,7 @@ export function Onboarding() {
                 {cnt != null ? (
                   <>
                     <span>{fmtCount(cnt)} {outcomeMeta.unit} / mo</span>
-                    <span title={ESTIMATE_TOOLTIP} className="inline-flex cursor-help"><InformationCircleIcon className="h-3.5 w-3.5 text-gray-400" /></span>
+                    <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
                   </>
                 ) : (
                   " "
