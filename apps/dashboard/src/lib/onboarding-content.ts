@@ -40,7 +40,7 @@ export const WELCOME_STEPS: WelcomeStep[] = [
   {
     title: "Your $25 in free credits",
     description:
-      "We match your first $25 of spend, dollar for dollar. Add $25 and you get $50 to work with, so your first results cost you half. The match applies on its own as your outreach runs.",
+      "$5 is in your account already. The rest lands once your payments reach $25, so your first $25 buys $50 of outreach. It arrives on its own, nothing to claim.",
   },
   {
     title: "We email on your behalf",

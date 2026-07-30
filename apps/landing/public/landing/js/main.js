@@ -479,7 +479,7 @@ if (tocLinks.length) {
     var startDisabled = state.count == null || state.budgetUnitCost == null;
     body.innerHTML = priceBlock()
       + '<div class="pm-credit"><div><div class="pm-credit-t">Your first $25 is on us.</div>'
-      + '<div class="pm-credit-d">Spend $25 and we match it, $1 for $1. The credits unlock the moment your spend reaches $25.</div></div></div>'
+      + '<div class="pm-credit-d">$5 lands the moment you sign up, the rest once your payments reach $25.</div></div></div>'
       + tiersBlock()
       + summaryBlock()
       + '<div class="pm-nav"><button type="button" class="pm-back" data-back>← Back</button>'
