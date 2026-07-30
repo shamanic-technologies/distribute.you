@@ -75,13 +75,21 @@
     ::selection{background:var(--green);color:#ffffff}
     :focus-visible{outline:2px solid var(--green);outline-offset:3px}
 
+    /* The whole bar is one anchor to sign-up, so the hit area covers the full
+       width instead of just the centred text. display:block + no underline stop
+       it rendering as inline link text. */
     .announcement{
       position:sticky;
       top:0;
       z-index:70;
+      display:block;
       border-bottom:1px solid var(--line-soft);
       background:#eef1f8;
+      color:var(--text);
+      text-decoration:none;
+      transition:background .15s ease;
     }
+    .announcement:hover{background:#e4e9f5}
     .announcement-inner{
       min-height:38px;
       display:flex;
@@ -96,7 +104,6 @@
       letter-spacing:0;
     }
     .announcement b{color:var(--green);font-weight:600}
-    .announcement a{color:var(--text);border-bottom:1px solid var(--line)}
 
     header{
       position:sticky;
@@ -1209,11 +1216,11 @@
   </script>
 </head>
 <body>
-  <div class="announcement">
+  <a class="announcement" href="https://dashboard.distribute.you/sign-up" aria-label="Create an account and claim $25 in matched credits">
     <div class="wrap announcement-inner">
       <span><b>New accounts:</b> $25 in matched credits until <span id="announce-date" style="text-decoration:underline">today</span> 🎉</span>
     </div>
-  </div>
+  </a>
   <script>
     (function(){
       var el=document.getElementById("announce-date");
