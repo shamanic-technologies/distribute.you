@@ -6,6 +6,7 @@ import {
   useOrganization,
   useOrganizationList,
   useSession,
+  useUser,
 } from "@clerk/nextjs";
 import {
   ArrowRightIcon,
@@ -91,7 +92,7 @@ import {
   isListLeverKey,
   parseListLeverInput,
 } from "./offer-levers";
-import { extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
+import { businessDomainFromEmail, extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -728,6 +729,8 @@ export function Onboarding() {
   const { organization } = useOrganization();
   const { createOrganization, setActive } = useOrganizationList();
   const { session } = useSession();
+  const { user } = useUser();
+  const signupEmail = user?.primaryEmailAddress?.emailAddress;
   const forceNew = searchParams.get("new") === "1";
   // Entered from an in-app "New brand" / "New org" button (vs a fresh signup) —
   // skip the welcome hero and land straight on the URL step. Same flow otherwise.
@@ -1072,6 +1075,34 @@ export function Onboarding() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A business signup email names the domain of the product being promoted
+  // (kevin@acme.com -> acme.com), so the URL step opens prefilled and one click
+  // from "Analyze my product". Google signup is covered by the same path: Clerk
+  // exposes the same primary email whichever provider minted the session, so
+  // there is nothing provider-specific to branch on.
+  //
+  // This is the WEAKEST of the three url sources and must stay that way. A
+  // restored snapshot and an explicit `?url=` carry are both stated intent and
+  // win from the `useState` initializer; the email domain is a guess, so it only
+  // ever fills an EMPTY field. The functional `setUrl` keeps that check atomic
+  // with the current state, so the effect cannot land on top of a keystroke.
+  //
+  // Free / personal / disposable providers yield null (see `free-email-domains.ts`):
+  // sending someone to analyze Gmail's website is worse than an empty field.
+  const emailPrefillDoneRef = useRef(false);
+  useEffect(() => {
+    if (emailPrefillDoneRef.current) return;
+    // The no-website path collects a brand name + a free-form description instead
+    // of a URL, so there is no field to prefill.
+    if (noWebsiteMode) return;
+    const guessed = businessDomainFromEmail(signupEmail);
+    // Clerk hydrates async — keep waiting until the email resolves (or turns out
+    // to be a free provider, in which case the next run bails here again).
+    if (!guessed) return;
+    emailPrefillDoneRef.current = true;
+    setUrl((current) => (current.trim() ? current : guessed));
+  }, [signupEmail, noWebsiteMode]);
 
   function maybeAdvancePastLoading() {
     if (fetchDoneRef.current) setStep("services");
