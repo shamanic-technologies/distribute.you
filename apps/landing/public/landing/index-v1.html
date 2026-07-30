@@ -366,13 +366,16 @@
     }
     .console-return span{display:block;color:var(--faint);font-size:9px;text-transform:uppercase;letter-spacing:.08em}
     .console-return b{display:block;margin-top:6px;color:var(--green);font-family:var(--mono);font-size:19px;font-weight:600}
-    /* Hidden only once the script has claimed the block, so a reader with JS
-       off keeps the whole chain. */
-    .console-chain[data-reveal="pending"]{opacity:0}
-    .console-chain[data-reveal="done"]>*{animation:chain-in .42s ease both}
-    .console-chain[data-reveal="done"]>*:nth-child(2){animation-delay:.1s}
-    .console-chain[data-reveal="done"]>*:nth-child(3){animation-delay:.28s}
-    .console-chain[data-reveal="done"]>*:nth-child(4){animation-delay:.38s}
+    /* Each row is COLLAPSED, not merely transparent: an invisible row still
+       occupies its space, which stretched the card to full height and left a
+       tall blank under the counter while it was still counting. The card grows
+       as the rows arrive instead. Collapsed only once the script has claimed
+       the block, so a reader with JS off keeps the whole chain from the first
+       paint. */
+    .console-chain[data-reveal]>*{display:none}
+    .console-chain[data-reveal]>.is-in{animation:chain-in .34s ease both}
+    .console-chain[data-reveal]>p.is-in{display:flex}
+    .console-chain[data-reveal]>div.is-in{display:block}
     @keyframes chain-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
     .proof-rail{
@@ -2196,7 +2199,20 @@ __CAC_BOOT_SLOT__
          total has landed. It is hidden only after the script has claimed it and
          a reveal is guaranteed: a reader with JS off, or a reduced-motion
          preference, keeps the whole thing on screen from the first paint. */
-      function revealChain(){ if(chainEl)chainEl.setAttribute('data-reveal','done'); }
+      /* One row at a time, so the card grows in steps rather than jumping to
+         its full height. Idempotent: retyping re-runs the count but must not
+         replay the reveal. */
+      function revealChain(){
+        if(!chainEl||chainEl.getAttribute('data-reveal')==='done')return;
+        chainEl.setAttribute('data-reveal','done');
+        var kids=chainEl.children;
+        for(var i=0;i<kids.length;i++){
+          (function(el,idx){
+            if(reduce){el.classList.add('is-in');return;}
+            setTimeout(function(){el.classList.add('is-in');},idx*140);
+          })(kids[i],i);
+        }
+      }
       if(chainEl&&!reduce&&countEl&&isFinite(target)){
         chainEl.setAttribute('data-reveal','pending');
         setTimeout(revealChain,9000); /* nothing can leave it hidden */

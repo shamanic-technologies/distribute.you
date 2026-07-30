@@ -794,16 +794,27 @@ export type HeroChain = {
   buyers: number;
   salesLow: number;
   salesHigh: number;
-  roiLow: string;
-  roiHigh: string;
+  cacPctLow: string;
+  cacPctHigh: string;
 };
 
-// Spend to return, in one derivation. Every figure below the buyers count is
-// computed from the ROUNDED count above it rather than from the raw ratio,
-// because a reader can multiply what is on screen and the chain has to survive
-// that: 22 buyers, 7 sales, 7 × $2,500 ÷ $1,550 really is 11×. The exact
-// unrounded arithmetic lives in #roi, where the reader supplies their own two
-// inputs and nothing is rounded to whole people.
+// Whole percents, one decimal below 1% so a very cheap acquisition never
+// rounds to a meaningless "0%".
+export function formatCacPercent(value: number): string | null {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return value < 1 ? `${value.toFixed(1)}%` : `${Math.round(value)}%`;
+}
+
+// Spend to cost of acquisition, in one derivation. Every figure below the
+// buyers count is computed from the ROUNDED count above it rather than from the
+// raw ratio, because a reader can multiply what is on screen and the chain has
+// to survive that: 22 buyers, 7 sales, $1,550 against 7 × $2,500 really is 9%.
+// The exact unrounded arithmetic lives in #roi, where the reader supplies their
+// own two inputs and nothing is rounded to whole people.
+//
+// The band INVERTS: closing more of the same buyers earns more revenue for the
+// same spend, so the BEST case is the LOW percentage. Reported low-to-high, the
+// way a cost is read.
 export function heroRoiChain(
   dailyBudgetUsd: number,
   monthDays: number,
@@ -819,15 +830,15 @@ export function heroRoiChain(
   const spendUsd = dailyBudgetUsd * monthDays;
   const salesLow = Math.round((buyers * winLowPct) / 100);
   const salesHigh = Math.round((buyers * winHighPct) / 100);
-  // A band that reads "0 to 1 sales" is not an argument, and its low end would
-  // print a 0x return beside a running campaign.
+  // A band that reads "0 to 1 sales" is not an argument, and dividing by a zero
+  // low end would print an infinite cost beside a running campaign.
   if (salesLow < 1 || salesHigh < salesLow) return null;
 
-  const roiLow = formatMultiple((salesLow * ltrUsd) / spendUsd);
-  const roiHigh = formatMultiple((salesHigh * ltrUsd) / spendUsd);
-  if (roiLow === null || roiHigh === null) return null;
+  const cacPctLow = formatCacPercent((spendUsd / (salesHigh * ltrUsd)) * 100);
+  const cacPctHigh = formatCacPercent((spendUsd / (salesLow * ltrUsd)) * 100);
+  if (cacPctLow === null || cacPctHigh === null) return null;
 
-  return { buyers, salesLow, salesHigh, roiLow, roiHigh };
+  return { buyers, salesLow, salesHigh, cacPctLow, cacPctHigh };
 }
 
 // The counts are rendered server-side into the text, and repeated on the
@@ -854,8 +865,8 @@ function heroChainRows(costPerOutcomeUsd: number): string {
     `<div class="console-chain" data-hero-chain>` +
     `<p class="chain-arrow">${HERO_WIN_RATE_LOW_PCT}-${HERO_WIN_RATE_HIGH_PCT}% of them become customers</p>` +
     `<div class="console-metric"><span>Your sales</span><b>${sales} per month</b></div>` +
-    `<p class="chain-arrow">${usdWhole(ROI_DEFAULT_LTR_USD)} lifetime revenue each</p>` +
-    `<div class="console-return"><span>Your return</span><b>${chain.roiLow} to ${chain.roiHigh} ✨</b></div>` +
+    `<p class="chain-arrow">${usdWhole(ROI_DEFAULT_LTR_USD)} lifetime value each</p>` +
+    `<div class="console-return"><span>Your cost of acquisition</span><b>${chain.cacPctLow} to ${chain.cacPctHigh} ✨</b></div>` +
     `</div>`
   );
 }
