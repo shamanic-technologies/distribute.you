@@ -142,7 +142,9 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(page).toContain('"overview-outcome"');
     expect(page).toContain("selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal");
     expect(page).toContain("workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal");
-    expect(page).toContain("monthlyBudgetUsd / unitCost");
+    // The unit cost now lives in its own memo (the reassurance banner reads it too), so
+    // the expected count divides by that memo rather than a local `unitCost` const.
+    expect(page).toContain("monthlyBudgetUsd / outcomeUnitCostUsd");
     expect(page).toContain("expectedMonthlyOutcome");
     expect(outcome).not.toContain("expected?:");
     expect(outcome).toContain("expected");
