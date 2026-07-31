@@ -170,6 +170,29 @@ const SECTIONS: SectionDef[] = [
           cash value, may expire, and may be revoked for abuse.
         </p>
         <p>
+          <strong>The welcome offer is a total, not a top-up.</strong> The
+          advertised welcome amount (currently $400) is the most free credit an
+          account can ever receive, counting every free credit that account has
+          already been given. Any other credit granted to the same account
+          counts against that same total and reduces what is left of the welcome
+          amount. That includes referral credits, promotional or discount codes,
+          support and goodwill grants, and any other offer running at the same
+          time. Offers do not stack, and no combination of them entitles an
+          account to more than the advertised total.
+        </p>
+        <p>
+          <strong>How the welcome amount is released.</strong> Part of the
+          welcome amount is credited when the account is created. The remainder
+          is released once the account&apos;s cumulative successful payments
+          reach the advertised threshold, and only to the extent it has not
+          already been used up by the other credits described above. Payments
+          means money actually received and not refunded or charged back, not
+          usage accrued on credit. The welcome amount and the threshold that
+          apply to an account are the ones in effect when that account was
+          created; if we change the offer afterwards, existing accounts keep the
+          terms they signed up under and are not re-priced in either direction.
+        </p>
+        <p>
           <strong>Taxes.</strong> Prices exclude applicable taxes, duties, and
           levies, which you are responsible for paying.
         </p>
