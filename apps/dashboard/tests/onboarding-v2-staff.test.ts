@@ -205,3 +205,29 @@ describe("v2 onboarding — resume", () => {
     expect(failsafe).toContain("return null");
   });
 });
+
+describe("v2 onboarding — the primary step promises nothing about orchestration", () => {
+  const primary = sliceFrom('if (step === "primary")', 1600);
+
+  it("asks for the primary goal in the words the product uses", () => {
+    expect(primary).toContain("primary sales funnel goal with us today");
+  });
+
+  it("states the one true consequence: it calibrates the pricing", () => {
+    expect(primary).toContain("calibrate your pricing");
+  });
+
+  it("never claims we run that funnel first, or that the others can be switched to", () => {
+    // We do not control which funnel the orchestrator picks up first, so copy that
+    // says we do is a promise the product cannot keep — the same class as a status
+    // label stating what we ATTEMPTED rather than what HAPPENED.
+    for (const claim of [
+      "one path to start",
+      "switch at any time",
+      "Which one first",
+      "your first path",
+    ]) {
+      expect(flow, `sequencing claim still on screen: ${claim}`).not.toContain(claim);
+    }
+  });
+});
