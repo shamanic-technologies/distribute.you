@@ -21,7 +21,9 @@ import {
   generateAudienceAvatar,
   getBrandConversionToken,
   getBrandSalesEconomics,
+  getCampaign,
   listAudiences,
+  optimizationGoalForRuntimeGoal,
   setAudienceStatus,
   type AudienceStatus,
   type AudienceWire,
@@ -183,9 +185,18 @@ function AudienceAvatar({
   );
 }
 
-export function CustomerAudiencesPage() {
+/**
+ * @param campaignId - Set by the campaign-scoped route (`campaigns/[id]/audiences`).
+ *   Absent on the brand page, which is the GA surface and stays byte-identical.
+ *   Audiences themselves are brand-wide (human-service stores no per-campaign
+ *   audience), so a campaign narrows only WHICH of them it targets
+ *   (`campaign.audienceIds`) and WHOSE outreach the per-audience numbers count
+ *   (features-service `?campaignId=`).
+ */
+export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = {}) {
   const featureSlug = useSoleFeatureSlug();
   const revenueOk = isRevenueFeature(featureSlug);
+  const campaignScoped = Boolean(campaignId);
 
   const params = useParams();
   const brandId = params.brandId as string;
@@ -251,15 +262,28 @@ export function CustomerAudiencesPage() {
     pollOptions,
   );
 
+  // Campaign identity, on the key the campaign Overview + the header page context
+  // already poll — React Query serves all three from one request.
+  const { data: campaignData } = useAuthQuery(
+    ["campaign", campaignId ?? "none"],
+    () => getCampaign(campaignId as string),
+    { ...pollOptions, enabled: campaignScoped },
+  );
+  const campaign = campaignData?.campaign ?? null;
+
   // Brand optimization goal → audience-stats goal (sorts by CPC for signup, CPPR
-  // otherwise). Same resolution as the brand Overview.
+  // otherwise). Same resolution as the brand Overview. Under a campaign, its OWN goal
+  // wins when set (`null` = inherit the brand's).
   const { data: economicsData } = useAuthQuery(
     ["brandSalesEconomics", brandId],
     () => getBrandSalesEconomics(brandId),
     pollOptions,
   );
-  const optimizationGoal =
+  const brandOptimizationGoal =
     economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
+  const optimizationGoal = campaign?.goal
+    ? optimizationGoalForRuntimeGoal(campaign.goal)
+    : brandOptimizationGoal;
   // Conversion-tracker liveness (lead-service pixel). status: "not_set_up" (no ping,
   // no event) | "live_waiting" (tag pinging, no conversion yet) | "live" (real
   // conversions). Signup + form-submission outcomes only exist once the brand's site
@@ -344,13 +368,18 @@ export function CustomerAudiencesPage() {
   // audiences had real outreach (runs/email evidence attributed by audienceId).
   // Distinct query key from the brand-overview Top-audiences card (which omits
   // `statuses` → active-only ranking) so the two never share/clobber a cache entry.
+  // Under a campaign the numbers count THAT campaign's outreach only
+  // (features-service `?campaignId=`), on its own cache key so it never shares an
+  // entry with the brand-wide read.
+  const campaignScopeKey = campaignId ?? "brand-wide";
   const { data: audienceStatsData, isPending: statsIsPending, isPlaceholderData: statsIsPlaceholder } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "all-statuses"],
+    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "all-statuses", campaignScopeKey],
     () =>
       fetchFeatureAudienceStats(featureSlug, {
         brandId,
         goal: audienceStatsGoal,
         statuses: "active,paused,archived",
+        campaignId,
       }),
     { enabled: Boolean(featureSlug), ...pollOptions },
   );
@@ -387,13 +416,20 @@ export function CustomerAudiencesPage() {
   });
 
   const isPending = activePending || pausedPending || archivedPending;
+  // Under a campaign, narrow to the audiences IT targets (`campaign.audienceIds`);
+  // `null` means the campaign inherits the brand's set, so the lists are unchanged.
+  // Same resolution the campaign Overview uses — a display filter over the rows
+  // already fetched, no extra request (human-service has no per-campaign read).
+  const campaignAudienceIds = campaign?.audienceIds ?? null;
+  const scopeToCampaign = (rows: AudienceWire[]): AudienceWire[] =>
+    campaignAudienceIds ? rows.filter((a) => campaignAudienceIds.includes(a.id)) : rows;
   // Read only user-visible lifecycle states. human-service keeps suggested and
   // deprecated rows out of these status-specific reads.
-  const audiences: AudienceWire[] = [
+  const audiences: AudienceWire[] = scopeToCampaign([
     ...(activeData?.audiences ?? []),
     ...(pausedData?.audiences ?? []),
     ...(archivedData?.audiences ?? []),
-  ];
+  ]);
 
   // Per-TAB loading, not a single combined `isPending`. The Active tab shows
   // active+paused; the Archived tab shows archived — each fetched separately and
@@ -467,6 +503,13 @@ export function CustomerAudiencesPage() {
             audiences by chatting with the AI — this page lists them and lets you
             pause, resume or archive.
           </p>
+          {campaignScoped ? (
+            <p className="text-xs text-gray-400 mt-1.5">
+              The numbers below count this campaign only. The audiences themselves belong
+              to the brand and are shared by every campaign, so creating, pausing or
+              archiving one here changes it everywhere.
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
