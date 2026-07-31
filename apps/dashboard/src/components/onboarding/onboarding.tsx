@@ -397,6 +397,17 @@ type PendingCheckoutLaunch = {
   // Lifted to the top level (version-independent) so a checkout return survives a
   // stale/incompatible nested onboardingState — the launch + audience gate keep working.
   selectedAudienceIds: string[];
+  // v2 — the funnels the brand picked, and the one it optimizes for first. Lifted for
+  // the SAME reason as selectedAudienceIds, and it is what makes the post-payment
+  // per-funnel screens reachable at all: those steps run on a FRESH page load (the
+  // Stripe return), so the React state that held the selection is gone by then. Without
+  // this the `funnelStats` step found no funnel and silently skipped itself to `model`,
+  // which also lost its primary-funnel card. Living at the TOP level (not in
+  // PersistedOnboardingState) keeps ONBOARDING_STATE_VERSION at 8 — a bump strands an
+  // in-flight checkout. A blob written before this shipped carries neither: they read
+  // [] / null and the screens skip exactly as they did then.
+  selectedFunnelKeys: string[];
+  primaryFunnelKey: string | null;
   onboardingState: PersistedOnboardingState;
   createdAt: string;
 };
@@ -586,6 +597,12 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   const selectedAudienceIds = isStringList(parsed.selectedAudienceIds)
     ? parsed.selectedAudienceIds
     : parseOnboardingState(parsed.onboardingState)?.selectedAudienceIds ?? [];
+  // The v2 funnel selection is lifted the same way, and is deliberately NOT part of the
+  // validity check above: it is a preview surface, so a blob written before it shipped
+  // (or by the GA flow, which has no funnels) must still launch. Absent = no funnel
+  // screens, which is the pre-existing behaviour, never a blocked launch.
+  const selectedFunnelKeys = isStringList(parsed.selectedFunnelKeys) ? parsed.selectedFunnelKeys : [];
+  const primaryFunnelKey = typeof parsed.primaryFunnelKey === "string" ? parsed.primaryFunnelKey : null;
   // The nested onboardingState only re-renders the deeper wizard. If it fails to parse
   // (a version bump landed mid-checkout), reconstruct a minimal current-version state
   // from the top-level fields — the brand + budget survive; the user re-picks nothing
@@ -597,7 +614,13 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     );
     onboardingState = reconstructCheckoutOnboardingState(parsed, selectedAudienceIds);
   }
-  return { ...parsed, selectedAudienceIds, onboardingState } as PendingCheckoutLaunch;
+  return {
+    ...parsed,
+    selectedAudienceIds,
+    selectedFunnelKeys,
+    primaryFunnelKey,
+    onboardingState,
+  } as PendingCheckoutLaunch;
 }
 
 // Opportunistic recovery read: callers fall back to current state when this
@@ -2023,6 +2046,14 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
     if (launchAudienceIds.length === 0) {
       throw new Error("Pick at least one audience before launching — go back to the audience step.");
     }
+    // Same live-selection-wins precedence as the audiences above, so a re-checkout after
+    // a cancel carries whatever the user has picked NOW. Unlike audiences this is NOT a
+    // launch gate: the per-funnel screens are a preview, so an empty selection must never
+    // block a paid launch — it just means those screens have nothing to ask.
+    const launchFunnelKeys = selectedFunnelKeys.length
+      ? selectedFunnelKeys
+      : storedPending?.selectedFunnelKeys ?? [];
+    const launchPrimaryFunnelKey = primaryFunnelKey ?? storedPending?.primaryFunnelKey ?? null;
     const checkoutAmountCents = Math.round(budget * 100);
     const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
     if (!workflowSlug) {
@@ -2049,6 +2080,8 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
       profile: brandIdRef.current === id && (noWebsiteMode || normalizedCurrentUrl) ? profile : storedPending?.profile,
       services: brandIdRef.current === id && (noWebsiteMode || normalizedCurrentUrl) ? services : storedPending?.services,
       selectedAudienceIds: launchAudienceIds,
+      selectedFunnelKeys: launchFunnelKeys,
+      primaryFunnelKey: launchPrimaryFunnelKey,
       onboardingState: checkoutState,
       createdAt: new Date().toISOString(),
     };
@@ -2100,6 +2133,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
       const pending = readPendingCheckoutLaunch();
       pendingCheckoutRef.current = pending;
       applyRestoredOnboardingState(pending.onboardingState, { step: "celebrate" });
+      applyRestoredFunnelSelection(pending);
       setCheckoutBudgetUsd(pending.budgetUsd);
       setLaunchingBrand({ domain: extractDomain(pending.brandUrl ?? ""), hostname: pending.hostname });
       setLaunchStep(0);
@@ -2532,6 +2566,16 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
     setStep(opts?.step ?? resolveResumeStep(state.step, state.brandId, variant));
   }
 
+  // v2 — put the picked funnels back after the Stripe round-trip. The selection lives
+  // in React state only (see PendingCheckoutLaunch), and the checkout return is a FRESH
+  // page load, so without this the per-funnel screens have nothing to walk and skip
+  // themselves. Reads the blob's top-level fields, which are version-independent.
+  function applyRestoredFunnelSelection(pending: PendingCheckoutLaunch) {
+    setSelectedFunnelKeys(pending.selectedFunnelKeys);
+    setPrimaryFunnelKey(pending.primaryFunnelKey);
+    setFunnelIndex(0);
+  }
+
   async function hydratePricingForRestoredCheckout(state: PersistedOnboardingState): Promise<void> {
     if (state.workflowProjection) {
       projectionRef.current = state.workflowProjection;
@@ -2578,6 +2622,9 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
       try {
         const pending = readPendingCheckoutLaunch();
         applyRestoredOnboardingState(pending.onboardingState, { step: "pricing" });
+        // A cancel lands back on pricing, where Back walks up through primary/funnels —
+        // so the selection has to come back here too, not only on the success return.
+        applyRestoredFunnelSelection(pending);
         void hydratePricingForRestoredCheckout(pending.onboardingState).catch((e) => {
           console.error("[dashboard] onboarding checkout-cancel pricing restore failed:", e);
           setError(e instanceof Error ? e.message : "Could not restore your budget options. Try again.");
