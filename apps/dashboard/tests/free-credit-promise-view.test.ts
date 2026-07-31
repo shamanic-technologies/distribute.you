@@ -1,0 +1,88 @@
+import { describe, it, expect } from "vitest";
+import {
+  isEarnedByReferral,
+  isFromBeingReferred,
+  promiseTitle,
+  promiseSubtitle,
+  promiseProgressWidth,
+} from "../src/lib/free-credit-promise-view";
+
+// Alias-free module, so these are real unit tests. Keep it that way.
+
+describe("which kind of promise a row is", () => {
+  it("reads a referral the org EARNED off the referred org id", () => {
+    expect(isEarnedByReferral({ referredOrgId: "org-a" })).toBe(true);
+    expect(isFromBeingReferred({ referredOrgId: "org-a" })).toBe(false);
+  });
+
+  it("reads the invitee's own promise off the referrer id", () => {
+    expect(isFromBeingReferred({ referrerOrgId: "org-b" })).toBe(true);
+    expect(isEarnedByReferral({ referrerOrgId: "org-b" })).toBe(false);
+  });
+
+  it("treats a promise with neither as the welcome one", () => {
+    expect(isEarnedByReferral({})).toBe(false);
+    expect(isFromBeingReferred({})).toBe(false);
+    expect(promiseTitle({})).toBe("Welcome credits");
+  });
+});
+
+describe("promiseTitle", () => {
+  it("names the org that earned it, so three pending referrals are distinguishable", () => {
+    expect(promiseTitle({ referredOrgId: "org-a", referredOrgName: "Acme" })).toBe(
+      "Referral credits from Acme",
+    );
+  });
+
+  it("says nothing rather than printing a UUID when the name is missing", () => {
+    // billing resolves the display identity in a follow-up, and it is absent for
+    // good when the other org has no brand. A UUID is not an answer to "who is
+    // this", and a fabricated label is worse.
+    const t = promiseTitle({ referredOrgId: "3f1a-uuid-here" });
+    expect(t).toBe("Referral credits");
+    expect(t).not.toContain("3f1a");
+  });
+
+  it("ignores a blank name", () => {
+    expect(promiseTitle({ referredOrgId: "org-a", referredOrgName: "   " })).toBe(
+      "Referral credits",
+    );
+  });
+
+  it("does not name anyone on the invitee's own referral promise", () => {
+    // The invitee is earning it themselves; naming their referrer there would
+    // describe the wrong relationship.
+    expect(promiseTitle({ referrerOrgId: "org-b" })).toBe("Referral credits");
+  });
+});
+
+describe("promiseSubtitle", () => {
+  it("states what is LEFT to pay, not the bar", () => {
+    expect(promiseSubtitle("$500.00")).toBe("Unlocks after $500.00 more in payments.");
+  });
+
+  it("degrades to a plain sentence when there is no figure", () => {
+    expect(promiseSubtitle(null)).toBe("Unlocks with your next payments.");
+  });
+});
+
+describe("promiseProgressWidth", () => {
+  it("passes a served percentage through", () => {
+    expect(promiseProgressWidth(44)).toBe(44);
+    expect(promiseProgressWidth(0)).toBe(0);
+    expect(promiseProgressWidth(100)).toBe(100);
+  });
+
+  it("clamps a value that would paint outside its track", () => {
+    expect(promiseProgressWidth(140)).toBe(100);
+    expect(promiseProgressWidth(-5)).toBe(0);
+  });
+
+  it("renders NO bar when progress is unmeasurable, rather than a zeroed one", () => {
+    // A zeroed bar reads as "you have paid nothing", which is a different claim
+    // from "we could not measure this".
+    expect(promiseProgressWidth(null)).toBeNull();
+    expect(promiseProgressWidth(undefined)).toBeNull();
+    expect(promiseProgressWidth(Number.NaN)).toBeNull();
+  });
+});

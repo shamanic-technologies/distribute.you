@@ -1,0 +1,80 @@
+/**
+ * How an outstanding free-credit promise reads on the Billing page.
+ *
+ * A promise is money we have committed to but not granted: it unlocks once the
+ * org's cumulative payments reach a bar billing froze when the promise was
+ * created. billing-service owns every number here (amount, bar, progress); this
+ * module only decides the words, and never computes a metric.
+ *
+ * Alias-free on purpose so it carries real unit tests. Do not add an `@/…` import.
+ */
+
+/** The shape this module reads. Structural, so a producer that adds fields still works. */
+export interface PromiseView {
+  kind?: string | null;
+  referredOrgId?: string | null;
+  referrerOrgId?: string | null;
+  referredOrgName?: string | null;
+  referredOrgDomain?: string | null;
+  progressPct?: number | null;
+}
+
+/**
+ * A promise exists because someone this org referred converted.
+ *
+ * Keyed on `referredOrgId` rather than on `kind`, because the id is what the
+ * whole row is ABOUT: it is the difference between "$500 you are earning" and
+ * "$500 someone earned for you", which is the distinction the customer asked to
+ * see. A `kind` string is the producer's vocabulary and may be renamed.
+ */
+export function isEarnedByReferral(p: PromiseView): boolean {
+  return !!p.referredOrgId;
+}
+
+/** A promise the invitee holds because they signed up through someone's link. */
+export function isFromBeingReferred(p: PromiseView): boolean {
+  return !p.referredOrgId && !!p.referrerOrgId;
+}
+
+/**
+ * The row's heading.
+ *
+ * A referral row names the org that earned it when we have a name, because an
+ * inviter holding three pending $500 rows cannot otherwise tell them apart. When
+ * the name is absent it says so plainly rather than printing an id: a UUID is not
+ * an answer to "who is this", and inventing a label would be worse.
+ */
+export function promiseTitle(p: PromiseView): string {
+  if (isEarnedByReferral(p)) {
+    const name = (p.referredOrgName ?? "").trim();
+    return name ? `Referral credits from ${name}` : "Referral credits";
+  }
+  if (isFromBeingReferred(p)) return "Referral credits";
+  return "Welcome credits";
+}
+
+/**
+ * The one-line explanation under the heading.
+ *
+ * Deliberately states the REMAINING amount rather than the bar: "$500 more in
+ * payments" is actionable, where "at $900 of cumulative payments" asks the reader
+ * to do subtraction against a number they do not have on screen. `remaining` is
+ * served, never computed here.
+ */
+export function promiseSubtitle(remainingLabel: string | null): string {
+  if (!remainingLabel) return "Unlocks with your next payments.";
+  return `Unlocks after ${remainingLabel} more in payments.`;
+}
+
+/**
+ * Progress bar width, clamped to 0-100.
+ *
+ * The clamp guards the BAR, not the number: a served value outside the range
+ * would otherwise paint outside its track. It is not a fallback, since an absent
+ * progress renders no bar at all rather than a zeroed one, which would read as
+ * "you have paid nothing" for a promise we simply could not measure.
+ */
+export function promiseProgressWidth(progressPct: number | null | undefined): number | null {
+  if (typeof progressPct !== "number" || !Number.isFinite(progressPct)) return null;
+  return Math.max(0, Math.min(100, progressPct));
+}

@@ -23,6 +23,7 @@ import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { pollOptions } from "@/lib/query-options";
 import { DashboardPage } from "@/components/dashboard-page";
+import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
 
@@ -819,6 +820,13 @@ export default function BillingPage() {
             </ul>
           )}
         </div>
+
+        {/* On the way — free credits committed but not yet granted (the welcome
+            remainder, plus a promise per converting referral). Sits directly under
+            the gifts already received, because the distinction between the two is
+            the whole point: a gift is in the balance, a promise is not yet. Renders
+            nothing when the org has none coming. */}
+        <ComingCreditsCard />
 
         {/* Payments — the org's own Stripe top-up history (PaymentIntents).
             Complements the Stripe-portal "Invoices" button above: customers pay
