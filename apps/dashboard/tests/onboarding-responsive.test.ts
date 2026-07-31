@@ -39,9 +39,10 @@ describe("Onboarding mobile responsiveness", () => {
     // No 100dvh anywhere in the shell (svh via the layout column).
     expect(onboardingFlow).not.toContain("min-h-[100dvh]");
     // Every step routes through the shared shell (no inline card wrappers left):
-    // the 12 base steps + the 5 post-payment steps (celebrate / phone / ltr / model / offer).
+    // the 12 base steps + the 5 post-payment steps (celebrate / phone / ltr / model /
+    // offer) + the 3 v2 staff-preview steps (funnels / primary / funnelStats).
     const shellUses = onboardingFlow.match(/<StepShell/g) ?? [];
-    expect(shellUses.length).toBe(17);
+    expect(shellUses.length).toBe(20);
     // The removed per-step card constants must not return.
     expect(onboardingFlow).not.toContain("className={card}");
     expect(onboardingFlow).not.toContain("cardWide");

@@ -52,7 +52,10 @@ describe("Onboarding — no-website path (beta)", () => {
 
   it("skips the click-destination step in no-website mode", () => {
     // services -> objective (not destination); objective back -> services.
-    expect(src).toContain('setStep(noWebsiteMode ? "objective" : "destination")');
+    // The v2 staff preview drops the click-destination step for EVERY brand (it asks
+    // for a destination per sales funnel after payment instead), so the GA branch now
+    // sits behind the variant check — no-website still never reaches "destination".
+    expect(src).toContain('setStep(isV2 ? "audiences" : noWebsiteMode ? "objective" : "destination")');
     expect(src).toContain('setStep(noWebsiteMode ? "services" : "destination")');
   });
 
