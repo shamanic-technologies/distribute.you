@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useOrganization } from "@clerk/nextjs";
 import { useFeatures } from "@/lib/features-context";
 import { Skeleton } from "@/components/skeleton";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -15,7 +14,6 @@ import { TenantSwitcher } from "@/components/tenant-switcher";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
-import { InfoTooltip } from "@/components/visibility/metric-info";
 
 interface SidebarItem {
   id: string;
@@ -348,68 +346,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
   );
 }
 
-// Derive a domain-shaped string from the org name (onboarding sets org name =
-// brand domain). Mirrors the helper in breadcrumb-nav.tsx.
-function orgDomainFromName(name?: string | null): string | null {
-  if (!name) return null;
-  const candidate = name.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
-  return /^[^\s]+\.[^\s]+$/.test(candidate) ? candidate : null;
-}
-
-const CopyIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-  </svg>
-);
-
-// Referral card — anchored at the very bottom of the brand sidebar. No backend:
-// the invite link is just the landing URL carrying a UTM with the user's
-// org-domain. Copy referral terms are hardcoded copy.
-function ReferralCard() {
-  const { organization } = useOrganization();
-  const [copied, setCopied] = useState(false);
-  const campaign = orgDomainFromName(organization?.name) ?? organization?.id ?? "referral";
-  const link = `https://distribute.you?utm_source=referral&utm_medium=invite&utm_campaign=${encodeURIComponent(campaign)}`;
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="p-2">
-      <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 space-y-2">
-        <div className="flex items-start gap-1">
-          <p className="text-xs font-semibold text-gray-700 leading-snug">
-            Give and get $75 credits
-          </p>
-          <span className="shrink-0 mt-0.5">
-            <InfoTooltip
-              tip="We double up to $75 the budget spent by the person you invite for their first day. When they do, we do the same on your next daily amount."
-              placement="bottom"
-            />
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={copy}
-          className="flex w-full items-center justify-center gap-1.5 rounded-md bg-white border border-brand-200 px-2.5 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-100 transition"
-        >
-          {copied ? <CheckIcon /> : <CopyIcon />}
-          {copied ? "Copied" : "Copy invite link"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // Brand Level Sidebar — the product ships the primary feature at the brand level,
 // so everything collapses to the brand level: Overview, the entity Database,
 // and the Brand Settings entry. The sole feature's slug is
@@ -547,7 +483,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               />
             )}
           </div>
-          <ReferralCard />
         </div>
       }
     >
@@ -656,7 +591,6 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
               isActive={pathname === `${basePath}/settings`}
             />
           </div>
-          <ReferralCard />
         </div>
       }
     >

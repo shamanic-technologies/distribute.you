@@ -150,7 +150,7 @@ describe("Tenant switcher", () => {
     // picker now, so the whole org nav level is gone.
     const orgLevel = sidebar.slice(
       sidebar.indexOf("function OrgLevelSidebar"),
-      sidebar.indexOf("function orgDomainFromName"),
+      sidebar.indexOf("function BrandLevelSidebar"),
     );
     expect(orgLevel).not.toContain('label: "Overview"');
     expect(orgLevel).toContain("<SidebarSection topSlot={<TenantSwitcher />}>");

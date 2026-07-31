@@ -277,7 +277,7 @@ if (tocLinks.length) {
 /* ═══════════════════════════════════════════════
    CUSTOM PRICING MODAL (onboarding-style, no signup)
    Reproduces the onboarding pricing steps (goal → your
-   price per outcome → $25 credit → budget) then hands off
+   price per outcome → $400 credit → budget) then hands off
    to signup. Price = the cost per outcome of the BEST
    workflow (lowest cost-per-outcome), taken straight from
    features-service via the public per-workflow endpoint —
@@ -433,7 +433,7 @@ if (tocLinks.length) {
     if (next) next.addEventListener('click', function () { if (state.goal) { state.count = null; state.step = 1; render(); } });
   }
 
-  /* Step 2 — price + $25 credit + budget + get started */
+  /* Step 2 — price + $400 credit + budget + get started */
   function renderResult() {
     var g = state.goal;
     var uc = unitCostFor(g);              // BIG number (best avg-100), or undefined while loading
@@ -478,12 +478,12 @@ if (tocLinks.length) {
     }
     var startDisabled = state.count == null || state.budgetUnitCost == null;
     body.innerHTML = priceBlock()
-      + '<div class="pm-credit"><div><div class="pm-credit-t">Your first $25 is on us.</div>'
-      + '<div class="pm-credit-d">$5 lands the moment you sign up, the rest once your payments reach $25.</div></div></div>'
+      + '<div class="pm-credit"><div><div class="pm-credit-t">Your first $400 is on us.</div>'
+      + '<div class="pm-credit-d">$5 lands the moment you sign up, the rest once your payments reach $400.</div></div></div>'
       + tiersBlock()
       + summaryBlock()
       + '<div class="pm-nav"><button type="button" class="pm-back" data-back>← Back</button>'
-      + '<button type="button" class="btn btn-p btn-lg" data-start' + (startDisabled ? ' disabled' : '') + '>Get started. $25 free →</button></div>';
+      + '<button type="button" class="btn btn-p btn-lg" data-start' + (startDisabled ? ' disabled' : '') + '>Get started. $400 free →</button></div>';
 
     // Still loading either source → re-render once it lands to fill the price + $/day.
     function reRenderIfOpen() { if (state.step === 1 && overlay.classList.contains('open')) renderResult(); }

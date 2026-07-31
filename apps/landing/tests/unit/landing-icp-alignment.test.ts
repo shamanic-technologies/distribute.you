@@ -86,8 +86,8 @@ describe("Landing page: cold-email-only focus", () => {
     expect(page).toMatch(/\$1\.42/);
   });
 
-  it("mentions $25 free credits in the hero CTA", () => {
-    expect(page).toMatch(/\$25.*credit|credit.*\$25/i);
+  it("mentions $400 free credits in the hero CTA", () => {
+    expect(page).toMatch(/\$400.*credit|credit.*\$400/i);
   });
 
   it("uses the new DS navbar and footer components", () => {
@@ -166,7 +166,7 @@ describe("FreeVsCloud component", () => {
   });
 
   it("renders the single Pay-as-you-go cloud tier (self-host removed per ICP simplification)", () => {
-    expect(content).toMatch(/Pay-as-you-go|pay.as.you.go|\$25.*credit/i);
+    expect(content).toMatch(/Pay-as-you-go|pay.as.you.go|\$400.*credit/i);
     expect(content).not.toMatch(/Self-host|self.host/i);
   });
 });
