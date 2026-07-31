@@ -80,6 +80,43 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     expect(api).toContain("groupBy: \"campaignId\"");
   });
 
+  // Return leads, because that is what the table is sorted by. A table that
+  // displays one order and ranks by another reads as unordered.
+  it("orders the columns ROI, % CAC, Revenue, Channel, Goal, Status", () => {
+    const head = page.slice(page.indexOf("<thead>"), page.indexOf("</thead>"));
+    const order = ["ROI", "% CAC", "Revenue", "Channel", "Goal", "Status"];
+    let at = -1;
+    for (const label of order) {
+      const next = head.indexOf(`${label}"`) >= 0 ? head.indexOf(`${label}"`) : head.indexOf(label);
+      expect(next).toBeGreaterThan(at);
+      at = next;
+    }
+    // The per-campaign $ CAC column is gone; the brand-level tile still heads
+    // the page.
+    expect(head).not.toContain("$ CAC");
+    expect(page).toContain("Cost per acquisition");
+  });
+
+  it("sorts by ROI descending, and the #1 tile reads that same ranking", () => {
+    expect(page).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
+    expect(page).toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
+  });
+
+  // Every number on the row is a projection built from the brand's own rates, so
+  // each column says so through the shared (i) primitive — never a native
+  // `title` (dead on a phone) and never a second wording per column.
+  it("explains each number column through InfoTooltip", () => {
+    expect(page).toContain("InfoTooltip");
+    expect(page).not.toContain("title=");
+    expect(page).toContain("COLUMN_INFO.roi");
+    expect(page).toContain("COLUMN_INFO.cacPct");
+    expect(page).toContain("COLUMN_INFO.revenue");
+    // The revenue column is expected pipeline, not money collected — the whole
+    // reason it carries a tip.
+    expect(page).toContain("Expected pipeline revenue:");
+    expect(page).toContain("not money already collected");
+  });
+
   it("renders all four campaign stats from server fields, no client cost math", () => {
     // Fields come straight off the features-service group.
     expect(page).toContain("totalPipelineUsd");
