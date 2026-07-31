@@ -97,6 +97,15 @@ import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { SALES_FUNNELS } from "@/lib/sales-funnels";
+import {
+  orderedForDetail,
+  resolvePrimaryKey,
+  selectableFunnels,
+  toFunnelViews,
+  type FunnelCatalogueEntry,
+  type FunnelView,
+} from "@/lib/onboarding-funnel-view";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import {
   formatLocaleInteger,
@@ -139,6 +148,25 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Which flow a mount renders. `"ga"` is the customer flow and is the default at
+ * every call site that does not say otherwise, so nothing about it moves.
+ *
+ * `"v2"` is the staff preview: audiences come before the sales funnels, the
+ * click-destination and single-goal steps are gone, the brand states every
+ * funnel it sells through and which one it wants us on first, and the detail of
+ * each funnel (its rates, its lifetime revenue, its destination) is collected
+ * after payment instead of before it. Every v2 branch in this file is guarded on
+ * this value, so the GA path cannot change shape by accident.
+ *
+ * Nothing in v2 writes except the primary funnel's goal, which is an existing
+ * per-brand field on an existing route. The per-funnel rates / lifetime revenue
+ * / destinations are a preview: brand-service stores ONE lifetime revenue and
+ * ONE click destination per brand and has no booking-link field, so saving them
+ * would silently drop most of what the user typed.
+ */
+export type OnboardingVariant = "ga" | "v2";
+
 type Step =
   | "welcome"
   | "url"
@@ -148,6 +176,11 @@ type Step =
   | "objective"
   | "rates"
   | "audiences"
+  // v2 only — the brand states every funnel it sells through, then which one we
+  // optimize for first. Added to ALL_STEPS below, which only WIDENS the set a
+  // persisted snapshot may carry, so no ONBOARDING_STATE_VERSION bump is needed.
+  | "funnels"
+  | "primary"
   | "consent"
   | "pricing"
   | "bonus"
@@ -159,6 +192,9 @@ type Step =
   | "celebrate"
   | "phone"
   | "ltr"
+  // v2 only — replaces `ltr`. One screen per selected funnel, primary first,
+  // collecting that funnel's own rates / lifetime revenue / destination.
+  | "funnelStats"
   | "model"
   | "offer"
   | "launching";
@@ -642,8 +678,11 @@ function isRateTextRecord(value: unknown): value is Record<RateKey, string> {
   const keys: RateKey[] = ["ltv", "v2s", "s2c", "v2m", "r2m", "m2c", "v2p", "r2p", "v2f", "f2p"];
   return keys.every((k) => typeof (value as Record<string, unknown>)[k] === "string");
 }
+// Widening only: a snapshot written before the v2 steps existed still names a
+// step in this list, so old snapshots keep parsing and ONBOARDING_STATE_VERSION
+// stays put (a bump strands an in-flight checkout).
 const ALL_STEPS: Step[] = [
-  "welcome", "url", "loading", "services", "destination", "objective", "rates", "audiences", "consent", "pricing", "bonus", "launching",
+  "welcome", "url", "loading", "services", "destination", "objective", "rates", "audiences", "funnels", "primary", "consent", "pricing", "bonus", "launching",
 ];
 
 function parseOnboardingState(value: unknown): PersistedOnboardingState | null {
@@ -723,7 +762,8 @@ function resolveResumeStep(step: Step, brandId: string | null): Step {
   return step;
 }
 
-export function Onboarding() {
+export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } = {}) {
+  const isV2 = variant === "v2";
   const router = useRouter();
   const searchParams = useSearchParams();
   const { organization } = useOrganization();
@@ -801,6 +841,28 @@ export function Onboarding() {
 
   const [outcome, setOutcome] = useState<Outcome>(() => restored?.outcome ?? "signups");
   const isBeta = useIsBetaUser();
+
+  // ── v2: the sales funnels the brand sells through ───────────────────────────
+  // Read straight off the shared catalogue through the display adapter, so the
+  // fourth funnel and the per-funnel names landing in the settings-card redesign
+  // show up here with no edit. Deliberately EPHEMERAL (absent from the persisted
+  // snapshot): adding fields there means bumping ONBOARDING_STATE_VERSION, which
+  // strands an in-flight checkout, and nothing here is written yet anyway.
+  const funnelViews = toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[]);
+  const offeredFunnels = selectableFunnels(funnelViews, !noWebsiteMode);
+  const [selectedFunnelKeys, setSelectedFunnelKeys] = useState<string[]>([]);
+  const [primaryFunnelKey, setPrimaryFunnelKey] = useState<string | null>(null);
+  // Per-funnel draft answers for the post-payment detail screens, keyed by funnel.
+  // Each holds that funnel's rate fields plus its own lifetime revenue and
+  // destination — a self-serve signup customer and an enterprise meeting customer
+  // are not worth the same and do not land on the same page.
+  const [funnelDrafts, setFunnelDrafts] = useState<
+    Record<string, { rates: Record<string, string>; ltr: string; destination: string }>
+  >({});
+  const [funnelIndex, setFunnelIndex] = useState(0);
+  const selectedFunnels = offeredFunnels.filter((f) => selectedFunnelKeys.includes(f.key));
+  const detailFunnels = orderedForDetail(selectedFunnels, primaryFunnelKey);
+  const primaryFunnel = selectedFunnels.find((f) => f.key === primaryFunnelKey) ?? null;
   const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ...DEFAULT_RATES });
   const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ...DEFAULT_RATE_TEXT });
   const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
@@ -2166,7 +2228,133 @@ export function Onboarding() {
         setBusy(false);
       }
     }
-    setStep("ltr");
+    // v2 collects the economics per FUNNEL instead of one lifetime revenue, so
+    // the single-LTR screen is replaced by one screen per selected funnel.
+    setFunnelIndex(0);
+    setStep(isV2 ? "funnelStats" : "ltr");
+  }
+
+  // v2 — the primary funnel IS the brand's optimization goal, so picking it writes
+  // that existing per-brand field on the existing route. It is the only write in
+  // this flow, and it has to happen here: the budget step immediately after prices
+  // the outcome this funnel buys, and the projection is resolved per goal.
+  //
+  // Every OTHER core metric is restated from the WIRE via buildEconomicsPayload
+  // (rendered keys = none), never from client state — this step shows no rate, so
+  // it has no business overwriting one.
+  async function savePrimaryFunnelAndContinue() {
+    const goal = primaryFunnel?.goal;
+    const nextOutcome = OUTCOMES.find((o) => o.key === goal)?.key ?? null;
+    if (!nextOutcome) {
+      setError("Pick the path you want us on first.");
+      return;
+    }
+    setOutcome(nextOutcome);
+    const id = brandIdRef.current;
+    if (!id) {
+      // No brand yet (fast click-through): the goal rides in local state and the
+      // launch writes it. Nothing to persist here, so do not block the step.
+      setError(null);
+      setStep("consent");
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      const payload = await buildEconomicsPayload(id, [], rates);
+      const { salesEconomics } = await saveBrandSalesEconomics(id, {
+        ...payload,
+        optimizationGoal: nextOutcome,
+      });
+      rememberSavedEconomics(salesEconomics);
+      setStep("consent");
+    } catch (err) {
+      if (isInsufficientCredit(err)) {
+        creditRetryRef.current = () => savePrimaryFunnelAndContinue();
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Could not save the path you picked.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // v2 — the draft shown for one funnel's detail screen. Falls back in CASCADE so
+  // the second path is never a blank form: a value the user already typed on an
+  // earlier path seeds this one, then whatever the brand actually saved, then
+  // empty. Typing here overrides for this funnel only.
+  function funnelDraft(funnel: FunnelView): { rates: Record<string, string>; ltr: string; destination: string } {
+    const own = funnelDrafts[funnel.key];
+    const typedElsewhere = detailFunnels
+      .filter((f) => f.key !== funnel.key)
+      .map((f) => funnelDrafts[f.key])
+      .filter((d): d is NonNullable<typeof d> => Boolean(d));
+    const inheritedLtr = typedElsewhere.find((d) => d.ltr.trim())?.ltr ?? "";
+    const inheritedDestination = typedElsewhere.find((d) => d.destination.trim())?.destination ?? "";
+    return {
+      rates: own?.rates ?? {},
+      ltr: own?.ltr ?? inheritedLtr ?? rateText.ltv,
+      // A page destination defaults to the brand's own click destination; a booking
+      // link has no counterpart on the brand, so it starts empty rather than
+      // guessing a scheduling URL the brand may not have.
+      destination:
+        own?.destination ??
+        inheritedDestination ??
+        (funnel.destination?.label.toLowerCase().includes("booking") ? "" : defaultDestinationUrl),
+    };
+  }
+
+  function editFunnelDraft(
+    funnel: FunnelView,
+    patch: { rates?: Record<string, string>; ltr?: string; destination?: string },
+  ) {
+    const current = funnelDraft(funnel);
+    setFunnelDrafts((prev) => ({
+      ...prev,
+      [funnel.key]: {
+        rates: { ...current.rates, ...(patch.rates ?? {}) },
+        ltr: patch.ltr ?? current.ltr,
+        destination: patch.destination ?? current.destination,
+      },
+    }));
+  }
+
+  // v2 — "at your budget, this path builds $X of pipeline a month".
+  //
+  // ⚠️ This is the ONE number on the v2 preview that is derived in the browser, and
+  // it must not stay that way: features-service owns every displayed stat, and two
+  // browser-derived numbers on one card is exactly how surfaces drift. There is no
+  // served field for it today (the projection returns cost per outcome, cost per
+  // paid client, the ROI multiple and the CAC share — not a budget-scaled pipeline),
+  // so the request is filed against features-service and this reads from the fields
+  // that ARE served until it lands.
+  //
+  // Returns null — not a zero, not a guess — whenever any input is missing, so an
+  // unpriceable path says nothing rather than promising nothing.
+  function monthlyPipelineLabel(resolved: { costPerPaidClientUsd: number | null } | null): string | null {
+    const budget = budgetForCharge();
+    const costPerClient = resolved?.costPerPaidClientUsd ?? null;
+    const ltr = rates.ltv;
+    if (budget == null || budget <= 0) return null;
+    if (costPerClient == null || costPerClient <= 0) return null;
+    if (!ltr || ltr <= 0) return null;
+    const clientsPerMonth = (budget * 30) / costPerClient;
+    const pipeline = clientsPerMonth * ltr;
+    if (!Number.isFinite(pipeline) || pipeline <= 0) return null;
+    return `$${formatLocaleInteger(Math.round(pipeline))}`;
+  }
+
+  // v2 — advance through the per-funnel detail screens, then on to the projection.
+  // Nothing is persisted: brand-service stores ONE lifetime revenue and ONE click
+  // destination per brand and has no booking-link field, so a save here would drop
+  // most of what was typed. The screens state that they are a preview.
+  function continueFunnelStats() {
+    if (funnelIndex < detailFunnels.length - 1) {
+      setFunnelIndex((i) => i + 1);
+      return;
+    }
+    setOfferIndex(0);
+    setStep("model");
   }
 
   // Persist the confirmed lifetime revenue / paid client, then advance to the
@@ -2449,10 +2637,40 @@ export function Onboarding() {
           </button>
         }
       >
-        <h1 className="font-display text-4xl font-bold leading-tight text-gray-950">Pay per outcome, like Google Ads.</h1>
-        <p className="mt-3 text-base leading-7 text-gray-500">Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales.</p>
+        {/* v2 continues the landing: the visitor clicked "Launch from my website" on
+            a page headlined "Sell like crazy, autonomously.", so the first screen after
+            signup repeats that promise rather than re-pitching a converted user with a
+            different one. The three cards stop being a feature tour (which NN/g's
+            "skip onboarding when possible" says to cut) and answer the objections that
+            actually stand between this screen and the URL field. */}
+        <h1 className="font-display text-4xl font-bold leading-tight text-gray-950">
+          {isV2 ? "Sell like crazy, autonomously." : "Pay per outcome, like Google Ads."}
+        </h1>
+        <p className="mt-3 text-base leading-7 text-gray-500">
+          {isV2
+            ? "Drop your website. We find the buyers, reach out on your behalf, and forward the interested replies to your inbox. You handle the closing."
+            : "Drop your product URL and a daily budget. We find your leads, reach out across the best channels on your behalf, and turn them into signups, meetings and sales."}
+        </p>
         <div className="mt-7 grid gap-4 sm:grid-cols-3">
-          {[
+          {(isV2
+            ? [
+                {
+                  title: "We send, not you",
+                  desc: "Outreach goes out from our own domains. Yours is never touched.",
+                  Icon: ShieldCheckIcon,
+                },
+                {
+                  title: "You set the ceiling",
+                  desc: "You authorize a daily budget and pay that, nothing else. No seat, no retainer.",
+                  Icon: CreditCardIcon,
+                },
+                {
+                  title: "Pause anytime",
+                  desc: "One click stops the spend. You keep every conversation it started.",
+                  Icon: TrophyIcon,
+                },
+              ]
+            : [
             {
               title: "Drop your URL",
               desc: "We read your product and buyer profile.",
@@ -2468,7 +2686,7 @@ export function Onboarding() {
               desc: "Signups, meetings, and sales land back with you.",
               Icon: TrophyIcon,
             },
-          ].map((f) => (
+          ]).map((f) => (
             <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600">
                 <f.Icon className="h-5 w-5" />
@@ -2575,7 +2793,7 @@ export function Onboarding() {
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
-        footer={<NextButton onClick={() => { addService(serviceDraft); setStep(noWebsiteMode ? "objective" : "destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
+        footer={<NextButton onClick={() => { addService(serviceDraft); setStep(isV2 ? "audiences" : noWebsiteMode ? "objective" : "destination"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
       >
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
         <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
@@ -2792,10 +3010,105 @@ export function Onboarding() {
         onCandidatesChange={setAudienceCandidates}
         selectedAudienceIds={selectedAudienceIds}
         onSelectedAudienceIdsChange={setSelectedAudienceIds}
-        onBack={() => setStep("rates")}
-        onContinue={() => setStep("consent")}
+        onBack={() => setStep(isV2 ? "services" : "rates")}
+        onContinue={() => setStep(isV2 ? "funnels" : "consent")}
         onEdit={() => setStep("url")}
       />
+    );
+  }
+
+  // v2 — every way the brand sells. Selection only: no rates, no lifetime revenue,
+  // no destination URL. Those are asked once per funnel after payment, so this step
+  // stays a single question ("which chains do you sell through?") instead of a form.
+  if (step === "funnels") {
+    return (
+      <StepShell
+        maxWidth="sm:max-w-2xl"
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
+        footer={
+          <NextButton
+            onClick={() => {
+              setPrimaryFunnelKey((current) => resolvePrimaryKey(selectedFunnelKeys, current));
+              setStep("primary");
+            }}
+            disabled={selectedFunnelKeys.length === 0}
+            label="Continue"
+          />
+        }
+      >
+        <BackButton onClick={() => setStep("audiences")} />
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-2xl font-bold text-gray-900">How do you sell?</h2>
+          <MaturityBadge level="beta" />
+        </div>
+        <p className="mt-2 mb-6 text-gray-500">
+          Pick every path a prospect can take to become a paying customer. You can pick more than one — we ask for the numbers behind each one once you are set up.
+        </p>
+        <div className="space-y-3">
+          {offeredFunnels.map((f) => (
+            <FunnelSelectCard
+              key={f.key}
+              funnel={f}
+              selected={selectedFunnelKeys.includes(f.key)}
+              onToggle={() =>
+                setSelectedFunnelKeys((prev) => {
+                  const next = prev.includes(f.key) ? prev.filter((k) => k !== f.key) : [...prev, f.key];
+                  // A primary that just got deselected hands the role to another
+                  // selected funnel — a selection with no primary has no goal for
+                  // the budget step to price.
+                  setPrimaryFunnelKey((current) => resolvePrimaryKey(next, current));
+                  return next;
+                })
+              }
+            />
+          ))}
+        </div>
+        {noWebsiteMode && (
+          <p className="mt-4 text-xs leading-5 text-gray-400">
+            Paths that start with a click onto your website are hidden because this brand has no site.
+          </p>
+        )}
+      </StepShell>
+    );
+  }
+
+  // v2 — which of the picked funnels we optimize for first. This is the brand's
+  // optimization goal, and it is the ONE thing this flow writes: the budget step
+  // right after prices the outcome this funnel buys.
+  if (step === "primary") {
+    return (
+      <StepShell
+        maxWidth="sm:max-w-2xl"
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
+        footer={
+          <NextButton
+            onClick={savePrimaryFunnelAndContinue}
+            disabled={!primaryFunnel || busy}
+            busy={busy}
+            label="Continue"
+          />
+        }
+      >
+        <BackButton onClick={() => setStep("funnels")} />
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-2xl font-bold text-gray-900">Which one first?</h2>
+          <MaturityBadge level="beta" />
+        </div>
+        <p className="mt-2 mb-6 text-gray-500">
+          We put your budget behind one path to start. The others stay on your account and you can switch at any time.
+        </p>
+        <div className="space-y-3">
+          {selectedFunnels.map((f) => (
+            <FunnelSelectCard
+              key={f.key}
+              funnel={f}
+              selected={primaryFunnelKey === f.key}
+              radio
+              onToggle={() => setPrimaryFunnelKey(f.key)}
+            />
+          ))}
+        </div>
+      </StepShell>
     );
   }
 
@@ -2805,7 +3118,7 @@ export function Onboarding() {
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
       >
-          <BackButton onClick={() => setStep("audiences")} />
+          <BackButton onClick={() => setStep(isV2 ? "primary" : "audiences")} />
           <div className="mb-4 flex items-start gap-2">
             <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
             <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
@@ -2854,7 +3167,7 @@ export function Onboarding() {
         <p className="mb-6 text-sm leading-6 text-gray-500">Optional. We only use it to reach you quickly about your own campaign, never for outreach. Add it or skip it.</p>
         <PhoneInput value={phone} onChange={setPhone} autoFocus />
         <button
-          onClick={() => setStep("ltr")}
+          onClick={() => { setFunnelIndex(0); setStep(isV2 ? "funnelStats" : "ltr"); }}
           className="mt-4 text-sm text-gray-400 underline transition hover:text-gray-600"
         >
           Skip for now
@@ -2902,6 +3215,114 @@ export function Onboarding() {
     );
   }
 
+  // v2 — one screen per selected funnel, primary first. Replaces the single
+  // lifetime-revenue screen: a self-serve signup customer and an enterprise
+  // meeting customer are not worth the same and do not land on the same page,
+  // so each funnel carries its own rates, its own lifetime revenue and its own
+  // destination.
+  //
+  // PREVIEW: nothing here is written. brand-service stores one lifetime revenue
+  // and one click destination per brand and has no booking-link field at all, so
+  // a save would silently drop most of this. The screen says so rather than
+  // pretending the values persisted.
+  if (step === "funnelStats") {
+    const funnel = detailFunnels[funnelIndex];
+    if (!funnel) {
+      // No funnel picked (a resumed session that never saw the funnels step) —
+      // there is nothing to ask, so fall through to the projection.
+      setOfferIndex(0);
+      setStep("model");
+      return null;
+    }
+    const draft = funnelDraft(funnel);
+    const isLast = funnelIndex === detailFunnels.length - 1;
+    return (
+      <StepShell
+        maxWidth="sm:max-w-2xl"
+        header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
+        footer={<NextButton onClick={continueFunnelStats} label={isLast ? "Continue" : "Next path"} />}
+      >
+        <BackButton
+          onClick={() => (funnelIndex > 0 ? setFunnelIndex((i) => i - 1) : setStep("phone"))}
+        />
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
+          Your paths · {funnelIndex + 1} of {detailFunnels.length}
+        </div>
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
+          {funnel.key === primaryFunnelKey && (
+            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+              First
+            </span>
+          )}
+          <MaturityBadge level="beta" />
+        </div>
+        <FunnelChain steps={funnel.steps} tone={funnel.tone} />
+        <p className="mt-4 mb-5 text-sm leading-6 text-gray-500">
+          What this path is worth to you, and where it sends people. We prefilled it from what we already know — correct anything that is off.
+        </p>
+
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4">
+          {funnel.rates.map((rate) => (
+            <label key={rate.key} className="flex flex-col gap-1">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                {rate.label}
+                {rate.tip && <InfoTooltip tip={rate.tip} />}
+              </span>
+              <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={draft.rates[rate.key] ?? ""}
+                  onChange={(e) => editFunnelDraft(funnel, { rates: { [rate.key]: e.target.value } })}
+                  className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
+                />
+                <span className="text-sm text-gray-500">%</span>
+              </span>
+            </label>
+          ))}
+
+          <label className="flex flex-col gap-1">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+              Lifetime revenue per paid client
+              <InfoTooltip tip="Average revenue a customer won through this path brings over their lifetime." />
+            </span>
+            <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
+              <span className="text-sm text-gray-500">$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={draft.ltr}
+                onChange={(e) => editFunnelDraft(funnel, { ltr: e.target.value })}
+                className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
+              />
+            </span>
+          </label>
+
+          {funnel.destination && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-700">{funnel.destination.label}</span>
+              <input
+                type="text"
+                value={draft.destination}
+                onChange={(e) => editFunnelDraft(funnel, { destination: e.target.value })}
+                placeholder={funnel.destination.placeholder}
+                className="w-full min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:border-brand-400 focus:outline-none"
+              />
+              {funnel.destination.hint && (
+                <span className="text-[11px] leading-5 text-gray-400">{funnel.destination.hint}</span>
+              )}
+            </label>
+          )}
+        </div>
+
+        <p className="mt-3 text-[11px] leading-5 text-gray-400">
+          Preview — per-path numbers are not stored yet. Your account keeps the single set you already confirmed.
+        </p>
+      </StepShell>
+    );
+  }
+
   if (step === "model") {
     const goal = optimizationGoalForOutcome(outcome);
     const rows = bestModelLadder?.rows ?? [];
@@ -2926,11 +3347,48 @@ export function Onboarding() {
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} />}
         footer={<NextButton onClick={() => setStep("offer")} label="Continue" />}
       >
-        <BackButton onClick={() => setStep("ltr")} />
-        <h2 className="font-display text-2xl font-bold text-gray-900">Your best model.</h2>
+        <BackButton
+          onClick={() => {
+            if (!isV2) { setStep("ltr"); return; }
+            setFunnelIndex(Math.max(0, detailFunnels.length - 1));
+            setStep("funnelStats");
+          }}
+        />
+        {/* v2 drops the "model" vocabulary entirely — a customer does not care which
+            model produced the number, only what the path is worth. The headline names
+            the FUNNEL; the machinery behind it stays out of the copy. */}
+        <h2 className="font-display text-2xl font-bold text-gray-900">
+          {isV2 ? "Your most profitable path with us." : "Your best model."}
+        </h2>
         <p className="mt-2 mb-6 text-gray-500">
-          Based on your numbers, here is the model we will run for you and what each outcome should cost. These are the same projections you will see on your Strategy page.
+          {isV2
+            ? "Based on your numbers, here is what your first path should return and what each outcome should cost. Estimated from companies like yours until your own results come in."
+            : "Based on your numbers, here is the model we will run for you and what each outcome should cost. These are the same projections you will see on your Strategy page."}
         </p>
+        {isV2 && primaryFunnel && (
+          <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex items-center gap-3">
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${primaryFunnel.tone.iconBg} ${primaryFunnel.tone.iconText}`}>
+                <span className="text-xs font-bold">1</span>
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900">{primaryFunnel.title}</div>
+                <FunnelChain steps={primaryFunnel.steps} tone={primaryFunnel.tone} />
+              </div>
+            </div>
+            {monthlyPipelineLabel(resolved) && (
+              <div className="mt-3 border-t border-gray-100 pt-3 text-sm text-gray-600">
+                At your budget, this path should build{" "}
+                <span className="font-semibold text-gray-900">{monthlyPipelineLabel(resolved)}</span> of pipeline a month.
+              </div>
+            )}
+            {selectedFunnels.length > 1 && (
+              <p className="mt-3 text-[11px] leading-5 text-gray-400">
+                Your other {selectedFunnels.length - 1 === 1 ? "path is" : "paths are"} saved on your account. We report on them once they have results of their own.
+              </p>
+            )}
+          </div>
+        )}
         {/* The numbers the projection below is computed from. Without them on screen a
             return under 1x reads as the model being bad, when it is almost always the
             lifetime revenue being small. Editable, because the fix is to correct them. */}
@@ -3723,6 +4181,69 @@ function NextButton({ onClick, disabled = false, busy = false, label = "Continue
   return (
     <button onClick={onClick} disabled={disabled || busy} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
       {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Saving…</> : <>{label} <ArrowRightIcon className="h-4 w-4" /></>}
+    </button>
+  );
+}
+
+// The funnel's chain, rendered under its title. Discreet on purpose: the name is
+// what identifies the path, the chain is the reminder of what it means.
+function FunnelChain({ steps, tone }: { steps: string[]; tone: { iconBg: string; iconText: string } }) {
+  if (steps.length === 0) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500">
+      {steps.map((s, i) => (
+        <span key={`${s}-${i}`} className="flex items-center gap-1.5">
+          {i > 0 && <span className={tone.iconText}>→</span>}
+          <span>{s}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// One sales funnel, as a selectable card: a tone-coloured mark tall enough to
+// cover both text rows, the funnel's NAME as the heading, and its chain under it
+// in a lighter weight. `radio` switches the control from multi-select to the
+// single "which one first?" pick — same card, so the two steps read as one idea.
+function FunnelSelectCard({
+  funnel,
+  selected,
+  onToggle,
+  radio = false,
+}: {
+  funnel: FunnelView;
+  selected: boolean;
+  onToggle: () => void;
+  radio?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left transition ${selected ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}
+    >
+      <span
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${funnel.tone.iconBg} ${funnel.tone.iconText}`}
+      >
+        <span className="flex flex-col items-center gap-[3px]">
+          {funnel.steps.slice(0, 4).map((s, i) => (
+            <span
+              key={`${s}-${i}`}
+              className="block h-[3px] rounded-full bg-current"
+              style={{ width: `${18 - i * 3}px` }}
+            />
+          ))}
+        </span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-gray-900">{funnel.title}</span>
+        <FunnelChain steps={funnel.steps} tone={funnel.tone} />
+      </span>
+      <span
+        className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${radio ? "rounded-full" : "rounded-md"} ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}
+      >
+        {selected && <CheckIcon className="h-3 w-3" />}
+      </span>
     </button>
   );
 }
