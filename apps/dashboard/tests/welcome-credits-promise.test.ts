@@ -12,12 +12,20 @@ import { join } from "node:path";
  * Stripe discount instead, and the buyer still pays $25, so the same sentence
  * holds in both branches.
  *
- * Two claims that were live for months and are FALSE:
- *   - a per-dollar match ("we match it, $1 for $1"). It is a flat $25 gated at a
- *     $25 threshold, so paying $10 earns nothing at all, let alone $10.
+ * Two claims are FALSE and stay banned:
+ *   - a PER-DOLLAR match ("$1 for $1", "dollar for dollar"). That reads as
+ *     proportional at any amount, so it promises $10 back on a $10 payment, and
+ *     nothing pays out below the $25 threshold.
  *   - a SPEND trigger ("once your spend reaches $25"). The account is
  *     threshold-postpaid, so an org can consume on credit long before it pays
  *     anything; the gift is earned on money received, never on usage.
+ *
+ * "We will match your first $25 with $25 free credits" is ALLOWED, by owner
+ * decision (2026-07-31). It names the $25 threshold and the $25 payout — the two
+ * numbers that are true — and claims nothing about smaller amounts. The earlier
+ * ban treated it as equivalent to the per-dollar claim; it is not, and the $5 that
+ * lands up front does not change the concept the sentence describes. This is
+ * marketing copy, not a contract. Do not re-add the pattern.
  *
  * These guards read the served files directly because the surfaces span two
  * apps and only the dashboard suite is a CI merge gate. `archive-blue.html` is
@@ -41,7 +49,6 @@ const SURFACES = [
 const FALSE_CLAIMS: ReadonlyArray<readonly [RegExp, string]> = [
   [/dollar for dollar/i, "not a per-dollar match: flat $25 gated at $25 of payments"],
   [/\$1 for \$1/, "not a per-dollar match: flat $25 gated at $25 of payments"],
-  [/we match (it|your first)/i, "not a match at all, it is a fixed gift"],
   [/spend reaches \$25/i, "the trigger is payments received, not usage consumed"],
   [/\$25 (of )?spend(ing)? dollar/i, "the trigger is payments received, not usage consumed"],
 ];
