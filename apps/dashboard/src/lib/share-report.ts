@@ -12,12 +12,15 @@ import "server-only";
  * exactly the secret that must not leak.
  *
  * WHAT COMES BACK is brand-service's own public-safe brand payload — the same
- * shape `GET /public/brands/{id}` already serves, so nothing new is exposed. It
- * carries no org id, no money (spend, budget, cost per outcome, ROI, credits)
- * and no prospect PII. This file deliberately adds NO second call: the resolve
- * returns no org id, and the outreach figures live behind org-scoped endpoints,
- * so there is nothing here to enrich it with. Do not invent an org lookup to get
- * around that — the producer owns what a credential unlocks.
+ * shape `GET /public/brands/{id}` already serves — PLUS the org that brand
+ * belongs to. The org is what makes the full share view possible: every outreach
+ * figure the shared pages render is served per-organisation, so the credential
+ * alone opens nothing. It comes from the producer because the producer is the one
+ * that knows; this file must never derive or look it up some other way.
+ *
+ * The org id is NOT a second credential and is never treated as one. It only ever
+ * reaches the share proxy, which pairs it with the brand this same call named and
+ * refuses every read that is not about that brand.
  */
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
@@ -29,6 +32,8 @@ export interface SharedBrand {
   domain: string | null;
   url: string | null;
   logoUrl: string | null;
+  /** The organisation that owns this brand, per brand-service's own resolve. */
+  orgId: string;
 }
 
 /**
@@ -69,6 +74,7 @@ export async function resolveShareToken(shareToken: string): Promise<SharedBrand
 
   const body = (await res.json()) as {
     brandId?: string;
+    orgId?: string;
     brand?: {
       id?: string;
       name?: string;
@@ -85,6 +91,13 @@ export async function resolveShareToken(shareToken: string): Promise<SharedBrand
     console.error("[dashboard] resolveShareToken: unexpected payload", body);
     throw new Error("[dashboard] resolveShareToken: invalid response shape");
   }
+  if (!body.orgId) {
+    // No org means no figures: every shared page reads per-organisation. Fail
+    // loud rather than degrading to the identity-only card, which would look
+    // like a deliberate product decision instead of a broken chain.
+    console.error("[dashboard] resolveShareToken: response carries no org", body);
+    throw new Error("[dashboard] resolveShareToken: response carries no org");
+  }
 
   return {
     id: brand.id,
@@ -92,5 +105,6 @@ export async function resolveShareToken(shareToken: string): Promise<SharedBrand
     domain: brand.domain ?? null,
     url: brand.url ?? null,
     logoUrl: brand.logoUrl ?? null,
+    orgId: body.orgId,
   };
 }

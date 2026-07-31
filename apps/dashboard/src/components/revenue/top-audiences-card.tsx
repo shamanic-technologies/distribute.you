@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
+import { useSharePathPrefix } from "@/components/share/share-mode-context";
 import type {
   FeatureAudienceStatsResponse,
   FeatureAudienceStatsSortMetric,
@@ -93,6 +94,8 @@ export function TopAudiencesCard({
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
+  // Keeps in-app links inside the public share tree; empty in the dashboard.
+  const pathPrefix = useSharePathPrefix();
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
@@ -139,7 +142,7 @@ export function TopAudiencesCard({
           return (
             <Link
               key={key}
-              href={`/orgs/${orgId}/brands/${brandId}/audiences?audienceId=${key}`}
+              href={`${pathPrefix}/orgs/${orgId}/brands/${brandId}/audiences?audienceId=${key}`}
               className="-mx-1 flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-gray-50"
             >
               <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />

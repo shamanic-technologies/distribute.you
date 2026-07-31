@@ -144,11 +144,14 @@ export function ShareMenu() {
               </span>
               {/* Names exactly what the page shows, because the person clicking
                   is deciding what to expose. It must not promise more than
-                  `/share/<token>` renders: today a credential unlocks the
-                  brand's profile and nothing else. */}
+                  `/share/<token>` renders, and it must not promise LESS either:
+                  the link now opens this brand&apos;s real dashboard, spend and
+                  leads included, so an old reassurance about what is left out
+                  would be the self-contradictory surface, not a kindness. */}
               <span className="block text-xs text-gray-500 mt-0.5">
-                Anyone with the link sees this brand&apos;s profile. No sign-in, no
-                spend figures, nothing else in your account.
+                Anyone with the link sees this brand&apos;s dashboard, read only:
+                its outreach, spend, audiences and leads. No sign-in, nothing they
+                can change, and nothing else in your account.
               </span>
             </span>
           </button>

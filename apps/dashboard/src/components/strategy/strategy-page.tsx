@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useIsShareMode } from "@/components/share/share-mode-context";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { EmailSignature } from "@/components/email-signature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -277,6 +278,36 @@ function ExampleEmailCard({
  *   the targeted audience subset — and inherits the brand's economics, offer and
  *   fleet projection, because no per-campaign column exists for those.
  */
+/**
+ * An offer lever on the public share view: the value, and nothing that offers to
+ * change it.
+ *
+ * `TextEditor` / `ListEditor` are hover-to-edit affordances — a pencil, a hover
+ * tint, an "add" row — and dressing them as disabled would leave the reader
+ * hunting for what they did wrong. A lever the brand has not filled in reads
+ * "Not set", which is the honest answer and is what the numbers above it are
+ * partly explained by.
+ */
+function OfferValueReadOnly({
+  kind,
+  value,
+}: {
+  kind: "text" | "list";
+  value: string | string[] | null | undefined;
+}) {
+  const text =
+    kind === "text" ? coerceTextField(value) : coerceListField(value).join(", ");
+  return (
+    <div className="px-3 py-2">
+      {text.trim() ? (
+        <p className="whitespace-pre-line text-sm text-gray-800">{text}</p>
+      ) : (
+        <p className="text-sm text-gray-400">Not set</p>
+      )}
+    </div>
+  );
+}
+
 export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
   const featureSlug = useSoleFeatureSlug();
   const revenueOk = isRevenueFeature(featureSlug);
@@ -407,6 +438,9 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
   const settingsHref = `/orgs/${orgId}/brands/${brandId}/settings`;
+  // The public share view. The offer still READS — it is most of what explains
+  // the numbers on this page — but nothing here may be edited or saved.
+  const readOnly = useIsShareMode();
 
   // Baseline bag = each user-field's value (list-kind default []). The edited
   // levers are saved back as confirmed user-fields; unedited keys are left as-is.
@@ -448,7 +482,7 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
   const saveOffer = () => {
     // Under a campaign the offer is a PREVIEW: campaign-service stores no per-campaign
     // user-fields, so saving here would write the BRAND's offer from a campaign screen.
-    if (campaignScoped || !offerDirty || saveOfferMut.isPending) return;
+    if (readOnly || campaignScoped || !offerDirty || saveOfferMut.isPending) return;
     saveOfferMut.mutate(offerFields);
   };
 
@@ -536,7 +570,9 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
         <Card
           title="The plan"
           subtitle="Your objective and the conversion rates we optimise against."
-          action={<EditLink href={settingsHref} />}
+          // The Edit link points into Brand Settings, which a shared link does not
+          // reach. A link that leads nowhere is worse than no link.
+          action={readOnly ? undefined : <EditLink href={settingsHref} />}
         >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat
@@ -567,7 +603,11 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
             immutable brand-profile version. No separate "Edit in Brand Profile" jump. */}
         <Card
           title="What we use to optimize your conversion"
-          subtitle="Your offer through the Alex Hormozi value equation. We write the emails around these. Hover any field to edit it inline."
+          subtitle={
+            readOnly
+              ? "Your offer through the Alex Hormozi value equation. We write the emails around these."
+              : "Your offer through the Alex Hormozi value equation. We write the emails around these. Hover any field to edit it inline."
+          }
         >
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
             <img
@@ -602,7 +642,9 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
                       <p className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                         <MetricLabel text={lever.label} tip={lever.tip} placement="top" />
                       </p>
-                      {kind === "text" ? (
+                      {readOnly ? (
+                        <OfferValueReadOnly kind={kind} value={value} />
+                      ) : kind === "text" ? (
                         <TextEditor
                           value={coerceTextField(value)}
                           placeholder={placeholder}

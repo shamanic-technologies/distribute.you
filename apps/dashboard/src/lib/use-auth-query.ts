@@ -6,6 +6,7 @@ import {
 import { useOrganization } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
+import { isSharePathname } from "./share-mode";
 
 /**
  * React Query hook for authenticated API calls.
@@ -29,7 +30,15 @@ export function useAuthQuery<T>(
   const { organization } = useOrganization();
   const pathname = usePathname();
 
-  const urlOrgId = pathname?.match(/\/orgs\/([^/]+)/)?.[1] ?? null;
+  // The PUBLIC SHARE VIEW has no Clerk org to agree with — its authority is the
+  // credential in the URL, and its reads go to a different proxy entirely. Its
+  // path still contains `/orgs/<id>` (it mirrors the authed route shape so the
+  // pages read their params unchanged), so without this the gate below would
+  // compare that id against a null active org, disable every query, and leave the
+  // whole view in a skeleton forever. There is nothing to gate here, so nothing
+  // is gated.
+  const isShare = isSharePathname(pathname);
+  const urlOrgId = isShare ? null : (pathname?.match(/\/orgs\/([^/]+)/)?.[1] ?? null);
   const activeOrgId = organization?.id ?? null;
 
   // MONOTONIC null-blink latch. Clerk's `useOrganization()` blinks `organization:

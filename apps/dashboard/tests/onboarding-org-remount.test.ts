@@ -38,11 +38,10 @@ describe("Onboarding survives the org it creates", () => {
 
   it("QueryProvider keeps ONE key for the whole onboarding flow", () => {
     const content = read(queryProviderPath);
-    expect(content).toContain('scope?: "onboarding"');
+    expect(content).toContain('scope?: "onboarding" | "share"');
     expect(content).toContain('const isOnboarding = scope === "onboarding"');
-    expect(content).toContain(
-      'const orgKey = isOnboarding ? "onboarding" : stableOrgId ?? "no-org"',
-    );
+    expect(content).toContain('? "onboarding"');
+    expect(content).toContain(': stableOrgId ?? "no-org"');
   });
 
   it("onboarding runs on an in-memory cache — no writes under the previous org's prefix", () => {
@@ -51,9 +50,7 @@ describe("Onboarding survives the org it creates", () => {
     // the cross-org bleed the prefix exists to prevent (DIS-143). Null disables
     // persistence outright, which is what `persistEnabled` already expects.
     const content = read(queryProviderPath);
-    expect(content).toContain(
-      "const scopedOrgId = isOnboarding ? null : stableOrgId",
-    );
+    expect(content).toContain("isOnboarding ? null : stableOrgId");
     expect(content).toContain("orgId={scopedOrgId}");
   });
 
