@@ -22,19 +22,22 @@ function sliceFrom(anchor: string, length: number): string {
   return flow.slice(at, at + length);
 }
 
-describe("v2 staff onboarding — gating", () => {
-  it("gates on the STAFF allowlist, not the beta one", () => {
-    // The beta gate no longer carries this flow; staff is what decides it. A page
-    // that reached for `useIsBetaUser` would show v2 to nobody.
-    expect(page).toContain("useIsAdminUser");
-    expect(page).not.toContain("useIsBetaUser");
+describe("v2 onboarding — gating", () => {
+  it("gates on the BETA allowlist, never the staff one", () => {
+    // The two are not interchangeable. `isAdminEmail` is the primary security
+    // boundary on `/api/admin/*` in the dashboard (the god-mode org switcher, which
+    // enumerates and joins every tenant), so gating a preview on it means anyone
+    // added for the preview also gets cross-tenant god-mode. This flow touches only
+    // the viewer's own brand, so it belongs behind the gate that grants nothing else.
+    expect(page).toContain("useIsBetaUser");
+    expect(page).not.toContain("useIsAdminUser");
   });
 
-  it("leaves a staff member a way back to the customer flow", () => {
-    // Without this a staff member can never again see what a real customer sees,
+  it("leaves a beta user a way back to the customer flow", () => {
+    // Without this a beta user can never again see what a real customer sees,
     // which is the thing they most need to be able to check.
     expect(page).toContain('searchParams.get("flow") === "ga"');
-    expect(page).toContain('variant={isStaff && !forceGa ? "v2" : "ga"}');
+    expect(page).toContain('variant={canPreview && !forceGa ? "v2" : "ga"}');
   });
 
   it("defaults the component to the customer flow", () => {
