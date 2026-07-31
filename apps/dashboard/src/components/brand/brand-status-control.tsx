@@ -73,7 +73,7 @@ const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
 // 4-branch ternary sent website_purchase/form_submissions/sales to "meetings").
 const OUTCOME_UNIT: Record<BrandOptimizationGoal, string> = {
   signups: "signups",
-  sales_meetings: "meetings",
+  sales_meetings: "sales meeting interest",
   website_visits: "website visits",
   positive_replies: "positive replies",
   form_submissions: "form submissions",

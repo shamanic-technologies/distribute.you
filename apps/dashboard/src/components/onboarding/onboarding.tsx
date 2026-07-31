@@ -221,8 +221,11 @@ type Step =
 type Outcome = BrandOptimizationGoal;
 const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?: boolean }[] = [
   { key: "signups", label: "Sign-ups", unit: "sign-ups", desc: "Maximize free signups / trial starts." },
-  { key: "sales_meetings", label: "Book appointments", unit: "appointments", desc: "Maximize booked sales meetings.", beta: true },
-  { key: "website_visits", label: "Page views", unit: "page views", desc: "Maximize qualified website visits." },
+  // NOT "appointments" / "page views" (the Google Ads category names): the budget
+  // picker must name what the money BUYS in the product's own words. Byte-equal with
+  // brand-status-control's OUTCOME_UNIT so the two budget surfaces agree.
+  { key: "sales_meetings", label: "Sales meeting interest", unit: "sales meeting interest", desc: "Maximize prospects interested in a sales meeting.", beta: true },
+  { key: "website_visits", label: "Website visits", unit: "website visits", desc: "Maximize qualified website visits." },
   // The unit is what the budget BUYS, not who we email. "contacts" named the people
   // reached, so the budget modal read "50 contacts / mo" for a goal that buys 50
   // interested replies - and contradicted this row's own label. Byte-equal with
@@ -3142,11 +3145,17 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
       >
         <BackButton onClick={() => setStep("funnels")} />
         <div className="flex items-center gap-2">
-          <h2 className="font-display text-2xl font-bold text-gray-900">Which one first?</h2>
+          <h2 className="font-display text-2xl font-bold text-gray-900">
+            What&apos;s your primary sales funnel goal with us today?
+          </h2>
           <MaturityBadge level="beta" />
         </div>
+        {/* States ONLY what this answer is used for. It used to say we put the budget
+            behind that path first and that the others could be switched at any time —
+            a claim about what the orchestrator does, which we do not control and
+            cannot promise. The one true consequence is the pricing calibration. */}
         <p className="mt-2 mb-6 text-gray-500">
-          We put your budget behind one path to start. The others stay on your account and you can switch at any time.
+          We use it to calibrate your pricing on the next step.
         </p>
         <div className="space-y-3">
           {selectedFunnels.map((f) => (
@@ -3303,7 +3312,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
           <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
           {funnel.key === primaryFunnelKey && (
             <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
-              First
+              Primary
             </span>
           )}
           <MaturityBadge level="beta" />
@@ -3414,7 +3423,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
         </h2>
         <p className="mt-2 mb-6 text-gray-500">
           {isV2
-            ? "Based on your numbers, here is what your first path should return and what each outcome should cost. Estimated from companies like yours until your own results come in."
+            ? "Based on your numbers, here is what your primary goal should return and what each outcome should cost. Estimated from companies like yours until your own results come in."
             : "Based on your numbers, here is the model we will run for you and what each outcome should cost. These are the same projections you will see on your Strategy page."}
         </p>
         {isV2 && primaryFunnel && (
@@ -3436,7 +3445,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
             )}
             {selectedFunnels.length > 1 && (
               <p className="mt-3 text-[11px] leading-5 text-gray-400">
-                Your other {selectedFunnels.length - 1 === 1 ? "path is" : "paths are"} saved on your account. We report on them once they have results of their own.
+                Priced against your primary goal. Your other {selectedFunnels.length - 1 === 1 ? "path" : "paths"} stay on your account.
               </p>
             )}
           </div>
@@ -3643,7 +3652,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
             <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
               <GiftIcon className="h-7 w-7 text-brand-600" />
             </span>
-            <h2 className="font-display text-2xl font-bold text-gray-900">Your first $25 is on us.</h2>
+            <h2 className="font-display text-2xl font-bold text-gray-900">Pay your first $25, get $25 free.</h2>
             {/* The gift is earned on PAYMENTS RECEIVED, never on usage consumed: the
                 account is threshold-postpaid, so an org can consume on credit before
                 paying anything. This one sentence is true in BOTH branches — when the
@@ -4256,7 +4265,7 @@ function FunnelChain({ steps, tone }: { steps: string[]; tone: { iconBg: string;
 // One sales funnel, as a selectable card: a tone-coloured mark tall enough to
 // cover both text rows, the funnel's NAME as the heading, and its chain under it
 // in a lighter weight. `radio` switches the control from multi-select to the
-// single "which one first?" pick — same card, so the two steps read as one idea.
+// single primary-goal pick — same card, so the two steps read as one idea.
 function FunnelSelectCard({
   funnel,
   selected,
