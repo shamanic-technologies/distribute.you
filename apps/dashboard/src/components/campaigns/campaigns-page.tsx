@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -20,8 +20,11 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { acquisitionChannelForWorkflowSlug } from "@/lib/acquisition-channels";
+import { primaryFunnelForGoal } from "@/lib/sales-funnels";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { NewCampaignModal } from "@/components/campaigns/new-campaign-modal";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { Skeleton } from "@/components/skeleton";
 
 // Every displayed number here is a READY features-service field. The only
@@ -31,21 +34,20 @@ import { Skeleton } from "@/components/skeleton";
 // arrangements of wire data, never a derived metric (CLAUDE.md: a displayed stat
 // is features-service-owned, never computed in the browser).
 
-// Cold-email product → the outreach "channel" is the campaign's workflow. The
-// product is cold-email-only (CLAUDE.md), so a cold-email workflow renders as
-// "Cold Email"; any other slug is prettified as a fallback. Pure display lookup.
+// The outreach "channel" is the campaign's workflow, so the workflow slug is what
+// resolves the catalogue entry the brand Settings card renders. A slug with no
+// catalogue entry is prettified rather than named as a channel we do not carry.
 function channelLabel(workflowSlug: string | null): string {
   if (!workflowSlug) return "—";
-  if (workflowSlug.includes("cold-email") || workflowSlug.includes("email")) return "Cold Email";
   return workflowSlug
     .split("-")
     .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
     .join(" ");
 }
 
-// Short outcome label for the Goal column (e.g. "Positive Replies"), distinct
-// from the settings card's "Maximising …" phrasing. Keyed on the effective
-// BrandOptimizationGoal (campaign's own goal, else the inherited brand goal).
+// Fallback outcome label for the Goal column, used only for a goal no funnel in
+// the catalogue ends on. A goal that HAS a funnel reads as that funnel's name,
+// so the column says the same thing brand Settings does.
 const GOAL_SHORT: Record<BrandOptimizationGoal, string> = {
   signups: "Signups",
   sales_meetings: "Positive Replies",
@@ -87,6 +89,36 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+/**
+ * The channel this campaign runs on, drawn as brand Settings draws it: the
+ * platform's own logo (or our duotone mark) beside the catalogue name. A slug we
+ * carry no channel for keeps the prettified text and no tile — a mark we cannot
+ * source is worse than none.
+ */
+function ChannelCell({ workflowSlug }: { workflowSlug: string | null }) {
+  const def = acquisitionChannelForWorkflowSlug(workflowSlug);
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      {def && <AcquisitionChannelMark def={def} size="sm" />}
+      <span className="truncate">{def ? def.name : channelLabel(workflowSlug)}</span>
+    </div>
+  );
+}
+
+/**
+ * What this campaign is buying, drawn as the funnel brand Settings names. A goal
+ * no funnel ends on keeps its short outcome word and no tile.
+ */
+function GoalCell({ goal }: { goal: BrandOptimizationGoal }) {
+  const def = primaryFunnelForGoal(goal);
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      {def && <SalesFunnelMark def={def} size="sm" />}
+      <span className="truncate">{def ? def.name : GOAL_SHORT[goal]}</span>
+    </div>
+  );
+}
+
 // One row = a campaign joined to its revenue group.
 interface CampaignRow {
   campaign: Campaign;
@@ -115,7 +147,6 @@ export function CampaignsPage() {
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const [newOpen, setNewOpen] = useState(false);
 
   // Campaign rows (name / status / channel / budget) — campaign-service.
   const campaignsQ = useAuthQuery(
@@ -168,21 +199,21 @@ export function CampaignsPage() {
   }, [campaigns, groupsById]);
 
   // Effective goal = the campaign's OWN goal (v2 per-campaign) when set, else the
-  // inherited brand goal → short label. Pure display of campaign config.
-  const goalLabelFor = useMemo(() => {
-    return (campaign: Campaign): string => {
-      const goal = campaign.goal ? optimizationGoalForRuntimeGoal(campaign.goal) : brandGoal;
-      return GOAL_SHORT[goal];
-    };
+  // inherited brand goal. Pure display of campaign config.
+  const goalFor = useMemo(() => {
+    return (campaign: Campaign): BrandOptimizationGoal =>
+      campaign.goal ? optimizationGoalForRuntimeGoal(campaign.goal) : brandGoal;
   }, [brandGoal]);
 
-  // #1 acquisition channel = "<channel> - <goal>" of the top-pipeline campaign
-  // (display argmax over already-fetched rows, not a hidden metric).
+  // #1 acquisition channel = the channel of the top-pipeline campaign, named as
+  // the brand Settings catalogue names it (display argmax over already-fetched
+  // rows, not a hidden metric).
   const topChannel = useMemo(() => {
     const top = rows.find((r) => (r.revenue?.totalPipelineUsd ?? 0) > 0);
     if (!top) return "—";
-    return `${channelLabel(top.campaign.workflowSlug)} - ${goalLabelFor(top.campaign)}`;
-  }, [rows, goalLabelFor]);
+    const def = acquisitionChannelForWorkflowSlug(top.campaign.workflowSlug);
+    return def ? def.name : channelLabel(top.campaign.workflowSlug);
+  }, [rows]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed
   // gate query (CLAUDE.md: reveal-on-settle). The header waits on the brand-level
@@ -209,23 +240,14 @@ export function CampaignsPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="w-full p-4 md:p-8">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-xl font-bold text-gray-800">Channels</h1>
-            <MaturityBadge level="beta" />
-          </div>
-          {rows.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setNewOpen(true)}
-              className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
-            >
-              New channel
-            </button>
-          )}
+        {/* No create control here: a campaign is set up with us, not spun up from
+            a table row, so the page reads this brand's campaigns and nothing more. */}
+        <div className="flex items-center gap-2 mb-1">
+          <h1 className="font-display text-xl font-bold text-gray-800">Campaigns</h1>
+          <MaturityBadge level="beta" />
         </div>
         <p className="text-sm text-gray-500 mb-5">
-          Channel-by-channel view of this brand&apos;s pipeline, cost, and return.
+          Campaign-by-campaign view of this brand&apos;s pipeline, cost, and return.
         </p>
 
         {/* Global stats header */}
@@ -235,7 +257,7 @@ export function CampaignsPage() {
           <StatTile label="#1 acquisition channel" value={topChannel} pending={!tableSettled} />
         </div>
 
-        {/* Channels table */}
+        {/* Campaigns table */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
@@ -261,18 +283,22 @@ export function CampaignsPage() {
               ) : rows.length === 0 ? (
                 <tr>
                   <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
-                    No channels yet.
+                    No campaigns yet.
                   </td>
                 </tr>
               ) : (
                 rows.map(({ campaign, revenue }) => (
                   <tr
                     key={campaign.id}
-                    onClick={() => router.push(`${basePath}/channels/${campaign.id}`)}
+                    onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
                     className="border-b border-gray-100 cursor-pointer transition hover:bg-gray-50"
                   >
-                    <td className="px-4 py-3 font-medium text-gray-800">{channelLabel(campaign.workflowSlug)}</td>
-                    <td className="px-4 py-3 text-gray-600">{goalLabelFor(campaign)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">
+                      <ChannelCell workflowSlug={campaign.workflowSlug} />
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      <GoalCell goal={goalFor(campaign)} />
+                    </td>
                     <td className="px-4 py-3"><StatusPill status={campaign.status} /></td>
                     <td className="px-4 py-3 text-right tabular-nums font-medium text-gray-900">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.costPerConversionUsd)}</td>
@@ -285,14 +311,6 @@ export function CampaignsPage() {
           </table>
         </div>
       </div>
-      {newOpen && rows[0] && (
-        <NewCampaignModal
-          template={rows[0].campaign}
-          brandId={brandId}
-          basePath={basePath}
-          onClose={() => setNewOpen(false)}
-        />
-      )}
     </div>
   );
 }

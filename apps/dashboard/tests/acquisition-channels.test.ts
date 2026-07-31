@@ -4,6 +4,7 @@ import * as path from "path";
 import {
   ACQUISITION_CHANNELS,
   acquisitionChannelByKey,
+  acquisitionChannelForWorkflowSlug,
   canSelectChannel,
   initialSelectedChannelKeys,
   liveAcquisitionChannels,
@@ -138,6 +139,25 @@ describe("selection model", () => {
   });
 });
 
+describe("acquisitionChannelForWorkflowSlug", () => {
+  // A campaign carries no channel field: the workflow it runs IS the channel,
+  // and the product is cold-email-only today.
+  it("reads an email workflow as the cold-email channel", () => {
+    expect(acquisitionChannelForWorkflowSlug("sales-cold-email-outreach-v3")?.key).toBe(
+      "cold_email",
+    );
+    expect(acquisitionChannelForWorkflowSlug("pr-cold-email-outreach")?.key).toBe("cold_email");
+  });
+
+  // A slug we carry no channel for names nothing rather than claiming a channel
+  // the catalogue does not have.
+  it("answers null for a slug with no catalogue entry", () => {
+    expect(acquisitionChannelForWorkflowSlug(null)).toBeNull();
+    expect(acquisitionChannelForWorkflowSlug("")).toBeNull();
+    expect(acquisitionChannelForWorkflowSlug("google-ads-search")).toBeNull();
+  });
+});
+
 describe("the card writes nothing", () => {
   const card = read("../src/components/settings/brand-acquisition-channels-card.tsx");
 
@@ -174,6 +194,18 @@ describe("the card writes nothing", () => {
     expect(card).not.toContain("Google Ads");
     expect(card).not.toContain("LinkedIn Ads");
     expect(card).toContain('from "@/lib/acquisition-channels"');
+  });
+
+  // The Campaigns table draws the same mark for the channel a campaign runs on,
+  // so the tile is one component rather than two copies of an icon map.
+  it("draws its mark through the shared component", () => {
+    const mark = read("../src/components/marks/acquisition-channel-mark.tsx");
+    expect(card).toContain("<AcquisitionChannelMark def={def}");
+    expect(card).not.toContain("OWN_CHANNEL_ICONS");
+    expect(mark).toContain("EnvelopeSimpleIcon");
+    expect(mark).toContain('weight="duotone"');
+    // A provider logo is never tinted: its tile stays white.
+    expect(mark).toContain("bg-white");
   });
 
   it("is mounted on brand Settings", () => {

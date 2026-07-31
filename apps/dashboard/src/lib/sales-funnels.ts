@@ -175,6 +175,20 @@ export function partitionFunnelsBySelection(isSelected: (key: SalesFunnelKey) =>
   };
 }
 
+/**
+ * The funnel a brand optimizing for this goal sells through, or null when no
+ * funnel in the catalogue ends on that outcome.
+ *
+ * Nothing persists WHICH funnel a brand picked — the settings card writes
+ * nothing — so this is the declared order's first match, which for a sales
+ * meeting is the reply-driven chain (the one a cold-email campaign feeds).
+ * A goal with no funnel returns null and the caller names the outcome instead
+ * of borrowing a chain the brand never described.
+ */
+export function primaryFunnelForGoal(goal: BrandOptimizationGoal): SalesFunnelDef | null {
+  return SALES_FUNNELS.find((f) => f.goal === goal) ?? null;
+}
+
 export function salesFunnelByKey(key: SalesFunnelKey): SalesFunnelDef {
   const def = SALES_FUNNELS.find((f) => f.key === key);
   if (!def) throw new Error(`Unknown sales funnel: ${key}`);

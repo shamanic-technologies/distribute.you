@@ -105,6 +105,23 @@ export const ACQUISITION_CHANNELS: AcquisitionChannelDef[] = [
   },
 ];
 
+/**
+ * Which catalogue channel a campaign runs on, read from its workflow slug.
+ *
+ * A campaign carries no channel field on the wire. The workflow it runs IS the
+ * channel, and the product is cold-email-only today, so an email workflow is the
+ * cold-email channel. Anything else returns null and the caller falls back to
+ * naming the slug rather than claiming a channel we have no catalogue entry for.
+ */
+export function acquisitionChannelForWorkflowSlug(
+  workflowSlug: string | null | undefined,
+  channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
+): AcquisitionChannelDef | null {
+  if (!workflowSlug) return null;
+  if (!workflowSlug.includes("email")) return null;
+  return channels.find((c) => c.key === "cold_email") ?? null;
+}
+
 /** The channels we can actually run today. */
 export function liveAcquisitionChannels(
   channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,

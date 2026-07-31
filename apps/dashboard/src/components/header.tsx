@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useState, useRef, useEffect } from "react";
 import { MobileTenantChip } from "./tenant-switcher";
+import { HeaderPageContext } from "./header-page-context";
 import { ThemeToggle } from "./theme-toggle";
 import { useMobileSidebar } from "./mobile-sidebar-context";
 import { CHROME_ROW_HEIGHT } from "@/lib/chrome-row";
@@ -55,8 +56,13 @@ export function Header() {
               (single-product SaaS) carry no product logo in the bar at all. The
               bar keeps only universal actions (theme, account), per Atlassian.
               On mobile the sidebar is a drawer, so the chip carries identity and
-              opens the same switcher menu. */}
+              opens the same switcher menu.
+
+              PAGE CONTEXT is the exception: a campaign has no name anywhere in
+              the sidebar, and several sit under one brand, so the bar names the
+              one you drilled into. It renders on campaign routes only. */}
           <MobileTenantChip />
+          <HeaderPageContext />
         </div>
 
         {/* Right: User menu */}

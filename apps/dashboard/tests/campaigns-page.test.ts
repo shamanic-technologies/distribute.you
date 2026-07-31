@@ -31,7 +31,41 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     expect(sidebar).toContain("campaignsOk");
     // The nav entry + its beta badge.
     expect(sidebar).toContain('id: "campaigns"');
-    expect(sidebar).toContain("/channels`");
+    expect(sidebar).toContain("/campaigns`");
+  });
+
+  // The surface is called Campaigns everywhere it is named: nav entry, page
+  // heading, empty state, the back-link out of a campaign, and the URL.
+  it("names the surface Campaigns, never Channels", () => {
+    expect(sidebar).toContain('label: "Campaigns"');
+    expect(sidebar).toContain('backLabel="Campaigns"');
+    expect(sidebar).not.toContain('label: "Channels"');
+    expect(page).toContain(">Campaigns</h1>");
+    expect(page).toContain("No campaigns yet.");
+    expect(page).not.toContain("No channels yet.");
+  });
+
+  // A campaign is set up with us, not spun up from a table row. The create
+  // control and the modal behind it are gone, not hidden.
+  it("offers no create control", () => {
+    expect(page).not.toContain("New channel");
+    expect(page).not.toContain("New campaign<");
+    expect(page).not.toContain("NewCampaignModal");
+    expect(
+      fs.existsSync(path.join(SRC, "components/campaigns/new-campaign-modal.tsx")),
+    ).toBe(false);
+  });
+
+  // The Channel and Goal columns say what brand Settings says: the channel's own
+  // mark + catalogue name, and the funnel's mark + name. A second wording for
+  // either would be the same thing under two names on two screens.
+  it("draws Channel and Goal from the brand-Settings catalogues", () => {
+    expect(page).toContain("acquisitionChannelForWorkflowSlug");
+    expect(page).toContain("primaryFunnelForGoal");
+    expect(page).toContain("<AcquisitionChannelMark");
+    expect(page).toContain("<SalesFunnelMark");
+    expect(page).toContain("<ChannelCell workflowSlug={campaign.workflowSlug} />");
+    expect(page).toContain("<GoalCell goal={goalFor(campaign)} />");
   });
 
   it("page body gates on isAdmin (staff-only preview)", () => {
@@ -61,6 +95,21 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
   it("global header blended pipeline + CAC read the brand-level revenue field, not a client sum", () => {
     expect(page).toContain("brandRevenueQ.data?.totalPipelineUsd");
     expect(page).toContain("brandRevenueQ.data?.costEconomics.costPerConversionUsd");
+  });
+
+  // The sidebar carries no campaign name and several sit under one brand, so
+  // the top bar names the one you drilled into. Tenant identity stays in the
+  // switcher — this is page context, on campaign routes only.
+  it("names the open campaign in the top bar", () => {
+    const header = read("components/header.tsx");
+    const context = read("components/header-page-context.tsx");
+    expect(header).toContain("<HeaderPageContext />");
+    expect(context).toContain('parts[4] !== "campaigns"');
+    expect(context).toContain("data?.campaign?.name");
+    // Byte-equal to the campaign overview's key → one deduped poll.
+    expect(context).toContain('["campaign", campaignId ?? "none"]');
+    // A placeholder word would state a name we do not have yet.
+    expect(context).not.toContain('|| "Campaign"');
   });
 
   it("reveals on settle (resolved OR errored) so a failed query can't eternal-skeleton", () => {

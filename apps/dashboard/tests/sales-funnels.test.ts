@@ -10,6 +10,7 @@ import {
   funnelRateFields,
   isStoredRateKey,
   partitionFunnelsBySelection,
+  primaryFunnelForGoal,
   hostOf,
   salesFunnelByKey,
   shortUrl,
@@ -431,6 +432,33 @@ describe("destination chips", () => {
   });
 });
 
+describe("primaryFunnelForGoal", () => {
+  // The Campaigns table names a campaign's goal with the funnel that ends on it,
+  // so the column says what brand Settings says.
+  it("answers with the funnel that ends on the goal", () => {
+    expect(primaryFunnelForGoal("sales_meetings")?.key).toBe("reply_meeting");
+    expect(primaryFunnelForGoal("signups")?.key).toBe("visit_signup");
+    expect(primaryFunnelForGoal("form_submissions")?.key).toBe("visit_form");
+  });
+
+  // Nothing persists WHICH meeting funnel a brand picked, so the declared order
+  // decides — and its first entry is the reply-driven chain a cold-email
+  // campaign actually feeds.
+  it("picks the reply-driven chain for a meeting, not the website one", () => {
+    const meetings = SALES_FUNNELS.filter((f) => f.goal === "sales_meetings");
+    expect(meetings.length).toBeGreaterThan(1);
+    expect(primaryFunnelForGoal("sales_meetings")?.steps[0]).toBe("Positive reply");
+  });
+
+  // A goal no funnel ends on gets null, so the caller names the outcome rather
+  // than borrowing a chain the brand never described.
+  it("returns null for a goal the catalogue has no funnel for", () => {
+    expect(primaryFunnelForGoal("website_visits")).toBeNull();
+    expect(primaryFunnelForGoal("positive_replies")).toBeNull();
+    expect(primaryFunnelForGoal("sales")).toBeNull();
+  });
+});
+
 describe("partitionFunnelsBySelection", () => {
   // Two funnels a brand runs and two it does not are two different kinds of row.
   it("puts the chosen funnels first, in their declared order", () => {
@@ -449,6 +477,7 @@ describe("partitionFunnelsBySelection", () => {
 
 describe("Sales Funnels card", () => {
   const src = read("../src/components/settings/brand-sales-funnels-card.tsx");
+  const mark = read("../src/components/marks/sales-funnel-mark.tsx");
 
   it("is beta gated and carries the badge next to its own heading", () => {
     expect(src).toContain("useIsBetaUser");
@@ -534,21 +563,26 @@ describe("Sales Funnels card", () => {
   });
 
   // A tile that only covers the title reads as decoration next to a two-line
-  // block; this one runs alongside the name AND the chain.
-  it("runs the icon tile alongside both lines", () => {
-    expect(src).toContain("h-11 w-11");
-    expect(src).toContain('weight="duotone"');
+  // block; this one runs alongside the name AND the chain. The tile itself lives
+  // in the shared mark so the Campaigns table draws a funnel the same way.
+  it("runs the shared icon tile alongside both lines", () => {
+    expect(src).toContain("<SalesFunnelMark def={def}");
+    expect(mark).toContain("h-11 w-11");
+    expect(mark).toContain('weight="duotone"');
   });
 
-  it("gives each funnel its own icon", () => {
+  it("gives each funnel its own icon, declared once", () => {
     const icons = [
       "ChatsCircleIcon",
       "CalendarCheckIcon",
       "ShoppingCartSimpleIcon",
       "MagnetIcon",
     ];
-    for (const icon of icons) expect(src).toContain(`${icon},`);
+    for (const icon of icons) expect(mark).toContain(`${icon},`);
     expect(new Set(icons).size).toBe(SALES_FUNNELS.length);
+    // Two copies of the icon map is how two surfaces end up disagreeing about
+    // what a funnel looks like.
+    expect(src).not.toContain("FUNNEL_ICONS");
   });
 
   // A long destination reads as its own favicon plus a shortened host rather
