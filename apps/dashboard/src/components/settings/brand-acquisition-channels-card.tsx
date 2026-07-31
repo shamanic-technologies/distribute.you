@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
-import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
-import { ChatTeardropTextIcon } from "@phosphor-icons/react/dist/csr/ChatTeardropText";
-import type { Icon } from "@phosphor-icons/react";
 import {
   canSelectChannel,
   initialSelectedChannelKeys,
@@ -14,7 +11,7 @@ import {
   type AcquisitionChannelKey,
 } from "@/lib/acquisition-channels";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { BrandLogo } from "@/components/brand-logo";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { MaturityBadge } from "@/components/maturity-badge";
 
 // Where we go to find a brand's buyers. A channel feeds the sales funnels above:
@@ -28,14 +25,6 @@ import { MaturityBadge } from "@/components/maturity-badge";
 // Only cold email is live. The rest state that they are coming rather than
 // offering a choice we cannot honour, and the last live channel cannot be
 // dropped: a brand running no channel is a brand we cannot reach anyone for.
-
-// Phosphor duotone for the channels that are ours: each mark carries a tinted
-// fill under its stroke, so it fills its tile the way a real logo does. A
-// channel on somebody else's platform wears that platform's logo instead.
-const OWN_CHANNEL_ICONS: Partial<Record<AcquisitionChannelKey, Icon>> = {
-  cold_email: EnvelopeSimpleIcon,
-  cold_sms: ChatTeardropTextIcon,
-};
 
 export function BrandAcquisitionChannelsCard() {
   const isBeta = useIsBetaUser();
@@ -70,39 +59,12 @@ export function BrandAcquisitionChannelsCard() {
     const isSelected = selectedKeys.includes(def.key);
     const locked = !canSelectChannel(def);
     const dimmed = !isSelected;
-    const OwnIcon = OWN_CHANNEL_ICONS[def.key];
     const blockedReason =
       blocked === def.key ? removeChannelBlockedReason(def.key, selectedKeys) : null;
 
-    const mark =
-      def.mark.kind === "vendor" ? (
-        // A real provider logo is never tinted: the tile stays white so the
-        // mark reads as the vendor's own.
-        <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white ${
-            dimmed ? "opacity-60" : ""
-          }`}
-        >
-          <BrandLogo
-            domain={def.mark.domain}
-            size={24}
-            className="rounded"
-            fallbackClassName="text-gray-300"
-          />
-        </span>
-      ) : (
-        <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-            def.mark.tone.iconBg
-          } ${dimmed ? "opacity-60" : ""}`}
-        >
-          {OwnIcon && <OwnIcon size={26} weight="duotone" className={def.mark.tone.iconText} />}
-        </span>
-      );
-
     const body = (
       <div className="flex items-start gap-3 p-4">
-        {mark}
+        <AcquisitionChannelMark def={def} dimmed={dimmed} />
 
         <div className="min-w-0 flex-1">
           <p

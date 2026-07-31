@@ -46,10 +46,10 @@ export function BreadcrumbNav() {
     brandId && section === "workflows" && pathParts[5] && pathParts[5] !== "new"
       ? pathParts[5]
       : null;
-  // Channel LEVEL (v2 staff preview): `.../channels/[campaignId]` → resolve the
-  // channel name by-id for the crumb (mirrors the workflow crumb fetch).
+  // Campaign LEVEL (v2 staff preview): `.../campaigns/[campaignId]` → resolve the
+  // campaign name by-id for the crumb (mirrors the workflow crumb fetch).
   const campaignId =
-    brandId && section === "channels" && pathParts[5] ? pathParts[5] : null;
+    brandId && section === "campaigns" && pathParts[5] ? pathParts[5] : null;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -273,25 +273,25 @@ export function BreadcrumbNav() {
         </>
       )}
 
-      {/* CHANNEL (v2 staff preview): Channels list crumb + channel name */}
-      {brandId && orgId && section === "channels" && (
+      {/* CAMPAIGN (v2 staff preview): Campaigns list crumb + campaign name */}
+      {brandId && orgId && section === "campaigns" && (
         <>
           <Sep />
           {campaignId ? (
             <Link
-              href={`/orgs/${orgId}/brands/${brandId}/channels`}
+              href={`/orgs/${orgId}/brands/${brandId}/campaigns`}
               className="px-2 py-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded transition"
             >
-              Channels
+              Campaigns
             </Link>
           ) : (
-            <span className="px-2 py-1 text-gray-600">Channels</span>
+            <span className="px-2 py-1 text-gray-600">Campaigns</span>
           )}
           {campaignId && (
             <>
               <Sep />
               <span className="px-2 py-1 font-medium text-gray-800">
-                {campaignName || "Channel"}
+                {campaignName || "Campaign"}
               </span>
             </>
           )}

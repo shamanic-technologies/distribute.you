@@ -377,7 +377,7 @@ export function CampaignOverviewPage() {
   });
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  const campaignsPath = `${basePath}/channels`;
+  const campaignsPath = `${basePath}/campaigns`;
 
   // Effective daily budget = the campaign's own `maxBudgetDailyUsd` (v2 per-campaign
   // budget) when set, else the brand daily budget it inherits (null-inherit — same

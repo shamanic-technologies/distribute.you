@@ -2,11 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
-import { ChatsCircleIcon } from "@phosphor-icons/react/dist/csr/ChatsCircle";
-import { CalendarCheckIcon } from "@phosphor-icons/react/dist/csr/CalendarCheck";
-import { ShoppingCartSimpleIcon } from "@phosphor-icons/react/dist/csr/ShoppingCartSimple";
-import { MagnetIcon } from "@phosphor-icons/react/dist/csr/Magnet";
-import type { Icon } from "@phosphor-icons/react";
 import { getBrand, getBrandSalesEconomics } from "@/lib/api";
 import {
   SALES_FUNNELS,
@@ -30,6 +25,7 @@ import {
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { BrandLogo } from "@/components/brand-logo";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
@@ -47,15 +43,6 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
 // Choosing a funnel, and dropping one, are decisions about how the brand sells.
 // Neither is one tap on a checkbox: both go through opening the card and
 // pressing a button that says what it does.
-
-// Phosphor duotone rather than a single-weight utility set: each mark carries a
-// tinted fill under its stroke, so it fills its tile instead of floating in it.
-const FUNNEL_ICONS: Record<SalesFunnelKey, Icon> = {
-  reply_meeting: ChatsCircleIcon,
-  visit_meeting: CalendarCheckIcon,
-  visit_signup: ShoppingCartSimpleIcon,
-  visit_form: MagnetIcon,
-};
 
 type FunnelState = {
   selected: boolean;
@@ -197,7 +184,6 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
   function renderFunnel(def: SalesFunnelDef) {
     const state = states[def.key];
-    const Icon = FUNNEL_ICONS[def.key];
     const locked = def.requiresWebsite && noWebsite;
     const isOpen = openKey === def.key;
     // A funnel the brand has not chosen shows what it IS, and nothing else. Its
@@ -211,13 +197,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
     const header = (
       <div className="flex items-start gap-3 p-4">
-        <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${def.tone.iconBg} ${
-            dimmed ? "opacity-60" : ""
-          }`}
-        >
-          <Icon size={26} weight="duotone" className={def.tone.iconText} />
-        </span>
+        <SalesFunnelMark def={def} dimmed={dimmed} />
 
         <div className="min-w-0 flex-1">
           <p
