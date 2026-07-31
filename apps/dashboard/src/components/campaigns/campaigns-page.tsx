@@ -96,8 +96,8 @@ function NumericHead({ label, tip }: { label: string; tip: string }) {
 }
 
 /**
- * The headline number of the row, so it is set larger and heavier than the rest
- * of the line.
+ * The headline number of the row. It carries the table's own size — weight and
+ * colour are what set it apart, not a second type scale inside one row.
  *
  * A return above 1x means the campaign is making money back, and that reads
  * GREEN. Below 1x it stays the ordinary text colour rather than turning red: an
@@ -107,11 +107,7 @@ function NumericHead({ label, tip }: { label: string; tip: string }) {
 function RoiCell({ multiple }: { multiple: number | null | undefined }) {
   const good = multiple != null && multiple > 1;
   return (
-    <span
-      className={`text-base font-semibold tabular-nums ${
-        good ? "text-green-600" : "text-gray-900"
-      }`}
-    >
+    <span className={`font-semibold tabular-nums ${good ? "text-green-600" : "text-gray-900"}`}>
       {fmtRoi(multiple)}
     </span>
   );
