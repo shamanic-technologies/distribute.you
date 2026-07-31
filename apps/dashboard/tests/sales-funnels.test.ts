@@ -4,9 +4,12 @@ import * as path from "path";
 import {
   SALES_FUNNELS,
   funnelDraftFromBrand,
+  funnelDestinationChips,
   funnelLegPct,
-  funnelMetaChips,
+  funnelLifetimeLabel,
   funnelRateFields,
+  isStoredRateKey,
+  partitionFunnelsBySelection,
   hostOf,
   salesFunnelByKey,
   shortUrl,
@@ -42,6 +45,15 @@ function draftFor(key: SalesFunnelKey): FunnelDraft {
   return funnelDraftFromBrand(salesFunnelByKey(key), ECONOMICS, "https://acme.com/pricing");
 }
 
+/**
+ * Nothing seeds the show-up rate, so a meeting funnel is only complete once the
+ * brand types it. This is what a filled-in meeting funnel looks like.
+ */
+function filledMeetingDraft(key: "reply_meeting" | "visit_meeting"): FunnelDraft {
+  const base = draftFor(key);
+  return { ...base, rates: { ...base.rates, meetingBookedToAttendedPct: "80" } };
+}
+
 describe("SALES_FUNNELS definitions", () => {
   it("declares the four funnels, each with its own key", () => {
     expect(SALES_FUNNELS.map((f) => f.key)).toEqual([
@@ -75,34 +87,45 @@ describe("SALES_FUNNELS definitions", () => {
     }
   });
 
-  // brand-service stores no show-up rate (booked → held), so that leg carries
-  // nothing rather than a made-up field.
-  it("leaves the meeting show-up leg unmeasured on both meeting funnels", () => {
+  // Booking a meeting and attending it are two different events, so the show-up
+  // rate between them is its own leg.
+  it("prices the meeting show-up leg on both meeting funnels", () => {
     expect(salesFunnelByKey("reply_meeting").legs).toEqual([
       "replyToMeetingPct",
-      null,
+      "meetingBookedToAttendedPct",
       "meetingToClosePct",
     ]);
     expect(salesFunnelByKey("visit_meeting").legs).toEqual([
       "visitToMeetingPct",
-      null,
+      "meetingBookedToAttendedPct",
       "meetingToClosePct",
     ]);
   });
 
-  it("routes a lead through Meeting booked before the Sales meeting", () => {
+  it("routes a lead through Meeting booked before the meeting is attended", () => {
     expect(salesFunnelByKey("reply_meeting").steps).toEqual([
       "Positive reply",
       "Meeting booked",
-      "Sales meeting",
+      "Meeting attended",
       "Paid client",
     ]);
     expect(salesFunnelByKey("visit_meeting").steps).toEqual([
       "Website visit",
       "Meeting booked",
-      "Sales meeting",
+      "Meeting attended",
       "Paid client",
     ]);
+  });
+
+  // Only the show-up rate has no column; every other leg reads a real field.
+  it("marks the show-up rate as the one rate nothing stores", () => {
+    expect(isStoredRateKey("meetingBookedToAttendedPct")).toBe(false);
+    for (const funnel of SALES_FUNNELS) {
+      for (const leg of funnel.legs) {
+        if (leg === "meetingBookedToAttendedPct") continue;
+        expect(isStoredRateKey(leg)).toBe(true);
+      }
+    }
   });
 
   it("gives every funnel a distinct colour so the icons read apart", () => {
@@ -143,8 +166,16 @@ describe("SALES_FUNNELS definitions", () => {
   it("names each rate exactly as brand-service stores it", () => {
     const keysOf = (key: SalesFunnelKey) =>
       funnelRateFields(salesFunnelByKey(key)).map((r) => r.key);
-    expect(keysOf("reply_meeting")).toEqual(["replyToMeetingPct", "meetingToClosePct"]);
-    expect(keysOf("visit_meeting")).toEqual(["visitToMeetingPct", "meetingToClosePct"]);
+    expect(keysOf("reply_meeting")).toEqual([
+      "replyToMeetingPct",
+      "meetingBookedToAttendedPct",
+      "meetingToClosePct",
+    ]);
+    expect(keysOf("visit_meeting")).toEqual([
+      "visitToMeetingPct",
+      "meetingBookedToAttendedPct",
+      "meetingToClosePct",
+    ]);
     expect(keysOf("visit_signup")).toEqual(["visitToSignupPct", "signupToPaidClientPct"]);
     expect(keysOf("visit_form")).toEqual([
       "visitToFormSubmissionPct",
@@ -167,6 +198,13 @@ describe("funnelDraftFromBrand", () => {
 
   it("seeds the website-led meeting funnel from its own visit→meeting rate", () => {
     expect(parseLocaleNumberInput(draftFor("visit_meeting").rates.visitToMeetingPct ?? "")).toBe(20);
+  });
+
+  // Nothing stores a show-up rate, so borrowing any number for it would be a
+  // claim about a conversion nobody measured.
+  it("leaves the show-up rate blank on every brand", () => {
+    expect(draftFor("reply_meeting").rates.meetingBookedToAttendedPct).toBe("");
+    expect(draftFor("visit_meeting").rates.meetingBookedToAttendedPct).toBe("");
   });
 
   it("seeds a page destination from the brand's click destination", () => {
@@ -225,21 +263,33 @@ describe("validateBookingUrl", () => {
 
 describe("validateFunnelDraft", () => {
   it("accepts a meeting funnel with no booking link at all", () => {
-    expect(validateFunnelDraft(salesFunnelByKey("reply_meeting"), draftFor("reply_meeting"), "acme.com")).toEqual({
-      ok: true,
-    });
+    expect(
+      validateFunnelDraft(salesFunnelByKey("reply_meeting"), filledMeetingDraft("reply_meeting"), "acme.com"),
+    ).toEqual({ ok: true });
   });
 
   it("still rejects a malformed booking link", () => {
-    const draft = { ...draftFor("reply_meeting"), bookingUrl: "book me" };
+    const draft = { ...filledMeetingDraft("reply_meeting"), bookingUrl: "book me" };
     expect(validateFunnelDraft(salesFunnelByKey("reply_meeting"), draft, "acme.com").ok).toBe(false);
+  });
+
+  // Nothing seeds it, so a meeting funnel cannot be confirmed until the brand
+  // states how many booked meetings actually happen.
+  it("holds a meeting funnel until the show-up rate is filled", () => {
+    const result = validateFunnelDraft(
+      salesFunnelByKey("reply_meeting"),
+      draftFor("reply_meeting"),
+      "acme.com",
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("Meeting booked → meeting attended");
   });
 
   it("names the missing rate", () => {
     const def = salesFunnelByKey("reply_meeting");
     const draft = {
-      ...draftFor("reply_meeting"),
-      rates: { replyToMeetingPct: "", meetingToClosePct: "25" },
+      ...filledMeetingDraft("reply_meeting"),
+      rates: { replyToMeetingPct: "", meetingBookedToAttendedPct: "80", meetingToClosePct: "25" },
     };
     const result = validateFunnelDraft(def, draft, "acme.com");
     expect(result.ok).toBe(false);
@@ -248,8 +298,8 @@ describe("validateFunnelDraft", () => {
 
   it("rejects a rate above 100", () => {
     const draft = {
-      ...draftFor("reply_meeting"),
-      rates: { replyToMeetingPct: "140", meetingToClosePct: "25" },
+      ...filledMeetingDraft("reply_meeting"),
+      rates: { replyToMeetingPct: "140", meetingBookedToAttendedPct: "80", meetingToClosePct: "25" },
     };
     expect(validateFunnelDraft(salesFunnelByKey("reply_meeting"), draft, "acme.com").ok).toBe(false);
   });
@@ -287,40 +337,66 @@ describe("validateFunnelDraft", () => {
 
   // The reply-led funnel lands no click, so a brand with no website runs it.
   it("accepts the reply-led funnel on a brand with no domain", () => {
-    expect(validateFunnelDraft(salesFunnelByKey("reply_meeting"), draftFor("reply_meeting"), null)).toEqual({
-      ok: true,
-    });
+    expect(
+      validateFunnelDraft(salesFunnelByKey("reply_meeting"), filledMeetingDraft("reply_meeting"), null),
+    ).toEqual({ ok: true });
   });
 });
 
 describe("funnelLegPct", () => {
-  it("prints the rate that sits on each measured arrow", () => {
+  it("prints the rate that sits on each arrow", () => {
     const def = salesFunnelByKey("visit_signup");
     const draft = draftFor("visit_signup");
     expect(funnelLegPct(def, draft, 0)).toBe("25%");
     expect(funnelLegPct(def, draft, 1)).toBe("20%");
   });
 
-  // "We do not measure this" and "it converts at X%" are different statements.
-  it("prints nothing on the show-up arrow, which nothing measures", () => {
+  it("prints the show-up rate once the brand has typed it", () => {
     const def = salesFunnelByKey("reply_meeting");
-    const draft = draftFor("reply_meeting");
+    const draft = filledMeetingDraft("reply_meeting");
     expect(funnelLegPct(def, draft, 0)).toBe("40%");
-    expect(funnelLegPct(def, draft, 1)).toBe(null);
+    expect(funnelLegPct(def, draft, 1)).toBe("80%");
     expect(funnelLegPct(def, draft, 2)).toBe("25%");
   });
 
+  // "Not filled in" and "converts at 0%" are different statements.
   it("prints nothing for a rate the brand has not filled", () => {
     const def = salesFunnelByKey("visit_form");
     const draft = { ...draftFor("visit_form"), rates: { visitToFormSubmissionPct: "" } };
     expect(funnelLegPct(def, draft, 0)).toBe(null);
+    // The show-up rate is the one nothing seeds, so it starts out unprinted.
+    expect(funnelLegPct(salesFunnelByKey("reply_meeting"), draftFor("reply_meeting"), 1)).toBe(null);
   });
 });
 
-describe("meta chips", () => {
+describe("funnelLifetimeLabel", () => {
+  // A lifetime revenue is what the last step of the chain is worth, so it reads
+  // at the end of that chain rather than on a line of its own.
+  it("closes the chain with what a client is worth", () => {
+    expect(funnelLifetimeLabel(draftFor("visit_signup"))).toBe("$4,000 lifetime revenue");
+  });
+
+  it("prints nothing when the brand has given no lifetime revenue", () => {
+    expect(funnelLifetimeLabel({ ...draftFor("visit_signup"), lifetimeRevenueUsd: "" })).toBe(null);
+    expect(funnelLifetimeLabel({ ...draftFor("visit_signup"), lifetimeRevenueUsd: "0" })).toBe(null);
+  });
+});
+
+describe("destination chips", () => {
   it("shortens a URL to something readable", () => {
     expect(shortUrl("https://www.acme.com/pricing/")).toBe("acme.com/pricing");
     expect(shortUrl("")).toBe("");
+  });
+
+  // A real click destination carries a UTM tail long enough to fill the row on
+  // its own, and none of it identifies the page.
+  it("drops the query string and the fragment, keeping the path", () => {
+    expect(
+      shortUrl(
+        "https://opsfolio.com/lp/cmmc/level-1-free-assessment/?utm_source=landing_page&utm_medium=email&utm_campaign=cmmc_level1",
+      ),
+    ).toBe("opsfolio.com/lp/cmmc/level-1-free-assessment");
+    expect(shortUrl("https://acme.com/pricing#plans")).toBe("acme.com/pricing");
   });
 
   it("resolves the host a logo lookup needs", () => {
@@ -330,34 +406,44 @@ describe("meta chips", () => {
     expect(hostOf("not a url")).toBe(null);
   });
 
-  it("recaps the lifetime revenue and every destination the funnel has", () => {
+  it("lists every destination the funnel has", () => {
     const def = salesFunnelByKey("visit_meeting");
     const draft = {
       ...draftFor("visit_meeting"),
       destinationUrl: "https://acme.com/demo",
       bookingUrl: "https://cal.com/acme/30min",
     };
-    expect(funnelMetaChips(def, draft)).toEqual([
-      { kind: "ltr", label: "$4,000 lifetime" },
+    expect(funnelDestinationChips(def, draft)).toEqual([
       { kind: "page", label: "acme.com/demo", host: "acme.com" },
       { kind: "booking", label: "cal.com/acme/30min", host: "cal.com" },
     ]);
   });
 
-  // A value the brand never gave us is dropped, not printed empty.
+  // A destination the brand never gave us is dropped, not printed empty.
   it("drops a destination the brand has not set", () => {
-    const def = salesFunnelByKey("reply_meeting");
-    expect(funnelMetaChips(def, draftFor("reply_meeting"))).toEqual([
-      { kind: "ltr", label: "$4,000 lifetime" },
-    ]);
+    expect(funnelDestinationChips(salesFunnelByKey("reply_meeting"), draftFor("reply_meeting"))).toEqual([]);
   });
 
-  it("drops the lifetime revenue when it is blank", () => {
-    const def = salesFunnelByKey("visit_form");
-    const draft = { ...draftFor("visit_form"), lifetimeRevenueUsd: "" };
-    expect(funnelMetaChips(def, draft)).toEqual([
-      { kind: "page", label: "acme.com/pricing", host: "acme.com" },
-    ]);
+  // The lifetime revenue now closes the chain, so it is not a chip.
+  it("carries no lifetime revenue", () => {
+    const chips = funnelDestinationChips(salesFunnelByKey("visit_form"), draftFor("visit_form"));
+    for (const chip of chips) expect(chip.kind).not.toBe("ltr");
+  });
+});
+
+describe("partitionFunnelsBySelection", () => {
+  // Two funnels a brand runs and two it does not are two different kinds of row.
+  it("puts the chosen funnels first, in their declared order", () => {
+    const chosen = new Set<SalesFunnelKey>(["visit_form", "reply_meeting"]);
+    const { selected, unselected } = partitionFunnelsBySelection((key) => chosen.has(key));
+    expect(selected.map((f) => f.key)).toEqual(["reply_meeting", "visit_form"]);
+    expect(unselected.map((f) => f.key)).toEqual(["visit_meeting", "visit_signup"]);
+  });
+
+  it("leaves every funnel unselected when the brand has chosen none", () => {
+    const { selected, unselected } = partitionFunnelsBySelection(() => false);
+    expect(selected).toEqual([]);
+    expect(unselected).toHaveLength(SALES_FUNNELS.length);
   });
 });
 
@@ -398,6 +484,48 @@ describe("Sales Funnels card", () => {
     expect(src).not.toContain("StarIcon");
   });
 
+  // Choosing how a brand sells is not one tap on a checkbox. The card is opened
+  // by clicking it anywhere, and the choice is a named button inside.
+  it("has no checkbox, and opens on a click anywhere on the card", () => {
+    expect(src).not.toContain('type="checkbox"');
+    expect(src).toContain('role="button"');
+    expect(src).toContain("onClick={() => openCard(def, locked)}");
+    expect(src).toContain('if (e.key !== "Enter" && e.key !== " ") return;');
+  });
+
+  // Dropping a funnel is its own labelled button, never a toggle.
+  it("removes a funnel through a named button", () => {
+    expect(src).toContain("Remove this funnel");
+    expect(src).toContain("onClick={() => removeFunnel(def)}");
+  });
+
+  // On desktop the actions sit at the end of the row; they stack on mobile.
+  it("puts the actions on the right on desktop", () => {
+    expect(src).toContain("sm:flex-row sm:items-center sm:justify-end");
+  });
+
+  // A funnel the brand has not chosen shows what it IS, and nothing else: its
+  // numbers are seeded defaults until someone confirms them.
+  it("shows no numbers on a funnel that is neither chosen nor open", () => {
+    expect(src).toContain("const showNumbers = state.selected || isOpen;");
+    expect(src).toContain("showNumbers ? funnelDestinationChips(def, state.draft) : []");
+    expect(src).toContain("showNumbers ? funnelLifetimeLabel(state.draft) : null");
+    expect(src).toContain("i > 0 && showNumbers ? funnelLegPct(def, state.draft, i - 1) : null");
+  });
+
+  // The chosen funnels come first with a green tag; the rest sit below, greyed.
+  it("groups the chosen funnels above the rest", () => {
+    expect(src).toContain("partitionFunnelsBySelection((key) => states[key].selected)");
+    expect(src).toContain("Not selected");
+    expect(src).toContain("bg-green-50");
+    expect(src).toContain('"border-gray-200 bg-gray-50"');
+  });
+
+  // The lifetime revenue closes the chain, where the last step earns it.
+  it("closes the chain with the lifetime revenue", () => {
+    expect(src).toContain("{lifetime}");
+  });
+
   // The chain is what the funnel does, not what it is called.
   it("titles each card with the funnel name and keeps the chain under it", () => {
     expect(src).toContain("{def.name}");
@@ -426,8 +554,9 @@ describe("Sales Funnels card", () => {
   // A long destination reads as its own favicon plus a shortened host rather
   // than a raw link running off the row.
   it("renders a destination with its logo instead of the raw URL", () => {
-    expect(src).toContain("funnelMetaChips(def, state.draft)");
+    expect(src).toContain("funnelDestinationChips(def, state.draft)");
     expect(src).toContain("<BrandLogo");
+    expect(src).toContain("truncate");
   });
 
   // "Confirm funnel" named a step of the form; the button is what the user does

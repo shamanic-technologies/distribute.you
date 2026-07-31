@@ -4,6 +4,10 @@
 // conversion rates, its own lifetime revenue, its own landing page and, when a
 // meeting sits in the chain, its own booking link.
 //
+// Every arrow of a chain converts at a rate. One of those rates — the meeting
+// show-up rate — has no column anywhere in the fleet, so it is declared here and
+// starts blank on every brand; see `UnstoredFunnelRateKey`.
+//
 // Only value imports that carry no "@" alias live here — vitest does not resolve
 // the alias, so this module stays directly unit-testable (the BrandOptimizationGoal
 // import is type-only and is erased at build time).
@@ -15,7 +19,7 @@ import { bareHost, validateDestination } from "./click-destination-validation";
 export type SalesFunnelKey = "reply_meeting" | "visit_meeting" | "visit_signup" | "visit_form";
 
 /** Rate fields, named exactly as brand-service stores them. */
-export type FunnelRateKey =
+export type StoredFunnelRateKey =
   | "replyToMeetingPct"
   | "visitToMeetingPct"
   | "meetingToClosePct"
@@ -24,10 +28,25 @@ export type FunnelRateKey =
   | "visitToFormSubmissionPct"
   | "formSubmissionToPaidClientPct";
 
+/**
+ * The show-up rate has no column anywhere in the fleet, so it is the one rate a
+ * funnel prices that nothing can seed and nothing can save. It is declared here
+ * because it IS part of the model this section describes — the alternative is an
+ * arrow in the middle of the chain that carries no number at all.
+ */
+export type UnstoredFunnelRateKey = "meetingBookedToAttendedPct";
+
+export type FunnelRateKey = StoredFunnelRateKey | UnstoredFunnelRateKey;
+
+/** True when brand-service has a column for this rate, so a draft can seed it. */
+export function isStoredRateKey(key: FunnelRateKey): key is StoredFunnelRateKey {
+  return key !== "meetingBookedToAttendedPct";
+}
+
 export type FunnelRateField = { key: FunnelRateKey; label: string; tip: string };
 
 /**
- * Every rate brand-service stores, described once. A funnel points at these by
+ * Every rate a funnel can price, described once. A funnel points at these by
  * key from its legs, so two funnels sharing a leg cannot drift into two
  * different labels for the same stored number.
  */
@@ -40,8 +59,12 @@ const RATE_FIELDS: Record<FunnelRateKey, Omit<FunnelRateField, "key">> = {
     label: "Website visit → meeting booked",
     tip: "Of leads who visit your website, the share who book a slot.",
   },
+  meetingBookedToAttendedPct: {
+    label: "Meeting booked → meeting attended",
+    tip: "Of leads who book a slot, the share who actually show up.",
+  },
   meetingToClosePct: {
-    label: "Sales meeting → paid client",
+    label: "Meeting attended → paid client",
     tip: "Of leads you actually meet, the share that become paying customers.",
   },
   visitToSignupPct: {
@@ -68,13 +91,8 @@ export type SalesFunnelDef = {
   name: string;
   /** The chain, rendered under the name. */
   steps: string[];
-  /**
-   * One entry per arrow between two steps: the rate brand-service stores for
-   * that leg, or null when nothing in the fleet measures it. `Meeting booked →
-   * Sales meeting` is the show-up rate and has no field anywhere, so it stays
-   * null — a leg with no number prints no number rather than inventing one.
-   */
-  legs: (FunnelRateKey | null)[];
+  /** One entry per arrow between two steps: the rate that leg converts at. */
+  legs: FunnelRateKey[];
   /** What a campaign optimizes for once this funnel is wired to a campaign. */
   goal: BrandOptimizationGoal;
   /** The first step is a click onto the brand's site, so a domain is required. */
@@ -98,8 +116,8 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     key: "reply_meeting",
     name: "Sales Meeting from Conversation",
-    steps: ["Positive reply", "Meeting booked", "Sales meeting", "Paid client"],
-    legs: ["replyToMeetingPct", null, "meetingToClosePct"],
+    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
+    legs: ["replyToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"],
     goal: "sales_meetings",
     requiresWebsite: false,
     pageDestination: false,
@@ -109,8 +127,8 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     key: "visit_meeting",
     name: "Sales Meeting from Website",
-    steps: ["Website visit", "Meeting booked", "Sales meeting", "Paid client"],
-    legs: ["visitToMeetingPct", null, "meetingToClosePct"],
+    steps: ["Website visit", "Meeting booked", "Meeting attended", "Paid client"],
+    legs: ["visitToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"],
     goal: "sales_meetings",
     requiresWebsite: true,
     pageDestination: true,
@@ -141,6 +159,22 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   },
 ];
 
+/**
+ * The funnels a brand sells through come FIRST, in their declared order, and the
+ * rest follow. Two funnels a brand runs and two it does not are two different
+ * kinds of row, so they are two groups rather than one list with a marker on
+ * some of its members.
+ */
+export function partitionFunnelsBySelection(isSelected: (key: SalesFunnelKey) => boolean): {
+  selected: SalesFunnelDef[];
+  unselected: SalesFunnelDef[];
+} {
+  return {
+    selected: SALES_FUNNELS.filter((f) => isSelected(f.key)),
+    unselected: SALES_FUNNELS.filter((f) => !isSelected(f.key)),
+  };
+}
+
 export function salesFunnelByKey(key: SalesFunnelKey): SalesFunnelDef {
   const def = SALES_FUNNELS.find((f) => f.key === key);
   if (!def) throw new Error(`Unknown sales funnel: ${key}`);
@@ -152,7 +186,7 @@ export function funnelRateFields(def: SalesFunnelDef): FunnelRateField[] {
   const seen = new Set<FunnelRateKey>();
   const out: FunnelRateField[] = [];
   for (const leg of def.legs) {
-    if (leg === null || seen.has(leg)) continue;
+    if (seen.has(leg)) continue;
     seen.add(leg);
     out.push({ key: leg, ...RATE_FIELDS[leg] });
   }
@@ -243,6 +277,12 @@ export function funnelDraftFromBrand(
 ): FunnelDraft {
   const rates: Partial<Record<FunnelRateKey, string>> = {};
   for (const rate of funnelRateFields(def)) {
+    // The show-up rate has no column, so it starts blank on every brand rather
+    // than borrowing a number that means something else.
+    if (!isStoredRateKey(rate.key)) {
+      rates[rate.key] = "";
+      continue;
+    }
     const stored = economics ? economics[rate.key] : null;
     rates[rate.key] =
       stored === null || stored === undefined ? "" : formatLocaleNumberInputValue(stored);
@@ -255,12 +295,19 @@ export function funnelDraftFromBrand(
   };
 }
 
-/** Drop the protocol, the leading www and a trailing slash so a URL reads as a label. */
+/**
+ * Drop the protocol, the leading www, a trailing slash — and everything from the
+ * first `?` or `#`. A real click destination carries a UTM tail long enough to
+ * fill the row on its own (`…/level-1-free-assessment/?utm_source=landing_page&
+ * utm_medium=email&utm_campaign=…`), and none of it identifies the page. The
+ * path stays, because that IS what distinguishes one destination from another.
+ */
 export function shortUrl(url: string): string {
   const trimmed = url.trim();
   if (!trimmed) return "";
   const withoutProtocol = trimmed.replace(/^https?:\/\//i, "");
-  return withoutProtocol.replace(/^www\./i, "").replace(/\/$/, "");
+  const withoutQuery = withoutProtocol.split(/[?#]/)[0];
+  return withoutQuery.replace(/^www\./i, "").replace(/\/$/, "");
 }
 
 /** The registrable host of a URL, for a logo.dev lookup. Null when unparseable. */
@@ -276,10 +323,9 @@ export function hostOf(url: string): string | null {
 }
 
 /**
- * The percentage printed under one arrow of the chain, or null when that leg is
- * not measured. `Meeting booked → Sales meeting` is the show-up rate: brand-service
- * has no field for it, so the arrow carries nothing. "We do not measure this"
- * and "it converts at X%" are different statements.
+ * The percentage printed under one arrow of the chain, or null when the brand
+ * has not given us that rate. A rate we do not have prints nothing rather than a
+ * zero — "not filled in" and "converts at 0%" are different statements.
  */
 export function funnelLegPct(def: SalesFunnelDef, draft: FunnelDraft, legIndex: number): string | null {
   const key = def.legs[legIndex];
@@ -288,23 +334,33 @@ export function funnelLegPct(def: SalesFunnelDef, draft: FunnelDraft, legIndex: 
   return parsed === null ? null : `${formatLocaleNumberInputValue(parsed)}%`;
 }
 
-export type FunnelMetaChip =
-  | { kind: "ltr"; label: string }
-  | { kind: "page" | "booking"; label: string; host: string | null };
+/**
+ * What a client won through this funnel is worth, printed at the END of the
+ * chain — a lifetime revenue is what the last step is worth, so it belongs after
+ * `Paid client` rather than on a line of its own.
+ */
+export function funnelLifetimeLabel(draft: FunnelDraft): string | null {
+  const ltr = parseLocaleNumberInput(draft.lifetimeRevenueUsd);
+  if (ltr === null || ltr <= 0) return null;
+  return `$${formatLocaleInteger(ltr)} lifetime revenue`;
+}
+
+export type FunnelDestinationChip = {
+  kind: "page" | "booking";
+  label: string;
+  host: string | null;
+};
 
 /**
- * The discreet recap kept beside the chain: what a client from this funnel is
- * worth, and where it sends people. A destination reads as its shortened URL
- * with its own favicon rather than the raw link, so a long URL stays one line.
- * A value the brand has not given us is dropped, not printed empty.
+ * Where the funnel sends people. A destination reads as its shortened URL with
+ * its own favicon rather than the raw link, so a long URL stays one line. A
+ * destination the brand has not given us is dropped, not printed empty.
  */
-export function funnelMetaChips(def: SalesFunnelDef, draft: FunnelDraft): FunnelMetaChip[] {
-  const chips: FunnelMetaChip[] = [];
-
-  const ltr = parseLocaleNumberInput(draft.lifetimeRevenueUsd);
-  if (ltr !== null && ltr > 0) {
-    chips.push({ kind: "ltr", label: `$${formatLocaleInteger(ltr)} lifetime` });
-  }
+export function funnelDestinationChips(
+  def: SalesFunnelDef,
+  draft: FunnelDraft,
+): FunnelDestinationChip[] {
+  const chips: FunnelDestinationChip[] = [];
 
   if (def.pageDestination && draft.destinationUrl.trim()) {
     chips.push({
