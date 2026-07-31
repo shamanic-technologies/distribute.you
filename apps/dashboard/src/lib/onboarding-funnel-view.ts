@@ -1,71 +1,87 @@
 // Display view over the Sales Funnels catalogue for the staff onboarding preview.
 //
-// Why an adapter rather than reading `SALES_FUNNELS` fields directly: the
-// catalogue is being reshaped right now in a parallel workspace (a `name` per
-// funnel, a fourth "Sales Meeting from Website" funnel, and the flat `steps`
-// tuple becoming richer legs). The onboarding step maps over whatever the
-// catalogue holds, so it picks up the new shape with no edit here and no edit
-// there — the rename is absorbed in ONE place instead of at every render site.
+// Why an adapter rather than reading `SALES_FUNNELS` fields directly at each
+// render site: the catalogue moves. It gained a name per funnel, a fourth funnel,
+// a four-step chain, per-arrow rate legs and a pair of destination flags in a
+// single settings-card redesign — and the onboarding step picked all of that up
+// without touching a render site, because the shape is read in ONE place. Keep it
+// that way: the next reshape should be a diff to this file only.
 //
 // Only value imports that carry no "@" alias live here, so this module stays
 // directly unit-testable (vitest does not resolve the alias in this repo).
 
 /**
- * The shape this view reads. Deliberately structural and permissive: it spans
- * both the catalogue as it stands (`steps: [a, b, c]`) and as it is becoming
- * (`name` + per-leg objects), so neither side has to land first.
+ * The shape this view reads. Deliberately structural and permissive so a
+ * catalogue mid-reshape still renders: every field is optional, and a funnel
+ * missing one degrades to something honest rather than throwing.
  */
 export type FunnelCatalogueEntry = {
   key: string;
   name?: string;
+  /** The chain of step labels, e.g. Positive reply → Meeting booked → Paid client. */
   steps?: readonly string[];
-  legs?: readonly { from?: string; to?: string; label?: string }[];
+  /** One entry per arrow: the rate key priced on that leg, or null when nothing measures it. */
+  legs?: readonly (string | null)[];
   goal?: string;
   requiresWebsite?: boolean;
-  rates?: readonly { key: string; label: string; tip?: string }[];
-  destination?: { kind?: string; label?: string; hint?: string; placeholder?: string };
+  /** This funnel lands an outreach click on a page of the brand's own site. */
+  pageDestination?: boolean;
+  /** A meeting sits in the chain, so a scheduling page is worth collecting. Optional by nature. */
+  bookingLink?: boolean;
   tone?: { iconBg?: string; iconText?: string };
+};
+
+export type FunnelRateFieldView = { key: string; label: string; tip: string };
+
+/** A place this funnel sends people. A funnel may have both, or neither. */
+export type FunnelDestinationView = {
+  kind: "page" | "booking";
+  label: string;
+  hint: string;
+  placeholder: string;
+  /** A brand that books over email still runs the funnel, so a booking link is never required. */
+  optional: boolean;
 };
 
 export type FunnelView = {
   key: string;
   /** Card title. The catalogue's own name when it has one, else the chain. */
   title: string;
-  /** The chain, rendered under the title. Always at least two entries. */
+  /** The chain, rendered under the title. */
   steps: string[];
   goal: string | null;
   requiresWebsite: boolean;
-  rates: { key: string; label: string; tip: string }[];
-  destination: { label: string; hint: string; placeholder: string } | null;
+  rates: FunnelRateFieldView[];
+  destinations: FunnelDestinationView[];
   tone: { iconBg: string; iconText: string };
 };
 
 const FALLBACK_TONE = { iconBg: "bg-gray-50", iconText: "text-gray-600" };
 
-/**
- * The chain of step labels, from whichever field the catalogue carries. A legs
- * array is walked `from → to` so a four-step chain reads in full; a flat steps
- * tuple is taken as-is.
- */
+const PAGE_DESTINATION: Omit<FunnelDestinationView, "optional"> = {
+  kind: "page",
+  label: "Destination page",
+  hint: "The page on your site an outreach click lands on.",
+  placeholder: "https://yoursite.com/pricing",
+};
+
+const BOOKING_DESTINATION: Omit<FunnelDestinationView, "optional"> = {
+  kind: "booking",
+  label: "Booking link",
+  hint: "Optional. The scheduling page we send a lead to once they are interested.",
+  placeholder: "https://cal.com/yourteam/30min",
+};
+
+/** The chain of step labels the funnel renders under its name. */
 export function funnelStepLabels(entry: FunnelCatalogueEntry): string[] {
-  if (entry.legs && entry.legs.length > 0) {
-    const out: string[] = [];
-    for (const leg of entry.legs) {
-      const from = leg.from?.trim();
-      const to = leg.to?.trim();
-      if (from && out[out.length - 1] !== from) out.push(from);
-      if (to) out.push(to);
-    }
-    if (out.length > 0) return out;
-  }
   return (entry.steps ?? []).map((s) => s.trim()).filter(Boolean);
 }
 
 /**
  * The card title. A catalogue that names its funnels wins; otherwise the chain
- * itself is the title, which is exactly how the settings card read before the
- * names existed — so a missing name degrades to the previous look rather than
- * to an empty heading.
+ * itself is the title, which is how the settings card read before the names
+ * existed — so a missing name degrades to the previous look, never to an empty
+ * heading.
  */
 export function funnelTitle(entry: FunnelCatalogueEntry): string {
   const named = entry.name?.trim();
@@ -74,21 +90,41 @@ export function funnelTitle(entry: FunnelCatalogueEntry): string {
   return steps.length > 0 ? steps.join(" → ") : entry.key;
 }
 
-export function toFunnelView(entry: FunnelCatalogueEntry): FunnelView {
+/**
+ * Where this funnel sends people. Derived from the catalogue's two flags, so a
+ * funnel that both lands a click on the site AND books a meeting collects both —
+ * and one that does neither collects nothing rather than showing an empty field.
+ */
+export function funnelDestinations(entry: FunnelCatalogueEntry): FunnelDestinationView[] {
+  const out: FunnelDestinationView[] = [];
+  if (entry.pageDestination) out.push({ ...PAGE_DESTINATION, optional: false });
+  if (entry.bookingLink) out.push({ ...BOOKING_DESTINATION, optional: true });
+  return out;
+}
+
+/**
+ * Build the view. `resolveRates` is the catalogue's OWN rate resolver (it maps a
+ * funnel's legs onto the stored rate fields, deduped and in chain order) — passed
+ * in rather than reimplemented here so the labels a user reads in onboarding are
+ * byte-identical to the ones on the settings card.
+ */
+export function toFunnelView(
+  entry: FunnelCatalogueEntry,
+  resolveRates?: (entry: FunnelCatalogueEntry) => readonly { key: string; label: string; tip?: string }[],
+): FunnelView {
+  const rates = (resolveRates?.(entry) ?? []).map((r) => ({
+    key: r.key,
+    label: r.label,
+    tip: r.tip ?? "",
+  }));
   return {
     key: entry.key,
     title: funnelTitle(entry),
     steps: funnelStepLabels(entry),
     goal: entry.goal ?? null,
     requiresWebsite: entry.requiresWebsite === true,
-    rates: (entry.rates ?? []).map((r) => ({ key: r.key, label: r.label, tip: r.tip ?? "" })),
-    destination: entry.destination
-      ? {
-          label: entry.destination.label ?? "Destination",
-          hint: entry.destination.hint ?? "",
-          placeholder: entry.destination.placeholder ?? "",
-        }
-      : null,
+    rates,
+    destinations: funnelDestinations(entry),
     tone: {
       iconBg: entry.tone?.iconBg ?? FALLBACK_TONE.iconBg,
       iconText: entry.tone?.iconText ?? FALLBACK_TONE.iconText,
@@ -96,8 +132,11 @@ export function toFunnelView(entry: FunnelCatalogueEntry): FunnelView {
   };
 }
 
-export function toFunnelViews(entries: readonly FunnelCatalogueEntry[]): FunnelView[] {
-  return entries.map(toFunnelView);
+export function toFunnelViews(
+  entries: readonly FunnelCatalogueEntry[],
+  resolveRates?: (entry: FunnelCatalogueEntry) => readonly { key: string; label: string; tip?: string }[],
+): FunnelView[] {
+  return entries.map((e) => toFunnelView(e, resolveRates));
 }
 
 /**
@@ -123,9 +162,9 @@ export function orderedForDetail(selected: FunnelView[], primaryKey: string | nu
 
 /**
  * The primary funnel after a selection change. Keeps the current pick while it
- * is still selected, otherwise hands the role to the first remaining funnel —
- * a set of selected funnels with none of them primary has no goal to optimize
- * for, and the pricing step reads that goal.
+ * is still selected, otherwise hands the role to the first remaining funnel — a
+ * set of selected funnels with none of them primary has no goal to optimize for,
+ * and the budget step reads that goal.
  */
 export function resolvePrimaryKey(selectedKeys: string[], current: string | null): string | null {
   if (current && selectedKeys.includes(current)) return current;

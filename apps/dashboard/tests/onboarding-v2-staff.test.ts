@@ -146,7 +146,10 @@ describe("v2 staff onboarding — funnel catalogue", () => {
     // The catalogue is being reshaped in parallel (a name per funnel, a fourth
     // funnel, richer legs). Mapping over the adapter means that lands here with no
     // edit; reaching into `.steps` at a render site would break the day it does.
-    expect(flow).toContain("toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[])");
+    expect(flow).toContain("toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[]");
+    // Rate labels come from the catalogue's OWN resolver, so a rate reads the same
+    // word here as on the settings card instead of drifting into a second wording.
+    expect(flow).toContain("funnelRateFields(entry as unknown as SalesFunnelDef)");
     expect(flow).toContain("selectableFunnels(funnelViews, !noWebsiteMode)");
     expect(flow).toContain("orderedForDetail(selectedFunnels, primaryFunnelKey)");
   });

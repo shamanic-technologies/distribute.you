@@ -97,7 +97,7 @@ import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useIsBetaUser } from "@/lib/use-beta-user";
-import { SALES_FUNNELS } from "@/lib/sales-funnels";
+import { SALES_FUNNELS, funnelRateFields, type SalesFunnelDef } from "@/lib/sales-funnels";
 import {
   orderedForDetail,
   resolvePrimaryKey,
@@ -166,6 +166,17 @@ function delay(ms: number): Promise<void> {
  * would silently drop most of what the user typed.
  */
 export type OnboardingVariant = "ga" | "v2";
+
+/**
+ * What the user typed on one funnel's post-payment detail screen. Keyed by rate
+ * key and by destination kind, because a funnel can send people to both a page
+ * on the brand's site and a scheduling link.
+ */
+type FunnelDraftState = {
+  rates: Record<string, string>;
+  ltr: string;
+  destinations: Record<string, string>;
+};
 
 type Step =
   | "welcome"
@@ -848,7 +859,11 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
   // show up here with no edit. Deliberately EPHEMERAL (absent from the persisted
   // snapshot): adding fields there means bumping ONBOARDING_STATE_VERSION, which
   // strands an in-flight checkout, and nothing here is written yet anyway.
-  const funnelViews = toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[]);
+  // The rate LABELS come from the catalogue's own resolver, so a rate reads the
+  // same word here as it does on the settings card.
+  const funnelViews = toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[], (entry) =>
+    funnelRateFields(entry as unknown as SalesFunnelDef),
+  );
   const offeredFunnels = selectableFunnels(funnelViews, !noWebsiteMode);
   const [selectedFunnelKeys, setSelectedFunnelKeys] = useState<string[]>([]);
   const [primaryFunnelKey, setPrimaryFunnelKey] = useState<string | null>(null);
@@ -856,9 +871,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
   // Each holds that funnel's rate fields plus its own lifetime revenue and
   // destination — a self-serve signup customer and an enterprise meeting customer
   // are not worth the same and do not land on the same page.
-  const [funnelDrafts, setFunnelDrafts] = useState<
-    Record<string, { rates: Record<string, string>; ltr: string; destination: string }>
-  >({});
+  const [funnelDrafts, setFunnelDrafts] = useState<Record<string, FunnelDraftState>>({});
   const [funnelIndex, setFunnelIndex] = useState(0);
   const selectedFunnels = offeredFunnels.filter((f) => selectedFunnelKeys.includes(f.key));
   const detailFunnels = orderedForDetail(selectedFunnels, primaryFunnelKey);
@@ -2283,30 +2296,34 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
   // the second path is never a blank form: a value the user already typed on an
   // earlier path seeds this one, then whatever the brand actually saved, then
   // empty. Typing here overrides for this funnel only.
-  function funnelDraft(funnel: FunnelView): { rates: Record<string, string>; ltr: string; destination: string } {
+  function funnelDraft(funnel: FunnelView): FunnelDraftState {
     const own = funnelDrafts[funnel.key];
     const typedElsewhere = detailFunnels
       .filter((f) => f.key !== funnel.key)
       .map((f) => funnelDrafts[f.key])
-      .filter((d): d is NonNullable<typeof d> => Boolean(d));
-    const inheritedLtr = typedElsewhere.find((d) => d.ltr.trim())?.ltr ?? "";
-    const inheritedDestination = typedElsewhere.find((d) => d.destination.trim())?.destination ?? "";
+      .filter((d): d is FunnelDraftState => Boolean(d));
+    // Cascade: what the user typed on an earlier path seeds this one, then what
+    // the brand actually saved, then empty. The second screen is never a blank form.
+    const inheritedLtr = typedElsewhere.find((d) => d.ltr.trim())?.ltr;
+    const inheritedPage = typedElsewhere.find((d) => (d.destinations.page ?? "").trim())?.destinations.page;
+    const inheritedBooking = typedElsewhere.find((d) => (d.destinations.booking ?? "").trim())?.destinations
+      .booking;
     return {
       rates: own?.rates ?? {},
       ltr: own?.ltr ?? inheritedLtr ?? rateText.ltv,
-      // A page destination defaults to the brand's own click destination; a booking
-      // link has no counterpart on the brand, so it starts empty rather than
-      // guessing a scheduling URL the brand may not have.
-      destination:
-        own?.destination ??
-        inheritedDestination ??
-        (funnel.destination?.label.toLowerCase().includes("booking") ? "" : defaultDestinationUrl),
+      destinations: {
+        // A page destination defaults to the brand's own click destination. A
+        // booking link has no counterpart on the brand and we never guess a
+        // scheduling URL, so it starts empty.
+        page: own?.destinations.page ?? inheritedPage ?? defaultDestinationUrl,
+        booking: own?.destinations.booking ?? inheritedBooking ?? "",
+      },
     };
   }
 
   function editFunnelDraft(
     funnel: FunnelView,
-    patch: { rates?: Record<string, string>; ltr?: string; destination?: string },
+    patch: { rates?: Record<string, string>; ltr?: string; destinations?: Record<string, string> },
   ) {
     const current = funnelDraft(funnel);
     setFunnelDrafts((prev) => ({
@@ -2314,7 +2331,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
       [funnel.key]: {
         rates: { ...current.rates, ...(patch.rates ?? {}) },
         ltr: patch.ltr ?? current.ltr,
-        destination: patch.destination ?? current.destination,
+        destinations: { ...current.destinations, ...(patch.destinations ?? {}) },
       },
     }));
   }
@@ -3299,21 +3316,22 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
             </span>
           </label>
 
-          {funnel.destination && (
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-gray-700">{funnel.destination.label}</span>
+          {/* A funnel can send people to BOTH a page on the site and a scheduling
+              link (website visit → meeting booked does exactly that), so this is a
+              list, not one field. Each destination keeps its own draft value. */}
+          {funnel.destinations.map((dest) => (
+            <label key={dest.kind} className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-700">{dest.label}</span>
               <input
                 type="text"
-                value={draft.destination}
-                onChange={(e) => editFunnelDraft(funnel, { destination: e.target.value })}
-                placeholder={funnel.destination.placeholder}
+                value={draft.destinations[dest.kind] ?? ""}
+                onChange={(e) => editFunnelDraft(funnel, { destinations: { [dest.kind]: e.target.value } })}
+                placeholder={dest.placeholder}
                 className="w-full min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:border-brand-400 focus:outline-none"
               />
-              {funnel.destination.hint && (
-                <span className="text-[11px] leading-5 text-gray-400">{funnel.destination.hint}</span>
-              )}
+              {dest.hint && <span className="text-[11px] leading-5 text-gray-400">{dest.hint}</span>}
             </label>
-          )}
+          ))}
         </div>
 
         <p className="mt-3 text-[11px] leading-5 text-gray-400">
