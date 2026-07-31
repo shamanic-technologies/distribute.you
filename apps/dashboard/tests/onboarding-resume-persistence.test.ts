@@ -119,6 +119,63 @@ describe("Beta onboarding resume persistence", () => {
     expect(src).toContain("storedPending?.selectedAudienceIds ?? storedPending?.onboardingState.selectedAudienceIds");
   });
 
+  it("carries the v2 funnel selection across the Stripe round-trip", () => {
+    // The post-payment per-funnel screens run on a FRESH page load, so the React state
+    // holding the selection is gone by then. Lifting it onto the pending blob's TOP
+    // level is what makes those screens reachable at all — without it `funnelStats`
+    // found no funnel and skipped itself to `model`, which also lost its primary card.
+    expect(src).toContain("selectedFunnelKeys: string[];");
+    expect(src).toContain("primaryFunnelKey: string | null;");
+
+    // Written at checkout, live selection first (a re-checkout after a cancel must carry
+    // what the user has picked NOW), with the stored blob as the fallback.
+    const build = src.slice(
+      src.indexOf("function buildPendingLaunchBlob"),
+      src.indexOf("async function beginCheckoutAndLaunch"),
+    );
+    expect(build).toContain("const launchFunnelKeys = selectedFunnelKeys.length");
+    expect(build).toContain("storedPending?.selectedFunnelKeys ?? []");
+    expect(build).toContain("const launchPrimaryFunnelKey = primaryFunnelKey ?? storedPending?.primaryFunnelKey ?? null;");
+    expect(build).toContain("selectedFunnelKeys: launchFunnelKeys,");
+    expect(build).toContain("primaryFunnelKey: launchPrimaryFunnelKey,");
+
+    // A blob written before this shipped (or by the GA flow, which has no funnels) must
+    // still LAUNCH: the funnels are a preview, so they are read tolerantly and are NOT
+    // part of the blob's validity check.
+    const reader = src.slice(
+      src.indexOf("function readPendingCheckoutLaunch("),
+      src.indexOf("// Coerce a stored profile field"),
+    );
+    expect(reader).toContain("const selectedFunnelKeys = isStringList(parsed.selectedFunnelKeys) ? parsed.selectedFunnelKeys : [];");
+    expect(reader).toContain('const primaryFunnelKey = typeof parsed.primaryFunnelKey === "string" ? parsed.primaryFunnelKey : null;');
+
+    // Restored on BOTH checkout returns — success walks the funnel screens, and cancel
+    // lands on pricing where Back walks up through primary/funnels.
+    expect(src).toContain("function applyRestoredFunnelSelection(pending: PendingCheckoutLaunch)");
+    const resume = src.slice(
+      src.indexOf("async function resumeCheckoutLaunch"),
+      src.indexOf("// Direct launch — NO Stripe redirect"),
+    );
+    expect(resume).toContain("applyRestoredFunnelSelection(pending);");
+    const cancel = src.slice(
+      src.indexOf('if (launchCheckout === "cancelled")'),
+      src.indexOf("setCancelNotice(CHECKOUT_CANCELLED_NOTICE);"),
+    );
+    expect(cancel).toContain("applyRestoredFunnelSelection(pending);");
+  });
+
+  it("keeps the funnel selection OUT of the versioned snapshot (no state-version bump)", () => {
+    // A bump strands an in-flight checkout, so the selection rides the version-INDEPENDENT
+    // top level of the pending blob instead of PersistedOnboardingState.
+    expect(src).toContain("const ONBOARDING_STATE_VERSION = 8;");
+    const persisted = src.slice(
+      src.indexOf("type PersistedOnboardingState = {"),
+      src.indexOf("function isStringRecord"),
+    );
+    expect(persisted).not.toContain("selectedFunnelKeys");
+    expect(persisted).not.toContain("primaryFunnelKey");
+  });
+
   it("does not double-resume on a Stripe checkout return (generic resume no-ops)", () => {
     // The dedicated checkout effect owns ?launch_checkout=success|cancelled. The
     // generic resume must NOT also fire (it would re-hydrate the brand and land on

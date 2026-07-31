@@ -11,6 +11,7 @@ import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { useIsAdminUser } from "@/lib/use-admin-user";
 import { TenantSwitcher } from "@/components/tenant-switcher";
+import { ReferralCard } from "@/components/invite/referral-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -483,6 +484,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               />
             )}
           </div>
+          <ReferralCard />
         </div>
       }
     >
@@ -591,6 +593,7 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
               isActive={pathname === `${basePath}/settings`}
             />
           </div>
+          <ReferralCard />
         </div>
       }
     >

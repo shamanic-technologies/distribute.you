@@ -3985,6 +3985,162 @@ export async function getCreditGrants(token?: string): Promise<{ grants: CreditG
   return parsed.data as unknown as { grants: CreditGrant[] };
 }
 
+// --- Referral invites ---------------------------------------------------------
+//
+// The invite code is the org's slug, owned by client-service and reached through
+// the gateway's org-scoped passthrough. BOTH routes take the org's INTERNAL UUID
+// in the path (verified against the deployed registry: "Org UUID (must match
+// authenticated org)"), NOT the Clerk org id the dashboard URL carries — so the
+// caller sources it from `BillingAccount.org_id`, which is already fetched on
+// every dashboard page and therefore dedupes.
+//
+// The gateway is a passthrough and publishes no response schema for either
+// route, so these readers conform to what client-service actually serves and
+// declare everything they do not themselves need as optional. That is
+// load-bearing right now: a sibling workspace is lifting the three-invite cap,
+// which retires the quota fields. Only `code` is required, because only `code`
+// builds the link.
+
+export interface InviteStatus {
+  /** The org's own invite code. */
+  code: string;
+}
+
+const InviteStatusResponseSchema = z
+  .object({
+    code: z.string(),
+    // Quota fields from the capped era. Optional on purpose: the cap is being
+    // lifted, and a reader that required them would break the moment it lands.
+    used: z.number().optional(),
+    total: z.number().optional(),
+    expired: z.boolean().optional(),
+  })
+  .passthrough();
+
+/** GET /orgs/:orgId/invites/status — this org's referral code. `orgId` is the internal UUID. */
+export async function getInviteStatus(orgId: string, token?: string): Promise<InviteStatus> {
+  const raw = await apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/invites/status`, {
+    token,
+  });
+  const parsed = InviteStatusResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getInviteStatus: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getInviteStatus: invalid response shape");
+  }
+  return { code: parsed.data.code };
+}
+
+/**
+ * POST /orgs/:orgId/invites/claim — record that this org signed up through `code`.
+ *
+ * The response is not read. What matters is whether it succeeded, because that
+ * is what decides if the stored code may be dropped (see `isTerminalClaimRejection`
+ * in lib/invite-link). Errors propagate as `ApiError` carrying the status.
+ */
+export async function claimInvite(orgId: string, code: string, token?: string): Promise<void> {
+  await apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/invites/claim`, {
+    method: "POST",
+    body: { code },
+    token,
+  });
+}
+
+// --- Free-credit promises -----------------------------------------------------
+//
+// Every free credit this org is still WAITING on: the welcome remainder, plus a
+// $500 promise for each converting referral. A promise is a promise, not money —
+// billing keeps it out of `credited` / `balance` / spendable until it is granted,
+// so this never double-counts against the balance shown beside it.
+//
+// Shape conforms to the deployed billing-service route (verified in the prod
+// registry, v0.59.0). Cents are STRINGS on this wire, as everywhere in billing.
+
+export interface FreeCreditPromise {
+  id: string;
+  /** Which offer opened it, e.g. the welcome remainder or a referral reward. */
+  kind: string;
+  amountCents: string;
+  /** Cumulative payments that unlock it. */
+  paidTriggerCents: string;
+  paidSoFarCents: string;
+  remainingToUnlockCents: string;
+  progressPct: number;
+  /** The org whose conversion opened this promise, when it came from a referral. */
+  referredOrgId: string | null;
+  /** The org that referred us, on the invitee's own referral promise. */
+  referrerOrgId: string | null;
+  /**
+   * Display identity for the org named above, so a row can show WHO earned it
+   * rather than three identical $500 lines. Optional because billing resolves it
+   * in a follow-up: absent until that ships, and absent for good whenever the
+   * other org has no brand to resolve. Never fabricated, so a missing name simply
+   * renders no name.
+   */
+  referredOrgName?: string | null;
+  referredOrgDomain?: string | null;
+  createdAt: string;
+}
+
+const FreeCreditPromiseSchema = z
+  .object({
+    id: z.string(),
+    kind: z.string(),
+    amount_cents: z.string(),
+    paid_trigger_cents: z.string(),
+    paid_so_far_cents: z.string(),
+    remaining_to_unlock_cents: z.string(),
+    progress_pct: z.coerce.number(),
+    referred_org_id: z.string().nullable(),
+    referrer_org_id: z.string().nullable(),
+    // Additive, shipping in a billing follow-up. Optional so this reader works
+    // against both the current deploy and the next one, with no rollout gate.
+    referred_org_name: z.string().nullable().optional(),
+    referred_org_domain: z.string().nullable().optional(),
+    created_at: z.string(),
+  })
+  .passthrough();
+
+const FreeCreditPromisesResponseSchema = z.object({
+  org_id: z.string(),
+  paid_topups_cents: z.string(),
+  promises: z.array(FreeCreditPromiseSchema),
+});
+
+/** GET /billing/free-credit-promises — the free credits this org is still waiting on. */
+export async function getFreeCreditPromises(
+  token?: string,
+): Promise<{ paidTopupsCents: string; promises: FreeCreditPromise[] }> {
+  const raw = await apiCall<unknown>("/billing/free-credit-promises", { token });
+  const parsed = FreeCreditPromisesResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFreeCreditPromises: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getFreeCreditPromises: invalid response shape");
+  }
+  return {
+    paidTopupsCents: parsed.data.paid_topups_cents,
+    promises: parsed.data.promises.map((p) => ({
+      id: p.id,
+      kind: p.kind,
+      amountCents: p.amount_cents,
+      paidTriggerCents: p.paid_trigger_cents,
+      paidSoFarCents: p.paid_so_far_cents,
+      remainingToUnlockCents: p.remaining_to_unlock_cents,
+      progressPct: p.progress_pct,
+      referredOrgId: p.referred_org_id,
+      referrerOrgId: p.referrer_org_id,
+      referredOrgName: p.referred_org_name ?? null,
+      referredOrgDomain: p.referred_org_domain ?? null,
+      createdAt: p.created_at,
+    })),
+  };
+}
+
 // A single customer payment (a Stripe PaymentIntent = a one-off top-up the
 // customer paid). Read from the api-service gateway payments route, which
 // forwards the org's PaymentIntents mirrored server-side in stripe-service.

@@ -210,8 +210,37 @@ function analyticsHead(): string {
   // = the distribute.you Ahrefs project). Mirrors app/layout.tsx.
   const ahrefs = `<script src="https://analytics.ahrefs.com/analytics.js" data-key="6jqRRazbkHBZRDiWAmampA" async></script>`;
 
-  // Partnero affiliate tracking + cross-subdomain via-forward.
-  return ga + posthog + ahrefs + partneroHead();
+  // Partnero affiliate tracking + cross-subdomain via-forward, then the customer
+  // referral code on the same journey.
+  return ga + posthog + ahrefs + partneroHead() + inviteHead();
+}
+
+/**
+ * Customer referral code (`?invite=CODE`) carried across to the dashboard.
+ *
+ * Distinct from Partnero above: that is the AFFILIATE program (partners, paid
+ * commission); this is a CUSTOMER inviting another customer, where both sides
+ * earn $500 in free credits once the invitee's payments unlock theirs. The two
+ * ride the same road for the same reason and neither replaces the other, so a
+ * link can legitimately carry both parameters.
+ *
+ * Two parts, mirroring the Partnero pair:
+ *  (1) remember — park the code in a first-party cookie on the LANDING domain, so
+ *      a visitor who arrives on `distribute.you?invite=X`, reads the pricing page,
+ *      and only then clicks Sign up still carries it. Without this the code
+ *      survives exactly one page view.
+ *  (2) forward — the signup happens on `dashboard.distribute.you`, a DIFFERENT
+ *      subdomain no landing cookie reaches, so the code is appended to every
+ *      dashboard-bound link at click time. The dashboard stores it and claims it
+ *      once an org exists (see apps/dashboard InviteCapture + InviteClaimer).
+ *
+ * Exported as a string so the React landing layout renders the SAME source
+ * instead of keeping a second copy that drifts.
+ */
+export const INVITE_FORWARD_SCRIPT = `(function(){var N='distribute_invite';function ok(v){return !!v&&v.length<=128&&/^[A-Za-z0-9._~-]+$/.test(v);}function read(){var m=location.search.match(/[?&]invite=([^&]+)/);if(m){try{var d=decodeURIComponent(m[1]);if(ok(d))return d;}catch(e){}}var c=document.cookie.match(new RegExp('(?:^|; )'+N+'=([^;]*)'));if(c){try{var v=decodeURIComponent(c[1]);if(ok(v))return v;}catch(e){}}return null;}var code=read();if(code){document.cookie=N+'='+encodeURIComponent(code)+'; path=/; max-age=7776000; SameSite=Lax';}document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="dashboard.distribute.you"]'):null;if(!a)return;var v=read();if(!v)return;try{var u=new URL(a.href);if(!u.searchParams.get('invite')){u.searchParams.set('invite',v);a.href=u.href;}}catch(err){}},true);})();`;
+
+function inviteHead(): string {
+  return `<script>${INVITE_FORWARD_SCRIPT}</script>`;
 }
 
 // Partnero affiliate program `KHV3KEHI`. Two parts:
