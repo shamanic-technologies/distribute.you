@@ -13,7 +13,12 @@ async function proxyRequest(
   segmentData: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const { userId: clerkUserId, orgId: clerkOrgId, sessionClaims } = await auth();
+    const {
+      userId: clerkUserId,
+      orgId: clerkOrgId,
+      orgSlug: clerkOrgSlug,
+      sessionClaims,
+    } = await auth();
     if (!clerkUserId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -67,6 +72,15 @@ async function proxyRequest(
     if (sessionClaims?.email) headers["x-email"] = sessionClaims.email;
     if (sessionClaims?.firstName) headers["x-first-name"] = sessionClaims.firstName;
     if (sessionClaims?.lastName) headers["x-last-name"] = sessionClaims.lastName;
+
+    // The org slug IS the org's referral/invite code, and client-service self-heals
+    // it on resolve (writes only when the stored slug is NULL, never overwrites) —
+    // but nothing had ever sent one, so every org's code read back null. Clerk
+    // already carries a slug for every org (auto-derived at creation), and auth()
+    // reads it off the session token, so no Clerk API round-trip is needed.
+    // Send exactly what Clerk has, or send nothing at all: never derive, normalize
+    // or substitute a value, and omit the header rather than sending a blank one.
+    if (clerkOrgSlug) headers["x-org-slug"] = clerkOrgSlug;
 
     const body =
       req.method !== "GET" && req.method !== "HEAD"

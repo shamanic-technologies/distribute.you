@@ -65,6 +65,41 @@ describe("API proxy route", () => {
     expect(content).toContain('"x-last-name"');
   });
 
+  // The org slug IS the org's referral/invite code. client-service self-heals it on
+  // resolve (writes only when the stored slug is NULL), and api-service forwards an
+  // inbound `x-org-slug` into that resolve body — but nothing had ever sent one, so
+  // every org read back a null code. `x-org-slug` is the deployed gateway contract:
+  // do not rename it.
+  it("should forward the Clerk org slug as x-org-slug when the caller's org has one", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    // Read off auth()'s own return value (the session-token org claim), never a
+    // Clerk Backend API round-trip and never a client-supplied header.
+    expect(content).toContain("orgSlug: clerkOrgSlug");
+    expect(content).toContain('headers["x-org-slug"] = clerkOrgSlug');
+    expect(content).not.toContain('req.headers.get("x-org-slug")');
+    expect(content).not.toContain("sessionClaims?.orgSlug");
+  });
+
+  it("should omit x-org-slug entirely when Clerk has no slug for the org", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    // Guarded on truthiness, so an absent slug sends no header at all — the request
+    // must proxy and authenticate exactly as before.
+    expect(content).toContain(
+      'if (clerkOrgSlug) headers["x-org-slug"] = clerkOrgSlug;'
+    );
+    // Never an empty string, and never part of the always-sent base header object.
+    expect(content).not.toContain('"x-org-slug": ');
+    expect(content).not.toContain('headers["x-org-slug"] = ""');
+    expect(content).not.toContain('clerkOrgSlug ?? ""');
+    expect(content).not.toContain('clerkOrgSlug || ""');
+  });
+
+  it("should never mint or normalize a slug of its own", () => {
+    const content = fs.readFileSync(proxyPath, "utf-8");
+    expect(content).not.toContain("slugify");
+    expect(content).not.toContain("toLowerCase()");
+  });
+
   it("should not call client-service directly", () => {
     const content = fs.readFileSync(proxyPath, "utf-8");
     expect(content).not.toContain("CLIENT_SERVICE_URL");
