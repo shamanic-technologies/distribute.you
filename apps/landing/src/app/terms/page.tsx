@@ -172,13 +172,24 @@ const SECTIONS: SectionDef[] = [
         <p>
           <strong>The welcome offer is a total, not a top-up.</strong> The
           advertised welcome amount (currently $400) is the most free credit an
-          account can ever receive, counting every free credit that account has
-          already been given. Any other credit granted to the same account
-          counts against that same total and reduces what is left of the welcome
-          amount. That includes referral credits, promotional or discount codes,
-          support and goodwill grants, and any other offer running at the same
-          time. Offers do not stack, and no combination of them entitles an
-          account to more than the advertised total.
+          account can ever receive under that offer, counting every free credit
+          that account has already been given under it. Promotional or discount
+          codes, support and goodwill grants, and any other credit granted under
+          the welcome offer count against that same total and reduce what is
+          left of it. No combination of them entitles an account to more than
+          the advertised welcome amount.
+        </p>
+        <p>
+          <strong>Referral credits are separate and additional.</strong> The
+          referral offer (currently $500 for each side of a referral) is its own
+          offer with its own total, and it does not count against the welcome
+          amount. An account can hold more than one offer at a time, and each
+          one is released on its own threshold. Those thresholds add up rather
+          than overlap: an account that still has $400 of welcome credit coming
+          at $400 of payments, and is then referred $500, receives the second
+          amount at $900 of cumulative payments. An account may earn the
+          referral amount any number of times, once for each separate person it
+          refers who reaches their own threshold.
         </p>
         <p>
           <strong>How the welcome amount is released.</strong> Part of the

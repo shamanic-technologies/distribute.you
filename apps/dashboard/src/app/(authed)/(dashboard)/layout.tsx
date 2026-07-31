@@ -13,6 +13,7 @@ import { BrandFavicon } from "@/components/brand-favicon";
 import { CreditAlerts } from "@/components/billing/credit-alerts";
 import { NoAudienceBanner } from "@/components/onboarding/no-audience-banner";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
+import { InviteClaimer } from "@/components/invite/invite-claimer";
 import { SupportButton } from "@/components/support/support-button";
 import { MobileSidebarProvider, useMobileSidebar } from "@/components/mobile-sidebar-context";
 import { QueryProvider } from "@/lib/query-provider";
@@ -100,6 +101,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <CreditAlerts />
         <NoAudienceBanner />
         <OnboardingFlow />
+        <InviteClaimer />
         <SupportButton />
         <main className="min-w-0 flex-1 overflow-y-auto">
           {showContent ? children : <div className="h-full bg-gray-50" />}

@@ -3892,6 +3892,69 @@ export async function getCreditGrants(token?: string): Promise<{ grants: CreditG
   return parsed.data as unknown as { grants: CreditGrant[] };
 }
 
+// --- Referral invites ---------------------------------------------------------
+//
+// The invite code is the org's slug, owned by client-service and reached through
+// the gateway's org-scoped passthrough. BOTH routes take the org's INTERNAL UUID
+// in the path (verified against the deployed registry: "Org UUID (must match
+// authenticated org)"), NOT the Clerk org id the dashboard URL carries — so the
+// caller sources it from `BillingAccount.org_id`, which is already fetched on
+// every dashboard page and therefore dedupes.
+//
+// The gateway is a passthrough and publishes no response schema for either
+// route, so these readers conform to what client-service actually serves and
+// declare everything they do not themselves need as optional. That is
+// load-bearing right now: a sibling workspace is lifting the three-invite cap,
+// which retires the quota fields. Only `code` is required, because only `code`
+// builds the link.
+
+export interface InviteStatus {
+  /** The org's own invite code. */
+  code: string;
+}
+
+const InviteStatusResponseSchema = z
+  .object({
+    code: z.string(),
+    // Quota fields from the capped era. Optional on purpose: the cap is being
+    // lifted, and a reader that required them would break the moment it lands.
+    used: z.number().optional(),
+    total: z.number().optional(),
+    expired: z.boolean().optional(),
+  })
+  .passthrough();
+
+/** GET /orgs/:orgId/invites/status — this org's referral code. `orgId` is the internal UUID. */
+export async function getInviteStatus(orgId: string, token?: string): Promise<InviteStatus> {
+  const raw = await apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/invites/status`, {
+    token,
+  });
+  const parsed = InviteStatusResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getInviteStatus: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getInviteStatus: invalid response shape");
+  }
+  return { code: parsed.data.code };
+}
+
+/**
+ * POST /orgs/:orgId/invites/claim — record that this org signed up through `code`.
+ *
+ * The response is not read. What matters is whether it succeeded, because that
+ * is what decides if the stored code may be dropped (see `isTerminalClaimRejection`
+ * in lib/invite-link). Errors propagate as `ApiError` carrying the status.
+ */
+export async function claimInvite(orgId: string, code: string, token?: string): Promise<void> {
+  await apiCall<unknown>(`/orgs/${encodeURIComponent(orgId)}/invites/claim`, {
+    method: "POST",
+    body: { code },
+    token,
+  });
+}
+
 // A single customer payment (a Stripe PaymentIntent = a one-off top-up the
 // customer paid). Read from the api-service gateway payments route, which
 // forwards the org's PaymentIntents mirrored server-side in stripe-service.
