@@ -126,6 +126,26 @@ describe("the public view publishes by NAMING safe fields", () => {
     expect(src).toContain('JSON.stringify({ shareToken })');
   });
 
+  // api-service has two auth paths and they are NOT interchangeable: the
+  // platform key travels in `X-API-Key`, while `Authorization: Bearer` is
+  // reserved for a `distrib.usr_*` user key validated through key-service.
+  // Sending the platform key as a Bearer is rejected — and because this page
+  // has no session to fall back on, the rejection surfaced as a 500 on every
+  // share link in prod rather than as an auth error anywhere visible.
+  it("authenticates with X-API-Key, never a Bearer token", () => {
+    expect(src).toContain('"X-API-Key": API_KEY');
+    // Assert against CODE only: the comment above that header explains the
+    // Bearer trap and would trip a whole-file `not.toContain` on its own.
+    const code = src
+      .split("\n")
+      .filter((l) => {
+        const t = l.trimStart();
+        return !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+      })
+      .join("\n");
+    expect(code).not.toContain("Bearer");
+  });
+
   it("is server-only", () => {
     expect(src).toContain('import "server-only"');
   });
