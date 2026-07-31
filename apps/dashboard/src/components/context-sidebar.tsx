@@ -615,20 +615,23 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
             icon: <LeadsIcon />,
             maturity: "beta",
           },
-          // Brand-config passthrough — a campaign inherits the brand's strategy +
-          // audiences, so these link to the brand-level pages (they leave the
-          // campaign context by design).
+          // Campaign-scoped views of the brand's strategy + audiences. They stay
+          // INSIDE the campaign and narrow to it wherever campaign-service stores a
+          // per-campaign value (the goal, the targeted audience subset, the outreach
+          // the numbers count); the rest is brand config the campaign inherits.
           {
             id: "strategy",
             label: "Strategy",
-            href: `${basePath}/strategy`,
+            href: `${campaignBase}/strategy`,
             icon: <StrategyIcon />,
+            maturity: "beta",
           },
           {
             id: "audiences",
             label: "Audiences",
-            href: `${basePath}/audiences`,
+            href: `${campaignBase}/audiences`,
             icon: <AudiencesIcon />,
+            maturity: "beta",
           },
         ]
       : [];

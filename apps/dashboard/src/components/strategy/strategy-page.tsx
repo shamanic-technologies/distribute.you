@@ -15,9 +15,11 @@ import { pollOptions } from "@/lib/query-options";
 import {
   getBrandUserFields,
   getBrandSalesEconomics,
+  getCampaign,
   getWorkflowProjectionLadder,
   listAudiences,
   listWorkflowExamples,
+  optimizationGoalForRuntimeGoal,
   saveBrandUserFields,
   USER_FIELD_KEYS,
 } from "@/lib/api";
@@ -268,9 +270,17 @@ function ExampleEmailCard({
   );
 }
 
-export function StrategyPage() {
+/**
+ * @param campaignId - Set by the campaign-scoped route (`campaigns/[id]/strategy`).
+ *   Absent on the brand page, which is the GA surface and stays byte-identical.
+ *   A campaign narrows exactly what campaign-service stores for it — the goal and
+ *   the targeted audience subset — and inherits the brand's economics, offer and
+ *   fleet projection, because no per-campaign column exists for those.
+ */
+export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
   const featureSlug = useSoleFeatureSlug();
   const revenueOk = isRevenueFeature(featureSlug);
+  const campaignScoped = Boolean(campaignId);
 
   const params = useParams();
   const brandId = params.brandId as string;
@@ -289,8 +299,22 @@ export function StrategyPage() {
     { ...pollOptions, enabled: revenueOk && !!brandId },
   );
   const econ = econData?.salesEconomics ?? null;
-  // Default to the meetings objective until the saved economics resolve.
-  const optimizationGoal = econ?.optimizationGoal ?? "sales_meetings";
+
+  // Campaign identity, on the key the campaign Overview + the header page context
+  // already poll — React Query serves all three from one request.
+  const { data: campaignData } = useAuthQuery(
+    ["campaign", campaignId ?? "none"],
+    () => getCampaign(campaignId as string),
+    { ...pollOptions, enabled: campaignScoped },
+  );
+  const campaign = campaignData?.campaign ?? null;
+
+  // Default to the meetings objective until the saved economics resolve. Under a
+  // campaign, its OWN goal wins when set (`null` = inherit the brand's).
+  const brandOptimizationGoal = econ?.optimizationGoal ?? "sales_meetings";
+  const optimizationGoal = campaign?.goal
+    ? optimizationGoalForRuntimeGoal(campaign.goal)
+    : brandOptimizationGoal;
   const objective = objectiveForOptimizationGoal(optimizationGoal);
   const noun = outcomeNoun(optimizationGoal);
   // Sales-meetings objective → the funnel runs through a positive reply, so surface
@@ -422,7 +446,9 @@ export function StrategyPage() {
     });
 
   const saveOffer = () => {
-    if (!offerDirty || saveOfferMut.isPending) return;
+    // Under a campaign the offer is a PREVIEW: campaign-service stores no per-campaign
+    // user-fields, so saving here would write the BRAND's offer from a campaign screen.
+    if (campaignScoped || !offerDirty || saveOfferMut.isPending) return;
     saveOfferMut.mutate(offerFields);
   };
 
@@ -447,7 +473,14 @@ export function StrategyPage() {
   // Every active audience gets a row = that audience's projection row (its own `resolved`
   // grain, already picked audience→brand→crossOrg server-side). Pure display pick — every
   // value stays server-provided (no client-side metric math, no rescale).
-  const activeAudiences = audiencesData?.audiences ?? [];
+  // Under a campaign, narrow to the audiences IT targets (`campaign.audienceIds`); `null`
+  // means the campaign inherits the brand's active set, so the list is unchanged. Same
+  // resolution the campaign Overview uses — a display lookup over the already-fetched rows.
+  const brandActiveAudiences = audiencesData?.audiences ?? [];
+  const campaignAudienceIds = campaign?.audienceIds ?? null;
+  const activeAudiences = campaignAudienceIds
+    ? brandActiveAudiences.filter((a) => campaignAudienceIds.includes(a.id))
+    : brandActiveAudiences;
 
   // Table order: highest ROI (= resolved.roiMultiple) first. Audiences with no evidence
   // row yet (no resolved ROI) sort to the END. Each audience falls back to the best
@@ -480,7 +513,9 @@ export function StrategyPage() {
             <h1 className="text-xl font-semibold text-gray-900">Strategy</h1>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            How we run cold outreach for this brand, and which model performs best.
+            {campaignScoped
+              ? "How we run cold outreach for this campaign, and which model performs best."
+              : "How we run cold outreach for this brand, and which model performs best."}
           </p>
         </div>
 
@@ -586,7 +621,26 @@ export function StrategyPage() {
                 })}
               </ul>
 
-              {offerDirty ? (
+              {campaignScoped ? (
+                <p className="mt-4 text-xs text-gray-400">
+                  Preview only. Nothing here is saved yet. The offer is the brand&apos;s and
+                  every campaign uses it; edit it on the brand Strategy page.
+                </p>
+              ) : null}
+
+              {offerDirty && campaignScoped ? (
+                <div className="mt-2 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setOfferDraft(null)}
+                    className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Discard
+                  </button>
+                </div>
+              ) : null}
+
+              {offerDirty && !campaignScoped ? (
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button
                     type="button"
