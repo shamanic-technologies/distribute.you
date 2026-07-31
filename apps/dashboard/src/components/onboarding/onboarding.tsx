@@ -3652,7 +3652,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
             <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
               <GiftIcon className="h-7 w-7 text-brand-600" />
             </span>
-            <h2 className="font-display text-2xl font-bold text-gray-900">Pay your first $25, get $25 free.</h2>
+            <h2 className="font-display text-2xl font-bold text-gray-900">We will match your first $25 with $25 free credits.</h2>
             {/* The gift is earned on PAYMENTS RECEIVED, never on usage consumed: the
                 account is threshold-postpaid, so an org can consume on credit before
                 paying anything. This one sentence is true in BOTH branches — when the
