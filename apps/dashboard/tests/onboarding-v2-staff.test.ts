@@ -172,3 +172,36 @@ describe("v2 staff onboarding — funnel catalogue", () => {
     expect(pipeline).toContain("formatLocaleInteger");
   });
 });
+
+describe("v2 onboarding — resume", () => {
+  it("maps a customer-flow-only step onto its v2 equivalent", () => {
+    // The v2 branches guard TRANSITIONS, but a RESUME sets the step directly — from
+    // a snapshot written before this flow existed, one written under `?flow=ga`, or
+    // the cross-session `?brandId=` resume. Without this a beta user lands on a step
+    // their flow never routes into and reads it as the preview not being live.
+    const map = sliceFrom("function v2StepFor(step: Step): Step {", 400);
+    expect(map).toContain('case "destination":');
+    expect(map).toContain('return "audiences"');
+    expect(map).toContain('case "objective":');
+    expect(map).toContain('case "rates":');
+    expect(map).toContain('return "funnels"');
+  });
+
+  it("threads the variant through every resume entry point", () => {
+    // A call that drops the variant silently resumes a v2 session into the GA flow.
+    const calls = flow.match(/resolveResumeStep\([^)]*\)/g) ?? [];
+    const usages = calls.filter((c) => !c.startsWith("resolveResumeStep(step,"));
+    expect(usages.length).toBeGreaterThan(0);
+    for (const call of usages) {
+      expect(call, `resume call missing the variant: ${call}`).toContain("variant");
+    }
+    // The cross-session brand resume hardcoded the GA goal step.
+    expect(flow).toContain('runResume(isV2 ? "funnels" : "objective", seededUrl)');
+  });
+
+  it("self-corrects rather than rendering a step the flow does not have", () => {
+    const failsafe = sliceFrom('if (isV2 && (step === "destination"', 260);
+    expect(failsafe).toContain("setStep(v2StepFor(step))");
+    expect(failsafe).toContain("return null");
+  });
+});

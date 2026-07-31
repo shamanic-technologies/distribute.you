@@ -51,7 +51,8 @@ describe("Onboarding — cross-session brand resume via ?brandId=", () => {
   it("reads the brandId param and re-hydrates the brand from backend", () => {
     expect(onboarding).toContain('searchParams.get("brandId")');
     expect(onboarding).toContain("getBrand(resumeBrandIdParam)");
-    expect(onboarding).toContain('runResume("objective", seededUrl)');
+    // v2 has no single-goal step, so the landing point is variant-dependent.
+    expect(onboarding).toContain('runResume(isV2 ? "funnels" : "objective", seededUrl)');
   });
 
   it("only uses the param path when there is no snapshot / checkout return to restore", () => {
