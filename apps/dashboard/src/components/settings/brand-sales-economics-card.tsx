@@ -16,6 +16,7 @@ import {
   parseLocaleNumberInput,
 } from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -485,18 +486,7 @@ export function BrandSalesEconomicsCard({ brandId }: { brandId: string }) {
           <p className="mt-4 text-sm text-red-600">{validationError}</p>
         )}
 
-        <div className="mt-5 flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
-          {saved && !dirty && (
-            <span className="text-sm text-green-600">Saved ✓</span>
-          )}
-        </div>
+        <SettingsSaveRow dirty={dirty} saving={saving} saved={saved} onSave={handleSave} />
       </div>
     </div>
   );

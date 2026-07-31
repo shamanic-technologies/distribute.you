@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { ApiError, attachBrandWebsite, getBrand, listBrands, type BrandDetail } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 
 // One-time brand-domain setup for a no-website brand (domain === null). Once a
 // domain is attached it becomes the brand's identity and CANNOT be changed here —
@@ -170,15 +171,14 @@ export function BrandDomainCard({ brandId }: { brandId: string }) {
             </div>
           )}
 
-          <div className="mt-5">
-            <button
-              onClick={handleSave}
-              disabled={saving || value.trim().length === 0}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
+          {/* This card only ever exists on a brand with no website, so the field
+              starts empty and "edited" simply means the user has typed a URL. */}
+          <SettingsSaveRow
+            dirty={value.trim().length > 0}
+            saving={saving}
+            saved={false}
+            onSave={handleSave}
+          />
         </div>
       </div>
     </section>
