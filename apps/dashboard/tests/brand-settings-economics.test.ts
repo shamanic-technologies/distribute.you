@@ -133,7 +133,9 @@ describe("BrandSalesEconomicsCard component", () => {
     expect(content).toContain("Signup → Paid client");
     expect(content).not.toContain("Meeting → close");
     expect(content).not.toContain("Website visit → close");
-    expect(content).toContain("Save");
+    // Saving goes through the shared row, which hides itself until the form has
+    // actually been edited; a bare "Save" substring would also match its import.
+    expect(content).toContain("<SettingsSaveRow");
   });
 
   it("renders Signup → Paid client in the signups-goal conversion set", () => {

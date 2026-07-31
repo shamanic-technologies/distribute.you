@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { getBrand, saveBrandClickDestination, type BrandDetail } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 import { bareHost, validateDestination } from "@/lib/click-destination-validation";
 
 // The page outreach clicks land on. Must be a URL on the brand's OWN domain
@@ -133,16 +134,13 @@ export function BrandClickDestinationCard({
           </p>
         )}
 
-        <div className="mt-5 flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={domainLocked || !dirty || saving}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
-          {saved && !dirty && <span className="text-sm text-green-600">Saved ✓</span>}
-        </div>
+        <SettingsSaveRow
+          dirty={dirty}
+          saving={saving}
+          saved={saved}
+          disabled={domainLocked}
+          onSave={handleSave}
+        />
       </div>
     </div>
   );
