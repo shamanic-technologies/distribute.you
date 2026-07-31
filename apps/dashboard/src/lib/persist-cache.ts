@@ -102,6 +102,8 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // The org's own referral code, behind the sidebar's invite link. Tiny, and it
   // never changes, so an unlisted root would cold-fetch on every single load.
   "inviteStatus",
+  // Free credits committed but not yet granted, on the Billing page.
+  "freeCreditPromises",
   // Brand metadata + config + small summaries
   "brand",
   "brands",
