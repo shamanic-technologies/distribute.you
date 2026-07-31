@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  ClipboardDocumentCheckIcon,
-  PencilSquareIcon,
-  StarIcon,
-  UserPlusIcon,
-} from "@heroicons/react/20/solid";
+import { PencilSquareIcon } from "@heroicons/react/20/solid";
+import { ChatsCircleIcon } from "@phosphor-icons/react/dist/csr/ChatsCircle";
+import { CalendarCheckIcon } from "@phosphor-icons/react/dist/csr/CalendarCheck";
+import { ShoppingCartSimpleIcon } from "@phosphor-icons/react/dist/csr/ShoppingCartSimple";
+import { MagnetIcon } from "@phosphor-icons/react/dist/csr/Magnet";
+import type { Icon } from "@phosphor-icons/react";
 import { getBrand, getBrandSalesEconomics } from "@/lib/api";
 import {
   SALES_FUNNELS,
   funnelDraftFromBrand,
-  funnelSummaryParts,
+  funnelLegPct,
+  funnelMetaChips,
+  funnelRateFields,
   validateFunnelDraft,
   type FunnelDraft,
   type FunnelRateKey,
@@ -27,29 +27,35 @@ import {
 } from "@/lib/format-number";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { BrandLogo } from "@/components/brand-logo";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
 // The funnels a brand sells through. Several can run at once, and each one keeps
 // its own conversion rates, lifetime revenue and landing page, because a
-// self-serve signup customer and an enterprise meeting customer are not worth
+// self-serve purchase customer and an enterprise meeting customer are not worth
 // the same and do not land on the same page.
 //
 // Nothing here writes yet: brand-service stores one lifetime revenue and one
-// destination per brand, and has no field at all for a booking link. Rather than
-// pretend a per-funnel value persisted, the card states that it is a preview and
-// offers no Save. The per-funnel values are seeded from what the brand really
-// saved, so the numbers on screen are its own.
+// destination per brand, has no field at all for a booking link, and none for
+// the meeting show-up rate. Rather than pretend a per-funnel value persisted,
+// the card states that it is a preview. The per-funnel values are seeded from
+// what the brand really saved, so the numbers on screen are its own.
 
-const FUNNEL_ICONS: Record<SalesFunnelKey, typeof StarIcon> = {
-  reply_meeting: ChatBubbleLeftRightIcon,
-  visit_signup: UserPlusIcon,
-  visit_form: ClipboardDocumentCheckIcon,
+// Phosphor duotone rather than a single-weight utility set: each mark carries a
+// tinted fill under its stroke, so it fills its tile instead of floating in it.
+const FUNNEL_ICONS: Record<SalesFunnelKey, Icon> = {
+  reply_meeting: ChatsCircleIcon,
+  visit_meeting: CalendarCheckIcon,
+  visit_signup: ShoppingCartSimpleIcon,
+  visit_form: MagnetIcon,
 };
 
 type FunnelState = {
   selected: boolean;
   confirmed: boolean;
+  /** True once the funnel has been confirmed at least once, so the CTA reads Update. */
+  everConfirmed: boolean;
   touched: boolean;
   draft: FunnelDraft;
   error: string | null;
@@ -57,8 +63,8 @@ type FunnelState = {
 
 function emptyDraft(def: SalesFunnelDef): FunnelDraft {
   const rates: Partial<Record<FunnelRateKey, string>> = {};
-  for (const rate of def.rates) rates[rate.key] = "";
-  return { rates, lifetimeRevenueUsd: "", destinationUrl: "" };
+  for (const rate of funnelRateFields(def)) rates[rate.key] = "";
+  return { rates, lifetimeRevenueUsd: "", destinationUrl: "", bookingUrl: "" };
 }
 
 function initialStates(): Record<SalesFunnelKey, FunnelState> {
@@ -67,6 +73,7 @@ function initialStates(): Record<SalesFunnelKey, FunnelState> {
     out[def.key] = {
       selected: false,
       confirmed: false,
+      everConfirmed: false,
       touched: false,
       draft: emptyDraft(def),
       error: null,
@@ -92,7 +99,6 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   const noWebsite = !!brand && brand.url == null;
 
   const [states, setStates] = useState<Record<SalesFunnelKey, FunnelState>>(initialStates);
-  const [primary, setPrimary] = useState<SalesFunnelKey | null>(null);
   const hydrated = useRef(false);
 
   // Seed every funnel from the brand's saved economics + click destination, once.
@@ -159,19 +165,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
   function toggleSelected(def: SalesFunnelDef) {
     const state = states[def.key];
-    if (state.selected) {
-      patch(def.key, { selected: false, confirmed: false, error: null });
-      // Dropping the primary funnel hands the role to another selected one, so a
-      // set of funnels is never left with nothing to optimize for.
-      if (primary === def.key) {
-        const heir = SALES_FUNNELS.find((f) => f.key !== def.key && states[f.key].selected);
-        setPrimary(heir ? heir.key : null);
-      }
-      return;
-    }
-    patch(def.key, { selected: true, error: null });
-    // The first funnel picked is the one campaigns optimize for until told otherwise.
-    if (primary === null) setPrimary(def.key);
+    patch(def.key, { selected: !state.selected, confirmed: false, error: null });
   }
 
   function confirm(def: SalesFunnelDef) {
@@ -180,7 +174,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       patch(def.key, { error: result.error });
       return;
     }
-    patch(def.key, { confirmed: true, error: null });
+    patch(def.key, { confirmed: true, everConfirmed: true, error: null });
   }
 
   if (!isBeta) return null;
@@ -206,8 +200,8 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
             const state = states[def.key];
             const Icon = FUNNEL_ICONS[def.key];
             const locked = def.requiresWebsite && noWebsite;
-            const isPrimary = primary === def.key;
-            const summary = funnelSummaryParts(def, state.draft);
+            const chips = state.selected ? funnelMetaChips(def, state.draft) : [];
+            const rateFields = funnelRateFields(def);
 
             return (
               <li
@@ -223,29 +217,49 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
                     checked={state.selected}
                     disabled={locked}
                     onChange={() => toggleSelected(def)}
-                    className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="mt-2.5 h-4 w-4 shrink-0 rounded border-gray-300 text-brand-500 focus:ring-2 focus:ring-brand-300 disabled:cursor-not-allowed disabled:opacity-40"
                   />
 
+                  {/* Tall enough to run alongside both the name and the chain under it. */}
                   <span
-                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${def.tone.iconBg}`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${def.tone.iconBg}`}
                   >
-                    <Icon className={`h-4 w-4 ${def.tone.iconText}`} />
+                    <Icon size={26} weight="duotone" className={def.tone.iconText} />
                   </span>
 
                   <div className="min-w-0 flex-1">
                     <label
                       htmlFor={`funnel-${def.key}`}
-                      className={`flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-medium ${
+                      className={`block text-sm font-medium ${
                         locked ? "cursor-not-allowed text-gray-400" : "cursor-pointer text-gray-900"
                       }`}
                     >
-                      {def.steps.map((step, i) => (
-                        <span key={step} className="inline-flex items-center gap-1.5">
-                          {i > 0 && <span className="text-gray-300">→</span>}
-                          {step}
-                        </span>
-                      ))}
+                      {def.name}
                     </label>
+
+                    {/* The chain, kept quieter than the name. Once the funnel is on,
+                        each arrow carries the rate for that leg — except the one no
+                        field measures, which carries nothing. */}
+                    <p className="mt-0.5 flex flex-wrap items-start gap-x-1.5 text-xs text-gray-500">
+                      {def.steps.map((step, i) => {
+                        const pct = i > 0 && state.selected ? funnelLegPct(def, state.draft, i - 1) : null;
+                        return (
+                          <span key={step} className="inline-flex items-start gap-1.5">
+                            {i > 0 && (
+                              <span className="inline-flex flex-col items-center">
+                                <span className="leading-5 text-gray-300">→</span>
+                                {pct && (
+                                  <span className="-mt-0.5 text-[10px] leading-none text-gray-400">
+                                    {pct}
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                            <span className="leading-5">{step}</span>
+                          </span>
+                        );
+                      })}
+                    </p>
 
                     {locked && (
                       <p className="mt-1 text-xs text-gray-400">
@@ -253,53 +267,42 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
                       </p>
                     )}
 
-                    {state.selected && state.confirmed && (
-                      <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
-                        {summary.map((part, i) => (
-                          <span key={part.label} className="inline-flex items-center gap-2">
+                    {chips.length > 0 && (
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
+                        {chips.map((chip, i) => (
+                          <span key={`${chip.kind}-${i}`} className="inline-flex items-center gap-1.5">
                             {i > 0 && <span className="text-gray-300">·</span>}
-                            <span>
-                              {part.label}: <span className="text-gray-700">{part.value}</span>
-                            </span>
+                            {chip.kind !== "ltr" && (
+                              <BrandLogo
+                                domain={chip.host}
+                                size={14}
+                                className="rounded-sm"
+                                fallbackClassName="text-gray-300"
+                              />
+                            )}
+                            <span className="truncate">{chip.label}</span>
                           </span>
                         ))}
                       </p>
                     )}
                   </div>
 
-                  {state.selected && (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPrimary(def.key)}
-                        aria-pressed={isPrimary}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition ${
-                          isPrimary
-                            ? "bg-brand-50 text-brand-700"
-                            : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-                        }`}
-                      >
-                        <StarIcon className="h-3.5 w-3.5" />
-                        {isPrimary ? "Primary" : "Make primary"}
-                      </button>
-                      {state.confirmed && (
-                        <button
-                          type="button"
-                          onClick={() => patch(def.key, { confirmed: false })}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-gray-400 transition hover:bg-gray-50 hover:text-gray-600"
-                        >
-                          <PencilSquareIcon className="h-3.5 w-3.5" />
-                          Edit
-                        </button>
-                      )}
-                    </div>
+                  {state.selected && state.confirmed && (
+                    <button
+                      type="button"
+                      onClick={() => patch(def.key, { confirmed: false })}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-gray-400 transition hover:bg-gray-50 hover:text-gray-600"
+                    >
+                      <PencilSquareIcon className="h-3.5 w-3.5" />
+                      Edit
+                    </button>
                   )}
                 </div>
 
                 {state.selected && !state.confirmed && (
                   <div className="border-t border-gray-100 p-4">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {def.rates.map((rate) => (
+                      {rateFields.map((rate) => (
                         <div key={rate.key}>
                           <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
                             {rate.label}
@@ -348,20 +351,45 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
-                          {def.destination.label}
-                          <InfoTooltip tip={def.destination.hint} placement="top" />
-                        </label>
-                        <input
-                          type="url"
-                          inputMode="url"
-                          value={state.draft.destinationUrl}
-                          placeholder={def.destination.placeholder}
-                          onChange={(e) => editDraft(def.key, { destinationUrl: e.target.value })}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
-                        />
-                      </div>
+                      {def.pageDestination && (
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
+                            Destination page
+                            <InfoTooltip
+                              tip="The page on your site an outreach click lands on."
+                              placement="top"
+                            />
+                          </label>
+                          <input
+                            type="url"
+                            inputMode="url"
+                            value={state.draft.destinationUrl}
+                            placeholder="https://yoursite.com/pricing"
+                            onChange={(e) => editDraft(def.key, { destinationUrl: e.target.value })}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                          />
+                        </div>
+                      )}
+
+                      {def.bookingLink && (
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
+                            Booking link (optional)
+                            <InfoTooltip
+                              tip="The scheduling page a lead opens to pick a slot. Leave it empty if you book over email."
+                              placement="top"
+                            />
+                          </label>
+                          <input
+                            type="url"
+                            inputMode="url"
+                            value={state.draft.bookingUrl}
+                            placeholder="https://cal.com/yourteam/30min"
+                            onChange={(e) => editDraft(def.key, { bookingUrl: e.target.value })}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {state.error && <p className="mt-4 text-sm text-red-600">{state.error}</p>}
@@ -370,10 +398,9 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
                       <button
                         type="button"
                         onClick={() => confirm(def)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-5 py-2 text-sm font-medium text-white transition hover:bg-brand-600"
                       >
-                        <CheckCircleIcon className="h-4 w-4" />
-                        Confirm funnel
+                        {state.everConfirmed ? "Update" : "OK"}
                       </button>
                     </div>
                   </div>

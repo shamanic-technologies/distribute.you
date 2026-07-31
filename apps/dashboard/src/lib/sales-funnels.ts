@@ -1,7 +1,8 @@
 // The sales funnels a brand can sell through. A funnel is one chain from the
 // first signal we can buy (a positive reply, or a click onto the site) down to a
 // paid client, and it owns everything that chain needs priced: its own
-// conversion rates, its own lifetime revenue, and its own landing page.
+// conversion rates, its own lifetime revenue, its own landing page and, when a
+// meeting sits in the chain, its own booking link.
 //
 // Only value imports that carry no "@" alias live here — vitest does not resolve
 // the alias, so this module stays directly unit-testable (the BrandOptimizationGoal
@@ -11,45 +12,83 @@ import type { BrandOptimizationGoal, BrandSalesEconomics } from "@/lib/api";
 import { formatLocaleInteger, formatLocaleNumberInputValue, parseLocaleNumberInput } from "./format-number";
 import { bareHost, validateDestination } from "./click-destination-validation";
 
-export type SalesFunnelKey = "reply_meeting" | "visit_signup" | "visit_form";
+export type SalesFunnelKey = "reply_meeting" | "visit_meeting" | "visit_signup" | "visit_form";
 
 /** Rate fields, named exactly as brand-service stores them. */
 export type FunnelRateKey =
   | "replyToMeetingPct"
+  | "visitToMeetingPct"
   | "meetingToClosePct"
   | "visitToSignupPct"
   | "signupToPaidClientPct"
   | "visitToFormSubmissionPct"
   | "formSubmissionToPaidClientPct";
 
-/**
- * A booking destination is a scheduling page (Calendly, Cal.com, HubSpot), which
- * lives on someone else's domain by nature, so it is validated as a plain URL.
- * A page destination is the brand's own site and goes through the same
- * on-domain check as the Click Destination card.
- */
-export type FunnelDestinationKind = "booking" | "page";
-
 export type FunnelRateField = { key: FunnelRateKey; label: string; tip: string };
+
+/**
+ * Every rate brand-service stores, described once. A funnel points at these by
+ * key from its legs, so two funnels sharing a leg cannot drift into two
+ * different labels for the same stored number.
+ */
+const RATE_FIELDS: Record<FunnelRateKey, Omit<FunnelRateField, "key">> = {
+  replyToMeetingPct: {
+    label: "Positive reply → meeting booked",
+    tip: "Of leads who reply positively, the share who book a slot.",
+  },
+  visitToMeetingPct: {
+    label: "Website visit → meeting booked",
+    tip: "Of leads who visit your website, the share who book a slot.",
+  },
+  meetingToClosePct: {
+    label: "Sales meeting → paid client",
+    tip: "Of leads you actually meet, the share that become paying customers.",
+  },
+  visitToSignupPct: {
+    label: "Website visit → signup",
+    tip: "Of leads who visit your website, the share that sign up.",
+  },
+  signupToPaidClientPct: {
+    label: "Signup → paid client",
+    tip: "Of leads who sign up, the share that become paying customers.",
+  },
+  visitToFormSubmissionPct: {
+    label: "Website visit → form filled",
+    tip: "Of leads who visit your website, the share that submit a form.",
+  },
+  formSubmissionToPaidClientPct: {
+    label: "Form filled → paid client",
+    tip: "Of leads who submit a form, the share that become paying customers.",
+  },
+};
 
 export type SalesFunnelDef = {
   key: SalesFunnelKey;
-  /** The chain, rendered as the funnel's title. */
-  steps: [string, string, string];
-  /** What a campaign optimizes for while this is the primary funnel. */
+  /** What the funnel is called. Read as the card's title. */
+  name: string;
+  /** The chain, rendered under the name. */
+  steps: string[];
+  /**
+   * One entry per arrow between two steps: the rate brand-service stores for
+   * that leg, or null when nothing in the fleet measures it. `Meeting booked →
+   * Sales meeting` is the show-up rate and has no field anywhere, so it stays
+   * null — a leg with no number prints no number rather than inventing one.
+   */
+  legs: (FunnelRateKey | null)[];
+  /** What a campaign optimizes for once this funnel is wired to a campaign. */
   goal: BrandOptimizationGoal;
   /** The first step is a click onto the brand's site, so a domain is required. */
   requiresWebsite: boolean;
-  rates: FunnelRateField[];
-  destination: {
-    kind: FunnelDestinationKind;
-    label: string;
-    hint: string;
-    placeholder: string;
-  };
+  /** This funnel lands an outreach click on a page of the brand's own site. */
+  pageDestination: boolean;
+  /**
+   * A meeting sits in the chain, so a scheduling page is worth collecting. It is
+   * OPTIONAL: a brand that books over email still runs the funnel.
+   */
+  bookingLink: boolean;
   /**
    * Palette tone. Written as whole class strings because Tailwind cannot see a
-   * class assembled at runtime. All three background tints are in the
+   * class assembled at runtime. All four background tints are in the
    * `html.dark` remap in globals.css, so they hold up in dark mode.
    */
   tone: { iconBg: string; iconText: string };
@@ -58,77 +97,46 @@ export type SalesFunnelDef = {
 export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     key: "reply_meeting",
-    steps: ["Positive reply", "Sales meeting", "Paid client"],
+    name: "Sales Meeting from Conversation",
+    steps: ["Positive reply", "Meeting booked", "Sales meeting", "Paid client"],
+    legs: ["replyToMeetingPct", null, "meetingToClosePct"],
     goal: "sales_meetings",
     requiresWebsite: false,
-    rates: [
-      {
-        key: "replyToMeetingPct",
-        label: "Positive reply → meeting",
-        tip: "Of leads who reply positively, the share you turn into a booked meeting.",
-      },
-      {
-        key: "meetingToClosePct",
-        label: "Meeting → paid client",
-        tip: "Of leads who book a meeting, the share that become paying customers.",
-      },
-    ],
-    destination: {
-      kind: "booking",
-      label: "Booking link",
-      hint: "The scheduling page we send a lead to once they reply.",
-      placeholder: "https://cal.com/yourteam/30min",
-    },
+    pageDestination: false,
+    bookingLink: true,
     tone: { iconBg: "bg-purple-50", iconText: "text-purple-600" },
   },
   {
+    key: "visit_meeting",
+    name: "Sales Meeting from Website",
+    steps: ["Website visit", "Meeting booked", "Sales meeting", "Paid client"],
+    legs: ["visitToMeetingPct", null, "meetingToClosePct"],
+    goal: "sales_meetings",
+    requiresWebsite: true,
+    pageDestination: true,
+    bookingLink: true,
+    tone: { iconBg: "bg-indigo-50", iconText: "text-indigo-600" },
+  },
+  {
     key: "visit_signup",
+    name: "Website Purchase",
     steps: ["Website visit", "Signup", "Paid client"],
+    legs: ["visitToSignupPct", "signupToPaidClientPct"],
     goal: "signups",
     requiresWebsite: true,
-    rates: [
-      {
-        key: "visitToSignupPct",
-        label: "Website visit → signup",
-        tip: "Of leads who visit your website, the share that sign up.",
-      },
-      {
-        key: "signupToPaidClientPct",
-        label: "Signup → paid client",
-        tip: "Of leads who sign up, the share that become paying customers.",
-      },
-    ],
-    destination: {
-      kind: "page",
-      label: "Destination page",
-      hint: "The page on your site an outreach click lands on.",
-      placeholder: "https://yoursite.com/signup",
-    },
+    pageDestination: true,
+    bookingLink: false,
     tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
   },
   {
     key: "visit_form",
+    name: "Form Magnet",
     steps: ["Website visit", "Form filled", "Paid client"],
+    legs: ["visitToFormSubmissionPct", "formSubmissionToPaidClientPct"],
     goal: "form_submissions",
     requiresWebsite: true,
-    rates: [
-      {
-        key: "visitToFormSubmissionPct",
-        label: "Website visit → form filled",
-        tip: "Of leads who visit your website, the share that submit a form.",
-      },
-      {
-        key: "formSubmissionToPaidClientPct",
-        label: "Form filled → paid client",
-        tip: "Of leads who submit a form, the share that become paying customers.",
-      },
-    ],
-    destination: {
-      kind: "page",
-      label: "Destination page",
-      hint: "The page on your site an outreach click lands on.",
-      placeholder: "https://yoursite.com/contact",
-    },
+    pageDestination: true,
+    bookingLink: false,
     tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
   },
 ];
@@ -139,18 +147,37 @@ export function salesFunnelByKey(key: SalesFunnelKey): SalesFunnelDef {
   return def;
 }
 
+/** The rates this funnel prices, in chain order, deduped across repeated legs. */
+export function funnelRateFields(def: SalesFunnelDef): FunnelRateField[] {
+  const seen = new Set<FunnelRateKey>();
+  const out: FunnelRateField[] = [];
+  for (const leg of def.legs) {
+    if (leg === null || seen.has(leg)) continue;
+    seen.add(leg);
+    out.push({ key: leg, ...RATE_FIELDS[leg] });
+  }
+  return out;
+}
+
 export type FunnelDraft = {
   rates: Partial<Record<FunnelRateKey, string>>;
   lifetimeRevenueUsd: string;
+  /** The page on the brand's own site an outreach click lands on. */
   destinationUrl: string;
+  /** The scheduling page. Always optional. */
+  bookingUrl: string;
 };
 
 export type FunnelValidation = { ok: true } | { ok: false; error: string };
 
-/** A scheduling page sits on a third-party domain, so only the URL shape is checked. */
+/**
+ * A scheduling page sits on a third-party domain, so only the URL shape is
+ * checked. An EMPTY link is accepted: a brand that books over email still runs
+ * the funnel, so requiring one would block a real way of selling.
+ */
 export function validateBookingUrl(input: string): FunnelValidation {
   const trimmed = input.trim();
-  if (!trimmed) return { ok: false, error: "Enter the booking link a lead opens to pick a slot." };
+  if (!trimmed) return { ok: true };
   let parsed: URL;
   try {
     parsed = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
@@ -167,8 +194,8 @@ export function validateBookingUrl(input: string): FunnelValidation {
 }
 
 /**
- * Every rate the funnel declares must be a percentage, the lifetime revenue must
- * be a positive whole number, and the destination must match its kind. Reports
+ * Every rate the funnel prices must be a percentage, the lifetime revenue must
+ * be a positive whole number, and each destination must match its kind. Reports
  * the first problem so the card can name one thing to fix.
  */
 export function validateFunnelDraft(
@@ -176,7 +203,7 @@ export function validateFunnelDraft(
   draft: FunnelDraft,
   brandDomain: string | null,
 ): FunnelValidation {
-  for (const rate of def.rates) {
+  for (const rate of funnelRateFields(def)) {
     const parsed = parseLocaleNumberInput(draft.rates[rate.key] ?? "");
     if (parsed === null) return { ok: false, error: `Fill ${rate.label}.` };
     if (parsed < 0 || parsed > 100) {
@@ -188,7 +215,12 @@ export function validateFunnelDraft(
   if (ltr === null) return { ok: false, error: "Fill the customer lifetime revenue." };
   if (ltr <= 0) return { ok: false, error: "The customer lifetime revenue must be above zero." };
 
-  if (def.destination.kind === "booking") return validateBookingUrl(draft.destinationUrl);
+  if (def.bookingLink) {
+    const booking = validateBookingUrl(draft.bookingUrl);
+    if (!booking.ok) return booking;
+  }
+
+  if (!def.pageDestination) return { ok: true };
 
   if (brandDomain === null) {
     return { ok: false, error: "Set your brand domain first, then pick a destination page." };
@@ -210,7 +242,7 @@ export function funnelDraftFromBrand(
   clickDestinationUrl: string | null | undefined,
 ): FunnelDraft {
   const rates: Partial<Record<FunnelRateKey, string>> = {};
-  for (const rate of def.rates) {
+  for (const rate of funnelRateFields(def)) {
     const stored = economics ? economics[rate.key] : null;
     rates[rate.key] =
       stored === null || stored === undefined ? "" : formatLocaleNumberInputValue(stored);
@@ -218,7 +250,8 @@ export function funnelDraftFromBrand(
   return {
     rates,
     lifetimeRevenueUsd: economics ? formatLocaleInteger(economics.lifetimeRevenueUsd) : "",
-    destinationUrl: def.destination.kind === "page" ? clickDestinationUrl ?? "" : "",
+    destinationUrl: def.pageDestination ? clickDestinationUrl ?? "" : "",
+    bookingUrl: "",
   };
 }
 
@@ -230,25 +263,64 @@ export function shortUrl(url: string): string {
   return withoutProtocol.replace(/^www\./i, "").replace(/\/$/, "");
 }
 
-export type FunnelSummaryPart = { label: string; value: string };
+/** The registrable host of a URL, for a logo.dev lookup. Null when unparseable. */
+export function hostOf(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    return parsed.hostname.includes(".") ? bareHost(parsed.hostname) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
- * The one-line recap kept under a confirmed funnel, so its numbers stay readable
- * without reopening the form.
+ * The percentage printed under one arrow of the chain, or null when that leg is
+ * not measured. `Meeting booked → Sales meeting` is the show-up rate: brand-service
+ * has no field for it, so the arrow carries nothing. "We do not measure this"
+ * and "it converts at X%" are different statements.
  */
-export function funnelSummaryParts(def: SalesFunnelDef, draft: FunnelDraft): FunnelSummaryPart[] {
-  const parts: FunnelSummaryPart[] = def.rates.map((rate) => ({
-    label: rate.label,
-    value: `${draft.rates[rate.key] ?? ""}%`,
-  }));
+export function funnelLegPct(def: SalesFunnelDef, draft: FunnelDraft, legIndex: number): string | null {
+  const key = def.legs[legIndex];
+  if (!key) return null;
+  const parsed = parseLocaleNumberInput(draft.rates[key] ?? "");
+  return parsed === null ? null : `${formatLocaleNumberInputValue(parsed)}%`;
+}
+
+export type FunnelMetaChip =
+  | { kind: "ltr"; label: string }
+  | { kind: "page" | "booking"; label: string; host: string | null };
+
+/**
+ * The discreet recap kept beside the chain: what a client from this funnel is
+ * worth, and where it sends people. A destination reads as its shortened URL
+ * with its own favicon rather than the raw link, so a long URL stays one line.
+ * A value the brand has not given us is dropped, not printed empty.
+ */
+export function funnelMetaChips(def: SalesFunnelDef, draft: FunnelDraft): FunnelMetaChip[] {
+  const chips: FunnelMetaChip[] = [];
+
   const ltr = parseLocaleNumberInput(draft.lifetimeRevenueUsd);
-  parts.push({
-    label: "Lifetime revenue",
-    value: ltr === null ? "" : `$${formatLocaleInteger(ltr)}`,
-  });
-  parts.push({
-    label: def.destination.label,
-    value: shortUrl(draft.destinationUrl),
-  });
-  return parts;
+  if (ltr !== null && ltr > 0) {
+    chips.push({ kind: "ltr", label: `$${formatLocaleInteger(ltr)} lifetime` });
+  }
+
+  if (def.pageDestination && draft.destinationUrl.trim()) {
+    chips.push({
+      kind: "page",
+      label: shortUrl(draft.destinationUrl),
+      host: hostOf(draft.destinationUrl),
+    });
+  }
+
+  if (def.bookingLink && draft.bookingUrl.trim()) {
+    chips.push({
+      kind: "booking",
+      label: shortUrl(draft.bookingUrl),
+      host: hostOf(draft.bookingUrl),
+    });
+  }
+
+  return chips;
 }
