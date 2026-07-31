@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
 import { formatBillingCents, formatCentsAsUsd } from "@/lib/format-number";
+import { creditGrantLabel } from "@/lib/credit-grant-label";
 import { topupPresetsForDailyBudget } from "@/lib/credit-runway";
 import { paymentReturnBadge, paymentReturnState } from "@/lib/payment-return";
 import { pollOptions } from "@/lib/query-options";
@@ -27,21 +28,6 @@ import { ComingCreditsCard } from "@/components/billing/coming-credits-card";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
 
-
-// Friendly label for a credit grant's `reason` (pure display lookup, no metric).
-// reason ∈ welcome | admin_grant | invite_* | <promo code>; anything else
-// (welcome_completion, brand_welcome, …) reads through as the promo code.
-function grantLabel(reason: string): string {
-  switch (reason) {
-    case "welcome":
-      return "Welcome gift";
-    case "admin_grant":
-      return "Bonus credit";
-    default:
-      if (reason.startsWith("invite")) return "Referral bonus";
-      return `Promo: ${reason}`;
-  }
-}
 
 // Payment status → badge label + tone. Stripe PaymentIntent statuses:
 // succeeded | processing | requires_* | canceled. Customers mostly see
@@ -806,7 +792,7 @@ export default function BillingPage() {
               {grants.map((grant) => (
                 <li key={grant.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{grantLabel(grant.reason)}</p>
+                    <p className="text-sm font-medium text-gray-800">{creditGrantLabel(grant.reason)}</p>
                     <p className="text-xs text-gray-500">
                       {formatGrantDate(grant.createdAt)}
                       {grant.note ? ` · ${grant.note}` : ""}
