@@ -118,15 +118,18 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
 
   // ROI is the row's headline number, and a return above 1x is the campaign
   // making money back. Below 1x stays the ordinary colour: an early campaign is
-  // under 1x by construction, and red would call it a failure.
-  it("sets ROI larger and greens it above 1x, never red below", () => {
+  // under 1x by construction, and red would call it a failure. Weight and colour
+  // carry the emphasis — a second type size inside one row is what made the
+  // table read as its own thing.
+  it("greens ROI above 1x, never red below, at the table's own size", () => {
     const cell = page.slice(page.indexOf("function RoiCell("));
     const body = cell.slice(0, cell.indexOf("\n}"));
     expect(body).toContain("multiple != null && multiple > 1");
-    expect(body).toContain("text-base font-semibold");
+    expect(body).toContain("font-semibold");
     expect(body).toContain("text-green-600");
     expect(body).toContain("text-gray-900");
     expect(body).not.toContain("text-red");
+    expect(body).not.toMatch(/text-(base|lg|xl)/);
   });
 
   it("sorts by ROI descending, and the #1 tile reads that same ranking", () => {
