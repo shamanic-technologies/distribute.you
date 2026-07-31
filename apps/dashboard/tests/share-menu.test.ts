@@ -48,6 +48,27 @@ describe("the Share control is brand-scoped", () => {
   });
 });
 
+describe("the Share control is beta-gated", () => {
+  // Minting a public link exposes the brand's profile to anyone holding the URL,
+  // so the control ships to the beta allowlist first.
+  it("renders nothing for a non-beta viewer", () => {
+    expect(menu).toContain("useIsBetaUser");
+    expect(menu).toContain("if (!isBeta) return null;");
+  });
+
+  // A gate without a badge is incomplete: the people who CAN see it must know
+  // it is beta, not GA.
+  it("carries the beta badge on the control", () => {
+    expect(menu).toContain('<MaturityBadge level="beta" />');
+  });
+
+  // The gate rides the control, not the header — the rest of the top bar is GA.
+  it("the header does not gate the share menu itself", () => {
+    expect(header).toContain("<ShareMenu />");
+    expect(header).not.toContain("{isBeta && <ShareMenu");
+  });
+});
+
 describe("opening the menu reads, it does not mint", () => {
   // A brand is not shareable until someone asks. If merely opening the menu
   // minted a credential, the brand would become shareable by accident.

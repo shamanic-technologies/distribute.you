@@ -11,9 +11,16 @@ import {
   type BrandShareToken,
 } from "@/lib/api";
 import { brandFromPathname, brandShareUrl } from "@/lib/brand-share";
+import { useIsBetaUser } from "@/lib/use-beta-user";
+import { MaturityBadge } from "../maturity-badge";
 
 /**
  * "Share" in the top bar, replacing the theme toggle.
+ *
+ * BETA-GATED: minting a public link exposes a brand's profile to anyone holding
+ * the URL, so the control ships to the beta allowlist first. The gate rides the
+ * control itself (the surrounding header stays GA), and the badge rides the
+ * button, per the repo rule that a gated surface must SAY it is gated.
  *
  * BRAND-SCOPED on purpose: the header renders on every page, so an unconditional
  * Share button would offer to share the billing page and the API-keys page.
@@ -28,6 +35,7 @@ export function ShareMenu() {
   const pathname = usePathname();
   const brand = brandFromPathname(pathname);
   const queryClient = useQueryClient();
+  const isBeta = useIsBetaUser();
 
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -54,6 +62,9 @@ export function ShareMenu() {
   );
 
   if (!brand) return null;
+  // Default-hidden: `useIsBetaUser` is false until Clerk resolves, so a non-beta
+  // viewer never sees a flash of the control.
+  if (!isBeta) return null;
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const shareUrl = brandShareUrl(origin, link?.shareToken ?? null);
@@ -104,6 +115,9 @@ export function ShareMenu() {
       >
         <ShareIcon className="w-4 h-4" />
         <span className="hidden sm:inline">Share</span>
+        <span className="hidden sm:inline">
+          <MaturityBadge level="beta" />
+        </span>
       </button>
 
       {open && (
