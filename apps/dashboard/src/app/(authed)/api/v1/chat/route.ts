@@ -26,7 +26,7 @@ const API_KEY = process.env.ADMIN_DISTRIBUTE_API_KEY;
  * - context: optional workflow context injected into the system prompt
  */
 export async function POST(req: NextRequest) {
-  const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
+  const { userId: clerkUserId, orgId: clerkOrgId, orgSlug: clerkOrgSlug } = await auth();
   if (!clerkUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -68,6 +68,11 @@ export async function POST(req: NextRequest) {
     "x-external-org-id": clerkOrgId,
     "x-external-user-id": clerkUserId,
   };
+
+  // Clerk's own slug for the org, forwarded verbatim or not at all. client-service
+  // stores it the first time it sees one, and that stored slug is the org's referral
+  // invite code — so this heals orgs that predate the header.
+  if (clerkOrgSlug) headers["x-org-slug"] = clerkOrgSlug;
 
   // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
   try {
