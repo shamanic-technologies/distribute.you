@@ -767,10 +767,34 @@ function clearOnboardingState(): void {
 // act on. A post-URL stable step needs the backing data (brand record, economics,
 // projection) the loading screen fetched, so the resume replays that hydration first
 // (see resumeOnboarding) and only THEN shows this step.
-function resolveResumeStep(step: Step, brandId: string | null): Step {
+function resolveResumeStep(step: Step, brandId: string | null, variant: OnboardingVariant = "ga"): Step {
   if (step === "loading") return brandId ? "services" : "url";
   if (step === "launching") return "pricing";
-  return step;
+  return variant === "v2" ? v2StepFor(step) : step;
+}
+
+/**
+ * Where a v2 session belongs when it is pointed at a step only the customer flow
+ * has. The v2 branches guard TRANSITIONS, but a RESUME sets the step directly —
+ * from a sessionStorage snapshot written before this flow existed, from a
+ * snapshot written under `?flow=ga`, or from the cross-session `?brandId=`
+ * resume — so without this mapping a beta user lands on a step their flow never
+ * routes into and reads it as the preview simply not being live.
+ *
+ * Each GA-only step maps to the point in the v2 order that asks the same thing:
+ * the click destination is asked per funnel after payment, so its slot is the
+ * audience step; the single goal and its rates are replaced by the funnel picks.
+ */
+function v2StepFor(step: Step): Step {
+  switch (step) {
+    case "destination":
+      return "audiences";
+    case "objective":
+    case "rates":
+      return "funnels";
+    default:
+      return step;
+  }
 }
 
 export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } = {}) {
@@ -819,7 +843,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
         // resolves to its snapshot step (pricing).
         searchParams.get("launch_checkout") === "success"
         ? "celebrate"
-        : resolveResumeStep(restored.step, restored.brandId)
+        : resolveResumeStep(restored.step, restored.brandId, variant)
       : resumeBrandIdParam && searchParams.get("launch_checkout") === null
         ? // Cross-session brand resume: show the loading screen immediately (no URL
           // flash) while the param-resume effect re-hydrates the brand, then it lands
@@ -1045,8 +1069,8 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
   const resumeTargetRef = useRef<Step | null>(
     !searchParams.get("launch_checkout") &&
     restored &&
-    !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId))
-      ? resolveResumeStep(restored.step, restored.brandId)
+    !["welcome", "url"].includes(resolveResumeStep(restored.step, restored.brandId, variant))
+      ? resolveResumeStep(restored.step, restored.brandId, variant)
       : null,
   );
   const resumeStartedRef = useRef(false);
@@ -1153,7 +1177,8 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
         setBrandId(resumeBrandIdParam);
         brandIdRef.current = resumeBrandIdParam;
         if (organization?.id) orgIdRef.current = organization.id;
-        await runResume("objective", seededUrl);
+        // v2 has no single-goal step; its equivalent landing point is the funnels.
+        await runResume(isV2 ? "funnels" : "objective", seededUrl);
       } catch (err) {
         console.error("[dashboard] onboarding brand-param resume failed:", err);
         setStep("url");
@@ -2501,7 +2526,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
     salesInputsRef.current = state.salesInputs;
     launchFeatureInputsRef.current = state.launchFeatureInputs;
     setPricingHydrationVersion((value) => value + 1);
-    setStep(opts?.step ?? resolveResumeStep(state.step, state.brandId));
+    setStep(opts?.step ?? resolveResumeStep(state.step, state.brandId, variant));
   }
 
   async function hydratePricingForRestoredCheckout(state: PersistedOnboardingState): Promise<void> {
@@ -2838,6 +2863,15 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
         {services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
       </StepShell>
     );
+  }
+
+  // Fail-safe: v2 never ROUTES into the customer-flow-only steps, but a resume can
+  // still point at one (an old snapshot, a snapshot written under `?flow=ga`). Land
+  // on the v2 equivalent instead of rendering a step this flow does not have — the
+  // same pattern the funnelStats branch uses when it has no funnel to show.
+  if (isV2 && (step === "destination" || step === "objective" || step === "rates")) {
+    setStep(v2StepFor(step));
+    return null;
   }
 
   if (step === "destination") {
