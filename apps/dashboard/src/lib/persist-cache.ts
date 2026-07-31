@@ -99,6 +99,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "billingAccount",
   "creditGrants",
   "billingPayments",
+  // The org's own referral code, behind the sidebar's invite link. Tiny, and it
+  // never changes, so an unlisted root would cold-fetch on every single load.
+  "inviteStatus",
   // Brand metadata + config + small summaries
   "brand",
   "brands",
