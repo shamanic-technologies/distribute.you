@@ -37,12 +37,14 @@ export function goalOutcomeCount(
 }
 
 /**
- * The spend to plan for before judging results: {@link LEARNING_WINDOW_OUTCOMES} times
- * the brand's expected cost per outcome, whole dollars.
+ * The spend that RETIRES the reassurance banner: {@link LEARNING_WINDOW_OUTCOMES} times
+ * the brand's expected cost per outcome, whole dollars. It is never DISPLAYED — the
+ * banner states the multiple itself, so the customer reads a rule of thumb rather than a
+ * dollar total on a screen that has produced nothing yet.
  *
- * `null` when the unit cost does not resolve. The banner then drops the line entirely —
- * "we could not estimate this" and "budget $X" are different statements, and the nearest
- * real number we happen to hold (total spent, the daily budget) is not an answer to it.
+ * `null` when the unit cost does not resolve, which means "no spend cap applies" and the
+ * banner keeps waiting on the outcome count alone. Do NOT substitute the nearest real
+ * number we happen to hold (total spent, the daily budget) — neither answers this.
  */
 export function recommendedLearningSpendUsd(
   outcomeUnitCostUsd: number | null | undefined,

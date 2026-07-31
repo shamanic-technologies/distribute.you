@@ -33,9 +33,12 @@ describe("first-outcome reassurance banner copy", () => {
     expect(BANNER).not.toContain("website clicks");
   });
 
-  it("expresses the recommended budget in outcomes, and drops the line when unknown", () => {
-    expect(BANNER).toContain("LEARNING_WINDOW_OUTCOMES");
-    expect(BANNER).toContain("recommendedSpendUsd != null &&");
+  it("states the learning window as a multiple of the cost per outcome, never a dollar total", () => {
+    expect(BANNER).toContain("{LEARNING_WINDOW_OUTCOMES}x the expected cost per {outcome}");
+    // A dollar figure on a screen with zero outcomes reads as a bill, and it forced the
+    // whole line to disappear whenever the unit cost failed to resolve.
+    expect(BANNER).not.toContain("recommendedSpendUsd");
+    expect(BANNER).not.toContain("of spend before");
   });
 });
 
@@ -52,10 +55,11 @@ describe("first-outcome reassurance gating", () => {
       expect(src).not.toContain("totalWebsiteClicks < 1");
     });
 
-    it(`${name} passes the goal and the recommended learning budget`, () => {
+    it(`${name} passes the goal, and still computes the spend that RETIRES the banner`, () => {
       expect(src).toContain("goal={optimizationGoal}");
-      expect(src).toContain("recommendedSpendUsd={recommendedLearningUsd}");
+      // No longer rendered — it is the gate's exit condition, per shouldShowReassurance.
       expect(src).toContain("recommendedLearningSpendUsd(outcomeUnitCostUsd)");
+      expect(src).toContain("recommendedSpendUsd: recommendedLearningUsd");
     });
   }
 });
