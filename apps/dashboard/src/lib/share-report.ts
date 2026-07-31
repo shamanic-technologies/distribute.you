@@ -48,8 +48,15 @@ export async function resolveShareToken(shareToken: string): Promise<SharedBrand
   const res = await fetch(`${API_URL}/v1/share-tokens/resolve`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${API_KEY}`,
       "Content-Type": "application/json",
+      // `X-API-Key`, NOT `Authorization: Bearer`. api-service has two auth
+      // paths and they are not interchangeable: the platform key travels in
+      // `X-API-Key`, while `Bearer` is reserved for a `distrib.usr_*` user key
+      // validated through key-service. Sending the platform key as a Bearer is
+      // rejected, and because this route has no session to fall back on, the
+      // rejection surfaces as a 500 on the public page. The dashboard's own
+      // `/api/v1` proxy and `apps/admin`'s public report both use this header.
+      "X-API-Key": API_KEY,
     },
     body: JSON.stringify({ shareToken }),
     cache: "no-store",
