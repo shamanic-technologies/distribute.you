@@ -4776,8 +4776,16 @@ export interface InstantlyAccountHealthRow {
   // send date (chained real per-step delays), so:
   // queueSize === queuedFirstUnsent + queuedNextToday + queuedNextTomorrow + queuedNextLater.
   // queuedSequences (leads) is a DISTINCT granularity — NOT the bucket sum.
+  //
+  // ⚠️ queuedFirstUnsent counts every REMAINING STEP of a never-started lead, so a
+  // 3-step sequence contributes 3 — but that lead owes exactly ONE email today (its
+  // first); the rest are weeks out. It is the right input to the step partition above
+  // and the WRONG input to "how full is this account today". The honest due-today
+  // figure is queuedFirstUnsentSequences + queuedNextToday, which is what the send
+  // selector itself counts toward an account's daily load.
   queuedSequences: number; // total queued sequences (leads) attributed to this account
   queuedFirstUnsent: number; // steps of sequences whose 1st email is not sent yet
+  queuedFirstUnsentSequences: number; // never-contacted LEADS = first emails due today
   queuedNextToday: number; // steps whose projected send date is today (UTC) or overdue
   queuedNextTomorrow: number; // steps projected tomorrow (UTC)
   queuedNextLater: number; // steps projected after tomorrow
@@ -4821,6 +4829,7 @@ const InstantlyAccountHealthRowSchema = z.object({
   queueSize: z.number(),
   queuedSequences: z.number(),
   queuedFirstUnsent: z.number(),
+  queuedFirstUnsentSequences: z.number(),
   queuedNextToday: z.number(),
   queuedNextTomorrow: z.number(),
   queuedNextLater: z.number(),

@@ -127,18 +127,33 @@ const COLUMNS = [
 
 // Header tooltips. Two columns are merged composites:
 //   Daily max send = dailyLimit (+ warmupLimit shown as a grey sub-line)
-//   Queued today   = queuedFirstUnsent (Initial) + queuedNextToday (Followups)
+//   Queued today   = queuedFirstUnsentSequences (Initial) + queuedNextToday (Followups)
 // Queued steps (queueSize) + Queued seq (queuedSequences) are no longer columns —
 // they live in the row detail panel.
 const COLUMN_HINT: Partial<Record<SortKey, string>> = {
   dailyLimit: "Per-account daily max send limit (+ daily warmup send volume)",
   queuedToday:
-    "Un-sent STEPS due today = Initial (1st email unsent) + Followups (projected today/overdue)",
+    "Emails actually due today = Initial (one first email per never-started lead) + Followups (steps projected today/overdue). This is the number send selection compares against the daily max.",
   queuedNextTomorrow: "Steps projected tomorrow (UTC)",
   queuedNextLater: "Steps projected after tomorrow",
   queuedTotal:
-    "DEBUG — backend Queued steps (queueSize). ✅ green when it equals Initial + Followups + tomorrow + later.",
+    "DEBUG — backend Queued steps (queueSize), a STEP total, not a due-today one. ✅ green when it equals first-unsent steps + Followups + tomorrow + later.",
 };
+
+// The one honest "how full is this account today" figure, and the exact quantity
+// instantly-service's send selector counts toward an account's daily load.
+//
+// A never-started lead owes ONE email today (its first) — not one per remaining
+// step. `queuedFirstUnsent` counts every remaining step of such a lead (a 3-step
+// sequence contributes 3), which is correct for the step partition that
+// reconciles against `queueSize`, and wrong here: it read 102 against a 45/day cap
+// for an account the selector saw at ~32 of 45, so healthy mailboxes looked
+// saturated. `queuedFirstUnsentSequences` counts the LEADS, i.e. the first emails
+// genuinely due. Everything that displays, sorts, buckets or colors "queued today"
+// reads through this — one number, one definition.
+function queuedTodayFor(r: InstantlyAccountHealthRow): number {
+  return r.queuedFirstUnsentSequences + r.queuedNextToday;
+}
 
 type SortKey = (typeof COLUMNS)[number]["key"];
 
@@ -168,10 +183,10 @@ function compareRows(
     if (byInbox !== 0) return byInbox;
     return level(a.warmupScore, b.warmupScore);
   }
-  // Merged "Queued today" = Initial (1st unsent) + Followups (next step today).
+  // Merged "Queued today" — sorts on the same value the column renders.
   if (key === "queuedToday") {
-    const av = a.queuedFirstUnsent + a.queuedNextToday;
-    const bv = b.queuedFirstUnsent + b.queuedNextToday;
+    const av = queuedTodayFor(a);
+    const bv = queuedTodayFor(b);
     return dir === "asc" ? av - bv : bv - av;
   }
   // DEBUG "Queued total" sorts on the backend Queued steps (queueSize) total.
@@ -191,9 +206,9 @@ function compareRows(
   return dir === "asc" ? r : -r;
 }
 
-// Queued-today histogram bins for the Allowed distribution (Initial + Followups
-// due today/overdue per account). `0` is standalone so an empty queue reads
-// distinctly from a small one.
+// Queued-today histogram bins for the Allowed distribution, over the same
+// `queuedTodayFor` value the column shows. `0` is standalone so an empty queue
+// reads distinctly from a small one.
 const QUEUE_BINS: { label: string; lo: number; hi: number }[] = [
   { label: "0", lo: 0, hi: 0 },
   { label: "1–50", lo: 1, hi: 50 },
@@ -560,16 +575,26 @@ function AccountDetailPanel({
             <Row label="Sent today">{num(row.sentToday)}</Row>
           </Group>
 
-          <Group title="Queue">
+          {/* Due today leads, and the step partition sits under its own heading —
+              a never-started lead owes ONE email today but several steps overall, so
+              the two totals differ on purpose and must never be read as one number. */}
+          <Group title="Due today">
+            <Row label="Queued today (Initial + Followups)">
+              {num(queuedTodayFor(row))}
+            </Row>
+            <Row label="— Initial (leads not yet contacted)">
+              {num(row.queuedFirstUnsentSequences)}
+            </Row>
+            <Row label="— Followups (steps today/overdue)">{num(row.queuedNextToday)}</Row>
+          </Group>
+
+          <Group title="Queue (all remaining steps)">
             <Row label="Queued steps">{num(row.queueSize)}</Row>
             <Row label="Queued sequences">{num(row.queuedSequences)}</Row>
-            <Row label="Queued today (Initial + Followups)">
-              {num(row.queuedFirstUnsent + row.queuedNextToday)}
-            </Row>
-            <Row label="— Initial (1st unsent)">{num(row.queuedFirstUnsent)}</Row>
-            <Row label="— Followups (today/overdue)">{num(row.queuedNextToday)}</Row>
-            <Row label="Queued tomorrow">{num(row.queuedNextTomorrow)}</Row>
-            <Row label="Queued later">{num(row.queuedNextLater)}</Row>
+            <Row label="— First-unsent steps">{num(row.queuedFirstUnsent)}</Row>
+            <Row label="— Steps today/overdue">{num(row.queuedNextToday)}</Row>
+            <Row label="— Steps tomorrow">{num(row.queuedNextTomorrow)}</Row>
+            <Row label="— Steps later">{num(row.queuedNextLater)}</Row>
           </Group>
 
           {/* Full raw Instantly account config — every key/value, booleans as tags. */}
@@ -624,7 +649,7 @@ function AccountHealthSection() {
     : 0;
   const queueBins: QueueDistributionBin[] = QUEUE_BINS.map((b) => {
     const count = allowed.filter((r) => {
-      const queuedToday = r.queuedFirstUnsent + r.queuedNextToday;
+      const queuedToday = queuedTodayFor(r);
       return queuedToday >= b.lo && queuedToday <= b.hi;
     }).length;
     return {
@@ -710,14 +735,14 @@ function AccountHealthSection() {
                   <p className="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">
                     {pctWithQueue.toFixed(0)}%
                   </p>
-                  <p className="text-xs text-gray-400">have queue &gt; 0</p>
+                  <p className="text-xs text-gray-400">have un-sent steps &gt; 0</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Avg in queue</p>
                   <p className="mt-1 text-2xl font-semibold text-gray-900 tabular-nums">
                     {avgQueue.toFixed(1)}
                   </p>
-                  <p className="text-xs text-gray-400">emails per allowed account</p>
+                  <p className="text-xs text-gray-400">un-sent steps per allowed account</p>
                 </div>
               </div>
               <div className="mt-4">
@@ -863,11 +888,12 @@ function AccountHealthSection() {
                             </div>
                           )}
                         </td>
-                        {/* Queued today: Initial (1st unsent) + Followups (next step today).
-                            Green when the day's queued volume is within the account's daily
+                        {/* Queued today: emails genuinely due = one first email per
+                            never-started lead + followup steps projected today/overdue.
+                            Green when the day's due volume is within the account's daily
                             max send, red when it exceeds it (gray when no limit is known). */}
                         {(() => {
-                          const queuedToday = r.queuedFirstUnsent + r.queuedNextToday;
+                          const queuedToday = queuedTodayFor(r);
                           const overLimit =
                             r.dailyLimit !== null && queuedToday > r.dailyLimit;
                           const valueClass =
@@ -882,7 +908,7 @@ function AccountHealthSection() {
                                 {num(queuedToday)}
                               </div>
                               <div className="text-[10px] tabular-nums text-gray-400">
-                                Initial: {num(r.queuedFirstUnsent)}
+                                Initial: {num(r.queuedFirstUnsentSequences)}
                               </div>
                               <div className="text-[10px] tabular-nums text-gray-400">
                                 Followups: {num(r.queuedNextToday)}
