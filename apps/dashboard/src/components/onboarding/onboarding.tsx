@@ -107,6 +107,9 @@ import {
   type FunnelView,
 } from "@/lib/onboarding-funnel-view";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
+import { validateInvite } from "@/lib/api";
+import { inviteCodeFromCookie } from "@/lib/invite-link";
+import { welcomeHeadline, welcomeDetail, referredByLine } from "@/lib/welcome-offer-copy";
 import {
   formatLocaleInteger,
   formatLocaleNumberInputValue,
@@ -895,6 +898,20 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
   const [resolvedBrandName, setResolvedBrandName] = useState<string | null>(null);
   const [brandContext, setBrandContext] = useState(() => restored?.brandContext ?? "");
   const [error, setError] = useState<string | null>(null);
+  // Whether this signup arrived through someone's referral link, and who sent them.
+  //
+  // A referred signup is owed BOTH offers ($400 welcome + $500 referral, at $400
+  // and $900 of payments), so the gift step must not quote the welcome figure
+  // alone: that understates what they get by $500 on the screen where they decide
+  // to pay, and contradicts the link that brought them here.
+  //
+  // The claim itself cannot have happened yet (it needs an org, and it runs on the
+  // authed dashboard shell), so the promise does not exist in billing at this
+  // point. What we have is the code the landing parked in a cookie. It is
+  // VALIDATED before anything is promised, so the larger figure is only ever shown
+  // for a code that resolves to a real org — a typo'd link keeps the plain copy.
+  const [referredSignup, setReferredSignup] = useState(false);
+  const [inviterOrgName, setInviterOrgName] = useState<string | null>(null);
   // Reassuring (non-error) note shown on the pricing step after a cancelled checkout
   // return — the setup is saved and the user can finish payment from the same screen.
   const [cancelNotice, setCancelNotice] = useState<string | null>(null);
@@ -1068,6 +1085,29 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
   useEffect(() => {
     posthog.capture("onboarding_step_viewed", { step, flow: "beta" });
   }, [step]);
+  // Resolve, once, whether this signup came through a referral link. Runs on
+  // mount rather than at the gift step so the answer is settled before that
+  // screen paints and the headline never changes under the reader. A failed or
+  // unknown code simply leaves the plain welcome copy in place: promising the
+  // larger amount on a code we could not confirm is the one outcome to avoid.
+  useEffect(() => {
+    const code = inviteCodeFromCookie(document.cookie);
+    if (!code) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await validateInvite(code);
+        if (cancelled || !res.valid) return;
+        setReferredSignup(true);
+        setInviterOrgName(res.inviterOrgName);
+      } catch (err) {
+        console.error("[dashboard] could not validate the invite code, showing the plain offer", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // A no-website brand has no clicks/visits, so the only supported goal is
   // positive_replies — keep the goal pinned there whenever no-website mode is on
   // (covers a restored snapshot whose outcome drifted).
@@ -3699,7 +3739,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
             <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
               <GiftIcon className="h-7 w-7 text-brand-600" />
             </span>
-            <h2 className="font-display text-2xl font-bold text-gray-900">We will match your first $400 with $400 free credits.</h2>
+            <h2 className="font-display text-2xl font-bold text-gray-900">{welcomeHeadline(referredSignup)}</h2>
             {/* The gift is earned on PAYMENTS RECEIVED, never on usage consumed: the
                 account is threshold-postpaid, so an org can consume on credit before
                 paying anything. This one sentence is true in BOTH branches — when the
@@ -3712,8 +3752,13 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
                 that account is created, so an org that signed up under the old offer keeps
                 $25/$25 forever and this screen (new orgs only) is the $400 cohort. */}
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
-              $5 is in your account already. The rest lands automatically once your payments reach $400.
+              {welcomeDetail(referredSignup)}
             </p>
+            {referredByLine(inviterOrgName) && (
+              <p className="mx-auto mt-2 max-w-sm text-xs text-gray-500">
+                {referredByLine(inviterOrgName)}
+              </p>
+            )}
           </div>
       </StepShell>
     );

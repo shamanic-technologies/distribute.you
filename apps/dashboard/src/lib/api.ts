@@ -3955,6 +3955,42 @@ export async function claimInvite(orgId: string, code: string, token?: string): 
   });
 }
 
+export interface InviteValidation {
+  valid: boolean;
+  /** The inviter's org name, when client-service has one. Usually absent. */
+  inviterOrgName: string | null;
+}
+
+const ValidateInviteResponseSchema = z
+  .object({ valid: z.boolean(), inviterOrgName: z.string().optional() })
+  .passthrough();
+
+/**
+ * POST /invites/validate — is this code owned by a real org?
+ *
+ * Used before onboarding promises a referred signup the larger total, so the
+ * promise is only ever made on a code that resolves. Since the invite cap was
+ * lifted, `valid: false` means one thing only: no org owns this code.
+ *
+ * The gateway route is public, so this works before the org exists.
+ */
+export async function validateInvite(code: string, token?: string): Promise<InviteValidation> {
+  const raw = await apiCall<unknown>("/invites/validate", {
+    method: "POST",
+    body: { code },
+    token,
+  });
+  const parsed = ValidateInviteResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] validateInvite: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] validateInvite: invalid response shape");
+  }
+  return { valid: parsed.data.valid, inviterOrgName: parsed.data.inviterOrgName ?? null };
+}
+
 // --- Free-credit promises -----------------------------------------------------
 //
 // Every free credit this org is still WAITING on: the welcome remainder, plus a

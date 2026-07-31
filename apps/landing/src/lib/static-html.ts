@@ -236,8 +236,17 @@ function analyticsHead(): string {
  *
  * Exported as a string so the React landing layout renders the SAME source
  * instead of keeping a second copy that drifts.
+ *
+ * A third part, (3) acknowledge: a visitor who arrives on a referral link is TOLD
+ * what it is worth. Without this the link lands on an ordinary homepage that says
+ * $400 while the person is actually being offered $900, so the whole thing reads
+ * as a plain link and the referrer's pitch is contradicted by the first page
+ * their friend sees. The banner is injected rather than written into each page's
+ * markup because a referral link can be shared pointing at any of the twenty-odd
+ * static pages, and it carries its own inline styles so it cannot depend on which
+ * of them loaded. It appears only when a code is actually present.
  */
-export const INVITE_FORWARD_SCRIPT = `(function(){var N='distribute_invite';function ok(v){return !!v&&v.length<=128&&/^[A-Za-z0-9._~-]+$/.test(v);}function read(){var m=location.search.match(/[?&]invite=([^&]+)/);if(m){try{var d=decodeURIComponent(m[1]);if(ok(d))return d;}catch(e){}}var c=document.cookie.match(new RegExp('(?:^|; )'+N+'=([^;]*)'));if(c){try{var v=decodeURIComponent(c[1]);if(ok(v))return v;}catch(e){}}return null;}var code=read();if(code){document.cookie=N+'='+encodeURIComponent(code)+'; path=/; max-age=7776000; SameSite=Lax';}document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="dashboard.distribute.you"]'):null;if(!a)return;var v=read();if(!v)return;try{var u=new URL(a.href);if(!u.searchParams.get('invite')){u.searchParams.set('invite',v);a.href=u.href;}}catch(err){}},true);})();`;
+export const INVITE_FORWARD_SCRIPT = `(function(){var N='distribute_invite';function ok(v){return !!v&&v.length<=128&&/^[A-Za-z0-9._~-]+$/.test(v);}function read(){var m=location.search.match(/[?&]invite=([^&]+)/);if(m){try{var d=decodeURIComponent(m[1]);if(ok(d))return d;}catch(e){}}var c=document.cookie.match(new RegExp('(?:^|; )'+N+'=([^;]*)'));if(c){try{var v=decodeURIComponent(c[1]);if(ok(v))return v;}catch(e){}}return null;}var code=read();if(code){document.cookie=N+'='+encodeURIComponent(code)+'; path=/; max-age=7776000; SameSite=Lax';}document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="dashboard.distribute.you"]'):null;if(!a)return;var v=read();if(!v)return;try{var u=new URL(a.href);if(!u.searchParams.get('invite')){u.searchParams.set('invite',v);a.href=u.href;}}catch(err){}},true);function banner(){if(!code)return;if(document.getElementById('dy-invite-banner'))return;var b=document.createElement('div');b.id='dy-invite-banner';b.setAttribute('role','status');b.style.cssText='position:relative;z-index:60;padding:10px 16px;text-align:center;font:500 14px/1.5 Inter,system-ui,sans-serif;color:#0b1220;background:#dbeafe;border-bottom:1px solid #bfdbfe';b.textContent='You were invited, so you get $900 in free credits instead of $400. $5 lands now, $400 once your payments reach $400, and $500 more at $900.';var t=document.body;if(t)t.insertBefore(b,t.firstChild);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',banner);}else{banner();}})();`;
 
 function inviteHead(): string {
   return `<script>${INVITE_FORWARD_SCRIPT}</script>`;
