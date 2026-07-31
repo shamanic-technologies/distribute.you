@@ -25,12 +25,13 @@ import { primaryFunnelForGoal } from "@/lib/sales-funnels";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
 
 // Every displayed number here is a READY features-service field. The only
 // non-formatting client work is (a) joining the campaign row (channel/name from
 // campaign-service) to its revenue group by campaignId, and (b) picking the #1
-// channel = argmax of already-fetched per-campaign pipeline. Both are display
+// channel = argmax of already-fetched per-campaign ROI. Both are display
 // arrangements of wire data, never a derived metric (CLAUDE.md: a displayed stat
 // is features-service-owned, never computed in the browser).
 
@@ -66,6 +67,32 @@ function fmtRoi(multiple: number | null | undefined): string {
 }
 function fmtPct(pct: number | null | undefined): string {
   return pct == null ? "—" : `${Math.round(pct)}%`;
+}
+
+/**
+ * What each number column means, in the words a reader needs to trust it.
+ *
+ * All three are PROJECTIONS, and saying so is the point: the revenue is what the
+ * outcomes so far are expected to be worth, not money collected, and ROI and
+ * % CAC are computed from it. A column that reads as banked revenue when it is a
+ * forecast is the same statement under two meanings.
+ */
+const COLUMN_INFO = {
+  roi: "What a customer is worth over their lifetime, divided by what it costs to win one. 11.7x means every $1 spent is projected to return $11.70. Based on the conversion rates and lifetime revenue set in Brand Settings.",
+  cacPct:
+    "What winning a customer costs, as a share of what that customer is worth over their lifetime. 9% means $9 spent for every $100 earned. Lower is better, and it is the inverse of ROI.",
+  revenue:
+    "Expected pipeline revenue: the outcomes this campaign has produced so far, valued with the conversion rates and customer lifetime revenue you set in Brand Settings. It is a projection of what this pipeline is worth, not money already collected.",
+} as const;
+
+/** A right-aligned numeric header with its (i) sitting after the label. */
+function NumericHead({ label, tip }: { label: string; tip: string }) {
+  return (
+    <span className="inline-flex items-center justify-end gap-1">
+      {label}
+      <InfoTooltip tip={tip} />
+    </span>
+  );
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -155,7 +182,9 @@ export function CampaignsPage() {
     { enabled: isAdmin, refetchInterval: POLL_INTERVAL },
   );
 
-  // Per-campaign stats (pipeline / $CAC / ROI / %CAC) — features-service, one call.
+  // Per-campaign stats (ROI / %CAC / expected pipeline revenue) — features-service,
+  // one call. The group also carries a per-campaign $CAC; the table no longer has
+  // a column for it, and the brand-level one still heads the page.
   const groupsQ = useAuthQuery(
     ["featureRevenueByCampaign", brandId, featureSlug],
     () => getFeatureRevenueByCampaign(featureSlug, brandId),
@@ -192,10 +221,12 @@ export function CampaignsPage() {
     return m;
   }, [groupsQ.data]);
 
-  // Rows sorted by pipeline DESC (biggest first); nulls last.
+  // Rows sorted by ROI DESC, the column the table now leads with — a table that
+  // displays one order and sorts by another reads as unordered. A campaign with
+  // no ROI yet has nothing to rank on, so it sits last rather than at zero.
   const rows = useMemo<CampaignRow[]>(() => {
     const joined = campaigns.map((c) => ({ campaign: c, revenue: groupsById.get(c.id) ?? null }));
-    return joined.sort((a, b) => (b.revenue?.totalPipelineUsd ?? -1) - (a.revenue?.totalPipelineUsd ?? -1));
+    return joined.sort((a, b) => (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1));
   }, [campaigns, groupsById]);
 
   // Effective goal = the campaign's OWN goal (v2 per-campaign) when set, else the
@@ -205,11 +236,12 @@ export function CampaignsPage() {
       campaign.goal ? optimizationGoalForRuntimeGoal(campaign.goal) : brandGoal;
   }, [brandGoal]);
 
-  // #1 acquisition channel = the channel of the top-pipeline campaign, named as
-  // the brand Settings catalogue names it (display argmax over already-fetched
-  // rows, not a hidden metric).
+  // #1 acquisition channel = the channel of the best-ROI campaign, named as the
+  // brand Settings catalogue names it (display argmax over already-fetched rows,
+  // not a hidden metric). It reads the SAME ranking the table is sorted by, so
+  // the tile and the first row cannot name two different campaigns.
   const topChannel = useMemo(() => {
-    const top = rows.find((r) => (r.revenue?.totalPipelineUsd ?? 0) > 0);
+    const top = rows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
     const def = acquisitionChannelForWorkflowSlug(top.campaign.workflowSlug);
     return def ? def.name : channelLabel(top.campaign.workflowSlug);
@@ -261,28 +293,29 @@ export function CampaignsPage() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
+              {/* Return first: the table is sorted by ROI, so it leads with the
+                  column that decides the order. */}
               <tr className="border-b border-gray-200 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-3 text-right"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
+                <th className="px-4 py-3 text-right"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
+                <th className="px-4 py-3 text-right"><NumericHead label="Revenue" tip={COLUMN_INFO.revenue} /></th>
                 <th className="px-4 py-3">Channel</th>
                 <th className="px-4 py-3">Goal</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Pipeline</th>
-                <th className="px-4 py-3 text-right">$ CAC</th>
-                <th className="px-4 py-3 text-right">ROI</th>
-                <th className="px-4 py-3 text-right">% CAC</th>
               </tr>
             </thead>
             <tbody>
               {!tableSettled ? (
                 [0, 1, 2].map((i) => (
                   <tr key={`sk-${i}`} className="border-b border-gray-100">
-                    <td className="px-4 py-3" colSpan={7}>
+                    <td className="px-4 py-3" colSpan={6}>
                       <Skeleton className="h-5 w-full" />
                     </td>
                   </tr>
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
+                  <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>
                     No campaigns yet.
                   </td>
                 </tr>
@@ -293,6 +326,9 @@ export function CampaignsPage() {
                     onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
                     className="border-b border-gray-100 cursor-pointer transition hover:bg-gray-50"
                   >
+                    <td className="px-4 py-3 text-right tabular-nums font-medium text-gray-900">{fmtRoi(revenue?.roiMultiple)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                     <td className="px-4 py-3 font-medium text-gray-800">
                       <ChannelCell workflowSlug={campaign.workflowSlug} />
                     </td>
@@ -300,10 +336,6 @@ export function CampaignsPage() {
                       <GoalCell goal={goalFor(campaign)} />
                     </td>
                     <td className="px-4 py-3"><StatusPill status={campaign.status} /></td>
-                    <td className="px-4 py-3 text-right tabular-nums font-medium text-gray-900">{fmtUsd(revenue?.totalPipelineUsd)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.costPerConversionUsd)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtRoi(revenue?.roiMultiple)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
                   </tr>
                 ))
               )}
