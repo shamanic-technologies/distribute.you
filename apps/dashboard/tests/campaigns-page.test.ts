@@ -97,6 +97,41 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     expect(page).toContain("Cost per acquisition");
   });
 
+  // Type + chrome come from the dashboard's own tables and cards, not from this
+  // page's taste. A heavier header or a different eyebrow reads as a different
+  // product sitting inside the same shell.
+  it("uses the dashboard's table header and card eyebrow, not its own", () => {
+    const leads = read("components/audiences/engaged-leads-page.tsx");
+    const header =
+      "border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+    expect(leads).toContain(header);
+    expect(page).toContain(header);
+    // Row separation via the same divider the reference table uses, so a row
+    // carries no border of its own.
+    expect(page).toContain('<tbody className="divide-y divide-gray-50">');
+    expect(page).not.toContain("border-b border-gray-100 cursor-pointer");
+    // The eyebrow on a stat card, byte-equal to top-audiences-card's.
+    const eyebrow = "text-xs font-medium text-gray-400 uppercase tracking-wide";
+    expect(read("components/revenue/top-audiences-card.tsx")).toContain(eyebrow);
+    expect(page).toContain(eyebrow);
+  });
+
+  // ROI is the row's headline number, and a return above 1x is the campaign
+  // making money back. Below 1x stays the ordinary colour: an early campaign is
+  // under 1x by construction, and red would call it a failure. Weight and colour
+  // carry the emphasis — a second type size inside one row is what made the
+  // table read as its own thing.
+  it("greens ROI above 1x, never red below, at the table's own size", () => {
+    const cell = page.slice(page.indexOf("function RoiCell("));
+    const body = cell.slice(0, cell.indexOf("\n}"));
+    expect(body).toContain("multiple != null && multiple > 1");
+    expect(body).toContain("font-semibold");
+    expect(body).toContain("text-green-600");
+    expect(body).toContain("text-gray-900");
+    expect(body).not.toContain("text-red");
+    expect(body).not.toMatch(/text-(base|lg|xl)/);
+  });
+
   it("sorts by ROI descending, and the #1 tile reads that same ranking", () => {
     expect(page).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
     expect(page).toContain("rows.find((r) => r.revenue?.roiMultiple != null)");

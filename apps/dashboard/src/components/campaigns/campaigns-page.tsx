@@ -95,6 +95,24 @@ function NumericHead({ label, tip }: { label: string; tip: string }) {
   );
 }
 
+/**
+ * The headline number of the row. It carries the table's own size — weight and
+ * colour are what set it apart, not a second type scale inside one row.
+ *
+ * A return above 1x means the campaign is making money back, and that reads
+ * GREEN. Below 1x it stays the ordinary text colour rather than turning red: an
+ * early campaign is under 1x by construction, and painting that red calls a
+ * campaign that has not finished learning a failure.
+ */
+function RoiCell({ multiple }: { multiple: number | null | undefined }) {
+  const good = multiple != null && multiple > 1;
+  return (
+    <span className={`font-semibold tabular-nums ${good ? "text-green-600" : "text-gray-900"}`}>
+      {fmtRoi(multiple)}
+    </span>
+  );
+}
+
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-green-50 text-green-700 border-green-200",
   running: "bg-green-50 text-green-700 border-green-200",
@@ -155,7 +173,10 @@ interface CampaignRow {
 function StatTile({ label, value, pending }: { label: string; value: string; pending: boolean }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</div>
+      {/* Card label in the dashboard's own eyebrow: `text-xs font-medium
+          text-gray-400 uppercase tracking-wide`, the same one `top-audiences-card`
+          and `revenue-cost-summary` use. */}
+      <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</div>
       {pending ? (
         <Skeleton className="mt-2 h-7 w-24" />
       ) : (
@@ -294,8 +315,11 @@ export function CampaignsPage() {
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               {/* Return first: the table is sorted by ROI, so it leads with the
-                  column that decides the order. */}
-              <tr className="border-b border-gray-200 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  column that decides the order.
+                  Header chrome byte-equal to the Leads table (`engaged-leads-page`),
+                  which is the dashboard's reference entity table: a heavier,
+                  differently-tracked header reads as a different product. */}
+              <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <th className="px-4 py-3 text-right"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
                 <th className="px-4 py-3 text-right"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
                 <th className="px-4 py-3 text-right"><NumericHead label="Revenue" tip={COLUMN_INFO.revenue} /></th>
@@ -304,10 +328,10 @@ export function CampaignsPage() {
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-50">
               {!tableSettled ? (
                 [0, 1, 2].map((i) => (
-                  <tr key={`sk-${i}`} className="border-b border-gray-100">
+                  <tr key={`sk-${i}`}>
                     <td className="px-4 py-3" colSpan={6}>
                       <Skeleton className="h-5 w-full" />
                     </td>
@@ -324,15 +348,15 @@ export function CampaignsPage() {
                   <tr
                     key={campaign.id}
                     onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
-                    className="border-b border-gray-100 cursor-pointer transition hover:bg-gray-50"
+                    className="cursor-pointer transition hover:bg-gray-50"
                   >
-                    <td className="px-4 py-3 text-right tabular-nums font-medium text-gray-900">{fmtRoi(revenue?.roiMultiple)}</td>
+                    <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
                     <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.totalPipelineUsd)}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">
+                    <td className="px-4 py-3 text-gray-800">
                       <ChannelCell workflowSlug={campaign.workflowSlug} />
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-gray-800">
                       <GoalCell goal={goalFor(campaign)} />
                     </td>
                     <td className="px-4 py-3"><StatusPill status={campaign.status} /></td>
