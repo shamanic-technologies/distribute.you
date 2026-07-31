@@ -419,7 +419,6 @@ export default function BrandOverviewPage() {
         <FirstOutcomeReassuranceBanner
           subject="Your campaign"
           goal={optimizationGoal}
-          recommendedSpendUsd={recommendedLearningUsd}
         />
       )}
         <RevenueEmptyState />
@@ -433,7 +432,6 @@ export default function BrandOverviewPage() {
         <FirstOutcomeReassuranceBanner
           subject="Your campaign"
           goal={optimizationGoal}
-          recommendedSpendUsd={recommendedLearningUsd}
         />
       )}
       <RevenueOverviewSection

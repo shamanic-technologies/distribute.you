@@ -2,7 +2,7 @@
 
 import { ClockIcon } from "@heroicons/react/20/solid";
 import type { BrandOptimizationGoal } from "@/lib/api";
-import { outcomeNounPlural } from "@/lib/strategy-model";
+import { outcomeNoun, outcomeNounPlural } from "@/lib/strategy-model";
 import { LEARNING_WINDOW_OUTCOMES } from "@/lib/first-outcome-reassurance";
 
 interface FirstOutcomeReassuranceBannerProps {
@@ -10,8 +10,6 @@ interface FirstOutcomeReassuranceBannerProps {
   subject: string;
   /** The brand's optimization goal; names the outcome the customer is actually waiting for. */
   goal: BrandOptimizationGoal;
-  /** `recommendedLearningSpendUsd(...)`; `null` drops the budget line rather than inventing one. */
-  recommendedSpendUsd: number | null;
 }
 
 /**
@@ -24,13 +22,19 @@ interface FirstOutcomeReassuranceBannerProps {
  * step: telling a positive-replies brand to wait for its first site visits describes
  * something it does not buy. The gate that hides this banner reads the same goal's count
  * (`goalOutcomeCount`), so the sentence and the disappearance agree.
+ *
+ * The learning window is stated as a MULTIPLE of the brand's expected cost per outcome,
+ * not as a dollar total. A figure like "$2,579" reads as a bill on a screen that has not
+ * yet produced a single outcome; the multiple says the same thing, holds whatever the
+ * brand's unit cost turns out to be, and needs no unit cost to be resolvable — so the
+ * line can no longer vanish on the one brand whose cost we failed to estimate.
  */
 export function FirstOutcomeReassuranceBanner({
   subject,
   goal,
-  recommendedSpendUsd,
 }: FirstOutcomeReassuranceBannerProps) {
   const outcomes = outcomeNounPlural(goal);
+  const outcome = outcomeNoun(goal);
   return (
     <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
       <div className="flex gap-3">
@@ -43,13 +47,10 @@ export function FirstOutcomeReassuranceBanner({
             We are sending and learning from the first leads. It typically takes 2 to 4
             weeks before the first {outcomes} appear here.
           </p>
-          {recommendedSpendUsd != null && (
-            <p className="mt-1 leading-6">
-              Plan on about ${recommendedSpendUsd.toLocaleString("en-US")} of spend before
-              you judge the results, roughly what {LEARNING_WINDOW_OUTCOMES} {outcomes}{" "}
-              cost.
-            </p>
-          )}
+          <p className="mt-1 leading-6">
+            Plan on about {LEARNING_WINDOW_OUTCOMES}x the expected cost per {outcome}{" "}
+            before you judge the results.
+          </p>
         </div>
       </div>
     </div>
