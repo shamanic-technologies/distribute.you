@@ -99,7 +99,7 @@ export async function Footer({ disclaimer }: FooterProps) {
             <p className="text-sm text-gray-500 leading-relaxed mb-4">
               Sales cold email outreach done for you. Drop a URL, set a budget,
               we find prospects, send sequences, qualify replies, and forward buyers
-              to Gmail. $25 welcome credits, cancel anytime.
+              to Gmail. $400 welcome credits, cancel anytime.
             </p>
             <StatusIndicator />
           </div>

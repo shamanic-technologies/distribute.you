@@ -5,7 +5,7 @@ import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SITE_URL = PROD_URLS.landing;
 const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $25 welcome credits, cancel anytime.";
+const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $400 welcome credits, cancel anytime.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -95,7 +95,7 @@ const jsonLd = {
       name: "Free credits",
       price: "0",
       priceCurrency: "USD",
-      description: "$25 welcome credits for sales cold email outreach",
+      description: "$400 welcome credits for sales cold email outreach",
     },
   ],
   provider: {

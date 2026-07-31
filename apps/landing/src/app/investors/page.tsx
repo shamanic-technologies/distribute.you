@@ -248,7 +248,7 @@ export default function InvestorsPage() {
                     <li>Agency-style sender on his behalf</li>
                     <li>AI-qualified replies forwarded to Gmail</li>
                     <li>Public unit prices + 2x margin baked in</li>
-                    <li>Pay-as-you-go credits, first $25 spent matched free</li>
+                    <li>Pay-as-you-go credits, first $400 spent matched free</li>
                     <li>Multi-brand portfolio in one dashboard</li>
                   </ul>
                 </div>

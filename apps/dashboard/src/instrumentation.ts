@@ -108,7 +108,7 @@ export const EMAIL_TEMPLATES = [
         Only interested prospects come back to you. You close.
       </p>
       <p style="color:${EMAIL_SUB};font-size:16px;line-height:1.65;margin:0 0 28px;">
-        Your first $25 is on us. $5 is in your account already, and the rest lands once your payments reach $25. Enough for a real first run, not a demo.
+        Your first $400 is on us. $5 is in your account already, and the rest lands once your payments reach $400. Enough for a real first run, not a demo.
       </p>
       <p style="margin:0;">
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#ffffff;padding:13px 28px;border-radius:10px;text-decoration:none;font-size:16px;font-weight:600;">Open your dashboard</a>
@@ -116,7 +116,7 @@ export const EMAIL_TEMPLATES = [
       <p style="color:${EMAIL_MUTED};font-size:14px;line-height:1.6;margin:20px 0 0;">
         New to this? <a href="${HOW_IT_WORKS_URL}" style="color:${EMAIL_ACCENT_TEXT};">See how it works.</a>
       </p>`),
-    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first $25 is on us. $5 is in your account already, and the rest lands once your payments reach $25. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
+    textBody: `Welcome to distribute.you.\n\nCold outreach that lands takes domains, warmup, list-building, writing, and an inbox someone babysits every day. Do it wrong and you torch your own domain's reputation.\n\nSo we run all of it for you. You drop a URL. We find the decision-makers at the companies you want, write the emails, and send them from our own domains, on your behalf. Your domain never touches cold outreach.\n\nOnly interested prospects come back to you. You close.\n\nYour first $400 is on us. $5 is in your account already, and the rest lands once your payments reach $400. Enough for a real first run, not a demo.\n\nOpen your dashboard: ${DASHBOARD_URL}\n\nNew to this? See how it works: ${HOW_IT_WORKS_URL}`,
   },
   // Email 2 — sent AFTER the user pays and launches (completeLaunchAfterCheckout).
   // {{outcomeNoun}} is the plural of the brand's chosen optimization goal (clicks /
@@ -192,60 +192,6 @@ export const EMAIL_TEMPLATES = [
     subject: "User active: {{email}}",
     htmlBody: "<p>User is back: <strong>{{email}}</strong> at {{timestamp}}</p>",
     textBody: "User is back: {{email}} at {{timestamp}}",
-  },
-
-  // ── DIS-64 Wave 0.5: invite-only gate + $25 referral lifecycle ──
-  // Variables sent by api-service in `metadata` (deployed transactional-email-service
-  // schema: { eventType, recipientEmail, metadata }). Unused metadata keys are
-  // silently dropped by the renderer.
-  //   waitlist-confirmed         → { email, position, brandUrl }
-  //   invite-claimed-welcome     → { email, inviterOrgName, balanceCents }
-  //   invite-success-notification → { email, inviteeOrgName, balanceCents, invitesUsed, invitesTotal }
-  {
-    name: "waitlist-confirmed",
-    subject: "You're on the distribute.you waitlist",
-    htmlBody: emailLayout(`
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        You're #{{position}} on the distribute.you waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Want to skip the line? Ask someone already using distribute.you for their invite link. Each invite drops $25 in credits into both sides.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">See you inside soon.</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
-    textBody: `Hey,\n\nYou're #{{position}} on the distribute.you waitlist. I took a quick look at {{brandUrl}} — looks like a good fit for what we're building. I'll start opening slots over the next few days; your turn isn't far.\n\nWant to skip the line? Ask someone already using distribute.you for their invite link. Each invite drops $25 in credits into both sides.\n\nSee you inside soon.\n\n— Kevin, founder of distribute.you`,
-  },
-  {
-    name: "invite-claimed-welcome",
-    subject: "Welcome to distribute — you have $25 in credits",
-    htmlBody: emailLayout(`
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Thanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        Open your dashboard and run your first AI-driven outreach today: <a href="${DASHBOARD_URL}" style="color:#00713a;">${DASHBOARD_URL}</a>
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        You also have 3 invites to share. Each one drops $25 into both sides.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
-    textBody: `Hey,\n\nThanks to {{inviterOrgName}}, you start with $25 in product credits — enough for a real first campaign, not a demo.\n\nOpen your dashboard and run your first AI-driven outreach today: ${DASHBOARD_URL}\n\nYou also have 3 invites to share. Each one drops $25 into both sides.\n\n— Kevin, founder of distribute.you`,
-  },
-  {
-    name: "invite-success-notification",
-    subject: "{{inviteeOrgName}} joined distribute — you earned $25",
-    htmlBody: emailLayout(`
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        {{inviteeOrgName}} just joined distribute with your invite. $25 is now in your account.
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        You've used {{invitesUsed}}/{{invitesTotal}} invites. Keep sending them — the link is in your dashboard sidebar: <a href="${DASHBOARD_URL}" style="color:#00713a;">${DASHBOARD_URL}</a>
-      </p>
-      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin</p>`),
-    textBody: `Hey,\n\n{{inviteeOrgName}} just joined distribute with your invite. $25 is now in your account.\n\nYou've used {{invitesUsed}}/{{invitesTotal}} invites. Keep sending them — the link is in your dashboard sidebar: ${DASHBOARD_URL}\n\n— Kevin`,
   },
 
   // ── Out-of-credit dunning (triggered by billing-service on depletion) ──

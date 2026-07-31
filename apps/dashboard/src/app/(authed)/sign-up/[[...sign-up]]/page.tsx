@@ -444,7 +444,7 @@ export default function SignUpPage() {
             >
               {pendingVerification
                 ? `We sent a code to ${email}`
-                : "$25 free credits."}
+                : "$400 free credits."}
             </p>
           </div>
 

@@ -2127,7 +2127,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
 
   // Direct launch — NO Stripe redirect. Used when an existing org ADDS a brand
   // (`?from=add`) and already has a payment method on file: card capture + the
-  // first-$25 welcome match are new-org-only, so we skip the checkout screen and
+  // first-$400 welcome match are new-org-only, so we skip the checkout screen and
   // launch straight into the post-payment sequence (celebrate → phone → ltr → …).
   // Funding is covered by the org's existing card via configureAutoTopup (re-armed
   // in runLaunchWork) — never a re-charge. Mirrors resumeCheckoutLaunch, but builds
@@ -2158,7 +2158,7 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
   }
 
   // Pricing-step "Continue". For an existing org ADDING a brand (`?from=add`) with a
-  // card already on file, skip the $25-welcome screen + Stripe checkout and launch
+  // card already on file, skip the $400-welcome screen + Stripe checkout and launch
   // directly. New orgs — or an add-brand org with no payment method yet — keep the
   // checkout path (bonus → beginCheckoutAndLaunch) so the card is captured + auto-topup
   // armed. The billing-account check is fail-safe: on any error we fall back to
@@ -3652,16 +3652,20 @@ export function Onboarding({ variant = "ga" }: { variant?: OnboardingVariant } =
             <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
               <GiftIcon className="h-7 w-7 text-brand-600" />
             </span>
-            <h2 className="font-display text-2xl font-bold text-gray-900">We will match your first $25 with $25 free credits.</h2>
+            <h2 className="font-display text-2xl font-bold text-gray-900">We will match your first $400 with $400 free credits.</h2>
             {/* The gift is earned on PAYMENTS RECEIVED, never on usage consumed: the
                 account is threshold-postpaid, so an org can consume on credit before
                 paying anything. This one sentence is true in BOTH branches — when the
-                first checkout is $50+ the $25 comes off it as a Stripe discount, so the
-                buyer still pays $25 and still crosses the threshold that lands the rest.
-                It is NOT a per-dollar match: a flat $25 gated at $25 of payments, so
-                paying $10 earns nothing yet. Guard: welcome-credits-promise.test.ts. */}
+                first checkout is $800+ the $400 comes off it as a Stripe discount, so the
+                buyer still pays $400 and still crosses the threshold that lands the rest.
+                It is NOT a per-dollar match: a flat $400 gated at $400 of payments, so
+                paying $10 earns nothing yet. Guard: welcome-credits-promise.test.ts.
+
+                The org's entitlement and threshold are FROZEN on its billing account when
+                that account is created, so an org that signed up under the old offer keeps
+                $25/$25 forever and this screen (new orgs only) is the $400 cohort. */}
             <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-600">
-              $5 is in your account already. The rest lands automatically once your payments reach $25.
+              $5 is in your account already. The rest lands automatically once your payments reach $400.
             </p>
           </div>
       </StepShell>

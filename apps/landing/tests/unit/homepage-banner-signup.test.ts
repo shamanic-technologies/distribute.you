@@ -10,7 +10,7 @@ const html = fs.readFileSync(homepagePath, "utf8");
 
 const SIGN_UP_URL = "https://dashboard.distribute.you/sign-up";
 
-describe("the $25 announcement bar is clickable across its whole width", () => {
+describe("the $400 announcement bar is clickable across its whole width", () => {
   // The bar advertised the credits with no click target at all, while the date
   // inside it was underlined -- so it read as a link and did nothing. The whole
   // bar is now the affordance, pointing at the same sign-up URL as every other

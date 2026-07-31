@@ -83,7 +83,7 @@ describe("Billing API wrappers", () => {
   });
 
   // billing-service deleted the wallet-setup endpoint (migration 0031) and
-  // api-service dropped the gateway proxy; the "$25 once you deposit" promise
+  // api-service dropped the gateway proxy; the "$400 once you deposit" promise
   // it carried is served by the welcome gift on the checkout path onboarding
   // already uses. Nothing may reintroduce the call or its result type.
   it("should NOT have setupBillingWallet (removed endpoint)", () => {
