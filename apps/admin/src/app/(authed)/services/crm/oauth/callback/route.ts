@@ -11,7 +11,7 @@ function redirect(req: NextRequest, target: string): NextResponse {
 }
 
 export async function GET(req: NextRequest) {
-  const { userId, orgId } = await auth();
+  const { userId, orgId, orgSlug } = await auth();
   if (!userId) {
     return redirect(req, "/sign-in");
   }
@@ -52,6 +52,12 @@ export async function GET(req: NextRequest) {
     "x-external-org-id": orgId,
     "x-external-user-id": userId,
   };
+
+  // Clerk's own slug for the org — in god-mode, the customer org the staff member
+  // switched into. client-service stores it the first time it sees one, and that
+  // stored slug is the org's referral invite code.
+  if (orgSlug) headers["x-org-slug"] = orgSlug;
+
   const user = await currentUser();
   if (user) {
     const email = user.emailAddresses?.[0]?.emailAddress;

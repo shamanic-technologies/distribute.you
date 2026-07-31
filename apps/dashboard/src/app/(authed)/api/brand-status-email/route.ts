@@ -22,7 +22,7 @@ const DASHBOARD_URL = "https://dashboard.distribute.you";
  * The brand name is resolved server-side from api-service.
  */
 export async function POST(req: Request) {
-  const { userId, orgId } = await auth();
+  const { userId, orgId, orgSlug } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -53,6 +53,10 @@ export async function POST(req: Request) {
     "X-API-Key": adminApiKey,
     "x-external-org-id": orgId,
     "x-external-user-id": userId,
+    // Clerk's own slug for the org, forwarded verbatim or not at all. client-service
+    // stores it the first time it sees one, and that stored slug is the org's referral
+    // invite code — so this heals orgs that predate the header.
+    ...(orgSlug ? { "x-org-slug": orgSlug } : {}),
   };
 
   // Recipient + greeting name from Clerk (server-side source of truth).

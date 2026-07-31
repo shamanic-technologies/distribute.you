@@ -13,7 +13,7 @@ export async function GET(
   req: NextRequest,
   segmentData: { params: Promise<{ id: string }> }
 ) {
-  const { userId: clerkUserId, orgId: clerkOrgId } = await auth();
+  const { userId: clerkUserId, orgId: clerkOrgId, orgSlug: clerkOrgSlug } = await auth();
   if (!clerkUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -40,6 +40,11 @@ export async function GET(
       "x-external-org-id": clerkOrgId,
       "x-external-user-id": clerkUserId,
     };
+
+    // Clerk's own slug for the org — in god-mode, the customer org the staff member
+    // switched into. client-service stores it the first time it sees one, and that
+    // stored slug is the org's referral invite code.
+    if (clerkOrgSlug) headers["x-org-slug"] = clerkOrgSlug;
 
     // currentUser() calls Clerk's API — don't let it break the proxy if Clerk is down
     try {
