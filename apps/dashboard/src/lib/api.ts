@@ -3053,18 +3053,6 @@ export async function updateCampaign(
   return { campaign: enriched };
 }
 
-/**
- * Set ONE campaign's daily budget (v2 per-campaign budget). Thin wrapper over
- * `updateCampaign`. Writing null clears it back to inheriting the brand budget.
- */
-export async function updateCampaignDailyBudget(
-  campaignId: string,
-  maxBudgetDailyUsd: string | null,
-  token?: string,
-): Promise<{ campaign: Campaign }> {
-  return updateCampaign(campaignId, { maxBudgetDailyUsd }, token);
-}
-
 // Campaign sub-resources
 
 /** Snapshot of the lead's CURRENT employer organization (lead-service OrganizationView). */
