@@ -3,10 +3,10 @@
 // them lands. The two are separate models on purpose: the same funnel can be fed
 // by cold email today and by paid clicks later.
 //
-// Only one channel is live today, so the section reads mostly as a roadmap. It
-// still carries the selection model, because "which channels do you run" is the
-// question this section exists to answer, and a list that cannot be answered is
-// a picture of a feature rather than the feature.
+// Only one channel is live today, so the section STATES what we run for a brand
+// rather than asking it to choose. brand-service stores no channel selection, so
+// a control here would take the answer and persist none of it; the choice
+// arrives the day there is a field to write it to.
 //
 // Only value imports that carry no "@" alias live here, so this module stays
 // directly unit-testable (vitest does not resolve the alias).
@@ -122,68 +122,17 @@ export function acquisitionChannelForWorkflowSlug(
   return channels.find((c) => c.key === "cold_email") ?? null;
 }
 
-/** The channels we can actually run today. */
-export function liveAcquisitionChannels(
-  channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
-): AcquisitionChannelDef[] {
-  return channels.filter((c) => !c.comingSoon);
-}
-
-export function acquisitionChannelByKey(
-  key: AcquisitionChannelKey,
-  channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
-): AcquisitionChannelDef {
-  const def = channels.find((c) => c.key === key);
-  if (!def) throw new Error(`Unknown acquisition channel: ${key}`);
-  return def;
-}
-
 /**
- * A brand always runs at least one live channel, so the section opens on the
- * first one rather than on an empty list that describes nothing.
+ * The channels we run today come FIRST, in their declared order, then the ones
+ * that are coming. A channel we can run and one we cannot are two different
+ * kinds of row, so they are two groups rather than one list with a marker on
+ * some of its members.
  */
-export function initialSelectedChannelKeys(
+export function partitionChannelsByAvailability(
   channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
-): AcquisitionChannelKey[] {
-  const first = liveAcquisitionChannels(channels)[0];
-  return first ? [first.key] : [];
-}
-
-/**
- * The channels a brand runs come FIRST, in their declared order, and the rest
- * follow. A channel it runs and one it does not are two different kinds of row.
- */
-export function partitionChannelsBySelection(
-  isSelected: (key: AcquisitionChannelKey) => boolean,
-  channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
-): { selected: AcquisitionChannelDef[]; unselected: AcquisitionChannelDef[] } {
+): { live: AcquisitionChannelDef[]; comingSoon: AcquisitionChannelDef[] } {
   return {
-    selected: channels.filter((c) => isSelected(c.key)),
-    unselected: channels.filter((c) => !isSelected(c.key)),
+    live: channels.filter((c) => !c.comingSoon),
+    comingSoon: channels.filter((c) => c.comingSoon),
   };
-}
-
-/** A channel we cannot run yet cannot be chosen. */
-export function canSelectChannel(def: AcquisitionChannelDef): boolean {
-  return !def.comingSoon;
-}
-
-/**
- * Why this channel cannot be dropped, or null when it can. A brand with no
- * channel running is a brand we cannot reach anyone for, so the last live one
- * stays on and the card says so instead of silently ignoring the click.
- */
-export function removeChannelBlockedReason(
-  key: AcquisitionChannelKey,
-  selectedKeys: AcquisitionChannelKey[],
-  channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
-): string | null {
-  const def = acquisitionChannelByKey(key, channels);
-  if (def.comingSoon) return null;
-  const liveSelected = selectedKeys.filter(
-    (k) => !acquisitionChannelByKey(k, channels).comingSoon,
-  );
-  if (liveSelected.length > 1) return null;
-  if (!liveSelected.includes(key)) return null;
-  return "This is the only channel we can run for you today, so it stays on.";
 }

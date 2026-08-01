@@ -6,15 +6,12 @@ const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf
 
 const ROW = read("../src/components/settings/settings-save-row.tsx");
 
-// Every card on brand Settings that can be saved. Four hand-rolled copies of the
-// same row drifted into a left-aligned button that was visible, and dead, before
-// anyone had touched the form.
-const SAVEABLE_CARDS = [
-  "brand-daily-budget-card.tsx",
-  "brand-click-destination-card.tsx",
-  "brand-sales-economics-card.tsx",
-  "brand-domain-card.tsx",
-];
+// Every card on brand Settings that can be saved. Hand-rolled copies of the same
+// row had drifted into a left-aligned button that was visible, and dead, before
+// anyone had touched the form. The click-destination and sales-economics cards
+// left this list with the flat brand-wide sections they belonged to: a funnel
+// now owns its own rates, lifetime revenue and landing page.
+const SAVEABLE_CARDS = ["brand-daily-budget-card.tsx", "brand-domain-card.tsx"];
 
 describe("SettingsSaveRow", () => {
   // A Save button under an untouched form is a control offering itself for an
@@ -64,11 +61,9 @@ describe("brand Settings cards", () => {
     }
   });
 
-  // The click destination is locked until the brand has a domain, and the domain
-  // card is a one-time setup whose field starts empty.
+  // The domain card is a one-time setup on a brand with no website, so its field
+  // starts empty by construction and a typed URL IS the edit.
   it("pass each card's own gate through the shared row", () => {
-    const click = read("../src/components/settings/brand-click-destination-card.tsx");
-    expect(click).toContain("disabled={domainLocked}");
     const domain = read("../src/components/settings/brand-domain-card.tsx");
     expect(domain).toContain("dirty={value.trim().length > 0}");
   });

@@ -83,11 +83,13 @@ describe("Dashboard goal pickers — restrict to positive_replies when brand has
     expect(src).toContain("GOAL_OPTIONS.filter");
   });
 
-  it("brand-sales-economics-card restricts OPTIMIZATION_GOALS when brand.url == null", () => {
-    const src = read("src/components/settings/brand-sales-economics-card.tsx");
-    expect(src).toContain("brandData.brand.url == null");
-    expect(src).toContain('OPTIMIZATION_GOALS.filter((g) => g.value === "positive_replies")');
-    // Fallback: display positive_replies for a brand stored on another goal.
-    expect(src).toContain("effectiveGoal");
+  // The settings sales-economics card carried the same restriction until brand
+  // Settings dropped its flat goal picker: a no-website brand is now restricted
+  // by the funnel catalogue itself, since every website-led funnel refuses to be
+  // declared for a brand with no domain.
+  it("locks every website-led funnel on a brand with no domain", () => {
+    const src = read("src/components/settings/brand-sales-funnels-card.tsx");
+    expect(src).toContain("const noWebsite = !!brand && brand.url == null;");
+    expect(src).toContain("def.requiresWebsite && noWebsite");
   });
 });

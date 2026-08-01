@@ -38,10 +38,8 @@ import {
   parseLocaleNumberInput,
 } from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { BrandLogo } from "@/components/brand-logo";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
 // The funnels a brand sells through, and what each one is worth. Several can run
@@ -102,7 +100,6 @@ function byCatalogueOrder(a: DeclaredSalesFunnel, b: DeclaredSalesFunnel): numbe
 }
 
 export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
-  const isBeta = useIsBetaUser();
   const queryClient = useQueryClient();
 
   // The economics + brand keys are the ones the sibling settings cards already
@@ -301,8 +298,6 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     setPendingKey(def.key);
     undeclareMutation.mutate({ def });
   }
-
-  if (!isBeta) return null;
 
   const { selected, unselected } = partitionFunnelsBySelection((key) => states[key].declared);
   // `declared` with an empty set is the brand saying it sells through none — a
@@ -580,15 +575,13 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
   return (
     <section className="mb-10">
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-gray-900">Sales Funnels</h2>
-        <MaturityBadge level="beta" />
-      </div>
+      <h2 className="mb-3 text-lg font-semibold text-gray-900">Sales Funnels</h2>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <p className="mb-5 text-sm text-gray-500">
           Pick every funnel you sell through. Each one keeps its own conversion rates,
-          lifetime revenue and landing page.
+          lifetime revenue and landing page, and the ones you pick are what your
+          campaigns optimize for.
         </p>
 
         {selected.length > 0 && <ul className="space-y-3">{selected.map(renderFunnel)}</ul>}

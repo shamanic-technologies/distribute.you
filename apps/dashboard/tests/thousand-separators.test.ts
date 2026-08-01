@@ -108,9 +108,11 @@ describe("sidebar components use formatCount for badges", () => {
 });
 
 describe("sales economics surfaces use locale-aware text inputs", () => {
-  it("settings sales economics uses the shared locale input helpers instead of number inputs", () => {
+  // The flat settings sales-economics card is gone; a funnel now owns the rates
+  // and the lifetime revenue, and its inputs carry the same helpers.
+  it("settings sales funnels use the shared locale input helpers instead of number inputs", () => {
     const content = fs.readFileSync(
-      path.join(__dirname, "../src/components/settings/brand-sales-economics-card.tsx"),
+      path.join(__dirname, "../src/components/settings/brand-sales-funnels-card.tsx"),
       "utf-8"
     );
     expect(content).toContain('from "@/lib/format-number"');

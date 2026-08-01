@@ -75,11 +75,22 @@ describe("validateDestination — WhatsApp links are accepted off-domain", () =>
   });
 });
 
-describe("settings page wires the click-destination section", () => {
+// The brand-wide Click Destination section is gone: a landing page belongs to
+// the funnel that lands a click on it, so the funnels card owns it per funnel
+// and validates it through this same helper.
+describe("the funnel card owns the destination now", () => {
   const page = read(
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
   );
-  it("renders BrandClickDestinationCard", () => {
-    expect(page).toContain("BrandClickDestinationCard");
+  const funnels = read("../src/lib/sales-funnels.ts");
+
+  it("no longer renders a brand-wide click-destination section", () => {
+    expect(page).not.toContain("BrandClickDestinationCard");
+    expect(page).not.toContain("Click Destination");
+  });
+
+  it("validates a funnel destination through the shared helper", () => {
+    expect(funnels).toContain("validateDestination");
+    expect(funnels).toContain("if (!def.pageDestination) return { ok: true };");
   });
 });
