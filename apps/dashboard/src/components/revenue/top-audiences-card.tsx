@@ -6,9 +6,14 @@ import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
 import { useSharePathPrefix } from "@/components/share/share-mode-context";
+import {
+  AUDIENCE_RANK_METRIC_INFO,
+  AUDIENCE_RANK_METRIC_LABEL,
+  AUDIENCE_RANK_METRIC_OUTCOME_NOUN,
+  type AudienceRankMetric,
+} from "@/lib/strategy-model";
 import type {
   FeatureAudienceStatsResponse,
-  FeatureAudienceStatsSortMetric,
   FeatureAudienceStatsRow,
   AudienceWire,
 } from "@/lib/api";
@@ -26,14 +31,43 @@ function formatCents(cents: number | null): string {
   })}`;
 }
 
-function metricLabel(metric: FeatureAudienceStatsSortMetric): string {
-  return metric === "cpc" ? "Cost per website visit" : "CPPR";
+/** The row's cost under the brand's own metric. Mirrors the Audiences table's `sortValue`,
+ *  floor included — a 0-reply audience with real spend shows what it has cost so far rather
+ *  than a blank that hides money. Every value is read verbatim from a server field. */
+function metricCents(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): number | null {
+  switch (metric) {
+    case "cppr":
+      return costSoFarFloorCents(
+        row.metrics.cpprCents,
+        row.evidence.totalCostInUsdCents,
+        row.evidence.positiveReplies,
+      );
+    case "cps":
+      return row.metrics.cpsCents ?? null;
+    case "cpfs":
+      return row.metrics.cpfsCents ?? null;
+    case "cpsale":
+      return row.metrics.cpsaleCents ?? null;
+    case "cpc":
+      return row.metrics.cpcCents;
+  }
 }
 
-function metricInfo(metric: FeatureAudienceStatsSortMetric): string {
-  return metric === "cpc"
-    ? "Cost per website visit — audience-scoped spend divided by website visits. Lower is better."
-    : "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.";
+/** The outcome count the metric divides by. Absent on the wire (the producer omits an
+ *  outcome that is not this goal's) → null, so the line is dropped rather than faked as 0. */
+function metricCount(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): number | null {
+  switch (metric) {
+    case "cppr":
+      return row.evidence.positiveReplies;
+    case "cps":
+      return row.evidence.signups ?? null;
+    case "cpfs":
+      return row.evidence.formSubmissions ?? null;
+    case "cpsale":
+      return row.evidence.sales ?? null;
+    case "cpc":
+      return row.evidence.websiteClicks;
+  }
 }
 
 function audienceInitials(name: string): string {
@@ -69,9 +103,23 @@ export function TopAudiencesCard({
   data?: FeatureAudienceStatsResponse;
   audiences?: AudienceWire[];
   pending?: boolean;
-  metric: FeatureAudienceStatsSortMetric;
+  metric: AudienceRankMetric;
 }) {
-  const statsRows = (data?.audiences ?? []).slice(0, 3);
+  // The column is the brand's own — NOT `data.sortMetric`. features-service classes
+  // websitePurchase / sales as reply-driven and returns `cppr` for them, which printed
+  // "CPPR / 0 replies" on a goal whose funnel has no reply step, next to an Audiences page
+  // that hides the reply columns for that same brand. The dashboard decides here, and the
+  // rows are re-sorted below so the card never shows one field while ordering by another.
+  const statsRows = [...(data?.audiences ?? [])]
+    .sort((a, b) => {
+      const av = metricCents(metric, a);
+      const bv = metricCents(metric, b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return av - bv;
+    })
+    .slice(0, 3);
   // The audience-stats endpoint's nested `audience` object does not carry
   // avatarUrl, so resolve it from the AudienceWire list (which does) by id.
   const avatarById = new Map(audiences.map((audience) => [audience.id, audience.avatarUrl]));
@@ -88,8 +136,7 @@ export function TopAudiencesCard({
     ...statsRows.map((row) => ({ kind: "stats" as const, row })),
     ...fallbackRows.map((audience) => ({ kind: "audience" as const, audience })),
   ];
-  const activeMetric = data?.sortMetric ?? metric;
-  const label = metricLabel(activeMetric);
+  const label = AUDIENCE_RANK_METRIC_LABEL[metric];
 
   const params = useParams();
   const orgId = params.orgId as string;
@@ -103,7 +150,7 @@ export function TopAudiencesCard({
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top 3 audiences</p>
         <p className="flex items-center gap-1 text-xs font-medium text-gray-500">
           {label}
-          <InfoTooltip tip={metricInfo(activeMetric)} placement="bottom" />
+          <InfoTooltip tip={AUDIENCE_RANK_METRIC_INFO[metric]} placement="bottom" />
         </p>
       </div>
 
@@ -123,22 +170,12 @@ export function TopAudiencesCard({
           const avatarUrl = isStats
             ? item.row.audience.avatarUrl ?? avatarById.get(item.row.audience.id) ?? null
             : item.audience.avatarUrl;
-          const value = isStats
-            ? activeMetric === "cpc"
-              ? item.row.metrics.cpcCents
-              : // Accounting "so far": 0 replies + spend → floor CPPR to this audience's net
-                // committed spend, never a blank "-" that hides real money spent. Server field.
-                costSoFarFloorCents(
-                  item.row.metrics.cpprCents,
-                  item.row.evidence.totalCostInUsdCents,
-                  item.row.evidence.positiveReplies,
-                )
-            : null;
-          const count = isStats
-            ? activeMetric === "cpc"
-              ? `${item.row.evidence.websiteClicks.toLocaleString("en-US")} clicks`
-              : `${item.row.evidence.positiveReplies.toLocaleString("en-US")} replies`
-            : null;
+          const value = isStats ? metricCents(metric, item.row) : null;
+          const outcomes = isStats ? metricCount(metric, item.row) : null;
+          const count =
+            outcomes == null
+              ? null
+              : `${outcomes.toLocaleString("en-US")} ${AUDIENCE_RANK_METRIC_OUTCOME_NOUN[metric]}`;
           return (
             <Link
               key={key}

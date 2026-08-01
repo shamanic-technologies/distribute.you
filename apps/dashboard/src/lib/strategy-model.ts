@@ -79,19 +79,68 @@ export function goalForOptimizationGoal(goal: BrandOptimizationGoal): FeatureAud
   return isVisitDrivenGoal(goal) ? "signup" : "meetingBooked";
 }
 
-/** The stats goals whose outcome rides the CLICK (website-visit) funnel — they sort on cost
- *  per click. Exact image of `isVisitDrivenGoal` under `goalForOptimizationGoal`, so the four
- *  pre-existing visit goals keep the metric they already had and only `websiteVisit` is new.
- *  The reply-driven goals (meetingBooked, positiveReply) are the complement and sort on CPPR. */
-export function isVisitDrivenStatsGoal(goal: FeatureAudienceStatsGoal): boolean {
-  return (
-    goal === "signup" ||
-    goal === "websiteVisit" ||
-    goal === "formSubmission" ||
-    goal === "websitePurchase" ||
-    goal === "sales"
-  );
+/** The ONE cost column every per-audience ranking surface leads with. */
+export type AudienceRankMetric = "cppr" | "cps" | "cpfs" | "cpsale" | "cpc";
+
+/**
+ * The brand's goal (+ whether its conversion tracker is live) → the cost column the
+ * Audiences table AND the Overview "Top 3 audiences" card lead with, sort by, and label.
+ *
+ * ONE home, because the two surfaces read the same rows and had drifted: the card obeyed
+ * the `sortMetric` features-service returns, and features classes `websitePurchase` /
+ * `sales` as reply-driven — so a website-purchase brand read "CPPR $319 / 0 replies" on the
+ * Overview while its Audiences page hid the reply columns entirely (that goal's funnel is
+ * visit -> signup -> paid; there is no reply step to divide by). Two pages, one brand, one
+ * moment, contradicting each other. The dashboard decides its own column here and ignores
+ * `sortMetric` — the Audiences page already never read it.
+ *
+ * The tracker gate matters: with no tracker there are no attributed signups / form
+ * submissions / sales, so the outcome column would only ever print "-", and the honest
+ * fallback is the funnel step we DO measure (cost per website visit).
+ */
+export function audienceRankMetric(
+  goal: BrandOptimizationGoal,
+  trackerSetUp: boolean,
+): AudienceRankMetric {
+  const statsGoal = goalForOptimizationGoal(goal);
+  // Reply-driven goals: the outcome IS the reply (positive_replies) or rides it
+  // (sales_meetings). Tracker-independent — replies come from the email gateway.
+  if (statsGoal === "meetingBooked" || statsGoal === "positiveReply") return "cppr";
+  if (!trackerSetUp) return "cpc";
+  if (goal === "signups") return "cps";
+  if (goal === "form_submissions") return "cpfs";
+  // Both sale-terminating goals: website_purchase (single close path) and the combined
+  // `sales` goal (visit->paid OR reply->paid).
+  if (goal === "sales" || goal === "website_purchase") return "cpsale";
+  return "cpc";
 }
+
+/** Column header. Byte-equal to the Audiences table's own `SortHeader` labels. */
+export const AUDIENCE_RANK_METRIC_LABEL: Record<AudienceRankMetric, string> = {
+  cppr: "CPPR",
+  cps: "Cost per signup",
+  cpfs: "Cost per form submission",
+  cpsale: "Cost per sale",
+  cpc: "Cost per website visit",
+};
+
+/** Tooltip copy. Byte-equal to the Audiences table's own `info` strings. */
+export const AUDIENCE_RANK_METRIC_INFO: Record<AudienceRankMetric, string> = {
+  cppr: "Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better.",
+  cps: "Cost per signup — audience-scoped spend divided by signups. Lower is better.",
+  cpfs: "Cost per form submission — audience-scoped spend divided by form submissions. Lower is better.",
+  cpsale: "Cost per sale — audience-scoped spend divided by sales (paying clients won). Lower is better.",
+  cpc: "Cost per website visit — audience-scoped spend divided by website visits. Lower is better.",
+};
+
+/** Plural noun for the outcome the metric divides by ("3 replies", "0 sales"). */
+export const AUDIENCE_RANK_METRIC_OUTCOME_NOUN: Record<AudienceRankMetric, string> = {
+  cppr: "replies",
+  cps: "signups",
+  cpfs: "form submissions",
+  cpsale: "sales",
+  cpc: "clicks",
+};
 
 /** Human noun for one outcome of the brand's objective. */
 export function outcomeNoun(goal: BrandOptimizationGoal): string {

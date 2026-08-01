@@ -31,7 +31,7 @@ import {
   type FeatureAudienceStatsRow,
   type FeatureAudienceStatsGoal,
 } from "@/lib/api";
-import { goalForOptimizationGoal } from "@/lib/strategy-model";
+import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 
@@ -337,16 +337,10 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // Seed the initial sort column from the brand goal once it resolves — cheapest
   // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), CP Sale
   // (sales / website purchases), else CPC (website visits) — until the user picks a
-  // column manually.
-  const defaultSortCol: SortCol = showMeetingCols
-    ? "cppr"
-    : showSignupCols
-      ? "cps"
-      : showFormSubmissionCols
-        ? "cpfs"
-        : showSaleCols
-          ? "cpsale"
-          : "cpc";
+  // column manually. Shared with the Overview's Top-3-audiences card, which reads the
+  // same rows: two surfaces picking their column independently is how one brand ended
+  // up reading "CPPR" on the Overview and no reply column at all here.
+  const defaultSortCol: SortCol = audienceRankMetric(optimizationGoal, trackerSetUp);
   useEffect(() => {
     if (hasUserSorted) return;
     setSortCol(defaultSortCol);

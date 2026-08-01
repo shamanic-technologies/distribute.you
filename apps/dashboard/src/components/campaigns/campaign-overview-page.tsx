@@ -33,7 +33,7 @@ import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
-import { goalForOptimizationGoal, isVisitDrivenStatsGoal } from "@/lib/strategy-model";
+import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
 import {
   goalOutcomeCount,
   recommendedLearningSpendUsd,
@@ -217,7 +217,6 @@ export function CampaignOverviewPage() {
     economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
   // One shared mapping with the brand Overview + Audiences page — see goalForOptimizationGoal.
   const audienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
-  const audienceStatsMetric = isVisitDrivenStatsGoal(audienceStatsGoal) ? "cpc" : "cppr";
 
   const { data: budgetData, isError: budgetIsError } = useAuthQuery(
     ["brandDailyBudget", brandId],
@@ -240,6 +239,8 @@ export function CampaignOverviewPage() {
   const trackerSetUp =
     conversionTokenData?.status === "live" ||
     conversionTokenData?.status === "live_waiting";
+  // Same cost column the Audiences table leads with — never features-service's sortMetric.
+  const audienceStatsMetric = audienceRankMetric(optimizationGoal, trackerSetUp);
   const monthlyBudgetUsd =
     budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
       ? (budgetData.dailyBudgetCents / 100) * 30
@@ -321,10 +322,11 @@ export function CampaignOverviewPage() {
   // it's a distinct cache entry from the brand-wide Top-audiences card.
   const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
     ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "campaign", campaignId],
+    // No `limit` — the server would pre-pick its top 3 by ITS OWN sortMetric, a different
+    // column than this card shows. The card sorts + slices on the brand's metric instead.
     () => fetchFeatureAudienceStats(featureSlug, {
       brandId,
       goal: audienceStatsGoal,
-      limit: 3,
       campaignId,
     }),
     { enabled, ...pollOptions },
