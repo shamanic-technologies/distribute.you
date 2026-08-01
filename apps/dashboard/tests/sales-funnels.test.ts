@@ -684,6 +684,13 @@ describe("Sales Funnels card", () => {
     expect(src).toContain("funnelDraftFromBrand(def, econData.salesEconomics");
   });
 
+  // A set we could not read is a set we must not write over: every field would
+  // look changed and a prefill nobody confirmed would land on declared values.
+  it("refuses to write while the stored set is unknown", () => {
+    expect(src).toContain("if (funnelData === undefined) {");
+    expect(src).toContain("Could not load your funnels.");
+  });
+
   // A refusal is the server's answer and belongs on screen; `err.message` is the
   // whole downstream body verbatim and never does.
   it("shows the server's rejection rather than swallowing it", () => {

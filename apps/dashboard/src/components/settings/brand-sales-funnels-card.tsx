@@ -271,6 +271,13 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
   function confirm(def: SalesFunnelDef) {
     const state = states[def.key];
+    // The patch is diffed against what is stored, so a set we could not read is
+    // a set we must not write over: every field would look changed and a prefill
+    // nobody confirmed would land on top of values the brand already declared.
+    if (funnelData === undefined) {
+      patch(def.key, { error: "Could not load your funnels. Reload the page and try again." });
+      return;
+    }
     const result = validateFunnelDraft(def, state.draft, brandDomain);
     if (!result.ok) {
       patch(def.key, { error: result.error });
