@@ -3,20 +3,14 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   ACQUISITION_CHANNELS,
-  acquisitionChannelByKey,
   acquisitionChannelForWorkflowSlug,
-  canSelectChannel,
-  initialSelectedChannelKeys,
-  liveAcquisitionChannels,
-  partitionChannelsBySelection,
-  removeChannelBlockedReason,
+  partitionChannelsByAvailability,
   type AcquisitionChannelDef,
-  type AcquisitionChannelKey,
 } from "../src/lib/acquisition-channels";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
-/** A second live channel, so the remove guard can be exercised on a future fleet. */
+/** A second live channel, so the grouping holds on a future fleet too. */
 const TWO_LIVE: AcquisitionChannelDef[] = [
   ACQUISITION_CHANNELS[0],
   { ...ACQUISITION_CHANNELS[1], comingSoon: false },
@@ -59,7 +53,7 @@ describe("ACQUISITION_CHANNELS definitions", () => {
   // Cold email is the one channel we run today. The rest state that they are
   // coming rather than offering a choice we cannot honour.
   it("has exactly one live channel today, and it is cold email", () => {
-    expect(liveAcquisitionChannels().map((c) => c.key)).toEqual(["cold_email"]);
+    expect(partitionChannelsByAvailability().live.map((c) => c.key)).toEqual(["cold_email"]);
   });
 
   // A channel on somebody else's platform wears that platform's real logo; one
@@ -94,48 +88,22 @@ describe("ACQUISITION_CHANNELS definitions", () => {
     }
   });
 
-  it("throws on an unknown key rather than answering with a default", () => {
-    expect(() => acquisitionChannelByKey("nope" as AcquisitionChannelKey)).toThrow(
-      /Unknown acquisition channel/,
-    );
-  });
 });
 
-describe("selection model", () => {
-  it("opens on the first live channel", () => {
-    expect(initialSelectedChannelKeys()).toEqual(["cold_email"]);
-    expect(initialSelectedChannelKeys(TWO_LIVE)).toEqual(["cold_email"]);
+describe("availability grouping", () => {
+  // What we run and what is coming are two different statements, so they are two
+  // groups rather than one list with a marker on some of its members.
+  it("puts what we run today first, then what is coming", () => {
+    const { live, comingSoon } = partitionChannelsByAvailability();
+    expect(live.map((c) => c.key)).toEqual(["cold_email"]);
+    expect(comingSoon.map((c) => c.key)).not.toContain("cold_email");
+    expect(live.length + comingSoon.length).toBe(ACQUISITION_CHANNELS.length);
   });
 
-  it("puts the chosen channels first, then the rest", () => {
-    const chosen = new Set<AcquisitionChannelKey>(["meta_ads", "cold_email"]);
-    const { selected, unselected } = partitionChannelsBySelection((key) => chosen.has(key));
-    expect(selected.map((c) => c.key)).toEqual(["cold_email", "meta_ads"]);
-    expect(unselected.map((c) => c.key)).not.toContain("cold_email");
-    expect(selected.length + unselected.length).toBe(ACQUISITION_CHANNELS.length);
-  });
-
-  it("never lets a coming-soon channel be chosen", () => {
-    for (const channel of ACQUISITION_CHANNELS) {
-      expect(canSelectChannel(channel)).toBe(!channel.comingSoon);
-    }
-  });
-
-  // A brand running no channel is a brand we cannot reach anyone for.
-  it("refuses to drop the only live channel, and says why", () => {
-    const reason = removeChannelBlockedReason("cold_email", ["cold_email"]);
-    expect(reason).toBeTruthy();
-    expect(reason).toContain("stays on");
-  });
-
-  it("allows dropping one live channel once another is running", () => {
-    expect(
-      removeChannelBlockedReason("cold_email", ["cold_email", "google_ads"], TWO_LIVE),
-    ).toBeNull();
-  });
-
-  it("does not block a channel that is not selected", () => {
-    expect(removeChannelBlockedReason("google_ads", ["cold_email"])).toBeNull();
+  it("keeps the catalogue's own order inside each group", () => {
+    const { live, comingSoon } = partitionChannelsByAvailability(TWO_LIVE);
+    expect(live.map((c) => c.key)).toEqual(["cold_email", "google_ads"]);
+    expect(comingSoon.map((c) => c.key)).toEqual(["meta_ads"]);
   });
 });
 
@@ -158,34 +126,38 @@ describe("acquisitionChannelForWorkflowSlug", () => {
   });
 });
 
-describe("the card writes nothing", () => {
+describe("the card states, it does not ask", () => {
   const card = read("../src/components/settings/brand-acquisition-channels-card.tsx");
 
-  // brand-service stores no channel selection, so a save here would drop most of
-  // what the user picked. Same posture as the Sales Funnels card above it.
+  // brand-service stores no channel selection, so a control here would take the
+  // answer and persist none of it. A toggle that silently discards a choice is
+  // worse than no toggle, so the card says what runs and offers nothing.
   it("has no writer at all", () => {
     expect(card).not.toContain("useMutation");
     expect(card).not.toContain("saveBrand");
     expect(card).not.toContain("updateBrand");
-    expect(card).toContain("Preview only. Nothing here is saved yet.");
   });
 
-  // Choosing a channel is a decision about how the brand sells, not a tick.
-  it("offers no checkbox", () => {
+  it("offers no control of any kind", () => {
     expect(card).not.toContain('type="checkbox"');
-    expect(card).not.toContain("<input type=\"checkbox\"");
+    expect(card).not.toContain('role="button"');
+    expect(card).not.toContain("onClick");
+    expect(card).not.toContain("onKeyDown");
+    expect(card).not.toContain("useState");
   });
 
-  it("renders its own heading, beta-gated, so a non-beta viewer sees nothing", () => {
-    expect(card).toContain("useIsBetaUser");
-    expect(card).toContain("if (!isBeta) return null;");
+  // GA: every customer reads it, so no beta gate and no badge.
+  it("renders its own heading for everyone", () => {
     expect(card).toContain("Acquisition Channels");
-    expect(card).toContain('<MaturityBadge level="beta" />');
+    expect(card).not.toContain("useIsBetaUser");
+    expect(card).not.toContain("MaturityBadge");
   });
 
-  it("states that a coming-soon channel is coming, and locks it", () => {
+  // Two statements, never one list: what we run, and what is coming.
+  it("says which channels run today and which are coming", () => {
     expect(card).toContain("Coming soon");
-    expect(card).toContain("canSelectChannel");
+    expect(card).toContain("Running");
+    expect(card).toContain("partitionChannelsByAvailability");
   });
 
   // Names and copy live once, in the catalogue, so the card cannot drift into a

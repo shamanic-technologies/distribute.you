@@ -248,6 +248,83 @@ describe("funnelDraftFromBrand", () => {
   });
 });
 
+/**
+ * A brand configured on a goal the catalogue prices under a longer chain. Its
+ * one end-to-end rate is still true of that whole chain, so it lands on the leg
+ * ending on a paid client and every leg above it passes everyone through: the
+ * product multiplies back to exactly the number the brand gave us.
+ *
+ * The alternative is reading each leg by name, which cannot work here —
+ * brand-service stores every blended rate NOT NULL with a server default, so a
+ * leg this brand's goal never configured reads back a plausible number it never
+ * stated.
+ */
+describe("a goal the catalogue carries no funnel of its own for", () => {
+  const seed = (goal: BrandSalesEconomics["optimizationGoal"], key: SalesFunnelKey) =>
+    funnelDraftFromBrand(salesFunnelByKey(key), { ...ECONOMICS, optimizationGoal: goal }, null);
+
+  const pct = (draft: FunnelDraft, key: string) =>
+    parseLocaleNumberInput(draft.rates[key as keyof FunnelDraft["rates"]] ?? "");
+
+  it("maps a positive-replies brand onto the reply-led meeting chain", () => {
+    const draft = seed("positive_replies", "reply_meeting");
+    expect(pct(draft, "replyToMeetingPct")).toBe(100);
+    expect(pct(draft, "meetingBookedToAttendedPct")).toBe(100);
+    // The brand's own reply → paid client rate, on the leg that lands there.
+    expect(pct(draft, "meetingToClosePct")).toBe(25);
+  });
+
+  it("maps a website-visits brand onto the website-purchase chain", () => {
+    const draft = seed("website_visits", "visit_signup");
+    expect(pct(draft, "visitToSignupPct")).toBe(100);
+    expect(pct(draft, "signupToPaidClientPct")).toBe(5);
+  });
+
+  // A paid client won through EITHER path, so both chains seed, each from the
+  // rate that describes its own first signal.
+  it("maps a sales brand onto both chains at once", () => {
+    expect(pct(seed("sales", "reply_meeting"), "meetingToClosePct")).toBe(25);
+    expect(pct(seed("sales", "visit_signup"), "signupToPaidClientPct")).toBe(5);
+  });
+
+  // The chain has to multiply back to what the brand actually told us, or the
+  // prefill quietly restates its economics as a different number.
+  it("keeps the product across the chain equal to the rate the brand gave us", () => {
+    const draft = seed("positive_replies", "reply_meeting");
+    const legs = ["replyToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"];
+    const product = legs.reduce((acc, leg) => acc * ((pct(draft, leg) ?? 0) / 100), 1);
+    expect(product).toBeCloseTo(0.25, 10);
+  });
+
+  // A goal a funnel already prices leg by leg needs no translation, and a funnel
+  // outside the mapping keeps reading its own named rates.
+  it("leaves a natively-priced goal alone", () => {
+    const draft = seed("signups", "visit_signup");
+    expect(pct(draft, "visitToSignupPct")).toBe(25);
+    expect(pct(draft, "signupToPaidClientPct")).toBe(20);
+    // website_visits maps onto visit_signup, never onto the form funnel.
+    expect(pct(seed("website_visits", "visit_form"), "visitToFormSubmissionPct")).toBe(30);
+  });
+
+  // The wire types this rate non-null, so this is the older-producer case: a
+  // payload that simply does not carry it. Without an end-to-end number there is
+  // no chain to spread, so the funnel reads its own named legs again rather than
+  // seeding a chain of 100s that would multiply back to nothing.
+  it("falls back to the named legs when the end-to-end rate is absent", () => {
+    const draft = funnelDraftFromBrand(
+      salesFunnelByKey("reply_meeting"),
+      {
+        ...ECONOMICS,
+        optimizationGoal: "positive_replies",
+        replyToPaidClientPct: undefined as unknown as number,
+      },
+      null,
+    );
+    expect(pct(draft, "replyToMeetingPct")).toBe(40);
+    expect(draft.rates.meetingBookedToAttendedPct).toBe("");
+  });
+});
+
 describe("validateBookingUrl", () => {
   it("accepts a scheduling page on any domain", () => {
     expect(validateBookingUrl("https://cal.com/acme/30min")).toEqual({ ok: true });
@@ -647,10 +724,12 @@ describe("Sales Funnels card", () => {
   const src = read("../src/components/settings/brand-sales-funnels-card.tsx");
   const mark = read("../src/components/marks/sales-funnel-mark.tsx");
 
-  it("is beta gated and carries the badge next to its own heading", () => {
-    expect(src).toContain("useIsBetaUser");
-    expect(src).toContain("if (!isBeta) return null;");
-    expect(src).toContain('<MaturityBadge level="beta" />');
+  // GA: this is the one place a brand states how it sells, so every customer
+  // reads it. No gate, no badge.
+  it("renders its own heading for everyone", () => {
+    expect(src).toContain("Sales Funnels");
+    expect(src).not.toContain("useIsBetaUser");
+    expect(src).not.toContain("MaturityBadge");
   });
 
   // brand-service stores the declared set and each funnel's own economics, so
@@ -823,13 +902,21 @@ describe("Sales Funnels card", () => {
     expect(src).toContain('saving ? "cursor-wait" : ""');
   });
 
-  it("is rendered on the brand settings page below Sales Economics", () => {
+  // It REPLACED the two flat sections rather than sitting under them: a funnel
+  // owns the rates, the lifetime revenue and the landing page they held one set
+  // at a time for the whole brand.
+  it("is the brand settings page's only sales-economics surface", () => {
     const page = read(
       "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
     );
     expect(page).toContain("<BrandSalesFunnelsCard brandId={brandId} />");
-    expect(page.indexOf("BrandSalesFunnelsCard brandId")).toBeGreaterThan(
-      page.indexOf("BrandSalesEconomicsCard brandId"),
+    expect(page).not.toContain("BrandSalesEconomicsCard");
+    expect(page).not.toContain("BrandClickDestinationCard");
+    expect(page).not.toContain("Sales Economics");
+    // Channels sit under the funnels they feed. Anchored on the JSX, since the
+    // import lines carry both names above everything they render.
+    expect(page.indexOf("<BrandAcquisitionChannelsCard />")).toBeGreaterThan(
+      page.indexOf("<BrandSalesFunnelsCard brandId={brandId} />"),
     );
   });
 });

@@ -66,7 +66,7 @@ describe("InfoTooltip — usable with a thumb", () => {
       "src/components/brand/brand-status-control.tsx",
       "src/components/onboarding/onboarding.tsx",
       "src/components/strategy/best-model-card.tsx",
-      "src/components/settings/brand-sales-economics-card.tsx",
+      "src/components/settings/brand-sales-funnels-card.tsx",
       "src/components/strategy/strategy-page.tsx",
     ];
     for (const rel of migrated) {

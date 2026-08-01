@@ -1,166 +1,82 @@
 "use client";
 
-import { useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import {
-  canSelectChannel,
-  initialSelectedChannelKeys,
-  partitionChannelsBySelection,
-  removeChannelBlockedReason,
+  partitionChannelsByAvailability,
   type AcquisitionChannelDef,
-  type AcquisitionChannelKey,
 } from "@/lib/acquisition-channels";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
-import { MaturityBadge } from "@/components/maturity-badge";
 
 // Where we go to find a brand's buyers. A channel feeds the sales funnels above:
 // the same funnel can be fed by cold email today and by paid clicks later, so
 // the two are separate lists rather than one.
 //
-// Nothing here writes yet. brand-service has no field for a channel selection,
-// so a Save button would take eight choices and persist none of them. The card
-// says it is a preview instead.
-//
-// Only cold email is live. The rest state that they are coming rather than
-// offering a choice we cannot honour, and the last live channel cannot be
-// dropped: a brand running no channel is a brand we cannot reach anyone for.
+// This card STATES what we run, it does not ask. brand-service stores no channel
+// selection, so a toggle here would take the answer and persist none of it, and
+// a control that silently discards a choice is worse than no control. The choice
+// arrives the day there is a field to write it to; until then the honest surface
+// is the list of what runs today and what is coming.
 
 export function BrandAcquisitionChannelsCard() {
-  const isBeta = useIsBetaUser();
-
-  const [selectedKeys, setSelectedKeys] = useState<AcquisitionChannelKey[]>(
-    initialSelectedChannelKeys,
-  );
-  // The reason the last live channel could not be dropped, shown on its own row.
-  // Clicking a control that does nothing and says nothing reads as broken.
-  const [blocked, setBlocked] = useState<AcquisitionChannelKey | null>(null);
-
-  function toggle(def: AcquisitionChannelDef) {
-    if (!canSelectChannel(def)) return;
-    setBlocked(null);
-    setSelectedKeys((prev) => {
-      if (!prev.includes(def.key)) return [...prev, def.key];
-      if (removeChannelBlockedReason(def.key, prev) !== null) {
-        setBlocked(def.key);
-        return prev;
-      }
-      return prev.filter((k) => k !== def.key);
-    });
-  }
-
-  if (!isBeta) return null;
-
-  const { selected, unselected } = partitionChannelsBySelection((key) =>
-    selectedKeys.includes(key),
-  );
+  const { live, comingSoon } = partitionChannelsByAvailability();
 
   function renderChannel(def: AcquisitionChannelDef) {
-    const isSelected = selectedKeys.includes(def.key);
-    const locked = !canSelectChannel(def);
-    const dimmed = !isSelected;
-    const blockedReason =
-      blocked === def.key ? removeChannelBlockedReason(def.key, selectedKeys) : null;
-
-    const body = (
-      <div className="flex items-start gap-3 p-4">
-        <AcquisitionChannelMark def={def} dimmed={dimmed} />
-
-        <div className="min-w-0 flex-1">
-          <p
-            className={`text-sm font-medium ${
-              locked ? "text-gray-400" : dimmed ? "text-gray-500" : "text-gray-900"
-            }`}
-          >
-            {def.name}
-          </p>
-          <p className="mt-0.5 text-xs text-gray-500">{def.summary}</p>
-          {blockedReason && <p className="mt-1 text-xs text-gray-400">{blockedReason}</p>}
-        </div>
-
-        {locked ? (
-          <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
-            Coming soon
-          </span>
-        ) : (
-          isSelected && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
-              <CheckCircleIcon className="h-3.5 w-3.5" />
-              Selected
-            </span>
-          )
-        )}
-      </div>
-    );
+    const dimmed = def.comingSoon;
 
     return (
       <li
         key={def.key}
-        className={`rounded-xl border transition ${
-          isSelected ? "border-gray-200 bg-white" : "border-gray-200 bg-gray-50"
+        className={`rounded-xl border border-gray-200 ${
+          dimmed ? "bg-gray-50" : "bg-white"
         }`}
       >
-        {locked ? (
-          <div className="cursor-not-allowed rounded-xl" aria-disabled>
-            {body}
+        <div className="flex items-start gap-3 p-4">
+          <AcquisitionChannelMark def={def} dimmed={dimmed} />
+
+          <div className="min-w-0 flex-1">
+            <p
+              className={`text-sm font-medium ${dimmed ? "text-gray-500" : "text-gray-900"}`}
+            >
+              {def.name}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-500">{def.summary}</p>
           </div>
-        ) : (
-          // The whole card is the affordance, the way a funnel card is. A span
-          // with a button role rather than a <button>, so the row stays free to
-          // hold its own controls once a channel has any.
-          <div
-            role="button"
-            tabIndex={0}
-            aria-pressed={isSelected}
-            onClick={() => toggle(def)}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter" && e.key !== " ") return;
-              e.preventDefault();
-              toggle(def);
-            }}
-            // The hover has to differ from the card's own resting tint, or an
-            // unselected card (already gray-50) shows no response to the cursor.
-            className={`cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
-              isSelected ? "hover:bg-gray-50" : "hover:bg-gray-100"
-            }`}
-          >
-            {body}
-          </div>
-        )}
+
+          {dimmed ? (
+            <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
+              Coming soon
+            </span>
+          ) : (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
+              <CheckCircleIcon className="h-3.5 w-3.5" />
+              Running
+            </span>
+          )}
+        </div>
       </li>
     );
   }
 
   return (
     <section className="mb-10">
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-gray-900">Acquisition Channels</h2>
-        <MaturityBadge level="beta" />
-      </div>
+      <h2 className="mb-3 text-lg font-semibold text-gray-900">Acquisition Channels</h2>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <p className="mb-1 text-sm text-gray-500">
+        <p className="mb-5 text-sm text-gray-500">
           Where we go to find your buyers. Every channel feeds the funnels above.
         </p>
-        <p className="mb-5 text-xs text-gray-400">Preview only. Nothing here is saved yet.</p>
 
-        {selected.length > 0 && <ul className="space-y-3">{selected.map(renderChannel)}</ul>}
+        {live.length > 0 && <ul className="space-y-3">{live.map(renderChannel)}</ul>}
 
-        {unselected.length > 0 && (
+        {comingSoon.length > 0 && (
           <>
-            {selected.length > 0 && (
+            {live.length > 0 && (
               <p className="mb-2 mt-6 text-xs font-medium uppercase tracking-wide text-gray-400">
-                Not selected
+                Coming next
               </p>
             )}
-            <ul className="space-y-3">{unselected.map(renderChannel)}</ul>
+            <ul className="space-y-3">{comingSoon.map(renderChannel)}</ul>
           </>
-        )}
-
-        {selected.length === 0 && (
-          <p className="mt-4 text-xs text-gray-400">
-            Pick at least one channel so we have somewhere to reach your buyers.
-          </p>
         )}
       </div>
     </section>

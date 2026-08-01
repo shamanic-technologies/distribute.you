@@ -444,10 +444,61 @@ export function funnelWriteErrorMessage(err: unknown): string {
 }
 
 /**
+ * A goal the brand configured that the catalogue carries no funnel of its own
+ * for, and the funnel whose chain ends on the same thing.
+ *
+ * These goals price ONE end-to-end step (`Positive reply -> Paid client`,
+ * `Website visit -> Paid client`) where the funnel spells the same journey out
+ * over several legs. The brand's number is still true of the whole chain, so it
+ * seeds the LAST leg (the one landing on `Paid client`) and every leg above it
+ * seeds at 100%: the product across the chain then equals exactly the rate the
+ * brand gave us, instead of a number nobody stated.
+ *
+ * `sales` is a paid client won through EITHER path, so it seeds both funnels,
+ * each from its own rate. `website_purchase`, `signups`, `sales_meetings` and
+ * `form_submissions` are absent because a funnel already prices their legs by
+ * name and seeds them one for one.
+ */
+type OrphanGoalSeed = {
+  funnelKey: SalesFunnelKey;
+  /** The blended rate that is true of this funnel's WHOLE chain. */
+  from: "replyToPaidClientPct" | "visitToPaidClientPct";
+};
+
+const ORPHAN_GOAL_SEEDS: Partial<Record<BrandOptimizationGoal, OrphanGoalSeed[]>> = {
+  positive_replies: [{ funnelKey: "reply_meeting", from: "replyToPaidClientPct" }],
+  website_visits: [{ funnelKey: "visit_signup", from: "visitToPaidClientPct" }],
+  sales: [
+    { funnelKey: "reply_meeting", from: "replyToPaidClientPct" },
+    { funnelKey: "visit_signup", from: "visitToPaidClientPct" },
+  ],
+};
+
+/** Every leg the brand gave us no number for converts at this rate. */
+const FULL_CONVERSION_PCT = 100;
+
+/**
+ * How this brand's goal maps onto this funnel, or null when the funnel already
+ * prices the goal's legs by name and needs no translation.
+ */
+export function orphanGoalSeedFor(
+  goal: BrandOptimizationGoal | null | undefined,
+  funnelKey: SalesFunnelKey,
+): OrphanGoalSeed | null {
+  if (!goal) return null;
+  return (ORPHAN_GOAL_SEEDS[goal] ?? []).find((s) => s.funnelKey === funnelKey) ?? null;
+}
+
+/**
  * A first guess for a funnel the brand has NOT declared, from what it already
  * saved elsewhere: rates and lifetime revenue from its blended sales economics,
  * a page destination from its click destination. A booking link has nowhere to
  * come from, so it starts empty rather than guessing one.
+ *
+ * A brand whose goal the catalogue prices under a different chain is translated
+ * through `orphanGoalSeedFor` rather than read leg by leg: brand-service stores
+ * every blended rate NOT NULL with a server default, so reading a leg that goal
+ * never configured hands back a plausible number the brand never stated.
  *
  * This is a prefill for a person to confirm, never a value to write. A number
  * nobody confirmed must not read back as one the brand declared, so a draft
@@ -459,18 +510,32 @@ export function funnelDraftFromBrand(
   economics: BrandSalesEconomics | null | undefined,
   clickDestinationUrl: string | null | undefined,
 ): FunnelDraft {
+  const fields = funnelRateFields(def);
+  const orphan = economics ? orphanGoalSeedFor(economics.optimizationGoal, def.key) : null;
+  const endToEnd = orphan && economics ? economics[orphan.from] : null;
+
   const rates: Partial<Record<FunnelRateKey, string>> = {};
-  for (const rate of funnelRateFields(def)) {
+  fields.forEach((rate, index) => {
+    // The brand's goal is priced as one step the catalogue spells out over
+    // several: its rate lands on the leg that ends on a paid client, the rest
+    // pass everyone through, and the chain multiplies back to what it gave us.
+    if (endToEnd !== null && endToEnd !== undefined) {
+      rates[rate.key] = formatLocaleNumberInputValue(
+        index === fields.length - 1 ? endToEnd : FULL_CONVERSION_PCT,
+      );
+      return;
+    }
     // Nothing else in the fleet measures the show-up rate, so it starts blank on
     // every brand rather than borrowing a number that means something else.
     if (!isSeedableRateKey(rate.key)) {
       rates[rate.key] = "";
-      continue;
+      return;
     }
     const stored = economics ? economics[rate.key] : null;
     rates[rate.key] =
       stored === null || stored === undefined ? "" : formatLocaleNumberInputValue(stored);
-  }
+  });
+
   return {
     rates,
     lifetimeRevenueUsd: economics ? formatLocaleInteger(economics.lifetimeRevenueUsd) : "",
