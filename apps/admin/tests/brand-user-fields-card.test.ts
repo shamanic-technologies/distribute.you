@@ -45,32 +45,27 @@ describe("user-fields-form — split field subsets + services-conditioned extrac
     expect(content).toContain('f.key !== "services"');
   });
 
-  it("conditions the extraction on the entered services (feeds them into each description)", () => {
-    expect(content).toContain("export function buildExtractDefs");
-    expect(content).toContain("servicesContext");
-    expect(content).toContain("This brand sells the following services / products:");
+  it("no longer builds its own extraction defs — both cards read the shared set", () => {
+    // The request defs come from `prefillDefsFor(keys, USER_PROFILE_FIELDS)` in
+    // lib/offer-prefill.ts, so a lever means the same thing here, on the customer
+    // Strategy page and in onboarding.
+    expect(content).not.toContain("buildExtractDefs");
+    expect(content).not.toContain("HORMOZI_LEVER_GUIDANCE");
+    // brand-service already injects the brand's CONFIRMED fields as authoritative
+    // context, so repeating the services in front of all six levers was noise.
+    expect(content).not.toContain("This brand sells the following services");
   });
 
-  it("sends per-lever guidance conditioned on services (Hormozi framing is server-side)", () => {
-    expect(content).toContain("HORMOZI_LEVER_GUIDANCE");
-    expect(content).toContain("leverDescription");
-    // A guidance entry exists for every lever key.
-    for (const key of [
-      "dreamOutcome",
-      "perceivedLikelihood",
-      "socialProof",
-      "riskReversal",
-      "urgency",
-      "scarcity",
-    ]) {
-      expect(content).toContain(`${key}:`);
-    }
+  it("has no valueProposition remap — dreamOutcome is asked for under its own key", () => {
+    // The extraction prompt names the requested JSON keys verbatim, so asking for
+    // `valueProposition` made the model write a generic value proposition instead of
+    // the dream outcome the lever is about.
+    expect(content).not.toContain("EXTRACT_KEY_FOR_FIELD");
+    expect(content).not.toContain('dreamOutcome: "valueProposition"');
   });
 
-  it("saves only the subset's keys + seeds dreamOutcome from valueProposition", () => {
+  it("saves only the subset's keys", () => {
     expect(content).toContain("export function profileToPayload");
-    expect(content).toContain("EXTRACT_KEY_FOR_FIELD");
-    expect(content).toContain('dreamOutcome: "valueProposition"');
   });
 });
 
@@ -90,22 +85,28 @@ describe("BrandUserFieldsCard — generic subset editor", () => {
     expect(content).toContain("ListEditor");
   });
 
-  it("has an AI-prefill that RESETS every field in the subset, optionally conditioned on services", () => {
-    expect(content).toContain("buildExtractDefs(defs, servicesContext)");
+  it("has an update-from-the-website button that RESETS every field in the subset", () => {
+    expect(content).toContain("prefillDefsFor(prefillKeys, USER_PROFILE_FIELDS)");
+    expect(content).toContain("applyExtractionToDraft");
     expect(content).toContain("conditionOnServices");
-    expect(content).toContain("Prefill from services");
     // A reset, not a top-up: no skip-if-already-filled guard, and a field the
     // extraction does not answer is cleared rather than left alone.
     expect(content).not.toContain("isEmptyField");
     expect(content).toContain("resetCache: true");
   });
 
-  it("reads the saved services from the shared cache as the levers' context", () => {
+  it("reads the saved services from the shared cache to gate the levers button", () => {
     expect(content).toContain("data?.fields?.services?.value");
+    expect(content).toContain("leversBlockedOnServices");
   });
 
-  it("requests suggest mode for the levers card, extract for the services card", () => {
-    expect(content).toContain('mode: conditionOnServices ? "suggest" : "extract"');
+  it("requests suggest mode on BOTH cards", () => {
+    // `extract` is site-grounded and returns the literal string "Unknown" for
+    // anything the site does not state outright, which is not a value anyone wants
+    // to read in a field.
+    expect(content).toContain('mode: "suggest"');
+    expect(content).not.toContain('mode: "extract"');
+    expect(content).not.toContain('conditionOnServices ? "suggest" : "extract"');
   });
 
   it("uses a live dirty-compare against the saved baseline (no sticky latch)", () => {

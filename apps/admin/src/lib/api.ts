@@ -1036,11 +1036,39 @@ export const SALES_PROFILE_FIELDS: ExtractFieldDef[] = [
   { key: "additionalContext", description: "Additional context and notable information" },
 ];
 
+/**
+ * The 7 USER-FACING fields (services + the 6 Hormozi offer levers) that onboarding
+ * prefills and the user confirms — the exact `USER_FIELD_KEYS` set. These are always
+ * extracted in `mode:"suggest"`, so every lever gets a best-effort inferred value and
+ * never "Unknown"; the backend-only fields in SALES_PROFILE_FIELDS
+ * (funding/competitors/leadership/...) are NOT part of this set.
+ *
+ * `dreamOutcome` is its own key, deliberately. `valueProposition` is a SEPARATE
+ * backend-extract field (features-service reads it for the "value for the target"
+ * email input) and asking for it here made the model return a generic value
+ * proposition instead of the dream outcome the lever is about — the prompt names the
+ * JSON keys verbatim.
+ *
+ * Byte-equal with the dashboard's copy in `apps/dashboard/src/lib/api.ts`; both
+ * offer-prefill surfaces read this ONE set, so a lever means the same thing in
+ * onboarding, on the customer Strategy page, and in this console.
+ */
+export const USER_PROFILE_FIELDS: ExtractFieldDef[] = [
+  { key: "services", description: "The distinct paid services or products the brand explicitly sells to customers — exclude internal process steps, delivery sub-tasks and capabilities. Said differently, what package / product / service customers will pay for when they think about it. If one offering, list one. If different offerings appear in the content provided, list all. List each as a short phrase." },
+  { key: "dreamOutcome", description: "Dream outcome: the specific end result or transformation the customer most wants from this brand — the core promise every outreach email is written around. Make it concrete and worth wanting." },
+  { key: "perceivedLikelihood", description: "Perceived likelihood of success: proof the outcome is achievable — track record, data, guarantees, named results and outcomes" },
+  { key: "socialProof", description: "Social proof: case studies, testimonials, and results" },
+  { key: "riskReversal", description: "Risk reversal: trials, guarantees, refund policy" },
+  { key: "urgency", description: "Urgency elements and time pressure" },
+  { key: "scarcity", description: "Scarcity and limited availability" },
+];
+
 // ── Confirmed user-fields (the 2-layer brand-fields model) ──
 // The 7 keys the user validates: services + the 6 Hormozi value-equation offer
 // levers. Everything else in SALES_PROFILE_FIELDS is auto-extracted + backend-only.
-// `dreamOutcome` REPLACES the old `valueProposition` (label "Dream outcome") — the
-// backend seeds the suggested dreamOutcome from the valueProposition extraction.
+// `dreamOutcome` REPLACES the old `valueProposition` (label "Dream outcome"); it is
+// extracted under its OWN key (see USER_PROFILE_FIELDS), never seeded from the
+// valueProposition extraction.
 export const USER_FIELD_KEYS = [
   "services",
   "dreamOutcome",

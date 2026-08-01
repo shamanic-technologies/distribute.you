@@ -1819,7 +1819,9 @@ export async function suggestBrandIcp(
 //
 // Everything OUTSIDE this set is auto-extracted + ephemeral (3-day cache) and is
 // NOT user-editable — read it via the extract-fields endpoints, never here.
-// `dreamOutcome` REPLACES the old `valueProposition` (label "Dream outcome").
+// `dreamOutcome` REPLACES the old `valueProposition` (label "Dream outcome"); it is
+// extracted under its OWN key (see USER_PROFILE_FIELDS), never seeded from the
+// valueProposition extraction — that is a separate backend-only field.
 // ---------------------------------------------------------------------------
 export const USER_FIELD_KEYS = [
   "services",

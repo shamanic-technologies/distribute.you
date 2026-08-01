@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 // Relative (not "@/") so this module stays runtime-importable by vitest, which has no
 // path-alias config in this repo.
 import { coerceListField, coerceTextField } from "../../lib/strategy-model";
@@ -70,10 +70,25 @@ export function fieldsEqual(a: ProfileFields, b: ProfileFields): boolean {
   });
 }
 
+// The tallest a grown textarea gets before it starts scrolling its own content.
+// A lever is a few sentences; past that the field would push the rest of the card
+// off screen, which is worse than an inner scrollbar.
+const MAX_TEXTAREA_HEIGHT_PX = 320;
+
 // Long/free text — clean read view by default; click anywhere to drop into an
 // edit textarea. Blur or Escape exits edit mode (edits apply live as you type).
 // Exported so surfaces beyond the Brand Profile page (e.g. the Strategy page's
 // inline offer editor) can compose the same hover-to-edit affordance.
+//
+// Two things here are deliberate:
+//
+//  - The pencil only appears on HOVER. A pencil printed permanently beside every
+//    value reads as a control you must find and press, which is the opposite of
+//    what an inline editor is for; the row itself is the affordance.
+//  - The textarea grows to fit its CONTENT, measured from `scrollHeight`. The old
+//    `rows={value.split("\n").length}` counted hard newlines only, so a paragraph
+//    that wraps over four visual lines but contains no `\n` opened at two rows and
+//    the user edited their own text through a letterbox.
 export function TextEditor({
   value,
   placeholder,
@@ -84,10 +99,21 @@ export function TextEditor({
   onText: (v: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const areaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Re-measure on every value change: reset to `auto` first, or `scrollHeight`
+  // reports the previous (larger) height and the box can only ever grow.
+  useLayoutEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT_PX)}px`;
+  }, [value, editing]);
 
   if (editing) {
     return (
       <textarea
+        ref={areaRef}
         autoFocus
         value={value}
         onChange={(e) => onText(e.target.value)}
@@ -96,8 +122,9 @@ export function TextEditor({
           if (e.key === "Escape") setEditing(false);
         }}
         placeholder={placeholder}
-        rows={Math.max(2, value.split("\n").length)}
-        className="w-full text-sm text-gray-800 rounded-lg border border-brand-300 bg-white px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-brand-300"
+        rows={1}
+        style={{ maxHeight: MAX_TEXTAREA_HEIGHT_PX }}
+        className="w-full text-sm text-gray-800 rounded-lg border border-brand-300 bg-white px-3 py-2 resize-none overflow-y-auto focus:outline-none focus:ring-2 focus:ring-brand-300"
       />
     );
   }
@@ -111,7 +138,7 @@ export function TextEditor({
       {value.trim() ? (
         <span className="flex items-start gap-2">
           <span className="text-sm text-gray-800 whitespace-pre-line flex-1">{value}</span>
-          <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0 mt-0.5" />
+          <PencilIcon className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5 transition-opacity" />
         </span>
       ) : (
         <span className="text-sm text-gray-400">{placeholder}</span>
@@ -120,6 +147,30 @@ export function TextEditor({
   );
 }
 
+/**
+ * A list-kind field (services sold, social proof) as removable chips.
+ *
+ * ONE mode. There is no read view to click out of and no `Done` to press: every
+ * chip is live the moment it renders. The previous two-mode version showed the
+ * values as a comma-joined sentence with an `Edit` button, and only inside that
+ * second mode did a chip get an `×` — so removing one entry meant finding Edit,
+ * finding a 12px `×`, then finding Done. Reported as "c'est dur à delete, je ne
+ * sais pas quoi faire avec ça".
+ *
+ * Keyboard behaviour follows the pattern Material 3, eBay, Telerik, PatternFly,
+ * CMS.gov and Angular Material all converge on:
+ *
+ *  - `←` / `→` / Home / End move between chips (one roving tab stop for the group,
+ *    so Tab does not walk through seven services one at a time).
+ *  - `Backspace` or `Delete` on a focused chip removes it, and focus lands on the
+ *    nearest remaining chip — or on the add field when that was the last one.
+ *  - `Backspace` in an EMPTY add field FOCUSES the last chip rather than deleting
+ *    it. The two-step is what stops a stray keypress silently destroying an entry.
+ *
+ * The `×` stays for the mouse but is deliberately OUT of the tab order: a chip is
+ * already focusable and already deletes on Delete, so putting its button in the
+ * sequence too would double every tab stop.
+ */
 export function ListEditor({
   values,
   placeholder,
@@ -132,89 +183,95 @@ export function ListEditor({
   onRemove: (v: string) => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
+  // Which chip currently owns the group's single tab stop. null = none visited yet,
+  // in which case the first chip is the entry point.
+  const [activeChip, setActiveChip] = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const chipRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  // Where focus must land after a removal re-renders the list under it.
+  const pendingFocus = useRef<number | "input" | null>(null);
+
+  const focusChip = (index: number) => {
+    if (values.length === 0) return;
+    const clamped = Math.max(0, Math.min(index, values.length - 1));
+    setActiveChip(clamped);
+    chipRefs.current[clamped]?.focus();
+  };
+
+  const focusInput = () => {
+    setActiveChip(null);
+    setAdding(true);
+    // The field may not be mounted yet on this tick; the effect below re-tries.
+    inputRef.current?.focus();
+  };
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target == null) return;
+    pendingFocus.current = null;
+    if (target === "input" || values.length === 0) {
+      focusInput();
+      return;
+    }
+    focusChip(target);
+    // `values` is the only trigger: a removal is what reshuffles the indices.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values]);
+
+  const removeAt = (index: number) => {
+    const value = values[index];
+    if (value == null) return;
+    // Nearest remaining chip, or the add field when this was the only one.
+    pendingFocus.current = values.length <= 1 ? "input" : Math.min(index, values.length - 2);
+    onRemove(value);
+  };
 
   const commit = () => {
     onAdd(draft);
     setDraft("");
   };
 
-  if (!editing) {
-    const preview = values.slice(0, 3);
-    const hiddenCount = Math.max(0, values.length - preview.length);
-
-    return (
-      <div className="rounded-lg border border-transparent px-3 py-2 transition hover:border-gray-200 hover:bg-gray-50">
-        {values.length > 0 ? (
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-800">
-                {preview.join(", ")}
-                {hiddenCount > 0 && !expanded ? (
-                  <>
-                    {" "}
-                    <button
-                      type="button"
-                      onClick={() => setExpanded(true)}
-                      className="font-medium text-gray-500 hover:text-brand-600"
-                    >
-                      +{hiddenCount} more
-                    </button>
-                  </>
-                ) : null}
-              </p>
-              {expanded && hiddenCount > 0 ? (
-                <ul className="mt-2 space-y-1 text-sm text-gray-700">
-                  {values.slice(3).map((v) => (
-                    <li key={v} className="flex gap-2">
-                      <span className="mt-2 h-1 w-1 rounded-full bg-gray-300 shrink-0" />
-                      <span>{v}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-brand-600 shrink-0"
-            >
-              <PencilIcon className="w-3.5 h-3.5" />
-              Edit
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setDraft("");
-              setEditing(true);
-              setAdding(true);
-            }}
-            className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-brand-600"
-          >
-            <PlusIcon className="w-3.5 h-3.5" />
-            {placeholder.replace("…", "")}
-          </button>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+    <div className="rounded-lg border border-transparent px-3 py-2 transition hover:border-gray-200 hover:bg-gray-50 focus-within:border-gray-200 focus-within:bg-gray-50">
       <div className="flex flex-wrap items-center gap-1.5">
-        {values.map((v) => (
+        {values.map((v, index) => (
           <span
             key={v}
-            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border bg-white text-gray-700 border-gray-200"
+            ref={(el) => {
+              chipRefs.current[index] = el;
+            }}
+            role="option"
+            aria-selected={false}
+            aria-label={`${v}. Press Delete to remove.`}
+            tabIndex={(activeChip ?? 0) === index ? 0 : -1}
+            onFocus={() => setActiveChip(index)}
+            onKeyDown={(e) => {
+              if (e.key === "Backspace" || e.key === "Delete") {
+                e.preventDefault();
+                removeAt(index);
+              } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                focusChip(index - 1);
+              } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                if (index >= values.length - 1) focusInput();
+                else focusChip(index + 1);
+              } else if (e.key === "Home") {
+                e.preventDefault();
+                focusChip(0);
+              } else if (e.key === "End") {
+                e.preventDefault();
+                focusChip(values.length - 1);
+              }
+            }}
+            className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border bg-white text-gray-700 border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-brand-300"
           >
             {v}
             <button
               type="button"
-              onClick={() => onRemove(v)}
+              tabIndex={-1}
+              onClick={() => removeAt(index)}
               aria-label={`Remove ${v}`}
               className="text-gray-400 hover:text-gray-700"
             >
@@ -225,6 +282,7 @@ export function ListEditor({
 
         {adding ? (
           <input
+            ref={inputRef}
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -239,6 +297,11 @@ export function ListEditor({
               } else if (e.key === "Escape") {
                 setDraft("");
                 setAdding(false);
+              } else if (e.key === "Backspace" && draft.length === 0 && values.length > 0) {
+                // Step to the last chip; a second Backspace there removes it.
+                e.preventDefault();
+                setAdding(false);
+                focusChip(values.length - 1);
               }
             }}
             placeholder={placeholder}
@@ -254,22 +317,9 @@ export function ListEditor({
             className="inline-flex items-center gap-0.5 text-xs text-gray-500 hover:text-brand-600 border border-dashed border-gray-300 hover:border-brand-300 rounded-full px-2 py-0.5 transition"
           >
             <PlusIcon className="w-3 h-3" />
-            {values.length === 0 ? "Add" : ""}
+            {values.length === 0 ? placeholder.replace("…", "") : ""}
           </button>
         )}
-      </div>
-      <div className="mt-2 flex justify-end">
-        <button
-          type="button"
-          onClick={() => {
-            commit();
-            setAdding(false);
-            setEditing(false);
-          }}
-          className="text-xs font-medium text-gray-500 hover:text-gray-800"
-        >
-          Done
-        </button>
       </div>
     </div>
   );
