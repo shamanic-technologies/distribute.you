@@ -78,11 +78,11 @@ describe("column + sort gates follow the goal FAMILY, not one literal", () => {
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     "../src/components/campaigns/campaign-overview-page.tsx",
   ]) {
-    it(`${rel.split("/").pop()} sorts on the goal FAMILY, not the "signup" literal`, () => {
+    it(`${rel.split("/").pop()} picks the card's column from the shared helper`, () => {
       const src = read(rel);
       const line = src.split("\n").find((l) => l.includes("const audienceStatsMetric"));
       expect(line).toBeDefined();
-      expect(line).toContain("isVisitDrivenStatsGoal(audienceStatsGoal)");
+      expect(line).toContain("audienceRankMetric(optimizationGoal, trackerSetUp)");
       expect(line).not.toContain('=== "signup"');
     });
   }

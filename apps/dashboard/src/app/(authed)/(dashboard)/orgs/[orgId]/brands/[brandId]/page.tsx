@@ -30,7 +30,7 @@ import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
-import { goalForOptimizationGoal, isVisitDrivenStatsGoal } from "@/lib/strategy-model";
+import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
 import {
   goalOutcomeCount,
   recommendedLearningSpendUsd,
@@ -204,7 +204,6 @@ export default function BrandOverviewPage() {
   // 2-branch, so a sales / form_submissions / website_purchase / positive_replies brand asked
   // audience-stats to rank workflows on an outcome the brand does not pursue.
   const audienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
-  const audienceStatsMetric = isVisitDrivenStatsGoal(audienceStatsGoal) ? "cpc" : "cppr";
 
   const { data: budgetData, isError: budgetIsError } = useAuthQuery(
     ["brandDailyBudget", brandId],
@@ -235,6 +234,9 @@ export default function BrandOverviewPage() {
   const trackerSetUp =
     conversionTokenData?.status === "live" ||
     conversionTokenData?.status === "live_waiting";
+  // The Top-3-audiences card's cost column — the SAME choice the Audiences table leads
+  // with, so the two pages cannot state different economics for one brand at one moment.
+  const audienceStatsMetric = audienceRankMetric(optimizationGoal, trackerSetUp);
   const monthlyBudgetUsd =
     budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
       ? (budgetData.dailyBudgetCents / 100) * 30
@@ -316,10 +318,13 @@ export default function BrandOverviewPage() {
   // old provider-cost-source list; no dashboard-side mock/hash audience split.
   const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
     ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
+    // No `limit` — features-service would pre-pick the top 3 by ITS OWN sortMetric, which
+    // is a different column than the one this card shows for a sale-terminating goal. The
+    // card sorts and slices on the brand's metric instead (a brand has a handful of active
+    // audiences, so the full list is cheap).
     () => fetchFeatureAudienceStats(featureSlug, {
       brandId,
       goal: audienceStatsGoal,
-      limit: 3,
     }),
     { enabled, ...pollOptions },
   );
