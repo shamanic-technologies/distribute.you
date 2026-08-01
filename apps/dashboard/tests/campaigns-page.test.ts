@@ -132,9 +132,26 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     expect(body).not.toMatch(/text-(base|lg|xl)/);
   });
 
-  it("sorts by ROI descending, and the #1 tile reads that same ranking", () => {
+  // A campaign that is not running cannot be acted on today, so the table leads
+  // with the ones that can and ranks by ROI inside each group. The #1 tile reads
+  // that same ordering off `rows`, so it can never name a campaign other than the
+  // first row.
+  it("sorts running campaigns first, then by ROI descending, and the #1 tile reads that same ranking", () => {
+    expect(page).toContain(
+      "Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status))",
+    );
+    expect(page).toContain("if (byStatus !== 0) return byStatus;");
     expect(page).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
     expect(page).toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
+  });
+
+  // The words that paint a pill green and the words that rank a row first are ONE
+  // set. Two lists would let the colour and the order disagree about which
+  // campaigns are live — a row shown as running, sorted as stopped.
+  it("ranks on the same status set the pill paints green", () => {
+    expect(page).toContain('const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"])');
+    const pill = page.slice(page.indexOf("function StatusPill("));
+    expect(pill.slice(0, pill.indexOf("\n}"))).toContain("isActiveStatus(status)");
   });
 
   // Every number on the row is a projection built from the brand's own rates, so
