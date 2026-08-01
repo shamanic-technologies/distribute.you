@@ -110,6 +110,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandUserFields",
   "brandExtractedFields",
   "brandSalesEconomics",
+  "brandSalesFunnels",
   "brandDailyBudget",
   "brandPause",
   "brandCostBreakdown",

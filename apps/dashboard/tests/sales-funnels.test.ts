@@ -2,13 +2,18 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import {
+  NOTHING_DECLARED,
   SALES_FUNNELS,
+  buildFunnelPatch,
   funnelDraftFromBrand,
+  funnelDraftFromDeclared,
   funnelDestinationChips,
   funnelLegPct,
   funnelLifetimeLabel,
   funnelRateFields,
-  isStoredRateKey,
+  funnelWriteErrorMessage,
+  isEmptyFunnelPatch,
+  isSeedableRateKey,
   partitionFunnelsBySelection,
   primaryFunnelForGoal,
   hostOf,
@@ -16,6 +21,7 @@ import {
   shortUrl,
   validateBookingUrl,
   validateFunnelDraft,
+  type DeclaredFunnelValues,
   type FunnelDraft,
   type SalesFunnelKey,
 } from "../src/lib/sales-funnels";
@@ -118,13 +124,14 @@ describe("SALES_FUNNELS definitions", () => {
     ]);
   });
 
-  // Only the show-up rate has no column; every other leg reads a real field.
-  it("marks the show-up rate as the one rate nothing stores", () => {
-    expect(isStoredRateKey("meetingBookedToAttendedPct")).toBe(false);
+  // brand-service stores every leg on the funnel. Only the show-up rate has
+  // nothing to seed from, because no other table in the fleet measures it.
+  it("marks the show-up rate as the one rate nothing can seed", () => {
+    expect(isSeedableRateKey("meetingBookedToAttendedPct")).toBe(false);
     for (const funnel of SALES_FUNNELS) {
       for (const leg of funnel.legs) {
         if (leg === "meetingBookedToAttendedPct") continue;
-        expect(isStoredRateKey(leg)).toBe(true);
+        expect(isSeedableRateKey(leg)).toBe(true);
       }
     }
   });
@@ -274,27 +281,30 @@ describe("validateFunnelDraft", () => {
     expect(validateFunnelDraft(salesFunnelByKey("reply_meeting"), draft, "acme.com").ok).toBe(false);
   });
 
-  // Nothing seeds it, so a meeting funnel cannot be confirmed until the brand
-  // states how many booked meetings actually happen.
-  it("holds a meeting funnel until the show-up rate is filled", () => {
-    const result = validateFunnelDraft(
-      salesFunnelByKey("reply_meeting"),
-      draftFor("reply_meeting"),
-      "acme.com",
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("Meeting booked → meeting attended");
+  // brand-service leaves an omitted field as stored and clears an explicit null,
+  // so a brand must be able to declare a funnel before it has priced every leg.
+  // A blank field is a value to clear, never a form to block.
+  it("accepts a funnel that has priced nothing yet", () => {
+    const def = salesFunnelByKey("reply_meeting");
+    const blank: FunnelDraft = {
+      rates: {},
+      lifetimeRevenueUsd: "",
+      destinationUrl: "",
+      bookingUrl: "",
+    };
+    expect(validateFunnelDraft(def, blank, "acme.com")).toEqual({ ok: true });
   });
 
-  it("names the missing rate", () => {
-    const def = salesFunnelByKey("reply_meeting");
-    const draft = {
-      ...filledMeetingDraft("reply_meeting"),
-      rates: { replyToMeetingPct: "", meetingBookedToAttendedPct: "80", meetingToClosePct: "25" },
-    };
-    const result = validateFunnelDraft(def, draft, "acme.com");
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("Positive reply → meeting booked");
+  it("accepts a meeting funnel whose show-up rate is still blank", () => {
+    expect(
+      validateFunnelDraft(salesFunnelByKey("reply_meeting"), draftFor("reply_meeting"), "acme.com"),
+    ).toEqual({ ok: true });
+  });
+
+  it("lets a brand clear a rate it had filled", () => {
+    const def = salesFunnelByKey("visit_signup");
+    const cleared = { ...draftFor("visit_signup"), rates: { visitToSignupPct: "" } };
+    expect(validateFunnelDraft(def, cleared, "acme.com")).toEqual({ ok: true });
   });
 
   it("rejects a rate above 100", () => {
@@ -305,10 +315,12 @@ describe("validateFunnelDraft", () => {
     expect(validateFunnelDraft(salesFunnelByKey("reply_meeting"), draft, "acme.com").ok).toBe(false);
   });
 
-  it("rejects a missing or zero lifetime revenue", () => {
+  it("rejects a zero lifetime revenue but accepts an empty one", () => {
     const def = salesFunnelByKey("visit_signup");
     const base = draftFor("visit_signup");
-    expect(validateFunnelDraft(def, { ...base, lifetimeRevenueUsd: "" }, "acme.com").ok).toBe(false);
+    expect(validateFunnelDraft(def, { ...base, lifetimeRevenueUsd: "" }, "acme.com")).toEqual({
+      ok: true,
+    });
     expect(validateFunnelDraft(def, { ...base, lifetimeRevenueUsd: "0" }, "acme.com").ok).toBe(
       false,
     );
@@ -323,15 +335,19 @@ describe("validateFunnelDraft", () => {
     expect(validateFunnelDraft(def, subdomain, "acme.com")).toEqual({ ok: true });
   });
 
-  it("treats an empty page destination as the brand homepage", () => {
+  // An empty destination is one to clear, not the homepage: substituting the
+  // homepage would write a page the brand never named.
+  it("accepts an empty page destination without inventing one", () => {
     const def = salesFunnelByKey("visit_signup");
     const draft = { ...draftFor("visit_signup"), destinationUrl: "" };
     expect(validateFunnelDraft(def, draft, "acme.com")).toEqual({ ok: true });
+    expect(buildFunnelPatch(def, draft, NOTHING_DECLARED).destinationUrl).toBeUndefined();
   });
 
-  it("blocks a page destination until the brand has a domain", () => {
+  it("blocks a typed page destination until the brand has a domain", () => {
     const def = salesFunnelByKey("visit_form");
-    const result = validateFunnelDraft(def, draftFor("visit_form"), null);
+    const draft = { ...draftFor("visit_form"), destinationUrl: "https://acme.com/lead-magnet" };
+    const result = validateFunnelDraft(def, draft, null);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toContain("brand domain");
   });
@@ -341,6 +357,158 @@ describe("validateFunnelDraft", () => {
     expect(
       validateFunnelDraft(salesFunnelByKey("reply_meeting"), filledMeetingDraft("reply_meeting"), null),
     ).toEqual({ ok: true });
+  });
+});
+
+describe("funnelDraftFromDeclared", () => {
+  const SAVED: DeclaredFunnelValues = {
+    rates: { visitToSignupPct: 3.5, signupToPaidClientPct: null },
+    lifetimeRevenueUsd: 1200,
+    destinationUrl: "https://acme.com/pricing",
+    bookingUrl: null,
+  };
+
+  it("shows exactly what the brand declared for that funnel", () => {
+    const draft = funnelDraftFromDeclared(salesFunnelByKey("visit_signup"), SAVED);
+    expect(parseLocaleNumberInput(draft.rates.visitToSignupPct ?? "")).toBe(3.5);
+    expect(parseLocaleNumberInput(draft.lifetimeRevenueUsd)).toBe(1200);
+    expect(draft.destinationUrl).toBe("https://acme.com/pricing");
+  });
+
+  // A leg the brand never gave us reads null upstream, and null never means 0.
+  it("leaves an undeclared leg blank rather than showing a zero", () => {
+    const draft = funnelDraftFromDeclared(salesFunnelByKey("visit_signup"), SAVED);
+    expect(draft.rates.signupToPaidClientPct).toBe("");
+  });
+
+  it("never borrows the brand's blended economics for a declared funnel", () => {
+    const draft = funnelDraftFromDeclared(salesFunnelByKey("visit_form"), NOTHING_DECLARED);
+    expect(draft.rates.visitToFormSubmissionPct).toBe("");
+    expect(draft.lifetimeRevenueUsd).toBe("");
+    expect(draft.destinationUrl).toBe("");
+  });
+});
+
+describe("buildFunnelPatch", () => {
+  const def = salesFunnelByKey("visit_signup");
+  const saved: DeclaredFunnelValues = {
+    rates: { visitToSignupPct: 4, signupToPaidClientPct: 10 },
+    lifetimeRevenueUsd: 900,
+    destinationUrl: "https://acme.com/pricing",
+    bookingUrl: null,
+  };
+  const savedDraft = funnelDraftFromDeclared(def, saved);
+
+  it("sends nothing when nothing changed", () => {
+    expect(isEmptyFunnelPatch(buildFunnelPatch(def, savedDraft, saved))).toBe(true);
+  });
+
+  // Restating a field from a possibly-stale copy is how a value confirmed
+  // elsewhere gets overwritten, so only the edited one travels.
+  it("sends only the field that changed", () => {
+    const draft = { ...savedDraft, rates: { ...savedDraft.rates, visitToSignupPct: "6" } };
+    expect(buildFunnelPatch(def, draft, saved)).toEqual({ rates: { visitToSignupPct: 6 } });
+  });
+
+  // A user removing a number must be able to remove it, not be forced to invent
+  // a replacement — an explicit null is what clears it upstream.
+  it("sends an explicit null for a value the user emptied", () => {
+    const draft = {
+      ...savedDraft,
+      rates: { ...savedDraft.rates, signupToPaidClientPct: "" },
+      lifetimeRevenueUsd: "",
+    };
+    expect(buildFunnelPatch(def, draft, saved)).toEqual({
+      rates: { signupToPaidClientPct: null },
+      lifetimeRevenueUsd: null,
+    });
+  });
+
+  // brand-service normalizes a stored URL, so a raw compare would re-send an
+  // unchanged destination on every save.
+  it("treats a bare host and its normalized URL as the same destination", () => {
+    const draft = { ...savedDraft, destinationUrl: "acme.com/pricing" };
+    expect(isEmptyFunnelPatch(buildFunnelPatch(def, draft, saved))).toBe(true);
+  });
+
+  it("clears a destination the user emptied", () => {
+    const draft = { ...savedDraft, destinationUrl: "" };
+    expect(buildFunnelPatch(def, draft, saved)).toEqual({ destinationUrl: null });
+  });
+
+  // The prefill is a guess for a person to confirm. Against an undeclared funnel
+  // a blank field equals what is stored, so nothing nobody confirmed is written.
+  it("writes the prefill a user confirmed and omits the blanks it left", () => {
+    const patch = buildFunnelPatch(
+      salesFunnelByKey("reply_meeting"),
+      draftFor("reply_meeting"),
+      NOTHING_DECLARED,
+    );
+    expect(patch.rates).toEqual({ replyToMeetingPct: 40, meetingToClosePct: 25 });
+    expect(patch.rates).not.toHaveProperty("meetingBookedToAttendedPct");
+  });
+
+  it("declares a funnel with an empty patch when the brand priced nothing", () => {
+    const blank: FunnelDraft = {
+      rates: {},
+      lifetimeRevenueUsd: "",
+      destinationUrl: "",
+      bookingUrl: "",
+    };
+    expect(isEmptyFunnelPatch(buildFunnelPatch(def, blank, NOTHING_DECLARED))).toBe(true);
+  });
+
+  // brand-service 400s on a rate outside the chain and on a destination the
+  // funnel has no use for, so a patch must never be able to carry either.
+  it("never carries a rate outside the funnel's own chain", () => {
+    const draft = {
+      ...savedDraft,
+      rates: { ...savedDraft.rates, replyToMeetingPct: "50" },
+    } as FunnelDraft;
+    const patch = buildFunnelPatch(def, draft, saved);
+    expect(patch.rates ?? {}).not.toHaveProperty("replyToMeetingPct");
+  });
+
+  it("never carries a destination the funnel has no use for", () => {
+    const reply = salesFunnelByKey("reply_meeting");
+    const draft = { ...draftFor("reply_meeting"), destinationUrl: "https://acme.com/x" };
+    expect(buildFunnelPatch(reply, draft, NOTHING_DECLARED)).not.toHaveProperty("destinationUrl");
+
+    const signup = { ...savedDraft, bookingUrl: "https://cal.com/acme" };
+    expect(buildFunnelPatch(def, signup, saved)).not.toHaveProperty("bookingUrl");
+  });
+
+  it("rounds the lifetime revenue to the whole dollars brand-service stores", () => {
+    const draft = { ...savedDraft, lifetimeRevenueUsd: "1200.6" };
+    expect(buildFunnelPatch(def, draft, saved).lifetimeRevenueUsd).toBe(1201);
+  });
+});
+
+describe("funnelWriteErrorMessage", () => {
+  // brand-service says exactly what was wrong with the funnel it was asked to
+  // store, in a sentence written for a person. A rejection is shown, not swallowed.
+  it("shows what the server refused", () => {
+    const err = {
+      status: 400,
+      body: { error: 'Funnel "visit_signup" starts with a click onto the brand\'s website.' },
+    };
+    expect(funnelWriteErrorMessage(err)).toContain("starts with a click");
+  });
+
+  it("names an ownership or missing-brand failure in its own words", () => {
+    expect(funnelWriteErrorMessage({ status: 403, body: {} })).toContain("organization");
+    expect(funnelWriteErrorMessage({ status: 404, body: {} })).toContain("no longer exists");
+  });
+
+  // apiCall sets `message` to the whole downstream body verbatim, so a 500 must
+  // never leak it onto the screen.
+  it("falls back to one line rather than leaking a body", () => {
+    const err = { status: 500, body: { error: null }, message: '{"error":"boom","stack":"..."}' };
+    expect(funnelWriteErrorMessage(err)).toBe("Could not save this funnel. Try again.");
+    expect(funnelWriteErrorMessage(new Error("nope"))).toBe(
+      "Could not save this funnel. Try again.",
+    );
+    expect(funnelWriteErrorMessage(null)).toBe("Could not save this funnel. Try again.");
   });
 });
 
@@ -485,14 +653,49 @@ describe("Sales Funnels card", () => {
     expect(src).toContain('<MaturityBadge level="beta" />');
   });
 
-  // Nothing persists yet: brand-service stores one lifetime revenue and one
-  // destination per brand and has no booking-link field, so a Save here would
-  // silently drop what the user typed.
-  it("writes nothing to the backend and says so", () => {
-    expect(src).not.toContain("useMutation");
+  // brand-service stores the declared set and each funnel's own economics, so
+  // the card persists what the brand states. The preview framing is gone.
+  it("persists a funnel through the brand-service funnel routes", () => {
+    expect(src).toContain("declareBrandSalesFunnel");
+    expect(src).toContain("undeclareBrandSalesFunnel");
+    expect(src).toContain("getBrandSalesFunnels");
+    expect(src).not.toContain("Preview only");
+  });
+
+  // The brand-level writers hold ONE lifetime revenue and ONE destination for
+  // the whole brand, so wiring them here would take four funnels' values and
+  // persist one of each — the per-funnel model collapsing back into the old one.
+  it("never writes a funnel through the brand-level economics or destination", () => {
     expect(src).not.toContain("saveBrandSalesEconomics");
     expect(src).not.toContain("saveBrandClickDestination");
-    expect(src).toContain("Preview only. Nothing here is saved yet.");
+  });
+
+  // Only the fields whose value actually changed travel, so editing one rate
+  // cannot overwrite the others and emptying a field really clears it.
+  it("writes a partial patch diffed against what is stored", () => {
+    expect(src).toContain("buildFunnelPatch(def, state.draft, state.saved)");
+    expect(src).toContain("isEmptyFunnelPatch(body)");
+  });
+
+  // A prefill is a guess for a person to confirm. A declared funnel shows its
+  // own stored values instead, so a confirmed number is never re-guessed.
+  it("seeds a declared funnel from what it declared, not from the brand blend", () => {
+    expect(src).toContain("funnelDraftFromDeclared(def, saved)");
+    expect(src).toContain("funnelDraftFromBrand(def, econData.salesEconomics");
+  });
+
+  // A refusal is the server's answer and belongs on screen; `err.message` is the
+  // whole downstream body verbatim and never does.
+  it("shows the server's rejection rather than swallowing it", () => {
+    expect(src).toContain("funnelWriteErrorMessage(err)");
+    expect(src).not.toContain("err.message");
+    expect(src).toContain("{state.error}");
+  });
+
+  // Having stated a set and having said nothing are different answers.
+  it("does not read a brand that has said nothing as one selling through none", () => {
+    expect(src).toContain("funnelData?.declared === true");
+    expect(src).toContain("You told us you sell through none of these");
   });
 
   it("explains its fields with InfoTooltip rather than a native title", () => {
@@ -503,6 +706,13 @@ describe("Sales Funnels card", () => {
   it("reuses the query keys the sibling settings cards already read", () => {
     expect(src).toContain('["brandSalesEconomics", brandId]');
     expect(src).toContain('["brand", brandId]');
+  });
+
+  // An unlisted root is default-OFF, so the card would cold-skeleton on every
+  // visit instead of painting from disk like the rest of the page.
+  it("persists its own query root", () => {
+    expect(src).toContain('["brandSalesFunnels", brandId]');
+    expect(read("../src/lib/persist-cache.ts")).toContain('"brandSalesFunnels"');
   });
 
   // Several funnels run at once and none outranks another; ordering them is a
@@ -536,7 +746,7 @@ describe("Sales Funnels card", () => {
   // A funnel the brand has not chosen shows what it IS, and nothing else: its
   // numbers are seeded defaults until someone confirms them.
   it("shows no numbers on a funnel that is neither chosen nor open", () => {
-    expect(src).toContain("const showNumbers = state.selected || isOpen;");
+    expect(src).toContain("const showNumbers = state.declared || isOpen;");
     expect(src).toContain("showNumbers ? funnelDestinationChips(def, state.draft) : []");
     expect(src).toContain("showNumbers ? funnelLifetimeLabel(state.draft) : null");
     expect(src).toContain("i > 0 && showNumbers ? funnelLegPct(def, state.draft, i - 1) : null");
@@ -544,7 +754,7 @@ describe("Sales Funnels card", () => {
 
   // The chosen funnels come first with a green tag; the rest sit below, greyed.
   it("groups the chosen funnels above the rest", () => {
-    expect(src).toContain("partitionFunnelsBySelection((key) => states[key].selected)");
+    expect(src).toContain("partitionFunnelsBySelection((key) => states[key].declared)");
     expect(src).toContain("Not selected");
     expect(src).toContain("bg-green-50");
     expect(src).toContain('"border-gray-200 bg-gray-50"');
@@ -596,8 +806,14 @@ describe("Sales Funnels card", () => {
   // "Confirm funnel" named a step of the form; the button is what the user does
   // to the funnel itself.
   it("labels the button OK the first time and Update afterwards", () => {
-    expect(src).toContain('state.everConfirmed ? "Update" : "OK"');
+    expect(src).toContain('state.declared ? "Update" : "OK"');
     expect(src).not.toContain("Confirm funnel");
+  });
+
+  // Fading the very word that signals work reads as a dead button.
+  it("keeps the in-flight label at full opacity", () => {
+    expect(src).toContain('saving ? "Saving…"');
+    expect(src).toContain('saving ? "cursor-wait" : ""');
   });
 
   it("is rendered on the brand settings page below Sales Economics", () => {

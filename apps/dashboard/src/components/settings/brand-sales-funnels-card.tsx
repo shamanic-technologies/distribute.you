@@ -2,16 +2,31 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
-import { getBrand, getBrandSalesEconomics } from "@/lib/api";
+import { useMutation } from "@tanstack/react-query";
 import {
+  declareBrandSalesFunnel,
+  getBrand,
+  getBrandSalesEconomics,
+  getBrandSalesFunnels,
+  undeclareBrandSalesFunnel,
+  type BrandSalesFunnelSet,
+  type DeclaredSalesFunnel,
+} from "@/lib/api";
+import {
+  NOTHING_DECLARED,
   SALES_FUNNELS,
+  buildFunnelPatch,
   funnelDestinationChips,
   funnelDraftFromBrand,
+  funnelDraftFromDeclared,
   funnelLegPct,
   funnelLifetimeLabel,
   funnelRateFields,
+  funnelWriteErrorMessage,
+  isEmptyFunnelPatch,
   partitionFunnelsBySelection,
   validateFunnelDraft,
+  type DeclaredFunnelValues,
   type FunnelDraft,
   type FunnelRateKey,
   type SalesFunnelDef,
@@ -22,32 +37,39 @@ import {
   formatLocaleNumberInputValue,
   parseLocaleNumberInput,
 } from "@/lib/format-number";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { BrandLogo } from "@/components/brand-logo";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
-// The funnels a brand sells through. Several can run at once, and each one keeps
-// its own conversion rates, lifetime revenue and landing page, because a
-// self-serve purchase customer and an enterprise meeting customer are not worth
-// the same and do not land on the same page.
+// The funnels a brand sells through, and what each one is worth. Several can run
+// at once, and each keeps its own conversion rates, lifetime revenue and landing
+// page, because a self-serve purchase customer and an enterprise meeting
+// customer are not worth the same and do not land on the same page.
 //
-// Nothing here writes yet: brand-service stores one lifetime revenue and one
-// destination per brand, has no field at all for a booking link, and none for
-// the meeting show-up rate. Rather than pretend a per-funnel value persisted,
-// the card states that it is a preview. The per-funnel values are seeded from
-// what the brand really saved, so the numbers on screen are its own.
+// brand-service stores all of it PER FUNNEL, so this card writes: confirming a
+// funnel declares it and prices it, removing one drops its economics with the
+// declaration. The write is a PARTIAL patch built by `buildFunnelPatch` — only
+// the fields whose value actually changed travel, so editing one rate cannot
+// overwrite the others and emptying a field really clears it.
+//
+// A funnel the brand has NOT declared is prefilled from its blended sales
+// economics so the numbers on screen are its own. That prefill is for a person
+// to confirm and is never written on its own: the patch omits any field that
+// still equals what is stored, so a number nobody confirmed cannot read back as
+// one the brand declared.
 //
 // Choosing a funnel, and dropping one, are decisions about how the brand sells.
 // Neither is one tap on a checkbox: both go through opening the card and
 // pressing a button that says what it does.
 
 type FunnelState = {
-  selected: boolean;
-  /** True once the funnel has been confirmed at least once, so the CTA reads Update. */
-  everConfirmed: boolean;
+  /** Declared on the wire: the brand has stated it sells through this funnel. */
+  declared: boolean;
+  /** What brand-service has stored, and what the patch is diffed against. */
+  saved: DeclaredFunnelValues;
   touched: boolean;
   draft: FunnelDraft;
   error: string | null;
@@ -63,8 +85,8 @@ function initialStates(): Record<SalesFunnelKey, FunnelState> {
   const out = {} as Record<SalesFunnelKey, FunnelState>;
   for (const def of SALES_FUNNELS) {
     out[def.key] = {
-      selected: false,
-      everConfirmed: false,
+      declared: false,
+      saved: NOTHING_DECLARED,
       touched: false,
       draft: emptyDraft(def),
       error: null,
@@ -73,15 +95,25 @@ function initialStates(): Record<SalesFunnelKey, FunnelState> {
   return out;
 }
 
+/** Catalogue order, so two reads of the same brand never disagree on order. */
+function byCatalogueOrder(a: DeclaredSalesFunnel, b: DeclaredSalesFunnel): number {
+  const order = SALES_FUNNELS.map((f) => f.key);
+  return order.indexOf(a.funnelKey) - order.indexOf(b.funnelKey);
+}
+
 export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   const isBeta = useIsBetaUser();
+  const queryClient = useQueryClient();
 
-  // Both keys are the ones the sibling settings cards already use, so these
-  // reads dedupe instead of adding a fetch.
+  // The economics + brand keys are the ones the sibling settings cards already
+  // use, so those reads dedupe instead of adding a fetch.
   const { data: econData } = useAuthQuery(["brandSalesEconomics", brandId], () =>
     getBrandSalesEconomics(brandId),
   );
   const { data: brandData } = useAuthQuery(["brand", brandId], () => getBrand(brandId));
+  const { data: funnelData } = useAuthQuery(["brandSalesFunnels", brandId], () =>
+    getBrandSalesFunnels(brandId),
+  );
 
   const brand = brandData?.brand ?? null;
   const brandDomain = brand?.domain ?? null;
@@ -93,29 +125,103 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   // One card open at a time: the list reorders itself around the selection, so
   // several open forms would move under the cursor.
   const [openKey, setOpenKey] = useState<SalesFunnelKey | null>(null);
+  const [pendingKey, setPendingKey] = useState<SalesFunnelKey | null>(null);
   const hydrated = useRef(false);
 
-  // Seed every funnel from the brand's saved economics + click destination, once.
+  // Seed every funnel once: a DECLARED funnel from its own stored values, an
+  // undeclared one from the brand's blended economics as a guess to confirm.
   // A funnel the user already edited keeps what they typed.
   useEffect(() => {
-    if (hydrated.current || econData === undefined || brandData === undefined) return;
+    if (
+      hydrated.current ||
+      econData === undefined ||
+      brandData === undefined ||
+      funnelData === undefined
+    ) {
+      return;
+    }
     hydrated.current = true;
+    const declared = new Map(funnelData.funnels.map((f) => [f.funnelKey, f]));
     setStates((prev) => {
       const next = { ...prev };
       for (const def of SALES_FUNNELS) {
         if (next[def.key].touched) continue;
+        const saved = declared.get(def.key);
         next[def.key] = {
           ...next[def.key],
-          draft: funnelDraftFromBrand(
-            def,
-            econData.salesEconomics,
-            brand?.clickDestinationUrl ?? null,
-          ),
+          declared: saved !== undefined,
+          saved: saved ?? NOTHING_DECLARED,
+          draft: saved
+            ? funnelDraftFromDeclared(def, saved)
+            : funnelDraftFromBrand(def, econData.salesEconomics, brand?.clickDestinationUrl ?? null),
         };
       }
       return next;
     });
-  }, [econData, brandData, brand]);
+  }, [econData, brandData, funnelData, brand]);
+
+  /** Write the funnel we just declared into the cached set, in catalogue order. */
+  function cacheDeclared(funnel: DeclaredSalesFunnel) {
+    queryClient.setQueryData(
+      ["brandSalesFunnels", brandId],
+      (prev: BrandSalesFunnelSet | undefined): BrandSalesFunnelSet => {
+        const rest = (prev?.funnels ?? []).filter((f) => f.funnelKey !== funnel.funnelKey);
+        // Declaring a funnel IS stating the brand's set includes it, so the flag
+        // follows from the write we just made rather than being guessed.
+        return { declared: true, funnels: [...rest, funnel].sort(byCatalogueOrder) };
+      },
+    );
+  }
+
+  const declareMutation = useMutation({
+    mutationFn: (vars: { def: SalesFunnelDef; patch: ReturnType<typeof buildFunnelPatch> }) =>
+      declareBrandSalesFunnel(brandId, vars.def.key, vars.patch),
+    onSuccess: (res, vars) => {
+      cacheDeclared(res.funnel);
+      // Show exactly what persisted, so the card can never claim a value the
+      // store rejected or normalized differently.
+      patch(vars.def.key, {
+        declared: true,
+        saved: res.funnel,
+        touched: false,
+        draft: funnelDraftFromDeclared(vars.def, res.funnel),
+        error: null,
+      });
+      setOpenKey(null);
+    },
+    onError: (err, vars) => {
+      console.error("[dashboard] declareBrandSalesFunnel failed", err);
+      patch(vars.def.key, { error: funnelWriteErrorMessage(err) });
+    },
+    onSettled: () => setPendingKey(null),
+  });
+
+  const undeclareMutation = useMutation({
+    mutationFn: (vars: { def: SalesFunnelDef }) =>
+      undeclareBrandSalesFunnel(brandId, vars.def.key),
+    onSuccess: (set, vars) => {
+      queryClient.setQueryData(["brandSalesFunnels", brandId], set);
+      // Its economics went with the declaration, so the form falls back to the
+      // brand-level guess rather than keeping numbers nothing stores any more.
+      patch(vars.def.key, {
+        declared: false,
+        saved: NOTHING_DECLARED,
+        touched: false,
+        draft: funnelDraftFromBrand(
+          vars.def,
+          econData?.salesEconomics ?? null,
+          brand?.clickDestinationUrl ?? null,
+        ),
+        error: null,
+      });
+      setOpenKey(null);
+    },
+    onError: (err, vars) => {
+      console.error("[dashboard] undeclareBrandSalesFunnel failed", err);
+      patch(vars.def.key, { error: funnelWriteErrorMessage(err) });
+    },
+    onSettled: () => setPendingKey(null),
+  });
 
   function patch(key: SalesFunnelKey, update: Partial<FunnelState>) {
     setStates((prev) => ({ ...prev, [key]: { ...prev[key], ...update } }));
@@ -164,36 +270,51 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   }
 
   function confirm(def: SalesFunnelDef) {
-    const result = validateFunnelDraft(def, states[def.key].draft, brandDomain);
+    const state = states[def.key];
+    const result = validateFunnelDraft(def, state.draft, brandDomain);
     if (!result.ok) {
       patch(def.key, { error: result.error });
       return;
     }
-    patch(def.key, { selected: true, everConfirmed: true, error: null });
-    setOpenKey(null);
+    const body = buildFunnelPatch(def, state.draft, state.saved);
+    // An already-declared funnel with nothing changed has no write to make; an
+    // undeclared one is still declared, with a body that prices nothing yet.
+    if (state.declared && isEmptyFunnelPatch(body)) {
+      patch(def.key, { touched: false, error: null });
+      setOpenKey(null);
+      return;
+    }
+    patch(def.key, { error: null });
+    setPendingKey(def.key);
+    declareMutation.mutate({ def, patch: body });
   }
 
   function removeFunnel(def: SalesFunnelDef) {
-    patch(def.key, { selected: false, error: null });
-    setOpenKey(null);
+    patch(def.key, { error: null });
+    setPendingKey(def.key);
+    undeclareMutation.mutate({ def });
   }
 
   if (!isBeta) return null;
 
-  const { selected, unselected } = partitionFunnelsBySelection((key) => states[key].selected);
+  const { selected, unselected } = partitionFunnelsBySelection((key) => states[key].declared);
+  // `declared` with an empty set is the brand saying it sells through none — a
+  // real answer, and a different one from never having told us anything.
+  const statedNone = funnelData?.declared === true && selected.length === 0;
 
   function renderFunnel(def: SalesFunnelDef) {
     const state = states[def.key];
     const locked = def.requiresWebsite && noWebsite;
     const isOpen = openKey === def.key;
-    // A funnel the brand has not chosen shows what it IS, and nothing else. Its
-    // numbers are only seeded defaults until someone confirms them, and printing
-    // them on a row nobody picked reads as a claim about how the brand sells.
-    const showNumbers = state.selected || isOpen;
+    const saving = pendingKey === def.key;
+    // A funnel the brand has not declared shows what it IS, and nothing else.
+    // Its numbers are a prefill nobody has confirmed, and printing them on a row
+    // the brand never picked reads as a claim about how it sells.
+    const showNumbers = state.declared || isOpen;
     const chips = showNumbers ? funnelDestinationChips(def, state.draft) : [];
     const lifetime = showNumbers ? funnelLifetimeLabel(state.draft) : null;
     const rateFields = funnelRateFields(def);
-    const dimmed = !state.selected && !isOpen;
+    const dimmed = !state.declared && !isOpen;
 
     const header = (
       <div className="flex items-start gap-3 p-4">
@@ -263,7 +384,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
           )}
         </div>
 
-        {state.selected && !isOpen && (
+        {state.declared && !isOpen && (
           <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
             <CheckCircleIcon className="h-3.5 w-3.5" />
             Selected
@@ -278,7 +399,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
         className={`rounded-xl border transition ${
           isOpen
             ? "border-gray-300 bg-white shadow-sm"
-            : state.selected
+            : state.declared
               ? "border-gray-200 bg-white"
               : "border-gray-200 bg-gray-50"
         }`}
@@ -306,7 +427,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
             className={`rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
               locked
                 ? "cursor-not-allowed"
-                : state.selected
+                : state.declared
                   ? "cursor-pointer hover:bg-gray-50"
                   : "cursor-pointer hover:bg-gray-100"
             }`}
@@ -416,25 +537,32 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
               <button
                 type="button"
                 onClick={() => setOpenKey(null)}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-700"
+                disabled={saving}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 disabled:opacity-40"
               >
                 Cancel
               </button>
-              {state.selected && (
+              {state.declared && (
                 <button
                   type="button"
                   onClick={() => removeFunnel(def)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                  disabled={saving}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-40"
                 >
                   Remove this funnel
                 </button>
               )}
+              {/* The in-flight label stays at full opacity: fading the very word
+                  that signals work reads as a dead button. */}
               <button
                 type="button"
                 onClick={() => confirm(def)}
-                className="rounded-lg bg-brand-500 px-5 py-2 text-sm font-medium text-white transition hover:bg-brand-600"
+                disabled={saving}
+                className={`rounded-lg bg-brand-500 px-5 py-2 text-sm font-medium text-white transition hover:bg-brand-600 ${
+                  saving ? "cursor-wait" : ""
+                }`}
               >
-                {state.everConfirmed ? "Update" : "OK"}
+                {saving ? "Saving…" : state.declared ? "Update" : "OK"}
               </button>
             </div>
           </div>
@@ -451,11 +579,10 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <p className="mb-1 text-sm text-gray-500">
+        <p className="mb-5 text-sm text-gray-500">
           Pick every funnel you sell through. Each one keeps its own conversion rates,
           lifetime revenue and landing page.
         </p>
-        <p className="mb-5 text-xs text-gray-400">Preview only. Nothing here is saved yet.</p>
 
         {selected.length > 0 && <ul className="space-y-3">{selected.map(renderFunnel)}</ul>}
 
@@ -470,9 +597,13 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
           </>
         )}
 
+        {/* Having stated a set and having said nothing are different answers, so
+            they read differently. Neither is rendered as the other. */}
         {selected.length === 0 && (
           <p className="mt-4 text-xs text-gray-400">
-            Pick at least one funnel to describe how a lead becomes a paid client.
+            {statedNone
+              ? "You told us you sell through none of these. Pick one whenever that changes."
+              : "Pick at least one funnel to describe how a lead becomes a paid client."}
           </p>
         )}
       </div>
