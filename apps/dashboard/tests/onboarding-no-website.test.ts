@@ -50,17 +50,21 @@ describe("Onboarding — no-website path (beta)", () => {
     expect(src).toContain("createBrandNoWebsiteAndFetchServices");
   });
 
-  it("skips the click-destination step in no-website mode", () => {
-    // services -> objective (not destination); objective back -> services.
-    // The v2 staff preview drops the click-destination step for EVERY brand (it asks
-    // for a destination per sales funnel after payment instead), so the GA branch now
-    // sits behind the variant check — no-website still never reaches "destination".
-    expect(src).toContain('setStep(isV2 ? "audiences" : noWebsiteMode ? "objective" : "destination")');
-    expect(src).toContain('setStep(noWebsiteMode ? "services" : "destination")');
+  it("asks for no click destination at all, for any brand", () => {
+    // A funnel owns its landing page now, so the standalone click-destination step
+    // is gone for EVERY brand — a no-website brand could never reach it anyway.
+    expect(src).not.toContain('if (step === "destination") {');
+    expect(src).toContain('setStep("audiences")');
   });
 
-  it("locks the onboarding goal picker to positive_replies in no-website mode", () => {
-    expect(src).toContain('noWebsiteMode ? o.key === "positive_replies"');
+  it("hides the website-led funnels in no-website mode", () => {
+    // A funnel that starts with a click onto the site cannot run without a site,
+    // and brand-service 400s on declaring one — so it is never offered.
+    expect(src).toContain("selectableFunnels(funnelViews, !noWebsiteMode)");
+    expect(src).toContain("Paths that start with a click onto your website are hidden");
+  });
+
+  it("locks the optimization goal to positive_replies in no-website mode", () => {
     expect(src).toContain('if (noWebsiteMode && outcome !== "positive_replies") setOutcome("positive_replies")');
   });
 
