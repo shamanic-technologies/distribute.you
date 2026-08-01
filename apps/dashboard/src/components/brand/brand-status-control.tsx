@@ -36,6 +36,7 @@ import {
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { useIsBetaUser } from "@/lib/use-beta-user";
+import { useIsShareMode } from "@/components/share/share-mode-context";
 import { MaturityBadge } from "@/components/maturity-badge";
 
 const PROJECTION_REF_BUDGET = 100;
@@ -174,6 +175,10 @@ function salesEconomicsInputForGoal(
  */
 export function BrandStatusControl({ brandId }: { brandId: string }) {
   const isBeta = useIsBetaUser();
+  // The public share view. The goal and the budget still SHOW — they are what the
+  // numbers on this page are measured against — but they stop being controls, and
+  // Pause / Restart is gone: whether the brand is sending is the owner's call.
+  const readOnly = useIsShareMode();
   const queryClient = useQueryClient();
   const featureSlug = useSoleFeatureSlug();
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
@@ -353,7 +358,12 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       {/* Maximising tag — the brand's current optimization goal. */}
-      {goal ? (
+      {goal && readOnly ? (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700">
+          <SparklesIcon className="h-3.5 w-3.5" />
+          {GOAL_LABEL[goal]}
+        </span>
+      ) : goal ? (
         <button
           type="button"
           onClick={openGoalDialog}
@@ -370,6 +380,23 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
         {/* Budget / active indicator — mirrors the campaign-page status pill. */}
         {!pauseReady ? (
           <Skeleton className="h-8 w-32 rounded-lg" />
+        ) : readOnly ? (
+          <span
+            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+              paused
+                ? "border-gray-200 bg-gray-100 text-gray-500"
+                : "border-green-200 bg-green-50 text-green-700"
+            }`}
+          >
+            <span className={`inline-flex h-2 w-2 rounded-full ${paused ? "bg-current opacity-50" : "bg-green-500"}`} />
+            {paused ? "Paused" : "Active"}
+            {budget && (
+              <>
+                <span className="opacity-40">&middot;</span>
+                <span className="font-semibold">{budget}</span>
+              </>
+            )}
+          </span>
         ) : paused ? (
           <button
             type="button"
@@ -407,7 +434,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
 
         {/* Pause / Restart toggle — in-flight label stays full opacity (CLAUDE.md
             mutation-button rule): fade only the genuinely-disabled state. */}
-        {pauseReady ? (
+        {pauseReady && !readOnly ? (
           <button
             onClick={() => setPaused(!paused)}
             disabled={savingPause}

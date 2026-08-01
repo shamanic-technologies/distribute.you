@@ -4,6 +4,7 @@ import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
+import { shareApiBasePath, shareTokenFromPathname } from "./share-mode";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -132,9 +133,22 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
     let url: string;
 
+    // PUBLIC SHARE VIEW. The same page components run under `/share/<token>/…`
+    // with no Clerk session, so their reads cannot go to `/api/v1` (which takes
+    // its org from that session). They go to the share tree's own proxy, which
+    // derives the org from the credential in the URL, exports no verb but GET,
+    // and refuses any read that is not about the credential's brand. No
+    // Authorization header is sent: a visitor who happens to be signed in to
+    // their own account must not have it influence what a shared link shows.
+    const shareToken = shareTokenFromPathname(
+      typeof window === "undefined" ? null : window.location.pathname,
+    );
+
     if (token) {
       url = `${API_URL}/v1${endpoint}`;
       headers["X-API-Key"] = token;
+    } else if (shareToken) {
+      url = `${shareApiBasePath(shareToken)}${endpoint}`;
     } else {
       url = `/api/v1${endpoint}`;
       const activeOrgId = activeOrgIdFromPath();

@@ -369,7 +369,10 @@ describe("StrategyPage source guards", () => {
   });
   it("keeps an Edit link on The plan (→ settings); the offer card is edited INLINE (no blue Edit button)", () => {
     expect(both).toContain("settingsHref");
-    expect(both).toContain("action={<EditLink href={settingsHref} />}");
+    // Dropped on the public share view — the link points into Brand Settings,
+    // which a shared link does not reach, and a link that leads nowhere is worse
+    // than no link.
+    expect(both).toContain("action={readOnly ? undefined : <EditLink href={settingsHref} />}");
     // the offer card no longer jumps to Brand Profile — each lever is a hover-to-edit
     // zone (TextEditor / ListEditor) and Save forks a new brand-profile version.
     expect(page).not.toContain("action={<EditLink href={brandProfileHref} />}");

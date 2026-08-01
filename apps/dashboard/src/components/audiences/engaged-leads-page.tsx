@@ -39,6 +39,7 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { useSharePathPrefix } from "@/components/share/share-mode-context";
 
 // Labels for the goal-driven Leads tabs (goal-steps returns the ordered keys).
 const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
@@ -286,6 +287,8 @@ function AudienceSection({
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
+  // Keeps in-app links inside the public share tree; empty in the dashboard.
+  const pathPrefix = useSharePathPrefix();
   const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
   const description = full?.description ?? null;
   return (
@@ -308,7 +311,7 @@ function AudienceSection({
       </div>
       {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
       <Link
-        href={`/orgs/${orgId}/brands/${brandId}/audiences?audienceId=${inline.id}`}
+        href={`${pathPrefix}/orgs/${orgId}/brands/${brandId}/audiences?audienceId=${inline.id}`}
         className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
       >
         View audience details

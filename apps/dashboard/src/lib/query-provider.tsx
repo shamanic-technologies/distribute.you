@@ -216,6 +216,7 @@ function OrgScopedQueryClientProvider({
 export function QueryProvider({
   children,
   scope,
+  shareToken,
 }: {
   children: ReactNode;
   /**
@@ -223,14 +224,22 @@ export function QueryProvider({
    * `isOnboarding` block below. Declared by the layout that mounts it rather than
    * sniffed from the pathname, so it cannot flip mid-flight while the router is
    * navigating away at the end of the flow.
+   *
+   * `"share"` is the public read-only view. It keys the cache on the CREDENTIAL
+   * instead of on an org: there is no active org there (nobody is signed in), and
+   * a visitor who happens to be signed in to their own account must not have that
+   * account's cache and the shared brand's share a key space.
    */
-  scope?: "onboarding";
+  scope?: "onboarding" | "share";
+  /** Required when `scope === "share"` — the credential the cache is keyed on. */
+  shareToken?: string;
 }) {
   // ClerkProvider lives in `(authed)/layout.tsx`, an ancestor of every consumer
   // of this provider (dashboard + onboarding), so `useOrganization` is safe.
   const { organization } = useOrganization();
   const pathname = usePathname();
   const isOnboarding = scope === "onboarding";
+  const isShare = scope === "share";
 
   // PER-TAB org key. The cache MUST be scoped to the org THIS TAB is viewing —
   // the URL `/orgs/[id]`, NOT Clerk's active org. Clerk's active org is a SHARED,
@@ -301,8 +310,17 @@ export function QueryProvider({
   // (`persistEnabled`), so onboarding runs on an in-memory cache. Nothing is lost —
   // the route is transient, and the first-frame tenant identity comes from the
   // server-read cookie, not from disk.
-  const scopedOrgId = isOnboarding ? null : stableOrgId;
-  const orgKey = isOnboarding ? "onboarding" : stableOrgId ?? "no-org";
+  // SHARE keys on the credential. Persistence stays ON — the whole point of the
+  // local-first cache is that opening a shared page paints instantly — it just
+  // lives under its own prefix, which no signed-in session can collide with.
+  const shareBucket = isShare ? `share:${shareToken ?? "unknown"}` : null;
+
+  const scopedOrgId = isShare ? shareBucket : isOnboarding ? null : stableOrgId;
+  const orgKey = isShare
+    ? shareBucket!
+    : isOnboarding
+      ? "onboarding"
+      : stableOrgId ?? "no-org";
 
   return (
     <OrgScopedQueryClientProvider key={orgKey} orgId={scopedOrgId}>
