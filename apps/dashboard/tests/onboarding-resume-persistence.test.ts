@@ -54,7 +54,7 @@ describe("Beta onboarding resume persistence", () => {
 
   it("remaps transient action steps on resume (never restores INTO loading/launching)", () => {
     // Takes the variant too: a v2 resume must not land on a customer-flow-only step.
-    expect(src).toContain("function resolveResumeStep(step: Step, brandId: string | null, variant");
+    expect(src).toContain("function resolveResumeStep(step: Step, brandId: string | null)");
     expect(src).toContain('if (step === "loading") return brandId ? "services" : "url";');
     expect(src).toContain('if (step === "launching") return "pricing";');
   });

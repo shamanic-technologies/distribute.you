@@ -38,11 +38,11 @@ describe("Onboarding mobile responsiveness", () => {
     expect(onboardingFlow).toContain("min-h-0 flex-1 overflow-y-auto sm:flex-none sm:overflow-visible");
     // No 100dvh anywhere in the shell (svh via the layout column).
     expect(onboardingFlow).not.toContain("min-h-[100dvh]");
-    // Every step routes through the shared shell (no inline card wrappers left):
-    // the 12 base steps + the 5 post-payment steps (celebrate / phone / ltr / model /
-    // offer) + the 3 v2 staff-preview steps (funnels / primary / funnelStats).
+    // Every step routes through the shared shell (no inline card wrappers left).
+    // The count dropped from 20 when the brand-level steps (destination / objective
+    // / rates / ltr) went with the flow that asked them.
     const shellUses = onboardingFlow.match(/<StepShell/g) ?? [];
-    expect(shellUses.length).toBe(20);
+    expect(shellUses.length).toBe(16);
     // The removed per-step card constants must not return.
     expect(onboardingFlow).not.toContain("className={card}");
     expect(onboardingFlow).not.toContain("cardWide");
@@ -52,8 +52,9 @@ describe("Onboarding mobile responsiveness", () => {
   it("keeps onboarding controls from forcing horizontal overflow", () => {
     expect(onboardingFlow).toContain("basis-full bg-transparent");
     expect(onboardingFlow).toContain("sm:min-w-[8rem] sm:basis-auto");
-    expect(onboardingFlow).toContain("flex flex-col items-stretch gap-4");
-    expect(onboardingFlow).toContain("sm:flex-row sm:items-center sm:justify-between");
+    // The stacked-on-mobile rate rows went with the rates / lifetime-revenue steps;
+    // the funnel screens stack their fields by default (flex-col, full-width inputs).
+    expect(onboardingFlow).toContain("w-full min-w-0 bg-transparent");
     expect(onboardingFlow).toContain("grid gap-3 sm:grid-cols-2 lg:grid-cols-4");
   });
 

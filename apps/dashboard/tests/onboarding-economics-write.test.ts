@@ -53,14 +53,19 @@ describe("Onboarding sales-economics writes", () => {
     expect(body).toContain('rendered.has("f2p") ? { formSubmissionToPaidClientPct: values.f2p }');
   });
 
-  it("builds both step payloads through that one helper, never from rates directly", () => {
-    expect(src).toContain("await buildEconomicsPayload(id, rateKeys, nextRates)");
-    expect(src).toContain('await buildEconomicsPayload(id, ["ltv"], { ...rates, ltv })');
-    // The pre-fix payloads restated every metric off the client copy. Scoped to the two
-    // save functions: the projection helper legitimately reads the client rates to build
-    // its econ overrides, which is a read, not a write.
-    for (const marker of ["async function saveRatesAndContinue(", "async function saveLtrAndContinue("]) {
-      const body = sliceFrom(marker, 2400);
+  it("builds every step payload through that one helper, never from rates directly", () => {
+    // A step that RENDERS no rate passes no rendered key, so every core metric it
+    // did not show is restated from the wire.
+    expect(src).toContain("await buildEconomicsPayload(id, [], rates)");
+    expect(src).toContain("await buildEconomicsPayload(id, keys, next)");
+    // The pre-fix payloads restated every metric off the client copy. Scoped to the
+    // two save functions: the projection helper legitimately reads the client rates
+    // to build its econ overrides, which is a read, not a write.
+    for (const marker of [
+      "async function savePrimaryFunnelAndContinue(",
+      "async function saveModelEconomics(",
+    ]) {
+      const body = sliceFrom(marker, 1250);
       expect(body).not.toContain("replyToMeetingPct: nextRates.r2m");
       expect(body).not.toContain("visitToSignupPct: nextRates.v2s");
       expect(body).not.toContain("signupToPaidClientPct: nextRates.s2c");
@@ -68,21 +73,26 @@ describe("Onboarding sales-economics writes", () => {
     }
   });
 
-  it("blocks the lifetime-revenue step when the stored set cannot be read", () => {
-    const body = sliceFrom("async function saveLtrAndContinue(", 2400);
+  it("blocks the model step when the stored set cannot be read", () => {
+    // The single lifetime-revenue step is gone (each funnel carries its own), so
+    // the surviving economics write on the post-payment path is this one — and it
+    // has the same discipline: build the payload BEFORE advancing, so a failed
+    // read stops the step instead of persisting whatever the client happens to
+    // hold. On a checkout return that client copy can be a reconstructed snapshot
+    // full of placeholders, which is exactly how confirmed rates were overwritten.
+    const body = sliceFrom("async function saveModelEconomics(", 2400);
     const build = body.indexOf("buildEconomicsPayload");
-    const advance = body.indexOf('setStep("model")');
+    const write = body.indexOf("saveBrandSalesEconomics");
     expect(build).toBeGreaterThan(-1);
-    expect(advance).toBeGreaterThan(build);
-    // The catch bails out before the write and before advancing.
-    expect(body).toContain("setBusy(false);\n        return;");
+    expect(write).toBeGreaterThan(build);
   });
 
   it("refreshes the cached stored set from what was actually persisted", () => {
     expect(src).toContain("function rememberSavedEconomics(saved: BrandSalesEconomics)");
     expect(src).toContain("rememberSavedEconomics(salesEconomics)");
-    // The projection is refreshed against the persisted values, not the client copy.
-    expect(src).toContain("fetchFreshWorkflowProjectionForRates(id, savedRates, outcome)");
+    // The rates step that owned the projection refresh is gone with the
+    // brand-level model; the budget step refreshes it from the persisted values.
+    expect(src).not.toContain("fetchFreshWorkflowProjectionForRates");
   });
 
   it("warms the stored set on the post-payment paths, which never hydrate", () => {
