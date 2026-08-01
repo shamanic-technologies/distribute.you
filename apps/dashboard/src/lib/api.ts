@@ -2064,16 +2064,30 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 export async function extractBrandFields(
   brandIds: string[],
   fields: ExtractFieldDef[],
-  opts?: { token?: string; resetCache?: boolean; urlStrategy?: "url_map" | "landing"; mode?: "extract" | "suggest" },
+  opts?: {
+    token?: string;
+    resetCache?: boolean;
+    urlStrategy?: "url_map" | "landing";
+    mode?: "extract" | "suggest";
+    /**
+     * Keys to write again from scratch, ignoring whatever the user already confirmed
+     * for them: their confirmed value is neither shown to the model as authoritative
+     * context nor overlaid onto the response. Confirmed values for keys NOT listed
+     * still reach the model, so regenerating the offer levers still sees the brand's
+     * confirmed services. Nothing is persisted — the caller saves the reviewed draft.
+     * Every key must also appear in `fields` or brand-service 400s.
+     */
+    regenerateFieldKeys?: string[];
+  },
 ): Promise<ExtractFieldsResponse> {
-  const { token, resetCache, urlStrategy, mode } = opts ?? {};
+  const { token, resetCache, urlStrategy, mode, regenerateFieldKeys } = opts ?? {};
   // `mode` (brand-service): omitted/"extract" = site-grounded (returns "Unknown" when
   // absent); "suggest" = a generative Hormozi + top-3-expert persona that infers a
   // best-effort value where the source is silent and never returns "Unknown". Onboarding
   // passes "suggest" for the user-facing offer levers + services (USER_PROFILE_FIELDS).
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy, mode } },
+    { token, method: "POST", body: { brandIds, fields, resetCache, urlStrategy, mode, regenerateFieldKeys } },
   );
 }
 

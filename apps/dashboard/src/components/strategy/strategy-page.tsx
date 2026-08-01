@@ -556,6 +556,11 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
       extractBrandFields([brandId], prefillDefsFor(SERVICES_PREFILL_KEYS, USER_PROFILE_FIELDS), {
         resetCache: true,
         mode: "suggest",
+        // Write these again from scratch. Without it brand-service hands back the
+        // value the user already confirmed — it injects confirmed fields into the
+        // prompt as authoritative AND overlays them onto the response — so a button
+        // that says "update from my website" would return the user's own input.
+        regenerateFieldKeys: [...SERVICES_PREFILL_KEYS],
       }),
     onSuccess: (resp) => {
       const map = fieldResultsToMap(resp.fields);
@@ -584,6 +589,10 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
       return extractBrandFields([brandId], prefillDefsFor(LEVER_PREFILL_KEYS, USER_PROFILE_FIELDS), {
         resetCache: true,
         mode: "suggest",
+        // Only the levers. The brand's confirmed SERVICES are deliberately left out
+        // of this list so they still reach the model as authoritative context — the
+        // levers are written from them.
+        regenerateFieldKeys: [...LEVER_PREFILL_KEYS],
       });
     },
     onSuccess: (resp) => {

@@ -132,6 +132,24 @@ describe("the offer card wires both buttons", () => {
     expect(page).not.toContain('mode: "extract"');
   });
 
+  it("asks brand-service to IGNORE what the user already confirmed", () => {
+    // brand-service injects a brand's confirmed fields into the generation prompt as
+    // authoritative AND overlays them onto the response, so without this a button
+    // that says "update from my website" returns the user's own previous input.
+    expect(page).toContain("regenerateFieldKeys: [...SERVICES_PREFILL_KEYS]");
+    expect(page).toContain("regenerateFieldKeys: [...LEVER_PREFILL_KEYS]");
+  });
+
+  it("never regenerates the services from the LEVERS button", () => {
+    // The levers are written FROM the services, so the services' confirmed value must
+    // keep reaching the model as authoritative context. Listing them here would strip
+    // exactly the input the levers are generated from.
+    const at = page.indexOf("const prefillLeversMut");
+    const body = page.slice(at, page.indexOf("const prefilling"));
+    expect(body).toContain("regenerateFieldKeys: [...LEVER_PREFILL_KEYS]");
+    expect(body).not.toContain("SERVICES_PREFILL_KEYS");
+  });
+
   it("hides both buttons on a shared link and under a campaign", () => {
     // A share link is read-only, and under a campaign the offer is a preview with no
     // writer — a button that rewrites fields nobody can save is a dead control.

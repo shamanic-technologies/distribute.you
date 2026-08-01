@@ -100,6 +100,12 @@ export function BrandUserFieldsCard({
       extractBrandFields([brandId], prefillDefsFor(prefillKeys, USER_PROFILE_FIELDS), {
         resetCache: true,
         mode: "suggest",
+        // Write this card's own fields again from scratch. Without it brand-service
+        // hands back what the user already confirmed — it injects confirmed fields
+        // into the prompt as authoritative AND overlays them onto the response.
+        // Scoped to this card, so the levers card still sees the confirmed services
+        // it generates from.
+        regenerateFieldKeys: [...prefillKeys],
       }),
     onSuccess: (resp) => {
       const map = fieldResultsToMap(resp.fields);
