@@ -750,27 +750,102 @@ export type BrandOptimizationGoal =
   | "form_submissions"
   | "website_purchase"
   | "sales";
+/**
+ * The ONE goal vocabulary the fleet is converging on — camelCase runtime tokens,
+ * owned by brand-service (it owns what a brand declares).
+ *
+ * Three lists describe these same goals today and each carries translation layers
+ * for the other two: brand-service's `CurrentGoal` (camelCase) beside its own
+ * `LegacyOptimizationGoal` (snake, and named "legacy" in its own source),
+ * features-service's `Goal` (camelCase), and this file's `BrandOptimizationGoal`
+ * (snake). They do not agree — `websitePurchase` is `purchase` in one of them, and
+ * the bare token `sales` means WEBSITE PURCHASE to brand-service while it means
+ * COMBINED sales here and in features-service. That collision is not theoretical:
+ * it put every website-purchase brand in the combined-sales bucket of the fleet
+ * benchmark (distribute.you#3214).
+ *
+ * This list is the target. It is pinned by `tests/goal-vocabulary.test.ts` so the
+ * three lists cannot drift further apart while the migration is in flight.
+ */
+export const CANONICAL_GOALS = [
+  "signup",
+  "meetingBooked",
+  "websitePurchase",
+  "combinedSales",
+  "websiteVisit",
+  "positiveReply",
+  "formSubmission",
+  "whatsappConversation",
+] as const;
+
+export type CanonicalGoal = (typeof CANONICAL_GOALS)[number];
+
+/**
+ * Every spelling this app may receive for a brand's optimization goal: its own
+ * local snake vocabulary, brand-service's current wire spellings, and the
+ * canonical camelCase tokens above.
+ *
+ * The canonical tokens are here AHEAD of brand-service emitting them. That is the
+ * point: brand-service switching its emission is a breaking change for any
+ * consumer that cannot already read the new spelling, so the dashboard learns to
+ * read both BEFORE the producer flips. Reading a spelling nobody sends yet costs
+ * nothing; failing to parse the day it arrives takes down every economics surface.
+ */
 type BrandOptimizationGoalWire =
   | BrandOptimizationGoal
   | "booked_meetings"
   | "combined_sales"
-  | "purchase";
+  | "purchase"
+  | CanonicalGoal;
 
-function normalizeBrandOptimizationGoal(
+/**
+ * Collapse any wire spelling onto this app's local goal vocabulary.
+ *
+ * `whatsappConversation` is deliberately ABSENT from the return type: no brand
+ * carries that goal today and adding it here would mean adding a member to
+ * `BrandOptimizationGoal`, which several exhaustive `Record`s key on. It is a
+ * separate change, and the schema union below does not accept it either — so a
+ * whatsapp brand fails LOUD at parse rather than reading as a sales meeting.
+ */
+export function normalizeBrandOptimizationGoal(
   goal: BrandOptimizationGoalWire,
 ): BrandOptimizationGoal {
-  if (goal === "signups") return "signups";
-  if (goal === "website_visits") return "website_visits";
-  if (goal === "positive_replies") return "positive_replies";
-  if (goal === "form_submissions") return "form_submissions";
-  // The combined-sales goal is `combined_sales` on the brand-service wire.
-  if (goal === "combined_sales") return "sales";
-  // The renamed website-purchase goal reads as `website_purchase`. The LEGACY `sales`
-  // wire (brand-service used to persist the old purchase goal as `sales`) + the legacy
-  // `purchase` spelling both collapse to the renamed website_purchase goal.
-  if (goal === "website_purchase" || goal === "sales" || goal === "purchase") return "website_purchase";
-  // booked_meetings / sales_meetings collapse to sales_meetings.
-  return "sales_meetings";
+  switch (goal) {
+    case "signups":
+    case "signup":
+      return "signups";
+    case "website_visits":
+    case "websiteVisit":
+      return "website_visits";
+    case "positive_replies":
+    case "positiveReply":
+      return "positive_replies";
+    case "form_submissions":
+    case "formSubmission":
+      return "form_submissions";
+    // The combined-sales goal is `combined_sales` on the brand-service wire today
+    // and `combinedSales` once it speaks canonical.
+    case "combined_sales":
+    case "combinedSales":
+      return "sales";
+    // The renamed website-purchase goal reads as `website_purchase`. The LEGACY `sales`
+    // wire (brand-service still persists the old purchase goal as `sales`, and its
+    // internal read emits `sales` for EVERY purchase brand) + the `purchase` runtime
+    // spelling + the canonical `websitePurchase` all collapse to it.
+    case "website_purchase":
+    case "sales":
+    case "purchase":
+    case "websitePurchase":
+      return "website_purchase";
+    case "sales_meetings":
+    case "booked_meetings":
+    case "meetingBooked":
+      return "sales_meetings";
+  }
+  // Exhaustive above. A value reaching here is a spelling added to the wire union
+  // without being mapped — fail loud rather than silently reading as a sales
+  // meeting, which is what the old catch-all `return "sales_meetings"` did.
+  throw new Error(`Unmapped brand optimization goal: ${goal as string}`);
 }
 
 function serializeBrandOptimizationGoal(
@@ -873,6 +948,11 @@ const BrandSalesEconomicsSchema = z.object({
   visitToFormSubmissionPct: z.number().nullable().optional(),
   formSubmissionToPaidClientPct: z.number().nullable().optional(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
+  // Both vocabularies: the snake spellings brand-service emits today, and the
+  // canonical camelCase it is migrating to. Accepting the canonical ones now is
+  // what lets the producer flip its emission without breaking this app — see
+  // `CANONICAL_GOALS`. `whatsappConversation` is absent on purpose: this app has
+  // no local goal for it, so it must fail loud here rather than be mapped.
   optimizationGoal: z.union([
     z.literal("signups"),
     z.literal("sales_meetings"),
@@ -883,6 +963,13 @@ const BrandSalesEconomicsSchema = z.object({
     z.literal("website_visits"),
     z.literal("positive_replies"),
     z.literal("form_submissions"),
+    z.literal("signup"),
+    z.literal("meetingBooked"),
+    z.literal("websitePurchase"),
+    z.literal("combinedSales"),
+    z.literal("websiteVisit"),
+    z.literal("positiveReply"),
+    z.literal("formSubmission"),
   ]).transform(normalizeBrandOptimizationGoal),
   updatedAt: z.string(),
 });
