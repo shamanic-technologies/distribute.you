@@ -1,0 +1,265 @@
+import { describe, it, expect } from "vitest";
+import fs from "fs";
+import path from "path";
+
+// Source-substring guards: these modules import through the `@` alias, which vitest
+// does not resolve in this repo, so the flow itself is not runtime-importable. The
+// pure display adapter it reads (`lib/onboarding-funnel-view.ts`) carries no alias
+// import and IS unit-tested, in `onboarding-funnel-view.test.ts`.
+const flow = fs.readFileSync(
+  path.join(__dirname, "../src/components/onboarding/onboarding.tsx"),
+  "utf-8",
+);
+const page = fs.readFileSync(
+  path.join(__dirname, "../src/app/(authed)/onboarding/page.tsx"),
+  "utf-8",
+);
+
+/** Slice forward from an anchor. Lengths measured against the real file, with headroom. */
+function sliceFrom(anchor: string, length: number): string {
+  const at = flow.indexOf(anchor);
+  expect(at, `anchor not found: ${anchor}`).toBeGreaterThan(-1);
+  return flow.slice(at, at + length);
+}
+
+describe("onboarding — one flow, no gate", () => {
+  it("serves the funnels flow to every signup", () => {
+    // It ran behind the beta allowlist while brand-service had nowhere to put the
+    // per-funnel economics. It does now, so the gate is gone — and with it the
+    // `?flow=ga` escape hatch, which existed only to reach the other flow.
+    expect(page).toContain("<Onboarding />");
+    expect(page).not.toContain("useIsBetaUser");
+    expect(page).not.toContain("useIsAdminUser");
+    expect(page).not.toContain('searchParams.get("flow")');
+    expect(page).not.toContain("variant");
+  });
+
+  it("leaves the component no variant to branch on", () => {
+    // A variant prop is what let two step orders live in one file. With one flow
+    // there is nothing to guard, so a re-added branch would be a second flow
+    // nobody asked for.
+    expect(flow).toContain("export function Onboarding()");
+    expect(flow).not.toContain("OnboardingVariant");
+    expect(flow).not.toContain("isV2");
+  });
+});
+
+describe("onboarding — step order", () => {
+  it("sends services straight to audiences", () => {
+    expect(flow).toContain('setStep("audiences")');
+  });
+
+  it("puts the sales funnels AFTER audiences", () => {
+    expect(flow).toContain('onBack={() => setStep("services")}');
+    expect(flow).toContain('onContinue={() => setStep("funnels")}');
+  });
+
+  it("routes consent back to the primary-funnel pick", () => {
+    expect(flow).toContain('<BackButton onClick={() => setStep("primary")} />');
+  });
+
+  it("collects the economics per funnel after payment", () => {
+    expect(flow).toContain('setStep("funnelStats")');
+  });
+
+  it("renders none of the steps the brand-level flow had", () => {
+    // `destination`, `objective`, `rates` and `ltr` asked for ONE click
+    // destination, ONE goal and ONE set of rates — the brand-level model the
+    // funnels replaced. Their render blocks are gone; only the legacy remap and
+    // the Step union still name them.
+    for (const dead of [
+      'if (step === "destination") {',
+      'if (step === "objective") {',
+      'if (step === "rates") {',
+      'if (step === "ltr") {',
+    ]) {
+      expect(flow, `retired step still renders: ${dead}`).not.toContain(dead);
+    }
+    for (const dead of [
+      "saveRatesAndContinue",
+      "saveLtrAndContinue",
+      "saveDestinationAndContinue",
+    ]) {
+      expect(flow, `retired saver still present: ${dead}`).not.toContain(dead);
+    }
+  });
+});
+
+describe("onboarding — persistence", () => {
+  it("keeps the retired step names parsable without bumping the snapshot version", () => {
+    // Removing a name NARROWS what a snapshot may legally carry, which strands a
+    // session that was mid-checkout when this shipped. A bump does the same.
+    expect(flow).toContain("ONBOARDING_STATE_VERSION = 8");
+    expect(flow).toContain('"destination", "objective", "rates"');
+  });
+
+  it("keeps the funnel selection out of the persisted shape", () => {
+    // The persisted state is a fixed record; a new field there is what would force
+    // the version bump. The picks ride the pending-checkout blob's TOP level
+    // instead, which is version-independent.
+    const persisted = sliceFrom("type PersistedOnboardingState", 1800);
+    expect(persisted).not.toContain("selectedFunnelKeys");
+    expect(persisted).not.toContain("primaryFunnelKey");
+    expect(persisted).not.toContain("funnelDrafts");
+  });
+
+  it("keeps the brand-level click destination in the persisted shape", () => {
+    // The flow stopped ASKING for it, but removing the field is a version bump.
+    const persisted = sliceFrom("type PersistedOnboardingState", 1800);
+    expect(persisted).toContain("clickDestinationUrl");
+  });
+});
+
+describe("onboarding — what it writes", () => {
+  it("states the WHOLE funnel set when the user picks", () => {
+    // Distinct from declaring one funnel: this is what flips `declared` and what
+    // removes a funnel the user unpicked. features-service reads that set to
+    // arbitrate the goal, so it lands before the budget step prices an outcome.
+    const save = sliceFrom("async function saveFunnelsAndContinue()", 1100);
+    expect(save).toContain("stateBrandSalesFunnels(id, selectedFunnelKeys)");
+    expect(save).toContain('setStep("primary")');
+  });
+
+  it("writes the primary funnel's goal, restating every other metric from the wire", () => {
+    const save = sliceFrom("async function savePrimaryFunnelAndContinue()", 1250);
+    // Rendered keys = none: this step shows no rate, so it has no business
+    // overwriting one from client state (the #3039 incident).
+    expect(save).toContain("buildEconomicsPayload(id, [], rates)");
+    expect(save).toContain("optimizationGoal: nextOutcome");
+    expect(save).toContain("rememberSavedEconomics(salesEconomics)");
+  });
+
+  it("prices each funnel through the same partial patch the settings card uses", () => {
+    const save = sliceFrom("async function saveFunnelStatsAndContinue()", 2900);
+    // Read what is STORED from the wire on every write: the patch is the DIFF
+    // against it, which is what keeps a prefill nobody confirmed from being
+    // written and what makes an emptied field really clear.
+    expect(save).toContain("await getBrandSalesFunnels(id)");
+    expect(save).toContain("buildFunnelPatch(def, draft, storedFunnelValues(stored, funnel.key))");
+    expect(save).toContain("declareBrandSalesFunnel(id, funnel.key, patch)");
+  });
+
+  it("stops the funnel step on a refusal instead of advancing past it", () => {
+    const save = sliceFrom("async function saveFunnelStatsAndContinue()", 2900);
+    expect(save).toContain("setError(funnelWriteErrorMessage(err))");
+    // `err.message` is the whole downstream body verbatim — a JSON blob in front
+    // of a customer, and it destroys the `code` every consumer reads.
+    expect(save).not.toContain("err.message");
+  });
+
+  it("mirrors the brand-level click destination from the first funnel that has one", () => {
+    // The flow no longer asks for it on a screen of its own, but brand-service
+    // still serves it on the brand read and consumers link off it. Same value the
+    // user just typed, never an invented one, and written once per session.
+    const save = sliceFrom("async function saveFunnelStatsAndContinue()", 2900);
+    expect(save).toContain("clickDestinationMirroredRef.current");
+    expect(save).toContain("saveBrandClickDestination(id, page)");
+  });
+});
+
+describe("onboarding — the funnel screens no longer disclaim themselves", () => {
+  it("drops the preview wording now that the values persist", () => {
+    expect(flow).not.toContain("not stored yet");
+    expect(flow).not.toContain("Preview — per-path");
+  });
+
+  it("carries no beta badge on a flow every customer gets", () => {
+    // The badge rides the gate. No gate, no badge — a badge on a GA surface says
+    // something about it that is not true.
+    expect(flow).not.toContain('MaturityBadge level="beta"');
+    expect(flow).not.toContain("maturity-badge");
+  });
+});
+
+describe("onboarding — copy", () => {
+  it("continues the landing's promise instead of re-pitching a converted user", () => {
+    expect(flow).toContain("Sell like crazy, autonomously.");
+    expect(flow).not.toContain("Pay per outcome, like Google Ads.");
+  });
+
+  it("keeps the model vocabulary off the projection step", () => {
+    const model = sliceFrom('if (step === "model")', 3000);
+    expect(model).toContain("Your most profitable path with us.");
+    expect(flow).not.toContain("Your best model.");
+  });
+});
+
+describe("onboarding — funnel catalogue", () => {
+  it("reads the catalogue through the display adapter, never field by field", () => {
+    // Mapping over the adapter means a reshaped catalogue lands here with no edit;
+    // reaching into `.steps` at a render site would break the day it does.
+    expect(flow).toContain("toFunnelViews(SALES_FUNNELS as unknown as FunnelCatalogueEntry[]");
+    // Rate labels come from the catalogue's OWN resolver, so a rate reads the same
+    // word here as on the settings card instead of drifting into a second wording.
+    expect(flow).toContain("funnelRateFields(entry as unknown as SalesFunnelDef)");
+    expect(flow).toContain("selectableFunnels(funnelViews, !noWebsiteMode)");
+    expect(flow).toContain("orderedForDetail(selectedFunnels, primaryFunnelKey)");
+  });
+
+  it("keeps a selection from ever losing its primary", () => {
+    // A set of selected funnels with none of them primary has no goal for the
+    // budget step to price.
+    expect(flow).toContain("resolvePrimaryKey(next, current)");
+    expect(flow).toContain("resolvePrimaryKey(selectedFunnelKeys, current)");
+  });
+
+  it("reports an unpriceable pipeline as absent, never as zero", () => {
+    const pipeline = sliceFrom("function monthlyPipelineLabel(", 1200);
+    expect(pipeline).toContain("return null");
+    expect(pipeline).not.toContain('return "$0"');
+    // Goes through the shared locale helper, like every other number in the flow.
+    expect(pipeline).toContain("formatLocaleInteger");
+  });
+});
+
+describe("onboarding — resume", () => {
+  it("maps a retired step onto the one that asks the same thing now", () => {
+    // A resume sets the step DIRECTLY — from a snapshot written before the funnels
+    // flow shipped, or an in-flight checkout blob — so without this mapping the
+    // user lands on a step that no longer renders.
+    const map = sliceFrom("function legacyStepFor(step: Step): Step {", 520);
+    expect(map).toContain('case "destination":');
+    expect(map).toContain('return "audiences"');
+    expect(map).toContain('case "objective":');
+    expect(map).toContain('case "rates":');
+    expect(map).toContain('return "funnels"');
+    expect(map).toContain('case "ltr":');
+    expect(map).toContain('return "funnelStats"');
+  });
+
+  it("routes the cross-session brand resume at the funnel step", () => {
+    expect(flow).toContain('runResume("funnels", seededUrl)');
+  });
+
+  it("self-corrects rather than rendering a step the flow does not have", () => {
+    const failsafe = sliceFrom('if (step === "destination" || step === "objective"', 240);
+    expect(failsafe).toContain("setStep(legacyStepFor(step))");
+    expect(failsafe).toContain("return null");
+  });
+});
+
+describe("onboarding — the primary step promises nothing about orchestration", () => {
+  const primary = sliceFrom('if (step === "primary")', 1500);
+
+  it("asks for the primary goal in the words the product uses", () => {
+    expect(primary).toContain("primary sales funnel goal with us today");
+  });
+
+  it("states the one true consequence: it calibrates the pricing", () => {
+    expect(primary).toContain("calibrate your pricing");
+  });
+
+  it("never claims we run that funnel first, or that the others can be switched to", () => {
+    // We do not control which funnel the orchestrator picks up first, so copy that
+    // says we do is a promise the product cannot keep — the same class as a status
+    // label stating what we ATTEMPTED rather than what HAPPENED.
+    for (const claim of [
+      "one path to start",
+      "switch at any time",
+      "Which one first",
+      "your first path",
+    ]) {
+      expect(flow, `sequencing claim still on screen: ${claim}`).not.toContain(claim);
+    }
+  });
+});

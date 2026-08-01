@@ -64,22 +64,23 @@ describe("post-payment step wiring in onboarding.tsx", () => {
     expect(onboardingSrc).toContain("window.sessionStorage.removeItem(CHECKOUT_PENDING_KEY);");
   });
 
-  it("introduces the best model after LTR (same ladder + pick as the Strategy page)", () => {
+  it("introduces the best model after the funnel screens (same ladder + pick as the Strategy page)", () => {
     expect(onboardingSrc).toContain('| "model"');
     expect(onboardingSrc).toContain('if (step === "model")');
     expect(onboardingSrc).toContain("getWorkflowProjectionLadder");
     expect(onboardingSrc).toContain("pickBestBrandRow");
     expect(onboardingSrc).toContain("<BestModelStats");
-    // LTR advances to the model step (not straight to offer)
+    // The last funnel screen advances to the model step (not straight to offer)
     expect(onboardingSrc).toContain('setStep("model");');
   });
 
-  it("saves lifetime revenue via sales-economics and the phone via savePhoneNumber", () => {
-    expect(onboardingSrc).toContain("function saveLtrAndContinue");
-    // The step renders only the lifetime revenue, so it is the only metric taken from
-    // the form — the other five are restated from the stored set (see
-    // onboarding-economics-write.test.ts).
-    expect(onboardingSrc).toContain('await buildEconomicsPayload(id, ["ltv"], { ...rates, ltv })');
+  it("prices each funnel and saves the phone via savePhoneNumber", () => {
+    // The single lifetime-revenue screen is gone: each funnel carries its own, and
+    // each is written on its own screen through the shared partial patch (see
+    // onboarding-funnels-flow.test.ts).
+    expect(onboardingSrc).toContain("async function saveFunnelStatsAndContinue()");
+    expect(onboardingSrc).toContain("declareBrandSalesFunnel(id, funnel.key, patch)");
+    expect(onboardingSrc).not.toContain("function saveLtrAndContinue");
     expect(onboardingSrc).toContain("await savePhoneNumber(phone);");
   });
 

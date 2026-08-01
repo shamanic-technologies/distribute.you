@@ -28,12 +28,14 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("loadStep === 1 && i === 2");
   });
 
-  it("welcome step shows value propositions instead of indicative price cards", () => {
+  it("welcome step answers the objections between it and the URL field", () => {
+    // Not a feature tour (NN/g: "skip onboarding when possible"), and not a price
+    // card — the visitor already converted on the landing.
     for (const copy of [
-      "Drop your URL",
-      "We run outreach",
-      "You get outcomes",
-      "Finds leads and contacts buyers across the best channels.",
+      "Sell like crazy, autonomously.",
+      "We send, not you",
+      "You set the ceiling",
+      "Pause anytime",
     ]) {
       expect(src).toContain(copy);
     }
@@ -106,8 +108,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain('extractBrandFields([id], USER_PROFILE_FIELDS, { mode: "suggest" })');
   });
 
-  it("offers the two sales goals and prices in the chosen unit", () => {
-    expect(src).toContain("What is your primary sales goal?");
+  it("takes the goal from the primary funnel and prices in that unit", () => {
+    // The standalone goal picker is gone: the funnel the brand picks as primary IS
+    // the optimization goal, so the question is asked once, in the words the brand
+    // already used to describe how it sells.
+    expect(src).toContain("primary sales funnel goal with us today");
+    expect(src).not.toContain("What is your primary sales goal?");
     for (const unit of ["signups", "meetings"]) {
       expect(src).toContain(unit);
     }
@@ -121,15 +127,12 @@ describe("Beta onboarding guided flow", () => {
   it("uses the selected goal for workflow projection and persisted economics", () => {
     expect(src).toContain("salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome))");
     expect(src).toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
-    // Projected against what was PERSISTED, not the client copy — the two differ for
-    // every metric the rates step did not render.
-    expect(src).toContain("fetchFreshWorkflowProjectionForRates(id, savedRates, outcome)");
-    expect(src).toContain("workflowProjectionMatchesOutcomeRates(proj, goal");
-    expect(src).toContain("PRICING_REFRESH_RETRIES");
-    expect(src).toContain("Pricing is still refreshing from your new rates");
-    expect(src).toContain("workflowOutcomeUnitCost(w, goal");
-    expect(src).toContain("replyToMeetingPct: nextRates.r2m");
-    expect(src).toContain("visitToMeetingPct: nextRates.v2m");
+    // The rates step that owned the stale-projection retry is gone with the
+    // brand-level model; the projection is now resolved per goal at the primary
+    // step and refreshed by the budget step itself.
+    expect(src).not.toContain("fetchFreshWorkflowProjectionForRates");
+    expect(src).not.toContain("PRICING_REFRESH_RETRIES");
+    expect(src).toContain("workflowOutcomeUnitCost");
     expect(src).not.toContain("projection refresh after rates failed");
     expect(src).not.toContain('objective: "self-serve"');
   });
@@ -153,7 +156,6 @@ describe("Beta onboarding guided flow", () => {
 
   it("keeps rate inputs editable as text and validates decimals on continue", () => {
     expect(src).toContain("parseRateTextInput");
-    expect(src).toContain("nextRates[key] = parseRateTextInput(rateText[key], key)");
     expect(src).toContain("setRateText((t) => ({ ...t, [k]: e.target.value }))");
     expect(src).not.toContain("formatRateInput(e.target.value)");
   });

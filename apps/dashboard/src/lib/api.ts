@@ -1159,6 +1159,41 @@ export async function getBrandSalesFunnels(
   return parsed.data;
 }
 
+/**
+ * PUT /brands/:brandId/sales-funnels — state the WHOLE set at once: exactly
+ * these funnels, no others.
+ *
+ * DISTINCT from declaring one funnel. Declaring adds; this REPLACES the set, so
+ * it is what removes a funnel the brand no longer sells through, and it is the
+ * only way to answer "I sell through NONE of these" (`[]`) — a real answer, and
+ * a different one from never having said anything.
+ *
+ * A funnel already in the set KEEPS the economics it was priced with, so
+ * restating a set never wipes what a brand confirmed; a funnel dropped from it
+ * loses its declaration and its economics together. The set is validated whole
+ * before anything is written, so a rejected set leaves nothing half-applied.
+ */
+export async function stateBrandSalesFunnels(
+  brandId: string,
+  funnelKeys: string[],
+  token?: string,
+): Promise<BrandSalesFunnelSet> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-funnels`, {
+    token,
+    method: "PUT",
+    body: { funnelKeys },
+  });
+  const parsed = GetBrandSalesFunnelsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] stateBrandSalesFunnels: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] stateBrandSalesFunnels: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // WRITE: the row was just persisted, so the funnel is always present. Per the
 // per-verb schema rule the write DTO is its own, narrower than the read sibling.
 const DeclareBrandSalesFunnelResponseSchema = z.object({
