@@ -14,6 +14,8 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { pollOptions } from "@/lib/query-options";
 import {
+  extractBrandFields,
+  fieldResultsToMap,
   getBrandUserFields,
   getBrandSalesEconomics,
   getCampaign,
@@ -23,6 +25,7 @@ import {
   optimizationGoalForRuntimeGoal,
   saveBrandUserFields,
   USER_FIELD_KEYS,
+  USER_PROFILE_FIELDS,
 } from "@/lib/api";
 import type {
   BrandOptimizationGoal,
@@ -51,6 +54,12 @@ import {
   pickBestBrandRow,
   WORKFLOW_GRAIN_LABEL,
 } from "@/lib/strategy-model";
+import {
+  applyExtractionToDraft,
+  prefillDefsFor,
+  LEVER_PREFILL_KEYS,
+  SERVICES_PREFILL_KEYS,
+} from "@/lib/offer-prefill";
 import {
   BestModelStats,
   cpprFromRow,
@@ -169,6 +178,43 @@ function Card({
       </div>
       <div className="mt-4">{children}</div>
     </section>
+  );
+}
+
+/**
+ * One of the two "Update from my website" buttons on the offer card.
+ *
+ * The in-flight label stays at full opacity and says what is happening: a disabled
+ * button carrying `disabled:opacity-40` fades the very word meant to signal work and
+ * reads as a dead control. Only the genuinely-unavailable state fades.
+ */
+function PrefillButton({
+  label,
+  pendingLabel,
+  pending,
+  disabled,
+  title,
+  onClick,
+}: {
+  label: string;
+  pendingLabel: string;
+  pending: boolean;
+  disabled: boolean;
+  title?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || pending}
+      title={title}
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition ${
+        pending ? "cursor-wait" : "hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed"
+      }`}
+    >
+      {pending ? pendingLabel : label}
+    </button>
   );
 }
 
@@ -486,6 +532,77 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
     saveOfferMut.mutate(offerFields);
   };
 
+  // ── "Update from my website" ───────────────────────────────────────────────
+  // Two buttons, because the two halves of the offer are written from different
+  // inputs: the services are read off the site, and the six Hormozi levers are
+  // written FROM those services. One button would have to invent the levers before
+  // it had settled what the brand actually sells.
+  //
+  // Both are a RESET into the DRAFT: the fields they own take whatever came back,
+  // and a field the extraction did not answer is cleared. Nothing is persisted until
+  // the user reviews it and presses Save, which is what makes a destructive reset
+  // safe to offer.
+  const [prefillError, setPrefillError] = useState<string | null>(null);
+  const offerEditable = !readOnly && !campaignScoped;
+
+  const savedServices = coerceListField(offerBaseline.services);
+  const draftServices = coerceListField(offerFields.services);
+  const servicesDirty =
+    savedServices.length !== draftServices.length ||
+    savedServices.some((v, i) => v !== draftServices[i]);
+
+  const prefillServicesMut = useMutation({
+    mutationFn: () =>
+      extractBrandFields([brandId], prefillDefsFor(SERVICES_PREFILL_KEYS, USER_PROFILE_FIELDS), {
+        resetCache: true,
+        mode: "suggest",
+      }),
+    onSuccess: (resp) => {
+      const map = fieldResultsToMap(resp.fields);
+      const targets = ALL_FIELDS.filter((f) => SERVICES_PREFILL_KEYS.includes(f.key));
+      setOfferDraft((prev) => applyExtractionToDraft(prev ?? offerBaseline, targets, map));
+    },
+    // The real error goes to the console; the user gets our own copy. An `apiCall`
+    // failure carries the downstream response body verbatim in its message.
+    onError: (err) => {
+      console.error("[dashboard] offer prefill failed:", err);
+      setPrefillError("Could not read your website. Try again.");
+    },
+  });
+
+  const prefillLeversMut = useMutation({
+    // The levers are written FROM the services, and brand-service supplies that
+    // itself: it injects the brand's CONFIRMED fields into the generation as
+    // authoritative context. So services the user has typed but not saved are
+    // invisible to it — confirm them first rather than generating an offer for a
+    // list of services the backend has never seen.
+    mutationFn: async () => {
+      if (servicesDirty) {
+        await saveBrandUserFields(brandId, { services: draftServices });
+        await queryClient.invalidateQueries({ queryKey: ["brandUserFields", brandId] });
+      }
+      return extractBrandFields([brandId], prefillDefsFor(LEVER_PREFILL_KEYS, USER_PROFILE_FIELDS), {
+        resetCache: true,
+        mode: "suggest",
+      });
+    },
+    onSuccess: (resp) => {
+      const map = fieldResultsToMap(resp.fields);
+      const targets = ALL_FIELDS.filter((f) => LEVER_PREFILL_KEYS.includes(f.key));
+      setOfferDraft((prev) => applyExtractionToDraft(prev ?? offerBaseline, targets, map));
+    },
+    // The real error goes to the console; the user gets our own copy. An `apiCall`
+    // failure carries the downstream response body verbatim in its message.
+    onError: (err) => {
+      console.error("[dashboard] offer prefill failed:", err);
+      setPrefillError("Could not read your website. Try again.");
+    },
+  });
+
+  const prefilling = prefillServicesMut.isPending || prefillLeversMut.isPending;
+  // With no services at all there is nothing for the levers to be about.
+  const leversBlockedOnServices = draftServices.length === 0;
+
   // Best model = the cheapest BRAND-LEVEL workflow, ranked on resolved.costPerOutcomeUsd
   // (the goal metric) at the row's server-resolved brand/crossOrg grain. We do NOT drive
   // this off recommendedWorkflowDynastySlug — that argmin spans per-audience rows (it's
@@ -606,7 +723,38 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
           subtitle={
             readOnly
               ? "Your offer through the Alex Hormozi value equation. We write the emails around these."
-              : "Your offer through the Alex Hormozi value equation. We write the emails around these. Hover any field to edit it inline."
+              : "Your offer through the Alex Hormozi value equation. We write the emails around these. Click any field to edit it."
+          }
+          action={
+            offerEditable ? (
+              <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center">
+                <PrefillButton
+                  label="Update services from my website"
+                  pendingLabel="Reading your website…"
+                  pending={prefillServicesMut.isPending}
+                  disabled={prefilling}
+                  onClick={() => {
+                    setPrefillError(null);
+                    prefillServicesMut.mutate();
+                  }}
+                />
+                <PrefillButton
+                  label="Update the offer from my website"
+                  pendingLabel="Writing your offer…"
+                  pending={prefillLeversMut.isPending}
+                  disabled={prefilling || leversBlockedOnServices}
+                  title={
+                    leversBlockedOnServices
+                      ? "Add what you sell first. The offer is written from your services."
+                      : undefined
+                  }
+                  onClick={() => {
+                    setPrefillError(null);
+                    prefillLeversMut.mutate();
+                  }}
+                />
+              </div>
+            ) : undefined
           }
         >
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
@@ -662,6 +810,17 @@ export function StrategyPage({ campaignId }: { campaignId?: string } = {}) {
                   );
                 })}
               </ul>
+
+              {prefillError ? (
+                <p className="mt-4 text-xs text-red-600">{prefillError}</p>
+              ) : null}
+
+              {offerEditable ? (
+                <p className="mt-4 text-xs text-gray-400">
+                  Updating from your website rewrites these fields with what we read there.
+                  Nothing is saved until you press Save.
+                </p>
+              ) : null}
 
               {campaignScoped ? (
                 <p className="mt-4 text-xs text-gray-400">

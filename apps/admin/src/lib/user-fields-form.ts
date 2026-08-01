@@ -3,10 +3,8 @@
 // (getBrandUserFields / saveBrandUserFields); each card owns a SUBSET of the 7 keys.
 
 import {
-  SALES_PROFILE_FIELDS,
   USER_FIELD_KEYS,
   type BrandUserFields,
-  type ExtractFieldDef,
   type UserFieldKey,
   type UserFieldValue,
 } from "@/lib/api";
@@ -15,47 +13,6 @@ import { ALL_FIELDS, type FieldDef, type ProfileFields } from "@/components/bran
 // Field subsets, one per card.
 export const SERVICES_FIELDS: FieldDef[] = ALL_FIELDS.filter((f) => f.key === "services");
 export const LEVER_FIELDS: FieldDef[] = ALL_FIELDS.filter((f) => f.key !== "services");
-
-// The extract-fields key that seeds each user-field. dreamOutcome is seeded from the
-// `valueProposition` extraction (it REPLACED valueProposition); the rest match 1:1.
-export const EXTRACT_KEY_FOR_FIELD: Record<string, string> = {
-  dreamOutcome: "valueProposition",
-};
-
-// extract-fields description per extract-key (drives the extraction + is the cache key).
-const DESCRIPTION_BY_EXTRACT_KEY: Record<string, string> = Object.fromEntries(
-  SALES_PROFILE_FIELDS.map((f) => [f.key, f.description]),
-);
-
-// Per-lever guidance for the Hormozi offer-lever generation. Keyed by the user-field
-// key. Each is the concrete "what this lever is" instruction; it travels as the field
-// description while brand-service `suggest` mode applies the Alex-Hormozi framing.
-const HORMOZI_LEVER_GUIDANCE: Record<string, string> = {
-  dreamOutcome:
-    "The single most desirable result the buyer wants from this kind of offer. Make it specific, tangible and worth wanting, not a generic slogan.",
-  perceivedLikelihood:
-    "The proof that the buyer will actually get that result: track record, numbers, named results, credentials, guarantees, or any evidence that raises belief.",
-  socialProof:
-    "Recognizable clients, testimonials, case studies and concrete results that make the promise credible. Return several short items, one per proof point.",
-  riskReversal:
-    "How the downside of saying yes is removed: a guarantee, free trial, refund policy, or done-with-you support that lowers the perceived risk.",
-  urgency:
-    "A genuine reason to act now rather than later: deadlines, cohorts, seasonal windows, or time-boxed offers.",
-  scarcity:
-    "Genuine limited availability that raises perceived value: limited seats, a waitlist, or capped capacity. Only what is plausibly true for this business.",
-};
-
-// The lever description carries only WHAT the lever is (guidance) + the entered
-// services as context. The Alex-Hormozi framing + infer-don't-fabricate rule now
-// lives SERVER-SIDE in brand-service's `suggest`-mode system prompt (the levers
-// card requests mode "suggest"), so it is applied once for every lever instead of
-// being duplicated into each field description.
-function leverDescription(guidance: string, services: string[]): string {
-  const ctx = services.length
-    ? `This brand sells the following services / products: ${services.join("; ")}. `
-    : "";
-  return `${ctx}${guidance}`;
-}
 
 /** Confirmed user-fields map → the plain fields bag the inline editors work with. */
 export function userFieldsToProfile(fields: BrandUserFields | undefined): ProfileFields {
@@ -161,24 +118,19 @@ export const coerceTextField = (v: string | string[] | undefined | null): string
   return typeof v === "string" ? v : "";
 };
 
-/**
- * Build the extract-fields request defs for a card's subset. Offer levers send their
- * per-lever guidance (what the lever is) CONDITIONED on the entered services; the
- * generative Hormozi framing is applied server-side via brand-service `suggest` mode
- * (the levers card passes mode "suggest"). The services card keeps the plain literal-
- * extraction description (default "extract" mode). The description is part of the
- * extract-fields cache key, so a changed services context forces a fresh extraction.
- */
-export function buildExtractDefs(defs: FieldDef[], servicesContext?: string[]): ExtractFieldDef[] {
-  const services = (servicesContext ?? []).map((s) => s.trim()).filter(Boolean);
-  return defs.map((f) => {
-    const extractKey = EXTRACT_KEY_FOR_FIELD[f.key] ?? f.key;
-    const guidance = HORMOZI_LEVER_GUIDANCE[f.key];
-    // Levers → per-lever guidance + services context (framing is server-side);
-    // services (or any non-lever) → plain extraction description.
-    const description = guidance
-      ? leverDescription(guidance, services)
-      : (DESCRIPTION_BY_EXTRACT_KEY[extractKey] ?? f.label);
-    return { key: extractKey, description };
-  });
-}
+// NOTE: the extraction request defs are no longer built here. Both cards read the ONE
+// shared description set (`USER_PROFILE_FIELDS` in lib/api.ts) through
+// `prefillDefsFor` in lib/offer-prefill.ts, so a lever means the same thing here, on
+// the customer Strategy page and in onboarding.
+//
+// What this file used to do instead, and why it is gone:
+//  - It asked brand-service for `valueProposition` and mapped the answer onto
+//    `dreamOutcome`. The prompt names the requested JSON keys verbatim, so the model
+//    wrote a generic value proposition rather than the dream outcome the lever means.
+//  - It prepended the brand's services into all six lever descriptions, putting the
+//    same sentence in front of the model six times. brand-service already injects the
+//    brand's CONFIRMED fields (services included) as authoritative context, so the
+//    services reach the generation on their own — which is why the offer button
+//    confirms a dirty services field before it runs.
+//  - It carried its own per-lever guidance strings, duplicating the Alex-Hormozi
+//    framing that brand-service's `suggest` prompt already applies.

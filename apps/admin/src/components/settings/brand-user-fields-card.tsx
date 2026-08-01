@@ -7,7 +7,7 @@ import {
   saveBrandUserFields,
   extractBrandFields,
   fieldResultsToMap,
-  flattenFieldValue,
+  USER_PROFILE_FIELDS,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import {
@@ -17,15 +17,19 @@ import {
   type ProfileFields,
 } from "@/components/brand-profile/field-editor";
 import {
-  buildExtractDefs,
   cloneSubset,
   coerceListField,
   coerceTextField,
-  EXTRACT_KEY_FOR_FIELD,
   profileToPayload,
   subsetEqual,
   userFieldsToProfile,
 } from "@/lib/user-fields-form";
+import {
+  applyExtractionToDraft,
+  prefillDefsFor,
+  LEVER_PREFILL_KEYS,
+  SERVICES_PREFILL_KEYS,
+} from "@/lib/offer-prefill";
 
 // A Brand-Settings editor card for ONE subset of the confirmed user-fields. Two
 // instances are mounted: Services sold (its own AI prefill) and the Hormozi offer
@@ -74,50 +78,39 @@ export function BrandUserFieldsCard({
     },
   });
 
-  // Re-run the site extraction and RESET every field in this card to what it
-  // returns. This is a reset, not a top-up: a field the extraction answers is
-  // overwritten, and a field it does not answer is cleared, so what you see after a
-  // prefill is exactly what the extraction produced. `resetCache: true` bypasses
-  // every cache layer so the answer is fresh, and `suggest` mode makes brand-service
-  // generate a best-effort answer for every lever rather than skipping the ones the
-  // site does not state outright. Values land in the DRAFT — nothing is persisted
-  // until the user reviews and hits Save. For the levers card, the extraction is
-  // conditioned on the saved services (buildExtractDefs prepends them to each
-  // field's description).
+  // Re-read the brand's site and RESET every field in this card to what comes back.
+  // A reset, not a top-up: a field the extraction answers is overwritten, and one it
+  // does not answer is cleared, so what is on screen afterwards is exactly what was
+  // produced. Values land in the DRAFT — nothing is persisted until the user reviews
+  // and saves.
+  //
+  // Both cards run `suggest` mode. The services card used to run the default
+  // `extract`, which is site-grounded and returns the literal string "Unknown" for
+  // anything the site does not state outright — a value nobody wants to read in a
+  // field. `suggest` makes brand-service answer as Alex Hormozi with a panel of the
+  // brand's industry experts and always write a best-effort value.
+  //
+  // The levers are generated FROM the brand's services, and brand-service supplies
+  // that itself: it injects the brand's CONFIRMED fields into the prompt as
+  // authoritative context. So the services must be SAVED for the levers to be about
+  // them, which is what the disabled state below enforces.
+  const prefillKeys = conditionOnServices ? LEVER_PREFILL_KEYS : SERVICES_PREFILL_KEYS;
   const prefillMut = useMutation({
     mutationFn: () =>
-      extractBrandFields(
-        [brandId],
-        buildExtractDefs(defs, servicesContext),
-        // The offer-levers card (conditionOnServices) uses "suggest" mode: brand-
-        // service flips its hardcoded prompt to generate a best-effort Hormozi-style
-        // answer for every lever instead of returning "Unknown" for levers absent
-        // from the site. The services card stays on the default "extract" mode.
-        { resetCache: true, mode: conditionOnServices ? "suggest" : "extract" },
-      ),
+      extractBrandFields([brandId], prefillDefsFor(prefillKeys, USER_PROFILE_FIELDS), {
+        resetCache: true,
+        mode: "suggest",
+      }),
     onSuccess: (resp) => {
       const map = fieldResultsToMap(resp.fields);
-      setDraft((prev) => {
-        const next: ProfileFields = { ...(prev ?? baseline) };
-        for (const f of defs) {
-          const raw = map[EXTRACT_KEY_FOR_FIELD[f.key] ?? f.key];
-          if (f.kind === "list") {
-            const items =
-              raw == null
-                ? []
-                : Array.isArray(raw)
-                  ? raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-                  : flattenFieldValue(raw).split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-            next[f.key] = items;
-          } else {
-            next[f.key] = raw == null ? "" : flattenFieldValue(raw).trim();
-          }
-        }
-        return next;
-      });
+      setDraft((prev) => applyExtractionToDraft(prev ?? baseline, defs, map) as ProfileFields);
     },
     onError: (err) => setPrefillError(err instanceof Error ? err.message : "Prefill failed"),
   });
+
+  // A levers prefill with no confirmed services would be generated against nothing.
+  // Say so rather than running it and returning something generic.
+  const leversBlockedOnServices = conditionOnServices && (servicesContext?.length ?? 0) === 0;
 
   const setText = (key: string, value: string) =>
     setDraft((prev) => ({ ...(prev ?? baseline), [key]: value }));
@@ -147,10 +140,10 @@ export function BrandUserFieldsCard({
   };
 
   const prefillLabel = prefillMut.isPending
-    ? "Prefilling…"
+    ? "Updating…"
     : conditionOnServices
-      ? "✨ Prefill from services"
-      : "✨ Prefill with AI";
+      ? "Update the offer from my website"
+      : "Update services from my website";
 
   if (isPending) {
     return (
@@ -179,12 +172,26 @@ export function BrandUserFieldsCard({
               setPrefillError(null);
               prefillMut.mutate();
             }}
-            disabled={prefillMut.isPending}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            disabled={prefillMut.isPending || leversBlockedOnServices}
+            title={
+              leversBlockedOnServices
+                ? "Save the brand's services first — the offer is written from them."
+                : undefined
+            }
+            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-brand-200 bg-brand-50 text-brand-700 transition ${
+              prefillMut.isPending
+                ? "cursor-wait"
+                : "hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            }`}
           >
             {prefillLabel}
           </button>
         </div>
+        {leversBlockedOnServices && (
+          <p className="-mt-2 mb-4 text-xs text-gray-400">
+            Save the brand&apos;s services first. The offer is written from them.
+          </p>
+        )}
 
         <div className="space-y-4">
           {defs.map((f) => {
