@@ -1186,12 +1186,25 @@ export function fieldResultsToStringMap(results: Record<string, ExtractFieldResu
 export async function extractBrandFields(
   brandIds: string[],
   fields: ExtractFieldDef[],
-  opts?: { token?: string; resetCache?: boolean; mode?: "extract" | "suggest" },
+  opts?: {
+    token?: string;
+    resetCache?: boolean;
+    mode?: "extract" | "suggest";
+    /**
+     * Keys to write again from scratch, ignoring whatever the user already confirmed
+     * for them: their confirmed value is neither shown to the model as authoritative
+     * context nor overlaid onto the response. Confirmed values for keys NOT listed
+     * still reach the model, so regenerating the offer levers still sees the brand's
+     * confirmed services. Nothing is persisted — the caller saves the reviewed draft.
+     * Every key must also appear in `fields` or brand-service 400s.
+     */
+    regenerateFieldKeys?: string[];
+  },
 ): Promise<ExtractFieldsResponse> {
-  const { token, resetCache, mode } = opts ?? {};
+  const { token, resetCache, mode, regenerateFieldKeys } = opts ?? {};
   return apiCall<ExtractFieldsResponse>(
     `/brands/extract-fields`,
-    { token, method: "POST", body: { brandIds, fields, resetCache, mode } },
+    { token, method: "POST", body: { brandIds, fields, resetCache, mode, regenerateFieldKeys } },
   );
 }
 

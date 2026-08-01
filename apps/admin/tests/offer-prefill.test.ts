@@ -131,6 +131,14 @@ describe("the admin offer cards wire both buttons", () => {
     expect(card).not.toContain('mode: "extract"');
   });
 
+  it("asks brand-service to IGNORE what the user already confirmed, scoped to the card", () => {
+    // brand-service injects a brand's confirmed fields into the generation prompt as
+    // authoritative AND overlays them onto the response. Scoping the list to this
+    // card's own keys is what lets the levers card still see the confirmed services
+    // it generates from.
+    expect(card).toContain("regenerateFieldKeys: [...prefillKeys]");
+  });
+
   it("labels the buttons for what they do", () => {
     expect(card).toContain("Update services from my website");
     expect(card).toContain("Update the offer from my website");
