@@ -46,7 +46,6 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { MaturityBadge } from "@/components/maturity-badge";
-import { CampaignBudgetControl } from "@/components/campaigns/campaign-budget-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
@@ -422,23 +421,22 @@ export function CampaignOverviewPage() {
     );
   }
 
+  // The header states WHICH campaign is open, and nothing else. The daily budget
+  // used to sit here as its own editor, one line above the BrandStatusControl pill
+  // that already reads `Active · $N / day` — the same number under two labels, which
+  // is the duplication this repo treats as a bug. The budget is stated once, in the
+  // pill below; `effectiveBudgetCents` still resolves the campaign's own override
+  // for the cost card's denominator.
   const CampaignHeader = (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-2">
-        <Link href={campaignsPath} className="text-sm text-gray-400 hover:text-gray-600">
-          Campaigns
-        </Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="font-display text-xl font-bold text-gray-800">
-          {campaign?.name ?? "Campaign"}
-        </h1>
-        <MaturityBadge level="beta" />
-      </div>
-      <CampaignBudgetControl
-        campaignId={campaignId}
-        campaign={campaign}
-        brandDailyBudgetCents={budgetData?.dailyBudgetCents ?? null}
-      />
+    <div className="flex items-center gap-2">
+      <Link href={campaignsPath} className="text-sm text-gray-400 hover:text-gray-600">
+        Campaigns
+      </Link>
+      <span className="text-gray-300">/</span>
+      <h1 className="font-display text-xl font-bold text-gray-800">
+        {campaign?.name ?? "Campaign"}
+      </h1>
+      <MaturityBadge level="beta" />
     </div>
   );
 
