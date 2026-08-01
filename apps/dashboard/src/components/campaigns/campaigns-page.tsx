@@ -113,11 +113,24 @@ function RoiCell({ multiple }: { multiple: number | null | undefined }) {
   );
 }
 
+/**
+ * A campaign is RUNNING when campaign-service reports one of these words. The
+ * column is free text there (`schema.ts` stores `status` as `text` defaulting to
+ * `ongoing`, and only `ongoing` / `stopped` are written today), so the set is
+ * spelled out rather than narrowed to an enum the wire does not promise.
+ *
+ * ONE set drives BOTH the green pill and the table's first sort key. A row the
+ * eye reads as running must also be ranked as running: two lists of the same
+ * words would let the colour and the order drift into disagreeing about which
+ * campaigns are live.
+ */
+const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"]);
+function isActiveStatus(status: string): boolean {
+  return ACTIVE_STATUSES.has(status.toLowerCase());
+}
+
+const RUNNING_STATUS_STYLE = "bg-green-50 text-green-700 border-green-200";
 const STATUS_STYLES: Record<string, string> = {
-  active: "bg-green-50 text-green-700 border-green-200",
-  running: "bg-green-50 text-green-700 border-green-200",
-  ongoing: "bg-green-50 text-green-700 border-green-200",
-  live: "bg-green-50 text-green-700 border-green-200",
   paused: "bg-amber-50 text-amber-700 border-amber-200",
   pending: "bg-blue-50 text-blue-700 border-blue-200",
   scheduled: "bg-blue-50 text-blue-700 border-blue-200",
@@ -126,7 +139,9 @@ const STATUS_STYLES: Record<string, string> = {
   ended: "bg-gray-100 text-gray-500 border-gray-200",
 };
 function StatusPill({ status }: { status: string }) {
-  const cls = STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200";
+  const cls = isActiveStatus(status)
+    ? RUNNING_STATUS_STYLE
+    : (STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200");
   return (
     <span className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${cls}`}>
       {status}
@@ -242,12 +257,21 @@ export function CampaignsPage() {
     return m;
   }, [groupsQ.data]);
 
-  // Rows sorted by ROI DESC, the column the table now leads with — a table that
+  // Rows ordered by STATUS first, then ROI DESC inside each group. A campaign
+  // that is not running cannot be acted on today, so it sits under the ones that
+  // can, however good its return was — and the status it is ranked on is the one
+  // its own pill states (`isActiveStatus`, the single definition above). Within a
+  // group the order is the ROI column the table leads with, because a table that
   // displays one order and sorts by another reads as unordered. A campaign with
-  // no ROI yet has nothing to rank on, so it sits last rather than at zero.
+  // no ROI yet has nothing to rank on, so it sits last in its group rather than
+  // at zero.
   const rows = useMemo<CampaignRow[]>(() => {
     const joined = campaigns.map((c) => ({ campaign: c, revenue: groupsById.get(c.id) ?? null }));
-    return joined.sort((a, b) => (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1));
+    return joined.sort((a, b) => {
+      const byStatus = Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status));
+      if (byStatus !== 0) return byStatus;
+      return (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
+    });
   }, [campaigns, groupsById]);
 
   // Effective goal = the campaign's OWN goal (v2 per-campaign) when set, else the
@@ -257,10 +281,12 @@ export function CampaignsPage() {
       campaign.goal ? optimizationGoalForRuntimeGoal(campaign.goal) : brandGoal;
   }, [brandGoal]);
 
-  // #1 acquisition channel = the channel of the best-ROI campaign, named as the
-  // brand Settings catalogue names it (display argmax over already-fetched rows,
-  // not a hidden metric). It reads the SAME ranking the table is sorted by, so
-  // the tile and the first row cannot name two different campaigns.
+  // #1 acquisition channel = the channel of the best-ROI RUNNING campaign, named
+  // as the brand Settings catalogue names it (display argmax over already-fetched
+  // rows, not a hidden metric). It reads the SAME ranking the table is sorted by
+  // — status first, then ROI — so the tile and the first row cannot name two
+  // different campaigns, and the tile names a channel that is actually live
+  // rather than one that stopped months ago.
   const topChannel = useMemo(() => {
     const top = rows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
