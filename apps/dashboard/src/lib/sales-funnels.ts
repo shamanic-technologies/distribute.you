@@ -4,22 +4,27 @@
 // conversion rates, its own lifetime revenue, its own landing page and, when a
 // meeting sits in the chain, its own booking link.
 //
-// Every arrow of a chain converts at a rate. One of those rates — the meeting
-// show-up rate — has no column anywhere in the fleet, so it is declared here and
-// starts blank on every brand; see `UnstoredFunnelRateKey`.
+// Every arrow of a chain converts at a rate, and brand-service now stores all of
+// them PER FUNNEL — including the meeting show-up rate, which lives nowhere else
+// in the fleet. Nothing seeds that one, so it starts blank on every brand; see
+// `SeedlessFunnelRateKey`.
 //
 // Only value imports that carry no "@" alias live here — vitest does not resolve
 // the alias, so this module stays directly unit-testable (the BrandOptimizationGoal
 // import is type-only and is erased at build time).
 
-import type { BrandOptimizationGoal, BrandSalesEconomics } from "@/lib/api";
+import type { BrandOptimizationGoal, BrandSalesEconomics, SalesFunnelPatch } from "@/lib/api";
 import { formatLocaleInteger, formatLocaleNumberInputValue, parseLocaleNumberInput } from "./format-number";
 import { bareHost, validateDestination } from "./click-destination-validation";
 
 export type SalesFunnelKey = "reply_meeting" | "visit_meeting" | "visit_signup" | "visit_form";
 
-/** Rate fields, named exactly as brand-service stores them. */
-export type StoredFunnelRateKey =
+/**
+ * Rate fields, named exactly as brand-service stores them. Every one of these
+ * also exists on the brand's BLENDED sales economics, so an undeclared funnel
+ * can seed a first guess from what the brand already saved.
+ */
+export type SeedableFunnelRateKey =
   | "replyToMeetingPct"
   | "visitToMeetingPct"
   | "meetingToClosePct"
@@ -29,17 +34,17 @@ export type StoredFunnelRateKey =
   | "formSubmissionToPaidClientPct";
 
 /**
- * The show-up rate has no column anywhere in the fleet, so it is the one rate a
- * funnel prices that nothing can seed and nothing can save. It is declared here
- * because it IS part of the model this section describes — the alternative is an
- * arrow in the middle of the chain that carries no number at all.
+ * The meeting show-up rate. brand-service stores it ON THE FUNNEL and nowhere
+ * else in the fleet, so it saves like every other leg but has nothing to seed
+ * from — it starts blank on every brand rather than borrowing a number that
+ * means something else.
  */
-export type UnstoredFunnelRateKey = "meetingBookedToAttendedPct";
+export type SeedlessFunnelRateKey = "meetingBookedToAttendedPct";
 
-export type FunnelRateKey = StoredFunnelRateKey | UnstoredFunnelRateKey;
+export type FunnelRateKey = SeedableFunnelRateKey | SeedlessFunnelRateKey;
 
-/** True when brand-service has a column for this rate, so a draft can seed it. */
-export function isStoredRateKey(key: FunnelRateKey): key is StoredFunnelRateKey {
+/** True when the brand's blended economics carry this rate, so a draft can seed it. */
+export function isSeedableRateKey(key: FunnelRateKey): key is SeedableFunnelRateKey {
   return key !== "meetingBookedToAttendedPct";
 }
 
@@ -179,11 +184,11 @@ export function partitionFunnelsBySelection(isSelected: (key: SalesFunnelKey) =>
  * The funnel a brand optimizing for this goal sells through, or null when no
  * funnel in the catalogue ends on that outcome.
  *
- * Nothing persists WHICH funnel a brand picked — the settings card writes
- * nothing — so this is the declared order's first match, which for a sales
- * meeting is the reply-driven chain (the one a cold-email campaign feeds).
- * A goal with no funnel returns null and the caller names the outcome instead
- * of borrowing a chain the brand never described.
+ * This answers from the CATALOGUE, not from what a brand declared: its callers
+ * (the Campaigns table) hold a goal and no brand set, so it takes the declared
+ * order's first match, which for a sales meeting is the reply-driven chain (the
+ * one a cold-email campaign feeds). A goal with no funnel returns null and the
+ * caller names the outcome instead of borrowing a chain nobody described.
  */
 export function primaryFunnelForGoal(goal: BrandOptimizationGoal): SalesFunnelDef | null {
   return SALES_FUNNELS.find((f) => f.goal === goal) ?? null;
@@ -242,9 +247,16 @@ export function validateBookingUrl(input: string): FunnelValidation {
 }
 
 /**
- * Every rate the funnel prices must be a percentage, the lifetime revenue must
- * be a positive whole number, and each destination must match its kind. Reports
- * the first problem so the card can name one thing to fix.
+ * Shape checks only, and only on the values the brand actually typed. A BLANK
+ * field is legal everywhere: brand-service treats an omitted value as unchanged
+ * and an explicit null as cleared, so a brand must be able to declare a funnel
+ * before it has priced every leg, and must be able to remove a number rather
+ * than being forced to invent a replacement.
+ *
+ * These checks exist to make typing pleasant, not to be the source of truth —
+ * brand-service rejects a rate outside the chain, a destination the funnel has
+ * no use for, and a website-led funnel on a brand with no website, and that 400
+ * is the answer. Reports the first problem so the card names one thing to fix.
  */
 export function validateFunnelDraft(
   def: SalesFunnelDef,
@@ -252,16 +264,21 @@ export function validateFunnelDraft(
   brandDomain: string | null,
 ): FunnelValidation {
   for (const rate of funnelRateFields(def)) {
-    const parsed = parseLocaleNumberInput(draft.rates[rate.key] ?? "");
-    if (parsed === null) return { ok: false, error: `Fill ${rate.label}.` };
+    const raw = (draft.rates[rate.key] ?? "").trim();
+    if (!raw) continue;
+    const parsed = parseLocaleNumberInput(raw);
+    if (parsed === null) return { ok: false, error: `${rate.label} must be a number.` };
     if (parsed < 0 || parsed > 100) {
       return { ok: false, error: `${rate.label} must be between 0 and 100.` };
     }
   }
 
-  const ltr = parseLocaleNumberInput(draft.lifetimeRevenueUsd);
-  if (ltr === null) return { ok: false, error: "Fill the customer lifetime revenue." };
-  if (ltr <= 0) return { ok: false, error: "The customer lifetime revenue must be above zero." };
+  const rawLtr = draft.lifetimeRevenueUsd.trim();
+  if (rawLtr) {
+    const ltr = parseLocaleNumberInput(rawLtr);
+    if (ltr === null) return { ok: false, error: "The customer lifetime revenue must be a number." };
+    if (ltr <= 0) return { ok: false, error: "The customer lifetime revenue must be above zero." };
+  }
 
   if (def.bookingLink) {
     const booking = validateBookingUrl(draft.bookingUrl);
@@ -270,19 +287,172 @@ export function validateFunnelDraft(
 
   if (!def.pageDestination) return { ok: true };
 
+  const destination = draft.destinationUrl.trim();
+  if (!destination) return { ok: true };
   if (brandDomain === null) {
     return { ok: false, error: "Set your brand domain first, then pick a destination page." };
   }
-  const candidate = draft.destinationUrl.trim() || `https://${bareHost(brandDomain)}`;
-  const result = validateDestination(candidate, brandDomain);
+  const result = validateDestination(destination, brandDomain);
   return result.ok ? { ok: true } : { ok: false, error: result.error };
 }
 
 /**
- * Seed a funnel from what the brand already saved. Rates and lifetime revenue
- * come from its sales economics; a page destination starts from the brand's
- * click destination. A booking link has nowhere to come from yet, so it starts
- * empty rather than guessing one.
+ * What brand-service has stored for one funnel, stripped of the metadata the
+ * card does not edit. Structurally the wire funnel, declared here so this module
+ * stays alias-free and directly unit-testable.
+ */
+export type DeclaredFunnelValues = {
+  rates: Record<string, number | null>;
+  lifetimeRevenueUsd: number | null;
+  destinationUrl: string | null;
+  bookingUrl: string | null;
+};
+
+/**
+ * Seed a funnel's form from what the brand DECLARED for that funnel. A value it
+ * never declared reads `null` upstream and shows blank here — never a zero, and
+ * never a number borrowed from the brand's blended economics.
+ */
+export function funnelDraftFromDeclared(
+  def: SalesFunnelDef,
+  saved: DeclaredFunnelValues,
+): FunnelDraft {
+  const rates: Partial<Record<FunnelRateKey, string>> = {};
+  for (const rate of funnelRateFields(def)) {
+    const stored = saved.rates[rate.key];
+    rates[rate.key] =
+      stored === null || stored === undefined ? "" : formatLocaleNumberInputValue(stored);
+  }
+  return {
+    rates,
+    lifetimeRevenueUsd:
+      saved.lifetimeRevenueUsd === null ? "" : formatLocaleInteger(saved.lifetimeRevenueUsd),
+    destinationUrl: def.pageDestination ? saved.destinationUrl ?? "" : "",
+    bookingUrl: def.bookingLink ? saved.bookingUrl ?? "" : "",
+  };
+}
+
+/** A blank stored funnel: what a brand that has declared nothing has on record. */
+export const NOTHING_DECLARED: DeclaredFunnelValues = {
+  rates: {},
+  lifetimeRevenueUsd: null,
+  destinationUrl: null,
+  bookingUrl: null,
+};
+
+/** A field the form left blank clears the stored value; a filled one writes it. */
+function ratePatchValue(raw: string | undefined): number | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return null;
+  return parseLocaleNumberInput(trimmed);
+}
+
+/**
+ * The PARTIAL patch to send for this funnel: exactly the fields whose value
+ * DIFFERS from what brand-service has stored. Everything else is omitted, so a
+ * form editing one rate cannot overwrite the others with a possibly-stale copy,
+ * and a field the user emptied is sent as an explicit `null` so it really clears.
+ *
+ * Two things this can never emit, because brand-service 400s on both rather than
+ * dropping them: a rate outside THIS funnel's chain (it walks the chain's own
+ * legs), and a destination the funnel has no use for (each is gated on the
+ * funnel's own flag).
+ *
+ * `saved` is `NOTHING_DECLARED` for a funnel the brand has not declared yet, so
+ * a blank prefill field equals what is stored and is never written — a value
+ * nobody confirmed must not read back as one the brand declared.
+ */
+export function buildFunnelPatch(
+  def: SalesFunnelDef,
+  draft: FunnelDraft,
+  saved: DeclaredFunnelValues,
+): SalesFunnelPatch {
+  const patch: SalesFunnelPatch = {};
+  const rates: Record<string, number | null> = {};
+
+  for (const rate of funnelRateFields(def)) {
+    const next = ratePatchValue(draft.rates[rate.key]);
+    const current = saved.rates[rate.key] ?? null;
+    if (next !== current) rates[rate.key] = next;
+  }
+  if (Object.keys(rates).length > 0) patch.rates = rates;
+
+  const rawLtr = draft.lifetimeRevenueUsd.trim();
+  const nextLtr = rawLtr ? parseLocaleNumberInput(rawLtr) : null;
+  const roundedLtr = nextLtr === null ? null : Math.round(nextLtr);
+  if (roundedLtr !== (saved.lifetimeRevenueUsd ?? null)) patch.lifetimeRevenueUsd = roundedLtr;
+
+  if (def.pageDestination) {
+    const next = draft.destinationUrl.trim() || null;
+    if (!sameUrl(next, saved.destinationUrl)) patch.destinationUrl = next;
+  }
+
+  if (def.bookingLink) {
+    const next = draft.bookingUrl.trim() || null;
+    if (!sameUrl(next, saved.bookingUrl)) patch.bookingUrl = next;
+  }
+
+  return patch;
+}
+
+/**
+ * brand-service normalizes a URL before storing it (`acme.com/x` comes back as
+ * `https://acme.com/x`), so a raw string compare would re-send an unchanged
+ * destination on every save. Compares what the two would normalize to.
+ */
+function sameUrl(a: string | null, b: string | null): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  const normalize = (value: string) => {
+    try {
+      return new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`).toString();
+    } catch {
+      return value.trim();
+    }
+  };
+  return normalize(a) === normalize(b);
+}
+
+/** True when the patch would change nothing, so there is no write to make. */
+export function isEmptyFunnelPatch(patch: SalesFunnelPatch): boolean {
+  return Object.keys(patch).length === 0;
+}
+
+/**
+ * What to put in front of the user when a write is refused. brand-service says
+ * exactly what was wrong with the funnel it was asked to store, in a sentence
+ * written for a person — a rate that is not on this chain, a destination the
+ * funnel has no use for, a page off the brand domain — so a 400 shows that
+ * sentence rather than being swallowed behind one generic line.
+ *
+ * Never `err.message`: `apiCall` sets it to the whole downstream body verbatim,
+ * which puts a JSON blob in front of a customer. This reads the one field.
+ * Duck-typed on `status` so this module needs no runtime import of `ApiError`.
+ */
+export function funnelWriteErrorMessage(err: unknown): string {
+  const status = (err as { status?: unknown } | null)?.status;
+  const body = (err as { body?: unknown } | null)?.body;
+  const upstream =
+    body && typeof body === "object" ? (body as Record<string, unknown>).error : null;
+
+  if (status === 400 && typeof upstream === "string" && upstream.trim()) {
+    return upstream.trim().slice(0, 400);
+  }
+  if (status === 403) return "This brand is not in your organization.";
+  if (status === 404) return "This brand no longer exists.";
+  return "Could not save this funnel. Try again.";
+}
+
+/**
+ * A first guess for a funnel the brand has NOT declared, from what it already
+ * saved elsewhere: rates and lifetime revenue from its blended sales economics,
+ * a page destination from its click destination. A booking link has nowhere to
+ * come from, so it starts empty rather than guessing one.
+ *
+ * This is a prefill for a person to confirm, never a value to write. A number
+ * nobody confirmed must not read back as one the brand declared, so a draft
+ * built here is only ever persisted through `buildFunnelPatch`, which sends a
+ * field only once its value differs from what is actually stored.
  */
 export function funnelDraftFromBrand(
   def: SalesFunnelDef,
@@ -291,9 +461,9 @@ export function funnelDraftFromBrand(
 ): FunnelDraft {
   const rates: Partial<Record<FunnelRateKey, string>> = {};
   for (const rate of funnelRateFields(def)) {
-    // The show-up rate has no column, so it starts blank on every brand rather
-    // than borrowing a number that means something else.
-    if (!isStoredRateKey(rate.key)) {
+    // Nothing else in the fleet measures the show-up rate, so it starts blank on
+    // every brand rather than borrowing a number that means something else.
+    if (!isSeedableRateKey(rate.key)) {
       rates[rate.key] = "";
       continue;
     }

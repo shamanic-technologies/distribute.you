@@ -997,6 +997,142 @@ export async function saveBrandClickDestination(
   return parsed.data;
 }
 
+// ── Brand sales funnels (the ways a brand sells) ──
+// brand-service owns the store and the shape; api-service proxies it verbatim
+// under /v1/brands/:brandId/sales-funnels, beside the sales-economics routes it
+// mirrors. A funnel is one chain from the first signal outreach can buy (a
+// positive reply, or a click onto the site) down to a paid client, and it owns
+// everything that chain needs priced: the rate of each of its legs, the lifetime
+// revenue of a client won through it, the page a click lands on and, when a
+// meeting sits in the chain, a booking link.
+//
+// NOTHING IS DEFAULTED upstream: a value the brand never declared reads `null`,
+// and `null` is how a consumer knows not to rank on it. Never turn one into a 0.
+
+const SALES_FUNNEL_KEYS = ["reply_meeting", "visit_meeting", "visit_signup", "visit_form"] as const;
+
+const DeclaredSalesFunnelSchema = z.object({
+  funnelKey: z.enum(SALES_FUNNEL_KEYS),
+  name: z.string(),
+  steps: z.array(z.string()),
+  // brand-service's own goal spellings. Nothing here branches on them, so they
+  // are read as plain strings rather than pinning an upstream enum that grows.
+  goal: z.string(),
+  currentGoal: z.string(),
+  // Exactly the legs of THIS funnel's chain. A leg the brand never gave us is
+  // null; a rate the funnel does not price is absent entirely.
+  rates: z.record(z.string(), z.number().nullable()),
+  lifetimeRevenueUsd: z.number().nullable(),
+  destinationUrl: z.string().nullable(),
+  bookingUrl: z.string().nullable(),
+  updatedAt: z.string(),
+});
+
+export type DeclaredSalesFunnel = z.infer<typeof DeclaredSalesFunnelSchema>;
+
+// `declared` separates the two ways `funnels` can be empty: `true` = the brand
+// STATED it sells through none (a real answer), `false` = it has never told us
+// anything (a gap). It is `.optional()` only because an older brand-service
+// serves the set without the flag — an ABSENT flag reads as "never stated",
+// never as "stated none", so the two answers can still not be collapsed.
+const GetBrandSalesFunnelsResponseSchema = z.object({
+  declared: z.boolean().optional(),
+  funnels: z.array(DeclaredSalesFunnelSchema),
+});
+
+export type BrandSalesFunnelSet = z.infer<typeof GetBrandSalesFunnelsResponseSchema>;
+
+/**
+ * A PARTIAL patch, exactly as brand-service reads it: an OMITTED field is left
+ * as stored, an explicit `null` CLEARS the value back to never-declared. Send
+ * only what changed — restating a field from a possibly-stale copy is how a
+ * value the user confirmed elsewhere gets overwritten.
+ */
+export type SalesFunnelPatch = {
+  rates?: Record<string, number | null>;
+  lifetimeRevenueUsd?: number | null;
+  destinationUrl?: string | null;
+  bookingUrl?: string | null;
+};
+
+/** GET /brands/:brandId/sales-funnels — what the brand has said about how it sells. */
+export async function getBrandSalesFunnels(
+  brandId: string,
+  token?: string,
+): Promise<BrandSalesFunnelSet> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-funnels`, { token });
+  const parsed = GetBrandSalesFunnelsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandSalesFunnels: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandSalesFunnels: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// WRITE: the row was just persisted, so the funnel is always present. Per the
+// per-verb schema rule the write DTO is its own, narrower than the read sibling.
+const DeclareBrandSalesFunnelResponseSchema = z.object({
+  funnel: DeclaredSalesFunnelSchema,
+});
+
+/**
+ * PUT /brands/:brandId/sales-funnels/:funnelKey — declare the funnel and write
+ * what the patch carries. Idempotent: the declaration IS the row. brand-service
+ * rejects a rate outside this funnel's chain, a destination it has no use for,
+ * and a website-led funnel on a brand with no website — those 400s reach the
+ * caller intact and are the answer, not something to pre-empt here.
+ */
+export async function declareBrandSalesFunnel(
+  brandId: string,
+  funnelKey: string,
+  patch: SalesFunnelPatch,
+  token?: string,
+): Promise<{ funnel: DeclaredSalesFunnel }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-funnels/${funnelKey}`, {
+    token,
+    method: "PUT",
+    body: patch,
+  });
+  const parsed = DeclareBrandSalesFunnelResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] declareBrandSalesFunnel: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] declareBrandSalesFunnel: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * DELETE /brands/:brandId/sales-funnels/:funnelKey — the brand no longer sells
+ * through this funnel, and its economics go with the declaration. Returns the
+ * set still declared. Dropping the LAST funnel does not un-state the set: a
+ * brand that stopped selling through everything has still answered.
+ */
+export async function undeclareBrandSalesFunnel(
+  brandId: string,
+  funnelKey: string,
+  token?: string,
+): Promise<BrandSalesFunnelSet> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/sales-funnels/${funnelKey}`, {
+    token,
+    method: "DELETE",
+  });
+  const parsed = GetBrandSalesFunnelsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] undeclareBrandSalesFunnel: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] undeclareBrandSalesFunnel: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ── Attach a website to a no-website brand (one-time domain setup) ──
 // A brand created via the "I have no website" onboarding path has domain === null.
 // This attaches a website URL, which brand-service sets as brands.url + domain; the
