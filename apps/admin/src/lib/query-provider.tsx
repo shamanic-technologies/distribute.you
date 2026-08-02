@@ -7,12 +7,7 @@ import {
   type Query,
 } from "@tanstack/react-query";
 import { experimental_createQueryPersister } from "@tanstack/react-query-persist-client";
-import {
-  get as idbGet,
-  set as idbSet,
-  del as idbDel,
-  entries as idbEntries,
-} from "idb-keyval";
+import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 import { useOrganization } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -24,6 +19,11 @@ import {
   persisterStorageKey,
   isPersistableQueryKey,
 } from "@/lib/persist-cache";
+import {
+  bucketEntries,
+  reclaimLegacyStore,
+  sweepStaleEntries,
+} from "@/lib/idb-bucket";
 import { installIdleFocusManager } from "@/lib/idle-focus-manager";
 
 /**
@@ -44,9 +44,9 @@ function bucketForPath(pathname: string | null): string {
  * Without this grant, IndexedDB is "best-effort" and the browser evicts the WHOLE
  * store under disk pressure or after prolonged non-use — silently wiping the
  * local-first query cache after a few idle days, so a returning visitor hits the
- * cold path and sees an infinite skeleton. `maxAge: Infinity` on the persister is
+ * cold path and sees an infinite skeleton. The persister's own `maxAge` is
  * meaningless while the store itself is evictable; this grant is what actually makes
- * "instant across days" true. Idempotent + guarded (feature-detected, no-op if
+ * "instant while the snapshot is still worth painting" true. Idempotent + guarded (feature-detected, no-op if
  * already persisted or unsupported); never throws into the render path.
  */
 async function requestPersistentStorage(): Promise<void> {
@@ -67,21 +67,25 @@ async function requestPersistentStorage(): Promise<void> {
  * so big lists persist without evicting the small overview queries, and writes
  * happen off the main thread (no serialize jank).
  */
-const idbStorage = {
-  getItem: (key: string) => idbGet(key),
-  setItem: (key: string, value: string) => idbSet(key, value),
-  removeItem: (key: string) => idbDel(key),
-  // Needed by the persister's `restoreQueries` (whole-prefix scan). Keys are always
-  // the string `${prefix}-${queryHash}` and values the serialized JSON we wrote, so
-  // the idb-keyval `IDBValidKey`/`any` tuple is safe to narrow.
-  entries: () => idbEntries() as Promise<[string, string][]>,
-};
+function makeIdbStorage(prefix: string) {
+  return {
+    getItem: (key: string) => idbGet(key),
+    setItem: (key: string, value: string) => idbSet(key, value),
+    removeItem: (key: string) => idbDel(key),
+    // SCOPED TO THIS BUCKET, which is the whole point. The persister's own
+    // `restoreQueries` / `persisterGc` call `entries()` and only then filter on
+    // `key.startsWith(prefix)`, so an unscoped implementation hands them every byte
+    // this console has ever cached — every org, since the cache shipped — to throw
+    // almost all of it away. A bounded `getAll` over the bucket's contiguous key
+    // range returns exactly the same list they would have kept.
+    entries: () => bucketEntries(prefix),
+  };
+}
 
 /**
  * Re-seed COLD (memory-empty) queries from THIS bucket's on-disk snapshot on every
  * navigation — NOT only on provider mount. The per-query persister self-restores a
- * query from disk only when it FETCHES (i.e. `enabled`), and the mount seed
- * (`persister.restoreQueries`) is one-shot; so a page entered while the
+ * query from disk only when it FETCHES (i.e. `enabled`), so a page entered while the
  * org-consistency gate is momentarily CLOSED (Clerk active-org still settling → an
  * org-scoped `useAuthQuery` disabled → never fetches), or a sub-page whose memory was
  * GC'd, paints a SKELETON even though its stale snapshot is on disk. Backend-healthy
@@ -98,7 +102,7 @@ async function reseedColdQueriesFromDisk(
   bucket: string,
 ): Promise<void> {
   try {
-    const all = (await idbEntries()) as [string, string][];
+    const all = await bucketEntries(persisterStorageKey(bucket));
     const pairs = coldRestorablePairs(
       all,
       persisterStorageKey(bucket),
@@ -114,7 +118,7 @@ async function reseedColdQueriesFromDisk(
     }
   } catch {
     // IndexedDB can throw in private-mode / locked-down contexts — non-fatal, the
-    // enabled-query self-restore + mount seed still cover the common paths.
+    // enabled-query self-restore still covers the common path.
   }
 }
 
@@ -125,7 +129,8 @@ async function reseedColdQueriesFromDisk(
  * network — so opening a page paints its content instantly, then revalidates
  * silently (SWR).
  *
- * - `maxAge: Infinity` — disk entries never expire → instant across sessions/days.
+ * - `maxAge: PERSIST_MAX_AGE_MS` — 30 days. Finite, because nothing else deleted
+ *   anything and the store grew without limit; see persist-cache.ts.
  * - `gcTime: PERSIST_GC_TIME_MS` — bounds MEMORY only; disk retention is independent.
  * - `prefix: persisterStorageKey(bucket)` — org-scopes org pages (DIS-143), or the
  *   fixed `"platform"` bucket for cross-org fleet pages.
@@ -137,7 +142,7 @@ async function reseedColdQueriesFromDisk(
 function makeQueryClient(bucket: string) {
   const persistEnabled = typeof window !== "undefined";
   const persister = experimental_createQueryPersister({
-    storage: persistEnabled ? idbStorage : undefined,
+    storage: persistEnabled ? makeIdbStorage(persisterStorageKey(bucket)) : undefined,
     maxAge: PERSIST_MAX_AGE_MS,
     buster: persistCacheVersion(),
     prefix: persisterStorageKey(bucket),
@@ -187,25 +192,20 @@ function BucketScopedQueryClientProvider({
 }) {
   // Created once per mount; the component is keyed by bucket upstream, so this runs
   // fresh per bucket and the persister prefix can never point at another bucket's keys.
-  const [{ client, persister }] = useState(() => makeQueryClient(bucket));
+  const [{ client }] = useState(() => makeQueryClient(bucket));
   const pathname = usePathname();
 
-  // HARD-REFRESH INSTANT PAINT. On a cold load the in-memory cache is empty AND (on an
-  // org page) Clerk's active org is still resolving, so an org-scoped `useAuthQuery` is
-  // DISABLED by the org-consistency gate — which means the per-query persister, whose
-  // restore runs INSIDE the (now-skipped) queryFn, never fires → infinite skeletons
-  // until Clerk settles. Fix: seed the in-memory cache from this bucket's IndexedDB
-  // entries on mount. `restoreQueries` iterates only the keys under THIS bucket's prefix,
-  // is READ-ONLY (pure `setQueryData`, zero network → DIS-143 gate untouched), and
-  // preserves each entry's `dataUpdatedAt` so a still-mounted disabled query reads the
-  // seeded data immediately, then revalidates once Clerk resolves (SWR).
-  useEffect(() => {
-    void persister.restoreQueries(client);
-    // Run once per bucket-scoped mount (keyed by bucket upstream).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // There is deliberately NO `persister.restoreQueries(client)` here.
+  //
+  // It used to run on mount, beside the nav reseed below — and because `pathname` is in
+  // that effect's deps, BOTH fired on the very first render, so every mount read this
+  // bucket off disk twice and decoded it twice. The reseed is the better of the two: it
+  // is COLD-GUARDED (`restoreQueries` calls `setQueryData` unconditionally and will
+  // overwrite a fresher in-memory value with an older snapshot), and it re-runs on each
+  // navigation, which is what the disabled-query case actually needs. Adding the mount
+  // restore back reinstates the duplicate read and the stomp.
 
-  // NAV RESEED. The mount seed above is one-shot and the per-query self-restore only
+  // NAV RESEED. The per-query self-restore only
   // fires for an ENABLED (fetching) query, so a page reached while an org gate is closed
   // — or a sub-page whose memory was GC'd — cold-skeletons even though its disk snapshot
   // exists, and a DOWN backend makes that skeleton stick. Re-seed cold queries from disk
@@ -238,6 +238,37 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   // a few days later". Fire-and-forget, guarded, never blocks render.
   useEffect(() => {
     void requestPersistentStorage();
+  }, []);
+
+  // Keep the store BOUNDED. Nothing used to delete anything: `maxAge` was `Infinity`
+  // and the persister's own garbage collection was never called, so the cache held
+  // every response this console had received since it shipped, for every org ever
+  // opened. Two passes, both fire-and-forget after paint:
+  //
+  //  - `reclaimLegacyStore` drops what accumulated under that regime, once ever. The
+  //    sweep alone cannot: most of those bytes are recent enough not to be stale.
+  //  - `sweepStaleEntries` is the ongoing bound — a cursor walk in constant memory,
+  //    across every bucket, deleting what `PERSIST_MAX_AGE_MS` and the cache version
+  //    say is no longer worth painting.
+  //
+  // Order matters only in that reclaiming first leaves the sweep nothing to do on the
+  // one boot they share.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    void (async () => {
+      try {
+        await reclaimLegacyStore();
+        await sweepStaleEntries(
+          persistCacheVersion(),
+          Date.now(),
+          PERSIST_MAX_AGE_MS,
+        );
+      } catch (err) {
+        // Disk housekeeping — a failure costs storage, never correctness, so it must
+        // not reach the render path. Logged rather than swallowed.
+        console.error("[admin] persisted-cache housekeeping failed", err);
+      }
+    })();
   }, []);
 
   // Bucket is derived from the URL path (stable per route, never blinks like Clerk's

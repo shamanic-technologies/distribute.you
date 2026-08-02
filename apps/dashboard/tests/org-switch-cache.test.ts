@@ -58,7 +58,7 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain(
       'typeof window !== "undefined" && !!orgId',
     );
-    expect(content).toContain("persistEnabled ? idbStorage : undefined");
+    expect(content).toContain("persistEnabled ? makeIdbStorage(persisterStorageKey(orgId)) : undefined");
   });
 
   it("the keyed remount is the ONLY org-switch cache reset (no side cache to clear)", () => {

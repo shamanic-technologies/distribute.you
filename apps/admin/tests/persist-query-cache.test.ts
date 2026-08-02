@@ -176,10 +176,10 @@ describe("query-provider wiring — local-first per-query persisted cache", () =
 
   it("no-ops the persister storage on the server (no window)", () => {
     expect(src).toContain('typeof window !== "undefined"');
-    expect(src).toContain("persistEnabled ? idbStorage : undefined");
+    expect(src).toContain("persistEnabled ? makeIdbStorage(persisterStorageKey(bucket)) : undefined");
   });
 
-  it("keeps disk forever (maxAge Infinity) while bounding memory (gcTime) separately", () => {
+  it("bounds disk (maxAge) and memory (gcTime) with separate, independent limits", () => {
     expect(src).toContain("maxAge: PERSIST_MAX_AGE_MS");
     expect(src).toContain("gcTime: PERSIST_GC_TIME_MS");
   });
@@ -208,8 +208,12 @@ describe("query-provider wiring — local-first per-query persisted cache", () =
 });
 
 describe("cache retention durations", () => {
-  it("maxAge is Infinity — disk entries never expire (local-first, instant cross-session)", () => {
-    expect(PERSIST_MAX_AGE_MS).toBe(Infinity);
+  it("maxAge is 30 days — long enough to stay instant, finite so the store is bounded", () => {
+    // It was `Infinity`, and since nothing else deleted anything the store held every
+    // response this console had ever received, across every org — which the boot-time
+    // restore then read into memory in one go.
+    expect(PERSIST_MAX_AGE_MS).toBe(30 * 24 * 60 * 60 * 1000);
+    expect(Number.isFinite(PERSIST_MAX_AGE_MS)).toBe(true);
   });
 
   it("gcTime is 30 min — bounds MEMORY only (disk is independent via per-query persister)", () => {
