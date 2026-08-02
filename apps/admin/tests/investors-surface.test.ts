@@ -166,3 +166,40 @@ describe("investor api readers", () => {
     expect(api).toContain("skipped: string[]");
   });
 });
+
+describe("no em dash in rendered copy", () => {
+  /**
+   * The repo bans U+2014 in user-facing copy: it is the top AI-tell. Comments
+   * are exempt, and a bare "—" standing in for a missing value is the codebase's
+   * documented null glyph, not prose. What is banned is an em dash used as
+   * punctuation inside a sentence a person reads.
+   *
+   * The one that mattered was the subject-field placeholder: it taught the em
+   * dash into every investor subject line, and it is exactly where the one in
+   * the first real send came from.
+   */
+  function prose(src: string): string {
+    return src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "")
+      // The null glyph, on its own, is not prose.
+      .replace(/"—"/g, '""');
+  }
+
+  it("keeps the composer's rendered copy free of em dashes", () => {
+    expect(prose(composer)).not.toContain("—");
+  });
+
+  it("keeps the list view's rendered copy free of em dashes", () => {
+    expect(prose(listView)).not.toContain("—");
+  });
+
+  it("keeps the deck free of em dashes — it becomes a PDF an investor reads", () => {
+    const deckSrc = read("src/components/investors/investor-deck-view.tsx");
+    expect(prose(deckSrc)).not.toContain("—");
+  });
+
+  it("does not seed an em dash through the subject placeholder", () => {
+    expect(composer).not.toContain('placeholder="distribute —');
+  });
+});
