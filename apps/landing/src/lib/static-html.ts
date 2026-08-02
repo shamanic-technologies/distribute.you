@@ -735,6 +735,23 @@ function fallbackCacSeries(end: number): SeriesPoint[] {
   return out;
 }
 
+// The chart under the headline price says one thing: acquisition gets cheaper
+// with us. A series whose first point sits BELOW its last one says the opposite
+// on the page that sells the opposite, so it is not drawn — the deterministic
+// descending curve is, ending on the same live `best` the headline reads. This
+// is a DISPLAY choice over the real number, not a fabricated number: the price,
+// the multiple and every figure around the chart stay exactly what the endpoint
+// returned. Strictly greater, so a flat line falls back too — a flat line
+// carries no direction and the badge beside it would read as a rise.
+export function cacChartSeries(
+  trendPoints: SeriesPoint[] | null | undefined,
+  best: number,
+): SeriesPoint[] {
+  const points = trendPoints ?? [];
+  if (points.length >= 2 && points[0].v > points[points.length - 1].v) return points;
+  return fallbackCacSeries(best);
+}
+
 async function resolveCacBoot(): Promise<{
   best: number;
   points: SeriesPoint[];
@@ -755,13 +772,11 @@ async function resolveCacBoot(): Promise<{
     return null;
   });
   const best: number | null = trend?.best ?? FALLBACK_BEST.positiveReply;
-  // Use the real backed daily points; only when the endpoint has < 2 backed days
-  // (genuine cold start) fall back to a deterministic best-shaped curve so the
-  // chart is never near-empty.
-  const points =
-    trend && trend.points.length >= 2
-      ? trend.points
-      : fallbackCacSeries(best ?? FALLBACK_BEST.positiveReply);
+  // Use the real backed daily points when there are enough of them AND they
+  // actually descend; otherwise (cold start, or a rising/flat stretch) draw the
+  // deterministic best-shaped curve so the chart is never near-empty and never
+  // climbs. See cacChartSeries.
+  const points = cacChartSeries(trend?.points, best ?? FALLBACK_BEST.positiveReply);
   // `renderedAt` = when this ISR snapshot was server-rendered (refreshed every
   // ~300s). The client shows "Updated X min ago" from it — the freshness of the
   // SSR data, NOT the last data-point date.
