@@ -13,11 +13,13 @@ import { Skeleton } from "@/components/skeleton";
 import { CmgrStat } from "@/components/cmgr-stat";
 import { PeriodCompoundChart } from "@/components/period-compound-chart";
 import { formatUsd } from "@/lib/format-number";
-import type { DailyFunnelPoint } from "@/lib/public-stats";
+import type { BillingStats, DailyFunnelPoint } from "@/lib/public-stats";
 import {
   revenueBuckets,
   revenueCmgrSummary,
   committedBuckets,
+  cashBuckets,
+  centsStringToUsd,
   toCompoundPoints,
   trackedWeeks,
   monthlyRevenueByKey,
@@ -174,7 +176,17 @@ function AvgCard({
   );
 }
 
-export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
+/** A band heading that names WHICH money the cards under it are about. */
+function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
+  return (
+    <div className="pt-2">
+      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
+      <p className="mt-1 max-w-3xl text-sm text-gray-500">{blurb}</p>
+    </div>
+  );
+}
+
+export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[]; billing: BillingStats }) {
   const { data, isPending, isError, error } = useAuthQuery<FleetRevenue>(
     ["fleetRevenue"],
     () => getFleetRevenue(),
@@ -223,6 +235,22 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
     };
   }, [data, history, timeline]);
 
+  // Cash collected is server-side data on the page's own props — no query, no
+  // poll, already fetched on every render of this route.
+  const cash = useMemo(() => {
+    const monthly = cashBuckets(billing.monthly_growth, "month");
+    const weekly = cashBuckets(billing.weekly_growth, "week");
+    return {
+      monthly,
+      weekly,
+      monthlyCmgr: revenueCmgrSummary(monthly),
+      weeklyCmgr: revenueCmgrSummary(weekly),
+      grossUsd: centsStringToUsd(billing.total_paid_cents, "total_paid_cents"),
+      returnedUsd: centsStringToUsd(billing.total_returned_cents, "total_returned_cents"),
+      netUsd: centsStringToUsd(billing.total_revenue_cents, "total_revenue_cents"),
+    };
+  }, [billing]);
+
   if (isError) {
     return (
       <section className="rounded-lg border border-red-200 bg-white p-6">
@@ -239,11 +267,74 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
 
   return (
     <>
+      <SectionHeading
+        title="Cash collected"
+        blurb="What customers paid us through Stripe, minus what went back out. Runs ahead of consumption below by the credit that is bought and not yet spent."
+      />
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          label="Net collected"
+          value={usdFull(cash.netUsd)}
+          detail="Charged less refunds and lost disputes — what we keep"
+          accent="bg-emerald-500"
+          pending={false}
+        />
+        <StatCard
+          label="Gross charged"
+          value={usdFull(cash.grossUsd)}
+          detail="Every succeeded Stripe charge, before anything went back"
+          accent="bg-sky-500"
+          pending={false}
+        />
+        <StatCard
+          label="Refunded and lost disputes"
+          value={usdFull(cash.returnedUsd)}
+          detail="Settled refunds plus disputes we lost"
+          accent="bg-red-500"
+          pending={false}
+        />
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-2">
+        <PeriodCard
+          title="Monthly net cash"
+          subtitle="Stripe cash per month, net of refunds and lost disputes, with compound monthly growth since the first charge."
+          cmgrLabel="CMGR"
+          cmgrUnit="monthly"
+          latestPct={cash.monthlyCmgr.latestPct}
+          avgPct={cash.monthlyCmgr.avgPct}
+          barsUsed={cash.monthlyCmgr.barsUsed}
+          buckets={cash.monthly}
+          growthLabel="CMGR since the first charge"
+          valueLabel="net cash"
+          pending={false}
+        />
+        <PeriodCard
+          title="Weekly net cash"
+          subtitle="Stripe cash per week, net of refunds and lost disputes, with compound weekly growth since the first charge."
+          cmgrLabel="CWGR"
+          cmgrUnit="weekly"
+          latestPct={cash.weeklyCmgr.latestPct}
+          avgPct={cash.weeklyCmgr.avgPct}
+          barsUsed={cash.weeklyCmgr.barsUsed}
+          buckets={cash.weekly}
+          growthLabel="CWGR since the first charge"
+          valueLabel="net cash"
+          pending={false}
+        />
+      </section>
+
+      <SectionHeading
+        title="Revenue consumed"
+        blurb="What customers actually burned in cold-email sending, after each org's usage discount. Stripe is nowhere in this figure — a refund reverses a payment, it cannot un-send an email, so refunds move the cash above and not this."
+      />
+
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard
           label="Total revenue"
           value={data ? usdFull(data.totalRevenueUsd) : "—"}
-          detail="Realized cold-email revenue since inception"
+          detail="Cold-email spend consumed since inception, net of usage discounts"
           accent="bg-brand-500"
           pending={isPending}
         />
@@ -292,6 +383,11 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
         />
       </section>
 
+      <SectionHeading
+        title="Committed run-rate"
+        blurb="What the live fleet is contracted to bill: active daily budgets × 30. A point-in-time snapshot recorded daily going forward, so the series starts when recording started and does not reach back to inception — a growth rate only appears once there are two recorded periods to compare."
+      />
+
       <section className="grid gap-6 md:grid-cols-2">
         <PeriodCard
           title="Monthly MRR"
@@ -302,7 +398,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           avgPct={mmc?.avgPct ?? null}
           barsUsed={mmc?.barsUsed ?? null}
           buckets={derived?.monthlyMrr ?? []}
-          growthLabel="CMGR since inception"
+          growthLabel="CMGR since the first snapshot"
           valueLabel="MRR"
           pending={isPending || !derived}
         />
@@ -315,7 +411,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           avgPct={wmc?.avgPct ?? null}
           barsUsed={wmc?.barsUsed ?? null}
           buckets={derived?.weeklyMrr ?? []}
-          growthLabel="CWGR since inception"
+          growthLabel="CWGR since the first snapshot"
           valueLabel="MRR"
           pending={isPending || !derived}
         />
@@ -331,7 +427,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           avgPct={mmc?.avgPct ?? null}
           barsUsed={mmc?.barsUsed ?? null}
           buckets={derived?.monthlyArr ?? []}
-          growthLabel="CMGR since inception"
+          growthLabel="CMGR since the first snapshot"
           valueLabel="ARR"
           pending={isPending || !derived}
         />
@@ -344,7 +440,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           avgPct={wmc?.avgPct ?? null}
           barsUsed={wmc?.barsUsed ?? null}
           buckets={derived?.weeklyArr ?? []}
-          growthLabel="CWGR since inception"
+          growthLabel="CWGR since the first snapshot"
           valueLabel="ARR"
           pending={isPending || !derived}
         />
@@ -356,6 +452,11 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           <p className="mt-1 text-xs text-amber-500">Active-user history failed to load: {historyErr?.message ?? "Unknown error"}</p>
         </section>
       )}
+
+      <SectionHeading
+        title="Revenue consumed per audience"
+        blurb="The consumed revenue above divided by each funnel stage's population, month by month. The headline is pooled across every concluded month since the first earning one; the line under it is the last complete month on its own."
+      />
 
       <section className="grid gap-6 lg:grid-cols-3">
         <AvgCard

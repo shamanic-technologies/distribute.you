@@ -5402,13 +5402,34 @@ export interface FleetRevenue {
   asOf: string;
 }
 
+// The series features-service returns are TRAILING WINDOWS, and its defaults
+// (12 months / 26 weeks) are shorter than the product's own history will be.
+// Every "since inception" label on this view — the CMGR/CWGR anchors, the
+// avg-revenue-per-X denominators — is only true while the window still CONTAINS
+// the first billed day (2026-03-12 / 2026-W11). At the defaults the weekly
+// window stops containing it around Sept 2026 and the monthly one around Mar
+// 2027, at which point the labels silently start lying with nothing to catch it.
+// So ask for the producer's MAXIMUM windows and let the view trim the leading
+// pre-inception buckets itself (see `trimLeadingZeroBuckets`).
+const REVENUE_MONTHS_MAX = 36;
+const REVENUE_WEEKS_MAX = 104;
+
 /**
  * Fleet-wide realized-revenue history (monthly/weekly/daily + cumulative total +
  * live MRR). Staff-gated platform view. Transparent proxy to features-service
  * GET /internal/stats/revenue.
+ *
+ * NOTE what this measures: summed NET ACTUALIZED cold-email spend (runs-service
+ * cost ledger, after each org's usage discount) — the money customers CONSUMED.
+ * It is not Stripe cash: no part of this chain touches Stripe. Cash collected is
+ * a separate, larger figure (prepaid credit not yet burned), served by
+ * `/public/stats/billing`. Both are rendered on the Revenue view, apart.
  */
 export async function getFleetRevenue(token?: string): Promise<FleetRevenue> {
-  return apiCall<FleetRevenue>(`/features/audit/revenue`, { token });
+  return apiCall<FleetRevenue>(
+    `/features/audit/revenue?months=${REVENUE_MONTHS_MAX}&weeks=${REVENUE_WEEKS_MAX}`,
+    { token },
+  );
 }
 
 // ── Google CRM (staff console) ───────────────────────────────────────────────
