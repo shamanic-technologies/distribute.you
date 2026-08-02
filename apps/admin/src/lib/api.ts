@@ -6367,3 +6367,33 @@ export async function sendMailingListUpdate(
     body: input,
   });
 }
+
+export interface UploadedStaffImage {
+  id: string;
+  /** Public, unauthenticated. This is what goes in the email's `<img src>`. */
+  url: string;
+  size: number;
+  contentType: string;
+}
+
+/**
+ * Put an image on our own storage and get the public URL back.
+ *
+ * Staff-only, and PLATFORM-owned on purpose: an investor update is ours, so the
+ * file belongs to no customer org and nothing here is billed to one. The bytes
+ * travel as a data URL — the storage service accepts that shape directly, so
+ * the gateway forwards a body rather than re-encoding one.
+ *
+ * `.optional()` is not used on the response because every field is load-bearing
+ * for the caller: without `url` there is nothing to insert.
+ */
+export async function uploadStaffImage(
+  input: { contentBase64: string; filename: string; contentType: string; folder?: string },
+  token?: string
+): Promise<UploadedStaffImage> {
+  return apiCall<UploadedStaffImage>("/platform-uploads", {
+    token,
+    method: "POST",
+    body: input,
+  });
+}

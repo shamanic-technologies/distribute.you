@@ -3,8 +3,14 @@ import {
   renderInvestorUpdatePreviewHtml,
   investorUpdateBlocker,
   imageMarkdown,
+  imageFileProblem,
   imageUrlProblem,
+  ACCEPTED_IMAGE_TYPES,
+  ACCEPTED_IMAGE_ACCEPT_ATTR,
+  MAX_IMAGE_UPLOAD_BYTES,
 } from "../src/lib/investor-update-html";
+
+const file = (name: string, type: string, size: number) => ({ name, type, size });
 
 describe("renderInvestorUpdatePreviewHtml", () => {
   it("renders with the producer's options — gfm tables and breaks — so the preview is the email", () => {
@@ -79,8 +85,8 @@ describe("imageUrlProblem", () => {
     expect(imageUrlProblem("data:image/png;base64,AAAA")).toContain("Gmail");
   });
 
-  it("asks for something when the box is empty", () => {
-    expect(imageUrlProblem("   ")).toBe("Paste an image URL.");
+  it("says so when the upload came back with no URL at all", () => {
+    expect(imageUrlProblem("   ")).toContain("without a URL");
   });
 
   it("accepts an https PNG or JPG, query string and all", () => {
@@ -96,5 +102,46 @@ describe("imageUrlProblem", () => {
 
   it("judges the path, not the query, so a ?v=.svg cache-buster is not mistaken for an SVG", () => {
     expect(imageUrlProblem("https://x.com/a.png?ref=.svg")).toBeNull();
+  });
+});
+
+describe("imageFileProblem", () => {
+  it("refuses SVG by type AND by name — a dragged file can arrive with an empty type", () => {
+    expect(imageFileProblem(file("logo.svg", "image/svg+xml", 1024))).toContain("SVG");
+    expect(imageFileProblem(file("logo.SVG", "", 1024))).toContain("SVG");
+  });
+
+  it("refuses a format mail clients do not draw", () => {
+    // WebP is the live one: Gmail draws it, Outlook on Windows renders through
+    // Word and does not.
+    expect(imageFileProblem(file("chart.webp", "image/webp", 1024))).toContain("PNG");
+    expect(imageFileProblem(file("deck.pdf", "application/pdf", 1024))).toContain("PNG");
+  });
+
+  it("refuses an empty file, which uploads fine and draws nothing", () => {
+    expect(imageFileProblem(file("chart.png", "image/png", 0))).toContain("empty");
+  });
+
+  it("refuses one over the cap and says how big it is", () => {
+    const problem = imageFileProblem(file("chart.png", "image/png", MAX_IMAGE_UPLOAD_BYTES + 1));
+    expect(problem).toContain("5 MB");
+    expect(problem).toContain("5.0 MB");
+  });
+
+  it("asks for a file when none is picked", () => {
+    expect(imageFileProblem(null)).toBe("Choose an image.");
+  });
+
+  it("accepts each format the picker offers, right up to the cap", () => {
+    for (const type of ACCEPTED_IMAGE_TYPES) {
+      expect(imageFileProblem(file("chart.bin", type, MAX_IMAGE_UPLOAD_BYTES))).toBeNull();
+    }
+  });
+
+  it("builds the picker's accept attribute from the same list it gates on", () => {
+    for (const type of ACCEPTED_IMAGE_TYPES) {
+      expect(ACCEPTED_IMAGE_ACCEPT_ATTR).toContain(type);
+    }
+    expect(ACCEPTED_IMAGE_ACCEPT_ATTR).not.toContain("svg");
   });
 });
