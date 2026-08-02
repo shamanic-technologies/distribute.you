@@ -9,13 +9,14 @@ import {
   centsStringToUsd,
   fillPeriodGaps,
   trimLeadingZeroBuckets,
+  retentionSeries,
   trackedWeeks,
   monthlyRevenueByKey,
   monthlyTimelineTotals,
   monthlyActiveUsersByKey,
   avgPerSeries,
 } from "../src/lib/revenue-buckets";
-import type { FleetRevenueBucket, ActiveUsersBucket, CommittedMrrBucket } from "../src/lib/api";
+import type { FleetRevenueBucket, ActiveUsersBucket, CommittedMrrBucket, RetentionBucket } from "../src/lib/api";
 import type { DailyFunnelPoint } from "../src/lib/public-stats";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
@@ -262,6 +263,65 @@ describe("Cash collected (Stripe, net of refunds)", () => {
   it("fails loud on a non-numeric amount rather than charting a silent zero", () => {
     expect(() => centsStringToUsd("", "total_returned_cents")).toThrow(/not numeric/);
     expect(() => centsStringToUsd("n/a", "total_returned_cents")).toThrow(/total_returned_cents/);
+  });
+});
+
+describe("Net revenue retention", () => {
+  // The real prod shape (features-service v0.120.0), trimmed to the periods
+  // that matter: 31 unmeasurable months precede the first billed one.
+  const rows: RetentionBucket[] = [
+    { period: "2026-02", periodStart: "2026-02-01", retentionPct: null, cohortSize: 0, priorRevenueUsd: 0, retainedRevenueUsd: 0 },
+    { period: "2026-03", periodStart: "2026-03-01", retentionPct: null, cohortSize: 0, priorRevenueUsd: 0, retainedRevenueUsd: 0 },
+    { period: "2026-04", periodStart: "2026-04-01", retentionPct: 189.1, cohortSize: 2, priorRevenueUsd: 178.95, retainedRevenueUsd: 338.35 },
+    { period: "2026-05", periodStart: "2026-05-01", retentionPct: 427, cohortSize: 4, priorRevenueUsd: 470.92, retainedRevenueUsd: 2010.73 },
+    { period: "2026-06", periodStart: "2026-06-01", retentionPct: 31, cohortSize: 4, priorRevenueUsd: 2010.73, retainedRevenueUsd: 623.42 },
+    { period: "2026-07", periodStart: "2026-07-01", retentionPct: 196.5, cohortSize: 12, priorRevenueUsd: 934.2, retainedRevenueUsd: 1836.01 },
+    { period: "2026-08", periodStart: "2026-08-01", retentionPct: 2.8, cohortSize: 12, priorRevenueUsd: 2106.06, retainedRevenueUsd: 58.01 },
+  ];
+
+  it("drops an unmeasurable period instead of charting it as zero", () => {
+    // A null rate means there was no prior cohort to retain. Charted as 0 it
+    // would say the base went to nothing, which is a different — and much
+    // worse — statement than "we could not measure this".
+    const series = retentionSeries(rows, "month");
+    expect(series.buckets.map((b) => b.value)).toEqual([189.1, 427, 31, 196.5, 2.8]);
+    expect(series.buckets.map((b) => b.value)).not.toContain(0);
+  });
+
+  it("headlines the last COMPLETE period, never the one still filling up", () => {
+    // August reads 2.8% on its second day. Headlining the current period would
+    // report a collapse every single month.
+    const series = retentionSeries(rows, "month");
+    expect(series.latestConcludedPct).toBe(196.5);
+    expect(series.latestConcludedLabel).toBe("Jul 2026");
+    // A rate over a handful of customers is not a trend, so the cohort size is
+    // stated beside it.
+    expect(series.latestConcludedCohort).toBe(12);
+  });
+
+  it("reports nothing rather than a number when no period has concluded", () => {
+    const series = retentionSeries(rows.slice(0, 3), "month");
+    expect(series.buckets.map((b) => b.value)).toEqual([189.1]);
+    expect(series.latestConcludedPct).toBeNull();
+    expect(series.latestConcludedLabel).toBeNull();
+    expect(retentionSeries([], "week").latestConcludedPct).toBeNull();
+  });
+
+  it("carries no growth annotation — a growth rate of a rate reads as nothing", () => {
+    const series = retentionSeries(rows, "month");
+    expect(series.buckets.every((b) => b.cmgrPct === null && b.growthPct === null)).toBe(true);
+  });
+
+  it("renders both grains and tolerates a producer that has not shipped it yet", () => {
+    expect(api).toContain("netRevenueRetention?:");
+    expect(api).toContain("RetentionBucket");
+    expect(revenueView).toContain("Net revenue retention");
+    expect(revenueView).toContain("Monthly NRR");
+    expect(revenueView).toContain("Weekly NRR");
+    expect(revenueView).toContain("retentionSeries");
+    // Absent field must read as "not measured", never throw or chart a zero.
+    expect(revenueView).toContain("netRevenueRetention?.monthly ?? []");
+    expect(revenueView).toContain("Not measured yet");
   });
 });
 
