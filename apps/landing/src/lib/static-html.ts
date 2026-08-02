@@ -922,7 +922,7 @@ export function heroRoiChain(
 // attributes the count-up animation reads, so a scraper (and a reader with JS
 // off) still sees the real figures rather than zeroes that JS fills in.
 // Each arrow carries the assumption it applies, so a reader can see that the
-// win rate and the lifetime revenue are THEIRS, not a result we are claiming.
+// win rate is THEIRS, not a result we are claiming.
 function heroChainRows(costPerOutcomeUsd: number): string {
   const budgetRow =
     `<div class="console-metric">` +
@@ -948,9 +948,9 @@ function heroChainRows(costPerOutcomeUsd: number): string {
     // A boundary would be the stronger grouping (NN/g: common region overpowers
     // proximity) but it is only the right tool when whitespace is unavailable,
     // and here it is available; a second border inside a bordered card is ink
-    // that carries no data. The cost-of-acquisition row deliberately gets NO
-    // third label: it is already the visual arrival point, and naming it would
-    // restate what its own treatment says.
+    // that carries no data. The chain STOPS at the reader's own sales: their
+    // lifetime revenue is an input only they hold, so pricing it here would
+    // state a number about their business we never measured.
     `<p class="zone-label">distribute.you handles</p>` +
     budgetRow +
     // The one link the chain never explained: why that budget buys that many.
@@ -964,8 +964,6 @@ function heroChainRows(costPerOutcomeUsd: number): string {
     `<p class="zone-label">You handle</p>` +
     `<p class="chain-arrow">${HERO_WIN_RATE_LOW_PCT}-${HERO_WIN_RATE_HIGH_PCT}% of them become customers</p>` +
     `<div class="console-metric"><span>Your sales</span><b>${sales} per month</b></div>` +
-    `<p class="chain-arrow">${usdWhole(ROI_DEFAULT_LTR_USD)} lifetime value each</p>` +
-    `<div class="console-return"><span>Your cost of acquisition</span><b>${chain.cacPctLow} to ${chain.cacPctHigh} ✨</b></div>` +
     `</div>`
   );
 }
