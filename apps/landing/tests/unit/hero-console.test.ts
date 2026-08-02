@@ -293,16 +293,21 @@ describe("hero console server render", () => {
     expect(staticHtmlSrc).toContain("usdSmart(costPerOutcomeUsd)");
   });
 
-  it("labels the two chain figures as the reader's own", () => {
-    // "Your sales" and "Your return", under arrows that state the assumption
-    // being applied, so neither reads as a result we are claiming for them.
+  it("labels the reader's own figure as theirs", () => {
+    // "Your sales", under an arrow that states the assumption being applied,
+    // so it never reads as a result we are claiming for them.
     expect(staticHtmlSrc).toContain("<span>Your sales</span>");
-    expect(staticHtmlSrc).toContain("<span>Your cost of acquisition</span>");
-    // The label and the arrow above it already give the denominator. Spelling
-    // out "of revenue" pushed the headline figure onto a second line at 320px.
-    expect(staticHtmlSrc).not.toContain("of revenue");
     expect(staticHtmlSrc).toContain("% of them become customers");
-    expect(staticHtmlSrc).toContain("lifetime value each");
+  });
+
+  it("stops at the reader's sales and prices nothing beyond them", () => {
+    // The lifetime revenue and the cost of acquisition it divides into are
+    // inputs only the reader holds, so printing them here would state a number
+    // about their business we never measured.
+    expect(staticHtmlSrc).not.toContain("lifetime value each");
+    expect(staticHtmlSrc).not.toContain("<span>Your cost of acquisition</span>");
+    expect(staticHtmlSrc).not.toContain("console-return");
+    expect(html).not.toContain(".console-return");
   });
 
   it("spends the same lifetime revenue the ROI calculator defaults to", () => {
