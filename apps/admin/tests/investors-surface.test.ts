@@ -120,13 +120,63 @@ describe("investor update composer", () => {
     expect(composer).toContain("probe.onload");
   });
 
-  it("keeps the uploading label at full opacity, per the mutation-button rule", () => {
-    expect(composer).toContain('uploadingImage ? "cursor-wait" : "disabled:opacity-40');
+  it("uploads on the pick — there is no second button to miss", () => {
+    // The first real update went out with no picture because the file sat
+    // chosen in the form and the separate Insert button was never pressed.
+    expect(composer).toContain("void uploadAndInsert(picked)");
+    expect(composer).not.toContain('"Insert"');
+    expect(composer).not.toContain(">Insert<");
+  });
+
+  it("gates the send while a picked image is not in the body", () => {
+    expect(composer).toContain("investorUpdateBlocker(subject, body, pendingImage?.name ?? null)");
+  });
+
+  it("says the image landed, since the line drops below the fold of the textarea", () => {
+    expect(composer).toContain("added at the end of the update");
+  });
+
+  it("falls back to the filename for alt text rather than sending an empty one", () => {
+    expect(composer).toContain("imageAltFromFilename(file.name)");
   });
 
   it("takes the accept list from the catalogue, so picker and gate cannot disagree", () => {
     expect(composer).toContain("ACCEPTED_IMAGE_ACCEPT_ATTR");
     expect(composer).not.toContain('accept="image/png');
+  });
+
+  it("restores the draft before it starts saving, or the first render writes over it", () => {
+    const restoreAt = composer.indexOf("setDraftHydrated(true)");
+    const saveAt = composer.indexOf("writeDraft(storage, { subject, body })");
+    expect(restoreAt).toBeGreaterThan(-1);
+    expect(saveAt).toBeGreaterThan(restoreAt);
+    expect(composer).toContain("if (!draftHydrated) return;");
+  });
+
+  it("gates hydration on STATE, not a ref, and depends on it", () => {
+    // Reproduced with Playwright against real localStorage: with a ref, the
+    // saving effect's next pass still held the EMPTY values of the render it
+    // was created in, so it scheduled a write of the blank form and the line
+    // sat on "Saving draft..." on a page nobody had typed into.
+    expect(composer).toContain("const [draftHydrated, setDraftHydrated] = useState(false)");
+    expect(composer).toContain("}, [draftHydrated, subject, body]);");
+    expect(composer).not.toContain("draftHydrated.current");
+  });
+
+  it("debounces the save from the shared constant rather than a literal", () => {
+    expect(composer).toContain("DRAFT_SAVE_DEBOUNCE_MS");
+  });
+
+  it("purges the draft once the update is out, so it is never offered back", () => {
+    const at = composer.indexOf("  const sendMutation = useMutation({");
+    expect(at).toBeGreaterThan(-1);
+    // Measured to the closing brace of onSuccess; do not widen.
+    expect(composer.slice(at, at + 900)).toContain("clearDraft(storage)");
+  });
+
+  it("says the draft is local to this browser, since it does not follow you", () => {
+    expect(composer).toContain("Draft restored from this browser.");
+    expect(composer).toContain("Draft saved in this browser.");
   });
 });
 

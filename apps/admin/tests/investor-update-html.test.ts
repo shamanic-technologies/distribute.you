@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   investorUpdateBlocker,
   imageMarkdown,
+  imageAltFromFilename,
   imageFileProblem,
   imageUrlProblem,
   ACCEPTED_IMAGE_TYPES,
@@ -28,6 +29,45 @@ describe("investorUpdateBlocker", () => {
 
   it("clears once both are written", () => {
     expect(investorUpdateBlocker("Q3 update", "We shipped a lot.")).toBeNull();
+  });
+
+  it("blocks while a picked image is not in the body, and names the file", () => {
+    // This is exactly how the first real update went out with no picture: the
+    // file sat chosen in the form and the send said nothing.
+    const blocker = investorUpdateBlocker("Q3 update", "We shipped.", "chart.png");
+    expect(blocker).toContain("chart.png");
+    expect(blocker).toContain("not in the update");
+  });
+
+  it("does not block once the image made it in", () => {
+    expect(investorUpdateBlocker("Q3 update", "We shipped.", null)).toBeNull();
+    expect(investorUpdateBlocker("Q3 update", "We shipped.", "  ")).toBeNull();
+  });
+
+  it("still reports the emptier problem first — a missing subject is the nearer fix", () => {
+    expect(investorUpdateBlocker("", "body", "chart.png")).toBe("Add a subject.");
+    expect(investorUpdateBlocker("Q3", "", "chart.png")).toBe("Write the update.");
+  });
+});
+
+describe("imageAltFromFilename", () => {
+  it("reads as words, since this is what shows while a client blocks images", () => {
+    expect(imageAltFromFilename("Q3-revenue-chart.png")).toBe("Q3 revenue chart");
+    expect(imageAltFromFilename("net_revenue_retention.JPEG")).toBe("net revenue retention");
+  });
+
+  it("drops only the final extension", () => {
+    expect(imageAltFromFilename("chart.v2.png")).toBe("chart.v2");
+  });
+
+  it("keeps a name with no extension", () => {
+    expect(imageAltFromFilename("screenshot")).toBe("screenshot");
+  });
+
+  it("never returns an empty alt, which would render as nothing at all", () => {
+    expect(imageAltFromFilename(".png")).toBe("Image");
+    expect(imageAltFromFilename("")).toBe("Image");
+    expect(imageAltFromFilename("--_-.png")).toBe("Image");
   });
 });
 

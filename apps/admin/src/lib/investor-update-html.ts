@@ -26,6 +26,21 @@ export function imageMarkdown(url: string, alt: string): string {
 }
 
 /**
+ * A readable description taken from the file's own name, used when the author
+ * did not write one.
+ *
+ * Alt text is not decoration here: Gmail and Outlook block remote images by
+ * default on a first message from an unknown sender, so this is frequently the
+ * only thing an investor sees where the picture should be. `null` would leave
+ * that space blank, and the filename is at least what the author called it.
+ */
+export function imageAltFromFilename(filename: string): string {
+  const stem = filename.replace(/\.[^./\\]+$/, "");
+  const words = stem.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return words.length > 0 ? words : "Image";
+}
+
+/**
  * The formats a mail client will actually draw. An email client is not a
  * browser and the difference is not cosmetic — a picture that renders perfectly
  * in the composer's preview can arrive as a broken-image placeholder in the
@@ -126,10 +141,24 @@ export function imageUrlProblem(rawUrl: string): string | null {
 /**
  * What stops a half-written update going out. Returns the reason, or null when
  * the update is sendable.
+ *
+ * `pendingImageName` is a file the author picked that is NOT in the body: it is
+ * still uploading, or its upload failed. Sending then mails an update the
+ * author believes carries a picture, and nothing on screen says otherwise —
+ * a form holding an image and an email going out without it are the same
+ * surface contradicting itself. This is the exact way the first real send lost
+ * its image, so the send waits rather than the author finding out afterwards.
  */
-export function investorUpdateBlocker(subject: string, markdown: string): string | null {
+export function investorUpdateBlocker(
+  subject: string,
+  markdown: string,
+  pendingImageName: string | null = null
+): string | null {
   if (subject.trim().length === 0) return "Add a subject.";
   if (markdown.trim().length === 0) return "Write the update.";
+  if (pendingImageName !== null && pendingImageName.trim().length > 0) {
+    return `${pendingImageName.trim()} is not in the update yet. Wait for it, or clear the file.`;
+  }
   return null;
 }
 
