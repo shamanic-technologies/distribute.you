@@ -5,6 +5,9 @@ import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { shareApiBasePath, shareTokenFromPathname } from "./share-mode";
+// Type-only, so nothing circular survives the build: sales-funnels.ts reads this
+// module's goal types the same way.
+import type { SalesFunnelKeyWire } from "./sales-funnels";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -377,29 +380,33 @@ export async function resolveUser(
 }
 
 // Campaigns
-// The per-campaign goal is the runtime-goal vocabulary (campaign-service), which
-// is a DIFFERENT enum from the brand-level `BrandOptimizationGoal`. NULL on a
-// campaign = inherit the brand goal.
-export type RuntimeGoal = "signup" | "meetingBooked" | "purchase";
+/**
+ * The goal a campaign paces on. campaign-service provisions one campaign per
+ * FUNDED sales funnel and forwards that funnel's goal VERBATIM from brand-service
+ * (`funnel-campaigns.ts`: "forwarded verbatim from brand-service, never mapped"),
+ * so the vocabulary here is brand-service's canonical set — the same one
+ * `CANONICAL_GOALS` pins, which its own DB constrains. `purchase` rides along as
+ * the pre-rename spelling of `websitePurchase`, exactly as on the brand wire.
+ *
+ * NULL on a campaign = inherit the brand goal.
+ */
+export type RuntimeGoal = CanonicalGoal | "purchase";
 
-/** Map a brand `BrandOptimizationGoal` to the nearest campaign RuntimeGoal
- *  (used to seed the New Campaign goal picker from the brand's inherited goal). */
-export function runtimeGoalForOptimizationGoal(goal: BrandOptimizationGoal): RuntimeGoal {
-  // website_purchase (renamed purchase) + combined sales both terminate in a paid
-  // client → the campaign paces on the `purchase` runtime goal.
-  if (goal === "website_purchase" || goal === "sales") return "purchase";
-  if (goal === "sales_meetings" || goal === "positive_replies") return "meetingBooked";
-  // signups / website_visits / form_submissions → signup (visit-driven default).
-  return "signup";
-}
-
-/** Map a campaign RuntimeGoal back to a `BrandOptimizationGoal` so the campaign's
- *  OWN goal can drive the goal-labelled display surfaces (which speak the brand
- *  optimization-goal vocabulary). Display-only. */
+/**
+ * Map a campaign's own goal onto this app's local brand-goal vocabulary, which is
+ * what every goal-labelled surface speaks. Display-only.
+ *
+ * It delegates rather than re-deciding: the campaign goal and the brand goal are
+ * the SAME vocabulary, so a second mapping here is a second place to go stale —
+ * which is exactly what happened. This used to be a three-token union ending in a
+ * bare `return "sales_meetings"`, so `formSubmission` (what campaign-service sends
+ * for a Form Magnet funnel) printed "Sales Meeting from Conversation": a funnel
+ * the brand had never declared, on a page sitting beside Settings that declared
+ * one. `normalizeBrandOptimizationGoal` is exhaustive and throws on an unmapped
+ * spelling, so the next vocabulary the producer adds fails loud instead.
+ */
 export function optimizationGoalForRuntimeGoal(goal: RuntimeGoal): BrandOptimizationGoal {
-  if (goal === "signup") return "signups";
-  if (goal === "purchase") return "website_purchase";
-  return "sales_meetings";
+  return normalizeBrandOptimizationGoal(goal);
 }
 
 export interface Campaign {
@@ -420,6 +427,14 @@ export interface Campaign {
   // Per-campaign config (v2, campaign-service). All nullable; NULL = inherit the
   // brand-level value (goal / active audience set / services / click destination).
   goal: RuntimeGoal | null;
+  /**
+   * The sales funnel this campaign runs, when campaign-service provisioned it for
+   * one. NULL = the pre-funnel campaign, which predates the model and pursues the
+   * brand-level goal. It is the RICHER field of the two: the goal cannot tell a
+   * meeting won from a reply apart from one won on the website, and the funnel
+   * key can, so every surface naming what a campaign buys should read this.
+   */
+  funnelKey: SalesFunnelKeyWire | null;
   audienceIds: string[] | null;
   servicesOffered: string[] | null;
   clickDestinationUrl: string | null;

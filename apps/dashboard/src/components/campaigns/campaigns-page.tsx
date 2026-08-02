@@ -22,6 +22,7 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { acquisitionChannelForWorkflowSlug } from "@/lib/acquisition-channels";
 import { primaryFunnelForGoal } from "@/lib/sales-funnels";
+import { campaignFunnel, supersededCampaignIds } from "@/lib/campaign-funnel";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -46,9 +47,10 @@ function channelLabel(workflowSlug: string | null): string {
     .join(" ");
 }
 
-// Fallback outcome label for the Goal column, used only for a goal no funnel in
-// the catalogue ends on. A goal that HAS a funnel reads as that funnel's name,
-// so the column says the same thing brand Settings does.
+// Fallback outcome label for the Sales funnel column, used only by a pre-funnel
+// campaign whose inherited brand goal no funnel in the catalogue ends on. A
+// campaign that names its own funnel reads as that funnel, so the column says the
+// same thing brand Settings does.
 const GOAL_SHORT: Record<BrandOptimizationGoal, string> = {
   signups: "Signups",
   sales_meetings: "Positive Replies",
@@ -138,13 +140,22 @@ const STATUS_STYLES: Record<string, string> = {
   completed: "bg-gray-100 text-gray-500 border-gray-200",
   ended: "bg-gray-100 text-gray-500 border-gray-200",
 };
-function StatusPill({ status }: { status: string }) {
-  const cls = isActiveStatus(status)
-    ? RUNNING_STATUS_STYLE
-    : (STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200");
+/**
+ * `superseded` is a state the WIRE does not carry: campaign-service leaves the
+ * pre-funnel campaign `ongoing` on purpose, because a brand that clears its
+ * per-funnel ceilings falls straight back onto it. Rendering that word raw put two
+ * running campaigns on screen for one declared funnel, which is the page
+ * contradicting brand Settings — so the row says what the campaign actually is.
+ */
+function StatusPill({ status, superseded }: { status: string; superseded: boolean }) {
+  const cls = superseded
+    ? "bg-gray-100 text-gray-500 border-gray-200"
+    : isActiveStatus(status)
+      ? RUNNING_STATUS_STYLE
+      : (STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200");
   return (
     <span className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${cls}`}>
-      {status}
+      {superseded ? "superseded" : status}
     </span>
   );
 }
@@ -166,15 +177,26 @@ function ChannelCell({ workflowSlug }: { workflowSlug: string | null }) {
 }
 
 /**
- * What this campaign is buying, drawn as the funnel brand Settings names. A goal
- * no funnel ends on keeps its short outcome word and no tile.
+ * What this campaign is buying, drawn as the funnel brand Settings names.
+ *
+ * It reads the campaign's OWN funnel key, which campaign-service writes when it
+ * provisions a campaign for a funded funnel. The goal is only the fallback, for
+ * the pre-funnel campaign that carries no key — and it is a lossy one, since two
+ * different funnels share `meetingBooked`. A goal no funnel ends on keeps its
+ * short outcome word and no tile.
  */
-function GoalCell({ goal }: { goal: BrandOptimizationGoal }) {
-  const def = primaryFunnelForGoal(goal);
+function FunnelCell({
+  funnelKey,
+  fallbackGoal,
+}: {
+  funnelKey: Campaign["funnelKey"];
+  fallbackGoal: BrandOptimizationGoal;
+}) {
+  const def = campaignFunnel(funnelKey) ?? primaryFunnelForGoal(fallbackGoal);
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {def && <SalesFunnelMark def={def} size="sm" />}
-      <span className="truncate">{def ? def.name : GOAL_SHORT[goal]}</span>
+      <span className="truncate">{def ? def.name : GOAL_SHORT[fallbackGoal]}</span>
     </div>
   );
 }
@@ -275,11 +297,14 @@ export function CampaignsPage() {
   }, [campaigns, groupsById]);
 
   // Effective goal = the campaign's OWN goal (v2 per-campaign) when set, else the
-  // inherited brand goal. Pure display of campaign config.
+  // inherited brand goal. Pure display of campaign config, and only the FALLBACK
+  // for the funnel column — a campaign that names its funnel never reads it.
   const goalFor = useMemo(() => {
     return (campaign: Campaign): BrandOptimizationGoal =>
       campaign.goal ? optimizationGoalForRuntimeGoal(campaign.goal) : brandGoal;
   }, [brandGoal]);
+
+  const superseded = useMemo(() => supersededCampaignIds(campaigns), [campaigns]);
 
   // #1 acquisition channel = the channel of the best-ROI RUNNING campaign, named
   // as the brand Settings catalogue names it (display argmax over already-fetched
@@ -350,7 +375,7 @@ export function CampaignsPage() {
                 <th className="px-4 py-3 text-right"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
                 <th className="px-4 py-3 text-right"><NumericHead label="Revenue" tip={COLUMN_INFO.revenue} /></th>
                 <th className="px-4 py-3">Channel</th>
-                <th className="px-4 py-3">Goal</th>
+                <th className="px-4 py-3">Sales funnel</th>
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
@@ -383,9 +408,11 @@ export function CampaignsPage() {
                       <ChannelCell workflowSlug={campaign.workflowSlug} />
                     </td>
                     <td className="px-4 py-3 text-gray-800">
-                      <GoalCell goal={goalFor(campaign)} />
+                      <FunnelCell funnelKey={campaign.funnelKey} fallbackGoal={goalFor(campaign)} />
                     </td>
-                    <td className="px-4 py-3"><StatusPill status={campaign.status} /></td>
+                    <td className="px-4 py-3">
+                      <StatusPill status={campaign.status} superseded={superseded.has(campaign.id)} />
+                    </td>
                   </tr>
                 ))
               )}
