@@ -52,7 +52,7 @@ describe("Org switch cross-org isolation framework", () => {
     // org B (DIS-143); the "platform" fallback is fleet-global data owned by no org.
     const content = read(queryProviderPath);
     expect(content).toContain('typeof window !== "undefined"');
-    expect(content).toContain("persistEnabled ? idbStorage : undefined");
+    expect(content).toContain("persistEnabled ? makeIdbStorage(persisterStorageKey(bucket)) : undefined");
     expect(content).toContain("prefix: persisterStorageKey(bucket)");
   });
 

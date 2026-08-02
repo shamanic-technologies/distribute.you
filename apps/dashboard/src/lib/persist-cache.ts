@@ -25,9 +25,9 @@
  *      cache. This kills the main-thread "lourd/lent" jank of the whole-client
  *      persister, which re-`dehydrate()`d the ENTIRE set on every mutation (#9775).
  *   2. A query persisted to disk survives even after it is GC'd from MEMORY — disk
- *      retention is DECOUPLED from `gcTime`. That lets us keep `maxAge: Infinity`
- *      (disk = keep forever → never expire → no cross-session cold skeleton) WITHOUT
- *      pinning everything in the JS heap forever. `gcTime` stays a modest bound on
+ *      retention is DECOUPLED from `gcTime`. That lets disk retention run for weeks
+ *      (no cross-session cold skeleton) WITHOUT pinning anything in the JS heap for
+ *      anywhere near that long. `gcTime` stays a modest bound on
  *      MEMORY only (the #1273 heap-overflow lever); the disk holds it regardless.
  *
  * STORAGE = IndexedDB (idb-keyval), NOT localStorage. localStorage's hard ~5MB
@@ -40,7 +40,7 @@
  * NB admin ≠ dashboard: `admin.distribute.you` is a SEPARATE origin with its OWN
  * storage — its heavy outlets/journalists cache never touches this dashboard cache.
  *
- * SAFETY (cross-deploy shape drift, with `maxAge: Infinity` and no per-deploy bust):
+ * SAFETY (cross-deploy shape drift, with no per-deploy bust):
  * `buster` (manual version, bumped by hand on an incompatible shape change) is the
  * only forced invalidation; `safeParse` / `z.coerce` on list readers, keep-last-good
  * `structuralSharing`, and the org-scoped `prefix` each tolerate a drifted shape.
@@ -49,17 +49,23 @@
  */
 
 /**
- * Persisted-cache freshness window (the per-query persister `maxAge`). `Infinity`
- * = NEVER expire on disk → opening any page on a later session/day paints its
- * last-known content instantly, then revalidates in the background (SWR). Safe to
- * be infinite ONLY because the persister is PER-QUERY: disk retention is decoupled
- * from `gcTime`, so "keep forever on disk" does NOT pin everything in the JS heap
- * (that decoupling is impossible with the whole-client persister, where disk
- * mirrors memory and `maxAge: Infinity` would force `gcTime: Infinity` → the #1273
- * heap overflow). Shape drift across deploys is handled by `buster` + safeParse, not
- * by expiry. Was 30 min (and before that 24h, #1273).
+ * Persisted-cache freshness window (the per-query persister `maxAge`). 30 DAYS,
+ * and the fact that it is FINITE is the point.
+ *
+ * It used to be `Infinity`, on the reasoning that the per-query persister decouples
+ * disk retention from `gcTime`, so keeping everything forever pins nothing in the JS
+ * heap. That reasoning holds for one entry and fails for the STORE: nothing in the
+ * design ever deleted anything, so every response this console has received since the
+ * cache shipped was still on disk — across every god-mode org ever visited — and the
+ * boot-time restore read all of it into memory at once (see `sweepStaleEntries`).
+ *
+ * 30 days is picked against how staff actually return to a page: a page opened in a
+ * normal week never comes near it, and the bucket of an org visited once in March
+ * disappears. The cost of the bound is that a page untouched for a month
+ * cold-skeletons ONCE, then is instant again — which is a fair price for a snapshot
+ * whose age already made it a poor thing to paint.
  */
-export const PERSIST_MAX_AGE_MS = Infinity;
+export const PERSIST_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * In-memory `gcTime` — how long an INACTIVE query stays in the JS heap. Bounds
@@ -253,7 +259,7 @@ export interface ColdRestore {
  *
  * WHY this exists on top of the persister's own restore paths: the per-query persister
  * self-restores a query from disk ONLY when that query FETCHES (i.e. `enabled`), and the
- * mount seed (`persister.restoreQueries`) is one-shot per provider mount. So a page
+ * persister's own restore paths never run for a query that does not fetch. So a page
  * entered while the org-consistency gate is momentarily CLOSED (Clerk active-org still
  * settling → every `useAuthQuery` disabled → never fetches → never self-restores), or an
  * in-app nav to a sub-page whose memory was GC'd, paints a SKELETON even though its stale
@@ -295,3 +301,70 @@ export function coldRestorablePairs(
   }
   return out;
 }
+
+/**
+ * The half-open key range that holds exactly ONE bucket's entries.
+ *
+ * Every persisted entry is stored under `${prefix}-${queryHash}`, and IndexedDB
+ * orders keys lexicographically, so a bucket's entries are CONTIGUOUS and can be
+ * read with a bounded `getAll` instead of a full-store scan. `￿` is the
+ * largest code unit, so the upper bound sorts after every real query hash while
+ * still sorting before the next bucket's prefix.
+ *
+ * This is what stops one page's boot from materializing every org's cache: the
+ * persister's own `restoreQueries` / `persisterGc` call `storage.entries()` and
+ * only THEN filter on `key.startsWith(prefix)`, so a whole-store `entries()`
+ * loads every byte the console has ever cached before discarding almost all of
+ * it. Scoping the read at the storage adapter fixes both of them at once.
+ */
+export function bucketKeyBounds(prefix: string): [lower: string, upper: string] {
+  return [`${prefix}-`, `${prefix}-￿`];
+}
+
+/**
+ * Should this stored entry be deleted?
+ *
+ * Mirrors the persister's own `isExpiredOrBusted`, deliberately: the sweep and the
+ * persister must agree on what "stale" means, or the sweep deletes something the
+ * persister would happily have restored (a needless cold load) or keeps something
+ * the persister will discard on read (dead weight forever). Two reasons to delete,
+ * plus one for a value that cannot be read at all:
+ *
+ *  - EXPIRED — older than `maxAgeMs`. `Infinity` means nothing ever expires by age.
+ *  - BUSTED  — written under a different cache version, so its shape may not match
+ *              what the components reading it now expect.
+ *  - UNREADABLE — not JSON, or carries no timestamp. Nothing can be done with it.
+ *
+ * Pure (takes `now`), so the day-boundary cases are unit-testable.
+ */
+export function snapshotIsStale(
+  value: string,
+  buster: string,
+  now: number,
+  maxAgeMs: number,
+): boolean {
+  let snap: StoredQuerySnapshot;
+  try {
+    snap = JSON.parse(value) as StoredQuerySnapshot;
+  } catch {
+    return true; // unreadable — the persister removes these on its own read too
+  }
+  if (!snap || typeof snap !== "object") return true;
+  if ((snap.buster ?? "") !== buster) return true;
+  const updatedAt = snap.state?.dataUpdatedAt;
+  if (typeof updatedAt !== "number") return true;
+  return now - updatedAt > maxAgeMs;
+}
+
+/**
+ * Key marking that the one-time reclaim of the pre-bounded store has run.
+ *
+ * The store that existed before this shipped has no expiry and no bucket scoping,
+ * so nothing in the new code would ever reach most of it: `sweepStaleEntries` will
+ * bound it going forward, but entries written last week are not stale yet and the
+ * bulk of the bytes are exactly those. A single `clear()` reclaims it in one go, at
+ * the cost of one cold load per page, once ever.
+ *
+ * Suffix bumps only if the store ever has to be reclaimed again.
+ */
+export const RECLAIM_MARKER_KEY = "distribute-cache-reclaimed:1";
