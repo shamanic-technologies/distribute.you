@@ -5391,6 +5391,32 @@ export interface CommittedMrr {
   weekly: CommittedMrrBucket[];
 }
 
+// NET REVENUE RETENTION, as features-service serves it (v0.120.0). One point per
+// period: of the money the customers who were spending LAST period are spending
+// NOW, what fraction remains — expansion, contraction and churn among them all
+// land in the one number, and a customer acquired DURING the period is in
+// neither side. That exclusion is what makes it comparable to the benchmark
+// every investor reads it against (above 100% the existing base grows on its
+// own; above 120% is where public SaaS trades at a premium).
+//
+// `retentionPct` is NULL when the period had no prior cohort to retain — that is
+// "we could not measure this", NOT 0%. The two must never render alike: a
+// benchmark reader acts very differently on "no cohort yet" than on "the base
+// went to nothing".
+export interface RetentionBucket {
+  period: string; // "YYYY-MM" | "YYYY-Www"
+  periodStart: string; // UTC bucket start "YYYY-MM-DD"
+  retentionPct: number | null; // null = unmeasurable (no prior-period cohort)
+  cohortSize: number; // customers carried into the period
+  priorRevenueUsd: number; // what that cohort spent last period (denominator)
+  retainedRevenueUsd: number; // what that same cohort spent this period (numerator)
+}
+
+export interface NetRevenueRetention {
+  monthly: RetentionBucket[];
+  weekly: RetentionBucket[];
+}
+
 export interface FleetRevenue {
   totalRevenueUsd: number; // cumulative realized cold-email revenue since inception (USD)
   currentMrrUsd: number; // live fleet active daily budget × 30 (USD)
@@ -5399,6 +5425,9 @@ export interface FleetRevenue {
   daily: FleetRevenueBucket[]; // trailing UTC-day buckets (realized, windowed default 90d)
   sinceInceptionDaily: FleetRevenueBucket[]; // per-day realized line, first billed day → today
   committedMrr: CommittedMrr; // committed MRR/ARR run-rate over time (daily snapshots)
+  // Optional so the admin renders against an env where features-service has not
+  // yet reached v0.120.0 — absent reads as "not measured" rather than throwing.
+  netRevenueRetention?: NetRevenueRetention;
   asOf: string;
 }
 

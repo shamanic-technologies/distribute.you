@@ -1,4 +1,4 @@
-import type { ActiveUsersBucket, CommittedMrrBucket, FleetRevenueBucket } from "@/lib/api";
+import type { ActiveUsersBucket, CommittedMrrBucket, FleetRevenueBucket, RetentionBucket } from "@/lib/api";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
 import { barsBehindLatest, type CompoundGrowthSummary } from "@/lib/compound-growth";
 
@@ -139,6 +139,54 @@ export function trackedWeeks(sinceInceptionDaily: FleetRevenueBucket[]): number 
 /** Map derived revenue buckets into the shared PeriodCompoundChart point shape. */
 export function toCompoundPoints(buckets: RevenueBucket[], withGrowth = true) {
   return buckets.map((b) => ({ label: b.label, value: b.value, cmgrPct: withGrowth ? b.cmgrPct : null }));
+}
+
+// ── Net revenue retention ────────────────────────────────────────────────────
+// features-service computes the rate; nothing is derived here. What this does
+// is decide what may be DRAWN, and the two rules are the ones that keep the
+// chart honest:
+//
+//  1. A period the producer could not measure (`retentionPct: null`, no prior
+//     cohort) is DROPPED, never charted as 0. A zero bar says the base went to
+//     nothing; the truth is that there was no base yet. Nearly every period
+//     before the product's first billed month is one of these.
+//  2. The CURRENT period is still filling up. Retention read mid-period is
+//     always low — August reads 2.8% on its second day — so it is charted (in
+//     the shared chart's current-period pencil) but never headlined. The
+//     headline is the last CONCLUDED period, the same convention the CMGR
+//     summary uses.
+
+export interface RetentionSeries {
+  /** Measured periods only, oldest→newest, value = the retention rate in percent. */
+  buckets: RevenueBucket[];
+  /** Rate of the last CONCLUDED period, or null when nothing concluded is measurable. */
+  latestConcludedPct: number | null;
+  /** That period's label, so the headline can say which period it is stating. */
+  latestConcludedLabel: string | null;
+  /** How many customers that period carried in — a rate over 2 customers is not a trend. */
+  latestConcludedCohort: number | null;
+}
+
+export function retentionSeries(rows: RetentionBucket[], granularity: "month" | "week"): RetentionSeries {
+  const measured = [...rows]
+    .sort((a, b) => a.period.localeCompare(b.period))
+    .filter((row): row is RetentionBucket & { retentionPct: number } => row.retentionPct !== null);
+
+  const buckets: RevenueBucket[] = measured.map((row) => ({
+    key: row.period,
+    label: bucketLabel(row.periodStart, granularity),
+    value: row.retentionPct,
+    growthPct: null,
+    cmgrPct: null,
+  }));
+
+  const concluded = measured[measured.length - 2];
+  return {
+    buckets,
+    latestConcludedPct: concluded?.retentionPct ?? null,
+    latestConcludedLabel: concluded ? bucketLabel(concluded.periodStart, granularity) : null,
+    latestConcludedCohort: concluded?.cohortSize ?? null,
+  };
 }
 
 // ── Cash collected (Stripe), net of refunds ──────────────────────────────────

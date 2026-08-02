@@ -18,6 +18,7 @@ import {
   revenueBuckets,
   revenueCmgrSummary,
   committedBuckets,
+  retentionSeries,
   cashBuckets,
   centsStringToUsd,
   toCompoundPoints,
@@ -28,6 +29,7 @@ import {
   avgPerSeries,
   type RevenueBucket,
   type AvgSeries,
+  type RetentionSeries,
 } from "@/lib/revenue-buckets";
 
 // Currency formatters — full for tooltips/headlines, compact for chart axes.
@@ -176,6 +178,80 @@ function AvgCard({
   );
 }
 
+const EMPTY_RETENTION: RetentionSeries = {
+  buckets: [],
+  latestConcludedPct: null,
+  latestConcludedLabel: null,
+  latestConcludedCohort: null,
+};
+
+function pctFull(n: number): string {
+  return `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+}
+function pctAxis(n: number): string {
+  return `${Math.round(n)}%`;
+}
+
+/**
+ * A net-revenue-retention card: the last CONCLUDED period's rate as the
+ * headline, the measured periods as bars. No growth line — a rate of a rate
+ * reads as nothing.
+ */
+function RetentionCard({
+  title,
+  subtitle,
+  series,
+  pending,
+}: {
+  title: string;
+  subtitle: string;
+  series: RetentionSeries;
+  pending: boolean;
+}) {
+  const rate = series.latestConcludedPct;
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <h2 className="text-lg font-semibold text-gray-950">{title}</h2>
+      <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+      <div className="mt-4">
+        {pending ? (
+          <Skeleton className="h-16 w-32 rounded" />
+        ) : (
+          <div>
+            {/* Green above 100 is the metric's own meaning — the existing base
+                grew without a single new customer — not a chart-colour habit. */}
+            <p
+              className={`text-2xl font-semibold ${
+                rate === null ? "text-gray-400" : rate >= 100 ? "text-emerald-600" : "text-red-600"
+              }`}
+            >
+              {rate === null ? "Not measured yet" : pctFull(rate)}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              {series.latestConcludedLabel === null
+                ? "No concluded period has a prior cohort to retain"
+                : `${series.latestConcludedLabel}, last complete period · ${series.latestConcludedCohort} customers carried in`}
+            </p>
+          </div>
+        )}
+      </div>
+      <div className="mt-5">
+        {pending ? (
+          <Skeleton className="h-[280px] w-full rounded" />
+        ) : (
+          <PeriodCompoundChart
+            data={toCompoundPoints(series.buckets, false)}
+            valueLabel="retention"
+            growthLabel=""
+            formatValue={pctFull}
+            formatAxis={pctAxis}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** A band heading that names WHICH money the cards under it are about. */
 function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
   return (
@@ -232,6 +308,8 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
       perVisitor: avgPerSeries(revenueByMonth, visitorsByMonth),
       perSignup: avgPerSeries(revenueByMonth, signupsByMonth),
       perPaidClient: avgPerSeries(revenueByMonth, paidClientsByMonth),
+      monthlyNrr: retentionSeries(data.netRevenueRetention?.monthly ?? [], "month"),
+      weeklyNrr: retentionSeries(data.netRevenueRetention?.weekly ?? [], "week"),
     };
   }, [data, history, timeline]);
 
@@ -379,6 +457,26 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
           buckets={derived?.weekly ?? []}
           growthLabel="CWGR since inception"
           valueLabel="revenue"
+          pending={isPending || !derived}
+        />
+      </section>
+
+      <SectionHeading
+        title="Net revenue retention"
+        blurb="Of the money the customers who were spending last period are spending now, how much remains. Expansion, contraction and churn among them all land in the one number, and a customer we acquired during the period counts on neither side — which is what makes it comparable: above 100% the existing base grows on its own, above 120% is where public SaaS trades at a premium. The current period is still filling up, so the headline states the last complete one."
+      />
+
+      <section className="grid gap-6 md:grid-cols-2">
+        <RetentionCard
+          title="Monthly NRR"
+          subtitle="Month-over-month retention of the prior month's paying customers."
+          series={derived?.monthlyNrr ?? EMPTY_RETENTION}
+          pending={isPending || !derived}
+        />
+        <RetentionCard
+          title="Weekly NRR"
+          subtitle="Week-over-week retention of the prior week's paying customers."
+          series={derived?.weeklyNrr ?? EMPTY_RETENTION}
           pending={isPending || !derived}
         />
       </section>
