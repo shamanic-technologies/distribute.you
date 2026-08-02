@@ -580,19 +580,10 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
       // only the org back-link was made redundant by the switcher.
       backHref={`${basePath}/campaigns`}
       backLabel="Campaigns"
+      // Brand Settings is a BRAND-level surface, so it belongs to the brand
+      // sidebar the back-link leads to, not inside a campaign.
       footer={
         <div className="border-t border-gray-100">
-          <div className="p-2 space-y-0.5">
-            <SidebarLink
-              item={{
-                id: "settings",
-                label: "Brand Settings",
-                href: `${basePath}/settings`,
-                icon: <SettingsIcon />,
-              }}
-              isActive={pathname === `${basePath}/settings`}
-            />
-          </div>
           <ReferralCard />
         </div>
       }
