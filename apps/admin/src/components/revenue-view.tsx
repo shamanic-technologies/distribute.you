@@ -74,6 +74,7 @@ function PeriodCard({
   cmgrUnit,
   latestPct,
   avgPct,
+  barsUsed,
   buckets,
   growthLabel,
   valueLabel,
@@ -82,9 +83,10 @@ function PeriodCard({
   title: string;
   subtitle: string;
   cmgrLabel: string;
-  cmgrUnit: string;
+  cmgrUnit: "weekly" | "monthly";
   latestPct: number | null;
   avgPct: number | null;
+  barsUsed: number | null;
   buckets: RevenueBucket[];
   growthLabel: string;
   valueLabel: string;
@@ -98,7 +100,13 @@ function PeriodCard({
         {pending ? (
           <Skeleton className="h-16 w-32 rounded" />
         ) : (
-          <CmgrStat latestPct={latestPct} avgPct={avgPct} label={cmgrLabel} unit={cmgrUnit} />
+          <CmgrStat
+            latestPct={latestPct}
+            avgPct={avgPct}
+            barsUsed={barsUsed}
+            label={cmgrLabel}
+            unit={cmgrUnit}
+          />
         )}
       </div>
       <div className="mt-5">
@@ -263,6 +271,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           cmgrUnit="monthly"
           latestPct={mc?.latestPct ?? null}
           avgPct={mc?.avgPct ?? null}
+          barsUsed={mc?.barsUsed ?? null}
           buckets={derived?.monthly ?? []}
           growthLabel="CMGR since inception"
           valueLabel="revenue"
@@ -275,6 +284,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           cmgrUnit="weekly"
           latestPct={wc?.latestPct ?? null}
           avgPct={wc?.avgPct ?? null}
+          barsUsed={wc?.barsUsed ?? null}
           buckets={derived?.weekly ?? []}
           growthLabel="CWGR since inception"
           valueLabel="revenue"
@@ -290,6 +300,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           cmgrUnit="monthly"
           latestPct={mmc?.latestPct ?? null}
           avgPct={mmc?.avgPct ?? null}
+          barsUsed={mmc?.barsUsed ?? null}
           buckets={derived?.monthlyMrr ?? []}
           growthLabel="CMGR since inception"
           valueLabel="MRR"
@@ -302,6 +313,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           cmgrUnit="weekly"
           latestPct={wmc?.latestPct ?? null}
           avgPct={wmc?.avgPct ?? null}
+          barsUsed={wmc?.barsUsed ?? null}
           buckets={derived?.weeklyMrr ?? []}
           growthLabel="CWGR since inception"
           valueLabel="MRR"
@@ -317,6 +329,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           cmgrUnit="monthly"
           latestPct={mmc?.latestPct ?? null}
           avgPct={mmc?.avgPct ?? null}
+          barsUsed={mmc?.barsUsed ?? null}
           buckets={derived?.monthlyArr ?? []}
           growthLabel="CMGR since inception"
           valueLabel="ARR"
@@ -329,6 +342,7 @@ export function RevenueView({ timeline }: { timeline: DailyFunnelPoint[] }) {
           cmgrUnit="weekly"
           latestPct={wmc?.latestPct ?? null}
           avgPct={wmc?.avgPct ?? null}
+          barsUsed={wmc?.barsUsed ?? null}
           buckets={derived?.weeklyArr ?? []}
           growthLabel="CWGR since inception"
           valueLabel="ARR"

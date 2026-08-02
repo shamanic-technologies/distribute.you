@@ -166,7 +166,7 @@ export function ActiveUsersView() {
             <p className="mt-1 text-sm text-gray-500">Active users per month with compound monthly growth since inception.</p>
             {!historyPending && (
               <div className="mt-4">
-                <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+                <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
               </div>
             )}
             <div className="mt-5">
@@ -182,7 +182,7 @@ export function ActiveUsersView() {
             <p className="mt-1 text-sm text-gray-500">Active users per week with compound weekly growth since inception.</p>
             {!historyPending && (
               <div className="mt-4">
-                <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+                <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
               </div>
             )}
             <div className="mt-5">
