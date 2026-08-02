@@ -6129,3 +6129,104 @@ export async function setAudienceStatus(
   }
   return parsed.data as unknown as { audience: AudienceWire };
 }
+
+// ── Investor mailing list + investor updates (staff) ─────────────────────────
+// A platform-level (org-less) subscriber list and the written updates broadcast
+// to it. Owned by transactional-email-service, which already owns templates,
+// lifecycle sends, per-send dedup and stats; proxied staff-gated at api-service.
+//
+// CONTRACT NOTE: the producer designs its own paths, naming and payload shape.
+// The types below are the admin's expected shape and every non-essential field
+// is optional so a reader cannot hard-fail on a producer that names things
+// differently — conform these to the DEPLOYED shape via the api-registry (live
+// beats source) once transactional-email-service ships, per the cross-repo rule.
+//
+// Sends go out one message per recipient on the Postmark broadcast stream, so
+// no recipient ever sees another and each carries a per-recipient native
+// unsubscribe. Suppression state is the provider's; a member Postmark is
+// blocking must never be rendered as subscribed.
+
+export interface InvestorSubscriber {
+  id: string;
+  email: string;
+  name: string | null;
+  /** True once the person opted out (ours or the provider's suppression list). */
+  unsubscribed: boolean;
+  /** ISO timestamp, when known. */
+  addedAt?: string | null;
+  unsubscribedAt?: string | null;
+}
+
+export interface InvestorListResponse {
+  subscribers: InvestorSubscriber[];
+}
+
+/** What a bulk paste actually did. Counts come from the producer, never the browser. */
+export interface InvestorBulkAddResult {
+  added: number;
+  skipped: number;
+  rejected?: string[];
+}
+
+export interface InvestorUpdateRecord {
+  id: string;
+  subject: string;
+  /** The body exactly as it was sent. */
+  html: string;
+  sentAt: string;
+  recipientCount: number;
+  /** Present when a send partially failed — which addresses, and why. */
+  failures?: { email: string; reason: string }[] | null;
+}
+
+export interface InvestorUpdateHistoryResponse {
+  updates: InvestorUpdateRecord[];
+}
+
+export interface SendInvestorUpdateResult {
+  update: InvestorUpdateRecord;
+}
+
+export async function listInvestorSubscribers(token?: string): Promise<InvestorListResponse> {
+  return apiCall<InvestorListResponse>(`/emails/investors/subscribers`, { token });
+}
+
+/**
+ * Send the whole pasted blob to the producer and let it decide what is new.
+ * The browser parses only to SHOW the user what they are about to add; the
+ * producer owns dedup against what is already stored, so re-pasting is safe.
+ */
+export async function addInvestorSubscribers(
+  emails: { email: string; name: string | null }[],
+  token?: string
+): Promise<InvestorBulkAddResult> {
+  return apiCall<InvestorBulkAddResult>(`/emails/investors/subscribers`, {
+    token,
+    method: "POST",
+    body: { subscribers: emails },
+  });
+}
+
+export async function removeInvestorSubscriber(id: string, token?: string): Promise<void> {
+  await apiCall<unknown>(`/emails/investors/subscribers/${id}`, { token, method: "DELETE" });
+}
+
+export async function listInvestorUpdates(token?: string): Promise<InvestorUpdateHistoryResponse> {
+  return apiCall<InvestorUpdateHistoryResponse>(`/emails/investors/updates`, { token });
+}
+
+/**
+ * Broadcast an update. The HTML is exactly the string the composer previewed —
+ * a send rendered by a different code path could disagree with what the author
+ * approved on screen.
+ */
+export async function sendInvestorUpdate(
+  input: { subject: string; html: string; text: string },
+  token?: string
+): Promise<SendInvestorUpdateResult> {
+  return apiCall<SendInvestorUpdateResult>(`/emails/investors/updates`, {
+    token,
+    method: "POST",
+    body: input,
+  });
+}
