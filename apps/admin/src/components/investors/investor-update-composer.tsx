@@ -66,7 +66,7 @@ function PastUpdate({ update }: { update: MailingListUpdate }) {
               <ul className="mt-1 space-y-0.5">
                 {failures.map((f) => (
                   <li key={f.email} className="text-xs text-red-700">
-                    <span className="font-mono">{f.email}</span> — {f.reason}
+                    <span className="font-mono">{f.email}</span>: {f.reason}
                   </li>
                 ))}
               </ul>
@@ -127,7 +127,7 @@ export function InvestorUpdateComposer() {
       setError(null);
       const bits = [`Sent to ${reached} ${reached === 1 ? "investor" : "investors"}.`];
       if (skippedOptedOut.length > 0) bits.push(`${skippedOptedOut.length} skipped as opted out.`);
-      if (failures.length > 0) bits.push(`${failures.length} failed — open it below to see which.`);
+      if (failures.length > 0) bits.push(`${failures.length} failed. Open it below to see which.`);
       setNotice(bits.join(" "));
       await queryClient.invalidateQueries({ queryKey: UPDATES_KEY });
     },
@@ -202,7 +202,7 @@ export function InvestorUpdateComposer() {
               setNotice(null);
               setConfirming(false);
             }}
-            placeholder="distribute — Q3 investor update"
+            placeholder="Q3 investor update"
             className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
         </div>
