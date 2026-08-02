@@ -19,6 +19,7 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { acquisitionChannelForWorkflowSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
+import { channelSlugLabel } from "@/lib/campaign-title";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -32,16 +33,10 @@ import { Skeleton } from "@/components/skeleton";
 // arrangements of wire data, never a derived metric (CLAUDE.md: a displayed stat
 // is features-service-owned, never computed in the browser).
 
-// The outreach "channel" is the campaign's workflow, so the workflow slug is what
-// resolves the catalogue entry the brand Settings card renders. A slug with no
-// catalogue entry is prettified rather than named as a channel we do not carry.
-function channelLabel(workflowSlug: string | null): string {
-  if (!workflowSlug) return "—";
-  return workflowSlug
-    .split("-")
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(" ");
-}
+// The outreach "channel" is the campaign's workflow, and naming it lives in
+// `campaign-title.ts`, beside the helper that composes a campaign's title out of
+// the same halves. One home, so a campaign cannot read as one thing in this
+// table and another in the heading of the page the row opens.
 
 function fmtUsd(usd: number | null | undefined): string {
   return usd == null ? "—" : formatUsdAdaptive(usd);
@@ -150,7 +145,7 @@ function ChannelCell({ workflowSlug }: { workflowSlug: string | null }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {def && <AcquisitionChannelMark def={def} size="sm" />}
-      <span className="truncate">{def ? def.name : channelLabel(workflowSlug)}</span>
+      <span className="truncate">{def ? def.name : channelSlugLabel(workflowSlug)}</span>
     </div>
   );
 }
@@ -158,11 +153,11 @@ function ChannelCell({ workflowSlug }: { workflowSlug: string | null }) {
 /**
  * What this campaign is buying, drawn as the funnel brand Settings names.
  *
- * It reads the campaign's OWN funnel key and NOTHING ELSE. There is deliberately
+ * It reads the campaign's OWN funnel key and NOTHING else. There is deliberately
  * no fallback to the goal: the goal is the retired, lossier vocabulary (two
- * different funnels share `meetingBooked`), so deriving a funnel from it means
- * printing a chain the campaign never stated. campaign-service persists the
- * funnel on every campaign, so a missing one is a real gap and reads as one.
+ * funnels answer to `meetingBooked`), so deriving a funnel from it prints a
+ * chain the campaign never stated. campaign-service persists the funnel on every
+ * campaign, so a missing one is a real gap and reads as one.
  */
 function FunnelCell({ funnelKey }: { funnelKey: Campaign["funnelKey"] }) {
   const def = campaignFunnel(funnelKey);
@@ -269,7 +264,7 @@ export function CampaignsPage() {
     const top = rows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
     const def = acquisitionChannelForWorkflowSlug(top.campaign.workflowSlug);
-    return def ? def.name : channelLabel(top.campaign.workflowSlug);
+    return def ? def.name : channelSlugLabel(top.campaign.workflowSlug);
   }, [rows]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed

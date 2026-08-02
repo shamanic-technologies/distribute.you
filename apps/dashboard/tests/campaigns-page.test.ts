@@ -64,11 +64,13 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     expect(page).toContain("<AcquisitionChannelMark");
     expect(page).toContain("<SalesFunnelMark");
     expect(page).toContain("<ChannelCell workflowSlug={campaign.workflowSlug} />");
-    expect(page).toContain("<FunnelCell funnelKey={campaign.funnelKey} />");
+    expect(page).toContain(
+      "<FunnelCell funnelKey={campaign.funnelKey} />",
+    );
   });
 
   // The funnel column reads the campaign's OWN key and NOTHING else. The goal is
-  // the retired, lossier vocabulary — two funnels share `meetingBooked` — so
+  // the retired, lossier vocabulary — two funnels answer to `meetingBooked` — so
   // deriving a funnel from it prints a chain the campaign never stated.
   // campaign-service persists the funnel on every campaign, so a missing one is
   // a real gap and reads as one.
@@ -223,7 +225,10 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     const context = read("components/header-page-context.tsx");
     expect(header).toContain("<HeaderPageContext />");
     expect(context).toContain('parts[4] !== "campaigns"');
-    expect(context).toContain("data?.campaign?.name");
+    // The campaign is named as what it IS (funnel x channel), never by
+    // campaign-service's stored name, which predates the per-funnel model.
+    expect(context).toContain("<CampaignTitle");
+    expect(context).not.toContain("campaign?.name");
     // Byte-equal to the campaign overview's key → one deduped poll.
     expect(context).toContain('["campaign", campaignId ?? "none"]');
     // A placeholder word would state a name we do not have yet.

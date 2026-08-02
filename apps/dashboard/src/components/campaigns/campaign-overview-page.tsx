@@ -46,6 +46,7 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
@@ -421,7 +422,11 @@ export function CampaignOverviewPage() {
     );
   }
 
-  // The header states WHICH campaign is open, and nothing else. The daily budget
+  // The header states WHICH campaign is open, and nothing else. It names the
+  // campaign as what it IS — the sales funnel it buys × the acquisition channel
+  // it buys through — rather than campaign-service's stored `name`, which was
+  // written at provision time and predates the per-funnel model, so it says
+  // nothing about either. The daily budget
   // used to sit here as its own editor, one line above the BrandStatusControl pill
   // that already reads `Active · $N / day` — the same number under two labels, which
   // is the duplication this repo treats as a bug. The budget is stated once, in the
@@ -434,7 +439,11 @@ export function CampaignOverviewPage() {
       </Link>
       <span className="text-gray-300">/</span>
       <h1 className="font-display text-xl font-bold text-gray-800">
-        {campaign?.name ?? "Campaign"}
+        {campaign ? (
+          <CampaignTitle campaign={campaign} size="sm" />
+        ) : (
+          "Campaign"
+        )}
       </h1>
       <MaturityBadge level="beta" />
     </div>
