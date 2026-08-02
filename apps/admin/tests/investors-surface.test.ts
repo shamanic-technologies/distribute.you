@@ -60,19 +60,21 @@ describe("investor update composer", () => {
     expect(body).not.toContain("html");
   });
 
-  it("previews with the producer's own renderer, so the preview cannot flatter the inbox", () => {
-    expect(composer).toContain("renderInvestorUpdatePreviewHtml(body)");
-    expect(composer).toContain("dangerouslySetInnerHTML={{ __html: previewHtml }}");
-    // One conversion, not a second lookalike path.
-    expect(composer.match(/renderInvestorUpdatePreviewHtml\(/g) ?? []).toHaveLength(1);
+  it("asks the producer to render the preview, so it cannot flatter the inbox", () => {
+    // This used to render markdown here, with a copy of the producer's own
+    // renderer. The copy drifted the moment the producer grew its inline-styled
+    // email renderer, so the console showed bare markup while investors
+    // received a laid-out email. There is no renderer here now.
+    expect(composer).toContain("previewMailingListUpdate");
+    expect(composer).not.toContain("marked");
   });
 
   it("says the unsubscribe is appended on send rather than drawing one it does not control", () => {
     expect(composer).toContain("UNSUBSCRIBE_PREVIEW_NOTE");
   });
 
-  it("renders a past update from the body as SENT, not by re-rendering the markdown", () => {
-    expect(composer).toContain("__html: update.htmlBody");
+  it("shows a past update from the body as SENT, not by re-rendering the markdown", () => {
+    expect(composer).toContain("html={update.htmlBody}");
   });
 
   it("counts only people who have not opted out — the list size would overstate the send", () => {

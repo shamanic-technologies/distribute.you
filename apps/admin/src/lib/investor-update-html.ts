@@ -1,21 +1,21 @@
 /**
- * Previewing an investor update exactly as the recipient will receive it.
+ * Authoring an investor update: what can go in it, and what stops it going out.
  *
  * Alias-free on purpose (no `@/…` imports) so vitest can resolve it and these
  * helpers get REAL unit tests rather than source-substring guards.
  *
- * **We do not render the wire body.** transactional-email-service takes the
- * markdown and renders it, and email-gateway appends the unsubscribe footer.
- * Sending HTML from here would put a second unsubscribe link in every update.
+ * **Nothing here renders anything.** transactional-email-service takes the
+ * markdown and renders it, email-gateway appends the unsubscribe footer, and
+ * the preview asks the producer for the very same HTML a send produces
+ * (`previewMailingListUpdate`).
  *
- * So the only job left is a preview that cannot flatter the inbox — which means
- * rendering with the producer's OWN library and options (`marked`, gfm, breaks)
- * rather than a lookalike of our own. A hand-rolled approximation drifts the
- * first time the producer changes anything, and the drift is invisible until an
- * update has already gone out looking different from what was approved.
+ * There WAS a renderer here, and it is the reason this note exists: it started
+ * byte-equal to the producer's, the producer then grew a full inline-styled
+ * email renderer, and this copy never followed. For months the console showed
+ * bare markup while investors received a laid-out email, and nobody noticed
+ * until someone looked at the screen. Any second rendering drifts the same way.
+ * Do not add one back.
  */
-
-import { marked } from "marked";
 
 /**
  * A markdown image line for the composer's "add an image" affordance. Kept here
@@ -121,18 +121,6 @@ export function imageUrlProblem(rawUrl: string): string | null {
     return "Gmail, Outlook and Yahoo do not render SVG in email. Use a PNG or JPG.";
   }
   return null;
-}
-
-/**
- * The body as transactional-email-service will render it: `marked` with gfm and
- * breaks, byte-for-byte the same call the producer makes. Deliberately carries
- * NO inline styles — the producer emits bare markup today, so styling the
- * preview would show the author an email nobody receives.
- */
-export function renderInvestorUpdatePreviewHtml(markdown: string): string {
-  const html = marked.parse(markdown, { async: false, gfm: true, breaks: true });
-  if (typeof html !== "string") throw new Error("Markdown rendering did not return a string");
-  return html;
 }
 
 /**

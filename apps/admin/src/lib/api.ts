@@ -6355,6 +6355,38 @@ export async function listMailingListUpdates(
   return apiCall<MailingListUpdatesResponse>(`/mailing-lists/${slug}/updates`, { token });
 }
 
+export interface MailingListUpdatePreview {
+  /** The body as a recipient would receive it, rendered by the producer. */
+  htmlBody: string;
+  /** The plain-text part, which is the markdown itself. */
+  textBody: string;
+  /** Image URLs no mail client renders. A send of this body would be refused naming these. */
+  unrenderableImages: string[];
+}
+
+/**
+ * Render a draft the way a recipient will see it, without sending it.
+ *
+ * The producer renders this with the SAME code a real send uses, which is the
+ * whole point of asking it rather than rendering here. A local renderer drifted
+ * once already: this console showed bare markup for months while investors
+ * received a laid-out email, because transactional-email-service grew its
+ * inline-styled renderer and the copy here never followed. Do not reintroduce
+ * one.
+ *
+ * Takes no list slug — a body renders identically whoever receives it.
+ */
+export async function previewMailingListUpdate(
+  body: string,
+  token?: string
+): Promise<MailingListUpdatePreview> {
+  return apiCall<MailingListUpdatePreview>(`/mailing-lists/updates/preview`, {
+    token,
+    method: "POST",
+    body: { body },
+  });
+}
+
 /** `body` is markdown. The producer renders it and appends the unsubscribe. */
 export async function sendMailingListUpdate(
   slug: string,

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  renderInvestorUpdatePreviewHtml,
   investorUpdateBlocker,
   imageMarkdown,
   imageFileProblem,
@@ -11,38 +10,6 @@ import {
 } from "../src/lib/investor-update-html";
 
 const file = (name: string, type: string, size: number) => ({ name, type, size });
-
-describe("renderInvestorUpdatePreviewHtml", () => {
-  it("renders with the producer's options — gfm tables and breaks — so the preview is the email", () => {
-    const html = renderInvestorUpdatePreviewHtml("| a | b |\n| --- | --- |\n| 1 | 2 |");
-    expect(html).toContain("<table>");
-    expect(html).toContain("<td>1</td>");
-  });
-
-  it("treats a single newline as a line break, matching breaks: true", () => {
-    expect(renderInvestorUpdatePreviewHtml("one\ntwo")).toContain("<br>");
-  });
-
-  it("carries NO inline styles — the sender emits bare markup, so styling here would show an email nobody receives", () => {
-    const html = renderInvestorUpdatePreviewHtml("# Title\n\nCopy.");
-    expect(html).not.toContain("style=");
-  });
-
-  it("adds no unsubscribe footer — the gateway appends the real one, and a second would duplicate it", () => {
-    const html = renderInvestorUpdatePreviewHtml("hello");
-    expect(html).not.toContain("pm:unsubscribe");
-    expect(html.toLowerCase()).not.toContain("unsubscribe");
-  });
-
-  it("renders headings, bold, lists, links and images", () => {
-    const html = renderInvestorUpdatePreviewHtml("## H\n\n**b** [l](https://x.com)\n\n- one\n\n![a](https://x.com/a.png)");
-    expect(html).toContain("<h2>");
-    expect(html).toContain("<strong>");
-    expect(html).toContain("<li>");
-    expect(html).toContain('href="https://x.com"');
-    expect(html).toContain('src="https://x.com/a.png"');
-  });
-});
 
 describe("imageMarkdown", () => {
   it("assembles the markdown so no caller hand-writes the syntax", () => {
