@@ -104,9 +104,11 @@ describe("Campaigns page (GA)", () => {
     expect(page).toContain("<StatusPill status={campaign.status} />");
     expect(page).not.toContain("superseded");
     expect(page).not.toContain("Superseded");
-    // Never dropped from the table either — the row such a filter would remove
-    // is the one holding the brand's whole spend history.
-    expect(page).not.toContain("filter((r) => !");
+    // The table is the campaigns a brand RUNS — one line per live campaign. A
+    // stopped campaign is history, not a line; its runs still count because
+    // features-service totals each identity (org, brand, funnel, channel)
+    // server-side, so the live campaign's figures include its stopped ancestors.
+    expect(page).toContain("campaigns.filter((c) => isActiveStatus(c.status))");
   });
 
   it("reads per-campaign stats from the features-service grouped reader", () => {
@@ -167,16 +169,14 @@ describe("Campaigns page (GA)", () => {
     expect(body).not.toMatch(/text-(base|lg|xl)/);
   });
 
-  // A campaign that is not running cannot be acted on today, so the table leads
-  // with the ones that can and ranks by ROI inside each group. The #1 tile reads
-  // that same ordering off `rows`, so it can never name a campaign other than the
-  // first row.
-  it("sorts running campaigns first, then by ROI descending, and the #1 tile reads that same ranking", () => {
-    expect(page).toContain(
-      "Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status))",
-    );
-    expect(page).toContain("if (byStatus !== 0) return byStatus;");
+  // Every row is a live campaign by construction (the table filters to them
+  // before ranking), so ROI desc is the whole sort — the column the table leads
+  // with. The #1 tile reads that same ordering off `rows`, so it can never name a
+  // campaign other than the first row.
+  it("sorts live campaigns by ROI descending, and the #1 tile reads that same ranking", () => {
+    expect(page).toContain("campaigns.filter((c) => isActiveStatus(c.status))");
     expect(page).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
+    expect(page).not.toContain("if (byStatus !== 0) return byStatus;");
     expect(page).toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
   });
 
