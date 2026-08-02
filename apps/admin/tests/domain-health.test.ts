@@ -5,12 +5,34 @@ import {
   accountHealthState,
   buildDomainHealthRows,
   domainHealthState,
-  domainMonthlyCostUsd,
+  mergeDomainCost,
   DOMAIN_TABS,
   HEALTH_BAR,
-  MAILBOX_MONTHLY_USD,
   type AccountHealthState,
 } from "../src/lib/domain-health";
+import type { InstantlyInfraDomainRow } from "@/lib/api";
+
+/** One inventory row as instantly-service serves it. */
+function infra(
+  overrides: Partial<InstantlyInfraDomainRow> = {},
+): InstantlyInfraDomainRow {
+  return {
+    domain: "example.com",
+    provider: "primeforge",
+    expiresAt: null,
+    autorenew: null,
+    cancelledAt: null,
+    absentSince: null,
+    vendorMailboxes: 0,
+    monthlyCostCents: null,
+    currency: "USD",
+    costSource: "rate-card",
+    recurringMonthlyCents: null,
+    renewalCents: null,
+    renewalAt: null,
+    ...overrides,
+  };
+}
 
 /**
  * The Instantly audit's domain card answers "which sending domains do I cancel
@@ -123,41 +145,133 @@ describe("domain roll-up", () => {
   });
 });
 
-describe("assumed monthly cost", () => {
-  it("sums the published per-mailbox rate", () => {
-    expect(domainMonthlyCostUsd(["imap", "imap", "imap"])).toBe(
-      MAILBOX_MONTHLY_USD.imap * 3,
-    );
-    expect(domainMonthlyCostUsd(["google", "imap"])).toBe(
-      MAILBOX_MONTHLY_USD.google + MAILBOX_MONTHLY_USD.imap,
-    );
+describe("measured cost", () => {
+  it("keeps the two savings apart — one stops now, the other only at renewal", () => {
+    const cost = mergeDomainCost([
+      infra({ recurringMonthlyCents: 45000, renewalCents: 1400, renewalAt: "2027-07-07T00:00:00Z" }),
+    ]);
+
+    expect(cost?.recurringCents).toBe(45000);
+    expect(cost?.renewalCents).toBe(1400);
+    expect(cost?.renewalAt).toBe("2027-07-07T00:00:00Z");
   });
 
-  it("states nothing rather than a partial sum when a provider has no rate", () => {
-    expect(domainMonthlyCostUsd(["google", null])).toBeNull();
-    expect(domainMonthlyCostUsd(["google", "carrier-pigeon"])).toBeNull();
+  it("sums a domain reported by two vendors rather than picking one", () => {
+    const cost = mergeDomainCost([
+      infra({ provider: "gandi", currency: "USD", renewalCents: 3838, renewalAt: "2027-05-01T00:00:00Z" }),
+      infra({ provider: "mailforge", currency: "USD", recurringMonthlyCents: 500, renewalCents: 1400, renewalAt: "2027-02-01T00:00:00Z" }),
+    ]);
+
+    expect(cost?.renewalCents).toBe(5238);
+    expect(cost?.recurringCents).toBe(500);
+    // The soonest renewal is the one that forces a decision.
+    expect(cost?.renewalAt).toBe("2027-02-01T00:00:00Z");
+  });
+
+  it("states nothing rather than blending two currencies", () => {
+    expect(
+      mergeDomainCost([
+        infra({ currency: "EUR", renewalCents: 3838 }),
+        infra({ currency: "USD", recurringMonthlyCents: 500 }),
+      ]),
+    ).toBeNull();
+  });
+
+  it("saves nothing on a cancelled or vanished domain — it already bills nothing", () => {
+    expect(
+      mergeDomainCost([infra({ cancelledAt: "2026-05-02T00:00:00Z", recurringMonthlyCents: 5000 })]),
+    ).toBeNull();
+    expect(
+      mergeDomainCost([infra({ absentSince: "2026-07-01T00:00:00Z", recurringMonthlyCents: 5000 })]),
+    ).toBeNull();
+  });
+
+  it("states nothing when no vendor prices the domain", () => {
+    expect(mergeDomainCost([infra()])).toBeNull();
+    expect(mergeDomainCost([])).toBeNull();
+  });
+
+  it("marks the source mixed when vendors disagree on where the price came from", () => {
+    const cost = mergeDomainCost([
+      infra({ costSource: "api", renewalCents: 100 }),
+      infra({ costSource: "rate-card", recurringMonthlyCents: 200 }),
+    ]);
+    expect(cost?.source).toBe("mixed");
   });
 });
 
 describe("buildDomainHealthRows", () => {
-  it("groups by domain and leads with the most expensive", () => {
-    const rows = buildDomainHealthRows([
-      acct({ email: "a@cheap.com", accountType: "imap" }),
-      acct({ email: "b@pricey.com", accountType: "google" }),
-      acct({ email: "c@pricey.com", accountType: "google" }),
-    ]);
+  it("groups by domain and leads with what is still bleeding every month", () => {
+    const rows = buildDomainHealthRows(
+      [
+        acct({ email: "a@cheap.com", accountType: "imap" }),
+        acct({ email: "b@pricey.com", accountType: "google" }),
+        acct({ email: "c@pricey.com", accountType: "google" }),
+      ],
+      [
+        infra({ domain: "cheap.com", recurringMonthlyCents: 500 }),
+        infra({ domain: "pricey.com", recurringMonthlyCents: 9000 }),
+      ],
+    );
     expect(rows.map((r) => r.domain)).toEqual(["pricey.com", "cheap.com"]);
-    expect(rows[0].monthlyCostUsd).toBe(MAILBOX_MONTHLY_USD.google * 2);
+    expect(rows[0].cost?.recurringCents).toBe(9000);
     expect(rows[0].accounts).toHaveLength(2);
   });
 
+  it("ranks a recurring cost above a renewal already paid until next year", () => {
+    const rows = buildDomainHealthRows(
+      [
+        acct({ email: "a@gandi.com", accountType: "imap" }),
+        acct({ email: "b@slots.com", accountType: "google" }),
+      ],
+      [
+        // A big renewal, but not due until 2027 — a diary entry, not an urgency.
+        infra({ domain: "gandi.com", provider: "gandi", renewalCents: 16800, renewalAt: "2027-05-19T00:00:00Z" }),
+        // Small, but leaving the account every single month.
+        infra({ domain: "slots.com", recurringMonthlyCents: 450 }),
+      ],
+    );
+    expect(rows.map((r) => r.domain)).toEqual(["slots.com", "gandi.com"]);
+  });
+
   it("sorts an unstateable cost last instead of treating it as zero", () => {
-    const rows = buildDomainHealthRows([
-      acct({ email: "a@unknown.com", accountType: null }),
-      acct({ email: "b@known.com", accountType: "imap" }),
-    ]);
+    const rows = buildDomainHealthRows(
+      [
+        acct({ email: "a@unknown.com", accountType: null }),
+        acct({ email: "b@known.com", accountType: "imap" }),
+      ],
+      [infra({ domain: "known.com", recurringMonthlyCents: 300 })],
+    );
     expect(rows.map((r) => r.domain)).toEqual(["known.com", "unknown.com"]);
-    expect(rows[1].monthlyCostUsd).toBeNull();
+    expect(rows[1].cost).toBeNull();
+  });
+
+  it("carries the vendor and the expiry the accounts table cannot know", () => {
+    const rows = buildDomainHealthRows(
+      [acct({ email: "a@growthagency.dev", accountType: "imap" })],
+      [
+        infra({
+          domain: "growthagency.dev",
+          provider: "gandi",
+          expiresAt: "2027-02-03T00:00:00Z",
+          autorenew: false,
+          renewalCents: 3838,
+          currency: "EUR",
+        }),
+      ],
+    );
+    expect(rows[0].vendors).toEqual(["gandi"]);
+    expect(rows[0].expiresAt).toBe("2027-02-03T00:00:00Z");
+    expect(rows[0].autorenew).toBe(false);
+    expect(rows[0].cost?.currency).toBe("EUR");
+  });
+
+  it("still grades every domain when the inventory is unavailable", () => {
+    // The money degrades to a dash; the verdict reads health and must survive.
+    const rows = buildDomainHealthRows([acct({ email: "a@x.com", accountType: "imap" })]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].cost).toBeNull();
+    expect(rows[0].state).toBeDefined();
   });
 
   it("drops a row with no domain — there is nothing to bill or cancel", () => {
@@ -226,12 +340,28 @@ describe("the card renders the verdict, not a second opinion", () => {
   });
 
   it("renders an unstateable cost as a dash, never a zero", () => {
-    expect(card).toContain("row.monthlyCostUsd === null");
+    expect(card).toContain("row.cost?.recurringCents == null");
+    expect(card).toContain("row.cost?.renewalCents == null");
   });
 
-  it("takes the bar and the rates from the one module that defines them", () => {
+  it("carries the currency with every figure instead of assuming dollars", () => {
+    expect(card).toContain("money(");
+    // A hardcoded dollar sign would misprice the whole Gandi estate, which
+    // invoices in euros.
+    expect(card).not.toMatch(/\$\$\{/);
+  });
+
+  it("states no price of its own — every rate comes from the measured inventory", () => {
+    expect(card).not.toContain("MAILBOX_MONTHLY_USD");
+    expect(card).not.toMatch(/google: *[0-9]|imap: *[0-9]|microsoft: *[0-9]/);
+  });
+
+  it("totals only the recurring half — renewals are already paid", () => {
+    expect(card).toContain("recurring in this tab");
+  });
+
+  it("takes the bar from the one module that defines it", () => {
     expect(card).toContain("HEALTH_BAR");
-    expect(card).toContain("MAILBOX_MONTHLY_USD");
     expect(card).not.toMatch(/=== *95|< *95/);
   });
 });
