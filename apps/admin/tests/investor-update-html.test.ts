@@ -3,6 +3,7 @@ import {
   investorUpdateBlocker,
   imageMarkdown,
   imageAltFromFilename,
+  sanitizeUploadFilename,
   imageFileProblem,
   imageUrlProblem,
   ACCEPTED_IMAGE_TYPES,
@@ -15,6 +16,56 @@ const file = (name: string, type: string, size: number) => ({ name, type, size }
 describe("imageMarkdown", () => {
   it("assembles the markdown so no caller hand-writes the syntax", () => {
     expect(imageMarkdown(" https://x.com/a.png ", " A chart ")).toBe("![A chart](https://x.com/a.png)");
+  });
+
+  it("wraps a URL with a space, or the line renders as literal text", () => {
+    // Measured against the producer's own `marked`: a bare destination ends at
+    // the first space, so `![Screenshot](https://…/Screenshot 2026…png)` emits
+    // no <img> at all and the update goes out showing its own markup.
+    expect(imageMarkdown("https://r2.dev/u/Screenshot 2026-08-02 at 10.46.50.png", "Shot")).toBe(
+      "![Shot](<https://r2.dev/u/Screenshot 2026-08-02 at 10.46.50.png>)"
+    );
+  });
+
+  it("wraps a URL with a parenthesis, which closes the destination early", () => {
+    expect(imageMarkdown("https://x.com/chart(1).png", "Chart")).toBe(
+      "![Chart](<https://x.com/chart(1).png>)"
+    );
+  });
+
+  it("leaves a clean URL bare, and cannot double-encode an encoded one", () => {
+    // `encodeURI` on an already-encoded URL turns %20 into %2520.
+    expect(imageMarkdown("https://x.com/a%20b.png", "A")).toBe("![A](https://x.com/a%20b.png)");
+  });
+});
+
+describe("sanitizeUploadFilename", () => {
+  it("takes the spaces out of a macOS screenshot, which is where this came from", () => {
+    expect(sanitizeUploadFilename("Screenshot 2026-08-02 at 10.46.50.png")).toBe(
+      "screenshot-2026-08-02-at-10-46-50.png"
+    );
+  });
+
+  it("splits on the LAST dot only, so a dotted timestamp is not cut short", () => {
+    expect(sanitizeUploadFilename("chart.v2.final.PNG")).toBe("chart-v2-final.png");
+  });
+
+  it("transliterates an accent rather than dropping the letter", () => {
+    expect(sanitizeUploadFilename("Rétention nette.jpeg")).toBe("retention-nette.jpeg");
+  });
+
+  it("keeps a name that has no extension", () => {
+    expect(sanitizeUploadFilename("screenshot")).toBe("screenshot");
+  });
+
+  it("never returns an empty key, which the storage service could not build a URL from", () => {
+    expect(sanitizeUploadFilename("___.png")).toBe("image.png");
+    expect(sanitizeUploadFilename(".png")).toBe("png");
+    expect(sanitizeUploadFilename("")).toBe("image");
+  });
+
+  it("leaves an already-clean name alone", () => {
+    expect(sanitizeUploadFilename("net-revenue-retention.png")).toBe("net-revenue-retention.png");
   });
 });
 
