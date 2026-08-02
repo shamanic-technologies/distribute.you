@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import {
+  FUNNEL_MIN_DAILY_BUDGET_USD,
   NOTHING_DECLARED,
   SALES_FUNNELS,
   buildFunnelPatch,
+  funnelBudgetBelowMinimum,
   funnelDraftFromBrand,
   funnelDraftFromDeclared,
   funnelDestinationChips,
@@ -918,5 +920,37 @@ describe("Sales Funnels card", () => {
     expect(page.indexOf("<BrandAcquisitionChannelsCard />")).toBeGreaterThan(
       page.indexOf("<BrandSalesFunnelsCard brandId={brandId} />"),
     );
+  });
+});
+
+describe("per-funnel daily minimums", () => {
+  it("prices a meeting funnel far above a purchase funnel", () => {
+    // A sales meeting costs an order of magnitude more than a website purchase,
+    // so one dollar a day would buy a meeting funnel nothing at all.
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.reply_meeting).toBe(24);
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.visit_meeting).toBe(24);
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.visit_signup).toBe(1);
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.visit_form).toBe(1);
+  });
+
+  it("carries a floor for every funnel in the catalogue", () => {
+    for (const def of SALES_FUNNELS) {
+      expect(FUNNEL_MIN_DAILY_BUDGET_USD[def.key], `no minimum for ${def.key}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("treats zero as an ordinary value, never a violation", () => {
+    // Defunding a funnel is how a brand pauses it. Refusing zero would make a
+    // pause impossible without deleting what the brand said about how it sells.
+    for (const def of SALES_FUNNELS) {
+      expect(funnelBudgetBelowMinimum(def.key, 0)).toBe(false);
+    }
+  });
+
+  it("refuses a funded funnel under its own floor", () => {
+    expect(funnelBudgetBelowMinimum("reply_meeting", 23)).toBe(true);
+    expect(funnelBudgetBelowMinimum("reply_meeting", 24)).toBe(false);
+    expect(funnelBudgetBelowMinimum("visit_signup", 0.5)).toBe(true);
+    expect(funnelBudgetBelowMinimum("visit_signup", 1)).toBe(false);
   });
 });
