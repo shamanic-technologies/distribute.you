@@ -1,5 +1,9 @@
 import type { DailyFunnelPoint } from "@/lib/public-stats";
-import { compoundGrowthSeries, compoundGrowthSummary } from "@/lib/compound-growth";
+import {
+  compoundGrowthSeries,
+  compoundGrowthSummary,
+  type CompoundGrowthSummary,
+} from "@/lib/compound-growth";
 
 export interface SignupBucket {
   /** Sort/group key, e.g. "2026-07", "2026-W28", "2026-07-15". */
@@ -64,8 +68,9 @@ function withDerived(buckets: Array<{ key: string; label: string; signups: numbe
  * current (still-in-progress, partial) period.
  * - `latestPct` — CMGR/CWGR up to the last CONCLUDED period (second-to-last bucket).
  * - `avgPct` — mean of every plotted CMGR/CWGR point, excluding the current period.
+ * - `barsUsed` — bars behind `latestPct`, anchor included.
  */
-export function cmgrSummary(buckets: SignupBucket[]): { latestPct: number | null; avgPct: number | null } {
+export function cmgrSummary(buckets: SignupBucket[]): CompoundGrowthSummary {
   return compoundGrowthSummary(buckets.map((b) => b.cmgrPct));
 }
 

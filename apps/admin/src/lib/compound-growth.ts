@@ -17,16 +17,27 @@ export function compoundGrowthSeries(values: number[]): Array<number | null> {
   });
 }
 
+export interface CompoundGrowthSummary {
+  latestPct: number | null;
+  avgPct: number | null;
+  /**
+   * How many bars the headline rate is computed over: the anchor bar (the first
+   * value > 0) through the last CONCLUDED bar, inclusive. So the compound
+   * exponent is `1/(barsUsed - 1)`. Null whenever `latestPct` is null — there is
+   * no rate, so there is no span to state.
+   */
+  barsUsed: number | null;
+}
+
 /**
  * Headline + average compound growth rate for a series, excluding the current
  * (still-in-progress, partial) period = the last element.
  * - `latestPct` — compound rate up to the last CONCLUDED period.
  * - `avgPct` — mean of every non-null compound-rate point, excluding the current period.
+ * - `barsUsed` — bars behind `latestPct` (see above).
  */
-export function compoundGrowthSummary(
-  cmgr: Array<number | null>,
-): { latestPct: number | null; avgPct: number | null } {
-  if (cmgr.length < 2) return { latestPct: null, avgPct: null };
+export function compoundGrowthSummary(cmgr: Array<number | null>): CompoundGrowthSummary {
+  if (cmgr.length < 2) return { latestPct: null, avgPct: null, barsUsed: null };
   const concluded = cmgr.slice(0, -1); // drop the current partial period
   const latestPct = concluded[concluded.length - 1] ?? null;
   const points = concluded.filter((v): v is number => v !== null);
@@ -34,5 +45,20 @@ export function compoundGrowthSummary(
     points.length > 0
       ? Number((points.reduce((sum, v) => sum + v, 0) / points.length).toFixed(1))
       : null;
-  return { latestPct, avgPct };
+  return { latestPct, avgPct, barsUsed: barsBehindLatest(concluded, latestPct) };
+}
+
+/**
+ * Bars spanned by the headline rate: the anchor is the first index carrying a
+ * compound point minus one (that point is already one period past the anchor),
+ * so the inclusive span to the last concluded bar is `length - anchor`.
+ */
+export function barsBehindLatest(
+  concluded: Array<number | null>,
+  latestPct: number | null,
+): number | null {
+  if (latestPct === null) return null;
+  const firstPoint = concluded.findIndex((v) => v !== null);
+  if (firstPoint < 1) return null;
+  return concluded.length - (firstPoint - 1);
 }
