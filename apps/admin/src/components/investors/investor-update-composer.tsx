@@ -15,6 +15,7 @@ import {
   renderInvestorUpdateText,
   investorUpdateBlocker,
   imageMarkdown,
+  imageUrlProblem,
 } from "@/lib/investor-update-html";
 
 const SUBSCRIBERS_KEY = ["investorSubscribers"] as const;
@@ -89,6 +90,8 @@ export function InvestorUpdateComposer() {
   const [body, setBody] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [checkingImage, setCheckingImage] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -138,9 +141,41 @@ export function InvestorUpdateComposer() {
 
   const sending = sendMutation.isPending;
 
-  const insertImage = () => {
+  /**
+   * Insert only an image that is going to work in an inbox. Two gates, because
+   * they catch different failures and a broken image is only discovered after
+   * the update has gone to everyone:
+   *
+   * 1. `imageUrlProblem` rejects the formats mail clients refuse (SVG above all
+   *    — it renders fine in this preview and shows alt text in Gmail).
+   * 2. An actual decode, because a 404 or a hotlink-blocked host is a perfectly
+   *    well-formed URL. Same "gate on the image really decoding" pattern the
+   *    brand favicon uses.
+   */
+  const insertImage = async () => {
     const url = imageUrl.trim();
-    if (!url) return;
+    const problem = imageUrlProblem(url);
+    if (problem) {
+      setImageError(problem);
+      return;
+    }
+
+    setImageError(null);
+    setCheckingImage(true);
+    const loaded = await new Promise<boolean>((resolve) => {
+      const probe = new window.Image();
+      const done = (ok: boolean) => resolve(ok);
+      probe.onload = () => done(probe.naturalWidth > 0);
+      probe.onerror = () => done(false);
+      probe.src = url;
+    });
+    setCheckingImage(false);
+
+    if (!loaded) {
+      setImageError("That image did not load. Check the link is public.");
+      return;
+    }
+
     const snippet = imageMarkdown(url, imageAlt);
     setBody((current) => (current.trimEnd().length > 0 ? `${current.trimEnd()}\n\n${snippet}\n` : `${snippet}\n`));
     setImageUrl("");
@@ -198,14 +233,18 @@ export function InvestorUpdateComposer() {
         <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
           <p className="text-xs font-medium text-gray-700">Add an image</p>
           <p className="mt-0.5 text-xs text-gray-500">
-            Paste a public image URL. It is inserted at the end of the update; move the line
-            wherever you want it.
+            Paste a public PNG or JPG. It is inserted at the end of the update; move the line
+            wherever you want it. Gmail does not render SVG, so those are refused here rather
+            than arriving broken.
           </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
               type="url"
               value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
+              onChange={(e) => {
+                setImageUrl(e.target.value);
+                setImageError(null);
+              }}
               placeholder="https://..."
               className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
@@ -218,13 +257,16 @@ export function InvestorUpdateComposer() {
             />
             <button
               type="button"
-              onClick={insertImage}
-              disabled={imageUrl.trim().length === 0}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+              onClick={() => void insertImage()}
+              disabled={imageUrl.trim().length === 0 || checkingImage}
+              className={`rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
+                checkingImage ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"
+              }`}
             >
-              Insert
+              {checkingImage ? "Checking..." : "Insert"}
             </button>
           </div>
+          {imageError ? <p className="mt-2 text-xs font-medium text-red-600">{imageError}</p> : null}
         </div>
 
         <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">

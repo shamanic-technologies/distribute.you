@@ -101,6 +101,50 @@ export function imageMarkdown(url: string, alt: string): string {
 }
 
 /**
+ * Why an image URL cannot go in an email, or null when it can.
+ *
+ * An email client is not a browser and the difference is not cosmetic — a URL
+ * that renders perfectly in the composer's preview can arrive as a broken-image
+ * placeholder in the inbox, and by then the update has been sent to everyone.
+ * So the rules are the recipients' constraints, not ours:
+ *
+ * - **SVG is refused by Gmail, Outlook and Yahoo.** It renders in the preview
+ *   (a browser) and shows the alt text in the inbox. This is the one that
+ *   actually bit us: a verification send used an SVG logo and landed broken.
+ * - **A relative URL has nothing to resolve against** once the HTML is inside a
+ *   mail client, so it can only ever break.
+ * - **`http://` is downgraded or blocked** by most clients on a page they are
+ *   already treating as untrusted.
+ * - **A data URI is stripped** by Gmail outright.
+ */
+export function imageUrlProblem(rawUrl: string): string | null {
+  const url = rawUrl.trim();
+  if (url.length === 0) return "Paste an image URL.";
+
+  if (url.startsWith("data:")) {
+    return "Gmail strips embedded images. Host it somewhere and paste the link.";
+  }
+  if (!/^https?:\/\//i.test(url)) {
+    return "Use a full https:// link — a relative path cannot resolve inside an email.";
+  }
+  if (/^http:\/\//i.test(url)) {
+    return "Use https:// — mail clients block plain http images.";
+  }
+
+  let path: string;
+  try {
+    path = new URL(url).pathname.toLowerCase();
+  } catch {
+    return "That is not a valid URL.";
+  }
+
+  if (path.endsWith(".svg")) {
+    return "Gmail, Outlook and Yahoo do not render SVG in email. Use a PNG or JPG.";
+  }
+  return null;
+}
+
+/**
  * The full document. A single centred column at 640px — the width every email
  * client renders without horizontal scroll on a phone.
  */
