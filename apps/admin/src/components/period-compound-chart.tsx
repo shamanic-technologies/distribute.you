@@ -8,11 +8,13 @@ import {
   Legend,
   Line,
   ResponsiveContainer,
+  ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { formatGrowthPct } from "@/lib/format-number";
+import { chartDomain } from "@/lib/chart-domain";
 
 export interface PeriodCompoundPoint {
   /** X-axis label, e.g. "Jul 2026" (month) or "Jun 12" (week). */
@@ -73,6 +75,8 @@ export function PeriodCompoundChart({
   growthLabel,
   formatValue = defaultFormatValue,
   formatAxis,
+  referenceValue,
+  excludeFirstFromScale = false,
 }: {
   data: PeriodCompoundPoint[];
   valueLabel: string;
@@ -81,6 +85,19 @@ export function PeriodCompoundChart({
   formatValue?: (n: number) => string;
   /** Y-axis tick formatter (default: same as formatValue). */
   formatAxis?: (n: number) => string;
+  /**
+   * Draw a solid horizontal line at this value. For retention it is 100: above
+   * it the existing base grew on its own, below it the base shrank, and that
+   * boundary is the only thing the chart is really asked.
+   */
+  referenceValue?: number;
+  /**
+   * Leave the FIRST bar out of the axis ceiling. Weekly retention's first
+   * measurable week retains against a tiny base, so it lands in the hundreds of
+   * percent and squashes every later week into a strip at the floor. It runs off
+   * the top instead, marked clipped, with its real value still in the tooltip.
+   */
+  excludeFirstFromScale?: boolean;
 }) {
   const axisFormat = formatAxis ?? formatValue;
   if (data.length === 0) {
@@ -92,6 +109,16 @@ export function PeriodCompoundChart({
   }
 
   const lastIndex = data.length - 1;
+  // An empty growth label means the caller has no growth series to show (a rate
+  // of a rate reads as nothing on a retention chart). Rendering the line anyway
+  // made recharts fall back to the dataKey, so the legend read "cmgrSolid".
+  const showGrowth = growthLabel !== "";
+  const scaled = referenceValue !== undefined || excludeFirstFromScale;
+  const domain = chartDomain(
+    data.map((d) => d.value),
+    { excludeFirst: excludeFirstFromScale, floor: referenceValue }
+  );
+  const clipped = new Set(domain.clippedIndices);
   const chartData = data.map((d, i) => ({
     ...d,
     isCurrent: i === lastIndex,
@@ -99,6 +126,11 @@ export function PeriodCompoundChart({
     // concluded period → the current one (they meet at index lastIndex - 1).
     cmgrSolid: i <= lastIndex - 1 ? d.cmgrPct : null,
     cmgrTail: i >= lastIndex - 1 ? d.cmgrPct : null,
+    isClipped: clipped.has(i),
+    // Plot the CAPPED value so a clipped bar's top stays inside the plot area
+    // and the break mark can be drawn on it. `value` keeps the true number, so
+    // the tooltip is unaffected and nothing is misreported.
+    plotted: scaled ? Math.min(d.value, domain.max) : d.value,
   }));
 
   return (
@@ -115,12 +147,15 @@ export function PeriodCompoundChart({
           />
           <YAxis
             yAxisId="value"
+            domain={scaled ? [0, domain.max] : undefined}
+            allowDataOverflow={scaled}
             tickFormatter={(value) => axisFormat(Number(value))}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickLine={false}
             axisLine={false}
             width={52}
           />
+          {showGrowth ? (
           <YAxis
             yAxisId="growth"
             orientation="right"
@@ -130,9 +165,70 @@ export function PeriodCompoundChart({
             axisLine={false}
             width={44}
           />
+          ) : null}
           <Tooltip content={<ChartTooltip valueLabel={valueLabel} formatValue={formatValue} />} cursor={{ fill: "#f8fafc" }} />
           <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
-          <Bar yAxisId="value" dataKey="value" name={valueLabel} radius={[3, 3, 0, 0]} maxBarSize={48}>
+          {referenceValue !== undefined ? (
+            <ReferenceLine
+              yAxisId="value"
+              y={referenceValue}
+              stroke="#475569"
+              strokeWidth={1.5}
+              ifOverflow="visible"
+            />
+          ) : null}
+          <Bar
+            yAxisId="value"
+            dataKey="plotted"
+            name={valueLabel}
+            radius={[3, 3, 0, 0]}
+            maxBarSize={48}
+            shape={(props: unknown) => {
+              const p = props as {
+                x: number; y: number; width: number; height: number;
+                fill?: string; stroke?: string; strokeWidth?: number; strokeDasharray?: string;
+                background?: { y?: number };
+                payload?: { isClipped?: boolean };
+              };
+              const bar = (
+                <rect
+                  x={p.x}
+                  y={p.y}
+                  width={p.width}
+                  height={Math.max(0, p.height)}
+                  rx={3}
+                  fill={p.fill}
+                  stroke={p.stroke}
+                  strokeWidth={p.strokeWidth}
+                  strokeDasharray={p.strokeDasharray}
+                />
+              );
+              if (!p.payload?.isClipped) return bar;
+              // The break mark: two slashes across the top of a bar that runs
+              // past the ceiling, so a truncated bar reads as truncated rather
+              // than as a bar that happens to reach the top.
+              // The bar is plotted at the capped value, so its top is inside
+              // the plot area and the mark lands where the reader can see it.
+              const markY = p.y;
+              const cx = p.x + p.width / 2;
+              return (
+                <g>
+                  {bar}
+                  <rect x={p.x} y={markY} width={p.width} height={11} fill="#fff" />
+                  <text
+                    x={cx}
+                    y={markY + 10}
+                    textAnchor="middle"
+                    fontSize={13}
+                    fontWeight={700}
+                    fill={BAR_COLOR}
+                  >
+                    //
+                  </text>
+                </g>
+              );
+            }}
+          >
             {chartData.map((d, i) => (
               <Cell
                 key={i}
@@ -143,6 +239,8 @@ export function PeriodCompoundChart({
               />
             ))}
           </Bar>
+          {showGrowth ? (
+          <>
           <Line
             yAxisId="growth"
             type="monotone"
@@ -170,6 +268,8 @@ export function PeriodCompoundChart({
             strokeDasharray="5 4"
             connectNulls={false}
           />
+          </>
+          ) : null}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

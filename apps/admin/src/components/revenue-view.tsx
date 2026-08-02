@@ -193,6 +193,14 @@ function pctAxis(n: number): string {
 }
 
 /**
+ * 100% is where retention stops being a number and becomes a verdict: above it
+ * the existing base grew with no new customers, below it the base shrank. The
+ * chart draws it as a solid line so a reader can answer that at a glance without
+ * reading a single tick.
+ */
+const RETENTION_BREAK_EVEN_PCT = 100;
+
+/**
  * A net-revenue-retention card: the last CONCLUDED period's rate as the
  * headline, the measured periods as bars. No growth line — a rate of a rate
  * reads as nothing.
@@ -202,11 +210,14 @@ function RetentionCard({
   subtitle,
   series,
   pending,
+  excludeFirstFromScale = false,
 }: {
   title: string;
   subtitle: string;
   series: RetentionSeries;
   pending: boolean;
+  /** Weekly only: its first measurable week dwarfs the rest. See the chart's own note. */
+  excludeFirstFromScale?: boolean;
 }) {
   const rate = series.latestConcludedPct;
   return (
@@ -245,6 +256,8 @@ function RetentionCard({
             growthLabel=""
             formatValue={pctFull}
             formatAxis={pctAxis}
+            referenceValue={RETENTION_BREAK_EVEN_PCT}
+            excludeFirstFromScale={excludeFirstFromScale}
           />
         )}
       </div>
@@ -476,6 +489,7 @@ export function RevenueView({ timeline, billing }: { timeline: DailyFunnelPoint[
         <RetentionCard
           title="Weekly NRR"
           subtitle="Week-over-week retention of the prior week's paying customers."
+          excludeFirstFromScale
           series={derived?.weeklyNrr ?? EMPTY_RETENTION}
           pending={isPending || !derived}
         />
