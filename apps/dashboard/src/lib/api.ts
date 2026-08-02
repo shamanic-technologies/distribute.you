@@ -5,9 +5,10 @@ import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 import { shareApiBasePath, shareTokenFromPathname } from "./share-mode";
-// Type-only, so nothing circular survives the build: sales-funnels.ts reads this
-// module's goal types the same way.
-import type { SalesFunnelKeyWire } from "./sales-funnels";
+// `normalizeSalesFunnelKey` is a RUNTIME import; the rest is type-only. No cycle
+// survives the build: sales-funnels.ts reads this module's goal types with
+// `import type`, which is erased, so the edge only runs in this direction.
+import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnels";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -1111,10 +1112,28 @@ export async function saveBrandClickDestination(
 // NOTHING IS DEFAULTED upstream: a value the brand never declared reads `null`,
 // and `null` is how a consumer knows not to rank on it. Never turn one into a 0.
 
-const SALES_FUNNEL_KEYS = ["reply_meeting", "visit_meeting", "visit_signup", "visit_form"] as const;
+/**
+ * Both funnel-key spellings: the four brand-service stores today and the four it
+ * is renaming to. `lib/sales-funnels.ts` already carried this pair; THIS file did
+ * not, so the reader would have rejected the new keys while the catalogue beside
+ * it accepted them — the same two-lists drift the goal retirement exists to end.
+ *
+ * The value is normalised on the way in, so everything downstream keeps seeing
+ * the key the catalogue is written on.
+ */
+const SALES_FUNNEL_KEYS_WIRE = [
+  "reply_meeting",
+  "visit_meeting",
+  "visit_signup",
+  "visit_form",
+  "sales_meetings_from_conversation",
+  "sales_meetings_from_website",
+  "website_purchases",
+  "form_magnet",
+] as const;
 
 const DeclaredSalesFunnelSchema = z.object({
-  funnelKey: z.enum(SALES_FUNNEL_KEYS),
+  funnelKey: z.enum(SALES_FUNNEL_KEYS_WIRE).transform(normalizeSalesFunnelKey),
   /**
    * Whether the org SELLS through this funnel right now.
    *
@@ -1130,10 +1149,19 @@ const DeclaredSalesFunnelSchema = z.object({
   active: z.boolean().optional(),
   name: z.string(),
   steps: z.array(z.string()),
-  // brand-service's own goal spellings. Nothing here branches on them, so they
-  // are read as plain strings rather than pinning an upstream enum that grows.
-  goal: z.string(),
-  currentGoal: z.string(),
+  // brand-service's own goal spellings, and they are being RETIRED: the funnel
+  // key is becoming the one word for what a brand sells through, because the goal
+  // was the poorer one (both meeting funnels collapsed onto `meetingBooked`, so
+  // no consumer could price a meeting won from a reply apart from one won from
+  // the website).
+  //
+  // `.optional()` because brand-service has already dropped them from the
+  // declared-funnel payload on its staging. Required here, a promote takes the
+  // whole Sales Funnels card down on a safeParse throw. Nothing branches on them,
+  // so tolerating their absence costs nothing and they can be deleted outright
+  // once no brand-service in any environment still sends them.
+  goal: z.string().optional(),
+  currentGoal: z.string().optional(),
   // Exactly the legs of THIS funnel's chain. A leg the brand never gave us is
   // null; a rate the funnel does not price is absent entirely.
   rates: z.record(z.string(), z.number().nullable()),
@@ -1466,7 +1494,11 @@ export async function saveBrandDailyBudget(
 // NOT "it funds nothing" — a brand that funds nothing has rows, all at zero.
 
 const FunnelBudgetRowSchema = z.object({
-  funnelKey: z.enum(SALES_FUNNEL_KEYS),
+  // Both spellings, normalised in — same reason as the declared-funnel reader
+  // above. A per-funnel budget row is keyed on the funnel, so the rename reaches
+  // this schema too, and pinning only the old keys drops every budget row on the
+  // day brand-service promotes.
+  funnelKey: z.enum(SALES_FUNNEL_KEYS_WIRE).transform(normalizeSalesFunnelKey),
   // Postgres `numeric` serializes as a STRING on the wire even though the field
   // is declared integer-ish upstream. Coerce rather than pin `z.number()`, which
   // would reject every real response.
