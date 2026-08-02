@@ -263,6 +263,24 @@ const HealthIcon = () => (
   </svg>
 );
 
+const InvestorListIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+);
+
+const InvestorUpdateIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+);
+
+const InvestorDeckIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4h18M4 4v10a1 1 0 001 1h14a1 1 0 001-1V4M12 15v5m0 0l-3 1m3-1l3 1" />
+  </svg>
+);
+
 // Features that expose the public client report. Generic across features
 // once a backend public-proxy lands; gated for now. The pr-expert-quote-*
 // family is matched via isExpertQuoteFeature (not listed here) so a workflow
@@ -371,13 +389,6 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
         isActive={pathname === "/orgs"}
       />
       <div className="pt-2 mt-2 border-t border-gray-100">
-        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Customer Success</h4>
-        <SidebarLink
-          item={{ id: "customer-success", label: "Customer Success", href: "/customer-success", icon: <HealthIcon /> }}
-          isActive={pathname === "/customer-success"}
-        />
-      </div>
-      <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Dashboard</h4>
         {analyticsItems.map((item) => (
           <SidebarLink
@@ -408,6 +419,33 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
             icon: <BillingIcon />,
           }}
           isActive={pathname.startsWith("/feature-stats/sales-cold-email-outreach")}
+        />
+      </div>
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Customer Success</h4>
+        <SidebarLink
+          item={{ id: "customer-success", label: "Customer Success", href: "/customer-success", icon: <HealthIcon /> }}
+          isActive={pathname === "/customer-success"}
+        />
+      </div>
+      <div className="pt-2 mt-2 border-t border-gray-100">
+        <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Investors</h4>
+        <SidebarLink
+          item={{ id: "investor-list", label: "Investor list", href: "/investors", icon: <InvestorListIcon /> }}
+          isActive={pathname === "/investors"}
+        />
+        <SidebarLink
+          item={{
+            id: "investor-update",
+            label: "Investor update",
+            href: "/investors/update",
+            icon: <InvestorUpdateIcon />,
+          }}
+          isActive={pathname.startsWith("/investors/update")}
+        />
+        <SidebarLink
+          item={{ id: "investor-deck", label: "Investor deck", href: "/investors/deck", icon: <InvestorDeckIcon /> }}
+          isActive={pathname.startsWith("/investors/deck")}
         />
       </div>
     </SidebarSection>

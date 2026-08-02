@@ -56,6 +56,9 @@ importers:
       lottie-react:
         specifier: ^2.4.1
         version: 2.4.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      marked:
+        specifier: ^16.4.2
+        version: 16.4.2
       mermaid:
         specifier: ^11.13.0
         version: 11.13.0

@@ -25,6 +25,7 @@
     "idb-keyval": "^6.2.1",
     "isomorphic-dompurify": "^3.12.0",
     "lottie-react": "^2.4.1",
+    "marked": "^16.4.2",
     "mermaid": "^11.13.0",
     "next": "^16.2.1",
     "posthog-js": "^1.386.6",
