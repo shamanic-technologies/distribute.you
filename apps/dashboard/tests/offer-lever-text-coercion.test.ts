@@ -112,7 +112,7 @@ describe("isListLeverKey — the 7-key kind map used to seed onboarding", () => 
 });
 
 describe("source guards", () => {
-  const strategyPage = read("../src/components/strategy/strategy-page.tsx");
+  const strategyPage = read("../src/components/settings/brand-offer-card.tsx");
   const fieldEditor = read("../src/components/brand-profile/field-editor.tsx");
   const onboarding = read("../src/components/onboarding/onboarding.tsx");
 
@@ -120,11 +120,11 @@ describe("source guards", () => {
     expect(fieldEditor).toContain('f.kind === "list" ? coerceListField(v) : coerceTextField(v)');
   });
 
-  it("the Strategy offer editor still reads its baseline through cloneFields", () => {
+  it("the Brand Settings offer editor still reads its baseline through cloneFields", () => {
     expect(strategyPage).toContain("cloneFields(userFieldsToProfile(");
   });
 
-  it("the Strategy TextEditor coerces instead of dropping a non-string to ''", () => {
+  it("the Brand Settings TextEditor coerces instead of dropping a non-string to ''", () => {
     expect(strategyPage).toContain("value={coerceTextField(value)}");
   });
 

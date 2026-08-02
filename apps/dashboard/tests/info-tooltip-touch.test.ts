@@ -67,7 +67,7 @@ describe("InfoTooltip — usable with a thumb", () => {
       "src/components/onboarding/onboarding.tsx",
       "src/components/strategy/best-model-card.tsx",
       "src/components/settings/brand-sales-funnels-card.tsx",
-      "src/components/strategy/strategy-page.tsx",
+      "src/components/settings/brand-offer-card.tsx",
     ];
     for (const rel of migrated) {
       const body = fs.readFileSync(path.join(root, rel), "utf-8");

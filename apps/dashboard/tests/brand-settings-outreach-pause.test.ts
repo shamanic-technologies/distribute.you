@@ -12,10 +12,13 @@ const brandStatusControl = readFileSync(
   "utf8",
 );
 
-describe("Brand Settings outreach status control", () => {
-  it("reuses the same brand-level status control as Overview", () => {
-    expect(settingsPage).toContain("BrandStatusControl");
-    expect(settingsPage).toContain("<BrandStatusControl brandId={brandId} />");
+describe("Brand Settings — the run-status section is retired", () => {
+  it("no longer renders the brand status control on Settings", () => {
+    // The "Outreach · Maximising X · Active · $N/day · Pause" bar was removed
+    // from Brand Settings (and the brand Overview). The control still lives on
+    // the campaign overview, where a campaign's spend is operated on.
+    expect(settingsPage).not.toContain("BrandStatusControl");
+    expect(settingsPage).not.toContain('"Outreach"');
     expect(brandStatusControl).toContain("getBrandPause");
     expect(brandStatusControl).toContain("setBrandPause");
     expect(brandStatusControl).toContain('["brandPause", brandId]');
@@ -27,14 +30,14 @@ describe("Brand Settings outreach status control", () => {
     expect(settingsPage).not.toContain('status !== "stopped"');
   });
 
-  it("shows active/paused status and a Pause/Restart toggle from the shared control", () => {
+  it("the shared control still shows active/paused status and a Pause/Restart toggle", () => {
     expect(brandStatusControl).toContain("Paused");
     expect(brandStatusControl).toContain("Active");
     expect(brandStatusControl).toContain('paused ? "Restart" : "Pause"');
     expect(brandStatusControl).toContain("setPaused(!paused)");
   });
 
-  it("states the spend beside the run status, and keeps the goal editable", () => {
+  it("the shared control still states the spend beside the run status, and keeps the goal editable", () => {
     // The pill STATES the daily budget; it no longer edits it. Money is funded
     // per sales funnel now, and the funnel is where the customer sets it — a
     // second editor here would write a brand-level number that contradicts the

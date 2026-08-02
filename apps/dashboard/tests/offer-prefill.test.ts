@@ -120,7 +120,7 @@ describe("applyExtractionToDraft — a RESET, scoped to the button's own fields"
 });
 
 describe("the offer card wires both buttons", () => {
-  const page = src("src/components/strategy/strategy-page.tsx");
+  const page = src("src/components/settings/brand-offer-card.tsx");
 
   it("renders one button per half, in suggest mode, bypassing the cache", () => {
     expect(page).toContain("Update services from my website");
@@ -150,11 +150,14 @@ describe("the offer card wires both buttons", () => {
     expect(body).not.toContain("SERVICES_PREFILL_KEYS");
   });
 
-  it("hides both buttons on a shared link and under a campaign", () => {
-    // A share link is read-only, and under a campaign the offer is a preview with no
-    // writer — a button that rewrites fields nobody can save is a dead control.
-    expect(page).toContain("const offerEditable = !readOnly && !campaignScoped");
-    expect(page).toContain("offerEditable ? (");
+  it("is always editable — Brand Settings is the authed edit surface", () => {
+    // The card moved here from the retired Strategy page, whose share (read-only)
+    // and campaign (preview, no writer) branches died with it. On Brand Settings
+    // there is no read-only link and no campaign scope, so the buttons always
+    // render and Save is always offered when dirty.
+    expect(page).not.toContain("useIsShareMode");
+    expect(page).not.toContain("campaignScoped");
+    expect(page).toContain("PrefillButton");
   });
 
   it("confirms dirty services before generating the levers", () => {

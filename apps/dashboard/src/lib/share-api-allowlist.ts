@@ -38,7 +38,7 @@ interface ShareReadRule {
 }
 
 /**
- * Every read the four shared pages (Overview, Leads, Strategy, Audiences) make.
+ * Every read the three shared pages (Overview, Leads, Audiences) make.
  *
  * Adding a page means adding its reads here. A missing entry surfaces as one
  * broken card plus a named 403 in the logs — never as a silent widening.

@@ -61,8 +61,8 @@ describe("offer-lever list handling — writes socialProof as a string[]", () =>
 });
 
 describe("source guards — the clobbering / collapsing patterns are gone", () => {
-  it("Strategy page renders the ListEditor via coerceListField, not Array.isArray-collapse", () => {
-    const src = read("../src/components/strategy/strategy-page.tsx");
+  it("Brand Settings offer editor renders the ListEditor via coerceListField, not Array.isArray-collapse", () => {
+    const src = read("../src/components/settings/brand-offer-card.tsx");
     expect(src).toMatch(/values=\{coerceListField\(value\)\}/);
     expect(src).not.toMatch(/values=\{Array\.isArray\(value\) \? value : \[\]\}/);
   });
