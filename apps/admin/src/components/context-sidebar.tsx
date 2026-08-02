@@ -275,6 +275,12 @@ const InvestorUpdateIcon = () => (
   </svg>
 );
 
+const InvestorDeckIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4h18M4 4v10a1 1 0 001 1h14a1 1 0 001-1V4M12 15v5m0 0l-3 1m3-1l3 1" />
+  </svg>
+);
+
 // Features that expose the public client report. Generic across features
 // once a backend public-proxy lands; gated for now. The pr-expert-quote-*
 // family is matched via isExpertQuoteFeature (not listed here) so a workflow
@@ -436,6 +442,10 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
             icon: <InvestorUpdateIcon />,
           }}
           isActive={pathname.startsWith("/investors/update")}
+        />
+        <SidebarLink
+          item={{ id: "investor-deck", label: "Investor deck", href: "/investors/deck", icon: <InvestorDeckIcon /> }}
+          isActive={pathname.startsWith("/investors/deck")}
         />
       </div>
     </SidebarSection>

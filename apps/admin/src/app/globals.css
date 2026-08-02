@@ -201,3 +201,88 @@ html.dark ::-webkit-scrollbar { width: 8px; }
 html.dark ::-webkit-scrollbar-track { background: #0f172a; }
 html.dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ── Investor deck: the preview IS the PDF ───────────────────────────────────
+   There is one render path. The slides you read on screen are the pages that
+   print, so a deck can never be approved in one form and sent in another.
+
+   Everything here is layout, not restyling: printing must not change what a
+   slide says or how it is arranged, only remove the app around it.
+
+   A slide is a fixed 16:9 box on screen for the same reason. What overflows in
+   the browser overflows on the page, so the author sees the problem while they
+   can still fix it. */
+
+.deck-slide {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+@media print {
+  /* Landscape, and the slide supplies its own padding — a page margin on top of
+     the slide's own would shrink the 16:9 box and clip its content. */
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  /* The app around the deck: sidebar, header, page heading, the download button
+     itself. None of it belongs in a document sent to an investor. */
+  aside,
+  header:not(.deck-root header),
+  nav,
+  .deck-chrome {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+    /* Chrome and Safari drop background colours in print unless asked. Without
+       this the eyebrow tints and the table header vanish. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* The deck is the whole document while printing. */
+  .deck-root {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .deck-pages {
+    display: block !important;
+  }
+
+  .deck-pages > * + * {
+    margin-top: 0 !important;
+  }
+
+  /* One slide, one page. `break-inside: avoid` is what stops a slide splitting
+     across two pages when its content runs long. */
+  .deck-slide {
+    width: 100%;
+    height: 100vh;
+    aspect-ratio: auto;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-after: page;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .deck-slide:last-child {
+    break-after: auto;
+  }
+
+  /* recharts sizes its SVG from a ResponsiveContainer that measures the screen
+     box. Letting the SVG scale to its container keeps the chart vector and
+     correctly sized on the page instead of cropped to its on-screen pixels. */
+  .deck-slide .recharts-wrapper,
+  .deck-slide .recharts-surface {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
