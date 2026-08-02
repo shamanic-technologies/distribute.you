@@ -2,7 +2,6 @@
 
 import {
   Area,
-  CartesianGrid,
   ComposedChart,
   Line,
   ResponsiveContainer,
@@ -65,7 +64,11 @@ export function CapacityHistoryChart({
             <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+        {/*
+          No CartesianGrid: it defaults to yAxisId 0 and this chart names its axes,
+          so recharts resolved no ticks and drew one dashed line across the top of
+          the plot, marking nothing. Same degenerate case as PeriodCompoundChart.
+        */}
         <XAxis
           dataKey="date"
           tickFormatter={formatDateShort}

@@ -2,7 +2,6 @@
 
 import {
   Bar,
-  CartesianGrid,
   Cell,
   ComposedChart,
   Legend,
@@ -14,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatGrowthPct } from "@/lib/format-number";
-import { chartDomain } from "@/lib/chart-domain";
+import { chartDomain, referenceTicks } from "@/lib/chart-domain";
 
 export interface PeriodCompoundPoint {
   /** X-axis label, e.g. "Jul 2026" (month) or "Jun 12" (week). */
@@ -86,9 +85,10 @@ export function PeriodCompoundChart({
   /** Y-axis tick formatter (default: same as formatValue). */
   formatAxis?: (n: number) => string;
   /**
-   * Draw a solid horizontal line at this value. For retention it is 100: above
-   * it the existing base grew on its own, below it the base shrank, and that
-   * boundary is the only thing the chart is really asked.
+   * Draw a dashed horizontal line at this value, and step the Y-axis ticks on it
+   * so it carries its own label. For retention it is 100: above it the existing
+   * base grew on its own, below it the base shrank, and that boundary is the
+   * only thing the chart is really asked.
    */
   referenceValue?: number;
   /**
@@ -133,11 +133,21 @@ export function PeriodCompoundChart({
     plotted: scaled ? Math.min(d.value, domain.max) : d.value,
   }));
 
+  const ticks = referenceTicks(domain.max, referenceValue);
+
   return (
-    <div className="h-[280px]">
+    // `text-gray-400` is what the reference line's `currentColor` resolves to, so
+    // the line reads near-white on the dark theme and stays visible on the light
+    // one. A hardcoded hex would be invisible on one of the two.
+    <div className="h-[280px] text-gray-400">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+          {/*
+            No CartesianGrid. It defaults to yAxisId 0 and these charts name their
+            axes "value" and "growth", so recharts resolved no ticks for it and
+            drew a single dashed line across the top of the plot — a line that
+            marked nothing and read as a reference the chart never had.
+          */}
           <XAxis
             dataKey="label"
             tick={{ fontSize: 11, fill: "#94a3b8" }}
@@ -149,6 +159,7 @@ export function PeriodCompoundChart({
             yAxisId="value"
             domain={scaled ? [0, domain.max] : undefined}
             allowDataOverflow={scaled}
+            ticks={ticks}
             tickFormatter={(value) => axisFormat(Number(value))}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickLine={false}
@@ -172,8 +183,9 @@ export function PeriodCompoundChart({
             <ReferenceLine
               yAxisId="value"
               y={referenceValue}
-              stroke="#475569"
+              stroke="currentColor"
               strokeWidth={1.5}
+              strokeDasharray="6 4"
               ifOverflow="visible"
             />
           ) : null}
