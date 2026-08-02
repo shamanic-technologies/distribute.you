@@ -290,6 +290,20 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "anthropic", envVar: "ANTHROPIC_API_KEY" },
   { provider: "apollo", envVar: "APOLLO_API_KEY" },
   { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
+  // Sending-infrastructure vendors. instantly-service reads these to build its
+  // domain + mailbox inventory (who we buy from, when it expires, what it costs)
+  // — until it existed, three of the four vendors we pay were unknown to every
+  // service in the fleet. The provider strings are byte-critical: it resolves
+  // them through `GET /keys/platform/{provider}/decrypt`, so a renamed provider
+  // reads as "vendor unreachable", not as a config error.
+  //
+  // Gandi gets THREE rows because it issues one token per organisation and a
+  // token only ever sees its own organisation's domains (2 + 29 + 10 = 41).
+  { provider: "gandi-org1", envVar: "GANDI_ORG1_TOKEN" },
+  { provider: "gandi-org2", envVar: "GANDI_ORG2_TOKEN" },
+  { provider: "gandi-org3", envVar: "GANDI_ORG3_TOKEN" },
+  { provider: "mailforge", envVar: "MAILFORGE_API_KEY" },
+  { provider: "primeforge", envVar: "PRIMEFORGE_API_KEY" },
   { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
   { provider: "google", envVar: "GEMINI_API_KEY" },
   { provider: "postmark", envVar: "POSTMARK_API_KEY" },
