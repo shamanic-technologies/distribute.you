@@ -1100,6 +1100,19 @@ const SALES_FUNNEL_KEYS = ["reply_meeting", "visit_meeting", "visit_signup", "vi
 
 const DeclaredSalesFunnelSchema = z.object({
   funnelKey: z.enum(SALES_FUNNEL_KEYS),
+  /**
+   * Whether the org SELLS through this funnel right now.
+   *
+   * The set lists active and inactive funnels ALIKE, on purpose: switching one
+   * off keeps every number on it, so the screen can show what the user entered
+   * and switching it back on returns it. Which means a consumer that ignores
+   * this flag renders a switched-off funnel as though it were still selected.
+   *
+   * `.optional()` reading as TRUE covers a brand-service older than the flag: it
+   * listed only the funnels the brand sold through, so every row it returned was
+   * active by construction.
+   */
+  active: z.boolean().optional(),
   name: z.string(),
   steps: z.array(z.string()),
   // brand-service's own goal spellings. Nothing here branches on them, so they
@@ -1117,11 +1130,13 @@ const DeclaredSalesFunnelSchema = z.object({
 
 export type DeclaredSalesFunnel = z.infer<typeof DeclaredSalesFunnelSchema>;
 
-// `declared` separates the two ways `funnels` can be empty: `true` = the brand
-// STATED it sells through none (a real answer), `false` = it has never told us
-// anything (a gap). It is `.optional()` only because an older brand-service
-// serves the set without the flag — an ABSENT flag reads as "never stated",
-// never as "stated none", so the two answers can still not be collapsed.
+// An EMPTY list means the org has NEVER answered. It cannot mean "sells through
+// nothing": brand-service refuses to switch off the last active funnel, so an org
+// that answered always keeps one on, and the two readings can no longer collide.
+//
+// That is what retired the `declared` flag, which existed only to tell them
+// apart. It is still read `.optional()` for a brand-service that predates its
+// removal; nothing branches on it.
 const GetBrandSalesFunnelsResponseSchema = z.object({
   declared: z.boolean().optional(),
   funnels: z.array(DeclaredSalesFunnelSchema),
