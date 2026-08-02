@@ -118,10 +118,24 @@ const STATUS_STYLES: Record<string, string> = {
   ended: "bg-gray-100 text-gray-500 border-gray-200",
 };
 /**
- * The campaign's own status, verbatim from campaign-service. There is no state
- * invented here: a campaign a brand has been running keeps running when that
- * brand funds its funnels, so the page never has to explain away a live campaign
- * that never gets a turn.
+ * The word this dashboard uses for a campaign that is running: **Active**, the same
+ * word the brand status pill already uses for the same idea.
+ *
+ * campaign-service stores `ongoing`, which is its own internal spelling and not a
+ * word anyone outside this fleet says. Printing it verbatim put two words for one
+ * concept on screen — the brand reads "Active" one page up while its campaigns read
+ * "ongoing" — so the wire value is translated here and nowhere else. Only the LABEL
+ * moves: `isActiveStatus` remains the single definition of what running MEANS, and
+ * it still drives the colour and the table's first sort key.
+ */
+function statusLabel(status: string): string {
+  return isActiveStatus(status) ? "Active" : status;
+}
+
+/**
+ * The campaign's own status. There is no state invented here: a campaign a brand has
+ * been running keeps running when that brand funds its funnels, so the page never has
+ * to explain away a live campaign that never gets a turn.
  */
 function StatusPill({ status }: { status: string }) {
   const cls = isActiveStatus(status)
@@ -129,7 +143,7 @@ function StatusPill({ status }: { status: string }) {
     : (STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200");
   return (
     <span className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${cls}`}>
-      {status}
+      {statusLabel(status)}
     </span>
   );
 }
