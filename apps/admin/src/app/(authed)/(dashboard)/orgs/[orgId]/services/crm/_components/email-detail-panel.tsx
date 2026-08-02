@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import type { GoogleMessage } from "./messages-list";
 import { parseGmailPayload, type GmailMessageShape } from "./parse-gmail-payload";
 import { parseGmailBody } from "./parse-gmail-body";
-import { sanitizeEmailHtml } from "./sanitize-email-html";
+import { sanitizeEmailHtml } from "@/lib/sanitize-email-html";
 
 function findAllHeaders(
   headers: Array<{ name?: string; value?: string }> | undefined,
