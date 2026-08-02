@@ -140,7 +140,7 @@ function LandingView({
           <h2 className="text-lg font-semibold text-gray-950">Monthly unique visitors</h2>
           <p className="mt-1 text-sm text-gray-500">Unique visitors per month with compound monthly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
           </div>
           <div className="mt-5">
             <PeriodCompoundChart data={monthlyPoints} valueLabel="Unique visitors" growthLabel="CMGR since inception" />
@@ -150,7 +150,7 @@ function LandingView({
           <h2 className="text-lg font-semibold text-gray-950">Weekly unique visitors</h2>
           <p className="mt-1 text-sm text-gray-500">Unique visitors per week with compound weekly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
           </div>
           <div className="mt-5">
             <PeriodCompoundChart data={weeklyPoints} valueLabel="Unique visitors" growthLabel="CWGR since inception" />
@@ -200,7 +200,7 @@ function SignupView({
           <h2 className="text-lg font-semibold text-gray-950">Monthly signups</h2>
           <p className="mt-1 text-sm text-gray-500">Signups per month with compound monthly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
           </div>
           <div className="mt-5">
             <PeriodCompoundChart data={monthlyPoints} valueLabel="Signups" growthLabel="CMGR since inception" />
@@ -210,7 +210,7 @@ function SignupView({
           <h2 className="text-lg font-semibold text-gray-950">Weekly signups</h2>
           <p className="mt-1 text-sm text-gray-500">Signups per week with compound weekly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
           </div>
           <div className="mt-5">
             <PeriodCompoundChart data={weeklyPoints} valueLabel="Signups" growthLabel="CWGR since inception" />
@@ -271,7 +271,7 @@ function CardsView({
           <h2 className="text-lg font-semibold text-gray-950">Monthly paid users</h2>
           <p className="mt-1 text-sm text-gray-500">Paid users per month with compound monthly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} label="CMGR" unit="monthly" />
+            <CmgrStat latestPct={monthlyCmgr.latestPct} avgPct={monthlyCmgr.avgPct} barsUsed={monthlyCmgr.barsUsed} label="CMGR" unit="monthly" />
           </div>
           <div className="mt-5">
             <PeriodCompoundChart data={monthlyPoints} valueLabel="Paid users" growthLabel="CMGR since inception" />
@@ -281,7 +281,7 @@ function CardsView({
           <h2 className="text-lg font-semibold text-gray-950">Weekly paid users</h2>
           <p className="mt-1 text-sm text-gray-500">Paid users per week with compound weekly growth since inception.</p>
           <div className="mt-4">
-            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} label="CWGR" unit="weekly" />
+            <CmgrStat latestPct={weeklyCmgr.latestPct} avgPct={weeklyCmgr.avgPct} barsUsed={weeklyCmgr.barsUsed} label="CWGR" unit="weekly" />
           </div>
           <div className="mt-5">
             <PeriodCompoundChart data={weeklyPoints} valueLabel="Paid users" growthLabel="CWGR since inception" />

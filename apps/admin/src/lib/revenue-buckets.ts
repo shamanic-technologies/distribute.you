@@ -1,5 +1,6 @@
 import type { ActiveUsersBucket, CommittedMrrBucket, FleetRevenueBucket } from "@/lib/api";
 import type { DailyFunnelPoint } from "@/lib/public-stats";
+import { barsBehindLatest, type CompoundGrowthSummary } from "@/lib/compound-growth";
 
 /**
  * A charted period bucket for the Revenue view. `value` is a USD amount (realized
@@ -75,16 +76,21 @@ export function revenueBuckets(buckets: FleetRevenueBucket[], granularity: Granu
  * Headline for a bucket series, excluding the current (partial) period:
  * - `latestPct` — CMGR/CWGR up to the last CONCLUDED period.
  * - `avgPct` — mean of every plotted compound-rate point (concluded only).
+ * - `barsUsed` — bars behind `latestPct`, anchor included.
  * Mirrors `signup-buckets.cmgrSummary`.
  */
-export function revenueCmgrSummary(buckets: RevenueBucket[]): { latestPct: number | null; avgPct: number | null } {
-  if (buckets.length < 2) return { latestPct: null, avgPct: null };
+export function revenueCmgrSummary(buckets: RevenueBucket[]): CompoundGrowthSummary {
+  if (buckets.length < 2) return { latestPct: null, avgPct: null, barsUsed: null };
   const concluded = buckets.slice(0, -1);
   const latestPct = concluded[concluded.length - 1]?.cmgrPct ?? null;
   const points = concluded.map((b) => b.cmgrPct).filter((v): v is number => v !== null);
   const avgPct =
     points.length > 0 ? Number((points.reduce((sum, v) => sum + v, 0) / points.length).toFixed(1)) : null;
-  return { latestPct, avgPct };
+  return {
+    latestPct,
+    avgPct,
+    barsUsed: barsBehindLatest(concluded.map((b) => b.cmgrPct), latestPct),
+  };
 }
 
 // ── MRR / ARR (committed run-rate) ───────────────────────────────────────────
