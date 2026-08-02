@@ -198,8 +198,8 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("Always on");
   });
 
-  it("budget is picked as outcome-count tiers before direct checkout", () => {
-    expect(src).toContain("COUNT_TIERS");
+  it("funds each picked funnel before direct checkout", () => {
+    expect(src).toContain("funnelBudgetUsd");
     expect(src).toContain("budgetForCount");
     expect(src).toContain("Continue to checkout");
     expect(src).toContain("const checkoutAmountCents = Math.round(budget * 100)");
@@ -208,13 +208,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("Set up your org wallet.");
   });
 
-  it("shows $/day as the primary value with outcomes/mo secondary; Other is a custom $/day", () => {
-    // Canonical selection is the $/day budget, not the outcome count.
-    expect(src).toContain("setSelectedBudget");
+  it("shows $/day per path as the primary value, outcomes/mo secondary", () => {
+    // One ceiling per funnel, typed. There is no tier list any more: the tiers
+    // priced ONE pot, which is the thing per-funnel funding replaced.
+    expect(src).toContain("setFunnelBudgets");
     expect(src).toContain("countForBudget");
-    // Other card: the typed $ IS the selection (read at render time, not mirrored into a
-    // second state), and the card is reselectable after another tier.
-    expect(src).toContain("const active = customBudgetSelected && isCustom;");
-    expect(src).toContain("if (isCustom) setCustomBudgetSelected(true);");
+    expect(src).not.toContain("COUNT_TIERS");
+    expect(src).not.toContain("customBudgetSelected");
   });
 });

@@ -37,10 +37,13 @@ describe("Onboarding direct checkout launch", () => {
     expect(content).toContain("Continue to checkout");
   });
 
-  it("states the brand-level daily budget cap with post-paid copy", () => {
-    expect(content).toContain("brand daily budget cap");
-    expect(content).toContain("You pay as you go for what we");
-    expect(content).toContain("never more than this per day");
+  it("states a per-path ceiling with post-paid copy", () => {
+    // No brand-level cap any more: each path spends up to its own ceiling, and
+    // the brand total is their sum. Saying "your brand daily budget cap" beside
+    // four separate ceilings would name a number nobody sets.
+    expect(content).toContain("Each path spends up to its own ceiling");
+    expect(content).toContain("You pay as you go for what we actually spend");
+    expect(content).not.toContain("brand daily budget cap");
   });
 
   it("uses first-day payment checkout, configures auto-topup, and launches after return", () => {

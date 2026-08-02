@@ -23,6 +23,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import posthog from "posthog-js";
 import {
   upsertBrand,
@@ -61,6 +62,7 @@ import {
   getBillingAccount,
   createCampaignWithoutBrandEnrichment,
   saveBrandDailyBudget,
+  stateBrandFunnelBudgets,
   salesObjectiveForOptimizationGoal,
   sendAuthNotification,
   type BrandOptimizationGoal,
@@ -99,7 +101,9 @@ import { businessDomainFromEmail, extractDomain, subpageDestinationFromUrl } fro
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 import {
+  FUNNEL_MIN_DAILY_BUDGET_USD,
   SALES_FUNNELS,
+  funnelBudgetBelowMinimum,
   funnelRateFields,
   salesFunnelByKey,
   buildFunnelPatch,
@@ -298,20 +302,17 @@ function rateToText(n: number): string {
 }
 
 /** The custom "Other" $/day, parsed. null when the field is empty or not a positive amount. */
+/** A funnel-key → whole-dollars map, as the pending blob may carry it. */
+function isFunnelBudgetMap(v: unknown): v is Record<string, number> {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  return Object.values(v as Record<string, unknown>).every(
+    (n) => typeof n === "number" && Number.isFinite(n) && n >= 0,
+  );
+}
+
 function parseCustomBudget(raw: string): number | null {
   const parsed = parseLocaleNumberInput(raw);
   return parsed !== null && parsed > 0 ? Math.round(parsed) : null;
-}
-
-/**
- * Was the persisted selection the custom card? A restored snapshot carries the $/day and
- * the "Other" text but not which card owned it, so it is recovered by matching: an
- * unmatched tier selection wins, otherwise a typed custom amount does.
- */
-function customBudgetMatchesSelection(customText: string, selected: number | null): boolean {
-  const custom = parseCustomBudget(customText);
-  if (custom === null) return false;
-  return selected === null || custom === selected;
 }
 
 // The five agency-model benefits (landing how-it-works "Sent on your behalf").
@@ -350,7 +351,10 @@ const TAG_TONES = [
 
 // Outcome-count tiers (per month) — each maps to a $/day via the projection unit
 // cost, shown as the tier's primary $/day. "Other" is a custom $/day.
-const COUNT_TIERS = [25, 50, 100];
+// What the old tier grid marked "Recommended", now the number the primary funnel
+// is seeded with. Kept as the outcomes/month it buys rather than a dollar amount,
+// because the dollars depend on the brand's own cost per outcome.
+const RECOMMENDED_OUTCOME_COUNT = 50;
 
 // Default conversion rates + their display text. Shared by the useState seeds and
 // the minimal checkout-state reconstruction (a version bump that lands mid-checkout).
@@ -405,6 +409,14 @@ type PendingCheckoutLaunch = {
   // [] / null and the screens skip exactly as they did then.
   selectedFunnelKeys: string[];
   primaryFunnelKey: string | null;
+  /**
+   * What each picked funnel is funded with, in whole dollars per day. The brand is
+   * charged their SUM, and billing stores them per funnel once the launch runs —
+   * so this has to survive the Stripe round-trip, which is a FRESH page load.
+   * Top level for the same reason as the selection above: version-independent, so
+   * ONBOARDING_STATE_VERSION stays at 8.
+   */
+  funnelBudgets: Record<string, number>;
   onboardingState: PersistedOnboardingState;
   createdAt: string;
 };
@@ -600,6 +612,11 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
   // screens, which is the pre-existing behaviour, never a blocked launch.
   const selectedFunnelKeys = isStringList(parsed.selectedFunnelKeys) ? parsed.selectedFunnelKeys : [];
   const primaryFunnelKey = typeof parsed.primaryFunnelKey === "string" ? parsed.primaryFunnelKey : null;
+  // Read as tolerantly as the selection, and for the same reason: a blob written
+  // before per-funnel funding shipped carries none, and it must still LAUNCH. An
+  // empty map falls back to the brand-level write below, which is what that blob
+  // was always going to do.
+  const funnelBudgets = isFunnelBudgetMap(parsed.funnelBudgets) ? parsed.funnelBudgets : {};
   // The nested onboardingState only re-renders the deeper wizard. If it fails to parse
   // (a version bump landed mid-checkout), reconstruct a minimal current-version state
   // from the top-level fields — the brand + budget survive; the user re-picks nothing
@@ -616,6 +633,7 @@ function readPendingCheckoutLaunch(): PendingCheckoutLaunch {
     selectedAudienceIds,
     selectedFunnelKeys,
     primaryFunnelKey,
+    funnelBudgets,
     onboardingState,
   } as PendingCheckoutLaunch;
 }
@@ -962,19 +980,22 @@ export function Onboarding() {
   // hydrate; NOT persisted in the snapshot (re-derived on resume, defaults to
   // "suggested"). Drives the "Confirmed" badge on the offer step.
   const [fieldProvenance, setFieldProvenance] = useState<Record<string, FieldProvenance>>({});
-  // Budget selection. selectedBudget IS the $/day sent to the campaign (the primary
-  // value shown). Tier $/day is derived from a STABLE base (the projection unit cost),
-  // never from the selection — so clicking a card never reshuffles the cards. The
-  // equivalent outcomes/mo is derived for the secondary label only.
+  // LEGACY, and kept only because they are FIELDS on the persisted snapshot:
+  // removing one narrows what a snapshot may carry, which strands a session that
+  // was mid-checkout. Nothing in the flow writes them any more — the money is
+  // funded per funnel (`funnelBudgets`) and the brand is charged their sum. They
+  // are still restored so an older snapshot round-trips unchanged.
   const [selectedBudget, setSelectedBudget] = useState<number | null>(() => restored?.selectedBudget ?? null);
   const [customBudget, setCustomBudget] = useState(() => restored?.customBudget ?? "");
-  // Which card owns the selection. When it is the custom one, `derivedBudget` reads the
-  // TYPED TEXT rather than the mirrored number, so the amount charged can never lag what
-  // the field shows. Derived on restore by matching the two persisted values, so no
-  // ONBOARDING_STATE_VERSION bump (a bump strands an in-flight checkout).
-  const [customBudgetSelected, setCustomBudgetSelected] = useState<boolean>(() =>
-    customBudgetMatchesSelection(restored?.customBudget ?? "", restored?.selectedBudget ?? null),
-  );
+  // The daily ceiling the user funds each PICKED funnel with, in whole dollars as
+  // typed, keyed by funnel. This is what the brand is charged the sum of, and what
+  // billing stores per funnel at launch.
+  //
+  // Deliberately EPHEMERAL, like the funnel selection it belongs to: a field on the
+  // persisted snapshot means bumping ONBOARDING_STATE_VERSION, which strands an
+  // in-flight checkout. It rides the TOP LEVEL of the pending-checkout blob instead,
+  // which is version-independent, so it survives the Stripe round-trip.
+  const [funnelBudgets, setFunnelBudgets] = useState<Record<string, string>>({});
   const [checkoutBudgetUsd, setCheckoutBudgetUsd] = useState<number | null>(() => restored?.checkoutBudgetUsd ?? null);
   const [audiencePrompt, setAudiencePrompt] = useState(() => restored?.audiencePrompt ?? "");
   const [audienceCandidates, setAudienceCandidates] = useState<AudienceCandidate[] | null>(() => restored?.audienceCandidates ?? null);
@@ -1777,7 +1798,20 @@ export function Onboarding() {
     }
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
-    await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
+    // Fund each funnel it its own ceiling. billing then answers the brand's daily
+    // budget as their SUM, so every consumer that reads the brand total — the launch
+    // gate, the runway, the credit alerts, the Overview tile — is unchanged.
+    //
+    // A blob written before per-funnel funding shipped carries no map; it falls back
+    // to the single brand-level write, which is exactly what it expected to happen.
+    const funnelBudgetRows = Object.entries(pending.funnelBudgets ?? {})
+      .filter(([, usd]) => usd > 0)
+      .map(([funnelKey, usd]) => ({ funnelKey, dailyBudgetCents: Math.round(usd * 100) }));
+    if (funnelBudgetRows.length > 0) {
+      await stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows);
+    } else {
+      await saveBrandDailyBudget(pending.brandId, Math.round(pending.budgetUsd * 100));
+    }
     setLaunchStep(2);
     // Audience avatars are generated server-side by human-service the moment an
     // audience flips to `active` (org-billed, fire-and-forget, idempotent), so the
@@ -1907,6 +1941,17 @@ export function Onboarding() {
       ? selectedFunnelKeys
       : storedPending?.selectedFunnelKeys ?? [];
     const launchPrimaryFunnelKey = primaryFunnelKey ?? storedPending?.primaryFunnelKey ?? null;
+    // Live funding wins, the stored blob is the fallback — same precedence as the
+    // selection, so a re-checkout after a cancel carries what the user funds NOW.
+    const liveFunnelBudgets = Object.fromEntries(
+      launchFunnelKeys
+        .map((key) => [key, funnelBudgetUsd(key)] as const)
+        .filter(([, usd]) => usd > 0),
+    );
+    const launchFunnelBudgets =
+      Object.keys(liveFunnelBudgets).length > 0
+        ? liveFunnelBudgets
+        : storedPending?.funnelBudgets ?? {};
     const checkoutAmountCents = Math.round(budget * 100);
     const workflowSlug = activeWorkflow()?.workflowDynastySlug ?? storedPending?.workflowSlug ?? null;
     if (!workflowSlug) {
@@ -1935,6 +1980,7 @@ export function Onboarding() {
       selectedAudienceIds: launchAudienceIds,
       selectedFunnelKeys: launchFunnelKeys,
       primaryFunnelKey: launchPrimaryFunnelKey,
+      funnelBudgets: launchFunnelBudgets,
       onboardingState: checkoutState,
       createdAt: new Date().toISOString(),
     };
@@ -2511,6 +2557,13 @@ export function Onboarding() {
   function applyRestoredFunnelSelection(pending: PendingCheckoutLaunch) {
     setSelectedFunnelKeys(pending.selectedFunnelKeys);
     setPrimaryFunnelKey(pending.primaryFunnelKey);
+    // The funding comes back with the selection, or a cancel would land on pricing
+    // with every path reading zero and the customer re-typing what they just set.
+    setFunnelBudgets(
+      Object.fromEntries(
+        Object.entries(pending.funnelBudgets ?? {}).map(([key, usd]) => [key, String(usd)]),
+      ),
+    );
     setFunnelIndex(0);
   }
 
@@ -2575,6 +2628,26 @@ export function Onboarding() {
     }
   }, [searchParams]);
 
+  // Put a number in front of the customer instead of a row of empty fields: the
+  // funnel they picked to start on takes the recommended budget, the others start
+  // unfunded and they fund what they want. Runs on the pricing step rather than at
+  // the pick, because the goal and its projection have both settled by then — the
+  // unit cost read a step earlier would still be the previous goal's.
+  //
+  // Seeds ONCE and only into an untouched set: a resume, a cancelled checkout or a
+  // Back must never overwrite what the customer already funded.
+  useEffect(() => {
+    if (step !== "pricing" || !primaryFunnelKey) return;
+    setFunnelBudgets((prev) => {
+      if (Object.values(prev).some((v) => (parseLocaleNumberInput(v) ?? 0) > 0)) return prev;
+      const floor = FUNNEL_MIN_DAILY_BUDGET_USD[primaryFunnelKey as SalesFunnelKey];
+      const recommended = budgetForCount(RECOMMENDED_OUTCOME_COUNT);
+      return { ...prev, [primaryFunnelKey]: String(Math.max(floor, recommended ?? floor)) };
+    });
+    // `budgetForCount` reads the live projection; re-running as it warms is the
+    // point, and the untouched-set guard makes the repeat a no-op.
+  }, [step, primaryFunnelKey, pricingHydrationVersion]);
+
   // ── Per-outcome economics for the budget cards ──────────────────
   // The outcome-optimized workflow's funnel projection (counts at PROJECTION_REF_BUDGET).
   function activeWorkflow() {
@@ -2621,13 +2694,30 @@ export function Onboarding() {
     return Math.max(0, Math.round((b * 30) / uc));
   }
 
-  // The $/day for the current selection (or null if nothing selected yet). When the
-  // custom card owns the selection the TYPED TEXT is authoritative — reading the
-  // mirrored `selectedBudget` instead is what let a keystroke-lagging number reach
-  // Stripe while the summary showed the freshly typed one.
+  /** What this funnel is funded with, in whole dollars. Blank or junk reads as 0. */
+  function funnelBudgetUsd(key: string): number {
+    const parsed = parseLocaleNumberInput((funnelBudgets[key] ?? "").trim());
+    return parsed === null ? 0 : Math.max(0, Math.round(parsed));
+  }
+
+  /**
+   * The picked funnels whose ceiling is under their own floor. Zero is never in
+   * here: a funnel funded at nothing is one the brand is not paying for, which is
+   * an ordinary answer — the gate is that at least ONE of them is funded.
+   */
+  function underfundedFunnels(): FunnelView[] {
+    return selectedFunnels.filter((f) =>
+      funnelBudgetBelowMinimum(f.key as SalesFunnelKey, funnelBudgetUsd(f.key)),
+    );
+  }
+
+  // The $/day the brand is charged: the SUM of what each picked funnel is funded
+  // with. Null when nothing is funded yet, so the step cannot be passed — "we could
+  // not price this" and "it costs nothing" are different statements, and only the
+  // first should hold the Continue button.
   function derivedBudget(): number | null {
-    if (customBudgetSelected) return parseCustomBudget(customBudget);
-    return selectedBudget;
+    const total = selectedFunnels.reduce((sum, f) => sum + funnelBudgetUsd(f.key), 0);
+    return total > 0 ? total : null;
   }
 
   // ONE source for every $/day the user is shown or charged: the pricing summary, the
@@ -3424,14 +3514,18 @@ export function Onboarding() {
     );
   }
 
-  // pricing — daily-budget selection ($/day is the primary value; outcomes/mo secondary)
+  // pricing — one daily ceiling per PICKED funnel. The brand is charged their sum,
+  // and billing stores them per funnel, so the money the customer commits to is
+  // allocated to the paths they chose rather than to one undifferentiated pot.
   const displayBudget = budgetForCharge();
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
+  const fundedFunnelCount = selectedFunnels.filter((f) => funnelBudgetUsd(f.key) > 0).length;
+  const underfunded = underfundedFunnels();
   return (
     <StepShell
       header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
       footer={
-        <button onClick={continueFromPricing} disabled={displayBudget == null || busy} className={`mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50"}`}>
+        <button onClick={continueFromPricing} disabled={displayBudget == null || underfunded.length > 0 || busy} className={`mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 ${busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-50"}`}>
           {busy ? (
             <>
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -3444,89 +3538,85 @@ export function Onboarding() {
       }
     >
       <BackButton onClick={() => setStep("consent")} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Your daily budget.</h2>
-      <p className="mt-2 mb-5 text-gray-500">Pick your <strong>daily budget</strong>. We show the {outcomeMeta.unit} it buys each month.</p>
+      <h2 className="font-display text-2xl font-bold text-gray-900">Fund each path.</h2>
+      <p className="mt-2 mb-5 text-gray-500">
+        Set what each path may spend a day. You can leave one at <strong>0</strong> and start it later — fund at least one to continue.
+      </p>
       {cancelNotice && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{cancelNotice}</div>}
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
         <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-sm leading-6 text-brand-800">
-          This is your <strong>brand daily budget cap</strong>. You pay as you go for what we
-          actually spend, never more than this per day. Cancel anytime.
+          Each path spends up to its own ceiling, and never more than that in a day.
+          You pay as you go for what we actually spend. Cancel anytime.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {COUNT_TIERS.map((n, i) => {
-          const b = budgetForCount(n);
-          const active = !customBudgetSelected && b != null && selectedBudget === b;
-          return (
-            <button key={n} disabled={b == null} onClick={() => { if (b != null) { setCustomBudgetSelected(false); setSelectedBudget(b); } }} className={`rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"}`}>
-              {i === 1 ? <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">Recommended</div> : <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">{i === 0 ? "Starter" : "Growth"}</div>}
-              <div className="text-xl font-bold text-gray-950">{b != null ? fmtUsd0(b) : "—"}<span className="text-sm font-normal text-gray-500"> / day</span></div>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <span>{fmtCount(n)} {outcomeMeta.unit} / mo</span>
-                <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
-              </div>
-            </button>
-          );
-        })}
-        {/* Other — custom $/day */}
-        {(() => {
-          const customB = parseCustomBudget(customBudget);
-          const isCustom = customB !== null;
-          const active = customBudgetSelected && isCustom;
-          const cnt = isCustom ? countForBudget(customB) : null;
+      <div className="space-y-3">
+        {selectedFunnels.map((f) => {
+          const usd = funnelBudgetUsd(f.key);
+          const floor = FUNNEL_MIN_DAILY_BUDGET_USD[f.key as SalesFunnelKey];
+          const under = funnelBudgetBelowMinimum(f.key as SalesFunnelKey, usd);
+          const count = usd > 0 ? countForBudget(usd) : null;
           return (
             <div
-              onClick={() => { if (isCustom) setCustomBudgetSelected(true); }}
-              className={`rounded-xl border-2 p-4 transition ${isCustom ? "cursor-pointer" : ""} ${active ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"}`}
+              key={f.key}
+              className={`rounded-xl border-2 p-4 transition ${
+                under ? "border-red-200 bg-red-50" : usd > 0 ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white"
+              }`}
             >
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Other</div>
-              <div className="flex items-baseline">
-                <span className="shrink-0 text-xl font-bold text-gray-950">$</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={customBudget}
-                  onChange={(e) => {
-                    // Typing an amount here IS choosing it, so the card takes the
-                    // selection. `selectedBudget` is kept in step purely so the snapshot
-                    // persists a number; `derivedBudget` reads this text, not that copy.
-                    setCustomBudget(e.target.value);
-                    setCustomBudgetSelected(true);
-                    setSelectedBudget(parseCustomBudget(e.target.value));
-                  }}
-                  onBlur={() => {
-                    const v = parseLocaleNumberInput(customBudget);
-                    if (v !== null) setCustomBudget(formatLocaleInteger(v));
-                  }}
-                  placeholder="0"
-                  className="w-full min-w-0 flex-1 bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
-                />
-                <span className="shrink-0 text-sm font-normal text-gray-500"> / day</span>
+              <div className="flex items-start gap-3">
+                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${f.tone.iconBg} ${f.tone.iconText}`}>
+                  <SalesFunnelMark def={salesFunnelByKey(f.key as SalesFunnelKey)} size="md" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-gray-900">{f.title}</div>
+                  <FunnelChain steps={f.steps} tone={f.tone} />
+                </div>
+                <div className="flex shrink-0 items-baseline gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 focus-within:border-brand-400">
+                  <span className="text-lg font-bold text-gray-400">$</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={funnelBudgets[f.key] ?? ""}
+                    onChange={(e) =>
+                      setFunnelBudgets((prev) => ({
+                        ...prev,
+                        [f.key]: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    placeholder="0"
+                    aria-label={`Daily budget for ${f.title}`}
+                    className="w-16 bg-transparent text-right text-lg font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
+                  />
+                  <span className="text-xs font-normal text-gray-500">/ day</span>
+                </div>
               </div>
-              {/* Secondary count hidden until a valid amount is entered (nbsp keeps card height). */}
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                {cnt != null ? (
+              <div className="mt-2 flex items-center gap-1 pl-14 text-xs">
+                {under ? (
+                  <span className="text-red-600">
+                    This path starts at {fmtUsd0(floor)} a day. Leave it at 0 to skip it for now.
+                  </span>
+                ) : count != null ? (
                   <>
-                    <span>{fmtCount(cnt)} {outcomeMeta.unit} / mo</span>
+                    <span className="text-gray-500">{fmtCount(count)} {outcomeMeta.unit} / mo</span>
                     <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
                   </>
                 ) : (
-                  " "
+                  <span className="text-gray-400">Not funded — from {fmtUsd0(floor)} a day.</span>
                 )}
               </div>
             </div>
           );
-        })()}
+        })}
       </div>
 
       {displayBudget != null && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
           Daily budget: <strong className="text-gray-900">{fmtUsd0(displayBudget)} / day</strong>
-          {displayCount != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> {fmtCount(displayCount)} {outcomeMeta.unit} / mo estimated</span>}
+          <span className="text-gray-400"> across {fundedFunnelCount} {fundedFunnelCount === 1 ? "path" : "paths"}</span>
+          {displayCount != null && <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline"> · {fmtCount(displayCount)} {outcomeMeta.unit} / mo estimated</span>}
         </div>
       )}
 

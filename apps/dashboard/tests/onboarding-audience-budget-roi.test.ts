@@ -90,23 +90,38 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
       expect(src).not.toContain("derivedBudget() ?? checkoutBudgetUsd ??");
     });
 
-    it("reads the typed custom amount rather than a mirrored copy", () => {
+    it("charges the SUM of what each path is funded with", () => {
+      // Reading the typed field per funnel, never a mirrored copy — the same
+      // reason the custom tier used to read its text: a keystroke-lagging number
+      // must not be what reaches Stripe.
       const body = sliceFrom("function derivedBudget(): number | null {", 400);
-      expect(body).toContain("if (customBudgetSelected) return parseCustomBudget(customBudget);");
+      expect(body).toContain("selectedFunnels.reduce");
+      expect(body).toContain("funnelBudgetUsd(f.key)");
+      // Null, never zero, when nothing is funded: "we could not price this" and
+      // "it costs nothing" are different statements, and only the first holds the
+      // Continue button.
+      expect(body).toContain("total > 0 ? total : null");
     });
 
-    it("hands the selection between the tier cards and the custom card", () => {
-      expect(src).toContain("setCustomBudgetSelected(false); setSelectedBudget(b);");
-      expect(src).toContain("if (isCustom) setCustomBudgetSelected(true);");
-      expect(src).toContain("const active = customBudgetSelected && isCustom;");
-      expect(src).toContain("const active = !customBudgetSelected && b != null && selectedBudget === b;");
+    it("holds Continue until one path is funded and none is under its floor", () => {
+      expect(src).toContain("displayBudget == null || underfunded.length > 0 || busy");
+      expect(src).toContain("funnelBudgetBelowMinimum(f.key as SalesFunnelKey, funnelBudgetUsd(f.key))");
     });
 
-    it("recovers which card was selected from a restored snapshot", () => {
-      // Deriving it keeps ONBOARDING_STATE_VERSION untouched; a bump strands an
-      // in-flight checkout.
-      expect(src).toContain("function customBudgetMatchesSelection(");
-      expect(src).toContain("customBudgetMatchesSelection(restored?.customBudget ?? \"\", restored?.selectedBudget ?? null)");
+    it("carries the funding across the Stripe round-trip, without a version bump", () => {
+      // The post-payment steps run on a FRESH page load, so state that only lives
+      // in React is gone by the time they render. The funding rides the TOP level
+      // of the pending blob — version-independent — exactly like the selection it
+      // belongs to. A field on the snapshot instead would force a bump, and a bump
+      // strands an in-flight checkout.
+      expect(src).toContain("funnelBudgets: Record<string, number>");
+      expect(src).toContain("funnelBudgets: launchFunnelBudgets");
+      expect(src).toContain("isFunnelBudgetMap(parsed.funnelBudgets)");
+      expect(src).toContain("ONBOARDING_STATE_VERSION = 8");
+      // Read tolerantly: a blob written before per-funnel funding shipped carries
+      // none, and it must still LAUNCH — falling back to the single brand write.
+      expect(src).toContain("stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows)");
+      expect(src).toContain("saveBrandDailyBudget(pending.brandId");
     });
   });
 
