@@ -259,19 +259,11 @@ export function partitionFunnelsBySelection(isSelected: (key: SalesFunnelKey) =>
   };
 }
 
-/**
- * The funnel a brand optimizing for this goal sells through, or null when no
- * funnel in the catalogue ends on that outcome.
- *
- * This answers from the CATALOGUE, not from what a brand declared: its callers
- * (the Campaigns table) hold a goal and no brand set, so it takes the declared
- * order's first match, which for a sales meeting is the reply-driven chain (the
- * one a cold-email campaign feeds). A goal with no funnel returns null and the
- * caller names the outcome instead of borrowing a chain nobody described.
- */
-export function primaryFunnelForGoal(goal: BrandOptimizationGoal): SalesFunnelDef | null {
-  return SALES_FUNNELS.find((f) => f.goal === goal) ?? null;
-}
+// There is deliberately NO goal-to-funnel resolver here. The goal is the
+// retired, lossier vocabulary — `meetingBooked` is the goal of two different
+// funnels — so a surface naming a chain reads the funnel a campaign or a brand
+// actually stated, never one derived from its goal. campaign-service persists
+// the funnel on every campaign for exactly this reason.
 
 export function salesFunnelByKey(key: SalesFunnelKey): SalesFunnelDef {
   const def = SALES_FUNNELS.find((f) => f.key === key);

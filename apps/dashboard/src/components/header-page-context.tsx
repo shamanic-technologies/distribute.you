@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getCampaign, optimizationGoalForRuntimeGoal } from "@/lib/api";
+import { getCampaign } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { CampaignTitle } from "@/components/campaigns/campaign-title";
@@ -53,7 +53,6 @@ export function HeaderPageContext() {
   // goal in hand here. A campaign that carries its own funnel key never needs
   // one; one that does not simply goes unstated on the funnel half rather than
   // being guessed from a goal we did not read.
-  const fallbackGoal = campaign?.goal ? optimizationGoalForRuntimeGoal(campaign.goal) : null;
 
   return (
     <nav className="flex min-w-0 items-center gap-1.5 text-sm" aria-label="Page context">
@@ -70,7 +69,6 @@ export function HeaderPageContext() {
       {campaign ? (
         <CampaignTitle
           campaign={campaign}
-          fallbackGoal={fallbackGoal}
           size="sm"
           className="font-medium text-gray-800"
         />

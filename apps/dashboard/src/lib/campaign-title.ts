@@ -15,13 +15,12 @@
 // unit-testable (vitest does not resolve the "@" alias). The `@/lib/api` import
 // is type-only and erases at compile time.
 
-import type { BrandOptimizationGoal } from "@/lib/api";
 import {
   acquisitionChannelForWorkflowSlug,
   type AcquisitionChannelDef,
 } from "./acquisition-channels";
 import { campaignFunnel, type CampaignFunnelRow } from "./campaign-funnel";
-import { primaryFunnelForGoal, type SalesFunnelDef } from "./sales-funnels";
+import type { SalesFunnelDef } from "./sales-funnels";
 
 /** The fields a title reads off a campaign row. */
 export interface CampaignTitleRow extends CampaignFunnelRow {
@@ -46,21 +45,6 @@ export function channelSlugLabel(workflowSlug: string | null): string {
     .join(" ");
 }
 
-/**
- * Fallback outcome word for a pre-funnel campaign whose inherited brand goal no
- * funnel in the catalogue ends on. A campaign that names its own funnel never
- * reads this.
- */
-export const GOAL_SHORT: Record<BrandOptimizationGoal, string> = {
-  signups: "Signups",
-  sales_meetings: "Positive Replies",
-  positive_replies: "Positive Replies",
-  website_visits: "Website Visits",
-  form_submissions: "Form Submissions",
-  website_purchase: "Purchases",
-  sales: "Sales",
-};
-
 export interface CampaignTitleParts {
   /** The funnel's catalogue entry, or null when nothing in it ends on the goal. */
   funnel: SalesFunnelDef | null;
@@ -84,20 +68,18 @@ export interface CampaignTitleParts {
 /**
  * The funnel × channel a campaign runs, resolved for display.
  *
- * `fallbackGoal` is the effective goal (the campaign's own when set, else the
- * brand's) and is READ ONLY when the campaign carries no funnel key of its own —
- * a lossy fallback, since two funnels share `meetingBooked`. Pass null where no
- * goal is in hand (the top bar fetches one campaign and no brand), and the funnel
- * half simply goes unstated instead of guessed.
+ * The funnel half reads the campaign's OWN funnel key and NOTHING else. There is
+ * deliberately no fallback to the goal: the goal is the retired, lossier
+ * vocabulary — two funnels answer to `meetingBooked` — so a chain derived from
+ * it is one the campaign never stated. campaign-service persists the funnel on
+ * every campaign, so a campaign that states none leaves the half unstated rather
+ * than guessed.
  */
-export function campaignTitleParts(
-  campaign: CampaignTitleRow,
-  fallbackGoal: BrandOptimizationGoal | null,
-): CampaignTitleParts {
-  const funnel = campaignFunnel(campaign.funnelKey) ?? (fallbackGoal ? primaryFunnelForGoal(fallbackGoal) : null);
+export function campaignTitleParts(campaign: CampaignTitleRow): CampaignTitleParts {
+  const funnel = campaignFunnel(campaign.funnelKey);
   const channel = acquisitionChannelForWorkflowSlug(campaign.workflowSlug);
 
-  const funnelLabel = funnel ? funnel.name : fallbackGoal ? GOAL_SHORT[fallbackGoal] : null;
+  const funnelLabel = funnel ? funnel.name : null;
   const channelLabel = campaign.workflowSlug
     ? (channel?.name ?? channelSlugLabel(campaign.workflowSlug))
     : null;

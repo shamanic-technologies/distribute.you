@@ -1,6 +1,5 @@
 "use client";
 
-import type { BrandOptimizationGoal } from "@/lib/api";
 import { campaignTitleParts, type CampaignTitleRow } from "@/lib/campaign-title";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -16,16 +15,14 @@ import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 
 export function CampaignTitle({
   campaign,
-  fallbackGoal,
   size = "md",
   className = "",
 }: {
   campaign: CampaignTitleRow;
-  fallbackGoal: BrandOptimizationGoal | null;
   size?: "sm" | "md";
   className?: string;
 }) {
-  const { funnel, channel, label } = campaignTitleParts(campaign, fallbackGoal);
+  const { funnel, channel, label } = campaignTitleParts(campaign);
 
   return (
     <span className={`flex min-w-0 items-center gap-2 ${className}`}>

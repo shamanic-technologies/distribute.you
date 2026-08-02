@@ -4,7 +4,6 @@ import { join } from "node:path";
 import {
   campaignTitleParts,
   channelSlugLabel,
-  GOAL_SHORT,
   type CampaignTitleRow,
 } from "../src/lib/campaign-title";
 
@@ -27,7 +26,7 @@ const row = (over: Partial<CampaignTitleRow> = {}): CampaignTitleRow => ({
 
 describe("campaignTitleParts", () => {
   it("names the funnel it runs and the channel it runs on", () => {
-    const parts = campaignTitleParts(row(), null);
+    const parts = campaignTitleParts(row());
     expect(parts.funnel?.key).toBe("reply_meeting");
     expect(parts.channel?.key).toBe("cold_email");
     expect(parts.label).toBe("Sales Meeting from Conversation · Sales Cold Email Outreach");
@@ -36,17 +35,17 @@ describe("campaignTitleParts", () => {
   it("reads the funnel catalogue's own words, both spellings of the key", () => {
     // `normalizeSalesFunnelKey` accepts the old and the new vocabulary ahead of
     // brand-service emitting only the new one, so both must title the same.
-    const legacy = campaignTitleParts(row({ funnelKey: "reply_meeting" }), null);
-    expect(legacy.label).toBe(campaignTitleParts(row(), null).label);
+    const legacy = campaignTitleParts(row({ funnelKey: "reply_meeting" }));
+    expect(legacy.label).toBe(campaignTitleParts(row()).label);
   });
 
   it("never reads the stored name while either half resolves", () => {
     // Funnel only: a campaign with no workflow still says what it buys.
-    expect(campaignTitleParts(row({ workflowSlug: null }), null).label).toBe(
+    expect(campaignTitleParts(row({ workflowSlug: null })).label).toBe(
       "Sales Meeting from Conversation",
     );
     // Channel only: a pre-funnel campaign with no goal in hand still says how.
-    expect(campaignTitleParts(row({ funnelKey: null }), null).label).toBe(
+    expect(campaignTitleParts(row({ funnelKey: null })).label).toBe(
       "Sales Cold Email Outreach",
     );
   });
@@ -54,32 +53,25 @@ describe("campaignTitleParts", () => {
   it("keeps the stored name when NEITHER half resolves", () => {
     // Nothing composed can be said, so the campaign keeps the name it was given
     // rather than rendering an em-dash where its identity should be.
-    const parts = campaignTitleParts(row({ funnelKey: null, workflowSlug: null }), null);
+    const parts = campaignTitleParts(row({ funnelKey: null, workflowSlug: null }));
     expect(parts.label).toBe("Stored name from provisioning");
     expect(parts.funnel).toBeNull();
     expect(parts.channel).toBeNull();
   });
 
-  it("falls back to the goal ONLY for a campaign that names no funnel", () => {
-    // The goal is lossy — two funnels share `meetingBooked` — so it is read only
-    // when the campaign carries no key of its own.
-    const preFunnel = campaignTitleParts(row({ funnelKey: null }), "form_submissions");
-    expect(preFunnel.funnel?.key).toBe("visit_form");
-    // A campaign that names its funnel ignores the goal entirely.
-    const named = campaignTitleParts(row(), "form_submissions");
-    expect(named.funnel?.key).toBe("reply_meeting");
-  });
-
-  it("states no funnel at all when there is no key and no goal in hand", () => {
-    // The top bar fetches one campaign and no brand, so a funnel half it cannot
-    // source goes unstated rather than being guessed.
-    const parts = campaignTitleParts(row({ funnelKey: null }), null);
+  // The goal is the retired, lossier vocabulary — two funnels answer to
+  // `meetingBooked` — so a chain derived from it is one the campaign never
+  // stated. campaign-service persists the funnel on every campaign.
+  it("never derives a funnel from a goal", () => {
+    const parts = campaignTitleParts(row({ funnelKey: null }));
     expect(parts.funnel).toBeNull();
     expect(parts.funnelLabel).toBeNull();
+    // The half simply goes unstated; the channel still names the campaign.
+    expect(parts.label).toBe("Sales Cold Email Outreach");
   });
 
   it("prettifies a workflow slug the channel catalogue does not carry", () => {
-    const parts = campaignTitleParts(row({ workflowSlug: "some-future-channel" }), null);
+    const parts = campaignTitleParts(row({ workflowSlug: "some-future-channel" }));
     expect(parts.channel).toBeNull();
     expect(parts.channelLabel).toBe("Some Future Channel");
     expect(parts.label).toBe("Sales Meeting from Conversation · Some Future Channel");
@@ -89,12 +81,9 @@ describe("campaignTitleParts", () => {
     expect(channelSlugLabel(null)).toBe("—");
   });
 
-  it("carries a short outcome word for every goal a campaign can inherit", () => {
-    // The record is keyed on `BrandOptimizationGoal`, so tsc already forces a new
-    // goal to be given a word. This pins that none of them is blank.
-    const words = Object.values(GOAL_SHORT);
-    expect(words.length).toBeGreaterThan(0);
-    for (const word of words) expect(word.trim()).not.toBe("");
+  it("exports no goal-derived vocabulary at all", async () => {
+    const mod = await import("../src/lib/campaign-title");
+    expect("GOAL_SHORT" in mod).toBe(false);
   });
 });
 
@@ -126,6 +115,11 @@ describe("the surfaces that name a campaign", () => {
     // cannot read as one thing in a row and another in the page it opens.
     expect(table).toContain('from "@/lib/campaign-title"');
     expect(table).not.toContain("function channelLabel(");
-    expect(table).not.toContain("const GOAL_SHORT");
+    expect(table).not.toContain("GOAL_SHORT");
+    // No surface that names a campaign derives its funnel from a goal.
+    expect(table).not.toContain("primaryFunnelForGoal");
+    expect(title).not.toContain("fallbackGoal");
+    expect(context).not.toContain("fallbackGoal");
+    expect(overview).not.toContain("fallbackGoal");
   });
 });

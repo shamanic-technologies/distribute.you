@@ -440,7 +440,7 @@ export function CampaignOverviewPage() {
       <span className="text-gray-300">/</span>
       <h1 className="font-display text-xl font-bold text-gray-800">
         {campaign ? (
-          <CampaignTitle campaign={campaign} fallbackGoal={optimizationGoal} size="sm" />
+          <CampaignTitle campaign={campaign} size="sm" />
         ) : (
           "Campaign"
         )}

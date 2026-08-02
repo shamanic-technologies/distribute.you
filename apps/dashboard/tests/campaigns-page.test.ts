@@ -61,44 +61,42 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
   // wording for either would be the same thing under two names on two screens.
   it("draws Channel and Sales funnel from the brand-Settings catalogues", () => {
     expect(page).toContain("acquisitionChannelForWorkflowSlug");
-    expect(page).toContain("primaryFunnelForGoal");
     expect(page).toContain("<AcquisitionChannelMark");
     expect(page).toContain("<SalesFunnelMark");
     expect(page).toContain("<ChannelCell workflowSlug={campaign.workflowSlug} />");
     expect(page).toContain(
-      "<FunnelCell funnelKey={campaign.funnelKey} fallbackGoal={goalFor(campaign)} />",
+      "<FunnelCell funnelKey={campaign.funnelKey} />",
     );
   });
 
-  // The funnel column reads the campaign's OWN key, and the goal is only the
-  // fallback for the pre-funnel campaign that has none. Reading the goal first
-  // is what put "Sales Meeting from Conversation" on a brand that had declared
-  // one funnel, Form Magnet: two funnels share `meetingBooked`, so the goal
-  // cannot name a chain on its own.
-  it("names the funnel from the campaign's own key, goal only as fallback", () => {
+  // The funnel column reads the campaign's OWN key and NOTHING else. The goal is
+  // the retired, lossier vocabulary — two funnels answer to `meetingBooked` — so
+  // deriving a funnel from it prints a chain the campaign never stated.
+  // campaign-service persists the funnel on every campaign, so a missing one is
+  // a real gap and reads as one.
+  it("names the funnel from the campaign's own key, with no goal fallback", () => {
     // `\n}\n` and not `\n}`: the props are destructured with a type annotation,
     // so the first `\n}` in this component closes the parameter block, not the
     // function — slicing there cuts the body out entirely.
     const cell = page.slice(page.indexOf("function FunnelCell("));
     const body = cell.slice(0, cell.indexOf("\n}\n"));
-    expect(body).toContain("campaignFunnel(funnelKey) ?? primaryFunnelForGoal(fallbackGoal)");
+    expect(body).toContain("campaignFunnel(funnelKey)");
+    expect(body).not.toContain("primaryFunnelForGoal");
+    expect(body).toContain('def ? def.name : "—"');
     expect(api).toContain("funnelKey: SalesFunnelKeyWire | null;");
   });
 
-  // campaign-service keeps the pre-funnel campaign `ongoing` on purpose, so the
-  // wire alone shows two running campaigns for one declared funnel. The row says
-  // what it is instead, and keeps its numbers: it carries every dollar the brand
-  // spent before funnels existed.
-  it("marks the superseded pre-funnel campaign instead of hiding it", () => {
-    expect(page).toContain("supersededCampaignIds");
-    expect(page).toContain(
-      "<StatusPill status={campaign.status} superseded={superseded.has(campaign.id)} />",
-    );
-    const pill = page.slice(page.indexOf("function StatusPill("));
-    expect(pill.slice(0, pill.indexOf("\n}"))).toContain('superseded ? "superseded" : status');
-    // Never dropped from the table — the row it would remove is the one holding
-    // the brand's whole spend history.
-    expect(page).not.toContain("filter((r) => !superseded");
+  // A campaign a brand has been running keeps running when that brand funds its
+  // funnels — campaign-service adopts it into that funnel rather than parking it
+  // and provisioning an empty twin. So the page invents no state: it renders the
+  // campaign's own status, and there is no "superseded" anywhere in the fleet.
+  it("renders the campaign's own status and invents no state", () => {
+    expect(page).toContain("<StatusPill status={campaign.status} />");
+    expect(page).not.toContain("superseded");
+    expect(page).not.toContain("Superseded");
+    // Never dropped from the table either — the row such a filter would remove
+    // is the one holding the brand's whole spend history.
+    expect(page).not.toContain("filter((r) => !");
   });
 
   it("page body gates on isAdmin (staff-only preview)", () => {
