@@ -322,8 +322,8 @@ export function CampaignsPage() {
                 <th className="px-4 py-3 text-right"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
                 <th className="px-4 py-3 text-right"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
                 <th className="px-4 py-3 text-right"><NumericHead label="Revenue" tip={COLUMN_INFO.revenue} /></th>
-                <th className="px-4 py-3">Channel</th>
                 <th className="px-4 py-3">Sales funnel</th>
+                <th className="px-4 py-3">Channel</th>
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
@@ -353,10 +353,10 @@ export function CampaignsPage() {
                     <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                     <td className="px-4 py-3 text-gray-800">
-                      <ChannelCell workflowSlug={campaign.workflowSlug} />
+                      <FunnelCell funnelKey={campaign.funnelKey} />
                     </td>
                     <td className="px-4 py-3 text-gray-800">
-                      <FunnelCell funnelKey={campaign.funnelKey} />
+                      <ChannelCell workflowSlug={campaign.workflowSlug} />
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={campaign.status} />

@@ -113,9 +113,9 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
 
   // Return leads, because that is what the table is sorted by. A table that
   // displays one order and ranks by another reads as unordered.
-  it("orders the columns ROI, % CAC, Revenue, Channel, Sales funnel, Status", () => {
+  it("orders the columns ROI, % CAC, Revenue, Sales funnel, Channel, Status", () => {
     const head = page.slice(page.indexOf("<thead>"), page.indexOf("</thead>"));
-    const order = ["ROI", "% CAC", "Revenue", "Channel", "Sales funnel", "Status"];
+    const order = ["ROI", "% CAC", "Revenue", "Sales funnel", "Channel", "Status"];
     let at = -1;
     for (const label of order) {
       const next = head.indexOf(`${label}"`) >= 0 ? head.indexOf(`${label}"`) : head.indexOf(label);
