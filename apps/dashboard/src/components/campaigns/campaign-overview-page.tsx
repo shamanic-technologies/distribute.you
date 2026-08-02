@@ -45,7 +45,6 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -432,21 +431,18 @@ export function CampaignOverviewPage() {
   // is the duplication this repo treats as a bug. The budget is stated once, in the
   // pill below; `effectiveBudgetCents` still resolves the campaign's own override
   // for the cost card's denominator.
+  // The heading is the campaign's NAME and nothing else.
+  //
+  // It used to carry a `Campaigns /` back-link and a beta badge alongside. Both
+  // are restated a few pixels above by the top bar, which already links back to
+  // the list (HeaderPageContext) — and the sidebar's own Campaigns entry carries
+  // the beta badge, which is where the maturity rule wants it, on the nav entry
+  // that stays visible whether or not this page renders. Printing either one
+  // twice on one screen is the duplication this repo treats as a bug.
   const CampaignHeader = (
-    <div className="flex items-center gap-2">
-      <Link href={campaignsPath} className="text-sm text-gray-400 hover:text-gray-600">
-        Campaigns
-      </Link>
-      <span className="text-gray-300">/</span>
-      <h1 className="font-display text-xl font-bold text-gray-800">
-        {campaign ? (
-          <CampaignTitle campaign={campaign} size="sm" />
-        ) : (
-          "Campaign"
-        )}
-      </h1>
-      <MaturityBadge level="beta" />
-    </div>
+    <h1 className="font-display flex min-w-0 items-center text-xl font-bold text-gray-800">
+      {campaign ? <CampaignTitle campaign={campaign} size="sm" /> : "Campaign"}
+    </h1>
   );
 
   if (revenueRevealed && data && data.totalPipelineUsd === null) {

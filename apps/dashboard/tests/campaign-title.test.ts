@@ -102,6 +102,38 @@ describe("the surfaces that name a campaign", () => {
     expect(title).not.toContain("OWN_CHANNEL_ICONS");
   });
 
+  it("pairs each mark with its OWN name, never both marks then both names", () => {
+    // Each half renders its mark immediately before its own label, so the funnel
+    // tile and the channel logo are never bunched into one two-logo emblem.
+    const funnelHalf = title.indexOf("<SalesFunnelMark");
+    const funnelWord = title.indexOf("{funnelLabel}");
+    const channelHalf = title.indexOf("<AcquisitionChannelMark");
+    const channelWord = title.indexOf("{channelLabel}");
+    expect(funnelHalf).toBeGreaterThan(-1);
+    expect(channelHalf).toBeGreaterThan(-1);
+    // funnel mark -> funnel name -> channel mark -> channel name.
+    expect(funnelHalf).toBeLessThan(funnelWord);
+    expect(funnelWord).toBeLessThan(channelHalf);
+    expect(channelHalf).toBeLessThan(channelWord);
+    // The joined string is the LAST resort (neither half resolved), never the
+    // composed rendering — reading it beside the marks is what bunched them.
+    expect(title).toContain("!composed");
+  });
+
+  it("states the campaign name once on the page, with no badge beside it", () => {
+    // The top bar already links back to the list and the sidebar's Campaigns
+    // entry already carries the beta badge. Restating either in the h1 puts the
+    // same thing on screen twice.
+    expect(overview).not.toContain("<MaturityBadge");
+    expect(overview).not.toContain("maturity-badge");
+    const header = overview.slice(
+      overview.indexOf("const CampaignHeader = ("),
+      overview.indexOf("const CampaignHeader = (") + 400,
+    );
+    expect(header).not.toContain(">\n        Campaigns\n");
+    expect(header).toContain("<CampaignTitle");
+  });
+
   it("titles the campaign Overview and the top bar with the same component", () => {
     expect(overview).toContain("<CampaignTitle");
     expect(context).toContain("<CampaignTitle");
