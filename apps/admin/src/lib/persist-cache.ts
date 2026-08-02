@@ -69,6 +69,22 @@ export const PERSIST_GC_TIME_MS = 30 * 60 * 1000;
  */
 export const SENSITIVE_QUERY_ROOTS = new Set(["apiKeys", "byokKeys", "keySources"]);
 
+/**
+ * Roots that must be ASKED AGAIN every time, for a reason that has nothing to do
+ * with secrecy: their answer is only true for as long as the producer's own code
+ * is unchanged.
+ *
+ * `mailingListUpdatePreview` is the case this exists for. It returns the HTML
+ * transactional-email-service would send for a given body — which is the whole
+ * point, since the alternative is rendering it here, and a second renderer
+ * drifted from the producer once already. Persisting it at `maxAge: Infinity`
+ * reintroduces exactly that drift through the back door: the producer improves
+ * the email, the same draft body restores yesterday's HTML from disk, and the
+ * author approves a render nobody will receive. It is one cheap call on a button
+ * press, so there is nothing to save by caching it across sessions.
+ */
+export const EPHEMERAL_QUERY_ROOTS = new Set(["mailingListUpdatePreview"]);
+
 export interface PersistableQuery {
   state: { status: string };
   queryKey: readonly unknown[];
@@ -89,7 +105,7 @@ export interface PersistableQuery {
 export function isPersistableQueryKey(queryKey: readonly unknown[]): boolean {
   const root = String(queryKey[0] ?? "");
   if (!root) return false;
-  return !SENSITIVE_QUERY_ROOTS.has(root);
+  return !SENSITIVE_QUERY_ROOTS.has(root) && !EPHEMERAL_QUERY_ROOTS.has(root);
 }
 
 /**

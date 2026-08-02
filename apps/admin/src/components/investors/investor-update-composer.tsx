@@ -1,23 +1,27 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { Skeleton } from "@/components/skeleton";
+import { EmailPreviewModal } from "@/components/investors/email-preview-modal";
 import {
   listMailingListSubscribers,
   listMailingListUpdates,
+  previewMailingListUpdate,
   sendMailingListUpdate,
   INVESTOR_LIST_SLUG,
   type MailingListUpdate,
 } from "@/lib/api";
 import {
-  renderInvestorUpdatePreviewHtml,
   investorUpdateBlocker,
   imageMarkdown,
   imageUrlProblem,
   UNSUBSCRIBE_PREVIEW_NOTE,
 } from "@/lib/investor-update-html";
+
+/** Every update goes out from this address, so the preview says so. */
+const FROM_ADDRESS = "kevin@distribute.you";
 
 const SUBSCRIBERS_KEY = ["mailingListSubscribers", INVESTOR_LIST_SLUG] as const;
 const UPDATES_KEY = ["mailingListUpdates", INVESTOR_LIST_SLUG] as const;
@@ -34,6 +38,15 @@ function sentAtLabel(iso: string): string {
   });
 }
 
+/**
+ * One update already sent. Opening it shows the message itself, in the same
+ * modal a draft preview uses — `htmlBody` here is what the recipients actually
+ * received, so there is nothing to render and nothing that can drift.
+ *
+ * Failures stay on the row rather than inside the message: they are about the
+ * send, not about the email, and someone scanning the history needs to see them
+ * without opening anything.
+ */
 function PastUpdate({ update }: { update: MailingListUpdate }) {
   const [open, setOpen] = useState(false);
   const failures = update.failures;
@@ -41,8 +54,7 @@ function PastUpdate({ update }: { update: MailingListUpdate }) {
     <div className="rounded-lg border border-gray-200 bg-white">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
+        onClick={() => setOpen(true)}
         className="flex w-full items-start justify-between gap-4 px-4 py-3 text-left hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded-lg"
       >
         <div className="min-w-0">
@@ -55,29 +67,30 @@ function PastUpdate({ update }: { update: MailingListUpdate }) {
             ) : null}
           </div>
         </div>
-        <span className="shrink-0 text-xs text-gray-400">{open ? "Hide" : "View"}</span>
+        <span className="shrink-0 text-xs text-gray-400">View</span>
       </button>
 
-      {open ? (
-        <div className="border-t border-gray-100 px-4 py-4">
-          {failures.length > 0 ? (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-              <p className="text-xs font-medium text-red-800">These did not go out:</p>
-              <ul className="mt-1 space-y-0.5">
-                {failures.map((f) => (
-                  <li key={f.email} className="text-xs text-red-700">
-                    <span className="font-mono">{f.email}</span>: {f.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {/* The body exactly as it was sent, rendered the same way the recipient saw it. */}
-          <div
-            className="rounded-lg border border-gray-200 overflow-hidden"
-            dangerouslySetInnerHTML={{ __html: update.htmlBody }}
-          />
+      {failures.length > 0 ? (
+        <div className="border-t border-gray-100 px-4 py-3">
+          <p className="text-xs font-medium text-red-800">These did not go out:</p>
+          <ul className="mt-1 space-y-0.5">
+            {failures.map((f) => (
+              <li key={f.email} className="text-xs text-red-700">
+                <span className="font-mono">{f.email}</span>: {f.reason}
+              </li>
+            ))}
+          </ul>
         </div>
+      ) : null}
+
+      {open ? (
+        <EmailPreviewModal
+          subject={update.subject}
+          from={FROM_ADDRESS}
+          html={update.htmlBody}
+          notes={[`Sent ${sentAtLabel(update.sentAt)}.`]}
+          onClose={() => setOpen(false)}
+        />
       ) : null}
     </div>
   );
@@ -93,7 +106,7 @@ export function InvestorUpdateComposer() {
   const [imageAlt, setImageAlt] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
   const [checkingImage, setCheckingImage] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -107,9 +120,20 @@ export function InvestorUpdateComposer() {
     (s) => !s.optedOut
   ).length;
 
-  // Preview only — the wire body is the markdown itself. Rendered with the
-  // producer's own library and options so the preview cannot flatter the inbox.
-  const previewHtml = useMemo(() => renderInvestorUpdatePreviewHtml(body), [body]);
+  /**
+   * The preview is rendered BY THE PRODUCER, from the same code a real send
+   * uses, and fetched when the modal opens — one call per preview, not one per
+   * keystroke. Nothing is sent and nothing is recorded by asking.
+   *
+   * Keyed on the body so re-opening an unchanged draft is instant and a changed
+   * one re-renders. Fail loud: the modal states that it could not render rather
+   * than falling back to markup of our own, which is the drift this replaces.
+   */
+  const previewQuery = useAuthQuery(
+    ["mailingListUpdatePreview", body],
+    () => previewMailingListUpdate(body),
+    { enabled: previewOpen && body.trim().length > 0 }
+  );
 
   const blocker = investorUpdateBlocker(subject, body);
 
@@ -122,7 +146,7 @@ export function InvestorUpdateComposer() {
       setBody("");
       setImageUrl("");
       setImageAlt("");
-      setShowPreview(false);
+      setPreviewOpen(false);
       setConfirming(false);
       setError(null);
       const bits = [`Sent to ${reached} ${reached === 1 ? "investor" : "investors"}.`];
@@ -285,10 +309,12 @@ export function InvestorUpdateComposer() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowPreview((v) => !v)}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+              onClick={() => setPreviewOpen(true)}
+              disabled={body.trim().length === 0}
+              title={body.trim().length === 0 ? "Write the update first." : undefined}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
             >
-              {showPreview ? "Hide preview" : "Preview"}
+              Preview
             </button>
             {confirming ? (
               <>
@@ -334,26 +360,27 @@ export function InvestorUpdateComposer() {
         {error ? <p className="text-xs font-medium text-red-600">{error}</p> : null}
       </div>
 
-      {showPreview ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900">Preview</h2>
-          <p className="mt-1 text-xs text-gray-500">
-            Rendered with the same markdown library and options the sender uses, so this is what
-            arrives. {UNSUBSCRIBE_PREVIEW_NOTE}
-          </p>
-          <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
-            <p className="text-xs text-gray-500">
-              From <span className="font-medium text-gray-700">kevin@distribute.you</span>
-            </p>
-            <p className="text-sm font-medium text-gray-900">
-              {subject.trim() || <span className="text-gray-300">No subject yet</span>}
-            </p>
-          </div>
-          <div
-            className="mt-3 rounded-lg border border-gray-200 overflow-hidden"
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
-        </div>
+      {previewOpen ? (
+        <EmailPreviewModal
+          subject={subject.trim() || null}
+          from={FROM_ADDRESS}
+          html={previewQuery.data?.htmlBody ?? null}
+          error={
+            previewQuery.isError
+              ? "Could not render this. Nothing was sent, so try again in a moment."
+              : null
+          }
+          notes={[
+            UNSUBSCRIBE_PREVIEW_NOTE,
+            // A browser renders SVG happily, so the preview above would look
+            // fine and the inbox would show alt text. Say it here, or the
+            // author only learns at send time, when the send is refused.
+            ...(previewQuery.data?.unrenderableImages ?? []).map(
+              (url) => `No mail client renders ${url}. Replace it with a PNG or JPG before sending.`
+            ),
+          ]}
+          onClose={() => setPreviewOpen(false)}
+        />
       ) : null}
 
       <div className="space-y-3">

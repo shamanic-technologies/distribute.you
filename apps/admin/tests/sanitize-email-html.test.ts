@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeEmailHtml } from "../src/app/(authed)/(dashboard)/orgs/[orgId]/services/crm/_components/sanitize-email-html";
+import { sanitizeEmailHtml } from "../src/lib/sanitize-email-html";
 
 describe("sanitizeEmailHtml", () => {
   it("strips <script> tags entirely", () => {
@@ -51,6 +51,25 @@ describe("sanitizeEmailHtml", () => {
     const clean = sanitizeEmailHtml(dirty);
     expect(clean).not.toMatch(/<form/i);
     expect(clean).not.toMatch(/<input/i);
+  });
+
+  it("keeps the presentational table attributes email lays itself out with", () => {
+    // Stripping these does not make the markup safer, it makes the rendering
+    // wrong: our own investor update centres its 600px card with a single
+    // align="center", so without it the preview shows a left-hugging column no
+    // recipient will ever see.
+    const dirty =
+      `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f5f7">` +
+      `<tr><td align="center" valign="top">card</td></tr></table>`;
+    const clean = sanitizeEmailHtml(dirty);
+    expect(clean).toMatch(/align="center"/);
+    expect(clean).toMatch(/valign="top"/);
+    expect(clean).toMatch(/width="600"/);
+    expect(clean).toMatch(/cellpadding="0"/);
+    expect(clean).toMatch(/cellspacing="0"/);
+    expect(clean).toMatch(/border="0"/);
+    expect(clean).toMatch(/bgcolor="#f4f5f7"/);
+    expect(clean).toMatch(/role="presentation"/);
   });
 
   it("allows mailto: and cid: URIs", () => {
