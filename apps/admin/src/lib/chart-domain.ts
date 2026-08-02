@@ -55,11 +55,46 @@ export function chartDomain(
   return { max, clippedIndices };
 }
 
-/** Round up to 1, 2 or 5 times a power of ten, the usual axis-tick grammar. */
+/**
+ * Round up to a readable multiple of a power of ten.
+ *
+ * The steps are deliberately finer than the classic 1/2/5/10 grammar. With only
+ * those four, a series topping out at 255 gets a ceiling of 500 — the tallest
+ * bar reaches half the plot and the rest are ankle-high for no reason other than
+ * the rounding. Allowing 1.5, 2.5, 3 and 4 puts that same series on 300, which
+ * is the number a reader expects to see.
+ */
+const NICE_STEPS = [1, 1.5, 2, 2.5, 3, 4, 5, 10];
+
 export function niceCeiling(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 1;
   const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
   const normalised = value / magnitude;
-  const step = normalised <= 1 ? 1 : normalised <= 2 ? 2 : normalised <= 5 ? 5 : 10;
+  const step = NICE_STEPS.find((s) => normalised <= s) ?? 10;
   return step * magnitude;
+}
+
+/** At most this many labelled ticks, so the axis stays readable. */
+const MAX_TICKS = 6;
+
+/**
+ * Y-axis ticks that land ON the reference value.
+ *
+ * Retention's whole question is whether a bar clears 100, so 100 has to be a
+ * labelled tick and not a line floating between the automatic 150 and the
+ * automatic 50. Ticks therefore step on the reference itself (coarsened to a
+ * multiple of it when that would produce too many labels).
+ *
+ * Returns undefined when there is no reference to anchor to — the caller then
+ * leaves the axis on its automatic ticks.
+ */
+export function referenceTicks(max: number, reference?: number): number[] | undefined {
+  if (reference === undefined || !Number.isFinite(reference) || reference <= 0) return undefined;
+  if (!Number.isFinite(max) || max <= 0) return undefined;
+  // Ticks are ANCHORED on the reference and walk up from there, so coarsening the
+  // step can never drop the one tick the axis exists to show.
+  const step = reference * Math.max(1, Math.ceil((max - reference) / reference / (MAX_TICKS - 1)));
+  const ticks = [0];
+  for (let t = reference; t <= max + 1e-9; t += step) ticks.push(Number(t.toFixed(6)));
+  return ticks;
 }
