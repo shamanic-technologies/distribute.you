@@ -6130,101 +6130,137 @@ export async function setAudienceStatus(
   return parsed.data as unknown as { audience: AudienceWire };
 }
 
-// ── Investor mailing list + investor updates (staff) ─────────────────────────
-// A platform-level (org-less) subscriber list and the written updates broadcast
-// to it. Owned by transactional-email-service, which already owns templates,
-// lifecycle sends, per-send dedup and stats; proxied staff-gated at api-service.
+// ── Staff mailing lists + written updates ────────────────────────────────────
+// A platform-level (org-less) subscriber list and the updates broadcast to it;
+// "investors" is the first such list. Owned by transactional-email-service
+// (PR #114), proxied staff-gated at api-service. Shapes below are CONFORMED to
+// that deployed contract — do not re-derive them, read the registry.
 //
-// CONTRACT NOTE: the producer designs its own paths, naming and payload shape.
-// The types below are the admin's expected shape and every non-essential field
-// is optional so a reader cannot hard-fail on a producer that names things
-// differently — conform these to the DEPLOYED shape via the api-registry (live
-// beats source) once transactional-email-service ships, per the cross-repo rule.
+// Three producer decisions this consumer inherits and must not fight:
 //
-// Sends go out one message per recipient on the Postmark broadcast stream, so
-// no recipient ever sees another and each carries a per-recipient native
-// unsubscribe. Suppression state is the provider's; a member Postmark is
-// blocking must never be rendered as subscribed.
+//  - **Opt-out is never stored.** Postmark's broadcast stream owns the
+//    suppression list and every read reconciles against it live, which is what
+//    makes it impossible for this page to show someone as subscribed while the
+//    provider is blocking them.
+//  - **A subscriber is keyed by EMAIL, not an id.** Removal takes the address.
+//  - **The producer parses the pasted blob and renders the markdown.** We send
+//    the raw paste and the raw markdown; rendering here would put a second
+//    unsubscribe footer in every update (email-gateway appends the real one).
 
-export interface InvestorSubscriber {
-  id: string;
+/** The list "investors" lives under. Slugs are lower-case letters, digits, hyphens. */
+export const INVESTOR_LIST_SLUG = "investors";
+
+export interface MailingListSubscriber {
   email: string;
-  name: string | null;
-  /** True once the person opted out (ours or the provider's suppression list). */
-  unsubscribed: boolean;
-  /** ISO timestamp, when known. */
-  addedAt?: string | null;
-  unsubscribedAt?: string | null;
+  /** True while the provider is suppressing sends to this address. */
+  optedOut: boolean;
+  /** Postmark's own reason: ManualSuppression, SpamComplaint, HardBounce. Null when not suppressed. */
+  optedOutReason: string | null;
+  addedAt: string;
 }
 
-export interface InvestorListResponse {
-  subscribers: InvestorSubscriber[];
+export interface MailingListSubscribersResponse {
+  slug: string;
+  count: number;
+  subscribers: MailingListSubscriber[];
 }
 
-/** What a bulk paste actually did. Counts come from the producer, never the browser. */
-export interface InvestorBulkAddResult {
-  added: number;
-  skipped: number;
-  rejected?: string[];
+export interface AddSubscribersResponse {
+  slug: string;
+  /** Addresses newly added. */
+  added: string[];
+  /** Already on the list, or repeated inside the blob. */
+  skipped: string[];
+  /** Fragments that could not be read as an address. */
+  rejected: { value: string; reason: string }[];
 }
 
-export interface InvestorUpdateRecord {
+export interface MailingListUpdateFailure {
+  email: string;
+  reason: string;
+}
+
+export interface MailingListUpdate {
   id: string;
   subject: string;
-  /** The body exactly as it was sent. */
-  html: string;
-  sentAt: string;
+  /** Markdown as authored. */
+  body: string;
+  /** Body as sent. */
+  htmlBody: string;
+  status: "sent" | "partial";
   recipientCount: number;
-  /** Present when a send partially failed — which addresses, and why. */
-  failures?: { email: string; reason: string }[] | null;
+  failures: MailingListUpdateFailure[];
+  sentAt: string;
 }
 
-export interface InvestorUpdateHistoryResponse {
-  updates: InvestorUpdateRecord[];
+export interface MailingListUpdatesResponse {
+  slug: string;
+  count: number;
+  updates: MailingListUpdate[];
 }
 
-export interface SendInvestorUpdateResult {
-  update: InvestorUpdateRecord;
+export interface SendMailingListUpdateResponse {
+  updateId: string;
+  slug: string;
+  subject: string;
+  status: "sent" | "partial";
+  /** Recipients the update actually reached. */
+  recipientCount: number;
+  /** Members not mailed because the provider is suppressing them. */
+  skippedOptedOut: string[];
+  failures: MailingListUpdateFailure[];
 }
 
-export async function listInvestorSubscribers(token?: string): Promise<InvestorListResponse> {
-  return apiCall<InvestorListResponse>(`/emails/investors/subscribers`, { token });
+export async function listMailingListSubscribers(
+  slug: string,
+  token?: string
+): Promise<MailingListSubscribersResponse> {
+  return apiCall<MailingListSubscribersResponse>(`/emails/mailing-lists/${slug}/subscribers`, { token });
 }
 
 /**
- * Send the whole pasted blob to the producer and let it decide what is new.
- * The browser parses only to SHOW the user what they are about to add; the
- * producer owns dedup against what is already stored, so re-pasting is safe.
+ * Send the pasted blob VERBATIM. The producer does the parsing and the dedup
+ * against what is already stored, so re-pasting the same batch is a no-op. The
+ * browser parses only to show the user what a paste would do.
  */
-export async function addInvestorSubscribers(
-  emails: { email: string; name: string | null }[],
+export async function addMailingListSubscribers(
+  slug: string,
+  raw: string,
   token?: string
-): Promise<InvestorBulkAddResult> {
-  return apiCall<InvestorBulkAddResult>(`/emails/investors/subscribers`, {
+): Promise<AddSubscribersResponse> {
+  return apiCall<AddSubscribersResponse>(`/emails/mailing-lists/${slug}/subscribers`, {
     token,
     method: "POST",
-    body: { subscribers: emails },
+    body: { raw },
   });
 }
 
-export async function removeInvestorSubscriber(id: string, token?: string): Promise<void> {
-  await apiCall<unknown>(`/emails/investors/subscribers/${id}`, { token, method: "DELETE" });
-}
-
-export async function listInvestorUpdates(token?: string): Promise<InvestorUpdateHistoryResponse> {
-  return apiCall<InvestorUpdateHistoryResponse>(`/emails/investors/updates`, { token });
-}
-
-/**
- * Broadcast an update. The HTML is exactly the string the composer previewed —
- * a send rendered by a different code path could disagree with what the author
- * approved on screen.
- */
-export async function sendInvestorUpdate(
-  input: { subject: string; html: string; text: string },
+export async function removeMailingListSubscriber(
+  slug: string,
+  email: string,
   token?: string
-): Promise<SendInvestorUpdateResult> {
-  return apiCall<SendInvestorUpdateResult>(`/emails/investors/updates`, {
+): Promise<void> {
+  await apiCall<unknown>(`/emails/mailing-lists/${slug}/subscribers`, {
+    token,
+    method: "DELETE",
+    body: { email },
+  });
+}
+
+export async function listMailingListUpdates(
+  slug: string,
+  token?: string
+): Promise<MailingListUpdatesResponse> {
+  return apiCall<MailingListUpdatesResponse>(`/emails/mailing-lists/${slug}/updates`, { token });
+}
+
+/** `body` is markdown. The producer renders it and appends the unsubscribe. */
+export async function sendMailingListUpdate(
+  slug: string,
+  input: { subject: string; body: string },
+  token?: string
+): Promise<SendMailingListUpdateResponse> {
+  return apiCall<SendMailingListUpdateResponse>(`/emails/mailing-lists/${slug}/updates`, {
     token,
     method: "POST",
     body: input,

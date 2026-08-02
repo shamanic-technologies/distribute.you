@@ -48,17 +48,39 @@ describe("admin sidebar", () => {
 });
 
 describe("investor update composer", () => {
-  it("previews the SAME string it sends — a second render path could disagree with the inbox", () => {
-    // One `html` memo, passed to both the preview and the send.
-    expect(composer).toContain("renderInvestorUpdateHtml(body)");
-    expect(composer).toContain("dangerouslySetInnerHTML={{ __html: html }}");
-    expect(composer).toContain("html,");
-    // No second conversion anywhere in the component.
-    expect(composer.match(/renderInvestorUpdateHtml\(/g) ?? []).toHaveLength(1);
+  it("sends the markdown and lets the producer render it — rendering here would duplicate the unsubscribe footer", () => {
+    // Scoped to the mutation: `__html:` is legitimate elsewhere in this file
+    // (the preview and the history both render HTML), so a file-wide check
+    // would assert something we do not mean. Measured at 1046 chars from the
+    // mutation to the line after it; do not widen.
+    const at = composer.indexOf("  const sendMutation = useMutation({");
+    expect(at).toBeGreaterThan(-1);
+    const body = composer.slice(at, at + 1046);
+    expect(body).toContain("sendMailingListUpdate(INVESTOR_LIST_SLUG, { subject: subject.trim(), body })");
+    expect(body).not.toContain("html");
+  });
+
+  it("previews with the producer's own renderer, so the preview cannot flatter the inbox", () => {
+    expect(composer).toContain("renderInvestorUpdatePreviewHtml(body)");
+    expect(composer).toContain("dangerouslySetInnerHTML={{ __html: previewHtml }}");
+    // One conversion, not a second lookalike path.
+    expect(composer.match(/renderInvestorUpdatePreviewHtml\(/g) ?? []).toHaveLength(1);
+  });
+
+  it("says the unsubscribe is appended on send rather than drawing one it does not control", () => {
+    expect(composer).toContain("UNSUBSCRIBE_PREVIEW_NOTE");
+  });
+
+  it("renders a past update from the body as SENT, not by re-rendering the markdown", () => {
+    expect(composer).toContain("__html: update.htmlBody");
   });
 
   it("counts only people who have not opted out — the list size would overstate the send", () => {
-    expect(composer).toContain("filter(\n    (s) => !s.unsubscribed\n  ).length");
+    expect(composer).toContain("(s) => !s.optedOut");
+  });
+
+  it("reports the opted-out skips the sender returns, so a smaller reach is explained", () => {
+    expect(composer).toContain("skippedOptedOut");
   });
 
   it("asks before sending rather than firing on the first click", () => {
@@ -83,9 +105,24 @@ describe("investor update composer", () => {
 });
 
 describe("investor list view", () => {
-  it("shows unsubscribed state — a member the provider blocks must not read as subscribed", () => {
-    expect(listView).toContain("Unsubscribed");
-    expect(listView).toContain("s.unsubscribed");
+  it("shows opted-out state — a member the provider blocks must not read as subscribed", () => {
+    expect(listView).toContain("subscriber.optedOut ?");
+    expect(listView).toContain("(s) => !s.optedOut");
+  });
+
+  it("distinguishes an unsubscribe from a bounce from a spam complaint", () => {
+    for (const reason of ["HardBounce", "SpamComplaint", "ManualSuppression"]) {
+      expect(listView).toContain(reason);
+    }
+  });
+
+  it("sends the raw paste — the producer owns parsing and dedup against what is stored", () => {
+    expect(listView).toContain("addMailingListSubscribers(INVESTOR_LIST_SLUG, blob)");
+  });
+
+  it("removes by email, since a subscriber has no id on the wire", () => {
+    expect(listView).toContain("removeMailingListSubscriber(INVESTOR_LIST_SLUG, email)");
+    expect(listView).not.toContain("subscriber.id");
   });
 
   it("never renders a raw err.message to the user", () => {
@@ -103,15 +140,21 @@ describe("investor list view", () => {
 });
 
 describe("investor api readers", () => {
-  it("sends the update per recipient — never one blast with everyone in BCC", () => {
-    const at = api.indexOf("export async function sendInvestorUpdate(");
+  it("never puts recipients in BCC — per-recipient delivery is what makes the opt-out per-recipient", () => {
+    const at = api.indexOf("export async function sendMailingListUpdate(");
     expect(at).toBeGreaterThan(-1);
-    const body = api.slice(at, at + 420);
+    // Measured to the closing brace of the function; do not widen.
+    const body = api.slice(at, at + 330);
     expect(body).not.toContain("bcc");
     expect(body).not.toContain("Bcc");
   });
 
-  it("carries a text part alongside the html", () => {
-    expect(api).toContain("subject: string; html: string; text: string");
+  it("sends markdown as `body`, conforming to the deployed contract", () => {
+    expect(api).toContain("input: { subject: string; body: string }");
+  });
+
+  it("types added/skipped as the arrays the sender returns, not counts", () => {
+    expect(api).toContain("added: string[]");
+    expect(api).toContain("skipped: string[]");
   });
 });

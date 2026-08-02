@@ -5,14 +5,33 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { Skeleton } from "@/components/skeleton";
 import {
-  listInvestorSubscribers,
-  addInvestorSubscribers,
-  removeInvestorSubscriber,
-  type InvestorSubscriber,
+  listMailingListSubscribers,
+  addMailingListSubscribers,
+  removeMailingListSubscriber,
+  INVESTOR_LIST_SLUG,
+  type MailingListSubscriber,
 } from "@/lib/api";
 import { parseEmailBlob, describeParsedBlob } from "@/lib/investor-emails";
 
-const SUBSCRIBERS_KEY = ["investorSubscribers"] as const;
+const SUBSCRIBERS_KEY = ["mailingListSubscribers", INVESTOR_LIST_SLUG] as const;
+
+/**
+ * The provider's reason, in words. "Unsubscribed", "bounced" and "marked it as
+ * spam" are three different facts about a person and collapsing them into one
+ * word hides the two that need acting on.
+ */
+function optedOutLabel(reason: string | null): string {
+  switch (reason) {
+    case "HardBounce":
+      return "Bounced";
+    case "SpamComplaint":
+      return "Marked as spam";
+    case "ManualSuppression":
+      return "Unsubscribed";
+    default:
+      return "Opted out";
+  }
+}
 
 /** Long dates read as noise in a list; the day is enough to place an entry. */
 function shortDate(iso: string | null | undefined): string | null {
@@ -27,8 +46,8 @@ function SubscriberRow({
   onRemove,
   removing,
 }: {
-  subscriber: InvestorSubscriber;
-  onRemove: (id: string) => void;
+  subscriber: MailingListSubscriber;
+  onRemove: (email: string) => void;
   removing: boolean;
 }) {
   const added = shortDate(subscriber.addedAt);
@@ -37,15 +56,12 @@ function SubscriberRow({
       <td className="px-4 py-3">
         <div className="min-w-0">
           <div className="text-sm font-medium text-gray-900 truncate">{subscriber.email}</div>
-          {subscriber.name ? (
-            <div className="text-xs text-gray-500 truncate">{subscriber.name}</div>
-          ) : null}
         </div>
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
-        {subscriber.unsubscribed ? (
+        {subscriber.optedOut ? (
           <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-            Unsubscribed
+            {optedOutLabel(subscriber.optedOutReason)}
           </span>
         ) : (
           <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
@@ -57,7 +73,7 @@ function SubscriberRow({
       <td className="px-4 py-3 whitespace-nowrap text-right">
         <button
           type="button"
-          onClick={() => onRemove(subscriber.id)}
+          onClick={() => onRemove(subscriber.email)}
           disabled={removing}
           className={`text-xs font-medium text-gray-500 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded px-2 py-1 ${
             removing ? "cursor-wait" : "disabled:opacity-40"
@@ -75,9 +91,9 @@ export function InvestorListView() {
   const [blob, setBlob] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removingEmail, setRemovingEmail] = useState<string | null>(null);
 
-  const { data, isPending, isError } = useAuthQuery(SUBSCRIBERS_KEY, () => listInvestorSubscribers());
+  const { data, isPending, isError } = useAuthQuery(SUBSCRIBERS_KEY, () => listMailingListSubscribers(INVESTOR_LIST_SLUG));
 
   // Parsed only to SHOW the user what a paste would do. The producer owns dedup
   // against what is already stored, so these counts describe the paste, not the
@@ -86,42 +102,42 @@ export function InvestorListView() {
   const parseSummary = describeParsedBlob(parsed);
 
   const subscribers = data?.subscribers ?? [];
-  const subscribedCount = subscribers.filter((s) => !s.unsubscribed).length;
+  const subscribedCount = subscribers.filter((s) => !s.optedOut).length;
 
   const addMutation = useMutation({
-    mutationFn: () => addInvestorSubscribers(parsed.accepted),
+    mutationFn: () => addMailingListSubscribers(INVESTOR_LIST_SLUG, blob),
     onSuccess: async (result) => {
       setBlob("");
       setError(null);
-      const bits = [`${result.added} added`];
-      if (result.skipped > 0) bits.push(`${result.skipped} already on the list`);
-      if (result.rejected?.length) bits.push(`${result.rejected.length} rejected`);
+      const bits = [`${result.added.length} added`];
+      if (result.skipped.length > 0) bits.push(`${result.skipped.length} already on the list`);
+      if (result.rejected.length > 0) bits.push(`${result.rejected.length} rejected`);
       setNotice(bits.join(", "));
       await queryClient.invalidateQueries({ queryKey: SUBSCRIBERS_KEY });
     },
     onError: (err: Error) => {
       setNotice(null);
-      console.error("[admin] addInvestorSubscribers failed", err);
+      console.error("[admin] addMailingListSubscribers failed", err);
       setError("Could not add those addresses. Nothing was saved.");
     },
   });
 
   const removeMutation = useMutation({
-    mutationFn: (id: string) => removeInvestorSubscriber(id),
+    mutationFn: (email: string) => removeMailingListSubscriber(INVESTOR_LIST_SLUG, email),
     onSuccess: async () => {
       setError(null);
       await queryClient.invalidateQueries({ queryKey: SUBSCRIBERS_KEY });
     },
     onError: (err: Error) => {
-      console.error("[admin] removeInvestorSubscriber failed", err);
+      console.error("[admin] removeMailingListSubscriber failed", err);
       setError("Could not remove that address.");
     },
-    onSettled: () => setRemovingId(null),
+    onSettled: () => setRemovingEmail(null),
   });
 
-  const handleRemove = (id: string) => {
-    setRemovingId(id);
-    removeMutation.mutate(id);
+  const handleRemove = (email: string) => {
+    setRemovingEmail(email);
+    removeMutation.mutate(email);
   };
 
   const adding = addMutation.isPending;
@@ -187,7 +203,7 @@ export function InvestorListView() {
               <span className="ml-2 font-normal text-gray-500">
                 {subscribedCount} receiving updates
                 {subscribers.length > subscribedCount
-                  ? `, ${subscribers.length - subscribedCount} unsubscribed`
+                  ? `, ${subscribers.length - subscribedCount} opted out`
                   : ""}
               </span>
             ) : null}
@@ -222,10 +238,10 @@ export function InvestorListView() {
               <tbody>
                 {subscribers.map((s) => (
                   <SubscriberRow
-                    key={s.id}
+                    key={s.email}
                     subscriber={s}
                     onRemove={handleRemove}
-                    removing={removingId === s.id}
+                    removing={removingEmail === s.email}
                   />
                 ))}
               </tbody>

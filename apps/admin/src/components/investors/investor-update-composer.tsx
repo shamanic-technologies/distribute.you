@@ -5,21 +5,22 @@ import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { Skeleton } from "@/components/skeleton";
 import {
-  listInvestorSubscribers,
-  listInvestorUpdates,
-  sendInvestorUpdate,
-  type InvestorUpdateRecord,
+  listMailingListSubscribers,
+  listMailingListUpdates,
+  sendMailingListUpdate,
+  INVESTOR_LIST_SLUG,
+  type MailingListUpdate,
 } from "@/lib/api";
 import {
-  renderInvestorUpdateHtml,
-  renderInvestorUpdateText,
+  renderInvestorUpdatePreviewHtml,
   investorUpdateBlocker,
   imageMarkdown,
   imageUrlProblem,
+  UNSUBSCRIBE_PREVIEW_NOTE,
 } from "@/lib/investor-update-html";
 
-const SUBSCRIBERS_KEY = ["investorSubscribers"] as const;
-const UPDATES_KEY = ["investorUpdates"] as const;
+const SUBSCRIBERS_KEY = ["mailingListSubscribers", INVESTOR_LIST_SLUG] as const;
+const UPDATES_KEY = ["mailingListUpdates", INVESTOR_LIST_SLUG] as const;
 
 function sentAtLabel(iso: string): string {
   const d = new Date(iso);
@@ -33,9 +34,9 @@ function sentAtLabel(iso: string): string {
   });
 }
 
-function PastUpdate({ update }: { update: InvestorUpdateRecord }) {
+function PastUpdate({ update }: { update: MailingListUpdate }) {
   const [open, setOpen] = useState(false);
-  const failures = update.failures ?? [];
+  const failures = update.failures;
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
       <button
@@ -74,7 +75,7 @@ function PastUpdate({ update }: { update: InvestorUpdateRecord }) {
           {/* The body exactly as it was sent, rendered the same way the recipient saw it. */}
           <div
             className="rounded-lg border border-gray-200 overflow-hidden"
-            dangerouslySetInnerHTML={{ __html: update.html }}
+            dangerouslySetInnerHTML={{ __html: update.htmlBody }}
           />
         </div>
       ) : null}
@@ -97,26 +98,26 @@ export function InvestorUpdateComposer() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const subscribersQuery = useAuthQuery(SUBSCRIBERS_KEY, () => listInvestorSubscribers());
-  const updatesQuery = useAuthQuery(UPDATES_KEY, () => listInvestorUpdates());
+  const subscribersQuery = useAuthQuery(SUBSCRIBERS_KEY, () => listMailingListSubscribers(INVESTOR_LIST_SLUG));
+  const updatesQuery = useAuthQuery(UPDATES_KEY, () => listMailingListUpdates(INVESTOR_LIST_SLUG));
 
   // Only people who have not opted out will receive it — that is the number to
   // show beside a Send button, not the size of the list.
   const recipientCount = (subscribersQuery.data?.subscribers ?? []).filter(
-    (s) => !s.unsubscribed
+    (s) => !s.optedOut
   ).length;
 
-  // The preview renders the SAME string that is sent. A preview built from a
-  // second code path could disagree with what lands in the inbox.
-  const html = useMemo(() => renderInvestorUpdateHtml(body), [body]);
+  // Preview only — the wire body is the markdown itself. Rendered with the
+  // producer's own library and options so the preview cannot flatter the inbox.
+  const previewHtml = useMemo(() => renderInvestorUpdatePreviewHtml(body), [body]);
 
   const blocker = investorUpdateBlocker(subject, body);
 
   const sendMutation = useMutation({
     mutationFn: () =>
-      sendInvestorUpdate({ subject: subject.trim(), html, text: renderInvestorUpdateText(body) }),
+      sendMailingListUpdate(INVESTOR_LIST_SLUG, { subject: subject.trim(), body }),
     onSuccess: async (result) => {
-      const { recipientCount: reached, failures } = result.update;
+      const { recipientCount: reached, failures, skippedOptedOut } = result;
       setSubject("");
       setBody("");
       setImageUrl("");
@@ -124,17 +125,16 @@ export function InvestorUpdateComposer() {
       setShowPreview(false);
       setConfirming(false);
       setError(null);
-      setNotice(
-        failures?.length
-          ? `Sent to ${reached}. ${failures.length} failed — open it below to see which.`
-          : `Sent to ${reached} ${reached === 1 ? "investor" : "investors"}.`
-      );
+      const bits = [`Sent to ${reached} ${reached === 1 ? "investor" : "investors"}.`];
+      if (skippedOptedOut.length > 0) bits.push(`${skippedOptedOut.length} skipped as opted out.`);
+      if (failures.length > 0) bits.push(`${failures.length} failed — open it below to see which.`);
+      setNotice(bits.join(" "));
       await queryClient.invalidateQueries({ queryKey: UPDATES_KEY });
     },
     onError: (err: Error) => {
       setNotice(null);
       setConfirming(false);
-      console.error("[admin] sendInvestorUpdate failed", err);
+      console.error("[admin] sendMailingListUpdate failed", err);
       setError("The update did not go out. Nothing was sent.");
     },
   });
@@ -338,8 +338,8 @@ export function InvestorUpdateComposer() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900">Preview</h2>
           <p className="mt-1 text-xs text-gray-500">
-            This is the email, not an approximation of it — the same HTML is what gets sent. The
-            unsubscribe link resolves per recipient when it goes out.
+            Rendered with the same markdown library and options the sender uses, so this is what
+            arrives. {UNSUBSCRIBE_PREVIEW_NOTE}
           </p>
           <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2">
             <p className="text-xs text-gray-500">
@@ -351,7 +351,7 @@ export function InvestorUpdateComposer() {
           </div>
           <div
             className="mt-3 rounded-lg border border-gray-200 overflow-hidden"
-            dangerouslySetInnerHTML={{ __html: html }}
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
           />
         </div>
       ) : null}

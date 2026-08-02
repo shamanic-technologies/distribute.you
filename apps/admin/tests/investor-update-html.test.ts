@@ -1,74 +1,40 @@
 import { describe, it, expect } from "vitest";
 import {
-  renderInvestorUpdateHtml,
-  renderInvestorUpdateText,
+  renderInvestorUpdatePreviewHtml,
   investorUpdateBlocker,
   imageMarkdown,
   imageUrlProblem,
-  UNSUBSCRIBE_TOKEN,
 } from "../src/lib/investor-update-html";
 
-describe("renderInvestorUpdateHtml", () => {
-  it("inlines every style — Gmail strips <style> and <head>, so a stylesheet would render only in the preview", () => {
-    const html = renderInvestorUpdateHtml("# Title\n\nSome copy.");
-    expect(html).not.toContain("<style");
-    expect(html).not.toContain("<head");
-    expect(html).toMatch(/<h1 style="/);
-    expect(html).toMatch(/<p style="/);
+describe("renderInvestorUpdatePreviewHtml", () => {
+  it("renders with the producer's options — gfm tables and breaks — so the preview is the email", () => {
+    const html = renderInvestorUpdatePreviewHtml("| a | b |\n| --- | --- |\n| 1 | 2 |");
+    expect(html).toContain("<table>");
+    expect(html).toContain("<td>1</td>");
   });
 
-  it("carries the unsubscribe footer on every update, with no way for the author to omit it", () => {
-    for (const md of ["hello", "# just a heading", ""]) {
-      const html = renderInvestorUpdateHtml(md);
-      expect(html).toContain(UNSUBSCRIBE_TOKEN);
-      expect(html).toContain("Unsubscribe");
-    }
+  it("treats a single newline as a line break, matching breaks: true", () => {
+    expect(renderInvestorUpdatePreviewHtml("one\ntwo")).toContain("<br>");
   });
 
-  it("keeps the footer quiet rather than prominent", () => {
-    const html = renderInvestorUpdateHtml("hi");
-    expect(html).toMatch(/font-size:12px[^"]*color:#9ca3af/);
+  it("carries NO inline styles — the sender emits bare markup, so styling here would show an email nobody receives", () => {
+    const html = renderInvestorUpdatePreviewHtml("# Title\n\nCopy.");
+    expect(html).not.toContain("style=");
   });
 
-  it("renders an inline image", () => {
-    const html = renderInvestorUpdateHtml(imageMarkdown("https://x.com/a.png", "A chart"));
-    expect(html).toContain('src="https://x.com/a.png"');
-    expect(html).toContain('alt="A chart"');
-    expect(html).toMatch(/<img[^>]*style="[^"]*max-width:100%/);
+  it("adds no unsubscribe footer — the gateway appends the real one, and a second would duplicate it", () => {
+    const html = renderInvestorUpdatePreviewHtml("hello");
+    expect(html).not.toContain("pm:unsubscribe");
+    expect(html.toLowerCase()).not.toContain("unsubscribe");
   });
 
-  it("bounds the column so a phone never scrolls sideways", () => {
-    expect(renderInvestorUpdateHtml("hi")).toContain("max-width:640px");
-  });
-
-  it("renders links, lists and bold through the shared converter", () => {
-    const html = renderInvestorUpdateHtml("- one\n- two\n\n**bold** and [a link](https://x.com)");
-    expect(html).toMatch(/<ul style="/);
-    expect(html).toContain("<li");
-    expect(html).toMatch(/<strong style="/);
+  it("renders headings, bold, lists, links and images", () => {
+    const html = renderInvestorUpdatePreviewHtml("## H\n\n**b** [l](https://x.com)\n\n- one\n\n![a](https://x.com/a.png)");
+    expect(html).toContain("<h2>");
+    expect(html).toContain("<strong>");
+    expect(html).toContain("<li>");
     expect(html).toContain('href="https://x.com"');
-  });
-
-  it("leaves a hand-written style on an element alone", () => {
-    const html = renderInvestorUpdateHtml('<p style="color:red">mine</p>');
-    expect(html).toContain('style="color:red"');
-  });
-});
-
-describe("renderInvestorUpdateText", () => {
-  it("strips markdown syntax", () => {
-    const text = renderInvestorUpdateText("# Title\n\n**bold** and *italic*");
-    expect(text).toContain("Title");
-    expect(text).not.toContain("#");
-    expect(text).not.toContain("**");
-  });
-
-  it("keeps a link's destination, which is the whole point of a text part", () => {
-    expect(renderInvestorUpdateText("[a link](https://x.com)")).toContain("https://x.com");
-  });
-
-  it("carries the same unsubscribe token as the HTML part", () => {
-    expect(renderInvestorUpdateText("hi")).toContain(UNSUBSCRIBE_TOKEN);
+    expect(html).toContain('src="https://x.com/a.png"');
   });
 });
 
