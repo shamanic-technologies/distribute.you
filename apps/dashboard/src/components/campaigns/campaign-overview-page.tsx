@@ -28,7 +28,6 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import { useIsAdminUser } from "@/lib/use-admin-user";
 import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
@@ -91,9 +90,8 @@ export function CampaignOverviewPage() {
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
   const campaignId = params.id as string;
-  const isAdmin = useIsAdminUser();
   const featureSlug = useSoleFeatureSlug();
-  const enabled = isRevenueFeature(featureSlug) && isAdmin;
+  const enabled = isRevenueFeature(featureSlug);
   const timezone = useMemo(() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -105,15 +103,15 @@ export function CampaignOverviewPage() {
   const { data: brandData } = useAuthQuery(
     ["brand", brandId],
     () => getBrand(brandId),
-    { enabled: isAdmin, ...pollOptions },
+    { ...pollOptions },
   );
   const brand = brandData?.brand ?? null;
 
-  // Campaign identity (name for the header). Staff-only.
+  // Campaign identity (name for the header).
   const { data: campaignData, isPending: campaignLoading } = useAuthQuery(
     ["campaign", campaignId],
     () => getCampaign(campaignId),
-    { enabled: isAdmin, ...pollOptions },
+    { ...pollOptions },
   );
   const campaign = campaignData?.campaign ?? null;
 
@@ -390,16 +388,6 @@ export function CampaignOverviewPage() {
   // The brand-level read is still used BELOW for the outcome forecast — billing
   // answers it with the SUM of the funnel ceilings, so the forecast is unchanged.
 
-  if (!isAdmin) {
-    return (
-      <DashboardPage width="wide">
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
-          This preview is staff-only.
-        </div>
-      </DashboardPage>
-    );
-  }
-
   if (!campaignLoading && !campaign) {
     return (
       <DashboardPage width="wide">
@@ -433,12 +421,11 @@ export function CampaignOverviewPage() {
   // for the cost card's denominator.
   // The heading is the campaign's NAME and nothing else.
   //
-  // It used to carry a `Campaigns /` back-link and a beta badge alongside. Both
-  // are restated a few pixels above by the top bar, which already links back to
-  // the list (HeaderPageContext) — and the sidebar's own Campaigns entry carries
-  // the beta badge, which is where the maturity rule wants it, on the nav entry
-  // that stays visible whether or not this page renders. Printing either one
-  // twice on one screen is the duplication this repo treats as a bug.
+  // It used to carry a `Campaigns /` back-link alongside, restated a few pixels
+  // above by the top bar, which already links back to the list
+  // (HeaderPageContext). Printing it twice on one screen is the duplication this
+  // repo treats as a bug. The surface is GA, so there is no maturity badge here
+  // nor on the nav entry.
   const CampaignHeader = (
     <h1 className="font-display flex min-w-0 items-center text-xl font-bold text-gray-800">
       {campaign ? <CampaignTitle campaign={campaign} size="sm" /> : "Campaign"}
