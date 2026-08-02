@@ -68,21 +68,21 @@ describe("Context sidebar", () => {
     // Brand Settings. The legacy "Create Campaign" and "Conversions" entries were
     // removed. (The app-level feature "Campaigns" island at
     // `/features/[featureId]` was also removed — #1768 follow-up.)
-    // NOTE: a NEW staff/god-mode "Campaigns" entry (`${basePath}/campaigns`,
-    // `campaignsOk` gate) re-introduces the campaign-centered v2 preview — see the
-    // dedicated guard below; the general no-legacy assertions here exclude it.
+    // NOTE: a "Campaigns" entry (`${basePath}/campaigns`, `campaignsOk`) carries the
+    // campaign-centered v2 surface — see the dedicated guard below; the general
+    // no-legacy assertions here exclude it.
     expect(content).toContain('label: "Overview"');
     expect(content).not.toContain('>Database<');
     expect(content).not.toContain('label: "Create Campaign"');
     expect(content).not.toContain('href: `${basePath}/conversions`');
   });
 
-  it("has a STAFF-gated (v2) Campaigns entry with a beta badge", () => {
+  it("has a GA Campaigns entry — revenue features only, no staff gate, no badge", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // Re-introduced campaign concept: staff/god-mode preview only, so the entry is
-    // gated on `campaignsOk` (isAdmin + revenue feature) and carries the beta badge.
-    expect(content).toContain("const campaignsOk =");
-    expect(content).toContain("useIsAdminUser");
+    // The campaign concept is GA: the entry is gated on the revenue feature alone
+    // and states no maturity.
+    expect(content).toContain("const campaignsOk = isRevenueFeature(featureSlug)");
+    expect(content).not.toContain("useIsAdminUser");
     expect(content).toContain('id: "campaigns"');
     expect(content).toContain('href: `${basePath}/campaigns`');
   });

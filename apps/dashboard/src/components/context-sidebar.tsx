@@ -9,7 +9,6 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
-import { useIsAdminUser } from "@/lib/use-admin-user";
 import { TenantSwitcher } from "@/components/tenant-switcher";
 import { ReferralCard } from "@/components/invite/referral-card";
 import { MaturityBadge } from "@/components/maturity-badge";
@@ -360,11 +359,9 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const featureSlug = useSoleFeatureSlug();
   const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  // Campaigns (v2, campaign-centered) — staff/god-mode PREVIEW while the campaign
-  // concept is progressively re-introduced. Gated on the staff allowlist (isAdmin),
-  // shown with a beta badge. Non-staff never see it.
-  const isAdmin = useIsAdminUser();
-  const campaignsOk = isRevenueFeature(featureSlug) && isAdmin;
+  // Campaigns (v2, campaign-centered) — GA. Shown to every customer on a revenue
+  // feature; the staff preview gate and its beta badge are gone.
+  const campaignsOk = isRevenueFeature(featureSlug);
   // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog
   // resolves. Folded flat into this footer so the brand sidebar stays mounted on
   // /brand-info + /workflows (no separate Settings sidebar level).
@@ -426,7 +423,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    // Campaigns — staff-only campaign-centered v2 preview. Beta badge.
+    // Campaigns — campaign-centered v2. GA (revenue features only).
     ...(campaignsOk
       ? [
           {
@@ -434,7 +431,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Campaigns",
             href: `${basePath}/campaigns`,
             icon: <CampaignsIcon />,
-            maturity: "beta",
           } satisfies SidebarItem,
         ]
       : []),
@@ -517,12 +513,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   );
 }
 
-// Campaign Level Sidebar (v2 staff/god-mode PREVIEW — #2762) — mirrors the brand
-// sidebar layout but drilled into ONE campaign. Overview + Leads are scoped to the
-// campaign (campaign-filtered pages, beta badge); Strategy + Audiences are the
-// brand's shared config (a campaign inherits them), so they link back to the
-// brand-level pages. Reachable only by staff (the routes self-gate); the sidebar
-// double-gates on `isAdmin` so a non-staff URL hit shows just the back link.
+// Campaign Level Sidebar (v2 — #2762) — mirrors the brand sidebar layout but
+// drilled into ONE campaign. Overview + Leads are scoped to the campaign
+// (campaign-filtered pages); Strategy + Audiences are campaign-scoped views of the
+// brand's shared config (a campaign inherits what campaign-service does not store
+// per campaign). GA: shown on every revenue feature, no staff gate, no beta badge.
 function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
   orgId: string;
   brandId: string;
@@ -530,27 +525,24 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
   pathname: string;
 }) {
   const featureSlug = useSoleFeatureSlug();
-  const isAdmin = useIsAdminUser();
   const revenueOk = isRevenueFeature(featureSlug);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const campaignBase = `${basePath}/campaigns/${campaignId}`;
 
   const items: SidebarItem[] =
-    isAdmin && revenueOk
+    revenueOk
       ? [
           {
             id: "campaign-overview",
             label: "Overview",
             href: campaignBase,
             icon: <OverviewIcon />,
-            maturity: "beta",
           },
           {
             id: "campaign-leads",
             label: "Leads",
             href: `${campaignBase}/leads`,
             icon: <LeadsIcon />,
-            maturity: "beta",
           },
           // Campaign-scoped views of the brand's strategy + audiences. They stay
           // INSIDE the campaign and narrow to it wherever campaign-service stores a
@@ -561,14 +553,12 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
             label: "Strategy",
             href: `${campaignBase}/strategy`,
             icon: <StrategyIcon />,
-            maturity: "beta",
           },
           {
             id: "audiences",
             label: "Audiences",
             href: `${campaignBase}/audiences`,
             icon: <AudiencesIcon />,
-            maturity: "beta",
           },
         ]
       : [];

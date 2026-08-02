@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
-import { useIsAdminUser } from "@/lib/use-admin-user";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
@@ -20,7 +19,6 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { acquisitionChannelForWorkflowSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import { channelSlugLabel } from "@/lib/campaign-title";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -210,7 +208,6 @@ export function CampaignsPage() {
   const router = useRouter();
   const orgId = String(params.orgId);
   const brandId = String(params.brandId);
-  const isAdmin = useIsAdminUser();
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
@@ -219,7 +216,7 @@ export function CampaignsPage() {
   const campaignsQ = useAuthQuery(
     ["campaigns", brandId],
     () => listCampaignsByBrand(brandId),
-    { enabled: isAdmin, refetchInterval: POLL_INTERVAL },
+    { refetchInterval: POLL_INTERVAL },
   );
 
   // Per-campaign stats (ROI / %CAC / expected pipeline revenue) — features-service,
@@ -228,7 +225,7 @@ export function CampaignsPage() {
   const groupsQ = useAuthQuery(
     ["featureRevenueByCampaign", brandId, featureSlug],
     () => getFeatureRevenueByCampaign(featureSlug, brandId),
-    { enabled: isAdmin && revenueEnabled, refetchInterval: POLL_INTERVAL },
+    { enabled: revenueEnabled, refetchInterval: POLL_INTERVAL },
   );
 
   // Brand-level (ungrouped) revenue — the global header's blended pipeline + $CAC.
@@ -237,7 +234,7 @@ export function CampaignsPage() {
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
     {
-      enabled: isAdmin && revenueEnabled,
+      enabled: revenueEnabled,
       refetchInterval: POLL_INTERVAL,
       structuralSharing: (prev, next) =>
         keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
@@ -289,17 +286,6 @@ export function CampaignsPage() {
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (groupsQ.data !== undefined || groupsQ.isError);
 
-  if (!isAdmin) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="max-w-md mx-auto mt-16 bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <h1 className="font-display font-bold text-lg text-gray-800 mb-2">Not available</h1>
-          <p className="text-gray-600 text-sm">This preview is staff-only.</p>
-        </div>
-      </div>
-    );
-  }
-
   const globalPipeline = brandRevenueQ.data?.totalPipelineUsd ?? null;
   const globalCac = brandRevenueQ.data?.costEconomics.costPerConversionUsd ?? null;
 
@@ -310,7 +296,6 @@ export function CampaignsPage() {
             a table row, so the page reads this brand's campaigns and nothing more. */}
         <div className="flex items-center gap-2 mb-1">
           <h1 className="font-display text-xl font-bold text-gray-800">Campaigns</h1>
-          <MaturityBadge level="beta" />
         </div>
         <p className="text-sm text-gray-500 mb-5">
           Campaign-by-campaign view of this brand&apos;s pipeline, cost, and return.
