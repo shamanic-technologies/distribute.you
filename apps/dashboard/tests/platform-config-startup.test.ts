@@ -33,6 +33,14 @@ describe("Platform config registration at startup", () => {
       // The logo.dev SECRET key, distinct from the publishable `logo-dev` token:
       // only this one authenticates the server-side REST APIs.
       { provider: "logo-dev-secret", envVar: "LOGO_DEV_SECRET_KEY" },
+      // Sending-infrastructure vendors, read by instantly-service's domain and
+      // mailbox inventory. The provider strings are byte-critical there, so pin
+      // each one: a rename reads downstream as "vendor unreachable".
+      { provider: "gandi-org1", envVar: "GANDI_ORG1_TOKEN" },
+      { provider: "gandi-org2", envVar: "GANDI_ORG2_TOKEN" },
+      { provider: "gandi-org3", envVar: "GANDI_ORG3_TOKEN" },
+      { provider: "mailforge", envVar: "MAILFORGE_API_KEY" },
+      { provider: "primeforge", envVar: "PRIMEFORGE_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -47,9 +55,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 31 platform keys", () => {
+    it("should register exactly 36 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(31);
+      expect(matches).toHaveLength(36);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
