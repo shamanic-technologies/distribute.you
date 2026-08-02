@@ -6,32 +6,42 @@ const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 
 /**
- * Campaigns page (v2, campaign-centered) — a staff/god-mode PREVIEW that
- * re-introduces the campaign concept. Guards the load-bearing invariants:
- *  - gated on the STAFF allowlist (isAdmin), both the nav entry and the page body;
+ * Campaigns page (v2, campaign-centered) — GA. Guards the load-bearing invariants:
+ *  - NO staff gate and NO beta badge anywhere on the surface: the entry is shown to
+ *    every customer on a revenue feature, and the page body renders for them;
  *  - every displayed stat is a READY features-service field (pipeline / $CAC / ROI
  *    / %CAC) — the page renders, never computes a cost metric client-side
  *    (CLAUDE.md: a displayed stat is features-service-owned);
  *  - reveal-on-settle so a failed gate query can't eternal-skeleton.
  */
-describe("Campaigns page (staff-gated v2 preview)", () => {
+describe("Campaigns page (GA)", () => {
   const page = read("components/campaigns/campaigns-page.tsx");
   const sidebar = read("components/context-sidebar.tsx");
+  const overview = read("components/campaigns/campaign-overview-page.tsx");
   const api = read("lib/api.ts");
-  const hook = read("lib/use-admin-user.ts");
 
-  it("has a staff (god-mode) gate hook backed by isAdminEmail", () => {
-    expect(hook).toContain("isAdminEmail");
-    expect(hook).toContain("export function useIsAdminUser");
+  // The surface is GA: the staff-allowlist gate that made it a preview is gone
+  // from the nav entry AND from both page bodies. `useIsAdminUser` still exists
+  // for the god-mode org switcher — it must simply not gate Campaigns.
+  it("carries no staff gate on the sidebar entry or either page body", () => {
+    expect(sidebar).not.toContain("useIsAdminUser");
+    expect(page).not.toContain("useIsAdminUser");
+    expect(page).not.toContain("if (!isAdmin)");
+    expect(page).not.toContain("Not available");
+    expect(overview).not.toContain("useIsAdminUser");
+    expect(overview).not.toContain("if (!isAdmin)");
+    expect(overview).not.toContain("staff-only");
   });
 
-  it("sidebar gates the Campaigns entry on isAdmin + carries a beta badge", () => {
-    expect(sidebar).toContain("useIsAdminUser");
-    expect(sidebar).toContain("const isAdmin = useIsAdminUser()");
-    expect(sidebar).toContain("campaignsOk");
-    // The nav entry + its beta badge.
+  it("shows the Campaigns entry on every revenue feature, with no beta badge", () => {
+    expect(sidebar).toContain("const campaignsOk = isRevenueFeature(featureSlug)");
     expect(sidebar).toContain('id: "campaigns"');
     expect(sidebar).toContain("/campaigns`");
+    expect(page).not.toContain("MaturityBadge");
+    // The campaign-level nav rows (Overview / Leads / Strategy / Audiences) drop
+    // their badges too — a GA surface states no maturity.
+    const campaignSidebar = sidebar.slice(sidebar.indexOf("function CampaignLevelSidebar("));
+    expect(campaignSidebar).not.toContain('maturity: "beta"');
   });
 
   // The surface is called Campaigns everywhere it is named: nav entry, page
@@ -97,12 +107,6 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     // Never dropped from the table either — the row such a filter would remove
     // is the one holding the brand's whole spend history.
     expect(page).not.toContain("filter((r) => !");
-  });
-
-  it("page body gates on isAdmin (staff-only preview)", () => {
-    expect(page).toContain("useIsAdminUser");
-    expect(page).toContain("if (!isAdmin)");
-    expect(page).toContain("Not available");
   });
 
   it("reads per-campaign stats from the features-service grouped reader", () => {
@@ -183,6 +187,18 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     expect(page).toContain('const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"])');
     const pill = page.slice(page.indexOf("function StatusPill("));
     expect(pill.slice(0, pill.indexOf("\n}"))).toContain("isActiveStatus(status)");
+  });
+
+  // A running campaign reads "Active" — the same word the brand status pill uses for
+  // the same idea. `ongoing` is campaign-service's internal spelling; printing it put
+  // two words for one concept on screen. Only the LABEL is translated: the pill still
+  // renders `campaign.status` and `isActiveStatus` still decides what running means.
+  it("says Active, never the wire's own word for it", () => {
+    const label = page.slice(page.indexOf("function statusLabel("));
+    const body = label.slice(0, label.indexOf("\n}"));
+    expect(body).toContain('isActiveStatus(status) ? "Active" : status');
+    const pill = page.slice(page.indexOf("function StatusPill("));
+    expect(pill.slice(0, pill.indexOf("\n}"))).toContain("{statusLabel(status)}");
   });
 
   // Every number on the row is a projection built from the brand's own rates, so
