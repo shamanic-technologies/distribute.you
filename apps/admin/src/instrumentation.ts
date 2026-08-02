@@ -175,6 +175,24 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "anthropic", envVar: "ANTHROPIC_API_KEY" },
   { provider: "apollo", envVar: "APOLLO_API_KEY" },
   { provider: "instantly", envVar: "INSTANTLY_API_KEY" },
+  // Sending-infrastructure vendors, read by instantly-service's domain and
+  // mailbox inventory. Registered from BOTH apps on purpose: the upsert is
+  // idempotent, and a single registrar means the keys only reach key-service
+  // if that one app happens to cold-start. The dashboard's registration did
+  // not fire on the deploy that introduced these, and they had to be pushed
+  // by hand — two registrars make that self-healing.
+  //
+  // Gandi gets three rows because it issues one token per organisation and a
+  // token only ever sees its own organisation's domains.
+  //
+  // The provider strings are byte-critical: instantly-service resolves them
+  // through `GET /keys/platform/{provider}/decrypt`, so a rename reads
+  // downstream as "vendor unreachable" rather than as a config error.
+  { provider: "gandi-org1", envVar: "GANDI_ORG1_TOKEN" },
+  { provider: "gandi-org2", envVar: "GANDI_ORG2_TOKEN" },
+  { provider: "gandi-org3", envVar: "GANDI_ORG3_TOKEN" },
+  { provider: "mailforge", envVar: "MAILFORGE_API_KEY" },
+  { provider: "primeforge", envVar: "PRIMEFORGE_API_KEY" },
   { provider: "firecrawl", envVar: "FIRECRAWL_API_KEY" },
   { provider: "google", envVar: "GEMINI_API_KEY" },
   { provider: "postmark", envVar: "POSTMARK_API_KEY" },
