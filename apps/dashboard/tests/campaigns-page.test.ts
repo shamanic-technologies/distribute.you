@@ -227,7 +227,10 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     const context = read("components/header-page-context.tsx");
     expect(header).toContain("<HeaderPageContext />");
     expect(context).toContain('parts[4] !== "campaigns"');
-    expect(context).toContain("data?.campaign?.name");
+    // The campaign is named as what it IS (funnel x channel), never by
+    // campaign-service's stored name, which predates the per-funnel model.
+    expect(context).toContain("<CampaignTitle");
+    expect(context).not.toContain("campaign?.name");
     // Byte-equal to the campaign overview's key → one deduped poll.
     expect(context).toContain('["campaign", campaignId ?? "none"]');
     // A placeholder word would state a name we do not have yet.

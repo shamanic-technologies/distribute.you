@@ -23,6 +23,7 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { acquisitionChannelForWorkflowSlug } from "@/lib/acquisition-channels";
 import { primaryFunnelForGoal } from "@/lib/sales-funnels";
 import { campaignFunnel, supersededCampaignIds } from "@/lib/campaign-funnel";
+import { channelSlugLabel, GOAL_SHORT } from "@/lib/campaign-title";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -36,30 +37,11 @@ import { Skeleton } from "@/components/skeleton";
 // arrangements of wire data, never a derived metric (CLAUDE.md: a displayed stat
 // is features-service-owned, never computed in the browser).
 
-// The outreach "channel" is the campaign's workflow, so the workflow slug is what
-// resolves the catalogue entry the brand Settings card renders. A slug with no
-// catalogue entry is prettified rather than named as a channel we do not carry.
-function channelLabel(workflowSlug: string | null): string {
-  if (!workflowSlug) return "—";
-  return workflowSlug
-    .split("-")
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(" ");
-}
-
-// Fallback outcome label for the Sales funnel column, used only by a pre-funnel
-// campaign whose inherited brand goal no funnel in the catalogue ends on. A
-// campaign that names its own funnel reads as that funnel, so the column says the
-// same thing brand Settings does.
-const GOAL_SHORT: Record<BrandOptimizationGoal, string> = {
-  signups: "Signups",
-  sales_meetings: "Positive Replies",
-  positive_replies: "Positive Replies",
-  website_visits: "Website Visits",
-  form_submissions: "Form Submissions",
-  website_purchase: "Purchases",
-  sales: "Sales",
-};
+// The outreach "channel" is the campaign's workflow, and the fallback outcome
+// word for a goal no funnel ends on both live in `campaign-title.ts`, beside the
+// helper that composes a campaign's title out of the same two halves. One home,
+// so a campaign cannot read as one thing in this table and another in the
+// heading of the page the row opens.
 
 function fmtUsd(usd: number | null | undefined): string {
   return usd == null ? "—" : formatUsdAdaptive(usd);
@@ -171,7 +153,7 @@ function ChannelCell({ workflowSlug }: { workflowSlug: string | null }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {def && <AcquisitionChannelMark def={def} size="sm" />}
-      <span className="truncate">{def ? def.name : channelLabel(workflowSlug)}</span>
+      <span className="truncate">{def ? def.name : channelSlugLabel(workflowSlug)}</span>
     </div>
   );
 }
@@ -316,7 +298,7 @@ export function CampaignsPage() {
     const top = rows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
     const def = acquisitionChannelForWorkflowSlug(top.campaign.workflowSlug);
-    return def ? def.name : channelLabel(top.campaign.workflowSlug);
+    return def ? def.name : channelSlugLabel(top.campaign.workflowSlug);
   }, [rows]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed
