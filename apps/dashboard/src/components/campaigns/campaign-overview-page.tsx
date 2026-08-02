@@ -380,15 +380,15 @@ export function CampaignOverviewPage() {
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
   const campaignsPath = `${basePath}/campaigns`;
 
-  // Effective daily budget = the campaign's own `maxBudgetDailyUsd` (v2 per-campaign
-  // budget) when set, else the brand daily budget it inherits (null-inherit — same
-  // resolution campaign-service paces on). `maxBudgetDailyUsd` is whole USD; the
-  // section wants cents. `budgetInherited` drives the "inherits brand" hint.
-  const campaignBudgetUsd = campaign?.maxBudgetDailyUsd;
-  const effectiveBudgetCents =
-    campaignBudgetUsd != null
-      ? Math.round(Number(campaignBudgetUsd) * 100)
-      : budgetData?.dailyBudgetCents ?? null;
+  // A campaign has no budget of its own to show any more. The money is funded per
+  // SALES FUNNEL, and a campaign runs one funnel — so the ceiling that governs it
+  // belongs to the funnel, and it is stated where the customer sets it (brand
+  // Settings), not restated here against a campaign that does not own it. The
+  // per-campaign ceiling survives in campaign-service only as a mirror of the
+  // funnel's, which is machinery, not a number to put on screen.
+  //
+  // The brand-level read is still used BELOW for the outcome forecast — billing
+  // answers it with the SUM of the funnel ceilings, so the forecast is unchanged.
 
   if (!isAdmin) {
     return (
@@ -484,7 +484,6 @@ export function CampaignOverviewPage() {
         }
         costPending={!costRevealed}
         todayCostPending={!costRevealed}
-        dailyBudgetCents={effectiveBudgetCents}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}

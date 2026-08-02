@@ -16,12 +16,9 @@ import {
   getBrandPause,
   setBrandPause,
   getBrandDailyBudget,
-  saveBrandDailyBudget,
   getBrandSalesEconomics,
   saveBrandSalesEconomics,
-  getWorkflowProjection,
   keepLastGoodWorkflowProjection,
-  salesObjectiveForOptimizationGoal,
   isVisitDrivenGoal,
   type BrandOptimizationGoal,
   type BrandSalesEconomics,
@@ -32,22 +29,10 @@ import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import {
-  selectWorkflowForOptimizationGoal,
-  workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
 import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useIsShareMode } from "@/components/share/share-mode-context";
 import { MaturityBadge } from "@/components/maturity-badge";
-
-const PROJECTION_REF_BUDGET = 100;
-// Outcome-count tiers (per month) — each maps to a $/day via the projection unit
-// cost, shown as the tier's primary $/day. Matches the onboarding pricing step.
-const COUNT_TIERS = [25, 50, 100] as const;
-
-// Shown on the (i) beside each tier's outcomes/mo — the count is a projection, not
-// a guarantee. Byte-equal to the onboarding pricing-step tooltip.
-const ESTIMATE_TOOLTIP =
-  "Estimated conversion based on your provided information and the outcomes of our current client database.";
 
 const DEFAULT_SALES_ECONOMICS = {
   lifetimeRevenueUsd: 4000,
@@ -67,19 +52,6 @@ const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   form_submissions: "Maximising form submissions",
   website_purchase: "Maximising website purchases",
   sales: "Maximising sales",
-};
-
-// Plural outcome noun shown in the budget modal ("X <unit> / mo"). Exhaustive
-// over BrandOptimizationGoal so a new goal can't silently mis-default (the old
-// 4-branch ternary sent website_purchase/form_submissions/sales to "meetings").
-const OUTCOME_UNIT: Record<BrandOptimizationGoal, string> = {
-  signups: "signups",
-  sales_meetings: "sales meeting interest",
-  website_visits: "website visits",
-  positive_replies: "positive replies",
-  form_submissions: "form submissions",
-  website_purchase: "website purchases",
-  sales: "sales",
 };
 
 const GOAL_OPTIONS: {
@@ -136,10 +108,6 @@ function budgetLabel(cents: number | null): string | null {
   return `${fmtUsdWhole(cents / 100)}/day`;
 }
 
-function fmtCount(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
 function salesEconomicsInputForGoal(
   current: BrandSalesEconomics | null | undefined,
   optimizationGoal: BrandOptimizationGoal,
@@ -184,11 +152,6 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] =
     useState<BrandOptimizationGoal>("positive_replies");
-  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
-  // Canonical selection = the $/day budget (primary value); customBudget is the
-  // "Other" custom $/day text. Mirrors the onboarding pricing step.
-  const [selectedBudget, setSelectedBudget] = useState<number | null>(null);
-  const [customBudget, setCustomBudget] = useState("");
 
   const { data: pauseData } = useAuthQuery(
     ["brandPause", brandId],
@@ -220,42 +183,6 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
       : econ.salesEconomics?.optimizationGoal ?? "positive_replies";
   const goal = noWebsite && storedGoal ? "positive_replies" : storedGoal;
   const budget = budgetLabel(budgetData?.dailyBudgetCents ?? null);
-  const goalForBudget = noWebsite ? "positive_replies" : goal ?? "positive_replies";
-
-  const { data: projection, isPending: projectionPending, error: projectionError } =
-    useAuthQuery(
-      [
-        "workflowProjection",
-        brandId,
-        featureSlug,
-        "brand-status-budget",
-        goalForBudget,
-        econ?.salesEconomics?.updatedAt ?? "no-economics",
-      ],
-      () =>
-        getWorkflowProjection({
-          featureSlug,
-          brandId,
-          objective: salesObjectiveForOptimizationGoal(goalForBudget),
-          budgetUsd: PROJECTION_REF_BUDGET,
-        }),
-      {
-        // Prewarm at mount (not gated on the dialog) so the cold Neon chain
-        // (features -> workflow/runs/email-gateway/brand, all scale-to-zero)
-        // resolves in parallel with the overview load and is warm/persisted by
-        // the time the user opens the budget modal — kills the cold-open ~20-30s
-        // skeleton. Budget-invariant (PROJECTION_REF_BUDGET), so one fetch serves
-        // every open.
-        enabled: econ !== undefined,
-        placeholderData: undefined,
-        structuralSharing: (prev, next) =>
-          keepLastGoodWorkflowProjection(
-            prev as WorkflowProjectionResponse | undefined,
-            next as WorkflowProjectionResponse,
-          ),
-      },
-    );
-
   const { mutate: setPaused, isPending: savingPause } = useMutation({
     mutationFn: (next: boolean) => setBrandPause(brandId, next),
     onSuccess: (res, next) => {
@@ -290,22 +217,6 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
       setGoalDialogOpen(false);
     },
   });
-  const {
-    mutate: saveBudget,
-    isPending: savingBudget,
-    error: budgetError,
-  } = useMutation({
-    mutationFn: (dailyBudgetUsd: number) =>
-      saveBrandDailyBudget(brandId, Math.round(dailyBudgetUsd * 100)),
-    onSuccess: (res) => {
-      queryClient.setQueryData(["brandDailyBudget", brandId], {
-        brandId: res.brandId,
-        dailyBudgetCents: res.dailyBudgetCents,
-        updatedAt: res.updatedAt,
-      });
-      setBudgetDialogOpen(false);
-    },
-  });
 
   function openGoalDialog() {
     if (noWebsite) setSelectedGoal("positive_replies");
@@ -313,47 +224,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
     setGoalDialogOpen(true);
   }
 
-  function openBudgetDialog() {
-    setSelectedBudget(null);
-    setCustomBudget("");
-    setBudgetDialogOpen(true);
-  }
-
   const selectedGoalOption = GOAL_OPTIONS.find((g) => g.value === selectedGoal);
-  const visitToSignupPct =
-    econ?.salesEconomics?.visitToSignupPct ??
-    DEFAULT_SALES_ECONOMICS.visitToSignupPct;
-  const replyToMeetingPct =
-    econ?.salesEconomics?.replyToMeetingPct ??
-    DEFAULT_SALES_ECONOMICS.replyToMeetingPct;
-  const visitToMeetingPct =
-    econ?.salesEconomics?.visitToMeetingPct ??
-    DEFAULT_SALES_ECONOMICS.visitToMeetingPct;
-  const activeWorkflow = selectWorkflowForOptimizationGoal(projection, goalForBudget, {
-    visitToSignupPct,
-    replyToMeetingPct,
-    visitToMeetingPct,
-  });
-  const outcomeUnit = OUTCOME_UNIT[goalForBudget];
-  const unitCost = activeWorkflow
-    ? workflowOutcomeUnitCost(activeWorkflow, goalForBudget, {
-        visitToSignupPct,
-        replyToMeetingPct,
-        visitToMeetingPct,
-      })
-    : null;
-
-  // Daily budget needed to hit `n` outcomes / month.
-  function budgetForCount(n: number): number | null {
-    if (unitCost == null || unitCost <= 0) return null;
-    return Math.max(1, Math.round((n * unitCost) / 30));
-  }
-
-  // Outcomes / month a `$b`/day budget buys (inverse of budgetForCount). Display only.
-  function countForBudget(b: number): number | null {
-    if (unitCost == null || unitCost <= 0) return null;
-    return Math.max(0, Math.round((b * 30) / unitCost));
-  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -398,11 +269,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
             )}
           </span>
         ) : paused ? (
-          <button
-            type="button"
-            onClick={openBudgetDialog}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:border-gray-300 hover:bg-gray-200"
-          >
+          <span className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500">
             <span className="inline-flex h-2 w-2 rounded-full bg-current opacity-50" />
             Paused
             {budget && (
@@ -411,13 +278,9 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                 <span className="font-semibold">{budget}</span>
               </>
             )}
-          </button>
+          </span>
         ) : (
-          <button
-            type="button"
-            onClick={openBudgetDialog}
-            className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 transition hover:border-green-300 hover:bg-green-100"
-          >
+          <span className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
@@ -429,7 +292,7 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
                 <span className="font-semibold">{budget}</span>
               </>
             )}
-          </button>
+          </span>
         )}
 
         {/* Pause / Restart toggle — in-flight label stays full opacity (CLAUDE.md
@@ -550,210 +413,6 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
         </div>
       )}
 
-      {budgetDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => !savingBudget && setBudgetDialogOpen(false)}
-          />
-          <div className="relative w-full max-w-3xl rounded-xl bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Daily budget
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Pick your daily budget. We show the {outcomeUnit} it buys each
-                  month.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBudgetDialogOpen(false)}
-                disabled={savingBudget}
-                className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40"
-                aria-label="Close"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
-
-            {budget && (
-              <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                Current daily budget:{" "}
-                <span className="font-semibold text-gray-900">{budget}</span>
-              </div>
-            )}
-
-            <div className="mb-4 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
-              <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
-              <p className="text-sm leading-6 text-brand-800">
-                This is your <strong>brand daily budget cap</strong>. You pay as you
-                go for what we actually spend, never more than this per day. Cancel
-                anytime.
-              </p>
-            </div>
-
-            {projectionPending && econ !== undefined ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {[0, 1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-32 rounded-xl" />
-                ))}
-              </div>
-            ) : projectionError ? (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
-                Could not load budget options: {projectionError.message}
-              </p>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {COUNT_TIERS.map((n, i) => {
-                  const b = budgetForCount(n);
-                  const active = b != null && selectedBudget === b;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      disabled={b == null}
-                      onClick={() => {
-                        if (b == null) return;
-                        setSelectedBudget(b);
-                        setCustomBudget("");
-                      }}
-                      className={`rounded-xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                        active
-                          ? "border-brand-400 bg-brand-50"
-                          : "border-gray-200 bg-white hover:border-gray-300"
-                      }`}
-                    >
-                      {i === 1 ? (
-                        <div className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700">
-                          Recommended
-                        </div>
-                      ) : (
-                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                          {i === 0 ? "Starter" : "Growth"}
-                        </div>
-                      )}
-                      <div className="text-xl font-bold text-gray-950">
-                        {b != null ? fmtUsdWhole(b) : "—"}
-                        <span className="text-sm font-normal text-gray-500"> / day</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <span>
-                          {fmtCount(n)} {outcomeUnit} / mo
-                        </span>
-                        <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {(() => {
-                  const customN = Number(customBudget);
-                  const customB =
-                    customBudget !== "" && customN > 0 ? Math.round(customN) : null;
-                  const isCustom = customB !== null;
-                  const active = isCustom && selectedBudget === customB;
-                  const cnt = isCustom ? countForBudget(customB) : null;
-                  return (
-                    <div
-                      onClick={() => {
-                        if (isCustom) setSelectedBudget(customB);
-                      }}
-                      className={`rounded-xl border-2 p-4 transition ${
-                        isCustom ? "cursor-pointer" : ""
-                      } ${
-                        active
-                          ? "border-brand-400 bg-brand-50"
-                          : "border-gray-200 bg-white"
-                      }`}
-                    >
-                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                        Other
-                      </div>
-                      <div className="flex items-baseline">
-                        <span className="shrink-0 text-xl font-bold text-gray-950">
-                          $
-                        </span>
-                        <input
-                          type="number"
-                          min={1}
-                          value={customBudget}
-                          onChange={(e) => {
-                            setCustomBudget(e.target.value);
-                            const v = Number(e.target.value);
-                            setSelectedBudget(
-                              e.target.value !== "" && v > 0 ? Math.round(v) : null,
-                            );
-                          }}
-                          placeholder="0"
-                          className="w-full min-w-0 flex-1 bg-transparent text-xl font-bold text-gray-950 placeholder-gray-300 focus:outline-none"
-                        />
-                        <span className="shrink-0 text-sm font-normal text-gray-500">
-                          {" "}
-                          / day
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        {cnt != null ? (
-                          <>
-                            <span>
-                              {fmtCount(cnt)} {outcomeUnit} / mo
-                            </span>
-                            <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
-                          </>
-                        ) : (
-                          " "
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {selectedBudget != null && (
-              <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                Daily budget:{" "}
-                <strong className="text-gray-900">{fmtUsdWhole(selectedBudget)} / day</strong>
-                {countForBudget(selectedBudget) != null && (
-                  <span className="mt-1 block text-gray-400 sm:mt-0 sm:inline">
-                    {" "}
-                    {fmtCount(countForBudget(selectedBudget)!)} {outcomeUnit} / mo
-                    estimated
-                  </span>
-                )}
-              </div>
-            )}
-
-            {budgetError && (
-              <p className="mt-4 text-sm text-red-600">
-                Could not save:{" "}
-                {budgetError instanceof Error ? budgetError.message : "unknown error"}
-              </p>
-            )}
-
-            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setBudgetDialogOpen(false)}
-                disabled={savingBudget}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => selectedBudget != null && saveBudget(selectedBudget)}
-                disabled={savingBudget || selectedBudget == null}
-                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {savingBudget ? "Saving..." : "Save budget"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
