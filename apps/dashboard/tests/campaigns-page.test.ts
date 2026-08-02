@@ -56,16 +56,49 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
     ).toBe(false);
   });
 
-  // The Channel and Goal columns say what brand Settings says: the channel's own
-  // mark + catalogue name, and the funnel's mark + name. A second wording for
-  // either would be the same thing under two names on two screens.
-  it("draws Channel and Goal from the brand-Settings catalogues", () => {
+  // The Channel and Sales funnel columns say what brand Settings says: the
+  // channel's own mark + catalogue name, and the funnel's mark + name. A second
+  // wording for either would be the same thing under two names on two screens.
+  it("draws Channel and Sales funnel from the brand-Settings catalogues", () => {
     expect(page).toContain("acquisitionChannelForWorkflowSlug");
     expect(page).toContain("primaryFunnelForGoal");
     expect(page).toContain("<AcquisitionChannelMark");
     expect(page).toContain("<SalesFunnelMark");
     expect(page).toContain("<ChannelCell workflowSlug={campaign.workflowSlug} />");
-    expect(page).toContain("<GoalCell goal={goalFor(campaign)} />");
+    expect(page).toContain(
+      "<FunnelCell funnelKey={campaign.funnelKey} fallbackGoal={goalFor(campaign)} />",
+    );
+  });
+
+  // The funnel column reads the campaign's OWN key, and the goal is only the
+  // fallback for the pre-funnel campaign that has none. Reading the goal first
+  // is what put "Sales Meeting from Conversation" on a brand that had declared
+  // one funnel, Form Magnet: two funnels share `meetingBooked`, so the goal
+  // cannot name a chain on its own.
+  it("names the funnel from the campaign's own key, goal only as fallback", () => {
+    // `\n}\n` and not `\n}`: the props are destructured with a type annotation,
+    // so the first `\n}` in this component closes the parameter block, not the
+    // function — slicing there cuts the body out entirely.
+    const cell = page.slice(page.indexOf("function FunnelCell("));
+    const body = cell.slice(0, cell.indexOf("\n}\n"));
+    expect(body).toContain("campaignFunnel(funnelKey) ?? primaryFunnelForGoal(fallbackGoal)");
+    expect(api).toContain("funnelKey: SalesFunnelKeyWire | null;");
+  });
+
+  // campaign-service keeps the pre-funnel campaign `ongoing` on purpose, so the
+  // wire alone shows two running campaigns for one declared funnel. The row says
+  // what it is instead, and keeps its numbers: it carries every dollar the brand
+  // spent before funnels existed.
+  it("marks the superseded pre-funnel campaign instead of hiding it", () => {
+    expect(page).toContain("supersededCampaignIds");
+    expect(page).toContain(
+      "<StatusPill status={campaign.status} superseded={superseded.has(campaign.id)} />",
+    );
+    const pill = page.slice(page.indexOf("function StatusPill("));
+    expect(pill.slice(0, pill.indexOf("\n}"))).toContain('superseded ? "superseded" : status');
+    // Never dropped from the table — the row it would remove is the one holding
+    // the brand's whole spend history.
+    expect(page).not.toContain("filter((r) => !superseded");
   });
 
   it("page body gates on isAdmin (staff-only preview)", () => {
@@ -82,9 +115,9 @@ describe("Campaigns page (staff-gated v2 preview)", () => {
 
   // Return leads, because that is what the table is sorted by. A table that
   // displays one order and ranks by another reads as unordered.
-  it("orders the columns ROI, % CAC, Revenue, Channel, Goal, Status", () => {
+  it("orders the columns ROI, % CAC, Revenue, Channel, Sales funnel, Status", () => {
     const head = page.slice(page.indexOf("<thead>"), page.indexOf("</thead>"));
-    const order = ["ROI", "% CAC", "Revenue", "Channel", "Goal", "Status"];
+    const order = ["ROI", "% CAC", "Revenue", "Channel", "Sales funnel", "Status"];
     let at = -1;
     for (const label of order) {
       const next = head.indexOf(`${label}"`) >= 0 ? head.indexOf(`${label}"`) : head.indexOf(label);

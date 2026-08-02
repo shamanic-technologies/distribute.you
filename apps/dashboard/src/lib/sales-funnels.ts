@@ -20,6 +20,53 @@ import { bareHost, validateDestination } from "./click-destination-validation";
 export type SalesFunnelKey = "reply_meeting" | "visit_meeting" | "visit_signup" | "visit_form";
 
 /**
+ * Every spelling this app may receive for a funnel key: the four brand-service
+ * stores today, and the four it is renaming to.
+ *
+ * The funnel key is becoming the fleet's ONE vocabulary for what a brand sells
+ * through — the eight-token goal enum beside it is being retired into these four,
+ * because the goal is strictly the poorer word: `reply_meeting` and
+ * `visit_meeting` both collapse onto `meetingBooked`, so a meeting won from a
+ * reply and one won from the website read as the same thing to every consumer.
+ *
+ * The new spellings are here AHEAD of brand-service emitting them, for the reason
+ * `CANONICAL_GOALS` gives in api.ts: reading a spelling nobody sends yet costs
+ * nothing, and failing to read it the day it arrives takes the surface down.
+ */
+export type SalesFunnelKeyWire =
+  | SalesFunnelKey
+  | "sales_meetings_from_conversation"
+  | "sales_meetings_from_website"
+  | "website_purchases"
+  | "form_magnet";
+
+/**
+ * Collapse any wire spelling onto the key this app's catalogue is written on.
+ *
+ * Exhaustive, and it THROWS on anything else rather than guessing a funnel: the
+ * column is CHECK-constrained in brand-service, so a value arriving here that we
+ * cannot name is a vocabulary drift we want to see, not one to paper over with a
+ * plausible-looking chain the brand never declared.
+ */
+export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey {
+  switch (key) {
+    case "reply_meeting":
+    case "sales_meetings_from_conversation":
+      return "reply_meeting";
+    case "visit_meeting":
+    case "sales_meetings_from_website":
+      return "visit_meeting";
+    case "visit_signup":
+    case "website_purchases":
+      return "visit_signup";
+    case "visit_form":
+    case "form_magnet":
+      return "visit_form";
+  }
+  throw new Error(`Unmapped sales funnel key: ${key as string}`);
+}
+
+/**
  * Rate fields, named exactly as brand-service stores them. Every one of these
  * also exists on the brand's BLENDED sales economics, so an undeclared funnel
  * can seed a first guess from what the brand already saved.
