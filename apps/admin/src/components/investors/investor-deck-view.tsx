@@ -410,27 +410,35 @@ export function InvestorDeckView({ timeline }: { timeline: DailyFunnelPoint[] })
 
         {/* 9 — Team. The most-read slide in the deck. Founders only: YC is blunt
             that nobody cares about advisors. */}
-        <Slide id="team" eyebrow="Team" title="One founder, shipping the whole thing">
+        {/* The most-read slide in the deck at 22.8 seconds, so it carries three
+            claims and not a career history. Each one is chosen because it
+            answers a question this specific business raises:
+
+              raised before      -> he knows what the next round demands
+              shipped at scale   -> distribution is the thing being sold
+              engineer + analyst -> he can build the measurement layer alone
+
+            Solo is stated first because it is the first thing a pre-seed
+            investor checks, and left unanswered it becomes the whole meeting. */}
+        <Slide id="team" eyebrow="Team" title="One founder who has done this before">
           <div className="space-y-5">
-            <Point heading="Kevin Lourd, founder">
-              Solo. Building and operating all of it: the acquisition engine, the measurement
-              layer, and the agency that runs on top of them.
+            <Point heading="Kevin Lourd, founder. Solo, in Singapore.">
+              Building and operating all of it: the acquisition engine, the measurement layer,
+              and the agency that runs on top of them.
             </Point>
-            {/* Solo is the first question a pre-seed investor asks, so the slide
-                answers it rather than leaving a gap they will notice anyway.
-                What is on screen is verifiable: the product exists, it has
-                paying customers, and the numbers three slides back are its
-                output. */}
-            <Point heading="Why that is not the risk it looks like">
-              Everything in this deck is running in production and every figure in it is read
-              live from that system. A team of one built the platform, the customers and the
-              measurement, which is the same evidence a larger team would be asked for.
+            <Point heading="Has raised, hired and held a team">
+              Co-founded Walnut Algorithms and raised $10M at a $30M valuation pre-product,
+              pre-revenue and pre-customer, then built and kept a 25-person team over five
+              years.
             </Point>
-            <p className="deck-todo rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-              Add one line on what you did before this and why it makes you the person for this
-              problem. LinkedIn is not machine-readable, so this is the one claim on the slide
-              that has to come from you. It is the most-read slide in the deck.
-            </p>
+            <Point heading="Has shipped distribution at scale">
+              First product manager at MEE6, at 20 million installs and 200 million end users.
+              Distribution is what this company sells, not a function it outsources.
+            </Point>
+            <Point heading="Engineer first, then the analytical training the product needs">
+              Engineering at ENSIMAG, statistics in Sao Paulo, then Bain and M&amp;A. Pricing an
+              acquired meeting correctly is the whole product, and it is the same work.
+            </Point>
           </div>
         </Slide>
 

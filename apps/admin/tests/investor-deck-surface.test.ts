@@ -58,8 +58,18 @@ describe("the ask", () => {
   it("never prints a valuation cap — deal terms belong in the conversation, not a forwarded deck", () => {
     expect(deckRendered.toLowerCase()).not.toContain("valuation cap");
     expect(deckRendered).not.toContain("post-money valuation");
-    // No "$7.5M"-shaped figure anywhere in the rendered copy.
-    expect(deckRendered).not.toMatch(/\$\s?\d+(\.\d+)?\s?M\b/);
+  });
+
+  it("prints no million-dollar figure on the ask, where a reader would take one for the cap", () => {
+    // Scoped to the ask and use-of-funds slides. A "$30M" elsewhere in the deck
+    // is a PAST company's raise, which is a credential and not a deal term —
+    // a whole-deck ban would forbid the founder's own track record. Measured
+    // from the ask slide to the start of the next one; do not widen.
+    const at = deckRendered.indexOf('id="ask"');
+    const end = deckRendered.indexOf('id="thanks-and-needs"');
+    expect(at).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(at);
+    expect(deckRendered.slice(at, end)).not.toMatch(/\$\s?\d+(\.\d+)?\s?M\b/);
   });
 
   it("names the amount and the instrument", () => {
