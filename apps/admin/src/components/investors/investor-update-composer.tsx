@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { Skeleton } from "@/components/skeleton";
@@ -17,17 +17,37 @@ import {
 import {
   investorUpdateBlocker,
   imageMarkdown,
+  imageAltFromFilename,
   imageFileProblem,
   imageUrlProblem,
   ACCEPTED_IMAGE_ACCEPT_ATTR,
   UNSUBSCRIBE_PREVIEW_NOTE,
 } from "@/lib/investor-update-html";
+import {
+  browserDraftStorage,
+  clearDraft,
+  readDraft,
+  writeDraft,
+  DRAFT_SAVE_DEBOUNCE_MS,
+} from "@/lib/investor-update-draft";
 
 /** Every update goes out from this address, so the preview says so. */
 const FROM_ADDRESS = "kevin@distribute.you";
 
 /** The folder every investor-update image lands in on our storage. */
 const IMAGE_FOLDER = "investor-updates";
+
+/**
+ * What the draft line says. The draft is kept on this machine only, and the
+ * line says so: someone who reads "Saved" and then opens the page on a laptop
+ * would otherwise expect to find the update waiting there.
+ */
+const DRAFT_LABEL = {
+  none: "",
+  restored: "Draft restored from this browser.",
+  saving: "Saving draft...",
+  saved: "Draft saved in this browser.",
+} as const;
 
 /**
  * The file as a data URL, which is the shape the storage service already
@@ -128,15 +148,72 @@ export function InvestorUpdateComposer() {
 
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  // A file the author picked that is NOT yet in the body: still uploading, or
+  // its upload failed. It is what the send gate reads, so an update can never
+  // go out while the author believes it carries a picture.
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [imageAlt, setImageAlt] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
+  const [imageNotice, setImageNotice] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [draftState, setDraftState] = useState<"none" | "restored" | "saving" | "saved">("none");
+
+  /**
+   * The draft is restored once, on mount, and only then does saving start.
+   * Without the latch the first render would write an empty form over whatever
+   * is stored and the restore would have nothing left to read.
+   */
+  /**
+   * A STATE flag, not a ref: a ref flips synchronously, so the saving effect
+   * would run its next pass still holding the EMPTY values of the render it was
+   * created in, decide they differ from what was restored, and schedule a write
+   * of the blank form. React batches these four updates into one commit, so the
+   * flag turning true and the restored values landing are the same render and
+   * the comparison below sees both.
+   */
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const restoredValues = useRef({ subject: "", body: "" });
+  useEffect(() => {
+    const storage = browserDraftStorage();
+    if (storage !== null) {
+      const draft = readDraft(storage);
+      if (draft !== null) {
+        setSubject(draft.subject);
+        setBody(draft.body);
+        restoredValues.current = { subject: draft.subject, body: draft.body };
+        setDraftState("restored");
+      }
+    }
+    setDraftHydrated(true);
+  }, []);
+
+  /**
+   * Saving is debounced rather than per-keystroke, and it reports itself beside
+   * the send controls: a save nobody can see reads as a feature that is not
+   * there, which is how the author ends up retyping a lost update anyway.
+   *
+   * Nothing is written until the form actually differs from what was restored,
+   * so the run that follows hydration cannot re-save an untouched draft and
+   * flip the line from "restored" to "saved" before anyone has typed.
+   */
+  useEffect(() => {
+    if (!draftHydrated) return;
+    const restored = restoredValues.current;
+    if (restored.subject === subject && restored.body === body) return;
+    const storage = browserDraftStorage();
+    if (storage === null) return;
+    setDraftState("saving");
+    const timer = setTimeout(() => {
+      writeDraft(storage, { subject, body });
+      setDraftState(subject.trim().length > 0 || body.trim().length > 0 ? "saved" : "none");
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [draftHydrated, subject, body]);
 
   const subscribersQuery = useAuthQuery(SUBSCRIBERS_KEY, () => listMailingListSubscribers(INVESTOR_LIST_SLUG));
   const updatesQuery = useAuthQuery(UPDATES_KEY, () => listMailingListUpdates(INVESTOR_LIST_SLUG));
@@ -162,18 +239,25 @@ export function InvestorUpdateComposer() {
     { enabled: previewOpen && body.trim().length > 0 }
   );
 
-  const blocker = investorUpdateBlocker(subject, body);
+  const blocker = investorUpdateBlocker(subject, body, pendingImage?.name ?? null);
 
   const sendMutation = useMutation({
     mutationFn: () =>
       sendMailingListUpdate(INVESTOR_LIST_SLUG, { subject: subject.trim(), body }),
     onSuccess: async (result) => {
       const { recipientCount: reached, failures, skippedOptedOut } = result;
+      // The draft existed to survive a reload while writing. Once the update is
+      // out, restoring it on the next visit would offer to send it again.
+      const storage = browserDraftStorage();
+      if (storage !== null) clearDraft(storage);
+      restoredValues.current = { subject: "", body: "" };
+      setDraftState("none");
       setSubject("");
       setBody("");
-      setImageFile(null);
+      setPendingImage(null);
       if (fileRef.current) fileRef.current.value = "";
       setImageAlt("");
+      setImageNotice(null);
       setPreviewOpen(false);
       setConfirming(false);
       setError(null);
@@ -199,6 +283,12 @@ export function InvestorUpdateComposer() {
    * hosted somewhere else can be moved, expire or block hotlinking long after
    * the update has landed in forty inboxes.
    *
+   * **Picking the file IS the action.** A separate confirm button stood here,
+   * and that is how the first real update went out with no picture at all: the
+   * file sat chosen in the form, the button was never pressed, nothing was ever
+   * uploaded, and the send said nothing. A control that does nothing until a
+   * second, easily-missed click is a control that reads as broken.
+   *
    * Three gates, because each catches a different failure and a broken image is
    * only discovered once the update has gone to everyone:
    *
@@ -209,11 +299,15 @@ export function InvestorUpdateComposer() {
    *    domain is resolved at upload time and a misconfiguration surfaces there.
    * 3. An actual decode of that URL. Same "gate on the image really decoding"
    *    pattern the brand favicon uses.
+   *
+   * The file stays in `pendingImage` until the markdown is really in the body,
+   * so any failure above leaves the send gated rather than quietly dropping the
+   * picture.
    */
-  const insertImage = async () => {
-    const file = imageFile;
+  const uploadAndInsert = async (file: File) => {
+    setImageNotice(null);
     const problem = imageFileProblem(file);
-    if (problem || !file) {
+    if (problem) {
       setImageError(problem);
       return;
     }
@@ -246,14 +340,19 @@ export function InvestorUpdateComposer() {
         return;
       }
 
-      const snippet = imageMarkdown(uploaded.url, imageAlt);
+      const snippet = imageMarkdown(
+        uploaded.url,
+        imageAlt.trim().length > 0 ? imageAlt : imageAltFromFilename(file.name)
+      );
       setBody((current) =>
         current.trimEnd().length > 0 ? `${current.trimEnd()}\n\n${snippet}\n` : `${snippet}\n`
       );
-      setImageFile(null);
+      setPendingImage(null);
       if (fileRef.current) fileRef.current.value = "";
       setImageAlt("");
       setNotice(null);
+      // The line lands at the end of a 14-row textarea, which is easy to miss.
+      setImageNotice(`${file.name} added at the end of the update.`);
       bodyRef.current?.focus();
     } catch (err) {
       console.error("[admin] uploadStaffImage failed", err);
@@ -312,9 +411,10 @@ export function InvestorUpdateComposer() {
         <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
           <p className="text-xs font-medium text-gray-700">Add an image</p>
           <p className="mt-0.5 text-xs text-gray-500">
-            Pick a PNG, JPG or GIF from your machine, up to 5 MB. It is uploaded to our own
-            storage and inserted at the end of the update; move the line wherever you want it.
-            Gmail does not render SVG, so those are refused here rather than arriving broken.
+            Pick a PNG, JPG or GIF from your machine, up to 5 MB. Choosing it uploads it to our
+            own storage and drops the line at the end of the update; move the line wherever you
+            want it. Gmail does not render SVG, so those are refused here rather than arriving
+            broken.
           </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
@@ -322,11 +422,17 @@ export function InvestorUpdateComposer() {
               type="file"
               accept={ACCEPTED_IMAGE_ACCEPT_ATTR}
               aria-label="Image file"
+              disabled={uploadingImage}
               onChange={(e) => {
-                setImageFile(e.target.files?.[0] ?? null);
+                const picked = e.target.files?.[0] ?? null;
                 setImageError(null);
+                setImageNotice(null);
+                setPendingImage(picked);
+                if (picked) void uploadAndInsert(picked);
               }}
-              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300"
+              className={`flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300 ${
+                uploadingImage ? "cursor-wait" : ""
+              }`}
             />
             <input
               type="text"
@@ -336,33 +442,38 @@ export function InvestorUpdateComposer() {
               aria-label="Image description"
               className="w-full sm:w-48 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
-            <button
-              type="button"
-              onClick={() => void insertImage()}
-              disabled={imageFile === null || uploadingImage}
-              className={`rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
-                uploadingImage ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"
-              }`}
-            >
-              {uploadingImage ? "Uploading..." : "Insert"}
-            </button>
           </div>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Written before you pick the file, this becomes the alt text. Left blank, the
+            filename is used, which is what an investor sees while their client blocks images.
+          </p>
+          {uploadingImage ? (
+            <p className="mt-2 text-xs font-medium text-gray-600">Uploading...</p>
+          ) : null}
+          {imageNotice ? (
+            <p className="mt-2 text-xs font-medium text-green-700">{imageNotice}</p>
+          ) : null}
           {imageError ? <p className="mt-2 text-xs font-medium text-red-600">{imageError}</p> : null}
         </div>
 
         <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-gray-500">
-            {subscribersQuery.isPending ? (
-              <Skeleton className="h-4 w-40" />
-            ) : subscribersQuery.isError ? (
-              "Could not read the list."
-            ) : (
-              <>
-                Goes to <span className="font-medium text-gray-700">{recipientCount}</span>{" "}
-                {recipientCount === 1 ? "investor" : "investors"}, one message each.
-              </>
-            )}
-          </p>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">
+              {subscribersQuery.isPending ? (
+                <Skeleton className="h-4 w-40" />
+              ) : subscribersQuery.isError ? (
+                "Could not read the list."
+              ) : (
+                <>
+                  Goes to <span className="font-medium text-gray-700">{recipientCount}</span>{" "}
+                  {recipientCount === 1 ? "investor" : "investors"}, one message each.
+                </>
+              )}
+            </p>
+            {draftState !== "none" ? (
+              <p className="text-xs text-gray-400">{DRAFT_LABEL[draftState]}</p>
+            ) : null}
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
