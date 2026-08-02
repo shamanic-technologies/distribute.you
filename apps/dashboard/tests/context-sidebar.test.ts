@@ -87,6 +87,17 @@ describe("Context sidebar", () => {
     expect(content).toContain('href: `${basePath}/campaigns`');
   });
 
+  it("keeps Brand Settings OUT of the campaign sidebar (it is a brand-level surface)", () => {
+    const content = fs.readFileSync(sidebarPath, "utf-8");
+    const campaignSidebar = content.slice(
+      content.indexOf("function CampaignLevelSidebar"),
+      content.indexOf("export function ContextSidebar"),
+    );
+    expect(campaignSidebar).not.toContain('label: "Brand Settings"');
+    // The brand sidebar still owns it — this is a placement fix, not a removal.
+    expect(content).toContain('label: "Brand Settings"');
+  });
+
   it("should grey out coming soon items with a tag (SidebarLink primitive)", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
     // The brand feature-grid (and its `!f.implemented` greying) was removed, but
