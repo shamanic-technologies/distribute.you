@@ -43,6 +43,26 @@ function pct(numerator: number, denominator: number): string {
   return formatPctAdaptive((numerator / denominator) * 100);
 }
 
+// The footer names where the numbers ABOVE it come from, so it cannot be one
+// fixed list — the Revenue tab shares none of the funnel tabs' sources. It used
+// to claim PostHog and saved payment methods on every view, which on Revenue
+// named three things that feed none of its figures and omitted the cost ledger
+// that feeds nearly all of them.
+function dataSourcesFor(view: PublicAnalyticsView): Array<{ tier: string; label: string }> {
+  if (view === "revenue") {
+    return [
+      { tier: "Bronze", label: "Stripe charges, refunds and lost disputes" },
+      { tier: "Silver", label: "Actualized cold-email spend on the runs cost ledger" },
+      { tier: "Gold", label: "Fleet revenue history and committed-budget snapshots" },
+    ];
+  }
+  return [
+    { tier: "Bronze", label: "PostHog unique visitors and signup events" },
+    { tier: "Bronze", label: "Stripe saved payment methods" },
+    { tier: "Gold", label: "Public signup and billing totals" },
+  ];
+}
+
 function parseView(raw: string | string[] | undefined): PublicAnalyticsView {
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (value === "signups" || value === "cards" || value === "active-users" || value === "revenue") return value;
@@ -378,7 +398,7 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           />
         )}
         {view === "active-users" && <ActiveUsersView />}
-        {view === "revenue" && stats && <RevenueView timeline={stats.timeline} />}
+        {view === "revenue" && stats && <RevenueView timeline={stats.timeline} billing={stats.billing} />}
         {view === "cards" && stats && (
           <CardsView cardsAdded={stats.cardsAdded} totalUsers={stats.users.totalUsers} timeline={stats.timeline} />
         )}
@@ -387,18 +407,12 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
           <section className="rounded-lg border border-gray-200 bg-white p-6">
             <h2 className="text-lg font-semibold text-gray-950">Data sources</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
-                <p className="mt-1 text-sm font-medium text-gray-900">PostHog unique visitors and signup events</p>
-              </div>
-              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bronze</p>
-                <p className="mt-1 text-sm font-medium text-gray-900">Stripe saved payment methods</p>
-              </div>
-              <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Gold</p>
-                <p className="mt-1 text-sm font-medium text-gray-900">Public signup and billing totals</p>
-              </div>
+              {dataSourcesFor(view).map((source) => (
+                <div key={source.label} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{source.tier}</p>
+                  <p className="mt-1 text-sm font-medium text-gray-900">{source.label}</p>
+                </div>
+              ))}
             </div>
             <p className="mt-4 text-xs text-gray-400">
               Updated {new Date(stats.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}

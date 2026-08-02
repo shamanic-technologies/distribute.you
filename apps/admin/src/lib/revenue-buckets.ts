@@ -65,10 +65,31 @@ function withDerived(raw: Array<{ key: string; label: string; value: number }>):
   });
 }
 
+/**
+ * Drop the buckets that precede the first one carrying money.
+ *
+ * The producer returns a full trailing window, so asking for its maximum (36
+ * months / 104 weeks — see `getFleetRevenue`) to keep "since inception" honest
+ * also drags in every month before the product had a single billed day. Those
+ * are real zeros, not missing data, but charting 30 empty bars in front of 6
+ * real ones says nothing and buries the series. A zero INSIDE the history is
+ * kept: a month we earned nothing is a fact about the business, and removing it
+ * would make the growth line skip a period.
+ *
+ * Order matters — trim BEFORE deriving, so the CMGR anchor and the "periods
+ * since inception" exponent are counted from the first real bucket.
+ */
+export function trimLeadingZeroBuckets<T extends { value: number }>(rows: T[]): T[] {
+  const first = rows.findIndex((row) => row.value !== 0);
+  return first <= 0 ? (first === 0 ? rows : []) : rows.slice(first);
+}
+
 /** Map a fleet-revenue series (monthly/weekly/daily) into charted revenue buckets. */
 export function revenueBuckets(buckets: FleetRevenueBucket[], granularity: Granularity): RevenueBucket[] {
   return withDerived(
-    buckets.map((b) => ({ key: b.period, label: bucketLabel(b.periodStart, granularity), value: b.revenueUsd })),
+    trimLeadingZeroBuckets(
+      buckets.map((b) => ({ key: b.period, label: bucketLabel(b.periodStart, granularity), value: b.revenueUsd })),
+    ),
   );
 }
 
@@ -118,6 +139,107 @@ export function trackedWeeks(sinceInceptionDaily: FleetRevenueBucket[]): number 
 /** Map derived revenue buckets into the shared PeriodCompoundChart point shape. */
 export function toCompoundPoints(buckets: RevenueBucket[], withGrowth = true) {
   return buckets.map((b) => ({ label: b.label, value: b.value, cmgrPct: withGrowth ? b.cmgrPct : null }));
+}
+
+// ── Cash collected (Stripe), net of refunds ──────────────────────────────────
+// A SECOND, genuinely different money notion from the realized-revenue series
+// above, and the two must never be read as one number:
+//   realized revenue = what customers CONSUMED (cold-email spend actualized on
+//                      the runs ledger). Stripe is nowhere in that chain.
+//   cash collected   = what customers PAID us (Stripe charges), minus what went
+//                      back out (settled refunds + lost disputes).
+// They differ by prepaid credit bought and not yet burned, so cash legitimately
+// runs ahead of consumption. Refunds only exist on the cash side — a refund
+// reverses a payment, it cannot un-consume the sending that already happened —
+// which is why netting them into the consumption series would be wrong.
+//
+// billing-service already serves the NET figure per period (`revenue_cents`),
+// with a return attributed to the period it HAPPENED in, so nothing here
+// recomputes it: we parse cents → dollars and chart them.
+
+/** A billing growth row as served by `/public/stats/billing` (cents, decimal strings). */
+export interface CashGrowthRow {
+  /** Bucket start as `YYYY-MM-DD` — the month's 1st or the week's Monday. */
+  period: string;
+  /** NET Stripe cash for the bucket in CENTS (gross charged − settled refunds − lost disputes). */
+  revenue_cents: string;
+}
+
+/**
+ * Cents (decimal string) → USD. Throws rather than charting a silent 0.
+ *
+ * The blank check is doing real work: `Number("")` is `0`, not `NaN`, so a
+ * `Number.isFinite` guard alone accepts an empty amount and renders it as "$0"
+ * — which on a money surface reads as "we took in nothing", not as "the field
+ * arrived empty".
+ */
+export function centsStringToUsd(cents: string, context: string): number {
+  const value = cents.trim() === "" ? Number.NaN : Number(cents);
+  if (!Number.isFinite(value)) throw new Error(`[revenue-buckets] ${context} is not numeric: ${JSON.stringify(cents)}`);
+  return Math.round(value) / 100;
+}
+
+/** Advance a `YYYY-MM-DD` bucket start by one period at the given grain. */
+function nextPeriodStart(periodStart: string, granularity: "month" | "week"): string {
+  const date = new Date(`${periodStart}T00:00:00.000Z`);
+  if (granularity === "month") date.setUTCMonth(date.getUTCMonth() + 1);
+  else date.setUTCDate(date.getUTCDate() + 7);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * billing emits a growth row ONLY for a period that saw activity, so its series
+ * is sparse — three quiet weeks in a row simply aren't there. Charted as-is the
+ * bars would sit side by side as if consecutive, and every growth figure would
+ * compare against whatever the previous EMITTED bucket happened to be rather
+ * than the previous week. A period with no charges took in exactly $0, which is
+ * a real value we can state, so the gaps are filled with real zeros between the
+ * first and last emitted period. Nothing is invented outside that span.
+ */
+export function fillPeriodGaps<T extends { periodStart: string }>(
+  rows: T[],
+  granularity: "month" | "week",
+  zero: (periodStart: string) => T,
+): T[] {
+  const sorted = [...rows].sort((a, b) => a.periodStart.localeCompare(b.periodStart));
+  if (sorted.length < 2) return sorted;
+
+  const out: T[] = [];
+  const last = sorted[sorted.length - 1].periodStart;
+  let cursor = sorted[0].periodStart;
+  const byStart = new Map(sorted.map((row) => [row.periodStart, row]));
+
+  // Bounded by construction: `cursor` strictly increases and stops at the last
+  // emitted period, which came from the producer.
+  while (cursor <= last) {
+    out.push(byStart.get(cursor) ?? zero(cursor));
+    cursor = nextPeriodStart(cursor, granularity);
+  }
+  return out;
+}
+
+/**
+ * Map billing's growth rows into charted NET-cash buckets: gaps filled with real
+ * zeros, leading pre-first-charge periods trimmed, then the same period-over-
+ * period + compound-growth annotation the realized series carries.
+ */
+export function cashBuckets(rows: CashGrowthRow[], granularity: "month" | "week"): RevenueBucket[] {
+  const filled = fillPeriodGaps(
+    rows.map((row) => ({
+      periodStart: row.period,
+      value: centsStringToUsd(row.revenue_cents, `cash bucket ${row.period}`),
+    })),
+    granularity,
+    (periodStart) => ({ periodStart, value: 0 }),
+  );
+
+  return withDerived(
+    trimLeadingZeroBuckets(filled).map((row) => ({
+      key: row.periodStart,
+      label: bucketLabel(row.periodStart, granularity),
+      value: row.value,
+    })),
+  );
 }
 
 // ── Average-revenue-per-X series ─────────────────────────────────────────────
@@ -171,7 +293,16 @@ export function avgPerSeries(
   revenueByMonth: Map<string, number>,
   countByMonth: Map<string, number>,
 ): AvgSeries {
-  const keys = [...revenueByMonth.keys()].sort();
+  const sortedKeys = [...revenueByMonth.keys()].sort();
+  // "Since inception" starts at the first month that earned anything. The
+  // producer's window reaches back years before the product existed, and those
+  // months DO have visitors and signups — so left in, each one contributes a
+  // real denominator against $0 of revenue and drags the pooled figure and the
+  // avg-of-avg down toward zero, while charting a run of empty bars in front of
+  // the series. A zero month INSIDE the history is kept: earning nothing in a
+  // month we were live is a fact, not padding.
+  const firstEarning = sortedKeys.findIndex((key) => (revenueByMonth.get(key) ?? 0) > 0);
+  const keys = firstEarning > 0 ? sortedKeys.slice(firstEarning) : sortedKeys;
   const rows = keys.map((key) => {
     const revenue = revenueByMonth.get(key) ?? 0;
     const count = countByMonth.get(key) ?? 0;

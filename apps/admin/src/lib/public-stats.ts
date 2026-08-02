@@ -25,12 +25,25 @@ const billingGrowthRowSchema = z.object({
   revenue_cents: z.string(),
 });
 
+// CASH COLLECTED (Stripe), the money twin of the usage-consumed revenue the
+// fleet stats report. billing-service composes it from stripe-service:
+//   total_paid_cents      GROSS charged (Stripe never mutates a succeeded
+//                         PaymentIntent when money goes back, so this alone
+//                         over-reports by exactly what was returned)
+//   total_returned_cents  settled refunds + LOST disputes
+//   total_revenue_cents   NET = paid − returned. This is what we keep.
+// The growth rows carry the same net figure per period (`revenue_cents`), with a
+// return attributed to the period it HAPPENED in, so a past bucket is never
+// rewritten — and a period whose refunds exceed its charges is legitimately
+// negative. `total_returned_cents` was previously absent from this schema, so
+// Zod stripped it and the refunded amount was invisible on the Revenue view.
 const billingStatsSchema = z.object({
   total_accounts: z.number(),
   accounts_with_payment_method: z.number(),
   total_credited_cents: z.string(),
   total_paid_cents: z.string(),
   total_revenue_cents: z.string(),
+  total_returned_cents: z.string(),
   total_local_credits_cents: z.string(),
   monthly_growth: z.array(billingGrowthRowSchema),
   weekly_growth: z.array(billingGrowthRowSchema),
