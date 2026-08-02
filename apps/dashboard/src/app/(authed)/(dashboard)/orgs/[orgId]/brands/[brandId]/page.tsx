@@ -41,7 +41,6 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
-import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
@@ -211,8 +210,8 @@ export default function BrandOverviewPage() {
     { enabled, ...pollOptions },
   );
 
-  // Pause state — shares BrandStatusControl's query key so both observers hit one
-  // cache entry. A paused brand holds (doesn't run) its campaigns, so the
+  // Pause state — shares the campaign overview's pause query key so both surfaces
+  // hit one cache entry. A paused brand holds (doesn't run) its campaigns, so the
   // "campaign is running" reassurance banner must not show while paused.
   const { data: pauseData } = useAuthQuery(
     ["brandPause", brandId],
@@ -419,7 +418,6 @@ export default function BrandOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-        <BrandStatusControl brandId={brandId} />
         {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="Your campaign"
@@ -462,7 +460,6 @@ export default function BrandOverviewPage() {
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
-        headerAction={<BrandStatusControl brandId={brandId} />}
         costBottomCard={
           <TopAudiencesCard
             data={audienceStatsRevealed ? audienceStatsData : undefined}

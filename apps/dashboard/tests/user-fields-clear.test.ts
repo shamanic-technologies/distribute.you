@@ -19,9 +19,9 @@ function sliceFn(src: string, marker: string): string {
 // The exact guard that dropped an emptied value on the floor.
 const DROPS_EMPTY = "if (cleaned.length) out[key] = cleaned;";
 
-describe("Strategy page — profileToUserFieldsPayload", () => {
+describe("Brand offer card — profileToUserFieldsPayload", () => {
   const fn = sliceFn(
-    read("../src/components/strategy/strategy-page.tsx"),
+    read("../src/components/settings/brand-offer-card.tsx"),
     "function profileToUserFieldsPayload",
   );
 

@@ -60,13 +60,12 @@ describe("Brand Settings page", () => {
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
   );
 
-  it("renders run status only — the money moved to the funnels", () => {
-    // Money is funded per SALES FUNNEL now, so the amount lives on the funnel it
-    // pays for. A brand-level field here would be a second way to set the same
-    // money, and billing already answers the brand total as the SUM of those
-    // ceilings — the two could only ever disagree.
-    expect(content).toContain("Outreach");
-    expect(content).toContain("<BrandStatusControl brandId={brandId} />");
+  it("opens with the offer card — the run status section is gone", () => {
+    // The status bar ("Outreach · Maximising X · Active · $N/day · Pause") was
+    // retired from Brand Settings; the page leads with the offer card instead.
+    expect(content).toContain("BrandOfferCard");
+    expect(content).not.toContain("BrandStatusControl");
+    expect(content).not.toContain(">Outreach</h2>");
     expect(content).not.toContain("BrandDailyBudgetCard");
     expect(content).not.toContain("PauseOutreachCard");
   });

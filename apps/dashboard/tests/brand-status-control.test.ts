@@ -6,14 +6,20 @@ const SRC = path.resolve(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 const deprecatedStageField = "funnel" + "Stages";
 
-describe("brand overview status control", () => {
-  const page = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
+describe("brand status control", () => {
+  const campaignPage = read("components/campaigns/campaign-overview-page.tsx");
+  const brandPage = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
+  const settingsPage = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx");
   const control = read("components/brand/brand-status-control.tsx");
   const api = read("lib/api.ts");
 
-  it("renders on the brand overview page", () => {
-    expect(page).toContain("BrandStatusControl");
-    expect(page).not.toContain("/campaigns/new");
+  it("renders on the campaign overview — the brand surfaces dropped it", () => {
+    // The status bar was retired from the brand Overview and Brand Settings; the
+    // campaign overview is the one customer surface that still shows it.
+    expect(campaignPage).toContain("BrandStatusControl");
+    expect(brandPage).not.toContain("BrandStatusControl");
+    expect(settingsPage).not.toContain("BrandStatusControl");
+    expect(campaignPage).not.toContain("/campaigns/new");
   });
 
   it("shows optimization goal labels with positive replies as the unset default", () => {

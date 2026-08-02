@@ -25,7 +25,6 @@ describe("the share tree runs the real pages", () => {
   it.each([
     ["audiences/page.tsx", "CustomerAudiencesPage"],
     ["audiences/leads/page.tsx", "EngagedLeadsPage"],
-    ["strategy/page.tsx", "StrategyPage"],
   ])("renders the dashboard's %s component", (file, component) => {
     expect(src(`${SHARE_ROOT}/${file}`)).toContain(component);
   });
@@ -107,10 +106,9 @@ describe("share chrome drops everything that belongs to the org", () => {
     expect(shell).not.toContain(symbol);
   });
 
-  it("navigates to the four shared pages and nothing else", () => {
+  it("navigates to the three shared pages and nothing else", () => {
     expect(shell).toContain('label: "Overview"');
     expect(shell).toContain('label: "Leads"');
-    expect(shell).toContain('label: "Strategy"');
     expect(shell).toContain('label: "Audiences"');
     expect(shell).not.toContain('label: "Brand Settings"');
     expect(shell).not.toContain('label: "Billing"');
@@ -158,13 +156,6 @@ describe("nothing on a shared page offers to change the brand", () => {
     expect(page).toContain("const readOnly = useIsShareMode();");
     expect(page).toContain("{!readOnly && <EditWithAIChat");
     expect(page).toContain("readOnly={readOnly}");
-  });
-
-  it("strategy renders the offer without an editor and cannot save", () => {
-    const page = src("components/strategy/strategy-page.tsx");
-    expect(page).toContain("const readOnly = useIsShareMode();");
-    expect(page).toContain("<OfferValueReadOnly");
-    expect(page).toContain("if (readOnly || campaignScoped ||");
   });
 
   it("the brand status bar shows the goal and budget but not Pause", () => {
