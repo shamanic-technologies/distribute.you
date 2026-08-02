@@ -131,7 +131,6 @@ describe("Dashboard mobile responsiveness", () => {
     expect(brandInfoPage).toContain("overflow-x-auto");
     expect(brandInfoPage).toContain("whitespace-nowrap");
     expect(settingsPage).toContain("<BrandStatusControl brandId={brandId} />");
-    expect(settingsPage).toContain('<BrandDailyBudgetCard brandId={brandId} variant="section" />');
     expect(brandStatusControl).toContain("flex flex-wrap items-center justify-between gap-3");
     expect(brandStatusControl).toContain("flex items-center gap-3");
   });

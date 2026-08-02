@@ -26,7 +26,8 @@ describe("brand overview status control", () => {
     expect(control).toContain("getBrandPause");
     expect(control).toContain("setBrandPause");
     expect(control).toContain("getBrandDailyBudget");
-    expect(control).toContain("saveBrandDailyBudget");
+    // READS the budget, never writes it — see the block below.
+    expect(control).not.toContain("saveBrandDailyBudget");
     expect(control).toContain("getBrandSalesEconomics");
     expect(control).toContain("saveBrandSalesEconomics");
     expect(control).toContain('["brandPause", brandId]');
@@ -67,34 +68,40 @@ describe("brand overview status control", () => {
     expect(control).not.toContain(deprecatedStageField);
   });
 
-  it("opens an onboarding-style budget modal from the status pill", () => {
-    expect(control).toContain("budgetDialogOpen");
-    expect(control).toContain("openBudgetDialog");
-    expect(control).toContain("COUNT_TIERS = [25, 50, 100]");
-    expect(control).toContain("Other");
-    expect(control).toContain("getWorkflowProjection");
-    expect(control).toContain("budgetForCount");
-    expect(control).toContain("saveBudget(selectedBudget)");
-    // $/day-primary framing, aligned with the onboarding pricing step.
-    expect(control).toContain("countForBudget");
-    expect(control).toContain("ESTIMATE_TOOLTIP");
-    expect(control).toContain("brand daily budget cap");
+  it("STATES the daily budget on the pill, and does not edit it", () => {
+    // Money is funded per SALES FUNNEL now, and the funnel is where the customer
+    // sets it. This pill shows the brand total — which billing answers as the SUM
+    // of those ceilings — so an editor here would write a single brand-level
+    // number on top of the very ceilings it is supposed to be the sum of, and the
+    // two would disagree the moment either moved.
+    expect(control).toContain("budgetLabel");
+    for (const gone of [
+      "budgetDialogOpen",
+      "openBudgetDialog",
+      "COUNT_TIERS",
+      "budgetForCount",
+      "countForBudget",
+      "saveBudget(selectedBudget)",
+      "ESTIMATE_TOOLTIP",
+    ]) {
+      expect(control, `budget editor remnant: ${gone}`).not.toContain(gone);
+    }
   });
 
-  it("loads budget options with the brand goal objective, not hardcoded self-serve", () => {
-    expect(control).toContain("salesObjectiveForOptimizationGoal(goalForBudget)");
-    expect(control).toContain('"brand-status-budget"');
-    expect(control).toContain("goalForBudget");
-    expect(control).toContain('econ?.salesEconomics?.updatedAt ?? "no-economics"');
-    expect(control).toContain("placeholderData: undefined");
-    expect(control).not.toContain('objective: "self-serve"');
-  });
-
-  it("prices the budget modal from the best workflow for the active goal", () => {
-    expect(control).toContain("selectWorkflowForOptimizationGoal(projection, goalForBudget");
-    expect(control).toContain("workflowOutcomeUnitCost(activeWorkflow, goalForBudget");
-    expect(control).toContain("replyToMeetingPct");
-    expect(control).toContain("visitToMeetingPct");
-    expect(control).not.toContain("function activeProjection");
+  it("drops the projection machinery that only ever priced that modal", () => {
+    // The tiers were derived from the projection's unit cost purely to label the
+    // modal's options. With no modal there is nothing to price, so the query (and
+    // its cold-Neon prewarm rationale) goes with it rather than staying as a
+    // fetch nobody reads.
+    for (const gone of [
+      "getWorkflowProjection",
+      "salesObjectiveForOptimizationGoal",
+      "selectWorkflowForOptimizationGoal",
+      "workflowOutcomeUnitCost",
+      '"brand-status-budget"',
+      "goalForBudget",
+    ]) {
+      expect(control, `dead projection remnant: ${gone}`).not.toContain(gone);
+    }
   });
 });

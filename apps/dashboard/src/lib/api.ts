@@ -1420,6 +1420,113 @@ export async function saveBrandDailyBudget(
   return parsed.data;
 }
 
+// ── Per-funnel daily ceilings ──
+// A brand funds each SALES FUNNEL separately: a $200 self-serve plan and a $20k
+// contract are not worth the same daily spend, so each chain carries its own
+// ceiling. billing-service owns the store; api-service proxies it verbatim.
+//
+// TWO STATES, MUTUALLY EXCLUSIVE, and billing enforces it: a brand is either on
+// the legacy single brand-level budget, or on per-funnel ceilings. The first
+// per-funnel write retires the brand-level row, and the brand-level write then
+// answers 409. So a stale scalar can never sit beside the ceilings contradicting
+// their sum — and `dailyBudgetCents` below is ALWAYS the number the rest of the
+// fleet reads, whichever state the brand is in.
+//
+// `funnels: []` therefore means "this brand has never set per-funnel ceilings",
+// NOT "it funds nothing" — a brand that funds nothing has rows, all at zero.
+
+const FunnelBudgetRowSchema = z.object({
+  funnelKey: z.enum(SALES_FUNNEL_KEYS),
+  // Postgres `numeric` serializes as a STRING on the wire even though the field
+  // is declared integer-ish upstream. Coerce rather than pin `z.number()`, which
+  // would reject every real response.
+  dailyBudgetCents: z.coerce.number(),
+  updatedAt: z.string(),
+});
+
+const BrandFunnelBudgetsResponseSchema = z.object({
+  brandId: z.string(),
+  // Null only for a brand that has neither a brand-level budget nor ceilings.
+  dailyBudgetCents: z.coerce.number().nullable(),
+  funnels: z.array(FunnelBudgetRowSchema),
+});
+
+export type BrandFunnelBudgets = z.infer<typeof BrandFunnelBudgetsResponseSchema>;
+
+/** GET /brands/:brandId/funnel-budgets — the ceilings, plus the total they sum to. */
+export async function getBrandFunnelBudgets(
+  brandId: string,
+  token?: string,
+): Promise<BrandFunnelBudgets> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/funnel-budgets`, { token });
+  const parsed = BrandFunnelBudgetsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandFunnelBudgets: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandFunnelBudgets: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * PUT /brands/:brandId/funnel-budgets — state the WHOLE set at once, atomically.
+ * What signup checkout uses: the customer funds several funnels in one decision
+ * and pays their sum, so a half-applied set would charge for something it did
+ * not fund. A funnel absent from the body is removed.
+ */
+export async function stateBrandFunnelBudgets(
+  brandId: string,
+  funnels: { funnelKey: string; dailyBudgetCents: number }[],
+  token?: string,
+): Promise<BrandFunnelBudgets> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/funnel-budgets`, {
+    token,
+    method: "PUT",
+    body: { funnels },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  const parsed = BrandFunnelBudgetsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] stateBrandFunnelBudgets: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] stateBrandFunnelBudgets: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * PATCH /brands/:brandId/funnel-budgets/:funnelKey — one funnel's ceiling, which
+ * is what brand Settings edits. Zero is an ordinary value: it means the brand is
+ * not funding that chain right now, which is how a customer pauses one without
+ * losing what they told us about how it sells.
+ */
+export async function saveBrandFunnelBudget(
+  brandId: string,
+  funnelKey: string,
+  dailyBudgetCents: number,
+  token?: string,
+): Promise<BrandFunnelBudgets> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/funnel-budgets/${funnelKey}`, {
+    token,
+    method: "PATCH",
+    body: { dailyBudgetCents },
+    headers: { "x-run-id": globalThis.crypto.randomUUID() },
+  });
+  const parsed = BrandFunnelBudgetsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveBrandFunnelBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] saveBrandFunnelBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ── Brand share token (read-only public view) ──
 // The credential someone OUTSIDE the org presents to open a read-only view of
 // one brand, at `/share/<token>`. brand-service returns the raw credential and

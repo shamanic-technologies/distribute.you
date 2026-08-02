@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import {
+  FUNNEL_MIN_DAILY_BUDGET_USD,
   NOTHING_DECLARED,
   SALES_FUNNELS,
   buildFunnelPatch,
+  funnelBudgetBelowMinimum,
   funnelDraftFromBrand,
   funnelDraftFromDeclared,
   funnelDestinationChips,
@@ -766,7 +768,9 @@ describe("Sales Funnels card", () => {
   // A set we could not read is a set we must not write over: every field would
   // look changed and a prefill nobody confirmed would land on declared values.
   it("refuses to write while the stored set is unknown", () => {
-    expect(src).toContain("if (funnelData === undefined) {");
+    // The budgets ride the same refusal: the ceiling write is also a diff, so a
+    // set we could not read is one we must not write over either.
+    expect(src).toContain("if (funnelData === undefined || budgetData === undefined) {");
     expect(src).toContain("Could not load your funnels.");
   });
 
@@ -918,5 +922,95 @@ describe("Sales Funnels card", () => {
     expect(page.indexOf("<BrandAcquisitionChannelsCard />")).toBeGreaterThan(
       page.indexOf("<BrandSalesFunnelsCard brandId={brandId} />"),
     );
+  });
+});
+
+describe("per-funnel daily minimums", () => {
+  it("prices a meeting funnel far above a purchase funnel", () => {
+    // A sales meeting costs an order of magnitude more than a website purchase,
+    // so one dollar a day would buy a meeting funnel nothing at all.
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.reply_meeting).toBe(24);
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.visit_meeting).toBe(24);
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.visit_signup).toBe(1);
+    expect(FUNNEL_MIN_DAILY_BUDGET_USD.visit_form).toBe(1);
+  });
+
+  it("carries a floor for every funnel in the catalogue", () => {
+    for (const def of SALES_FUNNELS) {
+      expect(FUNNEL_MIN_DAILY_BUDGET_USD[def.key], `no minimum for ${def.key}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("treats zero as an ordinary value, never a violation", () => {
+    // Defunding a funnel is how a brand pauses it. Refusing zero would make a
+    // pause impossible without deleting what the brand said about how it sells.
+    for (const def of SALES_FUNNELS) {
+      expect(funnelBudgetBelowMinimum(def.key, 0)).toBe(false);
+    }
+  });
+
+  it("refuses a funded funnel under its own floor", () => {
+    expect(funnelBudgetBelowMinimum("reply_meeting", 23)).toBe(true);
+    expect(funnelBudgetBelowMinimum("reply_meeting", 24)).toBe(false);
+    expect(funnelBudgetBelowMinimum("visit_signup", 0.5)).toBe(true);
+    expect(funnelBudgetBelowMinimum("visit_signup", 1)).toBe(false);
+  });
+});
+
+describe("the Sales Funnels card funds each funnel", () => {
+  const src = read("../src/components/settings/brand-sales-funnels-card.tsx");
+  const lib = read("../src/lib/sales-funnels.ts");
+  /** Slice forward from an anchor; lengths measured against the real file. */
+  const sliceFrom = (haystack: string, anchor: string, length: number) => {
+    const at = haystack.indexOf(anchor);
+    expect(at, `anchor not found: ${anchor}`).toBeGreaterThan(-1);
+    return haystack.slice(at, at + length);
+  };
+
+  it("reads the ceilings from billing, not from the funnel declaration", () => {
+    // Two services own two halves of one funnel: brand-service says how it
+    // sells, billing says how much it is funded. The card composes both.
+    expect(src).toContain('useAuthQuery(["brandFunnelBudgets", brandId]');
+    expect(src).toContain("getBrandFunnelBudgets(brandId)");
+  });
+
+  it("keeps the ceiling OUT of the funnel patch", () => {
+    // `draft` is exactly what brand-service's partial patch reads. Putting money
+    // in it would send billing's field to a service that has no column for it.
+    const state = sliceFrom(src, "type FunnelState = {", 900);
+    expect(state).toContain("budgetUsd: string");
+    expect(state).toContain("savedBudgetCents: number");
+    const draft = sliceFrom(lib, "export type FunnelDraft = {", 400);
+    expect(draft).not.toContain("budget");
+  });
+
+  it("writes the ceiling only when it moved, and before the nothing-changed exit", () => {
+    // A budget edit alone is a real change even when the economics are
+    // untouched — so the early return for an empty patch must not swallow it.
+    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 2400);
+    const write = confirm.indexOf("budgetMutation.mutate");
+    const exit = confirm.indexOf("isEmptyFunnelPatch(body)");
+    expect(write).toBeGreaterThan(-1);
+    expect(exit).toBeGreaterThan(write);
+    expect(confirm).toContain("cents !== state.savedBudgetCents");
+  });
+
+  it("refuses a funded funnel under its floor, and accepts an empty one", () => {
+    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 2400);
+    expect(confirm).toContain("funnelBudgetBelowMinimum(def.key, budgetUsd)");
+    expect(confirm).toContain("FUNNEL_MIN_DAILY_BUDGET_USD[def.key]");
+  });
+
+  it("states the funded ceiling on the tag, and says so when there is none", () => {
+    // The money IS the selection now. A declared funnel at zero is one the brand
+    // described but is not paying for, so a green tag claiming it runs would be
+    // a statement about spend that is not happening.
+    expect(src).toContain("state.savedBudgetCents > 0");
+    expect(src).toContain("Not funded");
+  });
+
+  it("renders the ceiling in whole dollars, never cents", () => {
+    // A daily budget is a configured ceiling, not a charge.
+    expect(src).toContain('Math.round(state.savedBudgetCents / 100).toLocaleString("en-US")');
   });
 });

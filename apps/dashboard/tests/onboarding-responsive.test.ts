@@ -55,7 +55,9 @@ describe("Onboarding mobile responsiveness", () => {
     // The stacked-on-mobile rate rows went with the rates / lifetime-revenue steps;
     // the funnel screens stack their fields by default (flex-col, full-width inputs).
     expect(onboardingFlow).toContain("w-full min-w-0 bg-transparent");
-    expect(onboardingFlow).toContain("grid gap-3 sm:grid-cols-2 lg:grid-cols-4");
+    // The four-up tier grid went with the single pot it priced. The funding rows
+    // stack by default and keep their input on the same line at every width.
+    expect(onboardingFlow).toContain("flex shrink-0 items-baseline gap-1 rounded-lg");
   });
 
   it("gives generated audience cards equal-width rows up to three columns", () => {

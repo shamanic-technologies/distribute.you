@@ -8,14 +8,18 @@ import {
   getBrand,
   getBrandSalesEconomics,
   getBrandSalesFunnels,
+  getBrandFunnelBudgets,
+  saveBrandFunnelBudget,
   undeclareBrandSalesFunnel,
   type BrandSalesFunnelSet,
   type DeclaredSalesFunnel,
 } from "@/lib/api";
 import {
+  FUNNEL_MIN_DAILY_BUDGET_USD,
   NOTHING_DECLARED,
   SALES_FUNNELS,
   buildFunnelPatch,
+  funnelBudgetBelowMinimum,
   funnelDestinationChips,
   funnelDraftFromBrand,
   funnelDraftFromDeclared,
@@ -70,6 +74,14 @@ type FunnelState = {
   saved: DeclaredFunnelValues;
   touched: boolean;
   draft: FunnelDraft;
+  /**
+   * The daily ceiling, in whole dollars, as typed. Kept OUT of `draft` on
+   * purpose: `draft` is exactly what brand-service's patch reads, and this is
+   * billing's. Two services, two writes, one form.
+   */
+  budgetUsd: string;
+  /** What billing has stored for this funnel, in cents. Zero = not funded. */
+  savedBudgetCents: number;
   error: string | null;
 };
 
@@ -87,6 +99,8 @@ function initialStates(): Record<SalesFunnelKey, FunnelState> {
       saved: NOTHING_DECLARED,
       touched: false,
       draft: emptyDraft(def),
+      budgetUsd: "",
+      savedBudgetCents: 0,
       error: null,
     };
   }
@@ -111,6 +125,11 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   const { data: funnelData } = useAuthQuery(["brandSalesFunnels", brandId], () =>
     getBrandSalesFunnels(brandId),
   );
+  // billing owns the money side. A funnel with no row here is simply not funded,
+  // which is why an absent row reads as zero rather than as an unknown.
+  const { data: budgetData } = useAuthQuery(["brandFunnelBudgets", brandId], () =>
+    getBrandFunnelBudgets(brandId),
+  );
 
   const brand = brandData?.brand ?? null;
   const brandDomain = brand?.domain ?? null;
@@ -133,21 +152,27 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       hydrated.current ||
       econData === undefined ||
       brandData === undefined ||
-      funnelData === undefined
+      funnelData === undefined ||
+      budgetData === undefined
     ) {
       return;
     }
     hydrated.current = true;
     const declared = new Map(funnelData.funnels.map((f) => [f.funnelKey, f]));
+    const funded = new Map(budgetData.funnels.map((f) => [f.funnelKey, f.dailyBudgetCents]));
     setStates((prev) => {
       const next = { ...prev };
       for (const def of SALES_FUNNELS) {
         if (next[def.key].touched) continue;
         const saved = declared.get(def.key);
+        const cents = funded.get(def.key) ?? 0;
         next[def.key] = {
           ...next[def.key],
           declared: saved !== undefined,
           saved: saved ?? NOTHING_DECLARED,
+          // A daily budget always renders as whole dollars, never cents.
+          budgetUsd: cents > 0 ? String(Math.round(cents / 100)) : "",
+          savedBudgetCents: cents,
           draft: saved
             ? funnelDraftFromDeclared(def, saved)
             : funnelDraftFromBrand(def, econData.salesEconomics, brand?.clickDestinationUrl ?? null),
@@ -155,7 +180,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       }
       return next;
     });
-  }, [econData, brandData, funnelData, brand]);
+  }, [econData, brandData, funnelData, budgetData, brand]);
 
   /** Write the funnel we just declared into the cached set, in catalogue order. */
   function cacheDeclared(funnel: DeclaredSalesFunnel) {
@@ -191,6 +216,26 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       patch(vars.def.key, { error: funnelWriteErrorMessage(err) });
     },
     onSettled: () => setPendingKey(null),
+  });
+
+  // billing's write, separate from brand-service's. A funnel's money and a
+  // funnel's economics live in two services, so pressing one button makes two
+  // writes; neither can stand in for the other.
+  const budgetMutation = useMutation({
+    mutationFn: (vars: { def: SalesFunnelDef; cents: number }) =>
+      saveBrandFunnelBudget(brandId, vars.def.key, vars.cents),
+    onSuccess: (set, vars) => {
+      queryClient.setQueryData(["brandFunnelBudgets", brandId], set);
+      const cents = set.funnels.find((f) => f.funnelKey === vars.def.key)?.dailyBudgetCents ?? 0;
+      patch(vars.def.key, {
+        savedBudgetCents: cents,
+        budgetUsd: cents > 0 ? String(Math.round(cents / 100)) : "",
+      });
+    },
+    onError: (err, vars) => {
+      console.error("[dashboard] saveBrandFunnelBudget failed", err);
+      patch(vars.def.key, { error: funnelWriteErrorMessage(err) });
+    },
   });
 
   const undeclareMutation = useMutation({
@@ -266,12 +311,18 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     setOpenKey(def.key);
   }
 
+  /** Whole dollars typed for this funnel's ceiling. Blank reads as unfunded. */
+  function budgetUsdOf(key: SalesFunnelKey): number {
+    const parsed = parseLocaleNumberInput(states[key].budgetUsd.trim());
+    return parsed === null ? 0 : Math.max(0, Math.round(parsed));
+  }
+
   function confirm(def: SalesFunnelDef) {
     const state = states[def.key];
     // The patch is diffed against what is stored, so a set we could not read is
     // a set we must not write over: every field would look changed and a prefill
     // nobody confirmed would land on top of values the brand already declared.
-    if (funnelData === undefined) {
+    if (funnelData === undefined || budgetData === undefined) {
       patch(def.key, { error: "Could not load your funnels. Reload the page and try again." });
       return;
     }
@@ -280,9 +331,28 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       patch(def.key, { error: result.error });
       return;
     }
+    // Zero is legal — it is how a funnel is put down without forgetting how it
+    // sells. A FUNDED one below its floor is not: that budget cannot buy a
+    // single outcome, so the funnel would sit still and look broken instead.
+    const budgetUsd = budgetUsdOf(def.key);
+    if (funnelBudgetBelowMinimum(def.key, budgetUsd)) {
+      patch(def.key, {
+        error: `A daily budget for this funnel starts at $${FUNNEL_MIN_DAILY_BUDGET_USD[def.key]}. Leave it empty to stop funding it.`,
+      });
+      return;
+    }
     const body = buildFunnelPatch(def, state.draft, state.saved);
     // An already-declared funnel with nothing changed has no write to make; an
     // undeclared one is still declared, with a body that prices nothing yet.
+    // Two services, so two writes. The ceiling only goes when it MOVED: billing
+    // rejects a value below the floor, and re-sending an unchanged one would
+    // turn a rate edit into a money write for no reason. This runs BEFORE the
+    // nothing-changed exit below, because a budget edit alone is a real change
+    // even when the economics are untouched.
+    const cents = budgetUsd * 100;
+    const budgetMoved = cents !== state.savedBudgetCents;
+    if (budgetMoved) budgetMutation.mutate({ def, cents });
+
     if (state.declared && isEmptyFunnelPatch(body)) {
       patch(def.key, { touched: false, error: null });
       setOpenKey(null);
@@ -386,11 +456,21 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
           )}
         </div>
 
+        {/* What the brand is spending on this funnel, not merely that it picked
+            it: the money IS the selection now. A declared funnel at zero is one
+            it has described but is not paying for, and it says so rather than
+            wearing a green tag that claims it runs. */}
         {state.declared && !isOpen && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
-            <CheckCircleIcon className="h-3.5 w-3.5" />
-            Selected
-          </span>
+          state.savedBudgetCents > 0 ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
+              <CheckCircleIcon className="h-3.5 w-3.5" />
+              ${Math.round(state.savedBudgetCents / 100).toLocaleString("en-US")}/day
+            </span>
+          ) : (
+            <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
+              Not funded
+            </span>
+          )
         )}
       </div>
     );
@@ -462,6 +542,42 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
                   </div>
                 </div>
               ))}
+
+              {/* The money. Whole dollars, never cents — a daily budget is a
+                  configured ceiling, not a charge. Empty means the funnel is not
+                  funded, which is how it is put down without forgetting how it
+                  sells: every number below it stays exactly as it is. */}
+              <div>
+                <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
+                  Daily budget
+                  <InfoTooltip
+                    tip={`The most this funnel may spend in a day. Leave it empty to stop funding it — nothing else about it is lost. From $${FUNNEL_MIN_DAILY_BUDGET_USD[def.key]} a day once you do fund it.`}
+                    placement="top"
+                  />
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={state.budgetUsd}
+                    onChange={(e) =>
+                      patch(def.key, {
+                        budgetUsd: e.target.value.replace(/\D/g, ""),
+                        touched: true,
+                        error: null,
+                      })
+                    }
+                    placeholder="0"
+                    className="w-full rounded-lg border border-gray-200 py-2 pl-7 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                    /day
+                  </span>
+                </div>
+              </div>
 
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">

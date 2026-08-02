@@ -165,6 +165,38 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
 ];
 
 /**
+ * The least a brand may fund a funnel with, per day, once it funds it at all.
+ * ZERO is always legal and is NOT a violation of this: it means the brand is not
+ * funding that chain right now, which is how it pauses one.
+ *
+ * The floor differs by what the chain buys. A sales meeting costs an order of
+ * magnitude more than a website purchase, so a dollar a day would buy a meeting
+ * funnel nothing at all and the customer would watch it sit still — a budget
+ * that cannot purchase one outcome is worse than an honest refusal.
+ *
+ * ⚠️ These are product figures, and their real source is the fleet's cost per
+ * outcome. They are frozen here so ONE place holds them, but they will drift the
+ * day the fleet re-prices; billing-service holds the same numbers and its 400 is
+ * what actually decides. These exist to make typing pleasant, not to be the
+ * authority.
+ */
+export const FUNNEL_MIN_DAILY_BUDGET_USD: Record<SalesFunnelKey, number> = {
+  reply_meeting: 24,
+  visit_meeting: 24,
+  visit_signup: 1,
+  visit_form: 1,
+};
+
+/**
+ * Whether this funnel may be funded at this many dollars a day. Zero passes: a
+ * defunded funnel is an ordinary state, not an error.
+ */
+export function funnelBudgetBelowMinimum(key: SalesFunnelKey, dailyUsd: number): boolean {
+  if (dailyUsd <= 0) return false;
+  return dailyUsd < FUNNEL_MIN_DAILY_BUDGET_USD[key];
+}
+
+/**
  * The funnels a brand sells through come FIRST, in their declared order, and the
  * rest follow. Two funnels a brand runs and two it does not are two different
  * kinds of row, so they are two groups rather than one list with a marker on

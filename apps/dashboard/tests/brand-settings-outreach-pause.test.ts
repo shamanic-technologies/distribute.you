@@ -34,9 +34,13 @@ describe("Brand Settings outreach status control", () => {
     expect(brandStatusControl).toContain("setPaused(!paused)");
   });
 
-  it("keeps budget and goal controls visible beside the run status", () => {
+  it("states the spend beside the run status, and keeps the goal editable", () => {
+    // The pill STATES the daily budget; it no longer edits it. Money is funded
+    // per sales funnel now, and the funnel is where the customer sets it — a
+    // second editor here would write a brand-level number that contradicts the
+    // ceilings it is supposed to be the sum of.
     expect(brandStatusControl).toContain("budgetLabel");
-    expect(brandStatusControl).toContain("openBudgetDialog");
+    expect(brandStatusControl).not.toContain("openBudgetDialog");
     expect(brandStatusControl).toContain("Optimization goal");
   });
 });
