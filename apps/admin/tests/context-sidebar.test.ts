@@ -150,3 +150,36 @@ describe("Old sidebar removed", () => {
     expect(fs.existsSync(oldSidebar)).toBe(false);
   });
 });
+
+describe("sidebar badge counts do not re-download their lists", () => {
+  /**
+   * Each badge read pulls a whole brand list to call `.length` on it, because
+   * no served count exists. Fourteen of them polled every 30 seconds for the
+   * lifetime of the tab; on a brand with 12,000+ outlets that is megabytes per
+   * tick, retained in the query cache and written to IndexedDB. That is the
+   * renderer memory growth, and it is why they now fetch once per navigation.
+   */
+  const src = fs.readFileSync(
+    path.join(__dirname, "../src/components/context-sidebar.tsx"),
+    "utf8"
+  );
+
+  it("has no 30-second poll left in the sidebar", () => {
+    expect(src).not.toContain("refetchInterval: 30_000");
+  });
+
+  it("routes every badge read through the one shared options object", () => {
+    expect(src).toContain("const SIDEBAR_BADGE_QUERY");
+    // 14 call sites plus the definition.
+    expect(src.match(/SIDEBAR_BADGE_QUERY/g) ?? []).toHaveLength(15);
+  });
+
+  it("turns the poll off rather than merely slowing it", () => {
+    expect(src).toContain("refetchInterval: false as const");
+  });
+
+  it("does not re-fetch the whole list on every window focus either", () => {
+    expect(src).toContain("refetchOnWindowFocus: false");
+    expect(src).toContain("refetchOnReconnect: false");
+  });
+});
