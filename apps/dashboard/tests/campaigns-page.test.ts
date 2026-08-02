@@ -189,6 +189,18 @@ describe("Campaigns page (GA)", () => {
     expect(pill.slice(0, pill.indexOf("\n}"))).toContain("isActiveStatus(status)");
   });
 
+  // A running campaign reads "Active" — the same word the brand status pill uses for
+  // the same idea. `ongoing` is campaign-service's internal spelling; printing it put
+  // two words for one concept on screen. Only the LABEL is translated: the pill still
+  // renders `campaign.status` and `isActiveStatus` still decides what running means.
+  it("says Active, never the wire's own word for it", () => {
+    const label = page.slice(page.indexOf("function statusLabel("));
+    const body = label.slice(0, label.indexOf("\n}"));
+    expect(body).toContain('isActiveStatus(status) ? "Active" : status');
+    const pill = page.slice(page.indexOf("function StatusPill("));
+    expect(pill.slice(0, pill.indexOf("\n}"))).toContain("{statusLabel(status)}");
+  });
+
   // Every number on the row is a projection built from the brand's own rates, so
   // each column says so through the shared (i) primitive — never a native
   // `title` (dead on a phone) and never a second wording per column.
