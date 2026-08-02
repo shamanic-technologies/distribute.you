@@ -783,9 +783,27 @@ describe("Sales Funnels card", () => {
   });
 
   // Having stated a set and having said nothing are different answers.
-  it("does not read a brand that has said nothing as one selling through none", () => {
-    expect(src).toContain("funnelData?.declared === true");
-    expect(src).toContain("You told us you sell through none of these");
+  it("renders a switched-off funnel as OFF, never as still selected", () => {
+    // The set lists switched-off funnels too, keeping every number on them so the
+    // form can show what the user entered. A consumer that ignores `active` puts a
+    // green tag on a funnel the brand told us it no longer sells through.
+    expect(src).toContain("saved !== undefined && saved.active !== false");
+  });
+
+  it("keeps the numbers when a funnel is switched off", () => {
+    // Switching off is not forgetting: turning it back on returns what the user
+    // entered instead of an empty form they would have to retype.
+    expect(src).toContain("const kept = set.funnels.find((f) => f.funnelKey === vars.def.key)");
+    expect(src).toContain("funnelDraftFromDeclared(vars.def, kept)");
+  });
+
+  it("does not read a brand that has said nothing as one that switched everything off", () => {
+    // Two different states, and the `declared` flag that used to tell them apart is
+    // retired: brand-service refuses to switch off the LAST active funnel, so an
+    // empty list can only mean "never answered".
+    expect(src).toContain("hasStoredFunnels");
+    expect(src).not.toContain("funnelData?.declared === true");
+    expect(src).toContain("Every path is switched off");
   });
 
   it("explains its fields with InfoTooltip rather than a native title", () => {

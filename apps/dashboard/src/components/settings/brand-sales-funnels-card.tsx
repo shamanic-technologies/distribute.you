@@ -168,7 +168,11 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
         const cents = funded.get(def.key) ?? 0;
         next[def.key] = {
           ...next[def.key],
-          declared: saved !== undefined,
+          // The set lists switched-off funnels too, keeping every number on them
+          // so the form can show what the user entered. Treating one as selected
+          // just because it is IN the list would put a green tag on a funnel the
+          // brand told us it no longer sells through.
+          declared: saved !== undefined && saved.active !== false,
           saved: saved ?? NOTHING_DECLARED,
           // A daily budget always renders as whole dollars, never cents.
           budgetUsd: cents > 0 ? String(Math.round(cents / 100)) : "",
@@ -188,9 +192,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       ["brandSalesFunnels", brandId],
       (prev: BrandSalesFunnelSet | undefined): BrandSalesFunnelSet => {
         const rest = (prev?.funnels ?? []).filter((f) => f.funnelKey !== funnel.funnelKey);
-        // Declaring a funnel IS stating the brand's set includes it, so the flag
-        // follows from the write we just made rather than being guessed.
-        return { declared: true, funnels: [...rest, funnel].sort(byCatalogueOrder) };
+        return { funnels: [...rest, funnel].sort(byCatalogueOrder) };
       },
     );
   }
@@ -243,17 +245,21 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       undeclareBrandSalesFunnel(brandId, vars.def.key),
     onSuccess: (set, vars) => {
       queryClient.setQueryData(["brandSalesFunnels", brandId], set);
-      // Its economics went with the declaration, so the form falls back to the
-      // brand-level guess rather than keeping numbers nothing stores any more.
+      // Switching a funnel off KEEPS its row and every number on it, so the form
+      // keeps showing what the user entered — switching it back on returns that,
+      // instead of an empty form they would have to retype.
+      const kept = set.funnels.find((f) => f.funnelKey === vars.def.key);
       patch(vars.def.key, {
         declared: false,
-        saved: NOTHING_DECLARED,
+        saved: kept ?? NOTHING_DECLARED,
         touched: false,
-        draft: funnelDraftFromBrand(
-          vars.def,
-          econData?.salesEconomics ?? null,
-          brand?.clickDestinationUrl ?? null,
-        ),
+        draft: kept
+          ? funnelDraftFromDeclared(vars.def, kept)
+          : funnelDraftFromBrand(
+              vars.def,
+              econData?.salesEconomics ?? null,
+              brand?.clickDestinationUrl ?? null,
+            ),
         error: null,
       });
       setOpenKey(null);
@@ -370,9 +376,12 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   }
 
   const { selected, unselected } = partitionFunnelsBySelection((key) => states[key].declared);
-  // `declared` with an empty set is the brand saying it sells through none — a
-  // real answer, and a different one from never having told us anything.
-  const statedNone = funnelData?.declared === true && selected.length === 0;
+  // A brand that has ANSWERED keeps at least one funnel on — brand-service refuses
+  // to switch off the last active one — so a brand with rows and none of them
+  // selected is one that switched them all off between reads, not one that stated
+  // it sells through nothing. That second answer is unreachable now, which is what
+  // retired the `declared` flag: an empty list means "never told us", full stop.
+  const hasStoredFunnels = (funnelData?.funnels.length ?? 0) > 0;
 
   function renderFunnel(def: SalesFunnelDef) {
     const state = states[def.key];
@@ -713,12 +722,13 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
           </>
         )}
 
-        {/* Having stated a set and having said nothing are different answers, so
-            they read differently. Neither is rendered as the other. */}
+        {/* Having switched every funnel off and having never answered are
+            different states, so they read differently. Neither is rendered as
+            the other, and the first keeps every number the user entered. */}
         {selected.length === 0 && (
           <p className="mt-4 text-xs text-gray-400">
-            {statedNone
-              ? "You told us you sell through none of these. Pick one whenever that changes."
+            {hasStoredFunnels
+              ? "Every path is switched off. Turn one back on and it returns with the numbers you gave it."
               : "Pick at least one funnel to describe how a lead becomes a paid client."}
           </p>
         )}
