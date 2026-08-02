@@ -183,3 +183,44 @@ describe("sidebar badge counts do not re-download their lists", () => {
     expect(src).toContain("refetchOnReconnect: false");
   });
 });
+
+describe("every top-level page commits navigation instantly", () => {
+  /**
+   * Next 16 does not prefetch a dynamic route, and every admin route is dynamic
+   * (Clerk `auth()`). Without a `loading.tsx` the router BLOCKS on the page you
+   * are leaving until the new one's server render returns, so a sidebar click
+   * does nothing at all: no paint, no route change, the old page still under the
+   * cursor. A boundary makes the route commit at once and load in place.
+   *
+   * The boundary must sit BELOW `(dashboard)` — one at that segment would blank
+   * the sidebar and header on every navigation.
+   */
+  const root = path.join(__dirname, "../src/app/(authed)/(dashboard)");
+
+  const TOP_LEVEL_PAGES = [
+    "investors",
+    "investors/deck",
+    "investors/update",
+    "metrics",
+    "customer-success",
+    "orgs",
+    "feature-stats",
+    "audit/accounts",
+    "audit/instantly",
+  ];
+
+  it.each(TOP_LEVEL_PAGES)("%s has a loading boundary", (seg) => {
+    expect(fs.existsSync(path.join(root, seg, "loading.tsx"))).toBe(true);
+  });
+
+  it("has no boundary at the (dashboard) segment itself, which would blank the chrome", () => {
+    expect(fs.existsSync(path.join(root, "loading.tsx"))).toBe(false);
+  });
+
+  it("does not await a slow server fan-out in the deck page body", () => {
+    const src = fs.readFileSync(path.join(root, "investors/deck/page.tsx"), "utf8");
+    // The fetch lives inside a Suspense child, not the default export.
+    expect(src).toContain("<Suspense");
+    expect(src).not.toMatch(/export default async function/);
+  });
+});
