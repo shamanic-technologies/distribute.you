@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getInstantlyAccountHealth } from "@/lib/api";
+import { getInstantlyAccountHealth, getInstantlyInfraDomains } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
 import { Skeleton } from "@/components/skeleton";
 import { ProviderLogo } from "@/components/audit/provider-logo";
@@ -10,7 +10,6 @@ import {
   buildDomainHealthRows,
   DOMAIN_TABS,
   HEALTH_BAR,
-  MAILBOX_MONTHLY_USD,
   type AccountHealthState,
   type DomainAccount,
   type DomainHealthRow,
@@ -62,17 +61,29 @@ const DOMAIN_WORD: Record<DomainHealthState, string> = {
   "not-graded": "Not graded",
 };
 
-function usd(amount: number): string {
-  return `$${amount.toLocaleString("en-US", {
+/**
+ * Money as the vendor bills it. Gandi invoices in euros and everyone else in
+ * dollars, so the currency travels with every figure rather than being assumed
+ * — blending them would need an FX rate nobody here owns.
+ */
+function money(cents: number, currency: string): string {
+  const amount = cents / 100;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
     minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
-  })}`;
+  }).format(amount);
 }
 
-/** The assumed per-mailbox rates, spelled out so the cost column states its own basis. */
-const RATE_NOTE = Object.entries(MAILBOX_MONTHLY_USD)
-  .map(([type, rate]) => `${type} ${usd(rate)}`)
-  .join(" · ");
+/** `2027-02-03T…` → `3 Feb 2027`. */
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 /**
  * One mailbox, in one cell: who it is, whether it lives, both scores and what
@@ -113,9 +124,19 @@ export function DomainHealthCard() {
     pollOptionsSlower,
   );
 
+  // The inventory underneath the accounts: who sells us each domain and what it
+  // costs. Queried separately so a stumble here degrades the money column to a
+  // dash instead of blanking the delete list, which still grades fine without
+  // it — the grading reads health, never cost.
+  const { data: infra } = useAuthQuery(
+    ["instantlyInfraDomains"],
+    () => getInstantlyInfraDomains(),
+    pollOptionsSlower,
+  );
+
   const rows = useMemo(
-    () => buildDomainHealthRows(data?.accounts ?? []),
-    [data],
+    () => buildDomainHealthRows(data?.accounts ?? [], infra?.domains ?? []),
+    [data, infra],
   );
 
   // Only tabs with rows are offered — a "Not graded" tab is a defensive branch
@@ -143,9 +164,32 @@ export function DomainHealthCard() {
   // What the visible tab costs per month — the number the tab exists to act on.
   // Null when any domain's cost is unstateable, rather than a partial sum
   // presented as the total.
-  const tabCost = visible.some((r) => r.monthlyCostUsd === null)
-    ? null
-    : visible.reduce((sum, r) => sum + (r.monthlyCostUsd ?? 0), 0);
+  // Only the RECURRING half is totalled: it is the money that stops the day you
+  // cancel. Renewals are already paid, so adding them here would advertise a
+  // saving the tab does not actually deliver this month.
+  //
+  // Totalled per currency, and shown only when the tab speaks ONE — a summed
+  // "€235 + $169" is not a number, and inventing a rate to merge them would put
+  // an unsourced figure on a card whose whole point is that every number says
+  // where it came from.
+  const tabCost = (() => {
+    const byCurrency = new Map<string, number>();
+    let unstateable = false;
+    for (const row of visible) {
+      if (!row.cost) {
+        unstateable = true;
+        continue;
+      }
+      if (row.cost.recurringCents === null) continue;
+      byCurrency.set(
+        row.cost.currency,
+        (byCurrency.get(row.cost.currency) ?? 0) + row.cost.recurringCents,
+      );
+    }
+    if (unstateable || byCurrency.size !== 1) return null;
+    const [[currency, cents]] = [...byCurrency.entries()];
+    return { currency, cents };
+  })();
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -165,7 +209,7 @@ export function DomainHealthCard() {
             {rows.length.toLocaleString("en-US")} domain
             {rows.length === 1 ? "" : "s"}
             {tabCost !== null && visible.length > 0
-              ? ` · ${usd(tabCost)}/mo in this tab`
+              ? ` · ${money(tabCost.cents, tabCost.currency)}/mo recurring in this tab`
               : ""}
           </span>
         )}
@@ -223,9 +267,15 @@ export function DomainHealthCard() {
                     <th className="py-2 pr-3 font-medium">Domain</th>
                     <th
                       className="py-2 px-3 text-right font-medium"
-                      title={`Assumed monthly mailbox spend. Published list prices per mailbox: ${RATE_NOTE}. Domain registration is excluded — it is not refunded when you cancel, so it is not what deleting saves.`}
+                      title="The mailbox subscription. Cancel the domain and this stops billing straight away. Measured from what the vendor actually charges us, not a list price."
                     >
-                      Monthly cost
+                      Stops now
+                    </th>
+                    <th
+                      className="py-2 px-3 text-right font-medium"
+                      title="The domain registration, already paid until the date shown. Deleting today refunds nothing — it avoids the next renewal, on that date."
+                    >
+                      Avoided at renewal
                     </th>
                     {Array.from({ length: slotCount }, (_, i) => (
                       <th key={i} className="py-2 px-3 font-medium">
@@ -253,13 +303,39 @@ export function DomainHealthCard() {
                         <span className="mt-0.5 block text-[11px] text-gray-400">
                           {row.accounts.length} mailbox
                           {row.accounts.length === 1 ? "" : "es"}
+                          {row.vendors.length > 0 ? ` · ${row.vendors.join(" + ")}` : ""}
+                          {row.cost?.source ? ` · ${row.cost.source}` : ""}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right tabular-nums text-gray-700">
-                        {row.monthlyCostUsd === null ? (
+                        {row.cost?.recurringCents == null ? (
+                          <span
+                            className="text-gray-400"
+                            title={
+                              row.cost
+                                ? "Nothing recurring on this domain — its mailboxes cost nothing."
+                                : "No vendor prices this domain, so we cannot state a saving."
+                            }
+                          >
+                            —
+                          </span>
+                        ) : (
+                          `${money(row.cost.recurringCents, row.cost.currency)}/mo`
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-right tabular-nums text-gray-700">
+                        {row.cost?.renewalCents == null ? (
                           <span className="text-gray-400">—</span>
                         ) : (
-                          `${usd(row.monthlyCostUsd)}/mo`
+                          <>
+                            {money(row.cost.renewalCents, row.cost.currency)}
+                            <span className="mt-0.5 block text-[11px] font-normal text-gray-400">
+                              {row.cost.renewalAt
+                                ? shortDate(row.cost.renewalAt)
+                                : "no date"}
+                              {row.autorenew === false ? " · no autorenew" : ""}
+                            </span>
+                          </>
                         )}
                       </td>
                       {Array.from({ length: slotCount }, (_, i) => {
@@ -287,9 +363,12 @@ export function DomainHealthCard() {
               </table>
               <p className="mt-3 text-xs text-gray-400">
                 Each account cell reads health/inbox placement and the emails
-                still queued to it. Monthly cost assumes published list prices
-                per mailbox ({RATE_NOTE}) and excludes domain registration,
-                which a cancellation does not refund.
+                still queued to it. The two money columns are measured from what
+                the vendors actually charge us, not assumed from the mailbox
+                provider: <b>Stops now</b> is the mailbox subscription, which
+                ends the day you cancel, while <b>Avoided at renewal</b> is the
+                registration, already paid until the date shown. A dash means no
+                vendor prices that domain — never that it is free.
               </p>
             </div>
           </>

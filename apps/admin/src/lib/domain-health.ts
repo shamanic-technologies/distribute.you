@@ -1,4 +1,4 @@
-import type { InstantlyAccountHealthRow } from "@/lib/api";
+import type { InstantlyAccountHealthRow, InstantlyInfraDomainRow } from "@/lib/api";
 
 /**
  * Domain-level verdict for the Instantly sending fleet: which sending domains
@@ -24,25 +24,6 @@ import type { InstantlyAccountHealthRow } from "@/lib/api";
  * gates sending on.
  */
 export const HEALTH_BAR = 95;
-
-/** Assumed monthly price of ONE mailbox, by connection provider.
- *
- * Deliberately mailbox-only: a registered domain is not refunded when you stop
- * using it, so the number that answers "what does deleting this save me" is the
- * recurring mailbox subscription and nothing else.
- *
- * Published list prices, read 2026-08-02:
- *   google    — Google Workspace Business Starter, $7.00/user/mo on the annual
- *               plan ($8.40 flexible). workspace.google.com/pricing
- *   microsoft — Microsoft 365 Business Basic, $6.00/user/mo annual.
- *   imap      — Mailforge shared cold-email infrastructure, $3.00/mailbox/mo
- *               on monthly billing ($2-3 annual). mailforge.ai/pricing
- */
-export const MAILBOX_MONTHLY_USD: Record<string, number> = {
-  google: 7,
-  microsoft: 6,
-  imap: 3,
-};
 
 /**
  * How one mailbox reads.
@@ -95,11 +76,31 @@ export interface DomainHealthRow {
   /** Distinct connection providers on this domain, in first-seen order. */
   providerTypes: (string | null)[];
   /**
-   * Assumed monthly spend across this domain's mailboxes, or null when any
-   * mailbox has a provider we have no published rate for. A partial sum would
-   * read as the domain's real cost while understating it.
+   * What this domain actually costs, measured — the vendors we buy from and
+   * what they charge us, not a list price guessed from the connection
+   * protocol. Null when nothing prices it; never a substitute figure.
+   *
+   * Split because "what do I save by cancelling" has two answers:
+   * `recurringCents` stops the moment you cancel, while `renewalCents` is
+   * already paid until `renewalAt` and is only avoided at that date.
    */
-  monthlyCostUsd: number | null;
+  cost: DomainCost | null;
+  /** Vendors that report this domain (`gandi`, `primeforge`, …), not the connection protocol. */
+  vendors: string[];
+  /** When the registration lapses, and whether it renews itself. */
+  expiresAt: string | null;
+  autorenew: boolean | null;
+}
+
+export interface DomainCost {
+  /** Stops billing the moment the domain is cancelled. Null when nothing recurring. */
+  recurringCents: number | null;
+  /** The yearly registration avoided at `renewalAt`. Null when nothing to renew. */
+  renewalCents: number | null;
+  renewalAt: string | null;
+  currency: string;
+  /** `api` (the vendor told us) or `rate-card` (a versioned local row). */
+  source: string | null;
 }
 
 /** Grade one mailbox. See `AccountHealthState` for what each answer means. */
@@ -142,19 +143,48 @@ export function domainHealthState(
 }
 
 /**
- * What this domain's mailboxes cost per month, or null when a provider on it
- * has no published rate.
+ * Merge every inventory row a domain has into one cost.
+ *
+ * A domain can be reported by more than one vendor — the registrar sells the
+ * name while the mail host sells the mailboxes — so the rows are summed rather
+ * than picked between. Two vendors billing the same domain in different
+ * currencies would need an FX rate nobody here owns, so that reports null
+ * rather than a wrong sum.
+ *
+ * A row the vendor stopped reporting, or one it cancelled, contributes nothing:
+ * we are no longer paying for it, so there is nothing to save by deleting it.
  */
-export function domainMonthlyCostUsd(
-  accountTypes: (string | null)[],
-): number | null {
-  let total = 0;
-  for (const type of accountTypes) {
-    const rate = type === null ? undefined : MAILBOX_MONTHLY_USD[type];
-    if (rate === undefined) return null;
-    total += rate;
+export function mergeDomainCost(rows: InstantlyInfraDomainRow[]): DomainCost | null {
+  const live = rows.filter((r) => !r.absentSince && !r.cancelledAt);
+  if (live.length === 0) return null;
+
+  const currencies = new Set(live.map((r) => r.currency).filter((c): c is string => c !== null));
+  if (currencies.size !== 1) return null;
+  const currency = [...currencies][0];
+
+  let recurringCents: number | null = null;
+  let renewalCents: number | null = null;
+  let renewalAt: string | null = null;
+  let source: string | null = null;
+
+  for (const row of live) {
+    if (row.recurringMonthlyCents !== null) {
+      recurringCents = (recurringCents ?? 0) + row.recurringMonthlyCents;
+    }
+    if (row.renewalCents !== null) {
+      renewalCents = (renewalCents ?? 0) + row.renewalCents;
+      // The soonest renewal is the one that forces a decision.
+      if (row.renewalAt && (renewalAt === null || row.renewalAt < renewalAt)) {
+        renewalAt = row.renewalAt;
+      }
+    }
+    if (row.costSource) {
+      source = source === null || source === row.costSource ? row.costSource : "mixed";
+    }
   }
-  return total;
+
+  if (recurringCents === null && renewalCents === null) return null;
+  return { recurringCents, renewalCents, renewalAt, currency, source };
 }
 
 /**
@@ -169,7 +199,15 @@ export function domainMonthlyCostUsd(
  */
 export function buildDomainHealthRows(
   rows: InstantlyAccountHealthRow[],
+  infraRows: InstantlyInfraDomainRow[] = [],
 ): DomainHealthRow[] {
+  const infraByDomain = new Map<string, InstantlyInfraDomainRow[]>();
+  for (const row of infraRows) {
+    const bucket = infraByDomain.get(row.domain);
+    if (bucket) bucket.push(row);
+    else infraByDomain.set(row.domain, [row]);
+  }
+
   const byDomain = new Map<string, InstantlyAccountHealthRow[]>();
   for (const row of rows) {
     const domain = row.domain?.trim();
@@ -203,23 +241,41 @@ export function buildDomainHealthRows(
       }
     }
 
+    const infra = infraByDomain.get(domain) ?? [];
+    const live = infra.filter((r) => !r.absentSince);
+
     out.push({
       domain,
       accounts,
       state: domainHealthState(accounts.map((a) => a.state)),
       providerTypes,
-      monthlyCostUsd: domainMonthlyCostUsd(accounts.map((a) => a.accountType)),
+      cost: mergeDomainCost(infra),
+      vendors: [...new Set(live.map((r) => r.provider))].sort(),
+      expiresAt:
+        live
+          .map((r) => r.expiresAt)
+          .filter((d): d is string => d !== null)
+          .sort()[0] ?? null,
+      // False only when every vendor reporting the domain says so; a single
+      // unknown keeps it unknown rather than asserting it will not renew.
+      autorenew: live.some((r) => r.autorenew === true)
+        ? true
+        : live.some((r) => r.autorenew === false)
+          ? false
+          : null,
     });
   }
 
+  // Recurring spend leads: it is the money still leaving every month, so it is
+  // what a delete list exists to stop. A renewal already paid until next spring
+  // is a diary entry, not an urgency, so it only breaks ties.
   return out.sort((a, b) => {
-    const ac = a.monthlyCostUsd;
-    const bc = b.monthlyCostUsd;
-    if (ac !== bc) {
-      if (ac === null) return 1;
-      if (bc === null) return -1;
-      return bc - ac;
-    }
+    const ar = a.cost?.recurringCents ?? 0;
+    const br = b.cost?.recurringCents ?? 0;
+    if (ar !== br) return br - ar;
+    const an = a.cost?.renewalCents ?? 0;
+    const bn = b.cost?.renewalCents ?? 0;
+    if (an !== bn) return bn - an;
     return a.domain.localeCompare(b.domain);
   });
 }
