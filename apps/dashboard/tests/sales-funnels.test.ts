@@ -17,7 +17,6 @@ import {
   isEmptyFunnelPatch,
   isSeedableRateKey,
   partitionFunnelsBySelection,
-  primaryFunnelForGoal,
   hostOf,
   salesFunnelByKey,
   shortUrl,
@@ -679,30 +678,19 @@ describe("destination chips", () => {
   });
 });
 
-describe("primaryFunnelForGoal", () => {
-  // The Campaigns table names a campaign's goal with the funnel that ends on it,
-  // so the column says what brand Settings says.
-  it("answers with the funnel that ends on the goal", () => {
-    expect(primaryFunnelForGoal("sales_meetings")?.key).toBe("reply_meeting");
-    expect(primaryFunnelForGoal("signups")?.key).toBe("visit_signup");
-    expect(primaryFunnelForGoal("form_submissions")?.key).toBe("visit_form");
+describe("no goal-to-funnel resolver", () => {
+  // `meetingBooked` is the goal of TWO funnels, so a goal cannot name a chain on
+  // its own. A surface naming what something buys reads the funnel a campaign or
+  // a brand actually stated — campaign-service persists it on every campaign —
+  // never one derived from the retired goal vocabulary.
+  it("is not exported by the catalogue", async () => {
+    const mod = await import("../src/lib/sales-funnels");
+    expect("primaryFunnelForGoal" in mod).toBe(false);
   });
 
-  // Nothing persists WHICH meeting funnel a brand picked, so the declared order
-  // decides — and its first entry is the reply-driven chain a cold-email
-  // campaign actually feeds.
-  it("picks the reply-driven chain for a meeting, not the website one", () => {
+  it("still has two funnels sharing one meeting goal", () => {
     const meetings = SALES_FUNNELS.filter((f) => f.goal === "sales_meetings");
     expect(meetings.length).toBeGreaterThan(1);
-    expect(primaryFunnelForGoal("sales_meetings")?.steps[0]).toBe("Positive reply");
-  });
-
-  // A goal no funnel ends on gets null, so the caller names the outcome rather
-  // than borrowing a chain the brand never described.
-  it("returns null for a goal the catalogue has no funnel for", () => {
-    expect(primaryFunnelForGoal("website_visits")).toBeNull();
-    expect(primaryFunnelForGoal("positive_replies")).toBeNull();
-    expect(primaryFunnelForGoal("sales")).toBeNull();
   });
 });
 

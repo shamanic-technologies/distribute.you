@@ -45,7 +45,7 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { BrandStatusControl } from "@/components/brand/brand-status-control";
-import { MaturityBadge } from "@/components/maturity-badge";
+import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
@@ -421,23 +421,28 @@ export function CampaignOverviewPage() {
     );
   }
 
-  // The header states WHICH campaign is open, and nothing else. The daily budget
+  // The header states WHICH campaign is open, and nothing else. It names the
+  // campaign as what it IS — the sales funnel it buys × the acquisition channel
+  // it buys through — rather than campaign-service's stored `name`, which was
+  // written at provision time and predates the per-funnel model, so it says
+  // nothing about either. The daily budget
   // used to sit here as its own editor, one line above the BrandStatusControl pill
   // that already reads `Active · $N / day` — the same number under two labels, which
   // is the duplication this repo treats as a bug. The budget is stated once, in the
   // pill below; `effectiveBudgetCents` still resolves the campaign's own override
   // for the cost card's denominator.
+  // The heading is the campaign's NAME and nothing else.
+  //
+  // It used to carry a `Campaigns /` back-link and a beta badge alongside. Both
+  // are restated a few pixels above by the top bar, which already links back to
+  // the list (HeaderPageContext) — and the sidebar's own Campaigns entry carries
+  // the beta badge, which is where the maturity rule wants it, on the nav entry
+  // that stays visible whether or not this page renders. Printing either one
+  // twice on one screen is the duplication this repo treats as a bug.
   const CampaignHeader = (
-    <div className="flex items-center gap-2">
-      <Link href={campaignsPath} className="text-sm text-gray-400 hover:text-gray-600">
-        Campaigns
-      </Link>
-      <span className="text-gray-300">/</span>
-      <h1 className="font-display text-xl font-bold text-gray-800">
-        {campaign?.name ?? "Campaign"}
-      </h1>
-      <MaturityBadge level="beta" />
-    </div>
+    <h1 className="font-display flex min-w-0 items-center text-xl font-bold text-gray-800">
+      {campaign ? <CampaignTitle campaign={campaign} size="sm" /> : "Campaign"}
+    </h1>
   );
 
   if (revenueRevealed && data && data.totalPipelineUsd === null) {

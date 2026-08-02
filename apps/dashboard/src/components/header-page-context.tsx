@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { getCampaign } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
+import { CampaignTitle } from "@/components/campaigns/campaign-title";
 
 // The one thing the top bar names besides the account: WHICH campaign you are
 // looking at.
@@ -47,7 +48,11 @@ export function HeaderPageContext() {
 
   if (!campaignId || !listPath) return null;
 
-  const name = data?.campaign?.name;
+  const campaign = data?.campaign ?? null;
+  // The bar fetches ONE campaign and no brand, so there is no inherited brand
+  // goal in hand here. A campaign that carries its own funnel key never needs
+  // one; one that does not simply goes unstated on the funnel half rather than
+  // being guessed from a goal we did not read.
 
   return (
     <nav className="flex min-w-0 items-center gap-1.5 text-sm" aria-label="Page context">
@@ -58,11 +63,15 @@ export function HeaderPageContext() {
         Campaigns
       </Link>
       <span className="hidden shrink-0 text-gray-300 sm:inline">/</span>
-      {/* The name arrives a beat after the route does. A skeleton bar keeps the
+      {/* The title arrives a beat after the route does. A skeleton bar keeps the
           row from jumping, and a placeholder word would state a name we do not
           have yet. */}
-      {name ? (
-        <span className="truncate font-medium text-gray-800">{name}</span>
+      {campaign ? (
+        <CampaignTitle
+          campaign={campaign}
+          size="sm"
+          className="font-medium text-gray-800"
+        />
       ) : (
         <span className="h-4 w-28 animate-pulse rounded bg-gray-100" />
       )}

@@ -4902,6 +4902,57 @@ export async function getInstantlyAccountHealth(
 }
 
 // ---------------------------------------------------------------------------
+// Provider-infrastructure inventory (staff-only, platform view, no org).
+//
+// What the fleet OWNS underneath the Instantly accounts: which vendor sells us
+// each domain, when it expires, and what it actually costs. Replaces the
+// hardcoded per-protocol list prices the delete list used to assume.
+//
+// The cost arrives split by WHEN cancelling saves it, because those are two
+// different answers: `recurringMonthlyCents` stops billing immediately, while
+// `renewalCents` is already paid until `renewalAt` and is only avoided then.
+// ---------------------------------------------------------------------------
+
+const InstantlyInfraDomainRowSchema = z.object({
+  domain: z.string(),
+  provider: z.string(),
+  expiresAt: z.string().nullable(),
+  autorenew: z.boolean().nullable(),
+  cancelledAt: z.string().nullable(),
+  absentSince: z.string().nullable(),
+  vendorMailboxes: z.number(),
+  monthlyCostCents: z.number().nullable(),
+  currency: z.string().nullable(),
+  costSource: z.string().nullable(),
+  recurringMonthlyCents: z.number().nullable(),
+  renewalCents: z.number().nullable(),
+  renewalAt: z.string().nullable(),
+});
+
+const InstantlyInfraDomainsSchema = z.object({
+  asOf: z.string(),
+  domains: z.array(InstantlyInfraDomainRowSchema),
+});
+
+export type InstantlyInfraDomainRow = z.infer<typeof InstantlyInfraDomainRowSchema>;
+export type InstantlyInfraDomains = z.infer<typeof InstantlyInfraDomainsSchema>;
+
+export async function getInstantlyInfraDomains(
+  token?: string,
+): Promise<InstantlyInfraDomains> {
+  const raw = await apiCall<unknown>("/instantly/infra/domains", { token });
+  const parsed = InstantlyInfraDomainsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getInstantlyInfraDomains: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] getInstantlyInfraDomains: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// ---------------------------------------------------------------------------
 // Full raw Instantly account config for ONE account (staff-only, platform view,
 // no org). The account-health list row is a CURATED subset; this returns the
 // entire raw Instantly account object so staff can audit every mailbox setting
