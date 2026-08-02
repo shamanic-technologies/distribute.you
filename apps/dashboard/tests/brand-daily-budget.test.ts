@@ -60,10 +60,14 @@ describe("Brand Settings page", () => {
     "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
   );
 
-  it("renders the fused Outreach & Budget section with the budget editor", () => {
-    expect(content).toContain("Outreach & Budget");
+  it("renders run status only — the money moved to the funnels", () => {
+    // Money is funded per SALES FUNNEL now, so the amount lives on the funnel it
+    // pays for. A brand-level field here would be a second way to set the same
+    // money, and billing already answers the brand total as the SUM of those
+    // ceilings — the two could only ever disagree.
+    expect(content).toContain("Outreach");
     expect(content).toContain("<BrandStatusControl brandId={brandId} />");
-    expect(content).toContain('<BrandDailyBudgetCard brandId={brandId} variant="section" />');
+    expect(content).not.toContain("BrandDailyBudgetCard");
     expect(content).not.toContain("PauseOutreachCard");
   });
 });
