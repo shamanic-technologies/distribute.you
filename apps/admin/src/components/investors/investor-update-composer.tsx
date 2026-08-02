@@ -10,18 +10,44 @@ import {
   listMailingListUpdates,
   previewMailingListUpdate,
   sendMailingListUpdate,
+  uploadStaffImage,
   INVESTOR_LIST_SLUG,
   type MailingListUpdate,
 } from "@/lib/api";
 import {
   investorUpdateBlocker,
   imageMarkdown,
+  imageFileProblem,
   imageUrlProblem,
+  ACCEPTED_IMAGE_ACCEPT_ATTR,
   UNSUBSCRIBE_PREVIEW_NOTE,
 } from "@/lib/investor-update-html";
 
 /** Every update goes out from this address, so the preview says so. */
 const FROM_ADDRESS = "kevin@distribute.you";
+
+/** The folder every investor-update image lands in on our storage. */
+const IMAGE_FOLDER = "investor-updates";
+
+/**
+ * The file as a data URL, which is the shape the storage service already
+ * accepts — so nothing between here and R2 has to re-encode the bytes.
+ */
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("FileReader did not return a data URL"));
+        return;
+      }
+      resolve(result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read the file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 const SUBSCRIBERS_KEY = ["mailingListSubscribers", INVESTOR_LIST_SLUG] as const;
 const UPDATES_KEY = ["mailingListUpdates", INVESTOR_LIST_SLUG] as const;
@@ -102,10 +128,11 @@ export function InvestorUpdateComposer() {
 
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageAlt, setImageAlt] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
-  const [checkingImage, setCheckingImage] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -144,7 +171,8 @@ export function InvestorUpdateComposer() {
       const { recipientCount: reached, failures, skippedOptedOut } = result;
       setSubject("");
       setBody("");
-      setImageUrl("");
+      setImageFile(null);
+      if (fileRef.current) fileRef.current.value = "";
       setImageAlt("");
       setPreviewOpen(false);
       setConfirming(false);
@@ -166,46 +194,73 @@ export function InvestorUpdateComposer() {
   const sending = sendMutation.isPending;
 
   /**
-   * Insert only an image that is going to work in an inbox. Two gates, because
-   * they catch different failures and a broken image is only discovered after
-   * the update has gone to everyone:
+   * Take the file off the staff member's machine, put it on our own storage,
+   * and insert the public URL that comes back. Nobody pastes a link: an image
+   * hosted somewhere else can be moved, expire or block hotlinking long after
+   * the update has landed in forty inboxes.
    *
-   * 1. `imageUrlProblem` rejects the formats mail clients refuse (SVG above all
-   *    — it renders fine in this preview and shows alt text in Gmail).
-   * 2. An actual decode, because a 404 or a hotlink-blocked host is a perfectly
-   *    well-formed URL. Same "gate on the image really decoding" pattern the
-   *    brand favicon uses.
+   * Three gates, because each catches a different failure and a broken image is
+   * only discovered once the update has gone to everyone:
+   *
+   * 1. `imageFileProblem` rejects what mail clients refuse (SVG above all — it
+   *    renders fine in this preview and shows alt text in Gmail) before a byte
+   *    is uploaded.
+   * 2. `imageUrlProblem` judges the URL that came BACK, because the public
+   *    domain is resolved at upload time and a misconfiguration surfaces there.
+   * 3. An actual decode of that URL. Same "gate on the image really decoding"
+   *    pattern the brand favicon uses.
    */
   const insertImage = async () => {
-    const url = imageUrl.trim();
-    const problem = imageUrlProblem(url);
-    if (problem) {
+    const file = imageFile;
+    const problem = imageFileProblem(file);
+    if (problem || !file) {
       setImageError(problem);
       return;
     }
 
     setImageError(null);
-    setCheckingImage(true);
-    const loaded = await new Promise<boolean>((resolve) => {
-      const probe = new window.Image();
-      const done = (ok: boolean) => resolve(ok);
-      probe.onload = () => done(probe.naturalWidth > 0);
-      probe.onerror = () => done(false);
-      probe.src = url;
-    });
-    setCheckingImage(false);
+    setUploadingImage(true);
+    try {
+      const contentBase64 = await readAsDataUrl(file);
+      const uploaded = await uploadStaffImage({
+        contentBase64,
+        filename: file.name,
+        contentType: file.type,
+        folder: IMAGE_FOLDER,
+      });
 
-    if (!loaded) {
-      setImageError("That image did not load. Check the link is public.");
-      return;
+      const urlProblem = imageUrlProblem(uploaded.url);
+      if (urlProblem) {
+        setImageError(urlProblem);
+        return;
+      }
+
+      const loaded = await new Promise<boolean>((resolve) => {
+        const probe = new window.Image();
+        probe.onload = () => resolve(probe.naturalWidth > 0);
+        probe.onerror = () => resolve(false);
+        probe.src = uploaded.url;
+      });
+      if (!loaded) {
+        setImageError("It uploaded but did not load back. Nothing was inserted.");
+        return;
+      }
+
+      const snippet = imageMarkdown(uploaded.url, imageAlt);
+      setBody((current) =>
+        current.trimEnd().length > 0 ? `${current.trimEnd()}\n\n${snippet}\n` : `${snippet}\n`
+      );
+      setImageFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+      setImageAlt("");
+      setNotice(null);
+      bodyRef.current?.focus();
+    } catch (err) {
+      console.error("[admin] uploadStaffImage failed", err);
+      setImageError("That upload did not go through. Nothing was inserted.");
+    } finally {
+      setUploadingImage(false);
     }
-
-    const snippet = imageMarkdown(url, imageAlt);
-    setBody((current) => (current.trimEnd().length > 0 ? `${current.trimEnd()}\n\n${snippet}\n` : `${snippet}\n`));
-    setImageUrl("");
-    setImageAlt("");
-    setNotice(null);
-    bodyRef.current?.focus();
   };
 
   const updates = updatesQuery.data?.updates ?? [];
@@ -257,37 +312,39 @@ export function InvestorUpdateComposer() {
         <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
           <p className="text-xs font-medium text-gray-700">Add an image</p>
           <p className="mt-0.5 text-xs text-gray-500">
-            Paste a public PNG or JPG. It is inserted at the end of the update; move the line
-            wherever you want it. Gmail does not render SVG, so those are refused here rather
-            than arriving broken.
+            Pick a PNG, JPG or GIF from your machine, up to 5 MB. It is uploaded to our own
+            storage and inserted at the end of the update; move the line wherever you want it.
+            Gmail does not render SVG, so those are refused here rather than arriving broken.
           </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
-              type="url"
-              value={imageUrl}
+              ref={fileRef}
+              type="file"
+              accept={ACCEPTED_IMAGE_ACCEPT_ATTR}
+              aria-label="Image file"
               onChange={(e) => {
-                setImageUrl(e.target.value);
+                setImageFile(e.target.files?.[0] ?? null);
                 setImageError(null);
               }}
-              placeholder="https://..."
-              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
             <input
               type="text"
               value={imageAlt}
               onChange={(e) => setImageAlt(e.target.value)}
               placeholder="Describe it"
+              aria-label="Image description"
               className="w-full sm:w-48 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
             <button
               type="button"
               onClick={() => void insertImage()}
-              disabled={imageUrl.trim().length === 0 || checkingImage}
+              disabled={imageFile === null || uploadingImage}
               className={`rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
-                checkingImage ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"
+                uploadingImage ? "cursor-wait" : "disabled:opacity-40 disabled:cursor-not-allowed"
               }`}
             >
-              {checkingImage ? "Checking..." : "Insert"}
+              {uploadingImage ? "Uploading..." : "Insert"}
             </button>
           </div>
           {imageError ? <p className="mt-2 text-xs font-medium text-red-600">{imageError}</p> : null}

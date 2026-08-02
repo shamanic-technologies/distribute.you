@@ -104,6 +104,30 @@ describe("investor update composer", () => {
     expect(composer).toContain("imageMarkdown(");
     expect(composer).not.toContain("`![");
   });
+
+  it("takes an image as a FILE — there is no pasted-link field left", () => {
+    // An image hosted somewhere else can be moved, expire or block hotlinking
+    // long after the update has landed in forty inboxes.
+    expect(composer).toContain('type="file"');
+    expect(composer).toContain("uploadStaffImage(");
+    expect(composer).not.toContain('type="url"');
+    expect(composer).not.toContain("setImageUrl");
+  });
+
+  it("gates the file before uploading and the returned URL after, then decodes it", () => {
+    expect(composer).toContain("imageFileProblem(");
+    expect(composer).toContain("imageUrlProblem(uploaded.url)");
+    expect(composer).toContain("probe.onload");
+  });
+
+  it("keeps the uploading label at full opacity, per the mutation-button rule", () => {
+    expect(composer).toContain('uploadingImage ? "cursor-wait" : "disabled:opacity-40');
+  });
+
+  it("takes the accept list from the catalogue, so picker and gate cannot disagree", () => {
+    expect(composer).toContain("ACCEPTED_IMAGE_ACCEPT_ATTR");
+    expect(composer).not.toContain('accept="image/png');
+  });
 });
 
 describe("investor list view", () => {
