@@ -20,9 +20,58 @@
 /**
  * A markdown image line for the composer's "add an image" affordance. Kept here
  * so the composer never hand-assembles markdown syntax.
+ *
+ * A URL carrying a SPACE is wrapped in angle brackets, because a bare one ends
+ * the link destination at the first space and the whole line renders as
+ * literal text — which is exactly what a screenshot does: macOS names it
+ * `Screenshot 2026-08-02 at 10.46.50.png`, the storage key keeps the spaces,
+ * and the update goes out reading `![Screenshot](https://…/Screenshot` in
+ * plain sight. Verified against the producer's own `marked`: bare renders no
+ * `<img>`, `<…>` and percent-encoding both do.
+ *
+ * Angle brackets rather than `encodeURI` so the stored markdown stays readable
+ * (the body doubles as the plain-text part of the email) and so re-inserting an
+ * already-encoded URL cannot double-encode it into `%2520`. `(` and `)` get the
+ * same treatment: an unescaped parenthesis closes the destination early.
  */
 export function imageMarkdown(url: string, alt: string): string {
-  return `![${alt.trim()}](${url.trim()})`;
+  const clean = url.trim();
+  const needsBrackets = /[\s()]/.test(clean);
+  return `![${alt.trim()}](${needsBrackets ? `<${clean}>` : clean})`;
+}
+
+/**
+ * The name the file is STORED under. The upload sends this verbatim and the
+ * storage service builds the object key from it, so whatever is in here ends up
+ * in the public URL.
+ *
+ * A URL with a space in it is not merely a markdown problem: it has to be
+ * escaped by every consumer that ever touches it, and each one that forgets
+ * produces a different broken result. Lower-case, ASCII, hyphen-separated is
+ * what survives a mail client, a copy-paste and a storage console alike.
+ *
+ * Only the LAST dot separates the extension — `10.46.50.png` is one timestamp
+ * and one extension, not three — so the earlier dots become hyphens rather than
+ * cutting the name short.
+ */
+export function sanitizeUploadFilename(filename: string): string {
+  const lastDot = filename.lastIndexOf(".");
+  const hasExt = lastDot > 0 && lastDot < filename.length - 1;
+  const rawStem = hasExt ? filename.slice(0, lastDot) : filename;
+  const rawExt = hasExt ? filename.slice(lastDot + 1) : "";
+
+  const slug = (value: string) =>
+    value
+      .normalize("NFKD")
+      // Combining marks, so an accented name transliterates instead of vanishing.
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const stem = slug(rawStem) || "image";
+  const ext = slug(rawExt);
+  return ext.length > 0 ? `${stem}.${ext}` : stem;
 }
 
 /**

@@ -18,6 +18,7 @@ import {
   investorUpdateBlocker,
   imageMarkdown,
   imageAltFromFilename,
+  sanitizeUploadFilename,
   imageFileProblem,
   imageUrlProblem,
   ACCEPTED_IMAGE_ACCEPT_ATTR,
@@ -318,7 +319,11 @@ export function InvestorUpdateComposer() {
       const contentBase64 = await readAsDataUrl(file);
       const uploaded = await uploadStaffImage({
         contentBase64,
-        filename: file.name,
+        // The storage key is built from this, so it lands in the public URL. A
+        // macOS screenshot arrives as `Screenshot 2026-08-02 at 10.46.50.png`,
+        // and those spaces then have to be escaped by every consumer that ever
+        // touches the link.
+        filename: sanitizeUploadFilename(file.name),
         contentType: file.type,
         folder: IMAGE_FOLDER,
       });

@@ -140,6 +140,13 @@ describe("investor update composer", () => {
     expect(composer).toContain("imageAltFromFilename(file.name)");
   });
 
+  it("uploads under a sanitized name, since the key lands in the public URL", () => {
+    // A macOS screenshot carries spaces, the storage key kept them, and the
+    // markdown image then ended at the first space and rendered as raw text.
+    expect(composer).toContain("filename: sanitizeUploadFilename(file.name)");
+    expect(composer).not.toContain("filename: file.name,");
+  });
+
   it("takes the accept list from the catalogue, so picker and gate cannot disagree", () => {
     expect(composer).toContain("ACCEPTED_IMAGE_ACCEPT_ATTR");
     expect(composer).not.toContain('accept="image/png');
