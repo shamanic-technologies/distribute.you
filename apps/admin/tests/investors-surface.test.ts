@@ -140,6 +140,14 @@ describe("investor list view", () => {
 });
 
 describe("investor api readers", () => {
+  it("targets the gateway path api-service actually deployed, not an assumed prefix", () => {
+    // api-service #799 mounts these at /v1/mailing-lists/:slug/*. apiCall
+    // prepends /api/v1, so the reader path carries no further prefix.
+    expect(api).toContain("`/mailing-lists/${slug}/subscribers`");
+    expect(api).toContain("`/mailing-lists/${slug}/updates`");
+    expect(api).not.toContain("/emails/mailing-lists/");
+  });
+
   it("never puts recipients in BCC — per-recipient delivery is what makes the opt-out per-recipient", () => {
     const at = api.indexOf("export async function sendMailingListUpdate(");
     expect(at).toBeGreaterThan(-1);

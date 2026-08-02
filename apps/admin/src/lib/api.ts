@@ -6215,7 +6215,7 @@ export async function listMailingListSubscribers(
   slug: string,
   token?: string
 ): Promise<MailingListSubscribersResponse> {
-  return apiCall<MailingListSubscribersResponse>(`/emails/mailing-lists/${slug}/subscribers`, { token });
+  return apiCall<MailingListSubscribersResponse>(`/mailing-lists/${slug}/subscribers`, { token });
 }
 
 /**
@@ -6228,7 +6228,7 @@ export async function addMailingListSubscribers(
   raw: string,
   token?: string
 ): Promise<AddSubscribersResponse> {
-  return apiCall<AddSubscribersResponse>(`/emails/mailing-lists/${slug}/subscribers`, {
+  return apiCall<AddSubscribersResponse>(`/mailing-lists/${slug}/subscribers`, {
     token,
     method: "POST",
     body: { raw },
@@ -6240,7 +6240,7 @@ export async function removeMailingListSubscriber(
   email: string,
   token?: string
 ): Promise<void> {
-  await apiCall<unknown>(`/emails/mailing-lists/${slug}/subscribers`, {
+  await apiCall<unknown>(`/mailing-lists/${slug}/subscribers`, {
     token,
     method: "DELETE",
     body: { email },
@@ -6251,7 +6251,7 @@ export async function listMailingListUpdates(
   slug: string,
   token?: string
 ): Promise<MailingListUpdatesResponse> {
-  return apiCall<MailingListUpdatesResponse>(`/emails/mailing-lists/${slug}/updates`, { token });
+  return apiCall<MailingListUpdatesResponse>(`/mailing-lists/${slug}/updates`, { token });
 }
 
 /** `body` is markdown. The producer renders it and appends the unsubscribe. */
@@ -6260,7 +6260,7 @@ export async function sendMailingListUpdate(
   input: { subject: string; body: string },
   token?: string
 ): Promise<SendMailingListUpdateResponse> {
-  return apiCall<SendMailingListUpdateResponse>(`/emails/mailing-lists/${slug}/updates`, {
+  return apiCall<SendMailingListUpdateResponse>(`/mailing-lists/${slug}/updates`, {
     token,
     method: "POST",
     body: input,
