@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campaignFunnel, supersededCampaignIds } from "../src/lib/campaign-funnel";
+import { campaignFunnel } from "../src/lib/campaign-funnel";
 import { SALES_FUNNELS, normalizeSalesFunnelKey } from "../src/lib/sales-funnels";
 import { CANONICAL_GOALS, optimizationGoalForRuntimeGoal } from "../src/lib/api";
 
@@ -77,35 +77,13 @@ describe("sales funnel key vocabulary", () => {
   });
 });
 
-describe("superseded pre-funnel campaigns", () => {
-  it("marks the keyless campaign once a funnel campaign exists", () => {
-    const ids = supersededCampaignIds([
-      { id: "old", funnelKey: null },
-      { id: "form", funnelKey: "visit_form" },
-    ]);
-    expect([...ids]).toEqual(["old"]);
-  });
-
-  // A brand still on one pre-funnel campaign has nothing superseding it: that
-  // campaign IS the one that runs.
-  it("marks nothing when no funnel campaign exists", () => {
-    expect(supersededCampaignIds([{ id: "only", funnelKey: null }]).size).toBe(0);
-  });
-
-  it("marks nothing when every campaign names its funnel", () => {
-    const ids = supersededCampaignIds([
-      { id: "a", funnelKey: "visit_form" },
-      { id: "b", funnelKey: "reply_meeting" },
-    ]);
-    expect(ids.size).toBe(0);
-  });
-
-  it("marks every keyless campaign, not just the first", () => {
-    const ids = supersededCampaignIds([
-      { id: "old1", funnelKey: null },
-      { id: "old2", funnelKey: null },
-      { id: "form", funnelKey: "form_magnet" },
-    ]);
-    expect([...ids].sort()).toEqual(["old1", "old2"]);
+describe("no goal fallback", () => {
+  // The goal is the retired, lossier vocabulary: `meetingBooked` is the goal of
+  // two different funnels, so a chain derived from it is one the campaign never
+  // stated. campaign-service persists the funnel on every campaign, so this
+  // module resolves that key and offers nothing else.
+  it("exports no goal-to-funnel resolver", async () => {
+    const mod = await import("../src/lib/campaign-funnel");
+    expect(Object.keys(mod)).toEqual(["campaignFunnel"]);
   });
 });
