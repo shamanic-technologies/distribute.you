@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { chartDomain, niceCeiling } from "../src/lib/chart-domain";
+import { chartDomain, niceCeiling, referenceTicks } from "../src/lib/chart-domain";
 
 describe("chartDomain", () => {
   it("scales to the tallest bar when nothing is excluded", () => {
@@ -52,13 +52,46 @@ describe("chartDomain", () => {
 
 describe("niceCeiling", () => {
   it("rounds up to a tick a human reads", () => {
-    expect(niceCeiling(1247)).toBe(2000);
-    expect(niceCeiling(104)).toBe(200);
+    expect(niceCeiling(1247)).toBe(1500);
+    expect(niceCeiling(104)).toBe(150);
     expect(niceCeiling(43)).toBe(50);
+  });
+
+  it("does not waste half the plot on rounding", () => {
+    // The real weekly-NRR case: 255 with headroom is 293. Under a 1/2/5/10
+    // grammar that becomes 500 and every bar renders half as tall as it should.
+    expect(niceCeiling(293)).toBe(300);
+    expect(niceCeiling(255 * 1.15)).toBe(300);
+  });
+
+  it("always clears the value it was given", () => {
+    for (const v of [1, 7, 43, 104, 255, 293, 434, 1247, 2760, 3450]) {
+      expect(niceCeiling(v)).toBeGreaterThanOrEqual(v);
+    }
   });
 
   it("never returns zero or a negative", () => {
     for (const v of [0, -5, Number.NaN]) expect(niceCeiling(v)).toBeGreaterThan(0);
+  });
+});
+
+describe("referenceTicks", () => {
+  it("puts the reference on a labelled tick", () => {
+    expect(referenceTicks(300, 100)).toEqual([0, 100, 200, 300]);
+    expect(referenceTicks(500, 100)).toEqual([0, 100, 200, 300, 400, 500]);
+  });
+
+  it("coarsens rather than printing a wall of labels, and still keeps the reference", () => {
+    const ticks = referenceTicks(2000, 100)!;
+    expect(ticks.length).toBeLessThanOrEqual(6);
+    // Coarsening must never drop the one tick the axis exists to show.
+    expect(ticks).toContain(100);
+  });
+
+  it("leaves the axis automatic when there is no reference", () => {
+    expect(referenceTicks(300, undefined)).toBeUndefined();
+    expect(referenceTicks(300, 0)).toBeUndefined();
+    expect(referenceTicks(0, 100)).toBeUndefined();
   });
 });
 
@@ -69,11 +102,32 @@ describe("the NRR chart wiring", () => {
   );
   const view = readFileSync(join(__dirname, "../src/components/revenue-view.tsx"), "utf8");
 
-  it("draws a SOLID reference line, not a dashed one", () => {
+  it("draws the reference as a dashed line in the theme's own colour", () => {
     const at = chart.indexOf("<ReferenceLine");
     expect(at).toBeGreaterThan(-1);
     // Measured to the closing tag; do not widen.
-    expect(chart.slice(at, at + 260)).not.toContain("strokeDasharray");
+    const line = chart.slice(at, at + 280);
+    expect(line).toContain("strokeDasharray");
+    // `currentColor`, not a hex: near-white on the dark theme, still visible on
+    // the light one. A hardcoded colour is invisible on one of the two.
+    expect(line).toContain('stroke="currentColor"');
+  });
+
+  it("anchors the Y ticks on the reference so 100 carries its own label", () => {
+    expect(chart).toContain("referenceTicks(domain.max, referenceValue)");
+    expect(chart).toContain("ticks={ticks}");
+  });
+
+  it("draws no CartesianGrid — it resolved no ticks and marked nothing", () => {
+    // These charts name their Y axes, CartesianGrid defaults to yAxisId 0, so
+    // recharts drew one dashed line across the top of the plot that referenced
+    // nothing at all.
+    expect(chart).not.toContain("<CartesianGrid");
+    const capacity = readFileSync(
+      join(__dirname, "../src/components/audit/capacity-history-chart.tsx"),
+      "utf8"
+    );
+    expect(capacity).not.toContain("<CartesianGrid");
   });
 
   it("puts that line at 100 for both NRR cards", () => {
