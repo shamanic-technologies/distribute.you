@@ -28,6 +28,7 @@ import {
   type QueueDistributionBin,
 } from "@/components/audit/queue-distribution-chart";
 import { ProviderLogo, InstantlyLogo } from "@/components/audit/provider-logo";
+import { DomainHealthCard } from "@/components/audit/domain-health-card";
 
 function StatCard({
   label,
@@ -1253,6 +1254,11 @@ export default function AuditInstantlyPage() {
           </div>
         </>
       )}
+
+      {/* The delete list, above the per-account table: a domain is what bills
+          and what you cancel, so it is graded first and the accounts detail
+          follows. Both read the same ["instantlyAccountHealth"] query. */}
+      <DomainHealthCard />
 
       <AccountHealthSection />
 
