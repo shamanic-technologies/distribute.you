@@ -410,15 +410,26 @@ export function InvestorDeckView({ timeline }: { timeline: DailyFunnelPoint[] })
 
         {/* 9 — Team. The most-read slide in the deck. Founders only: YC is blunt
             that nobody cares about advisors. */}
-        <Slide id="team" eyebrow="Team" title="Who is building this">
+        <Slide id="team" eyebrow="Team" title="One founder, shipping the whole thing">
           <div className="space-y-5">
             <Point heading="Kevin Lourd, founder">
-              Building and operating the platform end to end: the acquisition engine, the
-              measurement, and the agency that runs on top of it.
+              Solo. Building and operating all of it: the acquisition engine, the measurement
+              layer, and the agency that runs on top of them.
             </Point>
-            <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-              Add a line on why you are the person for this problem. It is the most-read slide in
-              the deck, and the one investors weigh hardest at pre-seed.
+            {/* Solo is the first question a pre-seed investor asks, so the slide
+                answers it rather than leaving a gap they will notice anyway.
+                What is on screen is verifiable: the product exists, it has
+                paying customers, and the numbers three slides back are its
+                output. */}
+            <Point heading="Why that is not the risk it looks like">
+              Everything in this deck is running in production and every figure in it is read
+              live from that system. A team of one built the platform, the customers and the
+              measurement, which is the same evidence a larger team would be asked for.
+            </Point>
+            <p className="deck-todo rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+              Add one line on what you did before this and why it makes you the person for this
+              problem. LinkedIn is not machine-readable, so this is the one claim on the slide
+              that has to come from you. It is the most-read slide in the deck.
             </p>
           </div>
         </Slide>
