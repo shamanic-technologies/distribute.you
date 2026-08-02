@@ -29,6 +29,30 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, GA_BRAND_FEATURES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
+/**
+ * Query options for the sidebar's count badges.
+ *
+ * These reads exist ONLY to render a number next to a nav row, and there is no
+ * served count endpoint, so each one downloads the entire list to call `.length`
+ * on it. A brand can own 12,000+ outlets. Fourteen of these were re-downloading
+ * their full lists every 30 seconds, for the lifetime of the tab, on every brand
+ * and feature page: megabytes per tick, retained in the query cache and written
+ * to IndexedDB, which is the renderer memory growth in Chrome.
+ *
+ * So they fetch once per navigation and then stop. A badge is a count of things
+ * that change on the order of hours; re-reading it twice a minute bought nothing
+ * and cost the tab. Opening the page the badge points at still fetches fresh.
+ *
+ * The real fix is a served count so a badge stops paying for the whole list
+ * (filed as #3023). Until that lands this is the cheap half, and it does not
+ * fabricate a number: the count is still the length of the real list.
+ */
+const SIDEBAR_BADGE_QUERY = {
+  refetchInterval: false as const,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+};
+
 interface SidebarItem {
   id: string;
   label: string;
@@ -589,27 +613,27 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: { orgId: string; brandI
   const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId],
     () => listBrandOutlets(brandId),
-    { refetchInterval: 30_000 },
+    SIDEBAR_BADGE_QUERY,
   );
   const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId],
     () => listJournalistsEnriched(brandId),
-    { refetchInterval: 30_000 },
+    SIDEBAR_BADGE_QUERY,
   );
   const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { refetchInterval: 30_000 },
+    SIDEBAR_BADGE_QUERY,
   );
   const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { refetchInterval: 30_000 },
+    SIDEBAR_BADGE_QUERY,
   );
   const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId],
     () => listBrandArticles(brandId),
-    { refetchInterval: 30_000 },
+    SIDEBAR_BADGE_QUERY,
   );
 
   // Nav items reveal as one group once the feature list (which the Features
@@ -769,12 +793,12 @@ function CrmLevelSidebar({ orgId, brandId, pathname }: {
   const { data: contactsData, isPending: contactsPending } = useAuthQuery(
     ["crmContacts", brandId],
     () => listCrmContacts(brandId),
-    { refetchInterval: 30_000 },
+    SIDEBAR_BADGE_QUERY,
   );
   const { data: uploadsData, isPending: uploadsPending } = useAuthQuery(
     ["crmUploads", brandId],
     () => listCrmUploads(brandId),
-    { refetchInterval: 30_000 },
+    SIDEBAR_BADGE_QUERY,
   );
   const badgesRevealed = useCoordinatedReveal([!contactsPending, !uploadsPending]);
 
@@ -834,7 +858,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: featureStatsData, isPending: statsPending } = useAuthQuery(
     ["featureStats", resolvedFeatureSlug, "brand", brandId],
     () => fetchFeatureStats(resolvedFeatureSlug!, { brandId }),
-    { enabled: statsEnabled, refetchInterval: 30_000, placeholderData: keepPreviousData },
+    { enabled: statsEnabled, placeholderData: keepPreviousData, ...SIDEBAR_BADGE_QUERY },
   );
   const fStats = featureStatsData?.stats ?? {};
 
@@ -843,31 +867,31 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: outletsData, isPending: outletsPending } = useAuthQuery(
     ["brandOutlets", brandId, featureSlug],
     () => listBrandOutlets(brandId, featureSlug),
-    { enabled: outletsEnabled, refetchInterval: 30_000 },
+    { enabled: outletsEnabled, ...SIDEBAR_BADGE_QUERY },
   );
   const journalistsEnabled = entityNames.includes("journalists");
   const { data: journalistsData, isPending: journalistsPending } = useAuthQuery(
     ["enrichedJournalists", brandId, featureSlug],
     () => listJournalistsEnriched(brandId, { featureSlug }),
-    { enabled: journalistsEnabled, refetchInterval: 30_000 },
+    { enabled: journalistsEnabled, ...SIDEBAR_BADGE_QUERY },
   );
   const leadsEnabled = entityNames.includes("leads");
   const { data: leadsData, isPending: leadsPending } = useAuthQuery(
     ["brandLeads", brandId],
     () => listBrandLeads(brandId),
-    { enabled: leadsEnabled, refetchInterval: 30_000 },
+    { enabled: leadsEnabled, ...SIDEBAR_BADGE_QUERY },
   );
   const emailsEnabled = entityNames.includes("emails");
   const { data: emailsData, isPending: emailsPending } = useAuthQuery(
     ["brandEmails", brandId],
     () => listBrandEmails(brandId),
-    { enabled: emailsEnabled, refetchInterval: 30_000 },
+    { enabled: emailsEnabled, ...SIDEBAR_BADGE_QUERY },
   );
   const articlesEnabled = entityNames.includes("articles");
   const { data: articlesData, isPending: articlesPending } = useAuthQuery(
     ["brandArticles", brandId, featureSlug],
     () => listBrandArticles(brandId, featureSlug),
-    { enabled: articlesEnabled, refetchInterval: 30_000 },
+    { enabled: articlesEnabled, ...SIDEBAR_BADGE_QUERY },
   );
   // Gold catalog (GET /orgs/opportunities) — same source the feature
   // quote-requests page renders, so the badge equals the page count.
@@ -875,7 +899,7 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
   const { data: rankedOppsData, isPending: rankedOppsPending } = useAuthQuery(
     ["rankedOpportunities", { brandId }],
     () => listAllRankedOpportunities({ brandId }),
-    { enabled: rankedOppsEnabled, refetchInterval: 30_000 },
+    { enabled: rankedOppsEnabled, ...SIDEBAR_BADGE_QUERY },
   );
 
   // Reveal EVERY entity badge together (one paint), then keep the numbers
