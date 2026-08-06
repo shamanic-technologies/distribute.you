@@ -56,8 +56,14 @@ describe("api.ts — brand sales-economics businessModel wiring", () => {
     expect(content).toContain('"positive_replies"');
   });
 
-  it("BrandSalesEconomics carries optimizationGoal without the deprecated stage field", () => {
-    expect(content).toContain("optimizationGoal: BrandOptimizationGoal");
+  it("reads optimizationGoal as OPTIONAL, because brand-service retired it", () => {
+    // brand-service#434 dropped the goal from the sales-economics read: the
+    // declared funnel set is the only vocabulary for what a brand sells through.
+    // A REQUIRED field here makes `safeParse` throw on every call, which takes
+    // every econ-reading surface down at once — that is what happened the day
+    // it promoted.
+    expect(content).toContain("optimizationGoal?: BrandOptimizationGoal");
+    expect(content).not.toContain("optimizationGoal: BrandOptimizationGoal;");
     expect(content).not.toContain(`${deprecatedStageField}:`);
   });
 

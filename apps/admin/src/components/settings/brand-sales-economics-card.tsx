@@ -109,7 +109,19 @@ function formFromEconomics(e: BrandSalesEconomics | null | undefined): FormState
     formSubmissionToPaidClientPct: formatLocaleNumberInputValue(
       e.formSubmissionToPaidClientPct ?? Number(DEFAULTS.formSubmissionToPaidClientPct),
     ),
-    optimizationGoal: e.optimizationGoal,
+    // brand-service RETIRED the goal from this payload (#434) — the declared
+    // funnel set is the only vocabulary for what a brand sells through now, and
+    // this staff form is a fork the customer dashboard no longer mirrors. The
+    // picker still needs one value selected, so it falls back to the same seed
+    // `defaultForm()` uses rather than inventing a different one.
+    //
+    // ⚠️ This form SENDS the goal on every save, so saving here writes whatever
+    // the picker shows. That is pre-existing (the picker has always been the
+    // source of truth for this write) and it is why the field stays visible: a
+    // staff member saving economics must SEE the goal they are about to store.
+    // Which funnels a brand actually sells through is stated on the funnels
+    // card, not here.
+    optimizationGoal: e.optimizationGoal ?? defaultForm().optimizationGoal,
   };
 }
 

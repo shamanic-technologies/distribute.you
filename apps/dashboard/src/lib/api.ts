@@ -916,7 +916,11 @@ export interface BrandSalesEconomics {
   visitToFormSubmissionPct?: number | null;
   formSubmissionToPaidClientPct?: number | null;
   businessModel: BrandBusinessModel | null;
-  optimizationGoal: BrandOptimizationGoal;
+  // OPTIONAL because brand-service retired the goal from this payload (#434):
+  // the declared funnel set is the only vocabulary for what a brand sells
+  // through. A consumer that needs a goal reads the arbitrated one, and a
+  // reader that requires this field here takes every econ surface down.
+  optimizationGoal?: BrandOptimizationGoal;
   updatedAt: string;
 }
 
@@ -964,11 +968,22 @@ const BrandSalesEconomicsSchema = z.object({
   visitToFormSubmissionPct: z.number().nullable().optional(),
   formSubmissionToPaidClientPct: z.number().nullable().optional(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
-  // Both vocabularies: the snake spellings brand-service emits today, and the
-  // canonical camelCase it is migrating to. Accepting the canonical ones now is
-  // what lets the producer flip its emission without breaking this app — see
-  // `CANONICAL_GOALS`. `whatsappConversation` is absent on purpose: this app has
-  // no local goal for it, so it must fail loud here rather than be mapped.
+  // Both vocabularies: the snake spellings brand-service used to emit, and the
+  // canonical camelCase it migrated to. Accepting both is what let the producer
+  // flip its emission without breaking this app — see `CANONICAL_GOALS`.
+  // `whatsappConversation` is absent on purpose: this app has no local goal for
+  // it, so it must fail loud here rather than be mapped.
+  //
+  // `.optional()` because brand-service has RETIRED the goal from this payload
+  // (#434): the declared funnel set is the only vocabulary for what a brand
+  // sells through, and the goal was the poorer word (both meeting funnels
+  // collapsed onto one). Keeping it REQUIRED is what took every econ-reading
+  // surface down the day that promoted — the Sales Funnels card rendered blank
+  // rates and a blank lifetime revenue on brands whose numbers were sitting
+  // untouched on the wire, and it read as lost data. Same retirement as the
+  // `goal` / `currentGoal` pair on the declared-funnel payload above; this one
+  // was the straggler. Delete it outright once no brand-service in any
+  // environment still sends it.
   optimizationGoal: z.union([
     z.literal("signups"),
     z.literal("sales_meetings"),
@@ -986,7 +1001,7 @@ const BrandSalesEconomicsSchema = z.object({
     z.literal("websiteVisit"),
     z.literal("positiveReply"),
     z.literal("formSubmission"),
-  ]).transform(normalizeBrandOptimizationGoal),
+  ]).transform(normalizeBrandOptimizationGoal).optional(),
   updatedAt: z.string(),
 });
 
