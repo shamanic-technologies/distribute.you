@@ -118,17 +118,22 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
   // The economics + brand keys are the ones the sibling settings cards already
   // use, so those reads dedupe instead of adding a fetch.
-  const { data: econData } = useAuthQuery(["brandSalesEconomics", brandId], () =>
-    getBrandSalesEconomics(brandId),
+  const { data: econData, isError: econError } = useAuthQuery(
+    ["brandSalesEconomics", brandId],
+    () => getBrandSalesEconomics(brandId),
   );
-  const { data: brandData } = useAuthQuery(["brand", brandId], () => getBrand(brandId));
-  const { data: funnelData } = useAuthQuery(["brandSalesFunnels", brandId], () =>
-    getBrandSalesFunnels(brandId),
+  const { data: brandData, isError: brandError } = useAuthQuery(["brand", brandId], () =>
+    getBrand(brandId),
+  );
+  const { data: funnelData, isError: funnelError } = useAuthQuery(
+    ["brandSalesFunnels", brandId],
+    () => getBrandSalesFunnels(brandId),
   );
   // billing owns the money side. A funnel with no row here is simply not funded,
   // which is why an absent row reads as zero rather than as an unknown.
-  const { data: budgetData } = useAuthQuery(["brandFunnelBudgets", brandId], () =>
-    getBrandFunnelBudgets(brandId),
+  const { data: budgetData, isError: budgetError } = useAuthQuery(
+    ["brandFunnelBudgets", brandId],
+    () => getBrandFunnelBudgets(brandId),
   );
 
   const brand = brandData?.brand ?? null;
@@ -147,19 +152,27 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   // Seed every funnel once: a DECLARED funnel from its own stored values, an
   // undeclared one from the brand's blended economics as a guess to confirm.
   // A funnel the user already edited keeps what they typed.
+  //
+  // Hydration waits for each read to SETTLE — resolved OR errored — never for
+  // all four to succeed. Gated on success alone, ONE failing read left every
+  // funnel at its initial blank state forever: no rate, no lifetime revenue,
+  // `$0/day`, and `OK` where the card should have said `Update`. That is
+  // indistinguishable from a brand that has told us nothing, so it reads as
+  // deleted data rather than as a failed read, and it is exactly how the
+  // retired-goal parse throw took this card down fleet-wide. A read that
+  // errored contributes what it knows, which is nothing; the others still show
+  // what the brand stated.
   useEffect(() => {
-    if (
-      hydrated.current ||
-      econData === undefined ||
-      brandData === undefined ||
-      funnelData === undefined ||
-      budgetData === undefined
-    ) {
+    const econSettled = econData !== undefined || econError;
+    const brandSettled = brandData !== undefined || brandError;
+    const funnelSettled = funnelData !== undefined || funnelError;
+    const budgetSettled = budgetData !== undefined || budgetError;
+    if (hydrated.current || !econSettled || !brandSettled || !funnelSettled || !budgetSettled) {
       return;
     }
     hydrated.current = true;
-    const declared = new Map(funnelData.funnels.map((f) => [f.funnelKey, f]));
-    const funded = new Map(budgetData.funnels.map((f) => [f.funnelKey, f.dailyBudgetCents]));
+    const declared = new Map((funnelData?.funnels ?? []).map((f) => [f.funnelKey, f]));
+    const funded = new Map((budgetData?.funnels ?? []).map((f) => [f.funnelKey, f.dailyBudgetCents]));
     setStates((prev) => {
       const next = { ...prev };
       for (const def of SALES_FUNNELS) {
@@ -179,12 +192,26 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
           savedBudgetCents: cents,
           draft: saved
             ? funnelDraftFromDeclared(def, saved)
-            : funnelDraftFromBrand(def, econData.salesEconomics, brand?.clickDestinationUrl ?? null),
+            : funnelDraftFromBrand(
+                def,
+                econData?.salesEconomics ?? null,
+                brand?.clickDestinationUrl ?? null,
+              ),
         };
       }
       return next;
     });
-  }, [econData, brandData, funnelData, budgetData, brand]);
+  }, [
+    econData,
+    brandData,
+    funnelData,
+    budgetData,
+    brand,
+    econError,
+    brandError,
+    funnelError,
+    budgetError,
+  ]);
 
   /** Write the funnel we just declared into the cached set, in catalogue order. */
   function cacheDeclared(funnel: DeclaredSalesFunnel) {

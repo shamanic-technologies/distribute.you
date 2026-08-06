@@ -750,7 +750,10 @@ describe("Sales Funnels card", () => {
   // own stored values instead, so a confirmed number is never re-guessed.
   it("seeds a declared funnel from what it declared, not from the brand blend", () => {
     expect(src).toContain("funnelDraftFromDeclared(def, saved)");
-    expect(src).toContain("funnelDraftFromBrand(def, econData.salesEconomics");
+    // Optional-chained since the card hydrates on SETTLE: an errored economics
+    // read still lets the other three seed what they know.
+    expect(src).toContain("funnelDraftFromBrand(");
+    expect(src).toContain("econData?.salesEconomics ?? null");
   });
 
   // A set we could not read is a set we must not write over: every field would
@@ -976,7 +979,8 @@ describe("the Sales Funnels card funds each funnel", () => {
   it("reads the ceilings from billing, not from the funnel declaration", () => {
     // Two services own two halves of one funnel: brand-service says how it
     // sells, billing says how much it is funded. The card composes both.
-    expect(src).toContain('useAuthQuery(["brandFunnelBudgets", brandId]');
+    expect(src).toContain('["brandFunnelBudgets", brandId]');
+    expect(src).toContain("getBrandFunnelBudgets(brandId)");
     expect(src).toContain("getBrandFunnelBudgets(brandId)");
   });
 
@@ -1018,5 +1022,35 @@ describe("the Sales Funnels card funds each funnel", () => {
   it("renders the ceiling in whole dollars, never cents", () => {
     // A daily budget is a configured ceiling, not a charge.
     expect(src).toContain('Math.round(state.savedBudgetCents / 100).toLocaleString("en-US")');
+  });
+});
+
+describe("the card hydrates on SETTLE, never on success alone", () => {
+  const src = read("../src/components/settings/brand-sales-funnels-card.tsx");
+
+  it("waits for each of the four reads to resolve OR error", () => {
+    // Gated on `data !== undefined` alone, ONE failing read left every funnel at
+    // its initial blank state forever — no rate, no lifetime revenue, `$0/day`,
+    // and `OK` where the card should have said `Update`. That is what a brand
+    // which has told us nothing looks like, so it reads as deleted data rather
+    // than as a failed read. It is how the retired-goal parse throw on
+    // `brandSalesEconomics` took this card down for the whole fleet.
+    for (const settled of [
+      "econData !== undefined || econError",
+      "brandData !== undefined || brandError",
+      "funnelData !== undefined || funnelError",
+      "budgetData !== undefined || budgetError",
+    ]) {
+      expect(src).toContain(settled);
+    }
+    expect(src).not.toContain("econData === undefined ||");
+  });
+
+  it("reads through an errored payload rather than dereferencing it", () => {
+    // A read that errored contributes what it knows, which is nothing; the
+    // others still show what the brand stated.
+    expect(src).toContain("funnelData?.funnels ?? []");
+    expect(src).toContain("budgetData?.funnels ?? []");
+    expect(src).toContain("econData?.salesEconomics ?? null");
   });
 });

@@ -707,7 +707,11 @@ export interface BrandSalesEconomics {
   visitToFormSubmissionPct?: number | null;
   formSubmissionToPaidClientPct?: number | null;
   businessModel: BrandBusinessModel | null;
-  optimizationGoal: BrandOptimizationGoal;
+  // OPTIONAL because brand-service retired the goal from this payload (#434):
+  // the declared funnel set is the only vocabulary for what a brand sells
+  // through. A consumer that needs a goal reads the arbitrated one, and a
+  // reader that requires this field here takes every econ surface down.
+  optimizationGoal?: BrandOptimizationGoal;
   updatedAt: string;
 }
 
@@ -752,6 +756,13 @@ const BrandSalesEconomicsSchema = z.object({
   visitToFormSubmissionPct: z.number().nullable().optional(),
   formSubmissionToPaidClientPct: z.number().nullable().optional(),
   businessModel: z.union([z.literal("b2c"), z.literal("b2b")]).nullable(),
+  // `.optional()` because brand-service has RETIRED the goal from this payload
+  // (#434): the declared funnel set is the only vocabulary for what a brand
+  // sells through. Keeping it REQUIRED is what took every econ-reading surface
+  // down the day that promoted — `safeParse` threw on every read while the
+  // brand's own numbers sat untouched on the wire. Byte-equal with the
+  // dashboard's copy per the lockstep rule. Delete it outright once no
+  // brand-service in any environment still sends it.
   optimizationGoal: z.union([
     z.literal("signups"),
     z.literal("sales_meetings"),
@@ -762,7 +773,7 @@ const BrandSalesEconomicsSchema = z.object({
     z.literal("website_visits"),
     z.literal("positive_replies"),
     z.literal("form_submissions"),
-  ]).transform(normalizeBrandOptimizationGoal),
+  ]).transform(normalizeBrandOptimizationGoal).optional(),
   updatedAt: z.string(),
 });
 
