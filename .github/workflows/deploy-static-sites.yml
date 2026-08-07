@@ -73,9 +73,25 @@ jobs:
             exit 1
           fi
 
+      # Invoked through npx rather than cloudflare/wrangler-action, which runs
+      # `pnpm add wrangler@<pinned>` when it cannot find the binary. In a pnpm
+      # workspace that is an install into the repo ROOT, which pnpm refuses
+      # outright (ERR_PNPM_ADDING_TO_ROOT, "use -w if you really meant it") — so
+      # the action fails before it ever reaches Cloudflare, and the failure reads
+      # like a credential problem when it is a package-manager one. npx needs no
+      # dependency in this repo and no negotiation with the workspace.
+      #
+      # Pinned to the v3 major the action was itself installing; wrangler moves
+      # fast enough that `@latest` would make this step drift under us.
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ${{ matrix.path }}/out --project-name=${{ matrix.project }} --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set — refusing to report a deploy that cannot happen"
+            exit 1
+          fi
+          npx --yes wrangler@3 pages deploy "${{ matrix.path }}/out" \
+            --project-name="${{ matrix.project }}" \
+            --branch=main
