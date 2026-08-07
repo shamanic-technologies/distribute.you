@@ -335,6 +335,14 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
   { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
+  // PostHog personal API key, consumed by features-service (`src/lib/posthog-client.ts`).
+  // `apps/admin` was its ONLY registrar, which made a staff console nobody needs
+  // hosted into a load-bearing part of the backend's credential supply. The key
+  // survives in key-service on its own (the registration is an idempotent upsert,
+  // so nothing erases it when admin stops deploying) — but nothing would put it
+  // BACK, and key-service's storage is due to move with the Neon migration. This
+  // app already carries the env var, so registering it here is the whole fix.
+  { provider: "posthog", envVar: "POSTHOG_PERSONAL_API_KEY" },
   // Platform Twilio credential — one account for the whole platform (SMS +
   // WhatsApp channel). twilio-service resolves it via key-service
   // (GET /keys/platform/twilio/decrypt) and JSON.parses { accountSid, authToken },
