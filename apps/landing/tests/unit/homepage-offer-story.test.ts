@@ -111,9 +111,10 @@ describe("homepage copy discipline", () => {
   it("keeps its CSS inline, so a style change needs no cache-buster bump", () => {
     // Sibling pages link `css/styles.css?v=N`, whose URL is its own edge cache
     // key: editing that file without moving N ships nothing to returning
-    // visitors. This page carries its styles inline in the document, which is
-    // revalidated every 300s, so the trap does not apply. If a stylesheet link
-    // is ever added here, it must carry a `?v=` token and this guard changes.
+    // visitors. This page carries its styles inline in the document, so it is
+    // rewritten whenever the document itself revalidates and the trap does not
+    // apply, whatever that interval happens to be. If a stylesheet link is ever
+    // added here, it must carry a `?v=` token and this guard changes.
     expect(html).not.toContain("css/styles.css");
     expect(html).toContain("<style>");
   });
