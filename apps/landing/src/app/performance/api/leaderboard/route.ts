@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchLeaderboard } from "@/lib/performance/fetch-leaderboard";
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 export async function GET() {
   const data = await fetchLeaderboard();
