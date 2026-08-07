@@ -1,0 +1,81 @@
+# Builds the two statically-exportable sites and uploads them to Cloudflare Pages.
+#
+# These left Vercel because neither needs a server: `docs` is 28 MDX routes and
+# `sales-cold-emails-landing` is one page, and both emit plain files under
+# `output: "export"`. Cloudflare Pages serves them for nothing, and the repo is
+# public so the Actions minutes that build them are free too.
+#
+# Requires two repository secrets. Without them the deploy step fails loudly
+# rather than skipping, because a deploy that quietly does nothing looks exactly
+# like a deploy that worked:
+#   CLOUDFLARE_API_TOKEN   — a custom token with `Account / Cloudflare Pages / Edit`
+#   CLOUDFLARE_ACCOUNT_ID  — 1132e5bee7f6bad001161cf13ca427b3
+name: Deploy static sites
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/docs/**"
+      - "apps/sales-cold-emails-landing/**"
+      - "shared/content/**"
+      - ".github/workflows/deploy-static-sites.yml"
+  # Both sites bake values at build time (`sales` reads its hero stats through
+  # `unstable_cache`), so they need a way to be rebuilt without a code change.
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      # One site's failure must not cancel the other's deploy.
+      fail-fast: false
+      matrix:
+        include:
+          - workspace: "@distribute/docs"
+            path: apps/docs
+            project: distribute-docs
+          - workspace: "@distribute/sales-cold-emails-landing"
+            path: apps/sales-cold-emails-landing
+            project: distribute-salescoldemails
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # Both sites import `@distribute/content`, which they resolve through its
+      # `dist/`, so it has to exist before their own build runs.
+      - name: Build shared content
+        run: pnpm --filter @distribute/content build
+
+      - name: Build ${{ matrix.workspace }}
+        run: pnpm --filter ${{ matrix.workspace }} build
+
+      # `output: "export"` writes here. Asserting it is non-empty turns a build
+      # that silently produced nothing into a failure, instead of publishing an
+      # empty site over a working one.
+      - name: Verify the export produced files
+        run: |
+          count=$(find ${{ matrix.path }}/out -name '*.html' | wc -l)
+          echo "${{ matrix.project }}: $count HTML files"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::${{ matrix.path }}/out contains no HTML — refusing to publish an empty site"
+            exit 1
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ${{ matrix.path }}/out --project-name=${{ matrix.project }} --branch=main
