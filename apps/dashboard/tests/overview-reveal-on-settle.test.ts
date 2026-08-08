@@ -56,4 +56,27 @@ describe("RevenueOverviewSection drops the defensive !data re-guard", () => {
     // on an errored /revenue (revenuePending false, data undefined).
     expect(section).not.toContain("revenuePending || !data");
   });
+
+  // Same defect, one endpoint over: `pipeline-activity` 502'd for ~20 minutes on
+  // 2026-08-08 and the `|| !pipelineActivity` re-guard turned that into a
+  // permanent-looking skeleton across the Outcome card AND the activity chart,
+  // with no error text and no retry affordance.
+  it("activityLoading tracks activityPending alone", () => {
+    expect(section).toContain("const activityLoading = activityPending;");
+    expect(section).not.toContain("activityPending || !pipelineActivity");
+  });
+
+  it("an absent activity payload renders a stated reason, not a skeleton", () => {
+    expect(section).toContain(") : !pipelineActivity ? (");
+    expect(section).toContain("We could not load your outreach activity");
+  });
+
+  // The Outcome card's cumulative line is `pipelineActualSeries`, which rides the
+  // `/revenue` payload — an outage on an endpoint it does not read must not blank it.
+  it("the Outcome card gates on revenue, not on activity", () => {
+    const at = section.indexOf("<OutcomeTrendCard");
+    expect(at).toBeGreaterThan(-1);
+    // Measured: the element is 176 chars; padded to stay inside it.
+    expect(section.slice(at, at + 240)).toContain("pending={revenueLoading}");
+  });
 });
