@@ -1,0 +1,28 @@
+# The only image built from this repo is apps/admin, and its context is the repo root
+# (a pnpm workspace needs the lockfile and the workspace manifest above the app).
+# Everything below is either rebuilt inside the image or has no business in it.
+
+node_modules
+**/node_modules
+.next
+**/.next
+**/.turbo
+**/dist
+**/coverage
+**/playwright-report
+**/test-results
+
+.git
+.github
+.conductor
+.vercel
+**/.vercel
+
+# Secrets never enter the build context. The NEXT_PUBLIC_* values admin needs at build
+# time are the one exception and arrive as apps/admin/.env.production, allowed below.
+.env
+.env.local
+**/.env.local
+**/.env*.local
+
+!apps/admin/.env.production
