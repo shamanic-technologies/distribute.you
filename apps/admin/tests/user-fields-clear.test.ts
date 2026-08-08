@@ -38,22 +38,10 @@ describe("admin Brand Settings — profileToPayload", () => {
   });
 });
 
-describe("dashboard Strategy page — profileToUserFieldsPayload", () => {
-  const fn = sliceFn(
-    read("../../dashboard/src/components/strategy/strategy-page.tsx"),
-    "function profileToUserFieldsPayload",
-  );
-
-  it("assigns every one of the 7 keys unconditionally", () => {
-    expect(fn).toContain("out[key] =");
-    expect(fn).not.toContain(DROPS_EMPTY);
-  });
-
-  it("splits list vs text off the shared field defs", () => {
-    expect(fn).toContain('ALL_FIELDS.find((f) => f.key === key)?.kind === "list"');
-    expect(fn).toContain(': ""');
-  });
-});
+// The dashboard Strategy page carried a third copy of this builder. That page was
+// retired in #3284, so there are two copies left: this console's and onboarding's.
+// The block that read it was throwing ENOENT here since that merge — admin's suite is
+// not a CI gate, so nothing surfaced it.
 
 describe("dashboard onboarding — buildUserFieldsPayload", () => {
   const fn = sliceFn(
