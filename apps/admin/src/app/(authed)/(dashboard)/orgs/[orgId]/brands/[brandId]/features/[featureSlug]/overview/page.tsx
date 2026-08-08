@@ -18,7 +18,7 @@ export default function FeatureOverviewPage() {
   const featureSlug = params.featureSlug as string;
   const enabled = isRevenueFeature(featureSlug);
 
-  const { data } = useAuthQuery(
+  const { data, isError: revenueIsError } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug],
     () => getFeatureRevenue(featureSlug, brandId),
     { enabled, ...pollOptionsSlow },
@@ -31,7 +31,7 @@ export default function FeatureOverviewPage() {
   // Campaigns donut (which polls) stayed live → the two showed different %s. Both
   // polling means both observers refetch the shared cache entry together → always
   // identical. (`total` = actual + provisioned, so provisioned holds churn live.)
-  const { data: costData } = useAuthQuery(
+  const { data: costData, isError: costIsError } = useAuthQuery(
     ["brandCostBreakdown", { brandId, featureSlug }],
     () => getBrandCostBreakdown(brandId, { featureSlug }),
     { enabled, ...pollOptions },
@@ -43,8 +43,14 @@ export default function FeatureOverviewPage() {
   // its OWN query so the fast cost + Top-campaigns cards paint immediately instead
   // of being held in skeleton by the slower revenue call. (#1551: one barrier per
   // card, never a single AND that freezes everything until the slowest resolves.)
-  const revenueRevealed = useCoordinatedReveal([data !== undefined]);
-  const costRevealed = useCoordinatedReveal([costData !== undefined]);
+  // Reveal on SETTLE (resolved OR errored), never success-only — the fix the customer
+  // dashboard took in #2650 and this fork never got. `/revenue` is the slowest cold
+  // chain and fails intermittently; gating on `data !== undefined` alone leaves the
+  // section skeletoned FOREVER after one transient error, with no error UI and no
+  // recovery. Settling on `isError` paints "—" instead, the error still logs loud, and
+  // the monotonic latch keeps the section revealed while the next poll recovers.
+  const revenueRevealed = useCoordinatedReveal([data !== undefined || revenueIsError]);
+  const costRevealed = useCoordinatedReveal([costData !== undefined || costIsError]);
 
   if (!isRevenueFeature(featureSlug)) {
     return (
