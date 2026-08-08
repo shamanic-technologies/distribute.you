@@ -12,6 +12,8 @@ out/
 .env
 .env.local
 .env.*.local
+# Written on the Hetzner box so the admin image can inline its NEXT_PUBLIC_* values.
+.env.production
 
 # IDE
 .vscode/
