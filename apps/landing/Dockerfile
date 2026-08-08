@@ -11,10 +11,12 @@
 # time through the compose env_file, like every other service on the box.
 #
 # DATABASE_URL is the one exception, because the blog migrations run BEFORE the build
-# the way they do on Vercel. It arrives as a BuildKit secret rather than a build arg or
-# a line in .env.production: a build arg is recorded in the image history and an env
-# file is a layer, and this is a real database credential rather than a publishable
-# token. The mount exists only for the length of that one RUN.
+# and the build itself PRERENDERS the blog and the sitemap out of that database — on
+# Vercel it is an ordinary build env var, and without it here /blog renders zero
+# articles and the sitemap loses every blog URL. It arrives as a BuildKit secret rather
+# than a build arg or a line in .env.production: a build arg is recorded in the image
+# history and an env file is a layer, and this is a real database credential rather
+# than a publishable token. The mount exists only for the length of those RUNs.
 
 FROM node:22-alpine AS builder
 RUN corepack enable && apk add --no-cache libc6-compat
@@ -36,7 +38,9 @@ RUN --mount=type=secret,id=landing_db_url \
     DATABASE_URL="$(cat /run/secrets/landing_db_url 2>/dev/null || true)" \
     pnpm --filter @distribute/landing migrate
 
-RUN pnpm --filter @distribute/landing... build
+RUN --mount=type=secret,id=landing_db_url \
+    DATABASE_URL="$(cat /run/secrets/landing_db_url 2>/dev/null || true)" \
+    pnpm --filter @distribute/landing... build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
