@@ -1,5 +1,6 @@
-# The only image built from this repo is apps/admin, and its context is the repo root
-# (a pnpm workspace needs the lockfile and the workspace manifest above the app).
+# Three images are built from this repo — apps/admin, apps/landing, apps/dashboard —
+# and every one of them takes the repo root as its context (a pnpm workspace needs the
+# lockfile and the workspace manifest above the app).
 # Everything below is either rebuilt inside the image or has no business in it.
 
 node_modules
@@ -18,11 +19,16 @@ node_modules
 .vercel
 **/.vercel
 
-# Secrets never enter the build context. The NEXT_PUBLIC_* values admin needs at build
-# time are the one exception and arrive as apps/admin/.env.production, allowed below.
+# Secrets never enter the build context. The NEXT_PUBLIC_* values each app needs at
+# build time are the one exception and arrive as apps/<app>/.env.production, allowed
+# below — those values are inlined into a client bundle, so they are public by
+# construction. A real credential does not go in one: the landing's DATABASE_URL, which
+# its blog migrations need before the build, arrives as a BuildKit secret instead.
 .env
 .env.local
 **/.env.local
 **/.env*.local
 
 !apps/admin/.env.production
+!apps/landing/.env.production
+!apps/dashboard/.env.production

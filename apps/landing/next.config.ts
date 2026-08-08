@@ -1,7 +1,16 @@
+import path from "node:path";
+
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The landing ships as a container on the Hetzner box, so the build emits a
+  // self-contained server plus only the traced dependencies. `next build` runs with
+  // apps/landing as its cwd, and the trace root has to be the monorepo root or the
+  // standalone output misses everything pnpm hoisted above this package — including
+  // @distribute/content, which every served page reads its copy from.
+  output: "standalone",
+  outputFileTracingRoot: path.resolve(process.cwd(), "../.."),
   images: {
     remotePatterns: [
       {
