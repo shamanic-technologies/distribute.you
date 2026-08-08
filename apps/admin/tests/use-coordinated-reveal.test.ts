@@ -144,9 +144,20 @@ describe("feature pages adopt the coordinated body reveal", () => {
     // Revenue (features-service) and Total-spent (runs-service) resolve on different
     // cold chains → SEPARATE latches, so the fast cost card never waits on the slower
     // revenue call (#1551: one barrier per card, never a single AND of both queries).
-    expect(src).toMatch(/useCoordinatedReveal\(\[data !== undefined\]\)/);
-    expect(src).toMatch(/useCoordinatedReveal\(\[costData !== undefined\]\)/);
+    // Each latch settles on resolved OR errored, never success-only: gating on
+    // `data !== undefined` alone skeletons the card FOREVER after one transient
+    // failure of the slow `/revenue` chain, with no error UI and no recovery.
+    expect(src).toMatch(/useCoordinatedReveal\(\[data !== undefined \|\| revenueIsError\]\)/);
+    expect(src).toMatch(/useCoordinatedReveal\(\[costData !== undefined \|\| costIsError\]\)/);
     expect(src).not.toMatch(/data !== undefined,\s*costData !== undefined/);
+  });
+
+  it("the section drops the defensive !data re-guard that re-locks the skeleton", () => {
+    const src = read("../src/components/revenue/revenue-overview-section.tsx");
+    expect(src).toContain("const revenueLoading = revenuePending;");
+    // `revenuePending || !data` is false || true on an errored /revenue — the page
+    // reveals and the child immediately re-locks it. Same defect as #2650.
+    expect(src).not.toContain("revenuePending || !data");
   });
 
   it("legacy feature page reveals stats grid + campaigns list together", () => {
