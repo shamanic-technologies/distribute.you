@@ -1,3 +1,7 @@
+// The welcome-gift amount is pinned at boot by the DASHBOARD's instrumentation, which is
+// the single registrar for everything in the shared platform stores. Admin registers nothing,
+// so the boot-pin assertions live in apps/dashboard/tests/welcome-gift-pinned.ts. What stays
+// here is the rule that no admin surface may edit the amount.
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
@@ -8,10 +12,6 @@ const apiContent = fs.readFileSync(
 );
 const homePageContent = fs.readFileSync(
   path.resolve(__dirname, "../src/app/(authed)/(dashboard)/page.tsx"),
-  "utf-8",
-);
-const instrumentationContent = fs.readFileSync(
-  path.resolve(__dirname, "../src/instrumentation.ts"),
   "utf-8",
 );
 
@@ -32,27 +32,5 @@ describe("welcome gift is not front-end editable", () => {
     expect(apiContent).not.toContain("export async function getWelcomePromo");
     expect(apiContent).not.toContain("export async function setWelcomePromo");
     expect(apiContent).not.toContain("WelcomePromoSchema");
-  });
-});
-
-describe("welcome gift is pinned at boot by instrumentation", () => {
-  it("declares the code-owned grant amount constant", () => {
-    expect(instrumentationContent).toMatch(
-      /WELCOME_GIFT_CENTS\s*=\s*\d+/,
-    );
-  });
-
-  it("PATCHes the pinned amount to /v1/promo-codes/welcome on boot", () => {
-    expect(instrumentationContent).toContain("/v1/promo-codes/welcome");
-    expect(instrumentationContent).toContain(
-      "amountCents: WELCOME_GIFT_CENTS",
-    );
-    // Uses the platform key the other boot deployments use.
-    const pinBlock = instrumentationContent.slice(
-      instrumentationContent.indexOf("/v1/promo-codes/welcome") - 400,
-      instrumentationContent.indexOf("/v1/promo-codes/welcome") + 400,
-    );
-    expect(pinBlock).toMatch(/method:\s*"PATCH"/);
-    expect(pinBlock).toContain('"X-API-Key": apiKey');
   });
 });

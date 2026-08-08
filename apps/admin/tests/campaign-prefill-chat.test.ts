@@ -13,7 +13,6 @@ describe("campaign-prefill-chat", () => {
     SRC,
     "src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/campaigns/new/page.tsx",
   );
-  const instrumentationPath = path.join(SRC, "src/instrumentation.ts");
 
   describe("CampaignPrefillChat component", () => {
     it("exists", () => {
@@ -120,40 +119,6 @@ describe("campaign-prefill-chat", () => {
 
     it("passes onFieldsUpdate to CampaignPrefillChat", () => {
       expect(panelSrc).toContain("onFieldsUpdate={onFieldsUpdate}");
-    });
-  });
-
-  describe("instrumentation config", () => {
-    const instrSrc = fs.readFileSync(instrumentationPath, "utf-8");
-
-    it("registers campaign-prefill platform config", () => {
-      expect(instrSrc).toContain('"campaign-prefill"');
-    });
-
-    it("defines CAMPAIGN_PREFILL_SYSTEM_PROMPT", () => {
-      expect(instrSrc).toContain("CAMPAIGN_PREFILL_SYSTEM_PROMPT");
-    });
-
-    it("defines CAMPAIGN_PREFILL_ALLOWED_TOOLS with update_campaign_fields", () => {
-      expect(instrSrc).toContain("CAMPAIGN_PREFILL_ALLOWED_TOOLS");
-      expect(instrSrc).toContain('"update_campaign_fields"');
-    });
-
-    it("includes prefill_feature in allowed tools", () => {
-      expect(instrSrc).toContain('"prefill_feature"');
-    });
-
-    it("includes brand-service extraction tools", () => {
-      expect(instrSrc).toContain('"extract_brand_fields"');
-    });
-
-    it("includes API discovery tools", () => {
-      expect(instrSrc).toContain('"list_services"');
-      expect(instrSrc).toContain('"list_service_endpoints"');
-    });
-
-    it("includes browse_url tool for web page visits", () => {
-      expect(instrSrc).toContain('"browse_url"');
     });
   });
 });
