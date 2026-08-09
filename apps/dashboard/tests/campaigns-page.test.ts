@@ -108,7 +108,7 @@ describe("Campaigns page (GA)", () => {
     // stopped campaign is history, not a line; its runs still count because
     // features-service totals each identity (org, brand, funnel, channel)
     // server-side, so the live campaign's figures include its stopped ancestors.
-    expect(page).toContain("campaigns.filter((c) => isActiveStatus(c.status))");
+    expect(page).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
   });
 
   it("reads per-campaign stats from the features-service grouped reader", () => {
@@ -174,10 +174,22 @@ describe("Campaigns page (GA)", () => {
   // with. The #1 tile reads that same ordering off `rows`, so it can never name a
   // campaign other than the first row.
   it("sorts live campaigns by ROI descending, and the #1 tile reads that same ranking", () => {
-    expect(page).toContain("campaigns.filter((c) => isActiveStatus(c.status))");
+    expect(page).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
     expect(page).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
     expect(page).not.toContain("if (byStatus !== 0) return byStatus;");
     expect(page).toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
+  });
+
+  // `listCampaignsByBrand` answers for the WHOLE brand, so it also returns the PR,
+  // AI-visibility and VC campaigns — products that run no sales funnel and whose
+  // figures this page never fetched (`getFeatureRevenueByCampaign` is scoped to
+  // `featureSlug`). Listing one population while pricing another is the bug; the
+  // clutter was only how it showed. The empty state reads the same scoped set, or a
+  // brand whose only campaigns belong to another feature would be told it has some.
+  it("lists only the campaigns of the feature whose figures it renders", () => {
+    expect(page).toContain("campaigns.filter((c) => c.featureSlug === featureSlug)");
+    expect(page).toContain('featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."');
+    expect(page).not.toContain('campaigns.length === 0 ? "No campaigns yet."');
   });
 
   // The words that paint a pill green and the words that rank a row first are ONE

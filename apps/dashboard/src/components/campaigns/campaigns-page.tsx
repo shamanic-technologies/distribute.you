@@ -242,14 +242,29 @@ export function CampaignsPage() {
   );
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
-  // The table is the campaigns a brand RUNS — one line per live campaign. campaign-service
-  // enforces at most one `ongoing` campaign per identity — (org, brand, funnel, channel),
-  // migration 0044 — so filtering on its own status yields exactly one line per live campaign,
-  // and features-service totals each identity server-side (a campaign's stopped ancestors' runs
-  // ride on its live campaign's group). A stopped campaign is history, not a line.
+  // The table is the campaigns a brand RUNS on THIS feature — one line per live campaign.
+  //
+  // Two filters, and both are load-bearing:
+  //
+  // Feature. `listCampaignsByBrand` answers for the whole brand, so it also returns the
+  // brand's PR, AI-visibility and VC campaigns — products that run no sales funnel and
+  // whose figures this page never fetched: `getFeatureRevenueByCampaign` is scoped to
+  // `featureSlug`. So those rows arrived with no group and rendered `— / — / —` under a
+  // Sales funnel column they can never fill. A table listing one population and pricing
+  // another is the incoherence, not merely the clutter.
+  //
+  // Status. campaign-service enforces at most one `ongoing` campaign per identity —
+  // (org, brand, funnel, channel), migration 0044 — so filtering on its own status yields
+  // exactly one line per live campaign, and features-service totals each identity
+  // server-side (a campaign's stopped ancestors' runs ride on its live campaign's group).
+  // A stopped campaign is history, not a line.
+  const featureCampaigns = useMemo(
+    () => campaigns.filter((c) => c.featureSlug === featureSlug),
+    [campaigns, featureSlug],
+  );
   const liveCampaigns = useMemo(
-    () => campaigns.filter((c) => isActiveStatus(c.status)),
-    [campaigns],
+    () => featureCampaigns.filter((c) => isActiveStatus(c.status)),
+    [featureCampaigns],
   );
   const groupsById = useMemo(() => {
     const m = new Map<string, CampaignRevenueGroup>();
@@ -339,7 +354,7 @@ export function CampaignsPage() {
               ) : rows.length === 0 ? (
                 <tr>
                   <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>
-                    {campaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
+                    {featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
                   </td>
                 </tr>
               ) : (
