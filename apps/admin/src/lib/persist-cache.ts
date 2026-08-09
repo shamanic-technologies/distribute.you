@@ -91,8 +91,15 @@ export const SENSITIVE_QUERY_ROOTS = new Set(["apiKeys", "byokKeys", "keySources
  * the email, the same draft body restores yesterday's HTML from disk, and the
  * author approves a render nobody will receive. It is one cheap call on a button
  * press, so there is nothing to save by caching it across sessions.
+ *
+ * `configFile` is the same shape of problem for a different reason. Its payload
+ * carries the blob sha a save is validated against, and that sha is only true until
+ * someone commits the file, which anyone with the repo can do at any moment. Painting
+ * a restored copy would open an editor on yesterday's text holding yesterday's sha,
+ * so every save from that session would be refused as a conflict. Reading it fresh is
+ * one request on a click.
  */
-export const EPHEMERAL_QUERY_ROOTS = new Set(["mailingListUpdatePreview"]);
+export const EPHEMERAL_QUERY_ROOTS = new Set(["mailingListUpdatePreview", "configFile"]);
 
 export interface PersistableQuery {
   state: { status: string };
