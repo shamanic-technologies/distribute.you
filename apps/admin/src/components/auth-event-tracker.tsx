@@ -34,7 +34,13 @@ export function AuthEventTracker() {
       sendAuthNotification("welcome").catch(() => {});
     } else if (!sessionStorage.getItem(SIGNIN_TRACKED_KEY)) {
       sessionStorage.setItem(SIGNIN_TRACKED_KEY, "1");
-      sendAuthNotification("signin_notification").catch(() => {});
+      // PAUSED while the platform sits on Postmark's free plan (100 emails/month,
+      // hard stop, no overages). This fired ~220 times a month and every one of
+      // them was read by one person, who now gets the same information once a day
+      // in the staff digest. Restore this line when the account is back on a paid
+      // plan; the sessionStorage latch above is kept so the dedup behaviour is
+      // unchanged the moment it comes back.
+      // sendAuthNotification("signin_notification").catch(() => {});
     }
   }, [isSignedIn]);
 
