@@ -78,7 +78,10 @@ describe("domain references in landing app", () => {
   it("should use @distribute_you twitter handle in SEO metadata", () => {
     const layout = readFileSync(join(ROOT, "src/app/layout.tsx"), "utf-8");
     const seo = readFileSync(join(ROOT, "src/lib/seo.ts"), "utf-8");
-    expect(layout).toContain("TWITTER_HANDLE");
-    expect(seo).toContain('@distribute_you');
+    // Assert the handle itself, not the name of a constant. The layout used to reach
+    // for a `TWITTER_HANDLE` export and now writes the handle inline, so the old
+    // assertion went red on a file that says exactly the right thing.
+    expect(layout).toContain("@distribute_you");
+    expect(seo).toContain("@distribute_you");
   });
 });

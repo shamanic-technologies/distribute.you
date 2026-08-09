@@ -15,7 +15,9 @@ describe("Investors page: ICP #1 section", () => {
   const page = fs.readFileSync(pagePath, "utf-8");
 
   it("renders Who We Serve heading", () => {
-    expect(page).toMatch(/Who We Serve\s+—\s+ICP\s+#1/);
+    // Colon, not an em-dash: the heading was repunctuated to satisfy the
+    // no-em-dash-in-user-facing-copy rule, and this assertion never followed it.
+    expect(page).toMatch(/Who We Serve:\s+ICP\s+#1/);
   });
 
   it("includes Serial Builder framing", () => {

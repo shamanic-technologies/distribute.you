@@ -20,6 +20,10 @@ down for every customer at once if it goes wrong, so it is the owner's to take.
 | health | `/api/public/health`, asked from inside the container | same |
 | temporary hostname | `next-landing.distribute.you` | `next.distribute.you` |
 
+`admin-app` is the third app in that group and moves with them — one clone, one lock, one
+commit sha. `deploy-admin.sh` still exists and still works; it is now a wrapper around
+`./deploy.sh admin-app --force`.
+
 ## Before you flip: three values are missing
 
 Each is Vercel-`sensitive`, which means the CLI writes `[SENSITIVE]` instead of the value
@@ -37,16 +41,32 @@ They are left OUT rather than stubbed: each consumer logs a named error when the
 absent, which is a clearer signal than a placeholder that reaches a vendor and comes back
 as a vendor error.
 
-After adding them: `./deploy-admin.sh`-style rebuild for the build-time one —
-`cp env/dashboard-app.build.env repos/distribute.you/apps/dashboard/.env.production &&
-docker compose build dashboard-app && docker compose up -d dashboard-app`. The two
-runtime-only ones need `docker compose up -d --force-recreate <app>`.
+After adding them: the build-time one needs a rebuild, which is what `--force` is for —
+`./deploy.sh dashboard-app --force` (it writes the build env into the clone, rebuilds,
+health-checks, and rolls back if that fails). The two runtime-only ones need only
+`docker compose up -d --force-recreate <app>`. Then re-run `./cutover.sh --check`.
 
 ## The flip
 
-Three Cloudflare DNS records, zone `df5bdf092c1909940690f66f4519acaf`. All three are
-proxied today and stay proxied — Caddy serves the origin with `tls internal`, which is
-what Cloudflare's "Full" SSL mode expects.
+On the box, `/root/distribute/cutover.sh` does it in four steps. They are separate on
+purpose: the first two are free and reversible and can run days early, and only `--dns`
+is the one that reaches customers.
+
+```
+./cutover.sh --check     # read-only. Containers, the three secrets, Caddy, who serves what.
+./cutover.sh --caddy     # serve the production hostnames from here. DNS still on Vercel.
+./cutover.sh --dns       # flip the three records.   ← the one that can break things
+./cutover.sh --verify    # read back what each hostname is actually served by
+./rollback-cutover.sh    # put all three records back exactly as they were
+```
+
+`--dns` and the rollback need `CLOUDFLARE_API_TOKEN` exported with `DNS:Edit` on the
+zone; nothing else does. `--check` exits non-zero while anything is missing, so it is the
+gate rather than a summary — today it exits 1 on the three secrets below.
+
+The records it touches, zone `df5bdf092c1909940690f66f4519acaf`. All three are proxied
+today and stay proxied — Caddy serves the origin with `tls internal`, which is what
+Cloudflare's "Full" SSL mode expects.
 
 | record | id | today | after |
 |---|---|---|---|
@@ -57,21 +77,24 @@ what Cloudflare's "Full" SSL mode expects.
 `app.distribute.you` serves a Vercel 404 today and Caddy already answers it beside
 `dashboard.distribute.you`, so it can move with them or be deleted.
 
-Caddy needs the two production hostnames pointed at the containers in the same window.
-In `/root/distribute/Caddyfile`, replace the `app.distribute.you, dashboard.distribute.you`
-maintenance block and add `distribute.you`, using the same two `reverse_proxy` bodies the
-`next.` / `next-landing.` blocks already carry (the dashboard's `flush_interval -1` and
-`read_timeout 310s` are load-bearing — see the comments there). Then
-`docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`. Do Caddy FIRST:
-serving both hostnames from the box before DNS moves costs nothing, and it means the flip
-is a single DNS change with no second step to get wrong.
+`--caddy` is what points those hostnames at the containers, and it runs FIRST for a
+reason: serving them from the box while DNS still points at Vercel costs nothing and
+reaches nobody, and doing it early means the flip is one DNS change with no second step to
+get wrong. It backs the Caddyfile up, reuses the exact `reverse_proxy` bodies the
+`next.` / `next-landing.` blocks already prove (the dashboard's `flush_interval -1` and
+`read_timeout 310s` are load-bearing — see the comments there), validates before
+reloading, and restores the backup if validation fails.
 
 ## Undo
 
-Restore the three records to the "today" column above. Cloudflare TTL is `auto` on a
-proxied record, so the edge picks the change up in seconds; there is no cache to wait out.
-Both Vercel projects are untouched and still building from `main`, so they resume serving
-the moment DNS points back.
+`./rollback-cutover.sh` restores the three records to the "today" column above. Cloudflare
+TTL is `auto` on a proxied record, so the edge picks the change up in seconds; there is no
+cache to wait out. Both Vercel projects are untouched and still building from `main`, so
+they resume serving the moment DNS points back.
+
+It leaves Caddy alone on purpose: serving the production hostnames from the box costs
+nothing while DNS points elsewhere, and leaving it means a re-flip is one command instead
+of two. To undo that half as well, restore the newest `Caddyfile.pre-cutover.*.bak`.
 
 ## After the flip
 
@@ -79,9 +102,12 @@ the moment DNS points back.
   `98e31b39353671b9c58d0b87f83896d7`, `next-landing.distribute.you` id
   `3d8ebe1e8eb85ad10234b9e04c0670c1`) and their Caddy blocks.
 - **Turn off the Vercel cron** on `distribute-dashboard` (remove `crons` from
-  `apps/dashboard/vercel.json`). The box now runs the same job at the same time. Sends are
-  deduped per `outcome-digest:<brandId>:<YYYY-MM-DD>`, so an overlap would mail nobody
-  twice — but two crons for one job is a thing to remove, not a thing to rely on.
+  `apps/dashboard/vercel.json`). It is deliberately still there: the box has run the same
+  job since 2026-08-08 and both fire at 01:00 UTC, but while Vercel is the host that
+  serves customers it is also the rollback target, and a rollback should not land on a
+  dashboard whose only cron was deleted. Sends are deduped per
+  `outcome-digest:<brandId>:<YYYY-MM-DD>`, so the overlap mails nobody twice. Remove it
+  once the box has served for a few days — `./cutover.sh --verify` prints the reminder.
 - **The CORS error on the temporary hostname goes away by itself.** api-service allows
   `https://dashboard.distribute.you` and not `https://next.distribute.you`, so the
   conversion-tracker preflight fails today on the temporary host only. Verified: the
