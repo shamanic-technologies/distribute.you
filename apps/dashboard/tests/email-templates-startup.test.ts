@@ -65,8 +65,14 @@ describe("Email template deployment at startup", () => {
     const arrMatch = content.match(/EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
     expect(arrMatch).toBeTruthy();
     const arr = arrMatch![1];
-    const matches = arr.match(/name: "/g);
-    expect(matches).toHaveLength(15);
+    // 14 are declared inline here. The 15th, the staff digest, is imported from
+    // the module that SENDS it — that module re-registers it before every send,
+    // because a boot-time registration on a serverless cold start is not a
+    // guarantee that the write ever reached the template store.
+    const inline = arr.match(/name: "/g);
+    expect(inline).toHaveLength(14);
+    expect(arr).toContain("STAFF_DIGEST_TEMPLATE_DEF");
+    expect(content).toContain('from "@/lib/staff-digest"');
   });
 
   it("should be best-effort (not crash on failure)", () => {
