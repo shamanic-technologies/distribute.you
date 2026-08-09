@@ -140,6 +140,18 @@ describe("investor update composer", () => {
     expect(composer).toContain("imageAltFromFilename(file.name)");
   });
 
+  it("asks the storage service to optimise for email BEFORE the bytes are written", () => {
+    // The recipient's mail client has no credentials of ours, so what is stored
+    // is exactly what is delivered. Re-encoding on read is not an option: that
+    // route is service-authed and a client would get a 401 where the picture is.
+    expect(composer).toContain('optimizeFor: "email"');
+  });
+
+  it("states the stored weight, the only place the author sees what came out", () => {
+    expect(composer).toContain("formatUploadSize(uploaded.size)");
+    expect(composer).toContain("Stored at");
+  });
+
   it("uploads under a sanitized name, since the key lands in the public URL", () => {
     // A macOS screenshot carries spaces, the storage key kept them, and the
     // markdown image then ended at the first space and rendered as raw text.

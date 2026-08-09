@@ -75,6 +75,22 @@ export function sanitizeUploadFilename(filename: string): string {
 }
 
 /**
+ * The stored weight, for the line that confirms an image landed.
+ *
+ * Worth stating rather than leaving silent: the storage service re-encodes an
+ * email-bound image before writing it, and this is the only place the author
+ * sees what that produced. A picture that is still heavy after it is the one
+ * to replace, and they can only know that if the number is on screen.
+ */
+export function formatUploadSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "";
+  if (bytes < 1024) return `${Math.round(bytes)} bytes`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+/**
  * A readable description taken from the file's own name, used when the author
  * did not write one.
  *

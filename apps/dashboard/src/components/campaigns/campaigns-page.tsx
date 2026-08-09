@@ -242,33 +242,34 @@ export function CampaignsPage() {
   );
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
+  // The table is the campaigns a brand RUNS — one line per live campaign. campaign-service
+  // enforces at most one `ongoing` campaign per identity — (org, brand, funnel, channel),
+  // migration 0044 — so filtering on its own status yields exactly one line per live campaign,
+  // and features-service totals each identity server-side (a campaign's stopped ancestors' runs
+  // ride on its live campaign's group). A stopped campaign is history, not a line.
+  const liveCampaigns = useMemo(
+    () => campaigns.filter((c) => isActiveStatus(c.status)),
+    [campaigns],
+  );
   const groupsById = useMemo(() => {
     const m = new Map<string, CampaignRevenueGroup>();
     for (const g of groupsQ.data ?? []) m.set(g.campaignId, g);
     return m;
   }, [groupsQ.data]);
 
-  // Rows ordered by STATUS first, then ROI DESC inside each group. A campaign
-  // that is not running cannot be acted on today, so it sits under the ones that
-  // can, however good its return was — and the status it is ranked on is the one
-  // its own pill states (`isActiveStatus`, the single definition above). Within a
-  // group the order is the ROI column the table leads with, because a table that
-  // displays one order and sorts by another reads as unordered. A campaign with
-  // no ROI yet has nothing to rank on, so it sits last in its group rather than
-  // at zero.
+  // Rows ordered by ROI DESC. Every row here is running by construction (the live filter above),
+  // so there is no status term — the order is the ROI column the table leads with, because a table
+  // that displays one order and sorts by another reads as unordered. A campaign with no ROI yet
+  // has nothing to rank on, so it sits last rather than at zero.
   const rows = useMemo<CampaignRow[]>(() => {
-    const joined = campaigns.map((c) => ({ campaign: c, revenue: groupsById.get(c.id) ?? null }));
-    return joined.sort((a, b) => {
-      const byStatus = Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status));
-      if (byStatus !== 0) return byStatus;
-      return (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
-    });
-  }, [campaigns, groupsById]);
+    const joined = liveCampaigns.map((c) => ({ campaign: c, revenue: groupsById.get(c.id) ?? null }));
+    return joined.sort((a, b) => (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1));
+  }, [liveCampaigns, groupsById]);
 
   // #1 acquisition channel = the channel of the best-ROI RUNNING campaign, named
   // as the brand Settings catalogue names it (display argmax over already-fetched
-  // rows, not a hidden metric). It reads the SAME ranking the table is sorted by
-  // — status first, then ROI — so the tile and the first row cannot name two
+  // rows, not a hidden metric). It reads the SAME ranking the table is sorted by —
+  // ROI desc over the live set — so the tile and the first row cannot name two
   // different campaigns, and the tile names a channel that is actually live
   // rather than one that stopped months ago.
   const topChannel = useMemo(() => {
@@ -338,7 +339,7 @@ export function CampaignsPage() {
               ) : rows.length === 0 ? (
                 <tr>
                   <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>
-                    No campaigns yet.
+                    {campaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
                   </td>
                 </tr>
               ) : (

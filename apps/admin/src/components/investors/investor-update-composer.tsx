@@ -19,6 +19,7 @@ import {
   imageMarkdown,
   imageAltFromFilename,
   sanitizeUploadFilename,
+  formatUploadSize,
   imageFileProblem,
   imageUrlProblem,
   ACCEPTED_IMAGE_ACCEPT_ATTR,
@@ -326,6 +327,13 @@ export function InvestorUpdateComposer() {
         filename: sanitizeUploadFilename(file.name),
         contentType: file.type,
         folder: IMAGE_FOLDER,
+        // Re-encoded BEFORE it is written, so the object at the public URL is
+        // already the one a mail client should fetch. The recipient's client
+        // has no credentials of ours, so what is stored is what is delivered
+        // and there is no chance to transform it afterwards. The extension of
+        // the returned URL follows the stored format, which is why nothing here
+        // assumes it matches the picked file.
+        optimizeFor: "email",
       });
 
       const urlProblem = imageUrlProblem(uploaded.url);
@@ -357,7 +365,20 @@ export function InvestorUpdateComposer() {
       setImageAlt("");
       setNotice(null);
       // The line lands at the end of a 14-row textarea, which is easy to miss.
-      setImageNotice(`${file.name} added at the end of the update.`);
+      // The stored weight and dimensions are stated because the service
+      // re-encodes the file: this is the only place the author sees what came
+      // out, and a picture that is still heavy is the one to replace.
+      const stored = [
+        formatUploadSize(uploaded.size),
+        uploaded.width && uploaded.height ? `${uploaded.width} by ${uploaded.height}` : "",
+      ]
+        .filter((part) => part.length > 0)
+        .join(", ");
+      setImageNotice(
+        stored.length > 0
+          ? `${file.name} added at the end of the update. Stored at ${stored}.`
+          : `${file.name} added at the end of the update.`
+      );
       bodyRef.current?.focus();
     } catch (err) {
       console.error("[admin] uploadStaffImage failed", err);
@@ -418,8 +439,9 @@ export function InvestorUpdateComposer() {
           <p className="mt-0.5 text-xs text-gray-500">
             Pick a PNG, JPG or GIF from your machine, up to 5 MB. Choosing it uploads it to our
             own storage and drops the line at the end of the update; move the line wherever you
-            want it. Gmail does not render SVG, so those are refused here rather than arriving
-            broken.
+            want it. It is resized and re-encoded for email on the way in, so a full-size
+            screenshot does not land in forty inboxes at capture weight. Gmail does not render
+            SVG, so those are refused here rather than arriving broken.
           </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
