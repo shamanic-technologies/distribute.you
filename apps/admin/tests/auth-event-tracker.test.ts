@@ -47,8 +47,13 @@ describe("AuthEventTracker component", () => {
     expect(content).toContain("sessionStorage.removeItem");
   });
 
-  it("should send signin_notification as fallback", () => {
-    expect(content).toContain("signin_notification");
+  it("should keep signin_notification PAUSED, not send it", () => {
+    // Postmark free plan: 100 emails/month, hard stop. This send fired ~220 times
+    // a month for an audience of one, so it is commented out rather than deleted —
+    // the literal is still in the file, which is exactly why this guard has to
+    // assert the COMMENTED form. Asserting the bare literal would stay green
+    // forever and claim a send that no longer happens.
+    expect(content).toContain('// sendAuthNotification("signin_notification")');
   });
 
   it("should dedup signin per browser session via sessionStorage", () => {
