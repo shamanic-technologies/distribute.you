@@ -12,9 +12,9 @@ const EMAIL_TEXT = "#0a0a14"; // --text (navy)
 const EMAIL_SUB = "#3a3d47"; // --sub
 const EMAIL_MUTED = "#8b8e98"; // --muted
 const EMAIL_BORDER = "rgba(10,10,20,0.08)"; // --border
-const EMAIL_ACCENT = "#008948"; // brand-600, oklch(54% 0.16 158) — button bg, white text passes contrast
-const EMAIL_ACCENT_TEXT = "#00713a"; // brand-700 — text links on white (higher contrast than the button green)
-const EMAIL_DOT = "#00a962"; // brand-500 — the wordmark dot (solid green, visible on white)
+const EMAIL_ACCENT = "#2563EB"; // the charter accent — button bg, white on it clears AA at 5.17:1
+const EMAIL_ACCENT_TEXT = "#1A4FC3"; // one step darker — text links on white, 7.12:1, above the button
+const EMAIL_DOT = "#3D80FF"; // one step lighter — the wordmark dot, solid and visible on white
 const EMAIL_FONT =
   "'Space Grotesk','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
@@ -50,7 +50,7 @@ export const EMAIL_TEMPLATES = [
         Your campaign <strong>{{campaignName}}</strong> has been created and is now live.
       </p>
       <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">View in dashboard</a>
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">View in dashboard</a>
       </p>`),
     textBody: `Campaign created: {{campaignName}}\n\nYour campaign "{{campaignName}}" has been created and is now live.\n\nView in dashboard: ${DASHBOARD_URL}`,
   },
@@ -66,7 +66,7 @@ export const EMAIL_TEMPLATES = [
         You can resume it at any time from your dashboard.
       </p>
       <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">View in dashboard</a>
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">View in dashboard</a>
       </p>`),
     textBody: `Campaign stopped: {{campaignName}}\n\nYour campaign "{{campaignName}}" has been stopped. You can resume it at any time from your dashboard.\n\nView in dashboard: ${DASHBOARD_URL}`,
   },
@@ -84,8 +84,8 @@ export const EMAIL_TEMPLATES = [
         In the meantime, you can:
       </p>
       <ul style="color:#4a4a4a;font-size:16px;line-height:1.8;margin-bottom:30px;">
-        <li><a href="https://docs.distribute.you" style="color:#00713a;">Read the documentation</a></li>
-        <li><a href="https://github.com/shamanic-technologies/distribute" style="color:#00713a;">Star us on GitHub</a></li>
+        <li><a href="https://docs.distribute.you" style="color:${EMAIL_ACCENT_TEXT};">Read the documentation</a></li>
+        <li><a href="https://github.com/shamanic-technologies/distribute" style="color:${EMAIL_ACCENT_TEXT};">Star us on GitHub</a></li>
       </ul>`),
     textBody: "You're on the list!\n\nThanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute",
   },
@@ -213,7 +213,7 @@ export const EMAIL_TEMPLATES = [
         Want them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.
       </p>
       <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
     textBody: `Hey,\n\nYour credit ran out, so your campaigns have stopped sending. Nothing is lost — add credit and they pick right back up.\n\nWant them to never stop again? Turn on auto-topup while you're there — it adds credit automatically when you run low.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
@@ -230,7 +230,7 @@ export const EMAIL_TEMPLATES = [
         Add credit to get them running again, and flip on auto-topup so this doesn't happen next time.
       </p>
       <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
     textBody: `Hey,\n\nQuick nudge — your campaigns are still paused because your account is out of credit. Every day they're off is outreach you're not sending.\n\nAdd credit to get them running again, and flip on auto-topup so this doesn't happen next time.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
@@ -247,7 +247,7 @@ export const EMAIL_TEMPLATES = [
         If now's the time, add credit and turn on auto-topup so your outreach just keeps running.
       </p>
       <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Add credit & resume</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
     textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
@@ -279,7 +279,7 @@ export const EMAIL_TEMPLATES = [
       </p>
       {{digestHtml}}
       <p style="margin-bottom:20px;">
-        <a href="${DASHBOARD_URL}" style="display:inline-block;background:#008948;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
+        <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
     textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
@@ -335,6 +335,14 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
   { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
+  // PostHog personal API key, consumed by features-service (`src/lib/posthog-client.ts`).
+  // `apps/admin` was its ONLY registrar, which made a staff console nobody needs
+  // hosted into a load-bearing part of the backend's credential supply. The key
+  // survives in key-service on its own (the registration is an idempotent upsert,
+  // so nothing erases it when admin stops deploying) — but nothing would put it
+  // BACK, and key-service's storage is due to move with the Neon migration. This
+  // app already carries the env var, so registering it here is the whole fix.
+  { provider: "posthog", envVar: "POSTHOG_PERSONAL_API_KEY" },
   // Platform Twilio credential — one account for the whole platform (SMS +
   // WhatsApp channel). twilio-service resolves it via key-service
   // (GET /keys/platform/twilio/decrypt) and JSON.parses { accountSid, authToken },

@@ -1111,7 +1111,22 @@ export async function staticResponse(fileName: string) {
   return new Response(html, {
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "cache-control": "s-maxage=300, stale-while-revalidate=31536000",
+      // This header, not the route's `revalidate` export, is what decides how
+      // often the edge comes back to the function for these 21 pages. `revalidate`
+      // governs Next's own data cache; an explicit `cache-control` on the Response
+      // is what the CDN obeys. At `s-maxage=300` every SEO page re-rendered a
+      // ~127KB document and pushed it origin -> edge every 5 minutes around the
+      // clock, which is what Fast Origin Transfer bills for ($15/month, 459K ISR
+      // writes over 3 months) — crawlers keep every page warm enough to hit that
+      // window continuously, so the traffic-driven cost was effectively a timer.
+      //
+      // A day matches the routes' `revalidate` and the figures these pages carry:
+      // `__CAC_PRICE__` and the fleet cost per outcome move over weeks. The long
+      // `stale-while-revalidate` is unchanged and is what keeps the swap invisible
+      // — a reader is always served instantly from the edge, never waiting on a
+      // revalidation. Raising this without raising `revalidate` (or vice versa)
+      // fixes nothing: both have to move together.
+      "cache-control": "s-maxage=86400, stale-while-revalidate=31536000",
     },
   });
 }

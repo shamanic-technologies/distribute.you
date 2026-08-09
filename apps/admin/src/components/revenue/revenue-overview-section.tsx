@@ -44,10 +44,13 @@ export function RevenueOverviewSection({
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
-  // `revenueLoading` folds `revenuePending` with a defensive `!data` guard — it
-  // drives every region fed by features-service `/revenue`; the Total-spent figure
-  // (runs-service) reveals on its own `costPending` so it never waits on revenue.
-  const revenueLoading = revenuePending || !data;
+  // `revenueLoading` tracks `revenuePending` ALONE — no defensive `!data` re-guard.
+  // The page reveals on settle (success OR error), so on an errored `/revenue`
+  // `revenuePending` is false while `data` is undefined; re-guarding on `!data` here
+  // would re-lock the whole section into an eternal skeleton. Every region below is
+  // null-safe (`data?.…` → "—"), so absent data renders dashes. The Total-spent
+  // figure (runs-service) reveals on its own `costPending` and never waits on revenue.
+  const revenueLoading = revenuePending;
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between">
@@ -73,7 +76,7 @@ export function RevenueOverviewSection({
                 <Skeleton className="h-8 w-28" />
               ) : (
                 <p className="text-2xl font-bold text-gray-900 leading-none">
-                  {formatUsd(data.totalPipelineUsd)}
+                  {data ? formatUsd(data.totalPipelineUsd) : "—"}
                 </p>
               )}
               <p className="text-[11px] text-gray-400 mt-1">expected pipeline</p>
@@ -81,8 +84,14 @@ export function RevenueOverviewSection({
           </div>
           {revenueLoading ? (
             <Skeleton className="h-[260px] w-full rounded" />
-          ) : (
+          ) : data ? (
             <RevenueChart series={data.timeSeries} />
+          ) : (
+            /* Settled with no payload: say so rather than skeleton forever. The chart
+               needs a series it cannot be given. */
+            <p className="flex h-[260px] items-center justify-center text-sm text-gray-500">
+              We could not load this right now. It will reappear on its own.
+            </p>
           )}
         </div>
 

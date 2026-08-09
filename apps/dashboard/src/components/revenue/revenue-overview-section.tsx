@@ -91,8 +91,18 @@ export function RevenueOverviewSection({
   // `revenuePending` is false while `data` is undefined; re-guarding on `!data`
   // here would re-lock the whole section into an eternal skeleton. Every region is
   // null-safe (`data?.spend`, `spend?.…` → "—"), so absent data renders dashes.
+  // Same rule for the activity gate — `activityPending` ALONE. `pipeline-activity`
+  // 502s intermittently in prod (a 20-minute burst on 2026-08-08 blanked this whole
+  // block), and on an errored query the page reveals-on-settle: `activityPending`
+  // goes false while `pipelineActivity` stays undefined. A `|| !pipelineActivity`
+  // re-guard here therefore skeletons both charts FOREVER, with no error text and
+  // no retry affordance — the #2650 bug one component down.
   const revenueLoading = revenuePending;
-  const activityLoading = activityPending || !pipelineActivity;
+  const activityLoading = activityPending;
+  // The chart reads `data.days` and cannot take an absent payload, so once the gate
+  // has settled an absent one gets its own honest line rather than a skeleton:
+  // "still loading" and "we could not load this" are different statements. The
+  // check is inlined at the render site so TypeScript narrows the prop.
   // The "Outcome" card's single cumulative line tracks the brand's goal signal:
   // website clicks for a signups brand, positive replies for a meetings brand.
   const isVisitDriven = isVisitDrivenGoal(optimizationGoal);
@@ -137,12 +147,17 @@ export function RevenueOverviewSection({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         {/* Outcome — ONE cumulative line of the goal signal since launch. Height
             stretches to match the cost summary on its right (items-stretch). */}
+        {/* Gated on REVENUE, not activity: the cumulative line is `pipelineActualSeries`,
+            which rides the `/revenue` payload. Sharing the activity gate meant an
+            outage on an endpoint this card does not read blanked it anyway; its
+            forward projection is the only part sourced from pipeline-activity and
+            degrades to no dashed segment. */}
         <OutcomeTrendCard
           series={outcomeSeries}
           future={outcomeFuture}
           label={outcomeLabel}
           color={outcomeColor}
-          pending={activityLoading}
+          pending={revenueLoading}
         />
 
         {/* Cost summary — server-computed spend block (Total spent / today / top
@@ -167,6 +182,11 @@ export function RevenueOverviewSection({
         <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
         {activityLoading ? (
           <Skeleton className="h-[300px] lg:h-[200px] w-full rounded" />
+        ) : !pipelineActivity ? (
+          <p className="flex h-[300px] items-center justify-center text-sm text-gray-500 lg:h-[200px]">
+            We could not load your outreach activity right now. It will reappear on
+            its own.
+          </p>
         ) : (
           <PipelineActivityChart
             data={pipelineActivity}

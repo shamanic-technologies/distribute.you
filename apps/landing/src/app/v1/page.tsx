@@ -6,7 +6,7 @@ import { GmailInbox } from "./_c/gmail-inbox";
 import { FreeVsCloud } from "./_c/free-vs-cloud";
 import { PROD_URLS } from "./_c/env-urls";
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 // Cold-email-only "How it works" steps. Local to the home — the shared
 // DISTRIBUTION_STEPS catalog still describes the full multi-channel product

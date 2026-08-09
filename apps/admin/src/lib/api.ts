@@ -925,9 +925,10 @@ export async function saveBrandDailyBudget(
   return parsed.data;
 }
 
-// The welcome signup gift is NOT front-end editable. Its grant amount is
-// code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
-// PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.
+// The welcome signup gift is NOT front-end editable. Its grant amount is code-owned
+// and pinned at boot by the DASHBOARD's instrumentation (WELCOME_GIFT_CENTS → PATCH
+// /v1/promo-codes/welcome); admin registers nothing into the shared stores. No read or
+// write helper exists here by design.
 
 // ── Effective sales economics (new-campaign prefill) ──
 // brand-service decides the default server-side: the brand's saved set when present

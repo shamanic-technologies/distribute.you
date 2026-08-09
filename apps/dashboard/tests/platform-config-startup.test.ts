@@ -28,6 +28,9 @@ describe("Platform config registration at startup", () => {
       { provider: "google-mcc-account-id", envVar: "GOOGLE_MCC_ACCOUNT_ID" },
       { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
       { provider: "featured-password", envVar: "FEATURED_COM_PASSWORD" },
+      // Consumed by features-service. `apps/admin` used to be its only registrar,
+      // which is why it moved here before that project stopped being deployed.
+      { provider: "posthog", envVar: "POSTHOG_PERSONAL_API_KEY" },
       { provider: "apify", envVar: "APIFY_API_KEY" },
       { provider: "clerk", envVar: "CLERK_SECRET_KEY" },
       // The logo.dev SECRET key, distinct from the publishable `logo-dev` token:
@@ -55,9 +58,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 36 platform keys", () => {
+    it("should register exactly 37 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(36);
+      expect(matches).toHaveLength(37);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {

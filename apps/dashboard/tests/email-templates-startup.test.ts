@@ -103,3 +103,32 @@ describe("Daily outcome digest template", () => {
   });
 });
 
+describe("email chrome carries the charter accent, not the retired green", () => {
+  // The whole brand went back to blue in #2939 and these templates were the straggler:
+  // the green-charter reskin (#2671, 15 Jul) landed six days before the revert and nothing
+  // swept it, so every button and link mailed to customers stayed green for three weeks.
+  // Guarded by hex rather than by eye because no test renders these to a screen.
+  const src = fs.readFileSync(
+    path.resolve(__dirname, "../src/instrumentation.ts"),
+    "utf-8",
+  );
+
+  it("declares no green-charter hex anywhere", () => {
+    expect(src).not.toMatch(/#00[0-9a-fA-F]{4}/);
+  });
+
+  it("pins the three accent roles to the blue ramp", () => {
+    expect(src).toContain('const EMAIL_ACCENT = "#2563EB"');
+    expect(src).toContain('const EMAIL_ACCENT_TEXT = "#1A4FC3"');
+    expect(src).toContain('const EMAIL_DOT = "#3D80FF"');
+  });
+
+  it("reads those constants at every call site rather than repeating a hex", () => {
+    // A literal accent in a template body is what let the revert miss these in the
+    // first place, so each accent hex may appear exactly once: its declaration.
+    // Neutral literals (text, surface) are left alone — they never change with the charter.
+    for (const hex of ["#2563EB", "#1A4FC3", "#3D80FF"]) {
+      expect(src.split(hex).length - 1, `${hex} is repeated outside its constant`).toBe(1);
+    }
+  });
+});
