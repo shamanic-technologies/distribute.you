@@ -97,6 +97,21 @@ describe("summarizeStaffDigest", () => {
     expect(s.signups).toHaveLength(0);
   });
 
+  it("never reports staff's own activity back to them", () => {
+    // "si il s'agit de moi, je le sais déjà" — the digest reports what happened
+    // while staff were not looking, so the person reading it is never in it.
+    const s = summarizeStaffDigest(
+      [
+        user({ id: "me", last_sign_in_at: at("2026-08-08T10:00:00.000Z") }),
+        user({ id: "customer", last_sign_in_at: at("2026-08-08T11:00:00.000Z") }),
+      ],
+      WINDOW_START,
+      WINDOW_END,
+      ["ME@example.test"], // case-insensitive on purpose
+    );
+    expect(s.signins.map((p) => p.email)).toEqual(["customer@example.test"]);
+  });
+
   it("orders each section most recent first", () => {
     const s = summarizeStaffDigest(
       [

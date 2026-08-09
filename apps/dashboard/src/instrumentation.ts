@@ -1,3 +1,4 @@
+import { STAFF_DIGEST_TEMPLATE_DEF } from "@/lib/staff-digest";
 const DASHBOARD_URL = "https://dashboard.distribute.you";
 const DOCS_URL = "https://docs.distribute.you";
 const HOW_IT_WORKS_URL = "https://distribute.you/how-it-works";
@@ -203,12 +204,7 @@ export const EMAIL_TEMPLATES = [
   // store is keyed by name and is last-writer-wins across apps, so a copy in
   // `apps/admin/src/instrumentation.ts` would clobber this one on every admin
   // deploy and render the digest against an empty template.
-  {
-    name: "staff_daily_digest",
-    subject: "{{subject}}",
-    htmlBody: "{{htmlBody}}",
-    textBody: "{{textBody}}",
-  },
+  STAFF_DIGEST_TEMPLATE_DEF,
 
   // ── Out-of-credit dunning (triggered by billing-service on depletion) ──
   // billing-service sends { eventType, recipientEmail, metadata: {} } — NO template

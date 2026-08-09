@@ -28,6 +28,32 @@ import { z } from "zod";
  *  app registering it too would clobber this copy on its next deploy). */
 export const STAFF_DIGEST_TEMPLATE = "staff_daily_digest";
 
+/**
+ * The template itself, owned here because this module is what sends under it.
+ * `instrumentation.ts` imports it into the boot-time registration, and the cron
+ * re-registers it before every send.
+ *
+ * That second registration is not belt-and-braces, it is the fix for a real
+ * failure: on Vercel the boot hook runs per lambda cold start, so "the deploy is
+ * READY" says nothing about whether the write into transactional-email-service's
+ * template store ever happened. It did not — this template was still absent from
+ * the store hours after its deploy went live, while every other signal (build,
+ * tests, alias, the route answering 401) was green. A send under an unregistered
+ * name throws `No template for event`, silently, at 01:30 UTC.
+ *
+ * The upsert is idempotent by contract, so re-sending it costs one cheap call a
+ * day and makes the send self-sufficient wherever it runs.
+ *
+ * A pure envelope on purpose: the body is composed here, so the template holds no
+ * layout of its own.
+ */
+export const STAFF_DIGEST_TEMPLATE_DEF = {
+  name: STAFF_DIGEST_TEMPLATE,
+  subject: "{{subject}}",
+  htmlBody: "{{htmlBody}}",
+  textBody: "{{textBody}}",
+} as const;
+
 const CLERK_API_URL = "https://api.clerk.com/v1";
 const CLERK_PAGE_LIMIT = 100;
 
@@ -131,10 +157,15 @@ export function summarizeStaffDigest(
   users: ClerkUser[],
   windowStart: Date,
   windowEnd: Date,
+  excludeEmails: string[] = [],
 ): StaffDigestSummary {
   const from = windowStart.getTime();
   const to = windowEnd.getTime();
   const inWindow = (ms: number) => ms >= from && ms < to;
+  // Staff never appear in their own digest: they were the person doing the thing,
+  // so reporting it back tells them something they already know and costs a line
+  // of a report whose whole point is what happened while they were not looking.
+  const excluded = new Set(excludeEmails.map((e) => e.toLowerCase()));
 
   const signups: StaffDigestPerson[] = [];
   const signins: StaffDigestPerson[] = [];
@@ -142,6 +173,7 @@ export function summarizeStaffDigest(
   for (const user of users) {
     const email = primaryEmail(user);
     if (!email) continue;
+    if (excluded.has(email.toLowerCase())) continue;
     const person = { email, name: displayName(user) };
 
     if (inWindow(user.created_at)) {
@@ -251,11 +283,15 @@ export async function sendStaffDigest(
   const windowStart = new Date(windowEnd.getTime() - 24 * 60 * 60 * 1000);
 
   const users = await listRecentClerkUsers(input, fetchFn);
-  const summary = summarizeStaffDigest(users, windowStart, windowEnd);
+  const summary = summarizeStaffDigest(users, windowStart, windowEnd, [input.staffEmail]);
 
   if (!staffDigestHasContent(summary)) {
     return { signups: 0, signins: 0, sent: false, skippedEmpty: true };
   }
+
+  // Register before sending — see STAFF_DIGEST_TEMPLATE_DEF for why this cannot
+  // be left to the boot hook alone.
+  await ensureTemplateRegistered(input, fetchFn);
 
   const identity = await resolveStaffIdentity(input, fetchFn);
   await sendDigestEmail(input, fetchFn, identity, summary);
@@ -320,6 +356,26 @@ async function resolveStaffIdentity(
   }
 
   return { orgId, userId: user.id };
+}
+
+/** Idempotent upsert of this one template. Fail-loud: a digest sent under an
+ *  unregistered name throws downstream and reaches nobody, so there is nothing to
+ *  gain by continuing past a failure here. */
+async function ensureTemplateRegistered(
+  config: StaffDigestConfig,
+  fetchFn: StaffDigestFetch,
+): Promise<void> {
+  const res = await fetchFn(`${config.apiUrl}/v1/emails/templates`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-API-Key": config.adminApiKey },
+    body: JSON.stringify({ templates: [STAFF_DIGEST_TEMPLATE_DEF] }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(
+      `[dashboard-staff-digest] template registration failed: ${res.status} ${body.slice(0, 200)}`,
+    );
+  }
 }
 
 async function sendDigestEmail(
