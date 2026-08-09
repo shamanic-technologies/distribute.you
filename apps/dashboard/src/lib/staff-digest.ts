@@ -97,11 +97,6 @@ const ClerkMembershipsResponseSchema = z.object({
   ),
 });
 
-const EmailSendResponseSchema = z.object({
-  sent: z.boolean(),
-  deduplicated: z.boolean().optional(),
-});
-
 export type ClerkUser = z.infer<typeof ClerkUserSchema>;
 
 export interface StaffDigestPerson {
@@ -378,15 +373,23 @@ async function ensureTemplateRegistered(
   }
 }
 
+/**
+ * Send the digest. The response body is deliberately NOT parsed: nothing here
+ * reads it, and validating a payload no caller consumes turns a healthy send
+ * into a failure whenever the gateway grows a field or renames one. That is
+ * exactly what happened on this cron's first real execution — the email went
+ * out and the job still 500'd on a shape mismatch (#3318). A non-2xx is the
+ * only thing that means the send failed, and that still throws.
+ */
 async function sendDigestEmail(
   config: StaffDigestConfig,
   fetchFn: StaffDigestFetch,
   identity: { orgId: string; userId: string },
   summary: StaffDigestSummary,
-): Promise<z.infer<typeof EmailSendResponseSchema>> {
+): Promise<void> {
   // No bccEmails: the staff audience is one person and they are the recipient.
   // A blind copy here would bill a second email to the same inbox.
-  return fetchJson(
+  await postOrThrow(
     `${config.apiUrl}/v1/emails/send`,
     {
       method: "POST",
@@ -411,9 +414,23 @@ async function sendDigestEmail(
       }),
     },
     fetchFn,
-    EmailSendResponseSchema,
     "sendStaffDigestEmail",
   );
+}
+
+/** POST that cares only whether the call succeeded. Fail-loud on a non-2xx; the
+ *  body is never read, so it can never be the thing that breaks the job. */
+async function postOrThrow(
+  url: string,
+  init: RequestInit,
+  fetchFn: StaffDigestFetch,
+  label: string,
+): Promise<void> {
+  const res = await fetchFn(url, init);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`[dashboard-staff-digest] ${label} failed: ${res.status} ${body.slice(0, 200)}`);
+  }
 }
 
 function clerkInit(config: StaffDigestConfig): RequestInit {
