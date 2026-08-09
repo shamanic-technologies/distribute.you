@@ -13,19 +13,17 @@
  * Invocation: `pnpm --filter @distribute/landing prebuild` (chained from
  * Vercel `next build` via package.json prebuild script).
  *
- * Caveat — the Neon HTTP driver wraps every `sql.query(...)` call in a
- * prepared statement, which Postgres restricts to ONE command per
- * statement. We therefore split each .sql file into individual statements
- * (terminated by `;`) and execute them one at a time. The splitter strips
- * line comments (`--`) and ignores empty fragments. Migrations that need
- * to span multiple commands inside a single transaction will require a
- * different driver (e.g. `pg.Client`); none of the current migrations do.
+ * Caveat — each statement is sent on its own. Postgres allows only ONE
+ * command per prepared statement, so we split each .sql file on `;` and
+ * execute the fragments in order. The splitter strips line comments (`--`)
+ * and ignores empty fragments. Migrations that need several commands inside
+ * one transaction would need a different shape; none of the current ones do.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = join(__dirname, "..", "migrations");
@@ -59,17 +57,23 @@ async function main() {
     return;
   }
 
-  const sql = neon(url);
+  const sql = postgres(url, { max: 1 });
 
-  for (const file of files) {
-    const path = join(MIGRATIONS_DIR, file);
-    const body = readFileSync(path, "utf8");
-    const statements = splitSqlStatements(body);
-    console.log(`[landing/migrations] Applying ${file} (${statements.length} statement(s))…`);
-    for (const stmt of statements) {
-      await sql.query(stmt);
+  // postgres.js holds its pool open, so an un-closed client keeps the process
+  // alive forever and the build hangs. `finally` covers the throw path too.
+  try {
+    for (const file of files) {
+      const path = join(MIGRATIONS_DIR, file);
+      const body = readFileSync(path, "utf8");
+      const statements = splitSqlStatements(body);
+      console.log(`[landing/migrations] Applying ${file} (${statements.length} statement(s))…`);
+      for (const stmt of statements) {
+        await sql.unsafe(stmt);
+      }
+      console.log(`[landing/migrations] OK ${file}`);
     }
-    console.log(`[landing/migrations] OK ${file}`);
+  } finally {
+    await sql.end({ timeout: 5 });
   }
 
   console.log(`[landing/migrations] Done — ${files.length} migration(s) applied.`);

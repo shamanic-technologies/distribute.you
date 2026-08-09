@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 import { unstable_cache } from "next/cache";
 
 export interface BlogArticle {
@@ -33,10 +33,30 @@ interface RawBlogArticle {
   updated_at: string;
 }
 
+// postgres.js rather than @neondatabase/serverless: that driver speaks Neon's
+// HTTP protocol on port 443, so it cannot reach an ordinary Postgres at all.
+// Pointing it at one fails with `ECONNREFUSED <host>:443`, which is what the
+// blog did the first time this DSN moved off Neon. The tagged-template call
+// sites below are unchanged — both libraries expose the same `sql\`...\`` API
+// returning an array of rows, and both surface Postgres error codes on `.code`.
+//
+// MEMOIZED, and that is load-bearing: `neon()` was a stateless HTTP client, so
+// building one per call cost nothing. `postgres()` opens a CONNECTION POOL, so
+// calling it per request would leak a pool per request until the database
+// refuses new connections.
+let sqlClient: ReturnType<typeof postgres> | null = null;
+let sqlClientUrl: string | null = null;
+
 function getSql() {
   const url = process.env.DATABASE_URL;
   if (!url) return null;
-  return neon(url);
+  if (!sqlClient || sqlClientUrl !== url) {
+    // `max: 3` keeps the landing a small tenant of the shared Postgres: it
+    // serves cached pages and only touches the database on revalidation.
+    sqlClient = postgres(url, { max: 3 });
+    sqlClientUrl = url;
+  }
+  return sqlClient;
 }
 
 // Project CLAUDE.md exception — build-time prerender (next build) must not
@@ -96,7 +116,7 @@ export async function upsertArticle(input: UpsertArticleInput): Promise<BlogArti
       ${input.contentHtml ?? null},
       ${input.contentMarkdown ?? null},
       ${input.coverImageUrl ?? null},
-      ${input.tags ?? []},
+      ${input.tags ?? []}::text[],
       ${input.source ?? "outrank"},
       ${input.sourceId ?? null},
       ${input.publishedAt ?? new Date().toISOString()},
