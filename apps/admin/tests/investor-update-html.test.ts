@@ -4,6 +4,7 @@ import {
   imageMarkdown,
   imageAltFromFilename,
   sanitizeUploadFilename,
+  formatUploadSize,
   imageFileProblem,
   imageUrlProblem,
   ACCEPTED_IMAGE_TYPES,
@@ -66,6 +67,19 @@ describe("sanitizeUploadFilename", () => {
 
   it("leaves an already-clean name alone", () => {
     expect(sanitizeUploadFilename("net-revenue-retention.png")).toBe("net-revenue-retention.png");
+  });
+});
+
+describe("formatUploadSize", () => {
+  it("reads as a weight a person can judge", () => {
+    expect(formatUploadSize(512)).toBe("512 bytes");
+    expect(formatUploadSize(115375)).toBe("113 KB");
+    expect(formatUploadSize(3 * 1024 * 1024)).toBe("3.0 MB");
+  });
+
+  it("says nothing rather than something wrong when the size is not a number", () => {
+    expect(formatUploadSize(Number.NaN)).toBe("");
+    expect(formatUploadSize(-1)).toBe("");
   });
 });
 
