@@ -24,22 +24,29 @@ down for every customer at once if it goes wrong, so it is the owner's to take.
 commit sha. `deploy-admin.sh` still exists and still works; it is now a wrapper around
 `./deploy.sh admin-app --force`.
 
-## Before you flip: three values are missing
+## Before you flip: two values are missing
 
-Each is Vercel-`sensitive`, which means the CLI writes `[SENSITIVE]` instead of the value
-and the REST API returns an empty string. Everything else was recovered from key-service,
-the box, the live bundle, or Neon. These three have no second source, so **copy them out
-of the Vercel UI** and add them to the box:
+Vercel-`sensitive` vars cannot be read back — the CLI writes `[SENSITIVE]` instead of the
+value and the REST API returns an empty string. Everything else was recovered from
+key-service, the box, the live bundle or Neon. **Two have no second source and must come
+from a human:**
 
-| var | file | what breaks without it |
-|---|---|---|
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `env/dashboard-app.env` **and** `env/dashboard-app.build.env` | in-modal card capture (Embedded Checkout) never loads — this one is inlined at build, so it needs a rebuild, not a restart |
-| `PARTNERO_API_TOKEN` | `env/dashboard-app.env` | `POST /api/partnero/customer` 500s, so referred signups stop crediting the partner |
-| `OUTRANK_WEBHOOK_SECRET` | `env/landing-app.env` | `POST /api/outrank/webhook` throws, so Outrank stops publishing blog articles |
+| var | file | where to get it | what breaks without it |
+|---|---|---|---|
+| `PARTNERO_API_TOKEN` | `env/dashboard-app.env` | Partnero dashboard → program `KHV3KEHI` → API, or the Vercel UI | `POST /api/partnero/customer` 500s, so referred signups stop crediting the partner |
+| `OUTRANK_WEBHOOK_SECRET` | `env/landing-app.env` | Outrank's webhook settings (it holds the matching half, so it can also be ROTATED rather than recovered), or the Vercel UI | `POST /api/outrank/webhook` throws, so Outrank stops publishing blog articles |
 
 They are left OUT rather than stubbed: each consumer logs a named error when the value is
 absent, which is a clearer signal than a placeholder that reaches a vendor and comes back
-as a vendor error.
+as a vendor error. `./cutover.sh --check` exits non-zero while either is missing.
+
+**`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is already set and needed nobody.** It is a
+publishable key, so it is inlined into the client bundle and public by construction — it
+was simply not on the sign-in page, because the billing chunk is lazy. Reading it off the
+live production billing page recovered it, and Stripe confirms both it and the secret key
+carry `51T50gYEnlXMXdaZa`, i.e. `acct_1T50gYEnlXMXdaZa` / "Distribute.you". Generalise:
+before asking a human for a `NEXT_PUBLIC_*` value, remember it is already being served to
+every visitor of the page that uses it.
 
 After adding them: the build-time one needs a rebuild, which is what `--force` is for —
 `./deploy.sh dashboard-app --force` (it writes the build env into the clone, rebuilds,
