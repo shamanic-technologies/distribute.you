@@ -6418,6 +6418,11 @@ export interface UploadedStaffImage {
   url: string;
   size: number;
   contentType: string;
+  /** Present only when `optimizeFor` was requested AND the bytes were re-encoded. */
+  optimizedFor?: "email";
+  /** Stored pixel dimensions. Present only when `optimizeFor` was requested. */
+  width?: number;
+  height?: number;
 }
 
 /**
@@ -6430,9 +6435,22 @@ export interface UploadedStaffImage {
  *
  * `.optional()` is not used on the response because every field is load-bearing
  * for the caller: without `url` there is nothing to insert.
+ *
+ * `optimizeFor: "email"` asks the storage service to re-encode BEFORE writing,
+ * so the object at the public URL is already the one a mail client should
+ * fetch. It has to happen there: the recipient's client has no credentials of
+ * ours and never will, so whatever is stored is exactly what is delivered and
+ * there is no chance to transform it later. Omit it and the bytes are stored
+ * verbatim, which is what every other caller of this route wants.
  */
 export async function uploadStaffImage(
-  input: { contentBase64: string; filename: string; contentType: string; folder?: string },
+  input: {
+    contentBase64: string;
+    filename: string;
+    contentType: string;
+    folder?: string;
+    optimizeFor?: "email";
+  },
   token?: string
 ): Promise<UploadedStaffImage> {
   return apiCall<UploadedStaffImage>("/platform-uploads", {
