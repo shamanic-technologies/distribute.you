@@ -143,6 +143,7 @@ cd /root/distribute && ./deploy-admin.sh`}
 
 export default function ConfigAuditPage() {
   const queryClient = useQueryClient();
+  const [filter, setFilter] = useState("");
   const [selection, setSelection] = useState<Selection | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -222,6 +223,40 @@ export default function ConfigAuditPage() {
 
   const groups = useMemo(() => tree.data?.groups ?? [], [tree.data]);
 
+  /**
+   * ONE box narrowing BOTH lists, because the column holds the whole config: the
+   * agent-config tree is around 90 entries on its own, and every repository in the
+   * organisation adds a row under it. Scrolling for a file you can name is the wrong
+   * way to reach it, and splitting the box in two would make you guess which half a
+   * name lives in.
+   *
+   * Matched against the rendered LABEL as well as the path, so typing what is on
+   * screen works: a skill renders as its directory, and a repository as its name
+   * without the owner.
+   */
+  const needle = filter.trim().toLowerCase();
+
+  const visibleGroups = useMemo(() => {
+    if (!needle) return groups;
+    return groups.flatMap((group) => {
+      const entries = group.entries.filter(
+        (entry) =>
+          entry.path.toLowerCase().includes(needle) ||
+          configEntryLabel(entry.path).toLowerCase().includes(needle),
+      );
+      return entries.length > 0 ? [{ ...group, entries }] : [];
+    });
+  }, [groups, needle]);
+
+  const visibleRepos = useMemo(() => {
+    const repos = tree.data?.repos ?? [];
+    if (!needle) return repos;
+    return repos.filter((repo) => repo.toLowerCase().includes(needle));
+  }, [tree.data, needle]);
+
+  const nothingMatches =
+    needle.length > 0 && visibleGroups.length === 0 && visibleRepos.length === 0;
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <div>
@@ -253,7 +288,20 @@ export default function ConfigAuditPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {groups.map((group) => (
+                <input
+                  type="search"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder="Filter files and repositories"
+                  aria-label="Filter files and repositories"
+                  className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                />
+
+                {nothingMatches && (
+                  <p className="px-2 py-1 text-xs text-gray-500">Nothing matches that.</p>
+                )}
+
+                {visibleGroups.map((group) => (
                   <div key={group.section}>
                     <h4 className="px-2 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
                       {group.label}
@@ -278,12 +326,12 @@ export default function ConfigAuditPage() {
                   </div>
                 ))}
 
-                {(tree.data?.repos.length ?? 0) > 0 && (
+                {visibleRepos.length > 0 && (
                   <div>
                     <h4 className="px-2 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
                       Repository CLAUDE.md
                     </h4>
-                    {tree.data?.repos.map((repo) => {
+                    {visibleRepos.map((repo) => {
                       const isActive = selection?.repo === repo;
                       return (
                         <button

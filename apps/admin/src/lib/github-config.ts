@@ -162,18 +162,45 @@ export async function readAgentConfigPaths(): Promise<string[]> {
   return res.tree.filter((entry) => entry.type === "blob").map((entry) => entry.path);
 }
 
+/** GitHub's maximum page size. Anything larger is silently clamped to this. */
+const REPOS_PAGE_SIZE = 100;
+
+/**
+ * A ceiling on how many pages to walk, so a paging bug cannot spin forever against
+ * someone else's API. Far above the real count (52 active repos on 2026-08-09) and
+ * low enough to stay one quick burst of requests.
+ */
+const REPOS_MAX_PAGES = 20;
+
 /**
  * The repositories this token can reach, minus agent-config itself (it has its own
  * section). With a fine-grained PAT the list IS the grant, so what shows up here is
  * exactly what the console is able to touch.
+ *
+ * PAGED, and that is not premature: a single `per_page=100` call is a time bomb on a
+ * list whose length is set by how many repositories the organisation happens to own.
+ * Nothing in the code changes on the day the 101st is created; the request simply
+ * comes back one page short, and a repository missing from the list reads exactly
+ * like a repository the token was not granted. Silent, and wrong in the direction
+ * nobody checks.
  */
 export async function listConfigRepos(): Promise<string[]> {
-  const res = await gh<{ full_name: string; archived: boolean }[]>(
-    `/orgs/shamanic-technologies/repos?per_page=100&sort=full_name`,
-  );
+  const names: string[] = [];
 
-  return res
-    .filter((repo) => !repo.archived && repo.full_name !== AGENT_CONFIG_REPO)
-    .map((repo) => repo.full_name)
-    .sort();
+  for (let page = 1; page <= REPOS_MAX_PAGES; page++) {
+    const res = await gh<{ full_name: string; archived: boolean }[]>(
+      `/orgs/shamanic-technologies/repos?per_page=${REPOS_PAGE_SIZE}&page=${page}&sort=full_name`,
+    );
+
+    for (const repo of res) {
+      if (repo.archived || repo.full_name === AGENT_CONFIG_REPO) continue;
+      names.push(repo.full_name);
+    }
+
+    // A short page is the last page. Stopping on `length === 0` instead would cost
+    // one extra request every single time.
+    if (res.length < REPOS_PAGE_SIZE) break;
+  }
+
+  return names.sort();
 }
