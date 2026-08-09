@@ -222,7 +222,7 @@ describe("daily outcome digest", () => {
     expect(send.metadata.digestText).toContain("51-200 employees");
   });
 
-  it("blind-copies the staff allowlist (minus a staff recipient) on each send", async () => {
+  it("sends to the customer only — no staff blind copy", async () => {
     const day = previousUtcDay();
     const sendBodies: Array<Record<string, unknown>> = [];
     // Recipient is a staff member → they must be excluded from their own BCC.
@@ -280,11 +280,11 @@ describe("daily outcome digest", () => {
     expect(result.sent).toBe(1);
     expect(sendBodies).toHaveLength(1);
     expect(sendBodies[0].recipientEmail).toBe(staffRecipient);
-    // Staff blind-copied, recipient (a staff member) filtered out of their own BCC.
-    expect(sendBodies[0].bccEmails).toEqual(
-      ADMIN_ALLOWED_EMAILS.filter((e) => e !== staffRecipient),
-    );
-    expect(sendBodies[0].bccEmails).not.toContain(staffRecipient);
+    // Postmark bills per recipient and the account is on the free plan (100 a
+    // month, hard stop). The staff blind copy that used to ride every customer
+    // digest doubled the cost of the largest recurring email we send, for a
+    // monitoring need Postmark's own 45-day Activity archive already covers.
+    expect(sendBodies[0].bccEmails).toBeUndefined();
   });
 
   it("does not prepare a send when a brand has pipeline but no outcome that day", async () => {

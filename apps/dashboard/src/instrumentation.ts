@@ -193,6 +193,22 @@ export const EMAIL_TEMPLATES = [
     htmlBody: "<p>User is back: <strong>{{email}}</strong> at {{timestamp}}</p>",
     textBody: "User is back: {{email}} at {{timestamp}}",
   },
+  // The once-a-day roll-up that replaces the per-event `signin_notification` and
+  // `user_active` pings while the account sits on Postmark's free plan. The body
+  // is composed by the cron (`lib/staff-digest.ts`) and passed through whole, so
+  // this template is a pure envelope — it holds no layout of its own, exactly
+  // like its two neighbours above.
+  //
+  // ONE-OWNER: this app sends the digest, so this app registers it. The template
+  // store is keyed by name and is last-writer-wins across apps, so a copy in
+  // `apps/admin/src/instrumentation.ts` would clobber this one on every admin
+  // deploy and render the digest against an empty template.
+  {
+    name: "staff_daily_digest",
+    subject: "{{subject}}",
+    htmlBody: "{{htmlBody}}",
+    textBody: "{{textBody}}",
+  },
 
   // ── Out-of-credit dunning (triggered by billing-service on depletion) ──
   // billing-service sends { eventType, recipientEmail, metadata: {} } — NO template

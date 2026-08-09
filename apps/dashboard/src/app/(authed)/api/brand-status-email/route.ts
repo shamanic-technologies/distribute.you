@@ -1,6 +1,5 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { ADMIN_ALLOWED_EMAILS } from "@/lib/admin-allowlist";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +7,9 @@ const DASHBOARD_URL = "https://dashboard.distribute.you";
 
 /**
  * Sends a positive, reassuring email to the org user when they flip a brand's
- * Pause / Restart toggle (active <-> paused). Staff (ADMIN_ALLOWED_EMAILS) are
- * BCC'd on the send so the team sees each status switch — the send API exposes
- * only `bccEmails` (no visible `cc`), which mirrors the daily-outcome-digest.
+ * Pause / Restart toggle (active <-> paused). The customer is the only recipient:
+ * the staff blind copy that used to ride along was dropped when the platform
+ * moved to Postmark's free plan, where every blind copy is a second billed email.
  *
  * Fired fire-and-forget from the BrandStatusControl `setPaused` mutation, so a
  * failure here never blocks the toggle. Still fail-loud (500/502 + console.error)
@@ -85,9 +84,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const bccEmails = ADMIN_ALLOWED_EMAILS.filter(
-    (email) => email !== recipientEmail,
-  );
+  // No staff blind copy while the platform sits on Postmark's free plan (100
+  // emails a month, hard stop, no overages). Postmark bills per recipient, so
+  // each blind copy here was a second billed email for a monitoring need that
+  // Postmark's own Activity archive (45 days, full body) already serves.
   const state = paused ? "paused" : "resumed";
   const day = new Date().toISOString().slice(0, 10);
 
@@ -97,7 +97,6 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       eventType: paused ? "brand-paused" : "brand-resumed",
       recipientEmail,
-      ...(bccEmails.length > 0 ? { bccEmails } : {}),
       brandId,
       // Dedup accidental rapid double-fires of the SAME transition on the same
       // day; a genuine re-toggle to the other state has a different key.

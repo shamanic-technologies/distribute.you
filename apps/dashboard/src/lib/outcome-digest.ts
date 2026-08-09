@@ -1,14 +1,9 @@
 import { z } from "zod";
-import { ADMIN_ALLOWED_EMAILS } from "./admin-allowlist";
 import { parseFeatureRevenue } from "./revenue-parse";
 import type { ConversionLead, RevenueOverview } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
 export const OUTCOME_DIGEST_FEATURE_SLUG = "sales-cold-email-outreach";
-// Staff monitoring copy — every customer digest is blind-copied to the staff
-// allowlist so the team sees exactly what each customer received. Single source
-// = admin-allowlist (the same list that gates the god-mode console).
-const STAFF_BCC_EMAILS = ADMIN_ALLOWED_EMAILS;
 
 const PAGE_LIMIT = 100;
 const MAX_LEADS_PER_BRAND = 10;
@@ -246,8 +241,8 @@ async function scanFleet(
   await mapWithConcurrency(orgs, ORG_CONCURRENCY, async (org) => {
     try {
       const users = await listApiUsersForOrg(input, fetchFn, org.id);
-      // Every customer receives the digest — the recipient is the real org user;
-      // staff are blind-copied (STAFF_BCC_EMAILS) on the send.
+      // Every customer receives the digest. Staff are no longer blind-copied:
+      // Postmark bills per recipient and the account is on the free plan.
       const recipients = users.filter((u): u is ApiUser & { email: string } => !!u.email);
       eligibleUsers += recipients.length;
       if (recipients.length === 0) return;
@@ -669,16 +664,17 @@ async function sendDigestEmail(
   fetchFn: DigestFetch,
   item: PreparedDigestSend,
 ): Promise<z.infer<typeof EmailSendResponseSchema>> {
-  // Blind-copy staff so the team sees each customer's digest, minus the recipient
-  // themselves (a staff member receiving their own org's digest is the To, not a Bcc).
-  const bccEmails = STAFF_BCC_EMAILS.filter((email) => email !== item.recipientEmail);
+  // No staff blind copy while the platform sits on Postmark's free plan (100
+  // emails a month, hard stop, no overages). Postmark bills per recipient, so a
+  // blind copy on every customer digest doubled the cost of the single largest
+  // recurring customer email we send — for a monitoring need that Postmark's own
+  // Activity archive (45 days, full body) already serves.
   return fetchJson(`${config.apiUrl}/v1/emails/send`, {
     method: "POST",
     headers: adminHeaders(config, item.orgId, item.userExternalId),
     body: JSON.stringify({
       eventType: OUTCOME_DIGEST_TEMPLATE,
       recipientEmail: item.recipientEmail,
-      ...(bccEmails.length > 0 ? { bccEmails } : {}),
       // Per-brand per-day dedup — a user gets one email PER BRAND per day.
       productId: `${OUTCOME_DIGEST_TEMPLATE}:${item.brandId}:${new Date().toISOString().slice(0, 10)}`,
       metadata: item.metadata,
