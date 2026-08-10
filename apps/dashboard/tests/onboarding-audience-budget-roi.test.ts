@@ -105,7 +105,13 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
 
     it("holds Continue until one path is funded and none is under its floor", () => {
       expect(src).toContain("displayBudget == null || underfunded.length > 0 || busy");
-      expect(src).toContain("funnelBudgetBelowMinimum(f.key as SalesFunnelKey, funnelBudgetUsd(f.key))");
+      // Zero stored ceiling: signup is a brand stating its budgets for the
+      // FIRST time, so the floor applies in full. The grandfather that lets a
+      // live brand keep a ceiling carried under its floor has nobody to cover
+      // here, and passing anything else would let signup state a sub-floor one.
+      expect(src).toContain(
+        "funnelBudgetBelowMinimum(f.key as SalesFunnelKey, funnelBudgetUsd(f.key), 0)",
+      );
     });
 
     it("carries the funding across the Stripe round-trip, without a version bump", () => {

@@ -7,6 +7,9 @@ import {
   SALES_FUNNELS,
   buildFunnelPatch,
   funnelBudgetBelowMinimum,
+  funnelBudgetFloorMessage,
+  funnelBudgetTip,
+  isGrandfatheredFunding,
   funnelDraftFromBrand,
   funnelDraftFromDeclared,
   funnelDestinationChips,
@@ -954,15 +957,58 @@ describe("per-funnel daily minimums", () => {
     // Defunding a funnel is how a brand pauses it. Refusing zero would make a
     // pause impossible without deleting what the brand said about how it sells.
     for (const def of SALES_FUNNELS) {
-      expect(funnelBudgetBelowMinimum(def.key, 0)).toBe(false);
+      expect(funnelBudgetBelowMinimum(def.key, 0, 0)).toBe(false);
+      // Even a funnel funded under its floor may be put down.
+      expect(funnelBudgetBelowMinimum(def.key, 0, 50)).toBe(false);
     }
   });
 
   it("refuses a funded funnel under its own floor", () => {
-    expect(funnelBudgetBelowMinimum("reply_meeting", 23)).toBe(true);
-    expect(funnelBudgetBelowMinimum("reply_meeting", 24)).toBe(false);
-    expect(funnelBudgetBelowMinimum("visit_signup", 0.5)).toBe(true);
-    expect(funnelBudgetBelowMinimum("visit_signup", 1)).toBe(false);
+    expect(funnelBudgetBelowMinimum("reply_meeting", 23, 0)).toBe(true);
+    expect(funnelBudgetBelowMinimum("reply_meeting", 24, 0)).toBe(false);
+    expect(funnelBudgetBelowMinimum("visit_signup", 0.5, 0)).toBe(true);
+    expect(funnelBudgetBelowMinimum("visit_signup", 1, 0)).toBe(false);
+  });
+
+  it("grandfathers a funnel billing already funds under the floor", () => {
+    // The floor governs what a brand may NEWLY state. Per-funnel ceilings
+    // shipped after the money, and the attribution sweep carried each figure
+    // over verbatim, so live brands sit under their funnel's floor today.
+    // Prod case: $8 a day on a reply-to-meeting funnel whose floor is $24.
+    expect(funnelBudgetBelowMinimum("reply_meeting", 8, 800)).toBe(false);
+    // Raising it is the direction we want, even short of the floor.
+    expect(funnelBudgetBelowMinimum("reply_meeting", 10, 800)).toBe(false);
+    // Lowering it to another funded figure under the floor is still refused.
+    expect(funnelBudgetBelowMinimum("reply_meeting", 5, 800)).toBe(true);
+    // Reaching the floor spends the grandfather: a later write back down is
+    // refused by the ordinary rule, with no branch of its own.
+    expect(funnelBudgetBelowMinimum("reply_meeting", 8, 2400)).toBe(true);
+    expect(funnelBudgetBelowMinimum("reply_meeting", 8, 3000)).toBe(true);
+  });
+
+  it("names what a grandfathered funnel may actually do", () => {
+    const fresh = funnelBudgetFloorMessage("reply_meeting", 0);
+    expect(fresh).toContain("starts at $24");
+
+    const carried = funnelBudgetFloorMessage("reply_meeting", 800);
+    expect(carried).toContain("$8 a day");
+    expect(carried).toContain("raise it");
+    // Never tell someone their live ceiling is where they must start.
+    expect(carried).not.toContain("starts at");
+
+    // Same split on the tip beside the field.
+    expect(funnelBudgetTip("reply_meeting", 0)).toContain("From $24 a day");
+    expect(funnelBudgetTip("reply_meeting", 800)).toContain("funded at $8 a day");
+    expect(funnelBudgetTip("reply_meeting", 800)).not.toContain("From $24");
+  });
+
+  it("reads a grandfather off the stored ceiling and nothing else", () => {
+    expect(isGrandfatheredFunding("reply_meeting", 800)).toBe(true);
+    expect(isGrandfatheredFunding("reply_meeting", 2400)).toBe(false);
+    expect(isGrandfatheredFunding("reply_meeting", 0)).toBe(false);
+    // A purchase funnel's floor is a dollar, so the same 800 clears it.
+    expect(isGrandfatheredFunding("visit_signup", 800)).toBe(false);
+    expect(isGrandfatheredFunding("visit_signup", 50)).toBe(true);
   });
 });
 
@@ -1005,10 +1051,22 @@ describe("the Sales Funnels card funds each funnel", () => {
     expect(confirm).toContain("cents !== state.savedBudgetCents");
   });
 
-  it("refuses a funded funnel under its floor, and accepts an empty one", () => {
-    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 2400);
-    expect(confirm).toContain("funnelBudgetBelowMinimum(def.key, budgetUsd)");
-    expect(confirm).toContain("FUNNEL_MIN_DAILY_BUDGET_USD[def.key]");
+  it("refuses a funded funnel under its floor, reading what it is funded at now", () => {
+    // The stored ceiling is part of the question: a funnel carried under its
+    // floor keeps that figure, so the gate cannot decide on the typed value
+    // alone. Without it, editing a rate on such a funnel was impossible.
+    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 2800);
+    expect(confirm).toContain(
+      "funnelBudgetBelowMinimum(def.key, budgetUsd, state.savedBudgetCents)",
+    );
+    expect(confirm).toContain("funnelBudgetFloorMessage(def.key, state.savedBudgetCents)");
+    // The copy lives once, in the alias-free lib.
+    expect(confirm).not.toContain("starts at $");
+  });
+
+  it("tips the budget field from the same one place", () => {
+    expect(src).toContain("funnelBudgetTip(def.key, state.savedBudgetCents)");
+    expect(src).not.toContain("FUNNEL_MIN_DAILY_BUDGET_USD");
   });
 
   it("states the funded ceiling on the tag, and says so when there is none", () => {
