@@ -1064,6 +1064,26 @@ describe("the Sales Funnels card funds each funnel", () => {
     expect(confirm).not.toContain("starts at $");
   });
 
+  it("re-seeds the form when a fresher payload lands, not once per mount", () => {
+    // The reads settle from the on-disk cache first, so a once-only seed takes
+    // the LAST VISIT's copy and ignores the server payload that lands a moment
+    // later. That is how a rate the brand had already saved kept rendering
+    // blank, which reads as the save having been dropped.
+    // Measured: the touched/open guard sits at +1643 from the anchor.
+    const effect = sliceFrom(src, "  useEffect(() => {\n    const econSettled", 2200);
+    expect(effect).toContain("seededFrom.current.funnels === funnelData");
+    expect(effect).toContain("seededFrom.current.budgets === budgetData");
+    expect(effect).toContain("seededFrom.current = { funnels: funnelData, budgets: budgetData }");
+    // A bare latch is exactly what could not see the fresher payload.
+    expect(effect).not.toContain("if (hydrated.current ||");
+  });
+
+  it("never rewrites a form the user is typing in or has open", () => {
+    // Measured: the touched/open guard sits at +1643 from the anchor.
+    const effect = sliceFrom(src, "  useEffect(() => {\n    const econSettled", 2200);
+    expect(effect).toContain("next[def.key].touched || openKey === def.key");
+  });
+
   it("tips the budget field from the same one place", () => {
     expect(src).toContain("funnelBudgetTip(def.key, state.savedBudgetCents)");
     expect(src).not.toContain("FUNNEL_MIN_DAILY_BUDGET_USD");
