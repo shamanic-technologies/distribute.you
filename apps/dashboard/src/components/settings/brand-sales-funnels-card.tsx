@@ -149,10 +149,24 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   const [openKey, setOpenKey] = useState<SalesFunnelKey | null>(null);
   const [pendingKey, setPendingKey] = useState<SalesFunnelKey | null>(null);
   const hydrated = useRef(false);
+  // The payload the form was last seeded FROM. A boolean latch cannot do this
+  // job: the reads settle from the on-disk cache first (local-first SWR), so a
+  // once-only seed takes whatever the last visit stored and then ignores the
+  // fresh server payload that lands a moment later. The card kept showing a
+  // rate the brand had already saved as blank, which reads as the save having
+  // been dropped. `setQueryData` after a write does not go through the query
+  // function, so it is not persisted either, and the stale copy outlives the
+  // write that replaced it.
+  const seededFrom = useRef<{ funnels: unknown; budgets: unknown }>({
+    funnels: undefined,
+    budgets: undefined,
+  });
 
-  // Seed every funnel once: a DECLARED funnel from its own stored values, an
-  // undeclared one from the brand's blended economics as a guess to confirm.
-  // A funnel the user already edited keeps what they typed.
+  // Seed every funnel from the server: a DECLARED funnel from its own stored
+  // values, an undeclared one from the brand's blended economics as a guess to
+  // confirm. A funnel the user has edited keeps what they typed, and so does
+  // the one they have open, so a background refetch can never move the form
+  // under the cursor.
   //
   // Hydration waits for each read to SETTLE — resolved OR errored — never for
   // all four to succeed. Gated on success alone, ONE failing read left every
@@ -168,16 +182,31 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     const brandSettled = brandData !== undefined || brandError;
     const funnelSettled = funnelData !== undefined || funnelError;
     const budgetSettled = budgetData !== undefined || budgetError;
-    if (hydrated.current || !econSettled || !brandSettled || !funnelSettled || !budgetSettled) {
+    if (!econSettled || !brandSettled || !funnelSettled || !budgetSettled) return;
+    // Re-seed whenever either payload is a DIFFERENT object than the one the
+    // form was built from — which is what a revalidation landing on top of a
+    // restored disk snapshot produces. Identity, not deep equality: React Query
+    // hands back the same reference when nothing changed (structural sharing),
+    // so an unchanged refetch costs nothing here.
+    if (
+      hydrated.current &&
+      seededFrom.current.funnels === funnelData &&
+      seededFrom.current.budgets === budgetData
+    ) {
       return;
     }
     hydrated.current = true;
+    seededFrom.current = { funnels: funnelData, budgets: budgetData };
     const declared = new Map((funnelData?.funnels ?? []).map((f) => [f.funnelKey, f]));
     const funded = new Map((budgetData?.funnels ?? []).map((f) => [f.funnelKey, f.dailyBudgetCents]));
     setStates((prev) => {
       const next = { ...prev };
       for (const def of SALES_FUNNELS) {
-        if (next[def.key].touched) continue;
+        // What the user is typing outranks the server, and so does the card
+        // they have open: a form that rewrites itself mid-edit is worse than a
+        // stale one. Both keep their draft until the write settles, and the
+        // mutation's own success handler seeds them from its response.
+        if (next[def.key].touched || openKey === def.key) continue;
         const saved = declared.get(def.key);
         const cents = funded.get(def.key) ?? 0;
         next[def.key] = {
@@ -212,6 +241,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     brandError,
     funnelError,
     budgetError,
+    openKey,
   ]);
 
   /** Write the funnel we just declared into the cached set, in catalogue order. */
