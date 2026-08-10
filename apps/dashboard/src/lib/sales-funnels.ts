@@ -235,12 +235,71 @@ export const FUNNEL_MIN_DAILY_BUDGET_USD: Record<SalesFunnelKey, number> = {
 };
 
 /**
- * Whether this funnel may be funded at this many dollars a day. Zero passes: a
- * defunded funnel is an ordinary state, not an error.
+ * Whether this funnel may be funded at this many dollars a day, given what it
+ * is funded at TODAY. Zero passes: a defunded funnel is an ordinary state, not
+ * an error.
+ *
+ * The floor governs what a brand may NEWLY state, never what one has already
+ * been running. Per-funnel ceilings shipped after the money did, and the sweep
+ * that attributed each brand-level ceiling to its single funnel deliberately
+ * carried the figure over verbatim rather than raising anyone's spend — so live
+ * brands are funded under their funnel's floor right now. Refusing every write
+ * on those left them two moves: leave it untouched, or defund it. Raising it
+ * toward the floor was refused, which is the wrong direction to block, and
+ * because this gate runs before the whole form is saved it also blocked editing
+ * a conversion rate on a funnel whose money nobody was trying to change.
+ *
+ * So a funnel already funded under its floor is grandfathered: keep it, raise
+ * it (even to another figure under the floor), or drop it to zero. Lowering it
+ * to another funded figure under the floor is still refused. Once it reaches
+ * the floor the grandfather is spent, which falls out of the check below rather
+ * than needing a branch of its own.
+ *
+ * `savedCents` is what billing has stored for this funnel, 0 when it funds
+ * nothing. billing-service holds the same rule and its 400 is what decides.
  */
-export function funnelBudgetBelowMinimum(key: SalesFunnelKey, dailyUsd: number): boolean {
+export function funnelBudgetBelowMinimum(
+  key: SalesFunnelKey,
+  dailyUsd: number,
+  savedCents: number,
+): boolean {
   if (dailyUsd <= 0) return false;
-  return dailyUsd < FUNNEL_MIN_DAILY_BUDGET_USD[key];
+  const minimumUsd = FUNNEL_MIN_DAILY_BUDGET_USD[key];
+  if (dailyUsd >= minimumUsd) return false;
+  if (!isGrandfatheredFunding(key, savedCents)) return true;
+  return Math.round(dailyUsd * 100) < savedCents;
+}
+
+/** True when billing already funds this funnel under its own floor. */
+export function isGrandfatheredFunding(key: SalesFunnelKey, savedCents: number): boolean {
+  return savedCents > 0 && savedCents < FUNNEL_MIN_DAILY_BUDGET_USD[key] * 100;
+}
+
+/**
+ * The tip beside the budget field. A funnel already funded under its floor is
+ * told what it may do, not a starting figure it is already below: quoting the
+ * floor there reads as "you are not allowed to be here", on a ceiling the brand
+ * has been paying against for weeks.
+ */
+export function funnelBudgetTip(key: SalesFunnelKey, savedCents: number): string {
+  const opening = "The most this funnel may spend in a day. Leave it empty to stop funding it, and nothing else about it is lost.";
+  if (!isGrandfatheredFunding(key, savedCents)) {
+    return `${opening} From $${FUNNEL_MIN_DAILY_BUDGET_USD[key]} a day once you do fund it.`;
+  }
+  return `${opening} It is funded at $${Math.round(savedCents / 100)} a day today, which you can keep or raise.`;
+}
+
+/**
+ * What to tell someone whose budget was refused. A grandfathered funnel gets
+ * the moves it actually has, not a floor it is not allowed to walk down to.
+ */
+export function funnelBudgetFloorMessage(key: SalesFunnelKey, savedCents: number): string {
+  const minimum = FUNNEL_MIN_DAILY_BUDGET_USD[key];
+  if (!isGrandfatheredFunding(key, savedCents)) {
+    return `A daily budget for this funnel starts at $${minimum}. Leave it empty to stop funding it.`;
+  }
+  const current = Math.round(savedCents / 100);
+  return `This funnel is funded at $${current} a day. Keep it there or raise it, but it cannot go lower while it stays under $${minimum}. Leave it empty to stop funding it.`;
 }
 
 /**

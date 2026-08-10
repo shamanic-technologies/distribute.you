@@ -15,11 +15,12 @@ import {
   type DeclaredSalesFunnel,
 } from "@/lib/api";
 import {
-  FUNNEL_MIN_DAILY_BUDGET_USD,
   NOTHING_DECLARED,
   SALES_FUNNELS,
   buildFunnelPatch,
   funnelBudgetBelowMinimum,
+  funnelBudgetFloorMessage,
+  funnelBudgetTip,
   funnelDestinationChips,
   funnelDraftFromBrand,
   funnelDraftFromDeclared,
@@ -367,11 +368,14 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     // Zero is legal — it is how a funnel is put down without forgetting how it
     // sells. A FUNDED one below its floor is not: that budget cannot buy a
     // single outcome, so the funnel would sit still and look broken instead.
+    //
+    // What the brand is ALREADY funded at is part of the question. A funnel
+    // carried under its floor by the per-funnel attribution keeps that figure
+    // and may be raised; the gate would otherwise refuse the whole form, so
+    // editing a conversion rate on such a funnel was impossible.
     const budgetUsd = budgetUsdOf(def.key);
-    if (funnelBudgetBelowMinimum(def.key, budgetUsd)) {
-      patch(def.key, {
-        error: `A daily budget for this funnel starts at $${FUNNEL_MIN_DAILY_BUDGET_USD[def.key]}. Leave it empty to stop funding it.`,
-      });
+    if (funnelBudgetBelowMinimum(def.key, budgetUsd, state.savedBudgetCents)) {
+      patch(def.key, { error: funnelBudgetFloorMessage(def.key, state.savedBudgetCents) });
       return;
     }
     const body = buildFunnelPatch(def, state.draft, state.saved);
@@ -587,7 +591,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
                 <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
                   Daily budget
                   <InfoTooltip
-                    tip={`The most this funnel may spend in a day. Leave it empty to stop funding it — nothing else about it is lost. From $${FUNNEL_MIN_DAILY_BUDGET_USD[def.key]} a day once you do fund it.`}
+                    tip={funnelBudgetTip(def.key, state.savedBudgetCents)}
                     placement="top"
                   />
                 </label>

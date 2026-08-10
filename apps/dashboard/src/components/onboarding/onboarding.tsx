@@ -2707,7 +2707,10 @@ export function Onboarding() {
    */
   function underfundedFunnels(): FunnelView[] {
     return selectedFunnels.filter((f) =>
-      funnelBudgetBelowMinimum(f.key as SalesFunnelKey, funnelBudgetUsd(f.key)),
+      // Zero stored: signup is a brand stating its ceilings for the FIRST time,
+      // so the floor applies in full. The grandfather in `funnelBudgetBelowMinimum`
+      // exists for brands billing already funds under it, which nobody here is.
+      funnelBudgetBelowMinimum(f.key as SalesFunnelKey, funnelBudgetUsd(f.key), 0),
     );
   }
 
@@ -3557,7 +3560,7 @@ export function Onboarding() {
         {selectedFunnels.map((f) => {
           const usd = funnelBudgetUsd(f.key);
           const floor = FUNNEL_MIN_DAILY_BUDGET_USD[f.key as SalesFunnelKey];
-          const under = funnelBudgetBelowMinimum(f.key as SalesFunnelKey, usd);
+          const under = funnelBudgetBelowMinimum(f.key as SalesFunnelKey, usd, 0);
           const count = usd > 0 ? countForBudget(usd) : null;
           return (
             <div
