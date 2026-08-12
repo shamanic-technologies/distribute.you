@@ -115,6 +115,7 @@ import {
   type FunnelDraft,
   type DeclaredFunnelValues,
 } from "@/lib/sales-funnels";
+import { fundedLaunchFunnelKey } from "@/lib/launch-funnel";
 import {
   orderedForDetail,
   resolvePrimaryKey,
@@ -1818,8 +1819,21 @@ export function Onboarding() {
     // onboarding no longer generates them here — that would race the server gen and
     // double-bill. See human-service #144.
     setLaunchStep(3);
+    // The campaign states which funnel it sells, and it is one the customer just
+    // FUNDED a few lines above — the same map billing was written from, so the
+    // campaign and its ceiling can never name different funnels. When several are
+    // funded, exactly ONE campaign is created here (the primary funded funnel, else
+    // the first funded one in catalogue order) and campaign-service provisions the
+    // rest, one per funded funnel, on its next tick.
+    const launchFunnelKey = fundedLaunchFunnelKey(pending.funnelBudgets ?? {}, pending.primaryFunnelKey);
+    if (!launchFunnelKey) {
+      throw new Error(
+        "No sales funnel was funded for this launch. Go back and fund at least one funnel before launching.",
+      );
+    }
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
     const { campaign } = await createCampaignWithoutBrandEnrichment({
+      funnelKey: launchFunnelKey,
       name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
       workflowSlug: pending.workflowSlug,
       // A no-website brand carries no URL; it's already created by name, so the

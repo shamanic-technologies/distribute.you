@@ -33,12 +33,34 @@ export type SalesFunnelKey = "reply_meeting" | "visit_meeting" | "visit_signup" 
  * `CANONICAL_GOALS` gives in api.ts: reading a spelling nobody sends yet costs
  * nothing, and failing to read it the day it arrives takes the surface down.
  */
-export type SalesFunnelKeyWire =
-  | SalesFunnelKey
+export type CanonicalSalesFunnelKey =
   | "sales_meetings_from_conversation"
   | "sales_meetings_from_website"
   | "website_purchases"
   | "form_magnet";
+
+export type SalesFunnelKeyWire = SalesFunnelKey | CanonicalSalesFunnelKey;
+
+/**
+ * The spelling every service is renaming TO, for a key this app's catalogue
+ * still names the old way.
+ *
+ * Read tolerantly, WRITE canonically: `normalizeSalesFunnelKey` accepts both
+ * spellings on the way in, and anything this app SENDS goes out in the new
+ * vocabulary, so a producer that eventually drops the legacy aliases never
+ * unfunds or unnames what we stated.
+ */
+const CANONICAL_FUNNEL_KEY: Record<SalesFunnelKey, CanonicalSalesFunnelKey> = {
+  reply_meeting: "sales_meetings_from_conversation",
+  visit_meeting: "sales_meetings_from_website",
+  visit_signup: "website_purchases",
+  visit_form: "form_magnet",
+};
+
+/** The canonical spelling of a funnel key, for anything written to the wire. */
+export function canonicalSalesFunnelKey(key: SalesFunnelKeyWire): CanonicalSalesFunnelKey {
+  return CANONICAL_FUNNEL_KEY[normalizeSalesFunnelKey(key)];
+}
 
 /**
  * Collapse any wire spelling onto the key this app's catalogue is written on.

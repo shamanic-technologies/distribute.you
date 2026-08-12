@@ -131,6 +131,11 @@ export default function CampaignOverviewPage() {
       workflowSlug: campaign.workflowSlug,
       featureSlug: campaign.featureSlug,
       brandUrls: campaign.brandUrls,
+      // A relaunch sells exactly what the campaign it relaunches sells — read off the
+      // campaign's own row, never re-derived from its goal. A campaign that states no
+      // funnel relaunches stating none, and campaign-service refuses it if the feature
+      // needs one; that refusal is the gap surfacing, not something to paper over here.
+      funnelKey: campaign.funnelKey ?? null,
       ...buildBudgetParams(budget.amount, budget.frequency),
     };
     if (campaign.featureInputs) payload.featureInputs = campaign.featureInputs;

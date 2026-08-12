@@ -18,6 +18,7 @@ function camp(over: Partial<Campaign> = {}): Campaign {
     brandIds: [],
     brandUrls: [],
     featureInputs: null,
+    funnelKey: null,
     maxBudgetDailyUsd: over.maxBudgetDailyUsd ?? null,
     maxBudgetWeeklyUsd: over.maxBudgetWeeklyUsd ?? null,
     maxBudgetMonthlyUsd: over.maxBudgetMonthlyUsd ?? null,
