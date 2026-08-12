@@ -19,6 +19,7 @@ import {
   listAllRankedOpportunities,
   listCrmContacts,
   listCrmUploads,
+  listMatrixLeads,
 } from "@/lib/api";
 import { isOpportunityOpen } from "@/lib/quote-pitch-status";
 import { isExpertQuoteFeature } from "@/lib/expert-quote-feature";
@@ -242,6 +243,12 @@ const BillingIcon = () => (
 const CrmIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+);
+
+const ChatIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
   </svg>
 );
 
@@ -783,10 +790,11 @@ function BrandSettingsLevelSidebar({ orgId, brandId, pathname }: {
   );
 }
 
-// CRM Level Sidebar — the brand-level "Services > CRM" surface (uploaded CSV
-// contacts via crm-service). Leads = the concatenated silver contacts pool;
-// Sources = the CSV uploads that fed it. Distinct from the org-level "CRM
-// (Google)" Gmail surface.
+// CRM Level Sidebar — the brand-level "Services > CRM" surface (crm-service).
+// Leads = the concatenated silver contacts pool from the CSV source; Sources =
+// the CSV uploads that fed it; Inbound DMs = the SECOND source, the people who
+// wrote to the brand first over WhatsApp / Telegram / Discord. Distinct from the
+// org-level "CRM (Google)" Gmail surface.
 function CrmLevelSidebar({ orgId, brandId, pathname }: {
   orgId: string;
   brandId: string;
@@ -804,11 +812,21 @@ function CrmLevelSidebar({ orgId, brandId, pathname }: {
     () => listCrmUploads(brandId),
     SIDEBAR_BADGE_QUERY,
   );
-  const badgesRevealed = useCoordinatedReveal([!contactsPending, !uploadsPending]);
+  const { data: inboundData, isPending: inboundPending } = useAuthQuery(
+    ["matrixLeads", brandId],
+    () => listMatrixLeads(brandId),
+    SIDEBAR_BADGE_QUERY,
+  );
+  const badgesRevealed = useCoordinatedReveal([
+    !contactsPending,
+    !uploadsPending,
+    !inboundPending,
+  ]);
 
   const items: SidebarItem[] = [
     { id: "crm-leads", label: "Leads", href: `${basePath}/leads`, icon: <OutcomeLeadIcon />, badge: contactsData?.contacts?.length },
     { id: "crm-sources", label: "Sources", href: `${basePath}/sources`, icon: <DocumentIcon />, badge: uploadsData?.uploads?.length },
+    { id: "crm-inbound", label: "Inbound DMs", href: `${basePath}/inbound`, icon: <ChatIcon />, badge: inboundData?.leads?.length },
   ];
 
   return (
