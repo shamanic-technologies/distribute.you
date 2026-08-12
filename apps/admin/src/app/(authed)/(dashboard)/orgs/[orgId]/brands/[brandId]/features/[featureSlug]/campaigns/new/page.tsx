@@ -41,6 +41,8 @@ import {
   type SalesObjective,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { SALES_FUNNEL_KEYS, salesFunnelLabel } from "@/lib/sales-funnel-keys";
+import { isRevenueFeature } from "@/lib/revenue-feature";
 import { projectFunnel, type FunnelEconomics } from "@/lib/sales-funnel-projection";
 import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { pollOptions } from "@/lib/query-options";
@@ -287,6 +289,11 @@ export default function FeatureCreateCampaignPage() {
   const [isCreating, setIsCreating] = useState(false);
   const isCreatingRef = useRef(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  // Which sales funnel the campaign sells. A sales feature MUST state one — it is what
+  // the campaign is paced and priced on — and staff pick it rather than have it derived
+  // from the goal. A feature that sells through no sales funnel states none.
+  const needsSalesFunnel = isRevenueFeature(featureSlug);
+  const [funnelKey, setFunnelKey] = useState<string>("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [additionalBrandIds, setAdditionalBrandIds] = useState<string[]>([]);
@@ -806,6 +813,8 @@ export default function FeatureCreateCampaignPage() {
         workflowSlug: wf.workflowSlug,
         brandUrls,
         featureSlug,
+        // A test run is still a campaign on this feature, so it states the same funnel.
+        funnelKey: needsSalesFunnel ? funnelKey || null : null,
         featureInputs: inputValues,
         maxLeads: 3,
         maxBudgetTotalUsd: TEST_RUN_BUDGET_USD,
@@ -821,7 +830,7 @@ export default function FeatureCreateCampaignPage() {
     } finally {
       setTestStarting((s) => ({ ...s, [wf.id]: false }));
     }
-  }, [brand, testStarting, featureInputs, formData, additionalBrands, featureSlug]);
+  }, [brand, testStarting, featureInputs, formData, additionalBrands, featureSlug, needsSalesFunnel, funnelKey]);
 
   // Workflow IDs for key status check
   const featureWorkflowIds = useMemo(() => rows.map((r) => r.id), [rows]);
@@ -989,6 +998,15 @@ export default function FeatureCreateCampaignPage() {
       setIsCreating(false);
       return;
     }
+    // Stop rather than send a funnel nobody stated: campaign-service refuses a sales
+    // campaign with no funnel, and a default picked here would be a funnel the brand
+    // is neither paced nor priced on.
+    if (needsSalesFunnel && !funnelKey) {
+      setCreateError("Pick the sales funnel this campaign sells.");
+      isCreatingRef.current = false;
+      setIsCreating(false);
+      return;
+    }
 
     setCreateError(null);
 
@@ -1018,6 +1036,7 @@ export default function FeatureCreateCampaignPage() {
         workflowSlug: selectedRow.workflowSlug,
         brandUrls,
         featureSlug: featureSlug,
+        funnelKey: needsSalesFunnel ? funnelKey : null,
         ...budgetParams,
         featureInputs: inputValues,
       };
@@ -1079,10 +1098,13 @@ export default function FeatureCreateCampaignPage() {
       workflowSlug: selectedRow.workflowSlug,
       displayLabel: selectedRow.workflowDynastyName,
       brandUrls: intentBrandUrls,
+      // The funnel rides the blob: the resume path creates the campaign on a fresh
+      // page load, where the picked value is gone.
+      funnelKey: needsSalesFunnel ? funnelKey : null,
       ...budgetParams,
       featureInputs: intentInputFields,
     }));
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, additionalBrands]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, additionalBrands, needsSalesFunnel, funnelKey]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-topup, show the modal.
    *  If the user already has a saved payment method, silently configure auto-topup and proceed. */
@@ -1200,7 +1222,10 @@ export default function FeatureCreateCampaignPage() {
             }
           }
           let result: { campaign: Campaign };
-          const payload = { name: generateName(), workflowSlug, featureSlug: featureSlug, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          // The funnel was stated before checkout and rides the blob; a blob written
+          // before it did carries none, and campaign-service refuses that for a sales
+          // feature rather than us inventing one on the way back in.
+          const payload = { name: generateName(), workflowSlug, featureSlug: featureSlug, funnelKey: null, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             result = await createCampaign(payload);
           } catch (firstErr) {
@@ -1976,12 +2001,34 @@ export default function FeatureCreateCampaignPage() {
             </select>
           </div>
 
+          {needsSalesFunnel && (
+            <>
+              <div className="hidden sm:block h-6 w-px bg-gray-200" />
+
+              {/* Sales funnel — what this campaign sells */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Funnel:</span>
+                <select
+                  value={funnelKey}
+                  onChange={(e) => setFunnelKey(e.target.value)}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  data-testid="funnel-select"
+                >
+                  <option value="">Pick a funnel</option>
+                  {SALES_FUNNEL_KEYS.map((key) => (
+                    <option key={key} value={key}>{salesFunnelLabel(key)}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
           <div className="hidden sm:block h-6 w-px bg-gray-200" />
 
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || isLoadingProfile || showForm}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || isLoadingProfile || showForm || (needsSalesFunnel && !funnelKey)}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Go &rarr;

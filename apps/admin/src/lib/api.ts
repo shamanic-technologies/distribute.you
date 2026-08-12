@@ -297,6 +297,9 @@ export interface Campaign {
   // carries this field since v0.42.2 (PR #469).
   brandUrls: string[];
   featureInputs: Record<string, string> | null;
+  // Which sales funnel this campaign sells, as campaign-service stores it on the row.
+  // Null for a feature that sells through no sales funnel; never derived from the goal.
+  funnelKey: string | null;
   maxBudgetDailyUsd: string | null;
   maxBudgetWeeklyUsd: string | null;
   maxBudgetMonthlyUsd: string | null;
@@ -2609,11 +2612,18 @@ export async function createWorkflow(
 }
 
 // Create campaign
+//
+// `funnelKey` states which sales funnel the campaign sells, and it is REQUIRED rather
+// than optional so a new caller has to answer the question: a sales campaign is paced
+// on that funnel's own ceiling in billing and priced on its own economics, and
+// campaign-service 400s one that states none. A feature that sells through no sales
+// funnel (PR, hiring, VC, AI visibility) states an explicit null.
 export async function createCampaign(
   params: {
     name: string;
     workflowSlug: string;
     brandUrls: string[];
+    funnelKey: string | null;
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;

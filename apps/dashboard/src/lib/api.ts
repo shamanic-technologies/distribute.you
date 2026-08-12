@@ -4248,11 +4248,18 @@ export async function createWorkflow(
 }
 
 // Create campaign
+//
+// `funnelKey` states which sales funnel the campaign sells, and it is REQUIRED
+// rather than optional so a new caller has to answer the question: a sales
+// campaign is paced on that funnel's own ceiling in billing and priced on its own
+// economics, and campaign-service 400s one that states none. A feature that sells
+// through no sales funnel (PR, hiring, VC, AI visibility) states an explicit null.
 export async function createCampaign(
   params: {
     name: string;
     workflowSlug: string;
     brandUrls: string[];
+    funnelKey: SalesFunnelKeyWire | null;
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;
@@ -4277,6 +4284,9 @@ export async function createCampaignWithoutBrandEnrichment(
     // already created by name) — the gateway resolves/forwards accordingly.
     brandUrls?: string[];
     brandIds?: string[];
+    // Which sales funnel this campaign sells — required for the same reason as on
+    // createCampaign above; an explicit null means it sells through none.
+    funnelKey: SalesFunnelKeyWire | null;
     maxBudgetDailyUsd?: string;
     maxBudgetWeeklyUsd?: string;
     maxBudgetMonthlyUsd?: string;

@@ -23,6 +23,8 @@ import {
   type Brand,
 } from "@/lib/api";
 import { useBillingGuard } from "@/lib/billing-guard";
+import { isRevenueFeature } from "@/lib/revenue-feature";
+import { SALES_FUNNEL_KEYS, salesFunnelLabel } from "@/lib/sales-funnel-keys";
 import { extractDomain } from "@/lib/extract-domain";
 import { pollOptions } from "@/lib/query-options";
 import { WorkflowDetailPanel } from "@/components/workflows/workflow-detail-panel";
@@ -204,6 +206,11 @@ export default function CreateCampaignPage() {
   const [isCreating, setIsCreating] = useState(false);
   const isCreatingRef = useRef(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  // Which sales funnel the campaign sells. A sales feature MUST state one — it is what
+  // the campaign is paced and priced on — and staff pick it rather than have it derived
+  // from the goal. A feature that sells through no sales funnel states none.
+  const needsSalesFunnel = isRevenueFeature(featureId);
+  const [funnelKey, setFunnelKey] = useState<string>("");
 
   // Brand state
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
@@ -365,6 +372,15 @@ export default function CreateCampaignPage() {
       setIsCreating(false);
       return;
     }
+    // Stop rather than send a funnel nobody stated: campaign-service refuses a sales
+    // campaign with no funnel, and a default picked here would be a funnel the brand
+    // is neither paced nor priced on.
+    if (needsSalesFunnel && !funnelKey) {
+      setCreateError("Pick the sales funnel this campaign sells.");
+      isCreatingRef.current = false;
+      setIsCreating(false);
+      return;
+    }
 
     setCreateError(null);
 
@@ -384,6 +400,7 @@ export default function CreateCampaignPage() {
         workflowSlug: selectedRow.workflowSlug,
         featureSlug: featureId,
         brandUrls: [brandUrl],
+        funnelKey: needsSalesFunnel ? funnelKey : null,
         ...budgetParams,
         featureInputs: inputFields,
       };
@@ -416,7 +433,7 @@ export default function CreateCampaignPage() {
       isCreatingRef.current = false;
       setIsCreating(false);
     }
-  }, [selectedRow, budgetAmount, budgetFrequency, formData, refetchCampaigns]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, needsSalesFunnel, funnelKey, refetchCampaigns]);
 
   /** Save campaign intent to sessionStorage so we can resume after Stripe checkout */
   const saveCampaignIntent = useCallback(() => {
@@ -431,10 +448,13 @@ export default function CreateCampaignPage() {
     sessionStorage.setItem("pendingCampaign", JSON.stringify({
       workflowSlug: selectedRow.workflowSlug,
       brandUrl: intentBrandUrl,
+      // The funnel rides the blob: the resume path creates the campaign on a fresh
+      // page load, where the picked value is gone.
+      funnelKey: needsSalesFunnel ? funnelKey : null,
       ...budgetParams,
       featureInputs: intentInputFields,
     }));
-  }, [selectedRow, budgetAmount, budgetFrequency, formData]);
+  }, [selectedRow, budgetAmount, budgetFrequency, formData, needsSalesFunnel, funnelKey]);
 
   /** Proactive credit check: if budget may exceed balance and no auto-topup, show the modal */
   const handleCreateCampaign = useCallback(async () => {
@@ -514,7 +534,10 @@ export default function CreateCampaignPage() {
       setIsCreating(true);
       (async () => {
         try {
-          const payload = { name: generateName(), workflowSlug, featureSlug: featureId, ...rest } as unknown as Parameters<typeof createCampaign>[0];
+          // The funnel was stated before checkout and rides the blob; a blob written
+          // before it did carries none, and campaign-service refuses that for a sales
+          // feature rather than us inventing one on the way back in.
+          const payload = { name: generateName(), workflowSlug, featureSlug: featureId, funnelKey: null, ...rest } as unknown as Parameters<typeof createCampaign>[0];
           try {
             await createCampaign(payload);
           } catch (firstErr) {
@@ -767,12 +790,34 @@ export default function CreateCampaignPage() {
             </select>
           </div>
 
+          {needsSalesFunnel && (
+            <>
+              <div className="hidden sm:block h-6 w-px bg-gray-200" />
+
+              {/* Sales funnel — what this campaign sells */}
+              <div className="flex items-center gap-2" data-testid="funnel-controls">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Funnel:</span>
+                <select
+                  value={funnelKey}
+                  onChange={(e) => setFunnelKey(e.target.value)}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+                  data-testid="funnel-select"
+                >
+                  <option value="">Pick a funnel</option>
+                  {SALES_FUNNEL_KEYS.map((key) => (
+                    <option key={key} value={key}>{salesFunnelLabel(key)}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
           <div className="hidden sm:block h-6 w-px bg-gray-200" />
 
           {/* Go button */}
           <button
             onClick={handleGo}
-            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl}
+            disabled={!selectedRow || !budgetAmount || !resolvedBrandUrl || (needsSalesFunnel && !funnelKey)}
             className="px-5 py-2 text-sm font-medium rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
             data-testid="go-button"
           >
