@@ -170,8 +170,8 @@ describe("sidebar badge counts do not re-download their lists", () => {
 
   it("routes every badge read through the one shared options object", () => {
     expect(src).toContain("const SIDEBAR_BADGE_QUERY");
-    // 14 call sites plus the definition.
-    expect(src.match(/SIDEBAR_BADGE_QUERY/g) ?? []).toHaveLength(15);
+    // 15 call sites plus the definition.
+    expect(src.match(/SIDEBAR_BADGE_QUERY/g) ?? []).toHaveLength(16);
   });
 
   it("turns the poll off rather than merely slowing it", () => {

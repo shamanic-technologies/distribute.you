@@ -6106,6 +6106,157 @@ export async function getCrmServeStats(brandId: string, token?: string): Promise
   return parsed.data as unknown as CrmServeStats;
 }
 
+// ── CRM service (inbound Matrix DMs) ─────────────────────────────────────────
+// The SECOND contact source in crm-service: direct messages arriving over Matrix
+// (WhatsApp / Telegram / Discord bridged into a homeserver), ingested with the
+// same Bronze/Silver/Gold layering as the CSV path above. Reached through the
+// api-service transparent proxy `/v1/orgs/matrix/*`; crm-service owns both shapes.
+//
+// The two reads answer different questions and must never be merged:
+//   - `listMatrixLeads`       — the GOLD rows: one per conversation an LLM has
+//                               read, carrying its status / next step / value.
+//   - `listMatrixConnections` — whether each bridge is actually logged in and
+//                               syncing. A lead table that silently stops
+//                               updating because a bridge logged out is worse
+//                               than no table.
+
+/** The three channels crm-service bridges. Mirrors MATRIX_CHANNELS. */
+export const MATRIX_CHANNELS = ["whatsapp", "telegram", "discord"] as const;
+export type MatrixChannel = (typeof MATRIX_CHANNELS)[number];
+
+export interface MatrixConnection {
+  id: string;
+  brandId: string;
+  /** 'whatsapp' | 'telegram' | 'discord'. */
+  channel: string;
+  matrixUserId: string;
+  counterpartPrefix: string;
+  /** 'active' | 'paused' | 'error'. */
+  status: string;
+  /** True once the connection holds a /sync cursor, i.e. it has synced at least once. */
+  synced: boolean;
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  lastRunId: string | null;
+  createdAt: string;
+}
+
+export interface MatrixLead {
+  id: string;
+  brandId: string;
+  /** LLM reading of where the deal stands. See LEAD_STATUSES in crm-service. */
+  status: string;
+  nextStep: string;
+  /** Whole USD. crm-service's prompt emits 0 when the thread gives NO basis for a
+   * value, so 0 means "not stated", never "this deal is worth nothing". */
+  estimatedValueUsd: number;
+  summary: string;
+  /** Versioned model id that produced the reading (provenance). */
+  model: string;
+  /** When the reading was computed. Pairs with `status`, NOT with the counters. */
+  computedAt: string;
+  computedThroughEventId: string;
+  contactId: string;
+  contactName: string | null;
+  channel: string;
+  channelHandle: string | null;
+  phoneE164: string | null;
+  conversationId: string;
+  /** Conversation facts. Pair with the counters, NOT with the LLM reading. */
+  firstMessageAt: string;
+  lastMessageAt: string;
+  messageCount: number;
+  inboundCount: number;
+  outboundCount: number;
+}
+
+// `status` / `channel` stay `z.string()` rather than a `z.enum`: crm-service owns
+// both vocabularies, and a value it adds later must widen the page's labels, not
+// break the read. Unknown values render verbatim.
+const MatrixConnectionSchema = z
+  .object({
+    id: z.string(),
+    brandId: z.string(),
+    channel: z.string(),
+    matrixUserId: z.string(),
+    counterpartPrefix: z.string(),
+    status: z.string(),
+    synced: z.boolean(),
+    lastSyncedAt: z.string().nullable(),
+    lastError: z.string().nullable(),
+    lastRunId: z.string().nullable(),
+    createdAt: z.string(),
+  })
+  .passthrough();
+
+const MatrixLeadSchema = z
+  .object({
+    id: z.string(),
+    brandId: z.string(),
+    status: z.string(),
+    nextStep: z.string(),
+    estimatedValueUsd: z.coerce.number(),
+    summary: z.string(),
+    model: z.string(),
+    computedAt: z.string(),
+    computedThroughEventId: z.string(),
+    contactId: z.string(),
+    contactName: z.string().nullable(),
+    channel: z.string(),
+    channelHandle: z.string().nullable(),
+    phoneE164: z.string().nullable(),
+    conversationId: z.string(),
+    firstMessageAt: z.string(),
+    lastMessageAt: z.string(),
+    messageCount: z.coerce.number(),
+    inboundCount: z.coerce.number(),
+    outboundCount: z.coerce.number(),
+  })
+  .passthrough();
+
+const MatrixConnectionsResponseSchema = z.object({
+  connections: z.array(MatrixConnectionSchema),
+});
+const MatrixLeadsResponseSchema = z.object({ leads: z.array(MatrixLeadSchema) });
+
+export async function listMatrixConnections(
+  brandId: string,
+  token?: string,
+): Promise<{ connections: MatrixConnection[] }> {
+  const raw = await apiCall<unknown>(
+    `/orgs/matrix/connections?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = MatrixConnectionsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listMatrixConnections: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] listMatrixConnections: invalid response shape");
+  }
+  return parsed.data as unknown as { connections: MatrixConnection[] };
+}
+
+export async function listMatrixLeads(
+  brandId: string,
+  token?: string,
+): Promise<{ leads: MatrixLead[] }> {
+  const raw = await apiCall<unknown>(
+    `/orgs/matrix/leads?brandId=${encodeURIComponent(brandId)}`,
+    { token },
+  );
+  const parsed = MatrixLeadsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] listMatrixLeads: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] listMatrixLeads: invalid response shape");
+  }
+  return parsed.data as unknown as { leads: MatrixLead[] };
+}
+
 // ---------------------------------------------------------------------------
 // human-service audiences, reached through the api-service gateway
 // (`/v1/orgs/audiences*`). human-service OWNS these rows. Mirrors the dashboard
