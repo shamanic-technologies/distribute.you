@@ -3,99 +3,94 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * brand-service requires all six core sales-economics metrics on every write, so an
- * onboarding step that edits ONE of them has to restate the other five. Restating
- * them from client state destroyed a brand's confirmed rates in prod (2026-07-29): a
- * checkout return whose snapshot failed to parse was rebuilt from DEFAULT_RATES, and
- * the lifetime-revenue step wrote those placeholders over rates the same user had
- * confirmed minutes earlier (visit-to-signup 8.4% -> 5%, signup-to-paid 16.2% -> 10%).
+ * Conversion rates and lifetime revenue belong to a SALES FUNNEL, not to a brand.
  *
- * These guards pin the invariant: a metric the current step did not render is read
- * from the wire, never from `rates`. Behavioural import isn't possible (the component
- * pulls Clerk/posthog/api through the `@` alias vitest does not resolve here), so we
- * assert the load-bearing source, matching the repo's other onboarding guards.
+ * The brand-wide `brand_sales_economics` record is what the funnel model replaced:
+ * one set of numbers for every path a brand sells through, plus an `optimizationGoal`
+ * that could not tell the two meeting funnels apart. features-service no longer reads
+ * that goal at all, and prices its pipeline on the declared funnel's own terms — so an
+ * onboarding step that wrote the brand-wide record would be writing values nothing
+ * reads, and would have to source the ones it did not render from somewhere. That
+ * sourcing is what destroyed a brand's confirmed rates in prod (2026-07-29): a checkout
+ * return whose snapshot failed to parse was rebuilt from DEFAULT_RATES, and the write
+ * put those placeholders over rates the same user had confirmed minutes earlier.
+ *
+ * The fix is not a better restatement — it is not writing there at all. These guards
+ * pin that: the flow states the funnel SET, then prices each funnel, and nothing in it
+ * writes a brand-level rate.
+ *
+ * Behavioural import isn't possible (the component pulls Clerk/posthog/api through the
+ * `@` alias vitest does not resolve here), so we assert the load-bearing source,
+ * matching the repo's other onboarding guards.
  */
 describe("Onboarding sales-economics writes", () => {
   const filePath = path.join(__dirname, "../src/components/onboarding/onboarding.tsx");
   const src = fs.readFileSync(filePath, "utf-8");
 
-  const sliceFrom = (marker: string, length = 1600) => {
+  const sliceFrom = (marker: string, length: number) => {
     const at = src.indexOf(marker);
     expect(at, `marker not found: ${marker}`).toBeGreaterThan(-1);
     return src.slice(at, at + length);
   };
 
-  it("reads the stored set from the wire and fails loud when it is absent", () => {
-    const body = sliceFrom("async function resolveStoredEconomics(");
-    expect(body).toContain("getSalesEconomicsEffective(brandId)");
-    // No placeholder substitute: an unresolvable read throws instead of defaulting.
-    expect(body).toContain("throw new Error(");
-    expect(body).not.toContain("DEFAULT_RATES");
+  it("writes no brand-level economics anywhere in the flow", () => {
+    // The write itself, the payload builder that fed it, and the cache it refreshed.
+    expect(src).not.toContain("saveBrandSalesEconomics");
+    expect(src).not.toContain("buildEconomicsPayload");
+    expect(src).not.toContain("rememberSavedEconomics");
+    // The goal vocabulary is retired: a brand's paths are its declared funnels.
+    expect(src).not.toContain("optimizationGoal:");
   });
 
-  it("sources every metric the step did not render from the stored set", () => {
-    const body = sliceFrom("async function buildEconomicsPayload(");
-    for (const field of [
-      "lifetimeRevenueUsd",
-      "replyToMeetingPct",
-      "visitToMeetingPct",
-      "meetingToClosePct",
-      "visitToSignupPct",
-      "signupToPaidClientPct",
-    ]) {
-      expect(body).toContain(field);
-    }
-    expect(body).toContain("const stored = await resolveStoredEconomics(brandId)");
-    expect(body).toContain("rendered.has(key) ? values[key] : storedValue");
-    // The four beta rates have no stored counterpart, so they ride along only when the
-    // step rendered them - omitting leaves the stored value untouched.
-    expect(body).toContain('rendered.has("v2p") ? { visitToPaidClientPct: values.v2p }');
-    expect(body).toContain('rendered.has("f2p") ? { formSubmissionToPaidClientPct: values.f2p }');
+  it("picking the primary path persists nothing", () => {
+    // 1199 chars = the whole body, measured to its closing brace.
+    const body = sliceFrom("function savePrimaryFunnelAndContinue()", 1199);
+    expect(body).toContain('setStep("consent")');
+    // The pick still drives local state — the detail-screen order, the outcome the
+    // budget step prices, the funnel the projection resolves against.
+    expect(body).toContain("setOutcome(nextOutcome)");
+    // ...and writes nothing at all.
+    expect(body).not.toContain("await save");
+    expect(body).not.toContain("setBusy(true)");
   });
 
-  it("builds every step payload through that one helper, never from rates directly", () => {
-    // A step that RENDERS no rate passes no rendered key, so every core metric it
-    // did not show is restated from the wire.
-    expect(src).toContain("await buildEconomicsPayload(id, [], rates)");
-    expect(src).toContain("await buildEconomicsPayload(id, keys, next)");
-    // The pre-fix payloads restated every metric off the client copy. Scoped to the
-    // two save functions: the projection helper legitimately reads the client rates
-    // to build its econ overrides, which is a read, not a write.
-    for (const marker of [
-      "async function savePrimaryFunnelAndContinue(",
-      "async function saveModelEconomics(",
-    ]) {
-      const body = sliceFrom(marker, 1250);
-      expect(body).not.toContain("replyToMeetingPct: nextRates.r2m");
-      expect(body).not.toContain("visitToSignupPct: nextRates.v2s");
-      expect(body).not.toContain("signupToPaidClientPct: nextRates.s2c");
-      expect(body).not.toContain("lifetimeRevenueUsd: nextRates.ltv");
-    }
+  it("prices the PRIMARY FUNNEL through the shared per-funnel patch path", () => {
+    const body = sliceFrom("async function saveModelEconomics(", 2000);
+    // Same three calls, in the same order, as the funnel's own detail screen: read
+    // what is stored, diff against it, declare. Never a brand-level write.
+    const read = body.indexOf("await getBrandSalesFunnels(id)");
+    const diff = body.indexOf("buildFunnelPatch(def, draft, storedFunnelValues(stored, funnel.key))");
+    const write = body.indexOf("declareBrandSalesFunnel(id, funnel.key, patch)");
+    expect(read).toBeGreaterThan(-1);
+    expect(diff).toBeGreaterThan(read);
+    expect(write).toBeGreaterThan(diff);
+    // brand-service's refusal is a sentence written for a person; `err.message` is
+    // the whole downstream body verbatim.
+    expect(body).toContain("funnelWriteErrorMessage(err)");
+    expect(body).not.toContain("setModelEconomicsError(err instanceof Error ? err.message");
   });
 
-  it("blocks the model step when the stored set cannot be read", () => {
-    // The single lifetime-revenue step is gone (each funnel carries its own), so
-    // the surviving economics write on the post-payment path is this one — and it
-    // has the same discipline: build the payload BEFORE advancing, so a failed
-    // read stops the step instead of persisting whatever the client happens to
-    // hold. On a checkout return that client copy can be a reconstructed snapshot
-    // full of placeholders, which is exactly how confirmed rates were overwritten.
-    const body = sliceFrom("async function saveModelEconomics(", 2400);
-    const build = body.indexOf("buildEconomicsPayload");
-    const write = body.indexOf("saveBrandSalesEconomics");
-    expect(build).toBeGreaterThan(-1);
-    expect(write).toBeGreaterThan(build);
+  it("shows the primary funnel's OWN chain, not the retired goal's rate set", () => {
+    // `RATE_KEYS_FOR_OUTCOME` mixed the entry legs of DIFFERENT funnels (the meeting
+    // goal asked for reply-to-meeting AND visit-to-meeting, one from each meeting
+    // funnel), so the block asked for numbers belonging to no single path.
+    expect(src).not.toContain("RATE_KEYS_FOR_OUTCOME");
+    expect(src).not.toContain("modelEconomicsKeys");
+    // The fields come from the funnel catalogue, so a rate reads the same words here
+    // as on the funnel's own screen.
+    expect(src).toContain("const economicsRates = economicsDef ? funnelRateFields(economicsDef) : []");
+    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: e.target.value } })");
   });
 
-  it("refreshes the cached stored set from what was actually persisted", () => {
-    expect(src).toContain("function rememberSavedEconomics(saved: BrandSalesEconomics)");
-    expect(src).toContain("rememberSavedEconomics(salesEconomics)");
-    // The rates step that owned the projection refresh is gone with the
-    // brand-level model; the budget step refreshes it from the persisted values.
-    expect(src).not.toContain("fetchFreshWorkflowProjectionForRates");
+  it("arms the Update button on a live compare, never a sticky latch", () => {
+    expect(src).toContain("economicsSnapshot !== modelEconomicsBaseline");
+    // A boolean set true on first edit and never cleared would leave the button armed
+    // after a change-then-undo.
+    expect(src).not.toContain("setEconomicsDirty(");
   });
 
   it("warms the stored set on the post-payment paths, which never hydrate", () => {
+    // Still needed: it seeds the lifetime revenue the funnel screens prefill from.
     expect(src).toContain("function prewarmStoredEconomics(brandId: string)");
     const resume = sliceFrom("async function resumeCheckoutLaunch(", 1400);
     expect(resume).toContain("prewarmStoredEconomics(prewarmId)");

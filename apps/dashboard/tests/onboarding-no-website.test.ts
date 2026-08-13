@@ -79,12 +79,15 @@ describe("Onboarding — no-website path (beta)", () => {
 });
 
 describe("Dashboard goal pickers — restrict to positive_replies when brand has no website", () => {
-  it("brand-status-control restricts GOAL_OPTIONS when brand.url == null", () => {
+  it("brand-status-control coerces the DISPLAYED goal when brand.url == null", () => {
     const src = read("src/components/brand/brand-status-control.tsx");
     expect(src).toContain("brandData.brand.url == null");
-    expect(src).toContain('GOAL_OPTIONS.filter((option) => option.value === "positive_replies")');
-    // Still uses the base GOAL_OPTIONS.filter for the website case.
-    expect(src).toContain("GOAL_OPTIONS.filter");
+    // The picker is gone — a no-website brand is restricted by the funnel catalogue
+    // itself, since every website-led funnel refuses to be declared without a site.
+    // What survives here is the DISPLAY coercion: a brand stored on a visit-driven
+    // goal must still read "positive replies" rather than claim a path it cannot run.
+    expect(src).toContain('noWebsite && storedGoal ? "positive_replies" : storedGoal');
+    expect(src).not.toContain("GOAL_OPTIONS");
   });
 
   // The settings sales-economics card carried the same restriction until brand

@@ -37,13 +37,16 @@ describe("Brand Settings — the run-status section is retired", () => {
     expect(brandStatusControl).toContain("setPaused(!paused)");
   });
 
-  it("the shared control still states the spend beside the run status, and keeps the goal editable", () => {
+  it("the shared control states the spend and the goal beside the run status, editing neither", () => {
     // The pill STATES the daily budget; it no longer edits it. Money is funded
     // per sales funnel now, and the funnel is where the customer sets it — a
     // second editor here would write a brand-level number that contradicts the
     // ceilings it is supposed to be the sum of.
     expect(brandStatusControl).toContain("budgetLabel");
     expect(brandStatusControl).not.toContain("openBudgetDialog");
-    expect(brandStatusControl).toContain("Optimization goal");
+    // Same reasoning for the goal: it is the retired vocabulary features-service no
+    // longer reads, and what a brand sells through is its declared funnels. Stated, not edited.
+    expect(brandStatusControl).toContain("GOAL_LABEL[goal]");
+    expect(brandStatusControl).not.toContain("Optimization goal");
   });
 });

@@ -40,7 +40,6 @@ import {
   type UserFieldValue,
   getSalesEconomicsEffective,
   saveBrandClickDestination,
-  saveBrandSalesEconomics,
   getBrandSalesFunnels,
   stateBrandSalesFunnels,
   declareBrandSalesFunnel,
@@ -66,8 +65,6 @@ import {
   salesObjectiveForOptimizationGoal,
   sendAuthNotification,
   type BrandOptimizationGoal,
-  type BrandSalesEconomics,
-  type BrandSalesEconomicsInput,
   type EffectiveSalesEconomics,
   type WorkflowProjectionResponse,
   type FeatureInput,
@@ -107,6 +104,7 @@ import {
   funnelRateFields,
   salesFunnelByKey,
   buildFunnelPatch,
+  isEmptyFunnelPatch,
   validateFunnelDraft,
   funnelWriteErrorMessage,
   NOTHING_DECLARED,
@@ -258,19 +256,6 @@ const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: strin
   v2f: { label: "Website visit → form submission", suffix: "%", hint: "Of leads who visit your website, the share that submit a form." },
   f2p: { label: "Form submission → paid client", suffix: "%", hint: "Of leads who submit a form, the share that become paying customers." },
 };
-// The rate fields each goal asks for (mirrors REQUIRED_FIELDS_BY_GOAL). The two
-// current goals are unchanged; the beta goals ask for their own conversion step(s).
-const RATE_KEYS_FOR_OUTCOME: Record<Outcome, RateKey[]> = {
-  signups: ["v2s"],
-  sales_meetings: ["r2m", "v2m"],
-  website_visits: ["v2p"],
-  positive_replies: ["r2p"],
-  form_submissions: ["v2f", "f2p"],
-  website_purchase: ["v2s", "s2c"],
-  // Combined goal: a paying client won via either path → both single-step paid rates.
-  sales: ["v2p", "r2p"],
-};
-
 // ── Rate-input formatting ────────────────────────────────────────────
 // Number fields render as TEXT (not <input type="number">) so we can show
 // viewer-locale separators ("2,500" / "2 500") and decimals ("0.5" / "0,5"). User input is
@@ -1028,6 +1013,11 @@ export function Onboarding() {
   // under 1x is otherwise unexplainable on a screen that shows neither number.
   const [modelEconomicsBusy, setModelEconomicsBusy] = useState(false);
   const [modelEconomicsError, setModelEconomicsError] = useState<string | null>(null);
+  // What the primary funnel's draft looked like the last time this step wrote it (or
+  // when the step was first shown). The Update button arms on a LIVE compare against
+  // it, never a sticky "edited" latch: typing a value and undoing it must disarm the
+  // button again.
+  const [modelEconomicsBaseline, setModelEconomicsBaseline] = useState<string | null>(null);
   // Aggressive parallel launch. The whole launch (audiences, auto-topup, budget,
   // campaign create, onboarding-complete) is kicked off in the BACKGROUND the moment
   // the checkout returns — while the user fills the optional post-payment steps — so
@@ -1131,6 +1121,21 @@ export function Onboarding() {
   useEffect(() => {
     if (noWebsiteMode && outcome !== "positive_replies") setOutcome("positive_replies");
   }, [noWebsiteMode, outcome]);
+  // Baseline for the model step's Update button: the primary funnel's draft as it
+  // stood when the step was shown. Captured here rather than at each of the several
+  // places that can ENTER the step (the funnel screens' Continue, the offer step's
+  // Back, a fresh page load resuming at `model`), so no entry path can forget it.
+  // Cleared on leaving so re-entering re-seeds against whatever was written since.
+  useEffect(() => {
+    if (step !== "model") {
+      if (modelEconomicsBaseline !== null) setModelEconomicsBaseline(null);
+      return;
+    }
+    if (modelEconomicsBaseline !== null) return;
+    const draft = modelFunnelDraft();
+    if (draft) setModelEconomicsBaseline(serializeFunnelDraft(draft));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, primaryFunnelKey, modelEconomicsBaseline]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   useEffect(() => {
     function handlePageShow(event: PageTransitionEvent) {
@@ -1696,47 +1701,6 @@ export function Onboarding() {
       });
   }
 
-  // Body for a step that rendered `renderedKeys`: those carry user intent, everything
-  // else mirrors what is already stored.
-  async function buildEconomicsPayload(
-    brandId: string,
-    renderedKeys: RateKey[],
-    values: Record<RateKey, number>,
-  ): Promise<BrandSalesEconomicsInput> {
-    const stored = await resolveStoredEconomics(brandId);
-    const rendered = new Set(renderedKeys);
-    const pick = (key: RateKey, storedValue: number) => (rendered.has(key) ? values[key] : storedValue);
-    return {
-      lifetimeRevenueUsd: Math.round(pick("ltv", stored.lifetimeRevenueUsd)),
-      replyToMeetingPct: pick("r2m", stored.replyToMeetingPct),
-      visitToMeetingPct: pick("v2m", stored.visitToMeetingPct),
-      meetingToClosePct: pick("m2c", stored.meetingToClosePct),
-      visitToSignupPct: pick("v2s", stored.visitToSignupPct),
-      signupToPaidClientPct: pick("s2c", stored.signupToPaidClientPct),
-      // The four beta rates have no counterpart on the effective read, so they are sent
-      // ONLY when the step rendered them — omitting leaves the stored value untouched.
-      ...(rendered.has("v2p") ? { visitToPaidClientPct: values.v2p } : {}),
-      ...(rendered.has("r2p") ? { replyToPaidClientPct: values.r2p } : {}),
-      ...(rendered.has("v2f") ? { visitToFormSubmissionPct: values.v2f } : {}),
-      ...(rendered.has("f2p") ? { formSubmissionToPaidClientPct: values.f2p } : {}),
-      optimizationGoal: optimizationGoalForOutcome(outcome),
-    };
-  }
-
-  // Keep the cached wire copy in step with what we just persisted, so a later step
-  // restating the untouched metrics restates the NEW values, not the pre-save ones.
-  function rememberSavedEconomics(saved: BrandSalesEconomics): void {
-    econRef.current = {
-      lifetimeRevenueUsd: saved.lifetimeRevenueUsd,
-      replyToMeetingPct: saved.replyToMeetingPct,
-      visitToMeetingPct: saved.visitToMeetingPct,
-      meetingToClosePct: saved.meetingToClosePct,
-      visitToSignupPct: saved.visitToSignupPct,
-      signupToPaidClientPct: saved.signupToPaidClientPct,
-      visitToClosePct: saved.visitToClosePct,
-    };
-  }
-
   async function buildFeatureInputsForLaunch(id: string): Promise<Record<string, string>> {
     if (launchFeatureInputsRef.current) return launchFeatureInputsRef.current;
     await waitForOnboardingHydration();
@@ -2132,70 +2096,73 @@ export function Onboarding() {
     }
   }
 
-  // The economics the best-model ROI is computed from: lifetime revenue and whichever
-  // conversion rate(s) this goal asks for.
-  function modelEconomicsKeys(): RateKey[] {
-    return ["ltv", ...RATE_KEYS_FOR_OUTCOME[outcome]];
+  // The numbers the best-model ROI is computed from, as the PRIMARY FUNNEL states
+  // them: its own chain legs plus the lifetime revenue that closes the chain.
+  //
+  // These used to come from the retired goal vocabulary, whose per-goal rate list
+  // held the ENTRY legs of DIFFERENT funnels (the meeting goal asked for both
+  // reply-to-meeting and visit-to-meeting, one from each meeting funnel) rather than
+  // the chain of the one funnel being priced. So the block asked for numbers that
+  // belonged to no single path, and wrote them to a record nothing reads. It now
+  // shows exactly what the funnel's own screen showed, in the same words, writing to
+  // the same place.
+  function modelFunnelDef(): SalesFunnelDef | null {
+    return primaryFunnel ? salesFunnelByKey(primaryFunnel.key as SalesFunnelKey) : null;
   }
 
-  // Save the edited economics and recompute the best-model projection. Same write
-  // discipline as every other economics write in this flow: only the fields this
-  // block RENDERED come from the form, the rest are read from the wire (the #3039
-  // incident). Load-bearing here in particular —
-  // the model step runs on a fresh page load after Stripe, where the client copy can be
-  // a reconstructed snapshot full of placeholders.
+  /** The draft the model step edits — the primary funnel's, shared with its own screen. */
+  function modelFunnelDraft(): FunnelDraft | null {
+    return primaryFunnel ? funnelDraftForWrite(primaryFunnel) : null;
+  }
+
+  /**
+   * A comparable snapshot of the two things this step edits. Only the rates and the
+   * lifetime revenue: the destinations belong to the funnel's own screen, and folding
+   * them in here would arm the button on a value this block never showed.
+   */
+  function serializeFunnelDraft(draft: FunnelDraft): string {
+    return JSON.stringify({ rates: draft.rates, ltr: draft.lifetimeRevenueUsd });
+  }
+
+  // Save the edited economics onto the FUNNEL and recompute the projection.
+  //
+  // Same discipline as `saveFunnelStatsAndContinue`, and the same code path: what is
+  // STORED is read from the wire on every write and the patch is the DIFF against it.
+  // That is what keeps a field confirmed on the funnel's own screen from being
+  // overwritten from a stale client copy, and what makes an emptied field clear
+  // instead of being silently omitted. Load-bearing here in particular — this step
+  // runs on the fresh page load after Stripe, where the client copy can be a
+  // reconstructed snapshot full of placeholders.
   async function saveModelEconomics() {
     const id = brandIdRef.current;
-    if (!id) return;
-    const keys = modelEconomicsKeys();
-    let next: Record<RateKey, number>;
-    try {
-      next = { ...rates };
-      for (const key of keys) next[key] = parseRateTextInput(rateText[key], key);
-    } catch (err) {
-      setModelEconomicsError(err instanceof Error ? err.message : "Please enter valid numbers.");
+    const funnel = primaryFunnel;
+    const def = modelFunnelDef();
+    const draft = modelFunnelDraft();
+    if (!id || !funnel || !def || !draft) return;
+    const valid = validateFunnelDraft(def, draft, domain || null);
+    if (!valid.ok) {
+      setModelEconomicsError(valid.error);
       return;
     }
     setModelEconomicsError(null);
     setModelEconomicsBusy(true);
-    let payload: BrandSalesEconomicsInput;
     try {
-      payload = await buildEconomicsPayload(id, keys, next);
-    } catch (err) {
-      setModelEconomicsError(
-        err instanceof Error ? err.message : "Your conversion rates could not be loaded. Please try again.",
-      );
-      setModelEconomicsBusy(false);
-      return;
-    }
-    try {
-      const { salesEconomics } = await saveBrandSalesEconomics(id, payload);
-      rememberSavedEconomics(salesEconomics);
+      const { funnels: stored } = await getBrandSalesFunnels(id);
+      const patch = buildFunnelPatch(def, draft, storedFunnelValues(stored, funnel.key));
+      if (!isEmptyFunnelPatch(patch)) await declareBrandSalesFunnel(id, funnel.key, patch);
+      setModelEconomicsBaseline(serializeFunnelDraft(draft));
       // Adopt what was PERSISTED, not the client copy — they differ for every metric
       // this block did not render.
-      const saved: Record<RateKey, number> = {
-        ...next,
-        ltv: salesEconomics.lifetimeRevenueUsd,
-        r2m: salesEconomics.replyToMeetingPct,
-        v2m: salesEconomics.visitToMeetingPct,
-        m2c: salesEconomics.meetingToClosePct,
-        v2s: salesEconomics.visitToSignupPct,
-        s2c: salesEconomics.signupToPaidClientPct,
-      };
-      setRates(saved);
-      setRateText((t) => ({
-        ...t,
-        ...Object.fromEntries(keys.map((key) => [key, rateToText(saved[key])])),
-      }));
-      ltvEditedRef.current = true;
-      ratesEditedRef.current = true;
       // A stale ROI sitting beside freshly typed inputs is an incoherent surface, so the
       // ladder is dropped and the step skeletons until the new projection lands.
       setBestModelLadder(null);
       await fetchBestModelLadder(id, outcome);
     } catch (err) {
-      console.error("[dashboard] onboarding: failed to update economics from the model step", err);
-      setModelEconomicsError(err instanceof Error ? err.message : "Could not update your projection.");
+      console.error("[dashboard] onboarding: failed to price the primary funnel from the model step", err);
+      // brand-service says exactly what was wrong with the funnel it was asked to
+      // store, in a sentence written for a person. Never `err.message` — that is the
+      // whole downstream body verbatim.
+      setModelEconomicsError(funnelWriteErrorMessage(err));
     } finally {
       setModelEconomicsBusy(false);
     }
@@ -2263,49 +2230,28 @@ export function Onboarding() {
     }
   }
 
-  // The primary funnel IS the brand's optimization goal, so picking it writes
-  // that existing per-brand field on the existing route. It has to happen here:
-  // the budget step immediately after prices the outcome this funnel buys, and
-  // the projection is resolved per goal.
-  //
-  // Every OTHER core metric is restated from the WIRE via buildEconomicsPayload
-  // (rendered keys = none), never from client state — this step shows no rate, so
-  // it has no business overwriting one.
-  async function savePrimaryFunnelAndContinue() {
+  function savePrimaryFunnelAndContinue() {
     const goal = primaryFunnel?.goal;
     const nextOutcome = OUTCOMES.find((o) => o.key === goal)?.key ?? null;
     if (!nextOutcome) {
       setError("Pick the path you want us on first.");
       return;
     }
+    // Picking the primary path WRITES NOTHING. It used to persist the brand-level
+    // goal — the retired vocabulary, which features-service no longer reads at all,
+    // and which could not tell the two meeting funnels apart anyway.
+    // What the brand sells through is the funnel SET, already stated one step back
+    // by `saveFunnelsAndContinue`; what each funnel is worth is stated per funnel on
+    // the `funnelStats` screens. A write here would restate six brand-level metrics
+    // nobody reads and, worse, would have to source them from somewhere — which is
+    // exactly how a placeholder once overwrote rates a customer had confirmed.
+    //
+    // The pick still rides in local state: it orders the funnel detail screens,
+    // picks the outcome the budget step prices, and names the funnel the projection
+    // resolves against.
     setOutcome(nextOutcome);
-    const id = brandIdRef.current;
-    if (!id) {
-      // No brand yet (fast click-through): the goal rides in local state and the
-      // launch writes it. Nothing to persist here, so do not block the step.
-      setError(null);
-      setStep("consent");
-      return;
-    }
     setError(null);
-    setBusy(true);
-    try {
-      const payload = await buildEconomicsPayload(id, [], rates);
-      const { salesEconomics } = await saveBrandSalesEconomics(id, {
-        ...payload,
-        optimizationGoal: nextOutcome,
-      });
-      rememberSavedEconomics(salesEconomics);
-      setStep("consent");
-    } catch (err) {
-      if (isInsufficientCredit(err)) {
-        creditRetryRef.current = () => savePrimaryFunnelAndContinue();
-        return;
-      }
-      setError(err instanceof Error ? err.message : "Could not save the path you picked.");
-    } finally {
-      setBusy(false);
-    }
+    setStep("consent");
   }
 
   // v2 — the draft shown for one funnel's detail screen. Falls back in CASCADE so
@@ -3251,13 +3197,19 @@ export function Onboarding() {
     const bestSlug = brandRow?.workflow.workflowDynastySlug ?? null;
     const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
     const pending = bestModelLadder === null;
-    const economicsKeys = modelEconomicsKeys();
-    // Live compare against the last saved set, never a sticky "edited" latch: typing a
-    // value and undoing it must disarm the button again.
-    const economicsDirty = economicsKeys.some((k) => {
-      const parsed = parseLocaleNumberInput(rateText[k]);
-      return parsed === null ? rateText[k].trim() !== rateToText(rates[k]) : parsed !== rates[k];
-    });
+    // The primary funnel's own chain — the same fields, in the same words, that its
+    // detail screen collected a few steps back, because they are the same numbers.
+    const economicsFunnel = primaryFunnel;
+    const economicsDef = modelFunnelDef();
+    const economicsDraft = modelFunnelDraft();
+    const economicsRates = economicsDef ? funnelRateFields(economicsDef) : [];
+    // Live compare against the last written draft, never a sticky "edited" latch:
+    // typing a value and undoing it must disarm the button again.
+    const economicsSnapshot = economicsDraft ? serializeFunnelDraft(economicsDraft) : null;
+    const economicsDirty =
+      economicsSnapshot !== null &&
+      modelEconomicsBaseline !== null &&
+      economicsSnapshot !== modelEconomicsBaseline;
     const roiUnderOne = resolved?.roiMultiple != null && resolved.roiMultiple < 1;
     return (
       <StepShell
@@ -3317,23 +3269,36 @@ export function Onboarding() {
               : "The projection below is computed from these. Change them and we will recompute."}
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {economicsKeys.map((k) => (
-              <label key={k} className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-700">{RATE_META[k].label}</span>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-700">Lifetime revenue / paid client</span>
+              <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
+                <span className="text-sm text-gray-500">$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={economicsDraft?.lifetimeRevenueUsd ?? ""}
+                  onChange={(e) =>
+                    economicsFunnel && editFunnelDraft(economicsFunnel, { ltr: e.target.value })
+                  }
+                  className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
+                />
+              </span>
+            </label>
+            {economicsRates.map((rate) => (
+              <label key={rate.key} className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-gray-700">{rate.label}</span>
                 <span className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 focus-within:border-brand-400">
-                  {RATE_META[k].suffix === "$" && <span className="text-sm text-gray-500">$</span>}
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={rateText[k]}
-                    onChange={(e) => setRateText((t) => ({ ...t, [k]: e.target.value }))}
-                    onBlur={() => {
-                      const value = parseLocaleNumberInput(rateText[k]);
-                      if (value !== null) setRateText((t) => ({ ...t, [k]: rateToText(value) }));
-                    }}
+                    value={economicsDraft?.rates[rate.key] ?? ""}
+                    onChange={(e) =>
+                      economicsFunnel &&
+                      editFunnelDraft(economicsFunnel, { rates: { [rate.key]: e.target.value } })
+                    }
                     className="w-full min-w-0 bg-transparent text-sm font-semibold text-gray-900 focus:outline-none"
                   />
-                  {RATE_META[k].suffix === "%" && <span className="text-sm text-gray-500">%</span>}
+                  <span className="text-sm text-gray-500">%</span>
                 </span>
               </label>
             ))}

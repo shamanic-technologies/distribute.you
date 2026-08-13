@@ -141,36 +141,43 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
       expect(stats).toBeGreaterThan(inputs);
     });
 
-    it("edits lifetime revenue alongside the goal's own rate keys", () => {
-      const body = sliceFrom("function modelEconomicsKeys(): RateKey[] {", 300);
-      expect(body).toContain('return ["ltv", ...RATE_KEYS_FOR_OUTCOME[outcome]];');
+    it("edits the PRIMARY FUNNEL's own chain, not the retired goal's rate set", () => {
+      // The per-goal rate list held the entry legs of DIFFERENT funnels (the meeting
+      // goal asked for reply-to-meeting AND visit-to-meeting, one from each meeting
+      // funnel), so this block used to ask for numbers belonging to no single path.
+      // The fields now come from the funnel catalogue, so a rate reads the same words
+      // here as on that funnel's own screen.
+      expect(src).toContain("const economicsRates = economicsDef ? funnelRateFields(economicsDef) : []");
+      expect(src).toContain("Lifetime revenue / paid client");
+      expect(src).not.toContain("RATE_KEYS_FOR_OUTCOME");
     });
 
     it("arms the button off a live compare, never a sticky edited flag", () => {
-      const body = sliceFrom("const economicsDirty = economicsKeys.some(", 400);
-      expect(body).toContain("parsed !== rates[k]");
+      // A boolean flipped true on the first keystroke and never cleared would leave
+      // the button armed after a change-then-undo.
+      expect(src).toContain("economicsSnapshot !== modelEconomicsBaseline");
       expect(src).toContain("disabled={!economicsDirty || modelEconomicsBusy}");
+      expect(src).not.toContain("setEconomicsDirty(");
     });
 
-    it("writes through the shared payload builder and refreshes the projection", () => {
-      const body = sliceFrom("async function saveModelEconomics() {", 2600);
-      expect(body).toContain("await buildEconomicsPayload(id, keys, next)");
-      expect(body).toContain("rememberSavedEconomics(salesEconomics)");
+    it("prices the funnel through the shared patch path and refreshes the projection", () => {
+      // 1599 chars = the whole body, measured to its closing brace.
+      const body = sliceFrom("async function saveModelEconomics() {", 1599);
+      // The same read -> diff -> declare the funnel's own screen runs, so one funnel
+      // is priced the same way wherever it is priced.
+      expect(body).toContain("await getBrandSalesFunnels(id)");
+      expect(body).toContain("buildFunnelPatch(def, draft, storedFunnelValues(stored, funnel.key))");
+      expect(body).toContain("declareBrandSalesFunnel(id, funnel.key, patch)");
+      // Brand-level economics are not written from anywhere in this flow.
+      expect(body).not.toContain("buildEconomicsPayload");
+      expect(body).not.toContain("saveBrandSalesEconomics");
       // A stale ROI must not sit beside freshly typed inputs.
       const drop = body.indexOf("setBestModelLadder(null)");
       const refetch = body.indexOf("fetchBestModelLadder(id, outcome)");
       expect(drop).toBeGreaterThan(-1);
       expect(refetch).toBeGreaterThan(drop);
-      // The stored set is unreadable -> stop, never persist a placeholder over it.
-      expect(body).toContain("setModelEconomicsBusy(false);\n      return;");
-      for (const restated of [
-        "replyToMeetingPct: next.r2m",
-        "visitToSignupPct: next.v2s",
-        "signupToPaidClientPct: next.s2c",
-        "lifetimeRevenueUsd: next.ltv",
-      ]) {
-        expect(body).not.toContain(restated);
-      }
+      // An empty patch declares nothing rather than re-sending unchanged values.
+      expect(body).toContain("if (!isEmptyFunnelPatch(patch))");
     });
   });
 });
