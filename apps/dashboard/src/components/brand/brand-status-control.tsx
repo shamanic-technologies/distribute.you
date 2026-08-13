@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   SparklesIcon,
   PauseIcon,
   PlayIcon,
-  XMarkIcon,
   CreditCardIcon,
 } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
@@ -17,31 +15,13 @@ import {
   setBrandPause,
   getBrandDailyBudget,
   getBrandSalesEconomics,
-  saveBrandSalesEconomics,
   keepLastGoodWorkflowProjection,
-  isVisitDrivenGoal,
   type BrandOptimizationGoal,
-  type BrandSalesEconomics,
-  type BrandSalesEconomicsInput,
   type WorkflowProjectionResponse,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import {
-} from "@/lib/workflow-projection-choice";
-import { useIsBetaUser } from "@/lib/use-beta-user";
 import { useIsShareMode } from "@/components/share/share-mode-context";
-import { MaturityBadge } from "@/components/maturity-badge";
-
-const DEFAULT_SALES_ECONOMICS = {
-  lifetimeRevenueUsd: 4000,
-  replyToMeetingPct: 40,
-  visitToMeetingPct: 20,
-  meetingToClosePct: 25,
-  visitToSignupPct: 25,
-  signupToPaidClientPct: 20,
-} as const;
 
 // What the brand is currently maximising — the brand-level optimization goal.
 const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
@@ -54,50 +34,6 @@ const GOAL_LABEL: Record<BrandOptimizationGoal, string> = {
   sales: "Maximising sales",
 };
 
-const GOAL_OPTIONS: {
-  value: BrandOptimizationGoal;
-  label: string;
-  description: string;
-  beta?: boolean;
-}[] = [
-  {
-    value: "signups",
-    label: "# Signups",
-    description: "Optimize outreach toward website signups and trial starts.",
-  },
-  {
-    value: "sales_meetings",
-    label: "# Sales Meetings",
-    description: "Optimize outreach toward booked sales conversations.",
-    beta: true,
-  },
-  {
-    value: "website_visits",
-    label: "# Website visits",
-    description: "Optimize outreach toward website visits that convert to paid clients.",
-  },
-  {
-    value: "positive_replies",
-    label: "# Positive Replies",
-    description: "Optimize outreach toward positive replies that convert to paid clients.",
-  },
-  {
-    value: "form_submissions",
-    label: "# Form submissions",
-    description: "Optimize outreach toward form submissions that convert to paid clients.",
-  },
-  {
-    value: "website_purchase",
-    label: "# Website purchases",
-    description: "Optimize outreach toward direct website purchases (paid clients).",
-  },
-  {
-    value: "sales",
-    label: "# Sales",
-    description: "Optimize outreach toward paying clients won via either website visits or positive replies.",
-  },
-];
-
 // Daily budgets always render as whole dollars (no cents), regardless of magnitude.
 function fmtUsdWhole(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
@@ -108,27 +44,6 @@ function budgetLabel(cents: number | null): string | null {
   return `${fmtUsdWhole(cents / 100)}/day`;
 }
 
-function salesEconomicsInputForGoal(
-  current: BrandSalesEconomics | null | undefined,
-  optimizationGoal: BrandOptimizationGoal,
-): BrandSalesEconomicsInput {
-  return {
-    lifetimeRevenueUsd:
-      current?.lifetimeRevenueUsd ?? DEFAULT_SALES_ECONOMICS.lifetimeRevenueUsd,
-    replyToMeetingPct:
-      current?.replyToMeetingPct ?? DEFAULT_SALES_ECONOMICS.replyToMeetingPct,
-    visitToMeetingPct:
-      current?.visitToMeetingPct ?? DEFAULT_SALES_ECONOMICS.visitToMeetingPct,
-    meetingToClosePct:
-      current?.meetingToClosePct ?? DEFAULT_SALES_ECONOMICS.meetingToClosePct,
-    visitToSignupPct:
-      current?.visitToSignupPct ?? DEFAULT_SALES_ECONOMICS.visitToSignupPct,
-    signupToPaidClientPct:
-      current?.signupToPaidClientPct ?? DEFAULT_SALES_ECONOMICS.signupToPaidClientPct,
-    businessModel: current?.businessModel ?? null,
-    optimizationGoal,
-  };
-}
 
 /**
  * Brand-level control bar on the brand overview — replaces the old "New Campaign"
@@ -142,16 +57,11 @@ function salesEconomicsInputForGoal(
  * so they dedupe with the page's own fetches.
  */
 export function BrandStatusControl({ brandId }: { brandId: string }) {
-  const isBeta = useIsBetaUser();
   // The public share view. The goal and the budget still SHOW — they are what the
   // numbers on this page are measured against — but they stop being controls, and
   // Pause / Restart is gone: whether the brand is sending is the owner's call.
   const readOnly = useIsShareMode();
   const queryClient = useQueryClient();
-  const featureSlug = useSoleFeatureSlug();
-  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
-  const [selectedGoal, setSelectedGoal] =
-    useState<BrandOptimizationGoal>("positive_replies");
 
   const { data: pauseData } = useAuthQuery(
     ["brandPause", brandId],
@@ -199,50 +109,18 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
       );
     },
   });
-  const {
-    mutate: saveGoal,
-    isPending: savingGoal,
-    error: goalError,
-  } = useMutation({
-    mutationFn: (next: BrandOptimizationGoal) =>
-      saveBrandSalesEconomics(
-        brandId,
-        salesEconomicsInputForGoal(econ?.salesEconomics, next),
-      ),
-    onSuccess: (res) => {
-      queryClient.setQueryData(["brandSalesEconomics", brandId], res);
-      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
-      queryClient.invalidateQueries({ queryKey: ["featurePipelineActivity"] });
-      queryClient.invalidateQueries({ queryKey: ["workflowProjection", brandId, featureSlug] });
-      setGoalDialogOpen(false);
-    },
-  });
-
-  function openGoalDialog() {
-    if (noWebsite) setSelectedGoal("positive_replies");
-    else if (goal) setSelectedGoal(goal);
-    setGoalDialogOpen(true);
-  }
-
-  const selectedGoalOption = GOAL_OPTIONS.find((g) => g.value === selectedGoal);
-
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      {/* Maximising tag — the brand's current optimization goal. */}
-      {goal && readOnly ? (
+      {/* Maximising tag — STATED, never edited here. What a brand sells through is
+          its declared sales funnels, and those are chosen on Settings. The goal this
+          reads is the retired, lossier vocabulary that features-service no longer
+          reads at all, so a control that wrote it would change a value with no
+          consequence anywhere: a lie about what the click does. */}
+      {goal ? (
         <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700">
           <SparklesIcon className="h-3.5 w-3.5" />
           {GOAL_LABEL[goal]}
         </span>
-      ) : goal ? (
-        <button
-          type="button"
-          onClick={openGoalDialog}
-          className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100"
-        >
-          <SparklesIcon className="h-3.5 w-3.5" />
-          {GOAL_LABEL[goal]}
-        </button>
       ) : (
         <span />
       )}
@@ -324,94 +202,6 @@ export function BrandStatusControl({ brandId }: { brandId: string }) {
         )}
       </div>
 
-      {goalDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => !savingGoal && setGoalDialogOpen(false)}
-          />
-          <div className="relative w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Optimization goal
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Choose the outcome this brand should maximize.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setGoalDialogOpen(false)}
-                disabled={savingGoal}
-                className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40"
-                aria-label="Close"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {(noWebsite
-                ? GOAL_OPTIONS.filter((option) => option.value === "positive_replies")
-                : GOAL_OPTIONS.filter(
-                    (option) => !option.beta || isBeta || option.value === selectedGoal,
-                  )
-              ).map((option) => {
-                const active = selectedGoal === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSelectedGoal(option.value)}
-                    className={`w-full rounded-lg border p-3 text-left transition ${
-                      active
-                        ? "border-brand-300 bg-brand-50 ring-1 ring-brand-200"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                      {option.label}
-                      {option.beta && <MaturityBadge level="beta" />}
-                    </div>
-                    <div className="mt-0.5 text-xs leading-5 text-gray-500">
-                      {option.description}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {goalError && (
-              <p className="mt-4 text-sm text-red-600">
-                Could not save:{" "}
-                {goalError instanceof Error ? goalError.message : "unknown error"}
-              </p>
-            )}
-
-            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setGoalDialogOpen(false)}
-                disabled={savingGoal}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-40"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => saveGoal(selectedGoal)}
-                disabled={savingGoal || selectedGoal === goal}
-                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {savingGoal
-                  ? "Saving..."
-                  : `Save ${selectedGoalOption?.label ?? "goal"}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

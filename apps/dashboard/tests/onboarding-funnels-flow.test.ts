@@ -120,13 +120,22 @@ describe("onboarding — what it writes", () => {
     expect(save).toContain('setStep("primary")');
   });
 
-  it("writes the primary funnel's goal, restating every other metric from the wire", () => {
-    const save = sliceFrom("async function savePrimaryFunnelAndContinue()", 1250);
-    // Rendered keys = none: this step shows no rate, so it has no business
-    // overwriting one from client state (the #3039 incident).
-    expect(save).toContain("buildEconomicsPayload(id, [], rates)");
-    expect(save).toContain("optimizationGoal: nextOutcome");
-    expect(save).toContain("rememberSavedEconomics(salesEconomics)");
+  it("picking the primary funnel persists nothing", () => {
+    // 1199 chars = the whole body, measured to its closing brace.
+    const save = sliceFrom("function savePrimaryFunnelAndContinue()", 1199);
+    // It used to write the brand-level `optimizationGoal` — the retired vocabulary
+    // features-service no longer reads — and had to restate five other metrics it
+    // never showed to do it, which is how a placeholder once overwrote rates a
+    // customer had confirmed (the #3039 incident). What the brand sells through is
+    // the funnel SET, stated one step back; what each funnel is worth is stated per
+    // funnel on the screens after checkout.
+    expect(save).not.toContain("buildEconomicsPayload");
+    expect(save).not.toContain("optimizationGoal");
+    expect(save).not.toContain("await save");
+    // The pick still drives local state: the detail-screen order, the outcome the
+    // budget step prices, the funnel the projection resolves against.
+    expect(save).toContain("setOutcome(nextOutcome)");
+    expect(save).toContain('setStep("consent")');
   });
 
   it("prices each funnel through the same partial patch the settings card uses", () => {

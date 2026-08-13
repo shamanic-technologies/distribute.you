@@ -35,7 +35,8 @@ describe("brand status control", () => {
     // READS the budget, never writes it — see the block below.
     expect(control).not.toContain("saveBrandDailyBudget");
     expect(control).toContain("getBrandSalesEconomics");
-    expect(control).toContain("saveBrandSalesEconomics");
+    // READS the goal to state it, never writes it — see the block below.
+    expect(control).not.toContain("saveBrandSalesEconomics");
     expect(control).toContain('["brandPause", brandId]');
     expect(control).toContain('["brandDailyBudget", brandId]');
     expect(control).toContain('["brandSalesEconomics", brandId]');
@@ -57,20 +58,22 @@ describe("brand status control", () => {
     expect(api).toContain('method: "PATCH"');
   });
 
-  it("opens an overview modal to edit the optimization goal", () => {
-    expect(control).toContain("goalDialogOpen");
-    expect(control).toContain("openGoalDialog");
-    expect(control).toContain("Optimization goal");
-    expect(control).toContain("GOAL_OPTIONS.filter");
-    expect(control).toContain("saveGoal(selectedGoal)");
-  });
-
-  it("keeps goal saves aligned with Brand Settings sales economics fields", () => {
-    expect(control).toContain("salesEconomicsInputForGoal");
-    expect(control).toContain("DEFAULT_SALES_ECONOMICS");
-    expect(control).toContain("businessModel: current?.businessModel ?? null");
-    expect(control).toContain("optimizationGoal");
-    expect(control).toContain('invalidateQueries({ queryKey: ["featurePipelineActivity"] })');
+  it("states the goal and offers no control to change it", () => {
+    // The goal is the retired, lossier vocabulary — `meetingBooked` is the goal of
+    // two different funnels — and features-service no longer reads it at all. What a
+    // brand sells through is its DECLARED SALES FUNNELS, chosen on Settings. A dialog
+    // here would write a value with no consequence anywhere: a control lying about
+    // what the click does. So the tag states, and nothing more.
+    expect(control).not.toContain("goalDialogOpen");
+    expect(control).not.toContain("openGoalDialog");
+    expect(control).not.toContain("Optimization goal");
+    expect(control).not.toContain("GOAL_OPTIONS");
+    expect(control).not.toContain("saveGoal");
+    expect(control).not.toContain("salesEconomicsInputForGoal");
+    // No placeholder economics left behind to restate on a write that no longer happens.
+    expect(control).not.toContain("DEFAULT_SALES_ECONOMICS");
+    // The label itself survives: it is what the numbers on this page are measured against.
+    expect(control).toContain("GOAL_LABEL[goal]");
     expect(control).not.toContain(deprecatedStageField);
   });
 

@@ -44,7 +44,11 @@ describe("Beta onboarding guided flow", () => {
   });
 
   it("persists rates and profile and launches a real campaign", () => {
-    expect(src).toContain("saveBrandSalesEconomics");
+    // Economics are stated PER SALES FUNNEL now — the brand-wide record is the model
+    // the funnels replaced, and features-service prices on the declared funnel.
+    expect(src).not.toContain("saveBrandSalesEconomics");
+    expect(src).toContain("stateBrandSalesFunnels");
+    expect(src).toContain("declareBrandSalesFunnel");
     expect(src).toContain("saveBrandUserFields");
     expect(src).toContain("createCampaign");
     // Activation is committed ONCE at the terminal launch: the picked set becomes the
@@ -126,7 +130,9 @@ describe("Beta onboarding guided flow", () => {
 
   it("uses the selected goal for workflow projection and persisted economics", () => {
     expect(src).toContain("salesObjectiveForOptimizationGoal(optimizationGoalForOutcome(outcome))");
-    expect(src).toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
+    // The goal still resolves the PROJECTION (features-service routes on it), but it
+    // is no longer persisted on the brand: nothing reads that column any more.
+    expect(src).not.toContain("optimizationGoal: optimizationGoalForOutcome(outcome)");
     // The rates step that owned the stale-projection retry is gone with the
     // brand-level model; the projection is now resolved per goal at the primary
     // step and refreshed by the budget step itself.
@@ -146,8 +152,11 @@ describe("Beta onboarding guided flow", () => {
     expect(src).not.toContain("projectionRef.current?.recommendedWorkflowDynastySlug");
   });
 
-  it("asks the conversion rates that feed the selected goal", () => {
-    expect(src).toContain("RATE_KEYS_FOR_OUTCOME");
+  it("asks the conversion rates the funnel catalogue defines, not the goal's", () => {
+    // The per-goal rate list held the entry legs of DIFFERENT funnels, so it asked for
+    // numbers belonging to no single path. Each funnel's own chain is the question now.
+    expect(src).not.toContain("RATE_KEYS_FOR_OUTCOME");
+    expect(src).toContain("funnelRateFields");
     expect(src).toContain("Website visits to signup rate");
     expect(src).toContain("Positive reply → sales meeting");
     expect(src).toContain("Website visit → sales meeting");
@@ -156,7 +165,9 @@ describe("Beta onboarding guided flow", () => {
 
   it("keeps rate inputs editable as text and validates decimals on continue", () => {
     expect(src).toContain("parseRateTextInput");
-    expect(src).toContain("setRateText((t) => ({ ...t, [k]: e.target.value }))");
+    // Funnel rates are typed into the funnel's own draft, keyed by the catalogue's
+    // rate name rather than the retired goal's short key.
+    expect(src).toContain("editFunnelDraft(economicsFunnel, { rates: { [rate.key]: e.target.value } })");
     expect(src).not.toContain("formatRateInput(e.target.value)");
   });
 
