@@ -43,7 +43,7 @@ describe("OutreachStatCards copy", () => {
     // outcome card becomes Positive Replies + Cost per positive reply (GA, no beta badge,
     // no conversion-tracker CTA — reply attribution is inbox-sourced).
     expect(cards).toContain('const isPositiveReplies = goal === "positive_replies"');
-    expect(cards).toContain("{!isPositiveReplies && (");
+    expect(cards).toContain("{showFunnelMetrics && !isPositiveReplies && (");
     expect(cards).toContain('label: "Positive Replies"');
     expect(cards).toContain('costLabel: "Cost per positive reply"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
@@ -132,6 +132,34 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("Math.abs(usd) < 10 ? 2 : 0");
     expect(cards).toContain("minimumFractionDigits: decimals");
     expect(cards).toContain("maximumFractionDigits: decimals");
+  });
+
+  it("states the brand's money at brand level and leaves the funnel steps to the campaign", () => {
+    // A brand sells through SEVERAL sales funnels at once, so a Website-Visits or
+    // Sales-Meetings card there names one funnel's step while the row beside it sums
+    // every funnel. The brand Overview therefore shows Outreach plus the four money
+    // cards; the campaign Overview (one funnel by construction) keeps the step pairs.
+    expect(cards).toContain("showEconomics?: boolean");
+    expect(cards).toContain("showFunnelMetrics = true");
+    expect(cards).toContain("{showEconomics && (");
+    expect(cards).toContain("{showFunnelMetrics && showReplyPair && (");
+    expect(cards).toContain("{showFunnelMetrics && outcomeCard && (");
+    expect(cards).toContain('label="Pipeline revenue"');
+    expect(cards).toContain('label="ROI"');
+    expect(cards).toContain('label="$ CAC"');
+    expect(cards).toContain('label="% CAC"');
+    // Every money value is read verbatim off features-service. `$ CAC` in particular
+    // must NOT be divided out of the other two: features-service serves
+    // `costPerConversionUsd` on a `?lens=` response only, so the honest render until
+    // that field lands on the default response is "—".
+    expect(cards).toContain("formatRoi(economics?.roiMultiple)");
+    expect(cards).toContain("formatUsd(economics?.costPerConversionUsd)");
+    expect(cards).toContain("formatPct(economics?.costOfAcquisitionPct)");
+    expect(cards).toContain("formatUsd(totalPipelineUsd)");
+    // The brand page is the one that turns the two modes on.
+    expect(page).toContain("showEconomics");
+    expect(page).toContain("showFunnelMetrics={false}");
+    expect(page).toContain("economics={revenueRevealed ? data?.costEconomics : null}");
   });
 
   it("passes optimizationGoal from both overview call sites", () => {

@@ -39,6 +39,7 @@ export function RevenueOverviewSection({
   todayCostPending = false,
   hideHeader = false,
   trackerSetUp = false,
+  showActivityChart = true,
 }: {
   data?: RevenueOverview;
   pipelineActivity?: PipelineActivityResponse;
@@ -83,6 +84,15 @@ export function RevenueOverviewSection({
   /** Conversion-tracker liveness — gates the Form-submissions bar in the
    *  Outreach-activity graph (hidden until the tracker fires). */
   trackerSetUp?: boolean;
+  /**
+   * Whether to render the per-day "Outreach activity" bars.
+   *
+   * They describe ONE acquisition channel — the emails sales cold outreach sends
+   * and the clicks they earn — so they belong to the campaign that runs that
+   * channel. A brand runs several channels and several funnels at once, and the
+   * brand Overview answers a different question: what the whole thing returned.
+   */
+  showActivityChart?: boolean;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
@@ -177,27 +187,31 @@ export function RevenueOverviewSection({
 
       {/* Outreach activity — full-width per-day BARS: outreach / the goal
           engagement (clicks for signups, positive replies for meetings) across the
-          past (actuals) + today + forecast, with the 7/30/90-day window toggle. */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-        <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
-        {activityLoading ? (
-          <Skeleton className="h-[300px] lg:h-[200px] w-full rounded" />
-        ) : !pipelineActivity ? (
-          <p className="flex h-[300px] items-center justify-center text-sm text-gray-500 lg:h-[200px]">
-            We could not load your outreach activity right now. It will reappear on
-            its own.
-          </p>
-        ) : (
-          <PipelineActivityChart
-            data={pipelineActivity}
-            pipelineActualSeries={pipelineActualSeries}
-            optimizationGoal={optimizationGoal}
-            trackerSetUp={trackerSetUp}
-            visitToMeetingPct={visitToMeetingPct}
-            visitToSignupPct={visitToSignupPct}
-          />
-        )}
-      </div>
+          past (actuals) + today + forecast, with the 7/30/90-day window toggle.
+          Channel-scoped, so it renders on the campaign Overview and not on the
+          brand one (see `showActivityChart`). */}
+      {showActivityChart && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+          <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
+          {activityLoading ? (
+            <Skeleton className="h-[300px] lg:h-[200px] w-full rounded" />
+          ) : !pipelineActivity ? (
+            <p className="flex h-[300px] items-center justify-center text-sm text-gray-500 lg:h-[200px]">
+              We could not load your outreach activity right now. It will reappear on
+              its own.
+            </p>
+          ) : (
+            <PipelineActivityChart
+              data={pipelineActivity}
+              pipelineActualSeries={pipelineActualSeries}
+              optimizationGoal={optimizationGoal}
+              trackerSetUp={trackerSetUp}
+              visitToMeetingPct={visitToMeetingPct}
+              visitToSignupPct={visitToSignupPct}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

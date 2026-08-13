@@ -460,6 +460,11 @@ export default function BrandOverviewPage() {
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
+        // Per-day outreach bars describe the cold-email channel, not the brand.
+        // A brand runs several channels and several funnels at once, so its
+        // Overview answers what the whole thing returned; the campaign Overview
+        // keeps the chart for the one channel it runs.
+        showActivityChart={false}
         costBottomCard={
           <TopAudiencesCard
             data={audienceStatsRevealed ? audienceStatsData : undefined}
@@ -469,15 +474,22 @@ export default function BrandOverviewPage() {
           />
         }
         topRow={
-          /* Outreach stat cards (GA + beta) — under the "Revenue & Conversions"
-             header, directly above the Pipeline-revenue hero. Goal-specific copy
-             and beta outcome pair. */
+          /* Brand-level stat row: what we sent, what the pipeline is worth, and
+             what it cost to produce one customer. The funnel-specific pairs
+             (Website Visits / cost per visit, and the goal's outcome pair) name
+             the steps of ONE sales funnel, so they live on the campaign Overview
+             — a brand sells through several funnels at once and the row above
+             them sums every one. */
           <OutreachStatCards
             stats={featureStats}
             spend={revenueRevealed ? data?.spend : null}
             pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
             outreachOverride={outreachTotal}
+            economics={revenueRevealed ? data?.costEconomics : null}
+            totalPipelineUsd={revenueRevealed ? data?.totalPipelineUsd : null}
+            showEconomics
+            showFunnelMetrics={false}
           />
         }
       />

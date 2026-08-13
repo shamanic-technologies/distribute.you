@@ -9,12 +9,43 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrandConversionToken } from "@/lib/api";
 import { useIsShareMode } from "@/components/share/share-mode-context";
 import { goalOutcomeStep } from "@/lib/goal-steps";
+import { formatUsdAdaptive } from "@/lib/format-number";
 import type { BrandOptimizationGoal } from "@/lib/api";
-import type { Spend } from "@/lib/revenue-view";
+import type { CostEconomics, Spend } from "@/lib/revenue-view";
 
 function formatCount(n: number): string {
   return Number(n).toLocaleString("en-US");
 }
+
+function formatRoi(multiple: number | null | undefined): string {
+  return multiple == null ? "—" : `${multiple.toFixed(1)}×`;
+}
+
+function formatPct(pct: number | null | undefined): string {
+  return pct == null ? "—" : `${Math.round(pct)}%`;
+}
+
+function formatUsd(usd: number | null | undefined): string {
+  return usd == null ? "—" : formatUsdAdaptive(usd);
+}
+
+/**
+ * The four money cards a BRAND is judged on: what the outreach produced, what it
+ * cost to produce one customer, and what the two divide into.
+ *
+ * They are deliberately the same words the staff Campaigns table already uses for
+ * the same four numbers, so a brand and its campaigns cannot describe one result
+ * two ways.
+ */
+const ECONOMICS_INFO = {
+  pipeline:
+    "Expected pipeline revenue: the outcomes produced so far, valued with the conversion rates and customer lifetime revenue set in Brand Settings. It is a projection of what this pipeline is worth, not money already collected.",
+  roi: "What a customer is worth over their lifetime, divided by what it costs to win one. 11.7× means every $1 spent is projected to return $11.70.",
+  cacUsd:
+    "What winning one customer costs, in dollars: the money already billed divided by the customers this pipeline is expected to produce.",
+  cacPct:
+    "What winning a customer costs, as a share of what that customer is worth over their lifetime. 9% means $9 spent for every $100 earned. Lower is better, and it is the inverse of ROI.",
+} as const;
 
 // Render a server-computed cost metric (USD cents) verbatim. features-service is
 // the single source — the dashboard no longer divides spend by a unit count in
@@ -70,6 +101,10 @@ export function OutreachStatCards({
   pending,
   optimizationGoal,
   outreachOverride,
+  economics,
+  totalPipelineUsd,
+  showEconomics = false,
+  showFunnelMetrics = true,
 }: {
   stats: Record<string, number>;
   /**
@@ -87,6 +122,24 @@ export function OutreachStatCards({
    * `/stats`-sourced count (entity pages that don't fetch `/revenue`).
    */
   outreachOverride?: number | null;
+  /**
+   * features-service `/revenue` `costEconomics` block — the money cards (ROI,
+   * $ CAC, % CAC), rendered verbatim. Absent on a surface that carries no
+   * `/revenue` payload → those cards render "—".
+   */
+  economics?: CostEconomics | null;
+  /** `/revenue` `headline.totalPipelineUsd` — the Pipeline revenue card. */
+  totalPipelineUsd?: number | null;
+  /** Render the four money cards (Pipeline revenue / ROI / $ CAC / % CAC). */
+  showEconomics?: boolean;
+  /**
+   * Whether to render the FUNNEL-specific pairs (Website Visits + cost per visit,
+   * and the goal's outcome pair). A brand runs several sales funnels at once, so
+   * at brand level those name one funnel's steps while the row above them sums
+   * every funnel — the money cards are the honest brand-level statement. A
+   * campaign sells exactly ONE funnel, so it keeps them.
+   */
+  showFunnelMetrics?: boolean;
 }) {
   const params = useParams();
   const orgId = params.orgId as string | undefined;
@@ -239,9 +292,55 @@ export function OutreachStatCards({
           pending={pending}
         />
       </Cell>
+      {/* The brand-level money cards. A brand sells through SEVERAL sales funnels at
+          once, so the only figures that describe the whole brand are what the pipeline
+          is worth and what it cost — the per-funnel step counts beside them would each
+          name one funnel while the row sums them all.
+
+          Every value is read VERBATIM off features-service; there is no browser math
+          here. `$ CAC` rides `costPerConversionUsd`, which features-service serves on a
+          `?lens=` response only — so it renders "—" until that field lands on the
+          default response, rather than being divided out of the other two. */}
+      {showEconomics && (
+        <>
+          <Cell>
+            <ScoreCard
+              label="Pipeline revenue"
+              tooltip={ECONOMICS_INFO.pipeline}
+              value={formatUsd(totalPipelineUsd)}
+              pending={pending}
+            />
+          </Cell>
+          <Cell>
+            <ScoreCard
+              label="ROI"
+              tooltip={ECONOMICS_INFO.roi}
+              value={formatRoi(economics?.roiMultiple)}
+              pending={pending}
+            />
+          </Cell>
+          <Cell>
+            <ScoreCard
+              label="$ CAC"
+              tooltip={ECONOMICS_INFO.cacUsd}
+              value={formatUsd(economics?.costPerConversionUsd)}
+              pending={pending}
+            />
+          </Cell>
+          <Cell>
+            <ScoreCard
+              label="% CAC"
+              tooltip={ECONOMICS_INFO.cacPct}
+              value={formatPct(economics?.costOfAcquisitionPct)}
+              pending={pending}
+            />
+          </Cell>
+        </>
+      )}
+
       {/* positive_replies: reply→paid single-step — clicks/website visits aren't in the
           funnel, so hide the Website Visits count + Cost-per-visit cards entirely. */}
-      {!isPositiveReplies && (
+      {showFunnelMetrics && !isPositiveReplies && (
         <>
           <Cell>
             <ScoreCard
@@ -265,7 +364,7 @@ export function OutreachStatCards({
       {/* Combined `sales` goal: surface the reply funnel too (Positive Replies + Cost per
           positive reply), between the website-visit funnel above and the Sale outcome below.
           Inbox-sourced attribution → no conversion-tracker CTA. */}
-      {showReplyPair && (
+      {showFunnelMetrics && showReplyPair && (
         <>
           <Cell>
             <ScoreCard
@@ -292,7 +391,7 @@ export function OutreachStatCards({
       {/* Outcome pair — the goal's outcome step, or the reply for positive_replies (its
           1-step outcome). website_visits stays 1-step with no card (its outcome IS the
           Website Visits card above). */}
-      {outcomeCard && (
+      {showFunnelMetrics && outcomeCard && (
         <>
           <Cell>
             <ScoreCard
