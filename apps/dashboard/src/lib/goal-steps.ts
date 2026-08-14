@@ -374,3 +374,78 @@ export function outcomeTabFor(
     dateField: step.outcome.dateField,
   };
 }
+
+/**
+ * The tabs a BRAND shows: the union over the funnels its ACTIVE campaigns sell.
+ *
+ * A brand runs several sales funnels at once, so no single chain describes it and the
+ * goal cannot stand in — that column is retired in brand-service (`NOT NULL` with a
+ * server default, so it reads "website purchases" for a brand that stated nothing) and
+ * it collapses the two meeting funnels onto one word anyway. What a brand actually
+ * sells through is what its live campaigns run.
+ *
+ * Built from `funnelSteps`, the same per-funnel chain a campaign-scoped surface reads,
+ * so a tab cannot mean one thing on a campaign page and another on the brand's.
+ *
+ * `outreach` is always present and always last: every lead we contacted is in it
+ * whatever the funnel, so a brand with no live campaign still has one truthful tab
+ * rather than an empty page.
+ */
+export function leadTabsForFunnels(funnelKeys: readonly SalesFunnelKeyWire[]): {
+  engagement: LeadTab[];
+  outcomes: OutcomeTab[];
+} {
+  const engagement = new Set<LeadTab>(["outreach"]);
+  const outcomes = new Set<OutcomeTab>();
+  for (const key of funnelKeys) {
+    for (const step of funnelSteps(key)) {
+      if (step.tab) engagement.add(step.tab);
+      if (step.outcome) outcomes.add(step.outcome.tab);
+    }
+  }
+  // ONE canonical order, so a union assembled from any set of funnels always reads the
+  // same way. A page whose tab order depended on which campaign happened to be created
+  // first would look different to two brands running the same funnels.
+  const order = (tab: LeadTab | OutcomeTab): number => {
+    const at = TAB_ORDER.indexOf(tab);
+    return at === -1 ? TAB_ORDER.length : at;
+  };
+  return {
+    engagement: [...engagement].sort((a, b) => order(a) - order(b)),
+    outcomes: [...outcomes].sort((a, b) => order(a) - order(b)),
+  };
+}
+
+/** Most advanced outcome first, `outreach` last. */
+const TAB_ORDER: readonly (LeadTab | OutcomeTab)[] = [
+  "sales",
+  "meetings",
+  "signups",
+  "form-submissions",
+  "positive-replies",
+  "clicks",
+  "outreach",
+];
+
+/**
+ * The realized-outcome tab descriptor, looked up by TAB rather than by a goal — a
+ * brand's funnels can terminate in several, so the per-goal lookup cannot answer it.
+ */
+export function outcomeTabDescriptor(
+  tab: OutcomeTab,
+): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } {
+  const step = OUTCOME_STEP_BY_TAB[tab];
+  return {
+    tab,
+    label: step.label,
+    leadField: step.outcome!.leadField,
+    dateField: step.outcome!.dateField,
+  };
+}
+
+const OUTCOME_STEP_BY_TAB: Record<OutcomeTab, GoalStep> = {
+  signups: SIGNUPS_OUTCOME,
+  meetings: MEETINGS_OUTCOME,
+  "form-submissions": FORM_OUTCOME,
+  sales: SALE_OUTCOME,
+};

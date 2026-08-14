@@ -173,15 +173,21 @@ describe("the chart and the Leads tabs follow the same funnel", () => {
     expect(section).toContain("funnelKey={funnelKey}");
   });
 
-  it("keys the Leads tabs on the campaign's funnel, read off the shared campaign key", () => {
+  // The Leads tabs read the funnels off the brand's LIVE CAMPAIGNS rather than a
+  // single-campaign fetch, which answers both scopes with one source: a campaign
+  // filters that list to itself, a brand takes the union. The goal is gone from the
+  // page entirely — it could not key a brand anyway, since a brand runs several
+  // funnels at once.
+  it("keys the Leads tabs on the funnels the live campaigns sell", () => {
     const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain('["campaign", campaignId ?? "none"]');
-    expect(leads).toContain("const funnelKey = campaignData?.campaign.funnelKey ?? null;");
-    expect(leads).toContain("outcomeTabFor(goal, funnelKey)");
-    expect(leads).toContain("leadTabsFor(goal, funnelKey)");
-    // The auto-select latch is one-shot, so it must not fire before the funnel lands or
+    expect(leads).toContain("useCampaignRows(brandId, featureSlug)");
+    expect(leads).toContain("r.campaign.funnelKey");
+    expect(leads).toContain("leadTabsForFunnels(activeFunnelKeys)");
+    expect(leads).not.toContain("leadTabsFor(goal");
+    expect(leads).not.toContain("outcomeTabFor(goal");
+    // The auto-select latch is one-shot, so it must not fire before the funnels land or
     // it parks the user on a tab the chain does not offer.
-    expect(leads).toContain("if (campaignId && campaignData === undefined) return;");
+    expect(leads).toContain("if (!campaignRows.settled) return;");
   });
 });
 
