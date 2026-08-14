@@ -51,6 +51,12 @@ function formatReturn(multiple: number | null | undefined): string {
   return multiple == null ? "-" : `${multiple.toFixed(1)}×`;
 }
 
+/** Share of lifetime revenue, whole percent — the same rendering the Campaigns table
+ *  gives the identical column. */
+function formatPct(pct: number | null | undefined): string {
+  return pct == null ? "-" : `${Math.round(pct)}%`;
+}
+
 /** Whole-dollar projection, adaptive under $10 like every other USD figure here. */
 function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
@@ -58,7 +64,7 @@ function formatUsd(usd: number | null | undefined): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-type SortCol = "audience" | "roi" | "cacUsd" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
+type SortCol = "audience" | "roi" | "cacPct" | "cacUsd" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
 
 /**
  * Sort key for an audience row under a given column. `audience` sorts by name
@@ -80,6 +86,8 @@ function sortValue(
       return stats?.projection?.returnPerDollar ?? null;
     case "cacUsd":
       return stats?.projection?.costPerPaidClientUsd ?? null;
+    case "cacPct":
+      return stats?.projection?.costOfAcquisitionPct ?? null;
     case "replies":
       return stats?.evidence.positiveReplies ?? null;
     case "cppr":
@@ -665,6 +673,14 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                         info="Dollars of customer lifetime revenue projected per dollar spent on this audience, using the conversion rates and lifetime revenue set in Brand Settings. Higher is better: this is where more budget is worth putting."
                       />
                       <SortHeader
+                        label="% CAC"
+                        col="cacPct"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="What winning a customer from this audience costs, as a share of what that customer is worth over their lifetime. 9% means $9 spent for every $100 earned. Lower is better, and it is the inverse of ROI."
+                      />
+                      <SortHeader
                         label="$ CAC"
                         col="cacUsd"
                         sortCol={sortCol}
@@ -804,6 +820,9 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                             >
                               {formatReturn(stats?.projection?.returnPerDollar)}
                             </span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {formatPct(stats?.projection?.costOfAcquisitionPct)}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {formatUsd(stats?.projection?.costPerPaidClientUsd)}

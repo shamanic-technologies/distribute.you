@@ -145,13 +145,15 @@ describe("brand surfaces list campaigns and state money", () => {
     expect(audiences).toContain("showReplyColsForGoal && !brandLevelMoney");
     expect(audiences).toContain('optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney');
     expect(audiences).toContain('label="ROI"');
+    expect(audiences).toContain('label="% CAC"');
     expect(audiences).toContain('label="$ CAC"');
     // Read verbatim off the projection — and NOT inverted into a % CAC, which is the
     // banned browser division. That column waits on features-service.
     expect(audiences).toContain("stats?.projection?.returnPerDollar");
     expect(audiences).toContain("stats?.projection?.costPerPaidClientUsd");
+    // % CAC is READ, never derived by inverting the return sitting beside it.
+    expect(audiences).toContain("stats?.projection?.costOfAcquisitionPct");
     expect(audiences).not.toContain("100 /");
-    expect(audiences).not.toContain('label="% CAC"');
   });
 
   it("leads the brand Audiences table with the highest return, not the cheapest cost", () => {
