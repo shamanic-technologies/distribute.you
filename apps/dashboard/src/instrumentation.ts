@@ -265,26 +265,30 @@ export const EMAIL_TEMPLATES = [
     textBody: `Hey,\n\nYour campaigns have been paused for a while now — out of credit. They're still set up exactly as you left them and will resume the moment you add credit.\n\nIf now's the time, add credit and turn on auto-topup so your outreach just keeps running.\n\nAdd credit & resume: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
 
-  // ── Daily outcome digest (beta-gated by dashboard cron via PostHog) ──
-  // dashboard cron sends ONE email PER BRAND to users where the PostHog beta flag
-  // resolves true, and only when that brand recorded at least one outcome on the
-  // day. The outcome is the brand's OPTIMIZATION GOAL (website visits, signups,
-  // form submissions, purchases, or positive replies) — `{{outcomeLabel}}` is
-  // resolved per goal in outcome-digest.ts, falling back to website clicks only when
-  // a goal's conversion tracker isn't live yet. The brand name leads the subject so
-  // the user can filter in their inbox.
-  // The body below the intro lists the people in the pipeline (face photo +
-  // company logo + a green outcome pill) via {{digestHtml}}.
+  // ── Daily return digest ──
+  // The dashboard cron sends ONE email PER BRAND, and ONLY when that brand's return
+  // on spend went UP on the day. That gate is the whole point: a digest that arrives
+  // whatever happened is a report, and an inbox learns to ignore it. A flat or
+  // falling day sends nothing.
+  //
+  // There is no goal here. A brand runs several sales funnels at once, so the email
+  // names what actually landed — `{{newOutcomes}}` reads "3 positive replies and 1
+  // signup" — rather than collapsing the day onto the one outcome a retired brand
+  // column happened to point at. Both return figures are served by features-service
+  // (its per-day cumulative curve); nothing is computed here.
   // Variables:
-  //   brandName, brandUrl, outcomeCount, outcomeLabel, totalLeads,
+  //   brandName, brandUrl, roiToday, roiPrevious, newOutcomes, totalLeads,
   //   totalOutcomeOrganizations, digestHtml, digestText
   {
     name: "daily-outcome-digest",
-    subject: "{{brandName}}: {{outcomeCount}} new {{outcomeLabel}} today",
+    subject: "{{brandName}} is now returning {{roiToday}} per dollar",
     htmlBody: emailLayout(`
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">Hey,</p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
-        {{brandName}} got <strong style="color:#15803d;">{{outcomeCount}} new {{outcomeLabel}}</strong> today.
+        {{brandName}} is now returning <strong style="color:#15803d;">{{roiToday}}</strong> for every dollar spent, up from {{roiPrevious}}.
+      </p>
+      <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">
+        What moved it: <strong>{{newOutcomes}}</strong>.
       </p>
       <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:16px;">
         {{totalLeads}} people in your pipeline.
@@ -294,7 +298,7 @@ export const EMAIL_TEMPLATES = [
         <a href="${DASHBOARD_URL}" style="display:inline-block;background:${EMAIL_ACCENT};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:16px;">Open dashboard</a>
       </p>
       <p style="color:#1a1a1a;font-size:16px;line-height:1.6;margin-bottom:16px;">— Kevin, founder of distribute.you</p>`),
-    textBody: `Hey,\n\n{{brandName}} got {{outcomeCount}} new {{outcomeLabel}} today.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
+    textBody: `Hey,\n\n{{brandName}} is now returning {{roiToday}} for every dollar spent, up from {{roiPrevious}}.\n\nWhat moved it: {{newOutcomes}}.\n\n{{totalLeads}} people in your pipeline.\n\n{{digestText}}\n\nOpen dashboard: ${DASHBOARD_URL}\n\n— Kevin, founder of distribute.you`,
   },
 ];
 

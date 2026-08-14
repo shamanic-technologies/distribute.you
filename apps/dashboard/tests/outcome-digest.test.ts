@@ -93,16 +93,49 @@ describe("daily outcome digest", () => {
 
   // Brand revenue with 2 pipeline orgs + `count` leads carrying a positive-reply
   // outcome ON `day` (the default positive_replies / sales_meetings goal path).
-  function revenueWithLeads(leads: unknown[]): unknown {
+  function revenueWithLeads(leads: unknown[], day = previousUtcDay()): unknown {
     return {
       featureSlug: "sales-cold-email-outreach",
       headline: { totalPipelineUsd: 12500 },
       costEconomics: { actualCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
+      // The digest only fires when the return went UP on the day, so every fixture
+      // that expects a send carries an improving curve. Both figures are served —
+      // the email prints these two points and computes nothing.
+      roiHistory: improvingRoi(day),
       timeSeries: [],
       organizations: ORGS,
       leads,
       events: [],
     };
+  }
+
+  /** A two-point cumulative curve that RISES on `day` — the send condition. */
+  function improvingRoi(day: string) {
+    return {
+      daily: [
+        { date: dayBefore(day), cumulativeSpendUsd: 200, cumulativePipelineUsd: 8000, roiMultiple: 40 },
+        { date: day, cumulativeSpendUsd: 250, cumulativePipelineUsd: 12500, roiMultiple: 50 },
+      ],
+      datedPipelineUsd: 12500,
+      undatedPipelineUsd: 0,
+    };
+  }
+
+  /** The same curve FLAT on `day` — the return did not move, so nothing is news. */
+  function flatRoi(day: string) {
+    return {
+      daily: [
+        { date: dayBefore(day), cumulativeSpendUsd: 200, cumulativePipelineUsd: 8000, roiMultiple: 50 },
+        { date: day, cumulativeSpendUsd: 250, cumulativePipelineUsd: 12500, roiMultiple: 50 },
+      ],
+      datedPipelineUsd: 12500,
+      undatedPipelineUsd: 0,
+    };
+  }
+
+  function dayBefore(day: string): string {
+    const [y, m, d] = day.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
   }
 
   function brandRevenue(repliedCountOnDay: number, day: string): unknown {
@@ -169,9 +202,6 @@ describe("daily outcome digest", () => {
           ],
         });
       }
-      if (url === "https://api.example.test/v1/brands/brand_1/sales-economics") {
-        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
-      }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
         return jsonResponse(brandRevenue(3, day));
       }
@@ -195,8 +225,9 @@ describe("daily outcome digest", () => {
       brandName: "Acme",
       metadata: {
         brandName: "Acme",
-        outcomeCount: "3",
-        outcomeLabel: "positive replies",
+        roiToday: "50.0×",
+        roiPrevious: "40.0×",
+        newOutcomes: "3 positive replies",
         totalOutcomeOrganizations: "2",
       },
     });
@@ -262,9 +293,6 @@ describe("daily outcome digest", () => {
           }],
         });
       }
-      if (url === "https://api.example.test/v1/brands/brand_1/sales-economics") {
-        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
-      }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
         return jsonResponse(brandRevenue(3, day));
       }
@@ -323,9 +351,6 @@ describe("daily outcome digest", () => {
             logoUrl: null,
           }],
         });
-      }
-      if (url === "https://api.example.test/v1/brands/brand_1/sales-economics") {
-        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
       }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
         // Pipeline present, but zero positive replies on the reported day.
@@ -432,9 +457,6 @@ describe("daily outcome digest", () => {
           ],
         });
       }
-      if (url.endsWith("/brands/brand_good/sales-economics") || url.endsWith("/brands/brand_bad/sales-economics")) {
-        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
-      }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_bad") {
         // brand_bad's revenue keeps timing out — must NOT abort the whole run.
         throw Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" });
@@ -483,9 +505,6 @@ describe("daily outcome digest", () => {
           brands: [{ id: "brand_1", domain: "acme.test", name: "Acme", brandUrl: "https://acme.test", createdAt: null, updatedAt: null, logoUrl: null }],
         });
       }
-      if (url.endsWith("/brands/brand_1/sales-economics")) {
-        return jsonResponse({ salesEconomics: { optimizationGoal: "sales_meetings" } });
-      }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
         revenueAttempts += 1;
         if (revenueAttempts === 1) {
@@ -510,7 +529,6 @@ describe("daily outcome digest", () => {
         brandName: "Acme",
         brandUrl: "https://acme.test",
         totalPipelineUsd: 12500,
-        outcomeNoun: "website visit",
         organizations: [
           {
             orgName: "Lead Co",
@@ -528,6 +546,7 @@ describe("daily outcome digest", () => {
             companyDomain: "leadco.test",
             tags: ["replied", "clicked"],
             outcomeAt: clickedTwoDaysAgo,
+            outcomeNoun: "website visit",
             title: "Head of Growth",
             orgIndustry: "Marketing",
             orgEmployeeCount: 120,
@@ -540,6 +559,7 @@ describe("daily outcome digest", () => {
             companyLogoUrl: "https://cdn.example.test/navy.png",
             companyDomain: "navy.test",
             tags: ["clicked"],
+            outcomeNoun: null,
             outcomeAt: null,
             // All firmographics unknown → the row omits them (no synthesis).
             title: null,
@@ -575,9 +595,9 @@ describe("daily outcome digest", () => {
     expect(html).toContain("Austin, United States");
   });
 
-  // A single org / user / brand fetch stub parameterized by the brand's
-  // optimizationGoal wire value + the /revenue payload.
-  function digestFetch(optimizationGoal: string, revenue: unknown): DigestFetch {
+  // A single org / user / brand fetch stub parameterized by the /revenue payload.
+  // There is no goal fetch any more: what the digest names is whatever landed.
+  function digestFetch(revenue: unknown): DigestFetch {
     return async (input) => {
       const url = String(input);
       if (url.startsWith("https://api.clerk.com/v1/organizations")) {
@@ -605,9 +625,6 @@ describe("daily outcome digest", () => {
           brands: [{ id: "brand_1", domain: "acme.test", name: "Acme", brandUrl: "https://acme.test", createdAt: null, updatedAt: null, logoUrl: null }],
         });
       }
-      if (url.endsWith("/brands/brand_1/sales-economics")) {
-        return jsonResponse({ salesEconomics: { optimizationGoal } });
-      }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
         return jsonResponse(revenue);
       }
@@ -615,58 +632,67 @@ describe("daily outcome digest", () => {
     };
   }
 
-  it("notifies on FORM SUBMISSIONS when that goal's tracker is live", async () => {
+  it("names the outcome that actually landed, whatever kind it is", async () => {
     const at = outcomeAtOnDay(previousUtcDay());
     const revenue = revenueWithLeads([
       lead(0, { formSubmission: true, formSubmissionAt: at, clickedAt: at }),
       lead(1, { formSubmission: true, formSubmissionAt: at, clickedAt: at }),
     ]);
-    const result = await collectOutcomeDigestSends({
-      ...env,
-      fetchFn: digestFetch("form_submissions", revenue),
-    });
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(1);
     expect(result.preparedSends[0].metadata).toMatchObject({
-      outcomeLabel: "form submissions",
-      outcomeCount: "2",
+      newOutcomes: "2 form submissions",
     });
+    // A lead that both clicked and submitted is reported as the MORE ADVANCED of
+    // the two — reporting the visit would understate what happened.
     expect(result.preparedSends[0].metadata.digestHtml).toContain("form submission");
   });
 
-  it("falls back to WEBSITE VISITS when the form_submissions tracker is not live yet", async () => {
+  it("names SEVERAL kinds when a brand's funnels each landed something", async () => {
+    // The whole reason the goal had to go: a brand runs several funnels at once, so
+    // a day can carry a reply on one and a signup on another. One goal could name
+    // only one of them.
     const at = outcomeAtOnDay(previousUtcDay());
-    // No lead carries a `formSubmission` flag (tracker not in prod) → fall back to clicks.
     const revenue = revenueWithLeads([
-      lead(0, { clickedAt: at }),
-      lead(1, { clickedAt: at }),
-      lead(2, { clickedAt: at }),
+      lead(0, { signup: true, signupAt: at, clickedAt: at }),
+      lead(1, { repliedPositiveAt: at }),
+      lead(2, { repliedPositiveAt: at }),
     ]);
-    const result = await collectOutcomeDigestSends({
-      ...env,
-      fetchFn: digestFetch("form_submissions", revenue),
-    });
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
     expect(result.preparedSends).toHaveLength(1);
+    // Most advanced first, and the counts add up to the people the email lists.
     expect(result.preparedSends[0].metadata).toMatchObject({
-      outcomeLabel: "website visits",
-      outcomeCount: "3",
+      newOutcomes: "1 signup and 2 positive replies",
     });
-    expect(result.preparedSends[0].metadata.digestHtml).toContain("website visit");
   });
 
-  it("maps the wire `sales` optimizationGoal to SALES, not the reply goal", async () => {
+  it("sends NOTHING when the return did not improve, however much landed", async () => {
+    // The gate is the point of the email. A day that produced outcomes but moved the
+    // return nowhere is not news, and an inbox that gets it anyway learns to ignore
+    // the one that is.
     const at = outcomeAtOnDay(previousUtcDay());
     const revenue = revenueWithLeads([
-      lead(0, { purchased: true, purchasedAt: at, clickedAt: at }),
-    ]);
-    const result = await collectOutcomeDigestSends({
-      ...env,
-      fetchFn: digestFetch("sales", revenue),
-    });
-    expect(result.preparedSends).toHaveLength(1);
-    expect(result.preparedSends[0].metadata).toMatchObject({
-      outcomeLabel: "sales",
-      outcomeCount: "1",
-    });
-    expect(result.preparedSends[0].metadata.digestHtml).toContain("sale");
+      lead(0, { repliedPositiveAt: at }),
+      lead(1, { repliedPositiveAt: at }),
+    ]) as Record<string, unknown>;
+    revenue.roiHistory = flatRoi(previousUtcDay());
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
+    expect(result.preparedSends).toHaveLength(0);
+  });
+
+  it("sends nothing when the return cannot be measured at all", async () => {
+    // features-service is fail-soft on the curve, so an absent one means "we could
+    // not measure this" — never "it improved".
+    const at = outcomeAtOnDay(previousUtcDay());
+    const revenue = revenueWithLeads([lead(0, { repliedPositiveAt: at })]) as Record<string, unknown>;
+    revenue.roiHistory = null;
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
+    expect(result.preparedSends).toHaveLength(0);
+  });
+
+  it("sends nothing when the return rose but nothing new landed", async () => {
+    const revenue = revenueWithLeads([lead(0, {})]);
+    const result = await collectOutcomeDigestSends({ ...env, fetchFn: digestFetch(revenue) });
+    expect(result.preparedSends).toHaveLength(0);
   });
 });

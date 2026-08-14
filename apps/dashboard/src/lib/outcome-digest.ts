@@ -62,6 +62,9 @@ export interface DigestLead {
    *  positive reply for sales_meetings); null when unknown. Rendered as a
    *  discreet "time ago" — nothing when null (no synthesis). */
   outcomeAt: string | null;
+  /** What this lead did on the day, singular ("signup"), for the green pill. Null
+   *  when nothing landed for them — the row is context, not news. */
+  outcomeNoun: string | null;
   /** Firmographics for reassurance (features-service#441). Each null when the
    *  upstream enrichment had no value — the row omits the missing piece. */
   title: string | null;
@@ -78,9 +81,6 @@ export interface DigestBrandSummary {
   totalPipelineUsd: number;
   organizations: DigestOutcomeOrg[];
   leads: DigestLead[];
-  /** Singular outcome noun for the resolved goal ("form submission", "website
-   *  visit", "positive reply") — the per-person badge label. */
-  outcomeNoun: string;
 }
 
 export interface PreparedDigestSend {
@@ -93,22 +93,6 @@ export interface PreparedDigestSend {
   metadata: Record<string, string>;
 }
 
-/**
- * A brand's optimization goal selects which per-lead signal counts as the daily
- * outcome. `sales_meetings` is DEPRECATED — it, and the legacy unset default
- * `booked_meetings`, collapse into `positive_replies`. `website_visits` +
- * `positive_replies` are ALWAYS tracked (email-gateway click / positive reply);
- * `signups` / `form_submissions` / `sales` depend on the conversion tracker
- * (features-service#476) and fall back to website clicks when it isn't live yet
- * (no lead carries the outcome flag). `sales` is the terminal paying-client outcome
- * shared by the website_purchase (multi-step close) and combined sales goals.
- */
-export type OutcomeGoal =
-  | "website_visits"
-  | "signups"
-  | "form_submissions"
-  | "sales"
-  | "positive_replies";
 
 export interface OutcomeDigestCollection {
   scannedOrgs: number;
@@ -149,20 +133,6 @@ const BrandsResponseSchema = z.object({
     url: z.string().nullable().optional(),
     brandUrl: z.string().nullable().optional(),
   }).passthrough()),
-});
-
-// Brand optimization goal — selects the outcome signal: visit-driven goals →
-// website clicks, everything else (server default when unset) → screened positive
-// replies. The wire keeps adding goals (form_submissions, website_purchase, combined_sales,
-// legacy aliases booked_meetings/sales/purchase); a strict union throws `invalid_union` on any new value and
-// SKIPS the brand's digest, so this stays an open `z.string()` and the visit-vs-reply
-// mapping is decided in fetchBrandGoal against the settled VISIT_DRIVEN_GOALS set.
-const BrandGoalResponseSchema = z.object({
-  salesEconomics: z
-    .object({
-      optimizationGoal: z.string(),
-    })
-    .nullable(),
 });
 
 const EmailSendResponseSchema = z.object({
@@ -279,12 +249,24 @@ async function collectBrandSends(
     const revenue = await fetchBrandRevenue(input, fetchFn, org.id, brand.id);
     if (revenue.organizations.length === 0) return [];
 
-    const goal = await fetchBrandGoal(input, fetchFn, org.id, brand.id);
-    const outcome = outcomeOnDay(revenue, goal, targetDay);
-    if (outcome.count === 0) return [];
+    // Two gates, and the FIRST one is the point of this email.
+    //
+    // The brand's return has to have gone UP on the day. A digest that arrives
+    // whatever happened is a report; one that arrives only when the return improved
+    // is news, and it is the only thing a brand is judged on at brand level. A flat
+    // or falling day sends nothing — deliberately, so an inbox is not trained to
+    // ignore it.
+    //
+    // The second gate is that something actually landed, which is what the email
+    // then names. Both come from the same `/revenue` payload already fetched.
+    const roi = roiChangeOn(revenue, targetDay);
+    if (!roi || roi.today <= roi.previous) return [];
 
-    const summary = toDigestBrandSummary(brand, revenue, goal);
-    const metadata = digestMetadataForBrand(summary, outcome.count, outcome.label);
+    const newOutcomes = newOutcomesOnDay(revenue, targetDay);
+    if (newOutcomes.length === 0) return [];
+
+    const summary = toDigestBrandSummary(brand, revenue, targetDay);
+    const metadata = digestMetadataForBrand(summary, roi, newOutcomes);
     return recipients.map((user) => ({
       orgId: org.id,
       orgName: org.name ?? org.id,
@@ -313,70 +295,30 @@ function previousUtcDay(): string {
     .slice(0, 10);
 }
 
-/** Per-goal outcome resolution: the per-lead timestamp that counts as "the outcome",
- *  a plural headline label, a singular per-person badge noun, and (for tracker-
- *  dependent goals) the per-lead flag whose absence across EVERY lead means the
- *  conversion tracker isn't live yet → fall back to website clicks. */
-interface GoalOutcomeConfig {
-  /** Plural, headline: "form submissions". */
-  label: string;
-  /** Singular, per-person badge: "form submission". */
-  noun: string;
-  outcomeAt: (lead: ConversionLead) => string | null | undefined;
-  /** null = always tracked (email-gateway), never falls back. Otherwise the
-   *  per-lead outcome flag; when every lead's flag is `undefined` the tracker
-   *  isn't in prod yet (features-service#476) → fall back to website clicks. */
-  trackerFlag: ((lead: ConversionLead) => boolean | undefined) | null;
+/**
+ * One kind of outcome a lead can reach, with the per-lead timestamp that proves it.
+ *
+ * There is no goal here. A brand runs several sales funnels at once, so what is NEW
+ * on a given day is whatever actually landed — a reply on one funnel, a signup on
+ * another — and the digest names each kind rather than collapsing them into the one
+ * outcome a retired brand column happened to point at.
+ *
+ * Ordered MOST ADVANCED FIRST: a lead that signed up today is reported as a signup,
+ * not as the website visit that preceded it.
+ */
+interface OutcomeKind {
+  singular: string;
+  plural: string;
+  at: (lead: ConversionLead) => string | null | undefined;
 }
 
-const WEBSITE_VISITS_CONFIG: GoalOutcomeConfig = {
-  label: "website visits",
-  noun: "website visit",
-  outcomeAt: (l) => l.clickedAt,
-  trackerFlag: null,
-};
-
-const GOAL_CONFIG: Record<OutcomeGoal, GoalOutcomeConfig> = {
-  website_visits: WEBSITE_VISITS_CONFIG,
-  positive_replies: {
-    label: "positive replies",
-    noun: "positive reply",
-    outcomeAt: (l) => l.repliedPositiveAt,
-    trackerFlag: null,
-  },
-  signups: {
-    label: "signups",
-    noun: "signup",
-    outcomeAt: (l) => l.signupAt,
-    trackerFlag: (l) => l.signup,
-  },
-  form_submissions: {
-    label: "form submissions",
-    noun: "form submission",
-    outcomeAt: (l) => l.formSubmissionAt,
-    trackerFlag: (l) => l.formSubmission,
-  },
-  sales: {
-    label: "sales",
-    noun: "sale",
-    outcomeAt: (l) => l.purchasedAt,
-    trackerFlag: (l) => l.purchased,
-  },
-};
-
-/** Resolve the goal's outcome config, falling back to website clicks when a
- *  tracker-dependent goal has no live tracker (no lead carries the outcome flag). */
-function resolveGoalOutcome(
-  revenue: RevenueOverview,
-  goal: OutcomeGoal,
-): GoalOutcomeConfig {
-  const config = GOAL_CONFIG[goal];
-  if (config.trackerFlag === null) return config;
-  const trackerLive = revenue.leads.some(
-    (lead) => config.trackerFlag!(lead) !== undefined,
-  );
-  return trackerLive ? config : WEBSITE_VISITS_CONFIG;
-}
+const OUTCOME_KINDS: readonly OutcomeKind[] = [
+  { singular: "sale", plural: "sales", at: (l) => l.purchasedAt },
+  { singular: "signup", plural: "signups", at: (l) => l.signupAt },
+  { singular: "form submission", plural: "form submissions", at: (l) => l.formSubmissionAt },
+  { singular: "positive reply", plural: "positive replies", at: (l) => l.repliedPositiveAt },
+  { singular: "website visit", plural: "website visits", at: (l) => l.clickedAt },
+];
 
 /** UTC calendar day (YYYY-MM-DD) of an ISO timestamp; null when absent/unparseable. */
 function utcDayOf(iso: string | null | undefined): string | null {
@@ -385,65 +327,82 @@ function utcDayOf(iso: string | null | undefined): string | null {
   return Number.isNaN(ms) ? null : new Date(ms).toISOString().slice(0, 10);
 }
 
-/**
- * The brand's outcome count + label for `day`, from the resolved goal's per-lead
- * timestamp on the SAME `/revenue` `leads[]` snapshot the digest displays. A
- * tracker-dependent goal with no live tracker falls back to website clicks, so the
- * headline reflects the goal the brand actually optimizes for (form submissions,
- * sales…) — never a mismatched signal.
- */
-function outcomeOnDay(
-  revenue: RevenueOverview,
-  goal: OutcomeGoal,
+/** The most advanced outcome this lead reached ON `day`, or null when none did. */
+function leadOutcomeOnDay(
+  lead: ConversionLead,
   day: string,
-): { count: number; label: string } {
-  const config = resolveGoalOutcome(revenue, goal);
-  const count = revenue.leads.filter(
-    (lead) => utcDayOf(config.outcomeAt(lead)) === day,
-  ).length;
-  return { count, label: config.label };
-}
-
-export async function sendOutcomeDigestEmails(
-  input: OutcomeDigestRuntimeConfig,
-): Promise<OutcomeDigestSendResult> {
-  const fetchFn = input.fetchFn ?? fetch;
-  let sent = 0;
-  let deduplicated = 0;
-
-  // Send each brand's emails as the scan qualifies it (interleaved via the sink), so
-  // a 300s cron kill only loses the un-scanned tail rather than every email.
-  const collection = await scanFleet({ ...input, fetchFn }, fetchFn, async (sends) => {
-    for (const item of sends) {
-      // Per-SEND isolation: a single failed email (transient send error, bad address)
-      // must not abort the remaining sends.
-      try {
-        const result = await sendDigestEmail(input, fetchFn, item);
-        if (result.sent) sent += 1;
-        if (result.deduplicated === true) deduplicated += 1;
-      } catch (err) {
-        console.error(
-          `[dashboard-outcome-digest] send failed for ${item.recipientEmail} (brand ${item.brandId}):`,
-          err,
-        );
-      }
-    }
-  });
-
-  return { ...collection, sent, deduplicated };
-}
-
-/** logo.dev URL for a company domain, or the backend logo when present. */
-function companyLogoSrc(logoUrl: string | null, domain: string | null): string | null {
-  if (logoUrl) return logoUrl;
-  if (domain) {
-    return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=64`;
+): { kind: OutcomeKind; at: string } | null {
+  for (const kind of OUTCOME_KINDS) {
+    const at = kind.at(lead);
+    if (at && utcDayOf(at) === day) return { kind, at };
   }
   return null;
 }
 
-function firstInitial(value: string): string {
-  return (value.trim().charAt(0) || "?").toUpperCase();
+/**
+ * What is NEW for this brand on `day`, one entry per kind that actually landed,
+ * most advanced first. Empty when nothing landed.
+ *
+ * Counts LEADS, not events: a lead that signed up is counted once, under the
+ * signup, so the phrase adds up to the number of people the email then lists.
+ */
+export function newOutcomesOnDay(
+  revenue: RevenueOverview,
+  day: string,
+): { singular: string; plural: string; count: number }[] {
+  const counts = new Map<string, { kind: OutcomeKind; count: number }>();
+  for (const lead of revenue.leads) {
+    const landed = leadOutcomeOnDay(lead, day);
+    if (!landed) continue;
+    const entry = counts.get(landed.kind.singular);
+    if (entry) entry.count += 1;
+    else counts.set(landed.kind.singular, { kind: landed.kind, count: 1 });
+  }
+  return OUTCOME_KINDS.flatMap((kind) => {
+    const entry = counts.get(kind.singular);
+    return entry ? [{ singular: kind.singular, plural: kind.plural, count: entry.count }] : [];
+  });
+}
+
+/** "3 positive replies and 1 signup" — the day's new outcomes, in plain words. */
+export function describeNewOutcomes(
+  outcomes: { singular: string; plural: string; count: number }[],
+): string {
+  const parts = outcomes.map((o) => `${o.count} ${o.count === 1 ? o.singular : o.plural}`);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * The brand's return on `day` and on the last day before it that could be measured.
+ *
+ * BOTH numbers are served — features-service computes the cumulative return per day
+ * and this reads two of its points. Nothing is derived here, which matters because a
+ * return the browser computed would be a second opinion on a figure the dashboard
+ * already shows.
+ *
+ * Null when the comparison cannot honestly be made: no history at all, no point ON
+ * the day (nothing moved, so the return did not change), or no earlier measurable
+ * point to compare against. A day whose cumulative spend is still zero carries a null
+ * return and is skipped rather than read as zero.
+ */
+export function roiChangeOn(
+  revenue: RevenueOverview,
+  day: string,
+): { today: number; previous: number } | null {
+  const daily = revenue.roiHistory?.daily ?? [];
+  const today = daily.find((d) => d.date === day && d.roiMultiple != null);
+  if (!today?.roiMultiple) return null;
+  const earlier = daily.filter((d) => d.date < day && d.roiMultiple != null);
+  const previous = earlier[earlier.length - 1];
+  if (!previous?.roiMultiple) return null;
+  return { today: today.roiMultiple, previous: previous.roiMultiple };
+}
+
+/** Return per dollar, one decimal — byte-equal with every ROI the dashboard shows. */
+export function formatRoi(multiple: number): string {
+  return `${multiple.toFixed(1)}\u00d7`;
 }
 
 export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string {
@@ -480,11 +439,12 @@ export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string
         ? `<div style="color:#94a3b8;font-size:11px;margin-top:3px;">${escapeHtml(lead.tags.join(", "))}</div>`
         : "";
       const timeAgo = lead.outcomeAt ? escapeHtml(formatTimeAgo(lead.outcomeAt)) : "";
-      // Green outcome pill — names WHY this person is in the digest (the goal's
-      // outcome: "form submission", "website visit", "positive reply"). Shown only
-      // when this lead actually carries the goal's outcome.
-      const outcomeBadge = lead.outcomeAt
-        ? `<span style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:2px 9px;border-radius:9999px;white-space:nowrap;">${escapeHtml(summary.outcomeNoun)}</span>`
+      // Green outcome pill — names what THIS person did today ("signup", "positive
+      // reply", "website visit"). Per lead, not per brand: a brand running several
+      // funnels has several kinds landing on one day, and one shared noun would
+      // label a signup as a reply.
+      const outcomeBadge = lead.outcomeNoun
+        ? `<span style="display:inline-block;background:#dcfce7;color:#15803d;font-size:11px;font-weight:600;padding:2px 9px;border-radius:9999px;white-space:nowrap;">${escapeHtml(lead.outcomeNoun)}</span>`
         : "";
       const timeAgoLine = timeAgo
         ? `<div style="color:#94a3b8;font-size:12px;margin-top:4px;">${timeAgo}</div>`
@@ -539,14 +499,15 @@ function renderOutcomeDigestText(summaries: DigestBrandSummary[]): string {
 
 function digestMetadataForBrand(
   summary: DigestBrandSummary,
-  outcomeCount: number,
-  outcomeLabel: string,
+  roi: { today: number; previous: number },
+  newOutcomes: { singular: string; plural: string; count: number }[],
 ): Record<string, string> {
   return {
     brandName: summary.brandName,
     brandUrl: summary.brandUrl ?? "",
-    outcomeCount: String(outcomeCount),
-    outcomeLabel,
+    roiToday: formatRoi(roi.today),
+    roiPrevious: formatRoi(roi.previous),
+    newOutcomes: describeNewOutcomes(newOutcomes),
     totalLeads: String(summary.leads.length),
     totalOutcomeOrganizations: String(summary.organizations.length),
     digestHtml: renderOutcomeDigestHtml([summary]),
@@ -596,38 +557,46 @@ async function listApiUsersForOrg(
   return users;
 }
 
-async function fetchBrandGoal(
-  config: EnvConfig,
-  fetchFn: DigestFetch,
-  orgId: string,
-  brandId: string,
-): Promise<OutcomeGoal> {
-  const data = await fetchJson(
-    `${config.apiUrl}/v1/brands/${brandId}/sales-economics`,
-    { headers: adminHeaders(config, orgId, `outcome-digest:${orgId}`) },
-    fetchFn,
-    BrandGoalResponseSchema,
-    "fetchBrandGoal",
-  );
-  return normalizeOutcomeGoal(data.salesEconomics?.optimizationGoal);
+export async function sendOutcomeDigestEmails(
+  input: OutcomeDigestRuntimeConfig,
+): Promise<OutcomeDigestSendResult> {
+  const fetchFn = input.fetchFn ?? fetch;
+  let sent = 0;
+  let deduplicated = 0;
+
+  // Send each brand's emails as the scan qualifies it (interleaved via the sink), so
+  // a 300s cron kill only loses the un-scanned tail rather than every email.
+  const collection = await scanFleet({ ...input, fetchFn }, fetchFn, async (sends) => {
+    for (const item of sends) {
+      // Per-SEND isolation: a single failed email (transient send error, bad address)
+      // must not abort the remaining sends.
+      try {
+        const result = await sendDigestEmail(input, fetchFn, item);
+        if (result.sent) sent += 1;
+        if (result.deduplicated === true) deduplicated += 1;
+      } catch (err) {
+        console.error(
+          `[dashboard-outcome-digest] send failed for ${item.recipientEmail} (brand ${item.brandId}):`,
+          err,
+        );
+      }
+    }
+  });
+
+  return { ...collection, sent, deduplicated };
 }
 
-/**
- * Map the brand-service `optimizationGoal` wire value to the digest's OutcomeGoal.
- * Kept byte-equal with the dashboard `normalizeBrandOptimizationGoal` (api.ts):
- * the website_purchase goal (multi-step close) AND the combined `combined_sales` goal
- * both terminate in a paying client (event=sale) → the `sales` digest outcome. The
- * legacy `sales`/`purchase` wire spellings map there too. `booked_meetings`|
- * `sales_meetings` (deprecated) and the unset default collapse to `positive_replies`.
- */
-function normalizeOutcomeGoal(goal: string | null | undefined): OutcomeGoal {
-  if (goal === "website_visits") return "website_visits";
-  if (goal === "signups") return "signups";
-  if (goal === "form_submissions") return "form_submissions";
-  if (goal === "website_purchase" || goal === "combined_sales" || goal === "sales" || goal === "purchase") return "sales";
-  if (goal === "positive_replies") return "positive_replies";
-  // booked_meetings / sales_meetings (deprecated) / unset → positive replies.
-  return "positive_replies";
+/** logo.dev URL for a company domain, or the backend logo when present. */
+function companyLogoSrc(logoUrl: string | null, domain: string | null): string | null {
+  if (logoUrl) return logoUrl;
+  if (domain) {
+    return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=64`;
+  }
+  return null;
+}
+
+function firstInitial(value: string): string {
+  return (value.trim().charAt(0) || "?").toUpperCase();
 }
 
 async function listBrandsForOrg(
@@ -690,9 +659,8 @@ const stripOpened = (tags: string[]): string[] =>
 function toDigestBrandSummary(
   brand: BrandSummary,
   revenue: RevenueOverview,
-  goal: OutcomeGoal,
+  day: string,
 ): DigestBrandSummary {
-  const outcome = resolveGoalOutcome(revenue, goal);
   const organizations = revenue.organizations
     .map((org): DigestOutcomeOrg => ({
       orgName: org.orgName ?? org.orgDomain ?? org.orgId ?? "Unknown organization",
@@ -715,11 +683,12 @@ function toDigestBrandSummary(
       companyLogoUrl: lead.orgLogoUrl,
       companyDomain: lead.orgDomain ?? null,
       tags: stripOpened(lead.tags),
-      // The resolved goal's per-lead outcome timestamp (website click / positive
-      // reply / signup / form submission / purchase; falls back to website click
-      // when the goal's tracker isn't live). Null (unknown) sorts last; ISO strings
-      // sort chronologically.
-      outcomeAt: outcome.outcomeAt(lead) ?? null,
+      // What this lead reached ON THE DAY, and what to call it. A lead already in
+      // the pipeline that did nothing today is still listed for context, with no
+      // badge and no time — the email highlights what is new, it does not pretend
+      // every row is.
+      outcomeAt: leadOutcomeOnDay(lead, day)?.at ?? null,
+      outcomeNoun: leadOutcomeOnDay(lead, day)?.kind.singular ?? null,
       // Firmographics — job title (fall back to Apollo seniority band), company
       // industry, headcount, and location. Null when unknown (never synthesized).
       title: lead.title ?? lead.seniority ?? null,
@@ -740,7 +709,6 @@ function toDigestBrandSummary(
     totalPipelineUsd: revenue.totalPipelineUsd ?? 0,
     organizations,
     leads,
-    outcomeNoun: outcome.noun,
   };
 }
 

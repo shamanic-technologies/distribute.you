@@ -89,6 +89,9 @@ describe("Daily outcome digest template", () => {
   const render = (s: string, vars: Record<string, unknown>): string =>
     s.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in vars ? String(vars[k]) : `{{${k}}}`));
 
+  // The variable set is the metadata `digestMetadataForBrand` actually emits. It moved
+  // from a goal's outcome count to the brand's RETURN plus what moved it, because a
+  // brand runs several funnels and the digest now fires only when the return went up.
   it("renders with digest metadata leaving zero {{...}} placeholders", () => {
     const tpl = EMAIL_TEMPLATES.find((t) => t.name === "daily-outcome-digest");
     expect(tpl, "template missing from EMAIL_TEMPLATES").toBeDefined();
@@ -96,8 +99,9 @@ describe("Daily outcome digest template", () => {
       .map((s) => render(s, {
         brandName: "Acme",
         brandUrl: "https://acme.test",
-        outcomeCount: 3,
-        outcomeLabel: "positive replies",
+        roiToday: "11.7×",
+        roiPrevious: "9.1×",
+        newOutcomes: "3 positive replies and 1 signup",
         totalLeads: 5,
         totalOutcomeOrganizations: 4,
         totalExpectedRevenueUsd: "$20,000",

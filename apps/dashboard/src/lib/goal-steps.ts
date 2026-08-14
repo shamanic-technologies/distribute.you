@@ -287,3 +287,34 @@ export function goalOutcomeTab(
     dateField: step.outcome.dateField,
   };
 }
+
+/**
+ * The same descriptor, looked up by the OUTCOME TAB rather than by a goal.
+ *
+ * A brand runs several sales funnels at once, so its Leads page shows the union of
+ * the outcomes those funnels terminate in — several tabs, from no single goal. The
+ * per-goal lookup above cannot answer that, and the goal it keys on is a retired,
+ * server-defaulted brand column anyway.
+ *
+ * `sales` resolves through the combined SALE step: the website-purchase outcome and
+ * the combined-sales one carry byte-identical wire fields, so either descriptor
+ * serves the tab.
+ */
+const OUTCOME_STEP_BY_TAB: Record<OutcomeTab, GoalStep> = {
+  signups: SIGNUPS_OUTCOME,
+  meetings: MEETINGS_OUTCOME,
+  "form-submissions": FORM_OUTCOME,
+  sales: SALE_OUTCOME,
+};
+
+export function outcomeTabDescriptor(
+  tab: OutcomeTab,
+): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } {
+  const step = OUTCOME_STEP_BY_TAB[tab];
+  return {
+    tab,
+    label: step.label,
+    leadField: step.outcome!.leadField,
+    dateField: step.outcome!.dateField,
+  };
+}
