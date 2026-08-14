@@ -50,7 +50,13 @@ describe("campaign Overview — no daily budget of its own", () => {
     expect(page).toContain("budgetData?.dailyBudgetCents");
   });
 
-  it("keeps the brand status pill as the one place a spend figure appears", () => {
-    expect(page).toContain("<BrandStatusControl brandId={brandId} />");
+  it("states no spend figure at all, the status pill having gone with the rest", () => {
+    // The pill was the last figure on the page. It stated the BRAND's total — billing's
+    // sum of every funnel ceiling — under a campaign's name, next to a goal word that
+    // cannot say which of the two meeting funnels the campaign runs. Both are Brand
+    // Settings' job now, per funnel, and dropping a funnel's ceiling to zero is how a
+    // customer pauses one.
+    expect(page).not.toContain("BrandStatusControl");
+    expect(exists("components/brand/brand-status-control.tsx")).toBe(false);
   });
 });

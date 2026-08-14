@@ -63,7 +63,6 @@ describe("InfoTooltip — usable with a thumb", () => {
     // i.e. an (i) that showed nothing at all on a touch device.
     const migrated = [
       "src/components/audiences/engaged-leads-page.tsx",
-      "src/components/brand/brand-status-control.tsx",
       "src/components/onboarding/onboarding.tsx",
       "src/components/strategy/best-model-card.tsx",
       "src/components/settings/brand-sales-funnels-card.tsx",

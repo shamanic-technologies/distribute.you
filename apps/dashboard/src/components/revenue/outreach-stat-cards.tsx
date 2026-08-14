@@ -8,7 +8,8 @@ import { MaturityBadge } from "@/components/maturity-badge";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrandConversionToken } from "@/lib/api";
 import { useIsShareMode } from "@/components/share/share-mode-context";
-import { goalOutcomeStep } from "@/lib/goal-steps";
+import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
+import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { CostEconomics, Spend } from "@/lib/revenue-view";
@@ -100,6 +101,7 @@ export function OutreachStatCards({
   spend,
   pending,
   optimizationGoal,
+  funnelKey,
   outreachOverride,
   economics,
   totalPipelineUsd,
@@ -115,6 +117,20 @@ export function OutreachStatCards({
   spend?: Spend | null;
   pending: boolean;
   optimizationGoal?: BrandOptimizationGoal;
+  /**
+   * The SALES FUNNEL this surface is scoped to, when it is scoped to one.
+   *
+   * A campaign sells exactly one funnel and states which on its own row, so it passes
+   * this and the funnel decides which steps appear. The goal cannot: `reply_meeting` and
+   * `visit_meeting` both answer to `sales_meetings`, so a goal-keyed row prints "Website
+   * Visits / Cost per website visit" on a campaign whose chain starts at a positive
+   * reply — the wrong funnel's steps under the campaign's own name.
+   *
+   * Absent on a brand-level surface (a brand runs several funnels at once, so no single
+   * chain describes it) and on a pre-funnel campaign → the goal keys the row exactly as
+   * before.
+   */
+  funnelKey?: SalesFunnelKeyWire | null;
   /**
    * When set, the Outreach count comes from this value (the brand Overview passes
    * the number of `contacted` leads on the SAME `/revenue` payload the table +
@@ -170,11 +186,22 @@ export function OutreachStatCards({
     conversionToken?.status === "live" ||
     conversionToken?.status === "live_waiting";
   const goal = optimizationGoal ?? "sales_meetings";
-  // positive_replies is a SINGLE-STEP goal (reply IS the outcome; reply → paid). Clicks /
-  // website visits aren't in that funnel, so the Website Visits + Cost-per-visit cards are
-  // hidden and the outcome pair becomes Positive Replies + Cost per positive reply (GA, no
-  // beta badge — the goal itself is GA).
-  const isPositiveReplies = goal === "positive_replies";
+  // Which steps this row states, keyed on the FUNNEL when the surface is scoped to one and
+  // on the goal otherwise. Every pair below is decided from this list rather than from a
+  // `goal === "x"` test, so a chain that does not buy a click cannot be given the
+  // Website-Visits pair (the reply→meeting funnel is exactly that case).
+  const steps = stepsFor(goal, funnelKey);
+  const hasStep = (key: string) => steps.some((s) => s.key === key);
+  // The goal's downstream OUTCOME step (Signups / Sales Meetings / Form submissions /
+  // Sales), or null for a 1-step goal whose outcome IS its signal. goal-steps.ts is
+  // the single source, so form_submissions/website_purchase/sales no longer borrow the
+  // Signups/Sales-Meetings surfaces (the "half-wired goal" trap).
+  const outcomeStep = outcomeStepFor(goal, funnelKey);
+  // A reply that is the TERMINAL step (the `positive_replies` goal: reply → paid). Clicks /
+  // website visits aren't in that funnel, and there is no downstream outcome step, so the
+  // outcome pair becomes Positive Replies + Cost per positive reply (GA, no beta badge —
+  // the goal itself is GA).
+  const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;
   const outreach =
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
@@ -207,11 +234,6 @@ export function OutreachStatCards({
     costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
   };
 
-  // The goal's downstream OUTCOME step (Signups / Sales Meetings / Form submissions /
-  // Sales), or null for a 1-step goal whose outcome IS its signal. goal-steps.ts is
-  // the single source, so form_submissions/website_purchase/sales no longer borrow the
-  // Signups/Sales-Meetings surfaces (the "half-wired goal" trap).
-  const outcomeStep = goalOutcomeStep(goal);
   const outcome = outcomeStep?.outcome ?? null;
   // The outcome COUNT + its cost are server-provided by features-service: the count is a
   // REAL tracker value (sourced from the brand's live conversion tracker), and the cost is
@@ -227,11 +249,14 @@ export function OutreachStatCards({
   // `sales` goal) — the GA goals (signups/sales_meetings/form_submissions/
   // website_purchase) show their outcome ungated.
   const goalIsBeta = goal === "sales";
-  // The combined `sales` goal wins a paying client via EITHER the visit→paid OR the
-  // reply→paid path, so it surfaces the reply funnel (Positive Replies + Cost per positive
-  // reply) ALONGSIDE the website-visit funnel above and the Sale outcome below. Reply
-  // attribution is inbox-sourced (no conversion-tracker CTA). Every other goal is unchanged.
-  const showReplyPair = goal === "sales";
+  // The Website Visits pair renders only when a click onto the site is actually on the
+  // chain. It is for the reply→meeting funnel, whose first step is a positive reply.
+  const showVisitPair = hasStep("website_visits");
+  // The reply pair as a MID-chain signal, beside its own outcome below: the reply→meeting
+  // funnel (reply → meeting booked) and the combined `sales` goal (which wins a paying
+  // client via EITHER the visit→paid or the reply→paid path, so it shows both signals).
+  // Reply attribution is inbox-sourced, so no conversion-tracker CTA.
+  const showReplyPair = hasStep("positive_replies") && !isPositiveReplies;
 
   // Unified outcome card. positive_replies is a 1-step goal (goalOutcomeStep is null) but
   // the reply IS the outcome — surface it as Positive Replies + Cost per positive reply
@@ -339,9 +364,10 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* positive_replies: reply→paid single-step — clicks/website visits aren't in the
-          funnel, so hide the Website Visits count + Cost-per-visit cards entirely. */}
-      {showFunnelMetrics && !isPositiveReplies && (
+      {/* Only when a click onto the site is on the chain. The `positive_replies` goal
+          (reply→paid) and the reply→meeting FUNNEL both start at a reply, so neither
+          buys a website visit and neither gets these two cards. */}
+      {showFunnelMetrics && showVisitPair && (
         <>
           <Cell>
             <ScoreCard
@@ -362,8 +388,9 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* Combined `sales` goal: surface the reply funnel too (Positive Replies + Cost per
-          positive reply), between the website-visit funnel above and the Sale outcome below.
+      {/* The reply as a mid-chain signal, above its own outcome: the reply→meeting funnel
+          (where it takes the slot the Website Visits pair holds on the website funnels),
+          and the combined `sales` goal (which shows both signals).
           Inbox-sourced attribution → no conversion-tracker CTA. */}
       {showFunnelMetrics && showReplyPair && (
         <>

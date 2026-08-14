@@ -42,8 +42,13 @@ describe("OutreachStatCards copy", () => {
     // Single-step reply→paid goal: Website Visits + CPC cards are hidden, and the unified
     // outcome card becomes Positive Replies + Cost per positive reply (GA, no beta badge,
     // no conversion-tracker CTA — reply attribution is inbox-sourced).
-    expect(cards).toContain('const isPositiveReplies = goal === "positive_replies"');
-    expect(cards).toContain("{showFunnelMetrics && !isPositiveReplies && (");
+    // Decided from the STEPS, not a goal test: the reply is terminal only when the chain
+    // carries no downstream outcome. See campaign-funnel-steps.test.ts for the funnel case,
+    // where a reply is a MID-chain signal above its own Sales Meetings pair.
+    expect(cards).toContain(
+      'const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;',
+    );
+    expect(cards).toContain("{showFunnelMetrics && showVisitPair && (");
     expect(cards).toContain('label: "Positive Replies"');
     expect(cards).toContain('costLabel: "Cost per positive reply"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
@@ -88,10 +93,12 @@ describe("OutreachStatCards copy", () => {
 
   it("derives the outcome card from the goal-steps single source (no borrowed card for 1-step goals)", () => {
     // The per-goal outcome (Signups / Sales Meetings / Form submissions / Purchases, or
-    // NONE for website_visits/positive_replies) comes from goalOutcomeStep — the component
-    // no longer hardcodes a visit-vs-reply binary that mislabelled the newer goals.
-    expect(cards).toContain("goalOutcomeStep");
-    expect(cards).toContain("const outcomeStep = goalOutcomeStep(goal)");
+    // NONE for website_visits/positive_replies) comes from the goal-steps single source —
+    // the component no longer hardcodes a visit-vs-reply binary that mislabelled the newer
+    // goals. `outcomeStepFor` is that source keyed on the campaign's funnel when it states
+    // one, and on the goal otherwise.
+    expect(cards).toContain("outcomeStepFor");
+    expect(cards).toContain("const outcomeStep = outcomeStepFor(goal, funnelKey)");
     expect(cards).not.toContain("isVisitDrivenGoal");
   });
 
@@ -109,7 +116,7 @@ describe("OutreachStatCards copy", () => {
   it("binds the Form submissions/CPFS outcome for the form_submissions goal via the goal-steps source", () => {
     // The form_submissions outcome (label + count/cost fields) now lives in the
     // goal-steps single source, not a hardcoded branch in the component. The card
-    // renders it through goalOutcomeStep like every other goal.
+    // renders it through the goal-steps outcome step like every other goal.
     const steps = read("../src/lib/goal-steps.ts");
     expect(steps).toContain('label: "Form submissions"');
     expect(steps).toContain('countField: "formSubmissionsCount"');

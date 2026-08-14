@@ -53,7 +53,6 @@ vi.mock("@clerk/nextjs/server", () => ({
 import { GET as catchAllGet } from "../src/app/(authed)/api/v1/[...path]/route";
 import { GET as requiredProvidersGet } from "../src/app/(authed)/api/v1/workflows/[id]/required-providers/route";
 import { GET as crmCallbackGet } from "../src/app/(authed)/services/crm/oauth/callback/route";
-import { POST as brandStatusEmailPost } from "../src/app/(authed)/api/brand-status-email/route";
 import { POST as chatPost } from "../src/app/(authed)/api/v1/chat/route";
 
 function headersOfCall(spy: ReturnType<typeof vi.spyOn>, index = 0) {
@@ -83,17 +82,6 @@ const ROUTES: Array<{ name: string; call: () => Promise<unknown> }> = [
     call: () =>
       crmCallbackGet(
         new NextRequest("http://localhost/services/crm/oauth/callback?code=c&state=s"),
-      ),
-  },
-  {
-    name: "api/brand-status-email",
-    call: () =>
-      brandStatusEmailPost(
-        new Request("http://localhost/api/brand-status-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ brandId: "brand_1", paused: true }),
-        }),
       ),
   },
   {

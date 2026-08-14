@@ -223,13 +223,13 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?
   { key: "signups", label: "Sign-ups", unit: "sign-ups", desc: "Maximize free signups / trial starts." },
   // NOT "appointments" / "page views" (the Google Ads category names): the budget
   // picker must name what the money BUYS in the product's own words. Byte-equal with
-  // brand-status-control's OUTCOME_UNIT so the two budget surfaces agree.
+  // the retired brand status bar's OUTCOME_UNIT, kept as the canonical noun set.
   { key: "sales_meetings", label: "Sales meeting interest", unit: "sales meeting interest", desc: "Maximize prospects interested in a sales meeting.", beta: true },
   { key: "website_visits", label: "Website visits", unit: "website visits", desc: "Maximize qualified website visits." },
   // The unit is what the budget BUYS, not who we email. "contacts" named the people
   // reached, so the budget modal read "50 contacts / mo" for a goal that buys 50
   // interested replies - and contradicted this row's own label. Byte-equal with
-  // brand-status-control's OUTCOME_UNIT so the two budget surfaces agree.
+  // the retired brand status bar's OUTCOME_UNIT, kept as the canonical noun set.
   { key: "positive_replies", label: "Positive replies for sales meetings", unit: "positive replies", desc: "Maximize positive replies for a sales meeting from prospects." },
   { key: "form_submissions", label: "Form submissions", unit: "lead forms", desc: "Maximize form submissions." },
   { key: "website_purchase", label: "Website purchases", unit: "website purchases", desc: "Maximize direct website purchases." },

@@ -7,6 +7,8 @@ import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
 import { isVisitDrivenGoal } from "@/lib/api";
+import { funnelSteps } from "@/lib/goal-steps";
+import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import type { BrandOptimizationGoal, PipelineActivityResponse } from "@/lib/api";
 import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 
@@ -30,6 +32,7 @@ export function RevenueOverviewSection({
   pipelineActivity,
   pipelineActualSeries,
   optimizationGoal,
+  funnelKey,
   visitToMeetingPct,
   visitToSignupPct,
   expectedOutcome,
@@ -53,6 +56,13 @@ export function RevenueOverviewSection({
     salesMeetings?: SignalSeries;
   };
   optimizationGoal: BrandOptimizationGoal;
+  /**
+   * The sales funnel this section is scoped to, when it is scoped to one — forwarded to
+   * the activity chart and used for the Outcome line's own signal. A campaign states one
+   * funnel; a brand runs several at once, so it states none and the goal keys everything
+   * exactly as before.
+   */
+  funnelKey?: SalesFunnelKeyWire | null;
   visitToMeetingPct: number | null | undefined;
   visitToSignupPct: number | null | undefined;
   dailyBudgetCents?: number | null;
@@ -127,7 +137,13 @@ export function RevenueOverviewSection({
   // check is inlined at the render site so TypeScript narrows the prop.
   // The "Outcome" card's single cumulative line tracks the brand's goal signal:
   // website clicks for a signups brand, positive replies for a meetings brand.
-  const isVisitDriven = isVisitDrivenGoal(optimizationGoal);
+  // Keyed on the FUNNEL when the surface states one: the goal cannot separate a meeting won
+  // from a reply from one won on the website (both are `sales_meetings`), so a goal-keyed
+  // line labels the wrong signal on one of the two. A brand states no funnel and keeps the
+  // goal's answer.
+  const isVisitDriven = funnelKey
+    ? funnelSteps(funnelKey).some((s) => s.key === "website_visits")
+    : isVisitDrivenGoal(optimizationGoal);
   const outcomeSeries = isVisitDriven
     ? pipelineActualSeries?.clicks
     : pipelineActualSeries?.repliedPositive;
@@ -221,6 +237,7 @@ export function RevenueOverviewSection({
               data={pipelineActivity}
               pipelineActualSeries={pipelineActualSeries}
               optimizationGoal={optimizationGoal}
+              funnelKey={funnelKey}
               trackerSetUp={trackerSetUp}
               visitToMeetingPct={visitToMeetingPct}
               visitToSignupPct={visitToSignupPct}

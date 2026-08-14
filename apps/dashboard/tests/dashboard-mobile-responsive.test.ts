@@ -27,10 +27,6 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx"),
     "utf-8",
   );
-  const brandStatusControl = fs.readFileSync(
-    path.join(__dirname, "../src/components/brand/brand-status-control.tsx"),
-    "utf-8",
-  );
 
   it("keeps the dashboard shell from horizontal overflow", () => {
     // L-shaped shell: the sidebar is a full-height column and the header + main
@@ -131,7 +127,5 @@ describe("Dashboard mobile responsiveness", () => {
     expect(brandInfoPage).toContain("overflow-x-auto");
     expect(brandInfoPage).toContain("whitespace-nowrap");
     expect(settingsPage).toContain("BrandOfferCard");
-    expect(brandStatusControl).toContain("flex flex-wrap items-center justify-between gap-3");
-    expect(brandStatusControl).toContain("flex items-center gap-3");
   });
 });
