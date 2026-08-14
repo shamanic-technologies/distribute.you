@@ -51,8 +51,6 @@ describe("Email template deployment at startup", () => {
     "credit-depleted-followup-3d",
     "credit-depleted-followup-10d",
     "daily-outcome-digest",
-    "brand-paused",
-    "brand-resumed",
   ];
 
   for (const name of templateNames) {
@@ -61,16 +59,22 @@ describe("Email template deployment at startup", () => {
     });
   }
 
-  it("should deploy exactly 15 templates", () => {
+  it("should deploy exactly 13 templates", () => {
     const arrMatch = content.match(/EMAIL_TEMPLATES\s*=\s*\[([\s\S]*?)\n\];/);
     expect(arrMatch).toBeTruthy();
     const arr = arrMatch![1];
-    // 14 are declared inline here. The 15th, the staff digest, is imported from
+    // The two brand pause/resume mails went with the Pause control that was their
+    // only sender: money (and pausing) is per sales funnel on Brand Settings now, so
+    // nothing flips a brand-level pause flag from the dashboard. A registration whose
+    // sender is gone is dead config — and it fails SILENTLY, since the stored row
+    // survives whether or not anyone still writes it.
+    //
+    // 12 are declared inline here. The 13th, the staff digest, is imported from
     // the module that SENDS it — that module re-registers it before every send,
     // because a boot-time registration on a serverless cold start is not a
     // guarantee that the write ever reached the template store.
     const inline = arr.match(/name: "/g);
-    expect(inline).toHaveLength(14);
+    expect(inline).toHaveLength(12);
     expect(arr).toContain("STAFF_DIGEST_TEMPLATE_DEF");
     expect(content).toContain('from "@/lib/staff-digest"');
   });

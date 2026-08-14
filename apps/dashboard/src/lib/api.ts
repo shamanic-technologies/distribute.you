@@ -1716,7 +1716,15 @@ const BrandPauseSchema = z.object({
   updatedAt: z.string().nullable(),
 });
 
-/** GET /brands/:brandId/pause — current pause state (paused=false when never set). */
+/**
+ * GET /brands/:brandId/pause — current pause state (paused=false when never set).
+ *
+ * READ ONLY. There is no writer left in the dashboard: the brand-level Pause control is
+ * gone, because money is funded per SALES FUNNEL and dropping a funnel's ceiling to zero
+ * is how a customer stops that chain — a brand-wide flag beside per-funnel ceilings is two
+ * ways to say one thing. What still reads this is the first-outcome reassurance banner,
+ * which must not promise results to a brand that is not running.
+ */
 export async function getBrandPause(
   brandId: string,
   token?: string,
@@ -1729,28 +1737,6 @@ export async function getBrandPause(
       raw,
     });
     throw new Error("[dashboard] getBrandPause: invalid response shape");
-  }
-  return parsed.data;
-}
-
-/** PATCH /brands/:brandId/pause — pause (true) or restart (false) the brand. */
-export async function setBrandPause(
-  brandId: string,
-  paused: boolean,
-  token?: string,
-): Promise<BrandPause> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/pause`, {
-    token,
-    method: "PATCH",
-    body: { paused },
-  });
-  const parsed = BrandPauseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] setBrandPause: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] setBrandPause: invalid response shape");
   }
   return parsed.data;
 }

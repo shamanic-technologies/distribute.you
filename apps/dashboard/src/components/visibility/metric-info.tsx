@@ -73,7 +73,7 @@ export type MetricKey = keyof typeof METRIC_INFO;
  *    make these tap-accessible; this ordering is what defeated it.)
  * 2. The trigger is a `<span role="button">`, NOT a `<button>`. Several call sites
  *    put the (i) INSIDE a clickable card — the budget tiers in onboarding and in
- *    brand-status-control are `<button>`s — and a button nested in a button is
+ *    the brand status bar were `<button>`s — and a button nested in a button is
  *    invalid HTML: the parser closes the outer one early and the card breaks. A
  *    span carrying the role, `tabIndex` and Enter/Space handling is equivalent
  *    for assistive tech and valid anywhere.

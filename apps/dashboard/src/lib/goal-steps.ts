@@ -1,4 +1,5 @@
 import type { BrandOptimizationGoal } from "@/lib/api";
+import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnels";
 
 /**
  * Per-goal funnel STEPS — the single source every goal-aware surface reads so the
@@ -220,6 +221,84 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
 }
 
 /**
+ * Ordered funnel steps for the SALES FUNNEL a campaign runs — the richer keying, and
+ * the one a campaign-scoped surface must use.
+ *
+ * The goal cannot name a chain on its own: `reply_meeting` and `visit_meeting` both
+ * answer to `sales_meetings`, so `goalSteps` has to cover BOTH paths and hands out the
+ * website-visit leg to a campaign that never buys a click. That is what put "Website
+ * Visits · Cost per website visit" on a Sales-Meeting-from-Conversation campaign, whose
+ * chain starts at a positive reply. The funnel key knows which one it is.
+ *
+ * Each funnel maps onto exactly the step constants above, so a funnel-keyed surface and
+ * a goal-keyed one cannot drift into two labels for one number:
+ *  - `reply_meeting`  Outreach → Positive replies → Sales Meetings
+ *  - `visit_meeting`  Outreach → Website Visits  → Sales Meetings
+ *  - `visit_signup`   Outreach → Website Visits  → Signups
+ *  - `visit_form`     Outreach → Website Visits  → Form submissions
+ *
+ * The last step of every chain is the funnel's own terminal OUTCOME, so a campaign always
+ * carries an outcome pair — unlike the 1-step goals, which have none.
+ */
+export function funnelSteps(funnelKey: SalesFunnelKeyWire): GoalStep[] {
+  switch (normalizeSalesFunnelKey(funnelKey)) {
+    case "reply_meeting":
+      return [OUTREACH_STEP, REPLIES_STEP, MEETINGS_OUTCOME];
+    case "visit_meeting":
+      return [OUTREACH_STEP, VISITS_STEP, MEETINGS_OUTCOME];
+    case "visit_signup":
+      return [OUTREACH_STEP, VISITS_STEP, SIGNUPS_OUTCOME];
+    case "visit_form":
+      return [OUTREACH_STEP, VISITS_STEP, FORM_OUTCOME];
+  }
+}
+
+/**
+ * The steps a surface should show: the FUNNEL's when one is stated, the goal's otherwise.
+ *
+ * `funnelKey` is null on a brand-level surface (a brand sells through several funnels at
+ * once, so no single chain describes it) and on a pre-funnel campaign that predates the
+ * model. Both fall back to the goal, which is what every one of these surfaces did before
+ * the funnel existed — so a null is byte-identical to the old behaviour, not a degraded
+ * one. Every funnel-aware surface reads THIS, never `goalSteps` directly.
+ */
+export function stepsFor(
+  goal: BrandOptimizationGoal,
+  funnelKey?: SalesFunnelKeyWire | null,
+): GoalStep[] {
+  return funnelKey ? funnelSteps(funnelKey) : goalSteps(goal);
+}
+
+/** `goalLeadTabs`, keyed on the funnel when one is stated. */
+export function leadTabsFor(
+  goal: BrandOptimizationGoal,
+  funnelKey?: SalesFunnelKeyWire | null,
+): LeadTab[] {
+  return stepsFor(goal, funnelKey)
+    .filter((s): s is GoalStep & { tab: LeadTab } => s.tab !== undefined)
+    .map((s) => s.tab)
+    .reverse();
+}
+
+/** `goalChartMetricKeys`, keyed on the funnel when one is stated. */
+export function chartMetricKeysFor(
+  goal: BrandOptimizationGoal,
+  funnelKey?: SalesFunnelKeyWire | null,
+): ChartMetricKey[] {
+  return stepsFor(goal, funnelKey)
+    .filter((s): s is GoalStep & { chartKey: ChartMetricKey } => s.chartKey !== undefined)
+    .map((s) => s.chartKey);
+}
+
+/** `goalOutcomeStep`, keyed on the funnel when one is stated. */
+export function outcomeStepFor(
+  goal: BrandOptimizationGoal,
+  funnelKey?: SalesFunnelKeyWire | null,
+): GoalStep | null {
+  return stepsFor(goal, funnelKey).find((s) => s.outcome !== undefined) ?? null;
+}
+
+/**
  * Leads-page tabs, OUTCOME-FIRST (deepest on-path signal leftmost = the default),
  * Outreach (the contacted base) last. Only the lead-signal steps (which have a
  * per-lead boolean today); outcome steps are excluded until per-lead attribution
@@ -278,7 +357,15 @@ export function goalOutcomeStep(goal: BrandOptimizationGoal): GoalStep | null {
 export function goalOutcomeTab(
   goal: BrandOptimizationGoal,
 ): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } | null {
-  const step = goalOutcomeStep(goal);
+  return outcomeTabFor(goal, null);
+}
+
+/** `goalOutcomeTab`, keyed on the funnel when one is stated. */
+export function outcomeTabFor(
+  goal: BrandOptimizationGoal,
+  funnelKey?: SalesFunnelKeyWire | null,
+): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } | null {
+  const step = outcomeStepFor(goal, funnelKey);
   if (!step?.outcome) return null;
   return {
     tab: step.outcome.tab,

@@ -158,12 +158,6 @@ describe("nothing on a shared page offers to change the brand", () => {
     expect(page).toContain("readOnly={readOnly}");
   });
 
-  it("the brand status bar shows the goal and budget but not Pause", () => {
-    const page = src("components/brand/brand-status-control.tsx");
-    expect(page).toContain("const readOnly = useIsShareMode();");
-    expect(page).toContain("{pauseReady && !readOnly ?");
-  });
-
   it("the stat cards drop the conversion-tracker call to action", () => {
     const page = src("components/revenue/outreach-stat-cards.tsx");
     expect(page).toContain("!trackerLive && !readOnly");

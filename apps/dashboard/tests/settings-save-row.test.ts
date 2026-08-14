@@ -11,7 +11,7 @@ const ROW = read("../src/components/settings/settings-save-row.tsx");
 // anyone had touched the form. The click-destination and sales-economics cards
 // left this list with the flat brand-wide sections they belonged to: a funnel
 // now owns its own rates, lifetime revenue and landing page.
-const SAVEABLE_CARDS = ["brand-daily-budget-card.tsx", "brand-domain-card.tsx"];
+const SAVEABLE_CARDS = ["brand-domain-card.tsx"];
 
 describe("SettingsSaveRow", () => {
   // A Save button under an untouched form is a control offering itself for an

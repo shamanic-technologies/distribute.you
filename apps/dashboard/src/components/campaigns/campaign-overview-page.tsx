@@ -43,7 +43,6 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
-import { BrandStatusControl } from "@/components/brand/brand-status-control";
 import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -208,6 +207,12 @@ export function CampaignOverviewPage() {
   const optimizationGoal = campaign?.goal
     ? optimizationGoalForRuntimeGoal(campaign.goal)
     : brandOptimizationGoal;
+  // What this campaign actually SELLS, read off the campaign row. It is the richer of the
+  // two fields: `sales_meetings` covers both meeting funnels, so the goal alone cannot say
+  // whether the chain starts at a positive reply or at a click onto the site — and every
+  // step-labelled surface below (stat cards, activity bars, the Outcome line) needs to
+  // know. NULL on a pre-funnel campaign, which correctly falls back to the goal.
+  const campaignFunnelKey = campaign?.funnelKey ?? null;
   const visitToMeetingPct =
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =
@@ -413,13 +418,16 @@ export function CampaignOverviewPage() {
   // campaign as what it IS — the sales funnel it buys × the acquisition channel
   // it buys through — rather than campaign-service's stored `name`, which was
   // written at provision time and predates the per-funnel model, so it says
-  // nothing about either. The daily budget
-  // used to sit here as its own editor, one line above the BrandStatusControl pill
-  // that already reads `Active · $N / day` — the same number under two labels, which
-  // is the duplication this repo treats as a bug. The budget is stated once, in the
-  // pill below; `effectiveBudgetCents` still resolves the campaign's own override
-  // for the cost card's denominator.
-  // The heading is the campaign's NAME and nothing else.
+  // nothing about either. The heading is the campaign's NAME and nothing else.
+  //
+  // There is NO run-status bar here any more, and no budget on the page at all. The bar
+  // stated three BRAND-level things — the retired optimization goal, the brand pause flag
+  // and the brand's daily budget — on a page scoped to ONE campaign and ONE funnel: the
+  // goal word cannot even name which of the two meeting funnels this is, and the dollar
+  // figure is billing's SUM of every funnel's ceiling, not this campaign's. Money is
+  // funded per sales funnel on Brand Settings, which is also how a funnel is paused:
+  // drop its ceiling to zero. `effectiveBudgetCents` still resolves the campaign's own
+  // override for the cost card's denominator.
   //
   // It used to carry a `Campaigns /` back-link alongside, restated a few pixels
   // above by the top bar, which already links back to the list
@@ -436,7 +444,6 @@ export function CampaignOverviewPage() {
     return (
       <DashboardPage width="wide" className="space-y-4">
         {CampaignHeader}
-        <BrandStatusControl brandId={brandId} />
         {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"
@@ -462,6 +469,7 @@ export function CampaignOverviewPage() {
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
         optimizationGoal={optimizationGoal}
+        funnelKey={campaignFunnelKey}
         trackerSetUp={trackerSetUp}
         visitToMeetingPct={visitToMeetingPct}
         visitToSignupPct={visitToSignupPct}
@@ -479,7 +487,6 @@ export function CampaignOverviewPage() {
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
-        headerAction={<BrandStatusControl brandId={brandId} />}
         costBottomCard={
           <TopAudiencesCard
             data={audienceStatsRevealed ? audienceStatsData : undefined}
@@ -494,6 +501,7 @@ export function CampaignOverviewPage() {
             spend={revenueRevealed ? data?.spend : null}
             pending={!(statsRevealed && revenueRevealed)}
             optimizationGoal={optimizationGoal}
+            funnelKey={campaignFunnelKey}
             outreachOverride={outreachTotal}
           />
         }
