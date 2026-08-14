@@ -153,6 +153,17 @@ export interface CostEconomics {
   /** totalPipelineUsd / actualCostUsd. Null when cost is 0 or pipeline is null. */
   roiMultiple: number | null;
   /**
+   * REALIZED dollar cost of winning ONE customer, for the scope this body describes —
+   * served on EVERY response including the default un-lensed brand read, so the brand
+   * Overview's `$ CAC` card reads it directly.
+   *
+   * It is `lifetimeRevenueUsd / roiMultiple` — the same statement as ROI and % CAC in a
+   * third unit, which is why it MATCHES the lensed `costPerConversionUsd` for the same
+   * scope rather than being a second opinion. Null (never 0) when the brand states no
+   * lifetime revenue, when the pipeline is null/0, or when no funnel is wired.
+   */
+  costPerAcquisitionUsd: number | null;
+  /**
    * Lens-only: expected outcome COUNT = Σ per-lead probability across the lensed
    * leads. Present only on a `?lens=` response; absent on the un-lensed overview.
    * features-service is the single source — the dashboard never derives it.
@@ -256,6 +267,35 @@ export interface Spend {
   cpSaleCents?: number | null;
 }
 
+/**
+ * One day of the brand's return-on-spend curve. BOTH legs are cumulative since the
+ * brand's first spend and both are REALIZED — spend dated by runs' own cost buckets,
+ * pipeline by the per-lead event timestamps. Nothing is spread, smoothed or modelled,
+ * which is what makes the curve safe to show as a result rather than a forecast.
+ */
+export interface RoiHistoryPoint {
+  /** UTC calendar day (YYYY-MM-DD). */
+  date: string;
+  cumulativeSpendUsd: number;
+  cumulativePipelineUsd: number;
+  /**
+   * `cumulativePipelineUsd / cumulativeSpendUsd`. Null — never 0 — on a day whose
+   * cumulative spend is still 0: "could not be measured", not "returned nothing".
+   */
+  roiMultiple: number | null;
+}
+
+export interface RoiHistory {
+  /** One point per UTC day that has spend or a dated outcome, ascending. A day with
+   *  neither is ABSENT rather than fabricated, so the series can have gaps. */
+  daily: RoiHistoryPoint[];
+  /** The curve's final cumulative pipeline — the part of `totalPipelineUsd` it describes. */
+  datedPipelineUsd: number;
+  /** Pipeline counted in the headline whose outcome carries no timestamp, so it sits on
+   *  no day. `datedPipelineUsd + undatedPipelineUsd === totalPipelineUsd`. */
+  undatedPipelineUsd: number;
+}
+
 /** Everything the overview + conversions pages render for a feature+brand. */
 export interface RevenueOverview {
   featureSlug: string;
@@ -263,6 +303,15 @@ export interface RevenueOverview {
   totalPipelineUsd: number | null;
   /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */
   costEconomics: CostEconomics;
+  /**
+   * Return on spend across the brand's whole life — what the brand Overview charts.
+   *
+   * Null when features-service could not build it (it is fail-soft there on purpose: a
+   * curve must never 502 an Overview whose every other number is correct) and on a
+   * lensed read. `daily` can legitimately be empty for a brand with neither spend nor a
+   * dated outcome.
+   */
+  roiHistory?: RoiHistory | null;
   /**
    * Canonical spend block (Total spent / today / top sources / CPC / CPS / CPSM),
    * server-computed + reconciled to runs ACTUAL spend. Present on the un-lensed

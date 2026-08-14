@@ -148,12 +148,13 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain('label="ROI"');
     expect(cards).toContain('label="$ CAC"');
     expect(cards).toContain('label="% CAC"');
-    // Every money value is read verbatim off features-service. `$ CAC` in particular
-    // must NOT be divided out of the other two: features-service serves
-    // `costPerConversionUsd` on a `?lens=` response only, so the honest render until
-    // that field lands on the default response is "—".
+    // Every money value is read verbatim off features-service. `$ CAC` reads
+    // `costPerAcquisitionUsd` — the field served on the DEFAULT un-lensed read — and
+    // NOT the lens-only `costPerConversionUsd`, which is absent on this response and
+    // left the card on a dash. It must never be divided out of the other two either.
     expect(cards).toContain("formatRoi(economics?.roiMultiple)");
-    expect(cards).toContain("formatUsd(economics?.costPerConversionUsd)");
+    expect(cards).toContain("formatUsd(economics?.costPerAcquisitionUsd)");
+    expect(cards).not.toContain("formatUsd(economics?.costPerConversionUsd)");
     expect(cards).toContain("formatPct(economics?.costOfAcquisitionPct)");
     expect(cards).toContain("formatUsd(totalPipelineUsd)");
     // The brand page is the one that turns the two modes on.

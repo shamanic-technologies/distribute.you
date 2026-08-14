@@ -70,6 +70,28 @@ function metricCount(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): 
   }
 }
 
+/**
+ * What an audience RETURNS per dollar, when features-service can project it.
+ *
+ * This is what the card leads with, and it is a different question from the cost
+ * column it replaced: cost per outcome ranks audiences by CHEAPNESS, so an audience
+ * that converts to nothing outranks an expensive one that pays. Rank on the return.
+ *
+ * Absent (a producer that predates it) or null (unmeasurable) → the card falls back to
+ * the brand's cost metric, which is exactly how it read before.
+ */
+function returnPerDollar(row: FeatureAudienceStatsRow): number | null {
+  return row.projection?.returnPerDollar ?? null;
+}
+
+const RETURN_INFO =
+  "Dollars of customer lifetime revenue projected per dollar spent on this audience, using the conversion rates and lifetime revenue set in Brand Settings. Ranked highest first: this is where more budget is worth putting. It is a projection from what each audience has produced so far, not money already collected.";
+
+function formatReturn(multiple: number | null): string {
+  if (multiple == null) return "-";
+  return `${multiple.toFixed(multiple < 10 ? 1 : 0)}×`;
+}
+
 function audienceInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return "A";
@@ -105,13 +127,27 @@ export function TopAudiencesCard({
   pending?: boolean;
   metric: AudienceRankMetric;
 }) {
-  // The column is the brand's own — NOT `data.sortMetric`. features-service classes
-  // websitePurchase / sales as reply-driven and returns `cppr` for them, which printed
-  // "CPPR / 0 replies" on a goal whose funnel has no reply step, next to an Audiences page
-  // that hides the reply columns for that same brand. The dashboard decides here, and the
-  // rows are re-sorted below so the card never shows one field while ordering by another.
+  // The card answers "where should the money go", so it leads with RETURN per dollar —
+  // highest first — whenever features-service can project it. Cost per outcome is the
+  // fallback for a payload that carries no projection, and there the order flips to
+  // cheapest-first. A card that displays one field while ordering by another reads as
+  // unordered, so the sort and the value are the same expression in both branches.
+  //
+  // The cost column is the brand's own metric, NOT `data.sortMetric`: features-service
+  // classes websitePurchase / sales as reply-driven and returns `cppr` for them, which
+  // printed "CPPR / 0 replies" on a goal whose funnel has no reply step, next to an
+  // Audiences page that hides the reply columns for that same brand.
+  const ranksByReturn = (data?.audiences ?? []).some((row) => returnPerDollar(row) != null);
   const statsRows = [...(data?.audiences ?? [])]
     .sort((a, b) => {
+      if (ranksByReturn) {
+        const ar = returnPerDollar(a);
+        const br = returnPerDollar(b);
+        if (ar == null && br == null) return 0;
+        if (ar == null) return 1;
+        if (br == null) return -1;
+        return br - ar;
+      }
       const av = metricCents(metric, a);
       const bv = metricCents(metric, b);
       if (av == null && bv == null) return 0;
@@ -136,7 +172,12 @@ export function TopAudiencesCard({
     ...statsRows.map((row) => ({ kind: "stats" as const, row })),
     ...fallbackRows.map((audience) => ({ kind: "audience" as const, audience })),
   ];
-  const label = AUDIENCE_RANK_METRIC_LABEL[metric];
+  const label = ranksByReturn ? "Return" : AUDIENCE_RANK_METRIC_LABEL[metric];
+  const tip = ranksByReturn ? RETURN_INFO : AUDIENCE_RANK_METRIC_INFO[metric];
+  // The brand's own return, so a row reads as "this audience beats the brand" rather
+  // than as a number with nothing to sit against. Same formula one grain coarser, from
+  // the same payload, so the two can never be projected on different economics.
+  const brandReturn = data?.brandProjection?.returnPerDollar ?? null;
 
   const params = useParams();
   const orgId = params.orgId as string;
@@ -150,9 +191,15 @@ export function TopAudiencesCard({
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top 3 audiences</p>
         <p className="flex items-center gap-1 text-xs font-medium text-gray-500">
           {label}
-          <InfoTooltip tip={AUDIENCE_RANK_METRIC_INFO[metric]} placement="bottom" />
+          <InfoTooltip tip={tip} placement="bottom" />
         </p>
       </div>
+
+      {ranksByReturn && brandReturn != null && !pending && (
+        <p className="text-[11px] text-gray-400">
+          Your brand returns {formatReturn(brandReturn)} per dollar overall.
+        </p>
+      )}
 
       {pending ? (
         [0, 1, 2].map((i) => (
@@ -170,10 +217,18 @@ export function TopAudiencesCard({
           const avatarUrl = isStats
             ? item.row.audience.avatarUrl ?? avatarById.get(item.row.audience.id) ?? null
             : item.audience.avatarUrl;
-          const value = isStats ? metricCents(metric, item.row) : null;
+          const costCents = isStats ? metricCents(metric, item.row) : null;
+          const rowReturn = isStats ? returnPerDollar(item.row) : null;
           const outcomes = isStats ? metricCount(metric, item.row) : null;
-          const count =
-            outcomes == null
+          // The second line carries whichever fact the headline value did NOT: when the
+          // card leads with return, the cost it was ranked on before is what a reader
+          // still wants beside it; when it leads with cost, the outcome count is what
+          // that cost divides by. Never both, and never a value the row does not have.
+          const subtitle = ranksByReturn
+            ? costCents == null
+              ? null
+              : `${formatCents(costCents)} ${AUDIENCE_RANK_METRIC_LABEL[metric].toLowerCase()}`
+            : outcomes == null
               ? null
               : `${outcomes.toLocaleString("en-US")} ${AUDIENCE_RANK_METRIC_OUTCOME_NOUN[metric]}`;
           return (
@@ -185,11 +240,13 @@ export function TopAudiencesCard({
               <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-gray-700">{name}</span>
-                {count && (
-                  <span className="block truncate text-[11px] text-gray-400">{count}</span>
+                {subtitle && (
+                  <span className="block truncate text-[11px] text-gray-400">{subtitle}</span>
                 )}
               </span>
-              <span className="text-sm font-medium text-gray-800 tabular-nums">{formatCents(value)}</span>
+              <span className="text-sm font-medium text-gray-800 tabular-nums">
+                {ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)}
+              </span>
             </Link>
           );
         })

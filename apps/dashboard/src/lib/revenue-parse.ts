@@ -91,10 +91,29 @@ const CostEconomicsSchema = z.object({
   totalCostUsd: z.number().optional(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
+  // The dollar cost of winning one customer, answered on EVERY response including
+  // the default un-lensed brand read (features-service v0.127.0). `.nullish()` for
+  // rollout tolerance only — it is required on the wire today.
+  costPerAcquisitionUsd: z.number().nullish(),
   // Lens-only (Signups / Booked Meetings / Sales). `.nullish()` so the un-lensed
   // overview + grouped responses (which omit the field) still parse.
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
+});
+// Return on spend across the brand's whole life. Both legs CUMULATIVE and REALIZED:
+// spend dated by runs' own cost buckets, pipeline by the per-lead event timestamps.
+// The last point's `roiMultiple` IS `costEconomics.roiMultiple`, by construction.
+const RoiHistorySchema = z.object({
+  daily: z.array(
+    z.object({
+      date: z.string(),
+      cumulativeSpendUsd: z.coerce.number(),
+      cumulativePipelineUsd: z.coerce.number(),
+      roiMultiple: z.coerce.number().nullable(),
+    }),
+  ),
+  datedPipelineUsd: z.coerce.number(),
+  undatedPipelineUsd: z.coerce.number(),
 });
 // Server-computed signal aggregate. `.optional()` on the response fields decouples
 // backend rollout; `z.coerce.number()` because Postgres numeric/bigint can
@@ -193,6 +212,9 @@ const FeatureRevenueResponseSchema = z.object({
   purchased: SignalSeriesSchema.optional(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
   costEconomics: CostEconomicsSchema,
+  // Overview-only (null on `?lens=`, absent on grouped) and fail-soft server-side,
+  // so the reader must tolerate both absent and null.
+  roiHistory: RoiHistorySchema.nullish(),
   timeSeries: z.array(z.object({ date: z.string(), cumulativePipelineUsd: z.number() })),
   organizations: z.array(RevenueOrgSchema),
   leads: z.array(RevenueLeadSchema),
@@ -218,9 +240,11 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
       actualCostUsd: d.costEconomics.actualCostUsd ?? d.costEconomics.totalCostUsd ?? 0,
       costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
       roiMultiple: d.costEconomics.roiMultiple,
+      costPerAcquisitionUsd: d.costEconomics.costPerAcquisitionUsd ?? null,
       expectedConversions: d.costEconomics.expectedConversions,
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
     },
+    roiHistory: d.roiHistory ?? null,
     spend: d.spend,
     // Normalize the features-service#416 count-series renames at this single parser
     // boundary: prefer the new `recipients*` name, fall back to the legacy one, so

@@ -2643,6 +2643,31 @@ export interface FeatureAudienceStatsRow {
      *  / combined-sales goal, or emails not served). Never a false $0. */
     cpsaleCents?: number | null;
   };
+  /** PROJECTED return for this audience, on the brand's own economics. See
+   *  {@link AudienceProjection}. Optional only for rollout tolerance — features-service
+   *  v0.127.0 requires it on every row. */
+  projection?: AudienceProjection;
+}
+
+/**
+ * What an audience is PROJECTED to return, on the brand's own declared economics.
+ *
+ * Rank a brand's audiences on `returnPerDollar`, never on cost per outcome: cost per
+ * outcome ranks by CHEAPNESS, so an audience that converts to nothing outranks an
+ * expensive one that pays. It is the identical definition `funnel-ranking` ranks a
+ * brand's declared funnels on, so an audience's return and the brand's return are one
+ * statistic at two grains.
+ *
+ * Distinct from `/revenue`'s REALIZED `costEconomics.roiMultiple`, which divides
+ * measured pipeline by measured spend — this is what the evidence projects.
+ */
+export interface AudienceProjection {
+  /** PROJECTED cost to win ONE paying client from this audience — the denominator of
+   *  `returnPerDollar`. Null (never 0) when the chain has no path to a paying client. */
+  costPerPaidClientUsd: number | null;
+  /** PROJECTED dollars of lifetime revenue per dollar spent. Null (never 0) when
+   *  unmeasurable. An audience with no measured grain inherits `brandProjection`. */
+  returnPerDollar: number | null;
 }
 
 export interface FeatureAudienceStatsResponse {
@@ -2652,7 +2677,19 @@ export interface FeatureAudienceStatsResponse {
   brandProfileId: string | null;
   sortMetric: FeatureAudienceStatsSortMetric;
   audiences: FeatureAudienceStatsRow[];
+  /** The BRAND-level twin of every row's projection, on the same economics and the same
+   *  formula — read a row's return against it ("this audience beats the brand"). */
+  brandProjection?: AudienceProjection & {
+    /** The lifetime revenue per paying client this whole payload was projected on,
+     *  surfaced so a consumer can never pair a return with an LTR it did not use. */
+    lifetimeRevenueUsd: number | null;
+  };
 }
+
+const AudienceProjectionSchema = z.object({
+  costPerPaidClientUsd: z.coerce.number().nullable(),
+  returnPerDollar: z.coerce.number().nullable(),
+});
 
 const FeatureAudienceStatsRowSchema = z.object({
   audienceId: z.string(),
@@ -2683,6 +2720,7 @@ const FeatureAudienceStatsRowSchema = z.object({
     cpsCents: z.number().nullable().optional(),
     cpsaleCents: z.coerce.number().nullable().optional(),
   }),
+  projection: AudienceProjectionSchema.optional(),
 });
 
 const FeatureAudienceStatsResponseSchema = z.object({
@@ -2700,6 +2738,9 @@ const FeatureAudienceStatsResponseSchema = z.object({
   brandProfileId: z.string().nullable(),
   sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
   audiences: z.array(FeatureAudienceStatsRowSchema),
+  brandProjection: AudienceProjectionSchema.extend({
+    lifetimeRevenueUsd: z.coerce.number().nullable(),
+  }).optional(),
 });
 
 /** GET /features — list all features */
