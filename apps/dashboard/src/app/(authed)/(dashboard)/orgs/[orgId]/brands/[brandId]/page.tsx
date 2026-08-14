@@ -30,7 +30,7 @@ import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
 } from "@/lib/workflow-projection-choice";
-import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
+import { audienceRankMetric } from "@/lib/strategy-model";
 import {
   goalOutcomeCount,
   recommendedLearningSpendUsd,
@@ -200,10 +200,6 @@ export default function BrandOverviewPage() {
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =
     economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
-  // One shared mapping with the Audiences page + Strategy. The local ternary this replaces was
-  // 2-branch, so a sales / form_submissions / website_purchase / positive_replies brand asked
-  // audience-stats to rank workflows on an outcome the brand does not pursue.
-  const audienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
 
   const { data: budgetData, isError: budgetIsError } = useAuthQuery(
     ["brandDailyBudget", brandId],
@@ -317,15 +313,16 @@ export default function BrandOverviewPage() {
   // Real audience-level cost evidence from features-service. This replaces the
   // old provider-cost-source list; no dashboard-side mock/hash audience split.
   const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal],
+    ["featureAudienceStats", featureSlug, brandId, "brand-return"],
     // No `limit` — features-service would pre-pick the top 3 by ITS OWN sortMetric, which
     // is a different column than the one this card shows for a sale-terminating goal. The
     // card sorts and slices on the brand's metric instead (a brand has a handful of active
     // audiences, so the full list is cheap).
-    () => fetchFeatureAudienceStats(featureSlug, {
-      brandId,
-      goal: audienceStatsGoal,
-    }),
+    // NEITHER goal nor funnel: the brand-level read. features-service then prices every
+    // audience through the best-returning funnel the brand declared and sorts on return
+    // descending, which is the only honest answer here — a brand runs several funnels at
+    // once, so naming one would denominate the card in a single chain's terms.
+    () => fetchFeatureAudienceStats(featureSlug, { brandId }),
     { enabled, ...pollOptions },
   );
 

@@ -303,6 +303,9 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
     { ...pollOptions, enabled: campaignScoped },
   );
   const campaign = campaignData?.campaign ?? null;
+  // The funnel a campaign states it sells — the canonical way to price its columns.
+  // Absent on the brand route (no campaign) and on a campaign that predates the model.
+  const campaignFunnelKey = campaign?.funnelKey ?? null;
 
   // Brand optimization goal → audience-stats goal (sorts by CPC for signup, CPPR
   // otherwise). Same resolution as the brand Overview. Under a campaign, its OWN goal
@@ -421,11 +424,26 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // entry with the brand-wide read.
   const campaignScopeKey = campaignId ?? "brand-wide";
   const { data: audienceStatsData, isPending: statsIsPending, isPlaceholderData: statsIsPlaceholder } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "all-statuses", campaignScopeKey],
+    [
+      "featureAudienceStats",
+      featureSlug,
+      brandId,
+      brandLevelMoney ? "brand-return" : campaignFunnelKey ?? audienceStatsGoal,
+      "all-statuses",
+      campaignScopeKey,
+    ],
     () =>
+      // Brand level names NEITHER goal nor funnel — features-service prices every
+      // audience through the best-returning funnel the brand declared and sorts on
+      // return descending. Under a campaign the funnel is stated, because a campaign
+      // sells exactly one and the goal cannot separate the two meeting chains.
       fetchFeatureAudienceStats(featureSlug, {
         brandId,
-        goal: audienceStatsGoal,
+        ...(brandLevelMoney
+          ? {}
+          : campaignFunnelKey
+            ? { funnel: campaignFunnelKey }
+            : { goal: audienceStatsGoal }),
         statuses: "active,paused,archived",
         campaignId,
       }),

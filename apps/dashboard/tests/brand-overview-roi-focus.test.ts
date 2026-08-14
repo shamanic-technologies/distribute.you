@@ -164,3 +164,54 @@ describe("brand surfaces list campaigns and state money", () => {
     expect(audiences).toContain("formatReturn(stats?.projection?.returnPerDollar)");
   });
 });
+
+/**
+ * The retired brand goal never reaches features-service from a brand-level surface.
+ *
+ * features-service v0.129.0 made "name NEITHER a funnel NOR a goal" a first-class
+ * request: it prices every audience through the best-returning funnel the brand
+ * declared and sorts on return descending. That is the only honest answer at brand
+ * level — naming one funnel would denominate the whole table in one chain's terms,
+ * and the goal that used to pick it is a server-defaulted retired column.
+ */
+describe("brand-level audience reads name neither a funnel nor a goal", () => {
+  const overview = read(
+    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+  );
+  const audiences = read("components/audiences/customer-audiences-page.tsx");
+  const campaign = read("components/campaigns/campaign-overview-page.tsx");
+  const api = read("lib/api.ts");
+
+  it("sends only the brandId from the Overview's Top-audiences card", () => {
+    expect(overview).toContain("fetchFeatureAudienceStats(featureSlug, { brandId })");
+    // The goal mapping is gone from this page entirely.
+    expect(overview).not.toContain("goalForOptimizationGoal");
+    expect(overview).not.toContain("audienceStatsGoal");
+  });
+
+  it("omits both params at brand level and names the FUNNEL under a campaign", () => {
+    expect(audiences).toContain("brandLevelMoney");
+    expect(audiences).toContain("funnel: campaignFunnelKey");
+    // A campaign that predates the funnel model still has its goal to fall back on.
+    expect(audiences).toContain("goal: audienceStatsGoal");
+    expect(campaign).toContain("funnel: campaignFunnelKey");
+  });
+
+  it("makes both params optional on the reader, so omitting them is expressible", () => {
+    expect(api).toContain("funnel?: SalesFunnelKeyWire;");
+    expect(api).toContain("goal?: FeatureAudienceStatsGoal;");
+    // Neither is written unless the caller asked for it — an empty string would be a
+    // named-but-unrecognised value, which features-service 400s.
+    expect(api).toContain('if (params.funnel) query.set("funnel", params.funnel);');
+    expect(api).toContain('else if (params.goal) query.set("goal", params.goal);');
+  });
+
+  it("reads the brand-level answer shape: null goal, return-sorted", () => {
+    expect(api).toContain('z.literal("returnPerDollar")');
+    // `goal` is null on the brand read — a strict union would throw on every one.
+    expect(api).toContain('z.literal("formSubmission"),\n  ]).nullable(),');
+    // Each row names the chain it was priced through: an audience's best chain is
+    // routinely not the brand's.
+    expect(api).toContain("basisFunnelKey");
+  });
+});
