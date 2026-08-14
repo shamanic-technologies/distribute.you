@@ -38,6 +38,7 @@ import {
 } from "@/lib/first-outcome-reassurance";
 import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
+import { CampaignsTable } from "@/components/campaigns/campaigns-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
@@ -496,6 +497,23 @@ export default function BrandOverviewPage() {
           />
         }
       />
+
+      {/* The campaigns behind the numbers above, full width under the chart.
+          The SAME table the Campaigns page renders — one component, so a campaign
+          cannot read one way here and another way one click over — ordered by the
+          return the Overview's own headline is stated in. */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-display text-lg font-bold text-gray-800">Campaigns</h2>
+          <Link
+            href={`${basePath}/campaigns`}
+            className="text-sm text-brand-600 hover:underline"
+          >
+            View all
+          </Link>
+        </div>
+        <CampaignsTable brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
+      </div>
     </DashboardPage>
   );
 }

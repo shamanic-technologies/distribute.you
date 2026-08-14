@@ -45,7 +45,20 @@ function formatCents(cents: number | null): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-type SortCol = "audience" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
+/** Projected return per dollar. One decimal, byte-equal with every other ROI on the
+ *  dashboard (the ROI stat card, the Return-on-spend chart, the Campaigns table). */
+function formatReturn(multiple: number | null | undefined): string {
+  return multiple == null ? "-" : `${multiple.toFixed(1)}×`;
+}
+
+/** Whole-dollar projection, adaptive under $10 like every other USD figure here. */
+function formatUsd(usd: number | null | undefined): string {
+  if (usd == null) return "-";
+  const decimals = Math.abs(usd) < 10 ? 2 : 0;
+  return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+}
+
+type SortCol = "audience" | "roi" | "cacUsd" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
 
 /**
  * Sort key for an audience row under a given column. `audience` sorts by name
@@ -60,6 +73,13 @@ function sortValue(
   switch (col) {
     case "audience":
       return (audience.name || "").toLowerCase();
+    // Brand-level money. Both are features-service projections read verbatim — the
+    // browser divides nothing, and in particular does NOT turn the return into a %CAC
+    // by inverting it (that inversion is on this repo's banned list).
+    case "roi":
+      return stats?.projection?.returnPerDollar ?? null;
+    case "cacUsd":
+      return stats?.projection?.costPerPaidClientUsd ?? null;
     case "replies":
       return stats?.evidence.positiveReplies ?? null;
     case "cppr":
@@ -318,34 +338,55 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // default sort CPS asc. Gated on the conversion tracker being set up — with no tracker
   // there are no signups to attribute, so the columns would only ever show 0 / "-".
   // (website_visits stays visit-only, no CPS.)
-  const showSignupCols = optimizationGoal === "signups" && trackerSetUp;
+  /**
+   * At BRAND level the table states MONEY — return per dollar and the cost of winning a
+   * customer — and drops every funnel-scoped column.
+   *
+   * A brand sells through several sales funnels at once, so "Positive replies" / "CPPR"
+   * and "Website Visits" / "Cost per website visit" each name the steps of ONE of them
+   * while the rows beside them are attributed across all of them. The campaign level is
+   * where those belong: a campaign sells exactly one funnel, so its own steps ARE what
+   * it buys — and that page keeps every column it has today.
+   */
+  const brandLevelMoney = !campaignScoped;
+  const showSignupCols = optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney;
   // form_submissions goal → surface the real per-audience outcome: "Cost per form
   // submission" (CPFS) + "Form submissions" columns FIRST (before the website-visit
   // funnel), default sort CPFS asc. Also gated on the tracker being set up.
-  const showFormSubmissionCols = optimizationGoal === "form_submissions" && trackerSetUp;
+  const showFormSubmissionCols =
+    optimizationGoal === "form_submissions" && trackerSetUp && !brandLevelMoney;
   // website_purchase (multi-step close) + sales (combined) both terminate in a real
   // per-audience SALE outcome: "Cost per sale" (CP Sale) + "Sales" columns FIRST
   // (before the website-visit funnel), default sort CP Sale asc. Gated on the tracker
   // being set up — with no tracker there are no sales to attribute.
   const showSaleCols =
-    (optimizationGoal === "sales" || optimizationGoal === "website_purchase") && trackerSetUp;
+    (optimizationGoal === "sales" || optimizationGoal === "website_purchase") &&
+    trackerSetUp &&
+    !brandLevelMoney;
   // The combined `sales` goal wins a paying client via EITHER the visit→paid OR the
   // reply→paid path, so its ranking surfaces BOTH funnels: the reply funnel (Positive
   // replies + CPPR) ALONGSIDE the website-visit funnel + the Sale outcome — mirroring the
   // sales-meetings reply columns. website_purchase stays visit-only (single close path).
-  const showReplyCols = showMeetingCols || optimizationGoal === "sales";
+  const showReplyColsForGoal = showMeetingCols || optimizationGoal === "sales";
+  const showReplyCols = showReplyColsForGoal && !brandLevelMoney;
   // Seed the initial sort column from the brand goal once it resolves — cheapest
   // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), CP Sale
   // (sales / website purchases), else CPC (website visits) — until the user picks a
   // column manually. Shared with the Overview's Top-3-audiences card, which reads the
   // same rows: two surfaces picking their column independently is how one brand ended
   // up reading "CPPR" on the Overview and no reply column at all here.
-  const defaultSortCol: SortCol = audienceRankMetric(optimizationGoal, trackerSetUp);
+  // At brand level the table leads with RETURN, highest first — cost per outcome ranks
+  // by cheapness, so an audience converting to nothing would outrank an expensive one
+  // that pays. Every other column here is a cost, where cheapest-first is right.
+  const defaultSortCol: SortCol = brandLevelMoney
+    ? "roi"
+    : audienceRankMetric(optimizationGoal, trackerSetUp);
+  const defaultSortDir: "asc" | "desc" = brandLevelMoney ? "desc" : "asc";
   useEffect(() => {
     if (hasUserSorted) return;
     setSortCol(defaultSortCol);
-    setSortDir("asc");
-  }, [defaultSortCol, hasUserSorted]);
+    setSortDir(defaultSortDir);
+  }, [defaultSortCol, defaultSortDir, hasUserSorted]);
   // Visit-driven outcome goals (signups / form_submissions) present the outcome cost
   // FIRST but the website-visit funnel below it — so break ties on the cheapest
   // website-visit cost (CPC) ASC: two audiences with the same (or missing) outcome
@@ -604,10 +645,35 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${isPositiveReplies ? "min-w-[820px]" : showReplyCols && showSaleCols ? "min-w-[1320px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            <table className={`${brandLevelMoney ? "min-w-[720px]" : isPositiveReplies ? "min-w-[820px]" : showReplyCols && showSaleCols ? "min-w-[1320px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
+                  {/* Brand level: the money, in the same words and the same order the
+                      Campaigns table uses for the same three questions. % CAC is absent
+                      because features-service does not serve it per audience yet — it is
+                      the reciprocal of the return beside it, and inverting that here is
+                      the compute-a-stat-in-the-browser bug, so the column waits. */}
+                  {brandLevelMoney && (
+                    <>
+                      <SortHeader
+                        label="ROI"
+                        col="roi"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="Dollars of customer lifetime revenue projected per dollar spent on this audience, using the conversion rates and lifetime revenue set in Brand Settings. Higher is better: this is where more budget is worth putting."
+                      />
+                      <SortHeader
+                        label="$ CAC"
+                        col="cacUsd"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="What winning one paying client from this audience is projected to cost, from what this audience has produced so far priced through the brand's own economics. Lower is better."
+                      />
+                    </>
+                  )}
                   {/* website_purchase / sales goals: the SALE outcome columns lead (cost then
                       count), before the reply + website-visit funnels. Cost per sale is the default sort. */}
                   {showSaleCols && (
@@ -721,6 +787,29 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           </div>
                         </div>
                       </td>
+                      {/* Brand-level money cells, read verbatim off the features-service
+                          projection. A return above break-even reads green, the same rule
+                          the Campaigns table's ROI column uses; below it stays ordinary
+                          rather than red, because a young audience is under 1x by
+                          construction and painting that red calls it a failure. */}
+                      {brandLevelMoney && (
+                        <>
+                          <td className="px-4 py-3 text-right tabular-nums">
+                            <span
+                              className={`font-medium ${
+                                (stats?.projection?.returnPerDollar ?? 0) > 1
+                                  ? "text-green-600"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {formatReturn(stats?.projection?.returnPerDollar)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {formatUsd(stats?.projection?.costPerPaidClientUsd)}
+                          </td>
+                        </>
+                      )}
                       {/* website_purchase / sales outcome cells (cost then count), before the
                           reply + website-visit funnels. Sale fields are optional on the wire —
                           render "-" until a sale is attributed for the audience. */}
