@@ -465,6 +465,9 @@ export default function BrandOverviewPage() {
         // Overview answers what the whole thing returned; the campaign Overview
         // keeps the chart for the one channel it runs.
         showActivityChart={false}
+        // Chart what came back per dollar, not the cumulative count of one funnel's
+        // signal — a brand runs several funnels and is judged on the return.
+        showRoiTrend
         costBottomCard={
           <TopAudiencesCard
             data={audienceStatsRevealed ? audienceStatsData : undefined}

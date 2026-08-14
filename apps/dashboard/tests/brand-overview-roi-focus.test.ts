@@ -42,13 +42,67 @@ describe("the brand Overview is scoped to the brand's money", () => {
 
   it("reads every money figure off features-service, never dividing in the browser", () => {
     const cards = read("components/revenue/outreach-stat-cards.tsx");
-    // $ CAC is `costPerConversionUsd`, which features-service documents as LENS ONLY
-    // and does not serve on the default response — so this card reads "—" until that
-    // lands. Deriving it here (spend ÷ an outcome count, or pipeline ÷ ROI) would put
-    // a number on screen that features-service never computed, which is the
-    // compute-in-the-browser bug the fleet already pays for elsewhere.
+    // $ CAC reads `costPerAcquisitionUsd`, served on the DEFAULT un-lensed brand read.
+    // The lens-only `costPerConversionUsd` is absent on this response and left the card
+    // on a dash; deriving it here instead (spend ÷ an outcome count, or pipeline ÷ ROI)
+    // would put a number on screen that features-service never computed.
     expect(cards).not.toContain("actualCostUsd /");
     expect(cards).not.toContain("/ economics");
-    expect(cards).toContain("formatUsd(economics?.costPerConversionUsd)");
+    expect(cards).toContain("formatUsd(economics?.costPerAcquisitionUsd)");
+  });
+});
+
+/**
+ * The Overview charts what came back per dollar, and ranks audiences by the same
+ * question. Both figures are features-service's; the browser divides nothing.
+ */
+describe("the brand Overview charts return, and ranks audiences on it", () => {
+  const overview = read(
+    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+  );
+  const section = read("components/revenue/revenue-overview-section.tsx");
+  const roi = read("components/revenue/roi-trend-card.tsx");
+  const audiences = read("components/revenue/top-audiences-card.tsx");
+  const campaign = read("components/campaigns/campaign-overview-page.tsx");
+
+  it("swaps the one-funnel signal line for return on spend at brand level only", () => {
+    expect(overview).toContain("showRoiTrend");
+    expect(section).toContain("showRoiTrend = false");
+    expect(section).toContain("<RoiTrendCard");
+    // The campaign Overview sells exactly one funnel, so its own signal IS what that
+    // campaign buys — it keeps the outcome line by taking the default.
+    expect(section).toContain("<OutcomeTrendCard");
+    expect(campaign).not.toContain("showRoiTrend");
+  });
+
+  it("charts the server's own cumulative series and fabricates no point", () => {
+    expect(roi).toContain("history?.daily");
+    // A day whose cumulative spend is still 0 carries a null ratio — dropped, never
+    // plotted at 0, because 0 would read as "returned nothing".
+    expect(roi).toContain("d.roiMultiple != null");
+    // No browser math on the ratio: it is charted as served.
+    expect(roi).not.toContain("cumulativePipelineUsd /");
+    // Pipeline with no date sits on no day, so the line legitimately ends below the ROI
+    // card above it. That gap is stated rather than left for a reader to find.
+    expect(roi).toContain("undatedPipelineUsd");
+    // The one horizontal that means something is break-even; a grid beside it would
+    // make the meaningful line read as chrome.
+    expect(roi).toContain("<ReferenceLine");
+    expect(roi).not.toContain("CartesianGrid");
+  });
+
+  it("ranks audiences by return, highest first, with the cost it used to lead with beside it", () => {
+    // Cost per outcome ranks by CHEAPNESS — an audience converting to nothing outranks
+    // an expensive one that pays. The card leads with the return instead.
+    expect(audiences).toContain("row.projection?.returnPerDollar");
+    expect(audiences).toContain("const ranksByReturn =");
+    expect(audiences).toContain("return br - ar;");
+    // Displayed value and sort key are the same expression in both branches, or the
+    // card shows one order and states another.
+    expect(audiences).toContain("ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)");
+    // The brand's own return, so a row reads as beating the brand or not.
+    expect(audiences).toContain("data?.brandProjection?.returnPerDollar");
+    // Never computed here — lifetime revenue ÷ cost per paid client is the producer's.
+    expect(audiences).not.toContain("lifetimeRevenueUsd /");
   });
 });

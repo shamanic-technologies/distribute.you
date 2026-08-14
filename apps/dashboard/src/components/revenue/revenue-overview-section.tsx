@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { PipelineActivityChart } from "@/components/revenue/pipeline-activity-chart";
 import { OutcomeTrendCard } from "@/components/revenue/outcome-trend-card";
+import { RoiTrendCard } from "@/components/revenue/roi-trend-card";
 import { RevenueCostSummary } from "@/components/revenue/revenue-cost-summary";
 import { Skeleton } from "@/components/skeleton";
 import { isVisitDrivenGoal } from "@/lib/api";
@@ -40,6 +41,7 @@ export function RevenueOverviewSection({
   hideHeader = false,
   trackerSetUp = false,
   showActivityChart = true,
+  showRoiTrend = false,
 }: {
   data?: RevenueOverview;
   pipelineActivity?: PipelineActivityResponse;
@@ -93,6 +95,16 @@ export function RevenueOverviewSection({
    * brand Overview answers a different question: what the whole thing returned.
    */
   showActivityChart?: boolean;
+  /**
+   * Chart RETURN ON SPEND across the brand's life instead of the cumulative count of
+   * one funnel signal.
+   *
+   * The signal line answers a narrower question than the brand Overview asks — a brand
+   * runs several funnels, and the one thing every one of them is judged on is what came
+   * back per dollar. The campaign Overview keeps the signal line: it sells exactly one
+   * funnel, so its own signal IS what that campaign is buying.
+   */
+  showRoiTrend?: boolean;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
@@ -162,13 +174,17 @@ export function RevenueOverviewSection({
             outage on an endpoint this card does not read blanked it anyway; its
             forward projection is the only part sourced from pipeline-activity and
             degrades to no dashed segment. */}
-        <OutcomeTrendCard
-          series={outcomeSeries}
-          future={outcomeFuture}
-          label={outcomeLabel}
-          color={outcomeColor}
-          pending={revenueLoading}
-        />
+        {showRoiTrend ? (
+          <RoiTrendCard history={data?.roiHistory} pending={revenueLoading} />
+        ) : (
+          <OutcomeTrendCard
+            series={outcomeSeries}
+            future={outcomeFuture}
+            label={outcomeLabel}
+            color={outcomeColor}
+            pending={revenueLoading}
+          />
+        )}
 
         {/* Cost summary — server-computed spend block (Total spent / today / top
             sources), rendered verbatim from features-service `/revenue`.

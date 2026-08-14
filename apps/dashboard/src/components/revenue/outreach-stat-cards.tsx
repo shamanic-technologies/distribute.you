@@ -298,9 +298,10 @@ export function OutreachStatCards({
           name one funnel while the row sums them all.
 
           Every value is read VERBATIM off features-service; there is no browser math
-          here. `$ CAC` rides `costPerConversionUsd`, which features-service serves on a
-          `?lens=` response only — so it renders "—" until that field lands on the
-          default response, rather than being divided out of the other two. */}
+          here. `$ CAC` rides `costPerAcquisitionUsd` — the field served on the DEFAULT
+          un-lensed read (the Overview is the whole brand, every funnel), NOT the
+          lens-only `costPerConversionUsd`, which is absent here and left the card on a
+          dash. The two are equal for the same scope by construction. */}
       {showEconomics && (
         <>
           <Cell>
@@ -323,7 +324,7 @@ export function OutreachStatCards({
             <ScoreCard
               label="$ CAC"
               tooltip={ECONOMICS_INFO.cacUsd}
-              value={formatUsd(economics?.costPerConversionUsd)}
+              value={formatUsd(economics?.costPerAcquisitionUsd)}
               pending={pending}
             />
           </Cell>
