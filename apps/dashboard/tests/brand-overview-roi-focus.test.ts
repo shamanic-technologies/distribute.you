@@ -25,7 +25,9 @@ describe("the brand Overview is scoped to the brand's money", () => {
   it("drops the channel-scoped Outreach-activity chart at brand level", () => {
     expect(overview).toContain("showActivityChart={false}");
     expect(section).toContain("showActivityChart?: boolean");
-    expect(section).toContain("{showActivityChart && (");
+    // The chart labels a chain's steps, so it renders only when a chain is named — and
+    // a brand names none.
+    expect(section).toContain("{showActivityChart && optimizationGoal && (");
     // The chart itself stays — it is the campaign Overview's, and that page renders
     // it by taking the default rather than by opting in.
     expect(section).toContain("<PipelineActivityChart");

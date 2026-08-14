@@ -170,14 +170,15 @@ describe("OutreachStatCards copy", () => {
     expect(page).toContain("economics={revenueRevealed ? data?.costEconomics : null}");
   });
 
-  it("passes optimizationGoal from both overview call sites", () => {
-    expect(page).toContain(
-      'economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings"',
-    );
-    expect(page).toContain("optimizationGoal={optimizationGoal}");
+  // The auto variant still resolves a goal: it renders on entity pages that state no
+  // funnel. The brand Overview does NOT — it reads no sales-economics at all now, since
+  // every surface on it that needed a goal either moved to the return or was deleted.
+  it("resolves the goal where a surface still has one, and nowhere else", () => {
     expect(auto).toContain(
       'economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings"',
     );
     expect(auto).toContain("optimizationGoal={optimizationGoal}");
+    expect(page).not.toContain("optimizationGoal");
+    expect(page).not.toContain("getBrandSalesEconomics");
   });
 });
