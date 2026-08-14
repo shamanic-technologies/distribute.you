@@ -2668,6 +2668,16 @@ export interface AudienceProjection {
   /** PROJECTED dollars of lifetime revenue per dollar spent. Null (never 0) when
    *  unmeasurable. An audience with no measured grain inherits `brandProjection`. */
   returnPerDollar: number | null;
+  /**
+   * PROJECTED cost of winning a customer as a SHARE of what that customer is worth —
+   * `100 / returnPerDollar`, served rather than divided here so two surfaces cannot
+   * print two numbers for one statistic.
+   *
+   * Do NOT pair it with `/revenue`'s `costEconomics.costOfAcquisitionPct`, which is
+   * REALIZED (measured spend over measured pipeline). Same projected-vs-realized split
+   * the return already carries against `roiMultiple`.
+   */
+  costOfAcquisitionPct?: number | null;
 }
 
 export interface FeatureAudienceStatsResponse {
@@ -2689,6 +2699,7 @@ export interface FeatureAudienceStatsResponse {
 const AudienceProjectionSchema = z.object({
   costPerPaidClientUsd: z.coerce.number().nullable(),
   returnPerDollar: z.coerce.number().nullable(),
+  costOfAcquisitionPct: z.coerce.number().nullable().optional(),
 });
 
 const FeatureAudienceStatsRowSchema = z.object({
