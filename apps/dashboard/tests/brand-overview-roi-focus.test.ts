@@ -100,10 +100,24 @@ describe("the brand Overview charts return, and ranks audiences on it", () => {
     // Displayed value and sort key are the same expression in both branches, or the
     // card shows one order and states another.
     expect(audiences).toContain("ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)");
-    // The brand's own return, so a row reads as beating the brand or not.
-    expect(audiences).toContain("data?.brandProjection?.returnPerDollar");
     // Never computed here — lifetime revenue ÷ cost per paid client is the producer's.
     expect(audiences).not.toContain("lifetimeRevenueUsd /");
+  });
+
+  it("states no brand-wide return of its own, and no funnel cost at brand level", () => {
+    // The card used to restate the brand's PROJECTED return under its heading, two
+    // inches from the ROI stat card's REALIZED one — same word, two questions, so the
+    // page read as contradicting itself (2.5x under 2.7x in prod). One return per page.
+    expect(audiences).not.toContain("brandProjection");
+    expect(audiences).not.toContain("per dollar overall");
+    // A cost per outcome names one funnel's step; a brand runs several at once.
+    expect(audiences).toContain("const brandLevelMoney = !campaignScoped");
+    expect(audiences).toContain("const subtitle = brandLevelMoney");
+    // The brand Overview takes the brand-level default; the campaign Overview opts out.
+    const at = overview.indexOf("<TopAudiencesCard");
+    expect(at).toBeGreaterThan(-1);
+    expect(overview.slice(at, overview.indexOf("/>", at))).not.toContain("campaignScoped");
+    expect(campaign).toContain("campaignScoped");
   });
 });
 

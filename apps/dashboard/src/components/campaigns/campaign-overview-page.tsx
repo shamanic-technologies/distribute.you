@@ -497,6 +497,9 @@ export function CampaignOverviewPage() {
             audiences={audienceStatsRevealed ? displayAudiences : undefined}
             pending={!audienceStatsRevealed}
             metric={audienceStatsMetric}
+            // One campaign sells one funnel, so its own step IS what it buys —
+            // the per-outcome cost stays here and is dropped at brand level.
+            campaignScoped
           />
         }
         topRow={
