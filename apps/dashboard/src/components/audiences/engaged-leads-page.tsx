@@ -11,10 +11,8 @@ import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
   listBrandLeads,
   listCampaignLeads,
-  getCampaign,
   getLeadConsolidatedStatus,
   leadDateForStatus,
-  getBrandSalesEconomics,
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
   getLeadEmail,
@@ -25,13 +23,15 @@ import {
   type AudienceWire,
 } from "@/lib/api";
 import {
-  leadTabsFor,
-  outcomeTabFor,
+  leadTabsForFunnels,
+  outcomeTabDescriptor,
   type AnyLeadTab,
   type OutcomeTab,
 } from "@/lib/goal-steps";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
+import { normalizeSalesFunnelKey } from "@/lib/sales-funnels";
+import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
 import { buildLeadsCsv } from "@/lib/leads-csv";
@@ -42,7 +42,8 @@ import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import { useSharePathPrefix } from "@/components/share/share-mode-context";
 
-// Labels for the goal-driven Leads tabs (goal-steps returns the ordered keys).
+// Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
+// funnels (`leadTabsForFunnels`); this map only names them.
 const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
   "positive-replies": "Positive replies",
   clicks: "Website Visits",
@@ -852,28 +853,27 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
 
   const leads = useMemo(() => data?.leads ?? [], [data]);
 
-  // Brand optimization goal drives the default tab: signups → Website visits,
-  // sales_meetings (server default when unset) → Positive replies.
-  const { data: econData } = useAuthQuery(
-    ["brandSalesEconomics", brandId],
-    () => getBrandSalesEconomics(brandId),
-    {},
-  );
-  const optimizationGoal = econData?.salesEconomics?.optimizationGoal ?? null;
-  const goal = optimizationGoal ?? "sales_meetings";
+  const featureSlug = useSoleFeatureSlug();
 
-  // Campaign-scoped: the funnel the campaign itself states decides which tabs are on the
-  // chain. The goal cannot — `reply_meeting` and `visit_meeting` are both `sales_meetings`,
-  // so a goal-keyed tab list offers a Website Visits tab to a campaign whose chain starts
-  // at a positive reply. Same `["campaign", id]` key the campaign Overview and the top bar
-  // already poll, so React Query serves one request for all three. Brand-scoped (no
-  // campaignId) states no funnel and keeps the goal's tabs.
-  const { data: campaignData } = useAuthQuery(
-    ["campaign", campaignId ?? "none"],
-    () => getCampaign(campaignId as string),
-    { enabled: !!campaignId },
-  );
-  const funnelKey = campaignData?.campaign.funnelKey ?? null;
+  // WHICH TABS this page shows comes from the funnels the brand's ACTIVE campaigns
+  // sell. At brand level that is the UNION over every live campaign; under a campaign
+  // it is that campaign's own funnel, the one thing it sells.
+  //
+  // Never the brand goal: that column is retired in brand-service (NOT NULL with a
+  // server default, so it reads "website purchases" for a brand that stated nothing)
+  // and it collapses the two meeting funnels onto one word, so a brand booking
+  // meetings off replies was offered a Website Visits tab it never buys.
+  const campaignRows = useCampaignRows(brandId, featureSlug);
+  const activeFunnelKeys = useMemo(() => {
+    const scoped = campaignId
+      ? campaignRows.rows.filter((r) => r.campaign.id === campaignId)
+      : campaignRows.rows;
+    return scoped
+      .map((r) => r.campaign.funnelKey)
+      .filter((k): k is NonNullable<typeof k> => k != null)
+      .map(normalizeSalesFunnelKey);
+  }, [campaignRows.rows, campaignId]);
+  const funnelTabs = useMemo(() => leadTabsForFunnels(activeFunnelKeys), [activeFunnelKeys]);
 
   // Realized per-lead OUTCOMES (features-service#476 conversion-tracker attribution)
   // live on the /revenue `leads[]` rows, NOT the lead-service `listBrandLeads` row —
@@ -881,7 +881,6 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   // poll) and join by the lead IDENTITY (`lead.leadId` ↔ `ConversionLead.leadId`, not
   // the leads_campaigns row `id`). The outcome tab (Signups/Meetings/Form submissions/
   // Sales) buckets on the join boolean + dates on its timestamp.
-  const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const { data: revenueData } = useAuthQuery(
     campaignId
@@ -901,12 +900,24 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
     return m;
   }, [revenueData]);
 
-  const outcomeTab = outcomeTabFor(goal, funnelKey);
+  // One descriptor per outcome the active funnels terminate in — a brand selling
+  // through several has several, so this is a list rather than a per-goal lookup.
+  const outcomeTabs = useMemo(
+    () => funnelTabs.outcomes.map(outcomeTabDescriptor),
+    [funnelTabs],
+  );
+  const availableOutcomeTabs = useMemo(
+    () =>
+      outcomeTabs.filter((t) =>
+        (revenueData?.leads ?? []).some((l) => l[t.leadField] !== undefined),
+      ),
+    [outcomeTabs, revenueData],
+  );
+  // The leftmost available outcome drives the Date column + the row buckets.
+  const outcomeTab = availableOutcomeTabs[0] ?? null;
   // The outcome tab shows ONLY once the /revenue join actually serves its per-lead
   // field — absent (all `undefined`) on a pre-#476-prod payload → hidden (no empty tab).
-  const outcomeAvailable =
-    !!outcomeTab &&
-    (revenueData?.leads ?? []).some((l) => l[outcomeTab.leadField] !== undefined);
+  const outcomeAvailable = outcomeTab != null;
   // Realized-outcome timestamp per lead-ROW id (LeadsTable's Date column reads it).
   const outcomeDates = useMemo(() => {
     const m = new Map<string, string | null>();
@@ -973,7 +984,7 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
     groups.set("positive-replies", sortByStatusDate(positive));
     groups.set("clicks", sortByStatusDate(clicks));
     groups.set("outreach", sortByStatusDate(outreach));
-    // Realized-outcome bucket: leads the /revenue join flags for the goal's outcome,
+    // Realized-outcome bucket: leads the /revenue join flags for the funnel's outcome,
     // sorted desc by the outcome timestamp. Only leads present in the join AND flagged
     // true qualify (null/undefined = not reached).
     if (outcomeTab) {
@@ -997,17 +1008,16 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   }, [leads, sortedLeads, outcomeTab, outcomeByLeadId, outcomeDates]);
 
   // Open, once (after leads + the sales-economics query have settled), the leftmost
-  // on-path tab that has leads, in the goal's OUTCOME-FIRST order (goal-steps single
+  // on-path tab that has leads, in the OUTCOME-FIRST order (goal-steps single
   // source: sales_meetings → Positive replies first, visit goals → Website Visits
   // first, Outreach last). Fall through to the next non-empty tab so the user never
   // lands on an empty tab; default to the last (Outreach) when all empty. User manual
-  // switches latch the ref and are never overridden by a later poll. Gate on `econData`
-  // (not `optimizationGoal`, which is null both while loading AND when unset).
+  // switches latch the ref and are never overridden by a later poll.
   // Visible tabs, left→right: the realized-outcome tab FIRST (when the /revenue join
-  // serves it), then the goal's engagement tabs (outcome-first), Outreach last.
+  // serves it), then the funnels' engagement tabs (outcome-first), Outreach last.
   const visibleTabs: Tab[] = [
-    ...(outcomeAvailable && outcomeTab ? [outcomeTab.tab] : []),
-    ...leadTabsFor(goal, funnelKey),
+    ...availableOutcomeTabs.map((t) => t.tab),
+    ...funnelTabs.engagement,
   ];
 
   // The population the tabs can actually reach — every tab is an ENGAGEMENT step
@@ -1038,16 +1048,16 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
 
   useEffect(() => {
     if (hasAutoSelectedTab.current) return;
-    if (sortedLeads.length === 0 || econData === undefined) return;
-    // Campaign-scoped: wait for the campaign too, or the latch fires on the goal's tab
-    // list and lands on a tab the funnel does not even offer (a Website Visits tab on a
-    // reply→meeting campaign). The latch is one-shot, so a later funnel cannot correct it.
-    if (campaignId && campaignData === undefined) return;
+    if (sortedLeads.length === 0) return;
+    // Wait for the CAMPAIGNS query, which is what decides the tab set now: firing the
+    // latch first lands on a tab the funnels do not even offer, and it is one-shot, so
+    // a later answer cannot correct it.
+    if (!campaignRows.settled) return;
     hasAutoSelectedTab.current = true;
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
     setActiveTab(visibleTabs.find((t) => count(t) > 0) ?? visibleTabs[visibleTabs.length - 1] ?? "outreach");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedLeads.length, econData, optimizationGoal, funnelKey, campaignData, groupedByTab, outcomeAvailable]);
+  }, [sortedLeads.length, campaignRows.settled, groupedByTab, outcomeAvailable]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
