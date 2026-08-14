@@ -16,6 +16,11 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
  */
 describe("Campaigns page (GA)", () => {
   const page = read("components/campaigns/campaigns-page.tsx");
+  // The table, its columns and the vocabulary behind them are a COMPONENT — the brand
+  // Overview renders the same one under its chart. So the assertions about columns,
+  // cells, ordering and status wording read the table; the ones about the page's own
+  // header (tiles, heading, #1 channel) still read the page.
+  const table = read("components/campaigns/campaigns-table.tsx");
   const sidebar = read("components/context-sidebar.tsx");
   const overview = read("components/campaigns/campaign-overview-page.tsx");
   const api = read("lib/api.ts");
@@ -51,8 +56,8 @@ describe("Campaigns page (GA)", () => {
     expect(sidebar).toContain('backLabel="Campaigns"');
     expect(sidebar).not.toContain('label: "Channels"');
     expect(page).toContain(">Campaigns</h1>");
-    expect(page).toContain("No campaigns yet.");
-    expect(page).not.toContain("No channels yet.");
+    expect(table).toContain("No campaigns yet.");
+    expect(table).not.toContain("No channels yet.");
   });
 
   // A campaign is set up with us, not spun up from a table row. The create
@@ -70,11 +75,11 @@ describe("Campaigns page (GA)", () => {
   // channel's own mark + catalogue name, and the funnel's mark + name. A second
   // wording for either would be the same thing under two names on two screens.
   it("draws Channel and Sales funnel from the brand-Settings catalogues", () => {
-    expect(page).toContain("acquisitionChannelForWorkflowSlug");
-    expect(page).toContain("<AcquisitionChannelMark");
-    expect(page).toContain("<SalesFunnelMark");
-    expect(page).toContain("<ChannelCell workflowSlug={campaign.workflowSlug} />");
-    expect(page).toContain(
+    expect(table).toContain("acquisitionChannelForWorkflowSlug");
+    expect(table).toContain("<AcquisitionChannelMark");
+    expect(table).toContain("<SalesFunnelMark");
+    expect(table).toContain("<ChannelCell workflowSlug={campaign.workflowSlug} />");
+    expect(table).toContain(
       "<FunnelCell funnelKey={campaign.funnelKey} />",
     );
   });
@@ -88,7 +93,7 @@ describe("Campaigns page (GA)", () => {
     // `\n}\n` and not `\n}`: the props are destructured with a type annotation,
     // so the first `\n}` in this component closes the parameter block, not the
     // function — slicing there cuts the body out entirely.
-    const cell = page.slice(page.indexOf("function FunnelCell("));
+    const cell = table.slice(table.indexOf("function FunnelCell("));
     const body = cell.slice(0, cell.indexOf("\n}\n"));
     expect(body).toContain("campaignFunnel(funnelKey)");
     expect(body).not.toContain("primaryFunnelForGoal");
@@ -101,18 +106,18 @@ describe("Campaigns page (GA)", () => {
   // and provisioning an empty twin. So the page invents no state: it renders the
   // campaign's own status, and there is no "superseded" anywhere in the fleet.
   it("renders the campaign's own status and invents no state", () => {
-    expect(page).toContain("<StatusPill status={campaign.status} />");
+    expect(table).toContain("<StatusPill status={campaign.status} />");
     expect(page).not.toContain("superseded");
     expect(page).not.toContain("Superseded");
     // The table is the campaigns a brand RUNS — one line per live campaign. A
     // stopped campaign is history, not a line; its runs still count because
     // features-service totals each identity (org, brand, funnel, channel)
     // server-side, so the live campaign's figures include its stopped ancestors.
-    expect(page).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
+    expect(table).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
   });
 
   it("reads per-campaign stats from the features-service grouped reader", () => {
-    expect(page).toContain("getFeatureRevenueByCampaign");
+    expect(table).toContain("getFeatureRevenueByCampaign");
     expect(api).toContain("export async function getFeatureRevenueByCampaign");
     expect(api).toContain("groupBy: \"campaignId\"");
   });
@@ -120,7 +125,7 @@ describe("Campaigns page (GA)", () => {
   // Return leads, because that is what the table is sorted by. A table that
   // displays one order and ranks by another reads as unordered.
   it("orders the columns ROI, % CAC, Revenue, Sales funnel, Channel, Status", () => {
-    const head = page.slice(page.indexOf("<thead>"), page.indexOf("</thead>"));
+    const head = table.slice(table.indexOf("<thead>"), table.indexOf("</thead>"));
     const order = ["ROI", "% CAC", "Revenue", "Sales funnel", "Channel", "Status"];
     let at = -1;
     for (const label of order) {
@@ -142,11 +147,11 @@ describe("Campaigns page (GA)", () => {
     const header =
       "border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
     expect(leads).toContain(header);
-    expect(page).toContain(header);
+    expect(table).toContain(header);
     // Row separation via the same divider the reference table uses, so a row
     // carries no border of its own.
-    expect(page).toContain('<tbody className="divide-y divide-gray-50">');
-    expect(page).not.toContain("border-b border-gray-100 cursor-pointer");
+    expect(table).toContain('<tbody className="divide-y divide-gray-50">');
+    expect(table).not.toContain("border-b border-gray-100 cursor-pointer");
     // The eyebrow on a stat card, byte-equal to top-audiences-card's.
     const eyebrow = "text-xs font-medium text-gray-400 uppercase tracking-wide";
     expect(read("components/revenue/top-audiences-card.tsx")).toContain(eyebrow);
@@ -159,7 +164,7 @@ describe("Campaigns page (GA)", () => {
   // carry the emphasis — a second type size inside one row is what made the
   // table read as its own thing.
   it("greens ROI above 1x, never red below, at the table's own size", () => {
-    const cell = page.slice(page.indexOf("function RoiCell("));
+    const cell = table.slice(table.indexOf("function RoiCell("));
     const body = cell.slice(0, cell.indexOf("\n}"));
     expect(body).toContain("multiple != null && multiple > 1");
     expect(body).toContain("font-semibold");
@@ -174,9 +179,9 @@ describe("Campaigns page (GA)", () => {
   // with. The #1 tile reads that same ordering off `rows`, so it can never name a
   // campaign other than the first row.
   it("sorts live campaigns by ROI descending, and the #1 tile reads that same ranking", () => {
-    expect(page).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
-    expect(page).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
-    expect(page).not.toContain("if (byStatus !== 0) return byStatus;");
+    expect(table).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
+    expect(table).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
+    expect(table).not.toContain("if (byStatus !== 0) return byStatus;");
     expect(page).toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
   });
 
@@ -187,17 +192,17 @@ describe("Campaigns page (GA)", () => {
   // clutter was only how it showed. The empty state reads the same scoped set, or a
   // brand whose only campaigns belong to another feature would be told it has some.
   it("lists only the campaigns of the feature whose figures it renders", () => {
-    expect(page).toContain("campaigns.filter((c) => c.featureSlug === featureSlug)");
-    expect(page).toContain('featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."');
-    expect(page).not.toContain('campaigns.length === 0 ? "No campaigns yet."');
+    expect(table).toContain("campaigns.filter((c) => c.featureSlug === featureSlug)");
+    expect(table).toContain('featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."');
+    expect(table).not.toContain('campaigns.length === 0 ? "No campaigns yet."');
   });
 
   // The words that paint a pill green and the words that rank a row first are ONE
   // set. Two lists would let the colour and the order disagree about which
   // campaigns are live — a row shown as running, sorted as stopped.
   it("ranks on the same status set the pill paints green", () => {
-    expect(page).toContain('const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"])');
-    const pill = page.slice(page.indexOf("function StatusPill("));
+    expect(table).toContain('const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"])');
+    const pill = table.slice(table.indexOf("function StatusPill("));
     expect(pill.slice(0, pill.indexOf("\n}"))).toContain("isActiveStatus(status)");
   });
 
@@ -206,10 +211,10 @@ describe("Campaigns page (GA)", () => {
   // two words for one concept on screen. Only the LABEL is translated: the pill still
   // renders `campaign.status` and `isActiveStatus` still decides what running means.
   it("says Active, never the wire's own word for it", () => {
-    const label = page.slice(page.indexOf("function statusLabel("));
+    const label = table.slice(table.indexOf("function statusLabel("));
     const body = label.slice(0, label.indexOf("\n}"));
     expect(body).toContain('isActiveStatus(status) ? "Active" : status');
-    const pill = page.slice(page.indexOf("function StatusPill("));
+    const pill = table.slice(table.indexOf("function StatusPill("));
     expect(pill.slice(0, pill.indexOf("\n}"))).toContain("{statusLabel(status)}");
   });
 
@@ -217,32 +222,31 @@ describe("Campaigns page (GA)", () => {
   // each column says so through the shared (i) primitive — never a native
   // `title` (dead on a phone) and never a second wording per column.
   it("explains each number column through InfoTooltip", () => {
-    expect(page).toContain("InfoTooltip");
-    expect(page).not.toContain("title=");
-    expect(page).toContain("COLUMN_INFO.roi");
-    expect(page).toContain("COLUMN_INFO.cacPct");
-    expect(page).toContain("COLUMN_INFO.revenue");
+    expect(table).toContain("InfoTooltip");
+    expect(table).not.toContain("title=");
+    expect(table).toContain("COLUMN_INFO.roi");
+    expect(table).toContain("COLUMN_INFO.cacPct");
+    expect(table).toContain("COLUMN_INFO.revenue");
     // The revenue column is expected pipeline, not money collected — the whole
     // reason it carries a tip.
-    expect(page).toContain("Expected pipeline revenue:");
-    expect(page).toContain("not money already collected");
+    expect(table).toContain("Expected pipeline revenue:");
+    expect(table).toContain("not money already collected");
   });
 
   it("renders all four campaign stats from server fields, no client cost math", () => {
     // Fields come straight off the features-service group.
-    expect(page).toContain("totalPipelineUsd");
-    expect(page).toContain("costPerConversionUsd");
-    expect(page).toContain("roiMultiple");
-    expect(page).toContain("costOfAcquisitionPct");
+    expect(table).toContain("totalPipelineUsd");
+    expect(table).toContain("roiMultiple");
+    expect(table).toContain("costOfAcquisitionPct");
     // No client-side cost derivation (the CPC-incident rule): no dividing a cost
     // by a count, no reduce-summing a cost breakdown.
-    expect(page).not.toMatch(/actualCostUsd\s*\/\s*/);
-    expect(page).not.toMatch(/\.reduce\(/);
+    expect(table).not.toMatch(/actualCostUsd\s*\/\s*/);
+    expect(table).not.toMatch(/\.reduce\(/);
   });
 
   it("global header blended pipeline + CAC read the brand-level revenue field, not a client sum", () => {
     expect(page).toContain("brandRevenueQ.data?.totalPipelineUsd");
-    expect(page).toContain("brandRevenueQ.data?.costEconomics.costPerConversionUsd");
+    expect(page).toContain("brandRevenueQ.data?.costEconomics.costPerAcquisitionUsd");
   });
 
   // The sidebar carries no campaign name and several sit under one brand, so
@@ -265,8 +269,8 @@ describe("Campaigns page (GA)", () => {
 
   it("reveals on settle (resolved OR errored) so a failed query can't eternal-skeleton", () => {
     expect(page).toContain("brandRevenueQ.isError");
-    expect(page).toContain("campaignsQ.isError");
-    expect(page).toContain("groupsQ.isError");
+    expect(table).toContain("campaignsQ.isError");
+    expect(table).toContain("groupsQ.isError");
     expect(page).toContain("headerSettled");
     expect(page).toContain("tableSettled");
   });

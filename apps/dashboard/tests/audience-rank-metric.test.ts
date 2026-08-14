@@ -141,8 +141,17 @@ describe("both Overview surfaces let the card pick the top 3", () => {
 describe("the Audiences table reads the same helper", () => {
   it("seeds its default sort column from audienceRankMetric", () => {
     const src = read("../src/components/audiences/customer-audiences-page.tsx");
-    const line = src.split("\n").find((l) => l.includes("const defaultSortCol"));
-    expect(line).toBeDefined();
+    // The whole STATEMENT, not one line: the default is a ternary spanning three lines
+    // since brand level took its own column, and a line-scoped read would cut the
+    // helper call out of the haystack and fail on correct code.
+    const at = src.indexOf("const defaultSortCol");
+    expect(at).toBeGreaterThan(-1);
+    const line = src.slice(at, src.indexOf(";", at) + 1);
     expect(line).toContain("audienceRankMetric(optimizationGoal, trackerSetUp)");
+    // At BRAND level the table states money instead, and leads with RETURN — highest
+    // first, because cost per outcome ranks by cheapness and would put an audience
+    // converting to nothing above an expensive one that pays. The shared helper still
+    // decides every campaign-level default.
+    expect(line).toContain("brandLevelMoney");
   });
 });

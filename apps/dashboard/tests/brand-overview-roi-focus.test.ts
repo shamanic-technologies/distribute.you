@@ -106,3 +106,59 @@ describe("the brand Overview charts return, and ranks audiences on it", () => {
     expect(audiences).not.toContain("lifetimeRevenueUsd /");
   });
 });
+
+/**
+ * The brand Overview lists the campaigns behind its own numbers, and the brand
+ * Audiences table states money rather than one funnel's steps. Both are the same rule
+ * one level down: a brand runs several funnels, so a per-funnel figure on a brand
+ * surface labels a sum with one member's vocabulary.
+ */
+describe("brand surfaces list campaigns and state money", () => {
+  const overview = read(
+    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
+  );
+  const table = read("components/campaigns/campaigns-table.tsx");
+  const campaignsPage = read("components/campaigns/campaigns-page.tsx");
+  const audiences = read("components/audiences/customer-audiences-page.tsx");
+
+  it("renders ONE campaigns table, on both surfaces", () => {
+    // A component, never a second copy — two copies is how a campaign comes to read
+    // one way on the Overview and another way one click over.
+    expect(table).toContain("export function CampaignsTable(");
+    expect(overview).toContain("<CampaignsTable");
+    expect(campaignsPage).toContain("<CampaignsTable");
+    // The page keeps only what the table does not answer: its header tiles.
+    expect(campaignsPage).not.toContain("<thead>");
+    expect(campaignsPage).toContain("StatTile");
+  });
+
+  it("prices the Campaigns page header off the un-lensed field, so its tile is not a dash", () => {
+    // `costPerConversionUsd` is lens-only and absent on this brand-level call, which is
+    // what left "Cost per acquisition" empty. Same defect, same fix as the Overview's.
+    expect(campaignsPage).toContain("costEconomics.costPerAcquisitionUsd");
+    expect(campaignsPage).not.toContain("costEconomics.costPerConversionUsd");
+  });
+
+  it("states ROI and $ CAC on the brand Audiences table, and no funnel step columns", () => {
+    expect(audiences).toContain("const brandLevelMoney = !campaignScoped;");
+    // Every funnel-scoped pair is off at brand level; the campaign route keeps them all.
+    expect(audiences).toContain("showReplyColsForGoal && !brandLevelMoney");
+    expect(audiences).toContain('optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney');
+    expect(audiences).toContain('label="ROI"');
+    expect(audiences).toContain('label="$ CAC"');
+    // Read verbatim off the projection — and NOT inverted into a % CAC, which is the
+    // banned browser division. That column waits on features-service.
+    expect(audiences).toContain("stats?.projection?.returnPerDollar");
+    expect(audiences).toContain("stats?.projection?.costPerPaidClientUsd");
+    expect(audiences).not.toContain("100 /");
+    expect(audiences).not.toContain('label="% CAC"');
+  });
+
+  it("leads the brand Audiences table with the highest return, not the cheapest cost", () => {
+    expect(audiences).toContain('brandLevelMoney\n    ? "roi"');
+    expect(audiences).toContain('brandLevelMoney ? "desc" : "asc"');
+    // Displayed value and sort key are one expression, or the table shows one order
+    // and states another.
+    expect(audiences).toContain("formatReturn(stats?.projection?.returnPerDollar)");
+  });
+});
