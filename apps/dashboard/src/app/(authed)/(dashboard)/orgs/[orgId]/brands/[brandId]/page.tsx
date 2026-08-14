@@ -15,25 +15,17 @@ import {
   getFeaturePipelineActivity,
   fetchFeatureAudienceStats,
   listAudiences,
-  getWorkflowProjection,
-  salesObjectiveForOptimizationGoal,
-  keepLastGoodWorkflowProjection,
   keepLastGoodFeatureRevenue,
   type PipelineActivityMetric,
-  type WorkflowProjectionResponse,
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import {
-  selectWorkflowForOptimizationGoal,
-  workflowOutcomeUnitCost,
-} from "@/lib/workflow-projection-choice";
 import { audienceRankMetric } from "@/lib/strategy-model";
 import {
-  goalOutcomeCount,
-  recommendedLearningSpendUsd,
+  brandOutcomeCount,
+  daysSinceFirstSpend,
   shouldShowReassurance,
 } from "@/lib/first-outcome-reassurance";
 import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
@@ -238,77 +230,12 @@ export default function BrandOverviewPage() {
       ? (budgetData.dailyBudgetCents / 100) * 30
       : null;
 
-  const { data: outcomeProjection, isError: outcomeIsError } = useAuthQuery(
-    [
-      "workflowProjection",
-      brandId,
-      featureSlug,
-      "overview-outcome",
-      optimizationGoal,
-      monthlyBudgetUsd,
-      economicsData?.salesEconomics?.updatedAt ?? "no-economics",
-    ],
-    () =>
-      getWorkflowProjection({
-        featureSlug,
-        brandId,
-        objective: salesObjectiveForOptimizationGoal(optimizationGoal),
-        budgetUsd: monthlyBudgetUsd ?? undefined,
-      }),
-    {
-      enabled: enabled && economicsData !== undefined && monthlyBudgetUsd != null,
-      placeholderData: undefined,
-      structuralSharing: (prev, next) =>
-        keepLastGoodWorkflowProjection(
-          prev as WorkflowProjectionResponse | undefined,
-          next as WorkflowProjectionResponse,
-        ),
-    },
-  );
-
-  const activeOutcomeWorkflow = useMemo(() => {
-    if (!outcomeProjection) return null;
-    return selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal, {
-      visitToSignupPct: economicsData?.salesEconomics?.visitToSignupPct,
-      replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct,
-      visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct,
-      projectionBudgetUsd: monthlyBudgetUsd,
-    });
-  }, [
-    economicsData?.salesEconomics?.replyToMeetingPct,
-    economicsData?.salesEconomics?.visitToMeetingPct,
-    economicsData?.salesEconomics?.visitToSignupPct,
-    monthlyBudgetUsd,
-    optimizationGoal,
-    outcomeProjection,
-  ]);
-
-  // The brand's expected cost for ONE of its goal outcomes. Its own memo because two
-  // surfaces read it: the expected monthly count below, and the reassurance banner's
-  // recommended learning budget.
-  const outcomeUnitCostUsd = useMemo(() => {
-    if (activeOutcomeWorkflow == null) return null;
-    return workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal, {
-      visitToSignupPct: economicsData?.salesEconomics?.visitToSignupPct,
-      replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct,
-      visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct,
-      projectionBudgetUsd: monthlyBudgetUsd,
-    });
-  }, [
-    activeOutcomeWorkflow,
-    economicsData?.salesEconomics?.replyToMeetingPct,
-    economicsData?.salesEconomics?.visitToMeetingPct,
-    economicsData?.salesEconomics?.visitToSignupPct,
-    monthlyBudgetUsd,
-    optimizationGoal,
-  ]);
-
-  const expectedMonthlyOutcome = useMemo(() => {
-    if (monthlyBudgetUsd == null || monthlyBudgetUsd <= 0) return null;
-    return outcomeUnitCostUsd != null && outcomeUnitCostUsd > 0
-      ? monthlyBudgetUsd / outcomeUnitCostUsd
-      : null;
-  }, [monthlyBudgetUsd, outcomeUnitCostUsd]);
+  // NO workflow-projection here any more. It resolved a WORKFLOW for the brand's goal,
+  // and it fed exactly two things: the Outcome line's forward projection, which the
+  // Return-on-spend chart replaced, and a spend cap that priced the reassurance banner's
+  // learning window in that goal's outcome. A brand has no goal — it runs several
+  // funnels at once — so the objective it was asked for came off the retired,
+  // server-defaulted brand column. The banner is held to its own claim in TIME instead.
 
   // Real audience-level cost evidence from features-service. This replaces the
   // old provider-cost-source list; no dashboard-side mock/hash audience split.
@@ -367,22 +294,14 @@ export default function BrandOverviewPage() {
     audienceStatsData !== undefined || audienceStatsIsError,
     audiencesData !== undefined || audiencesIsError,
   ]);
-  const outcomeRevealed = useCoordinatedReveal([
-    budgetData !== undefined || budgetIsError,
-    economicsData !== undefined || economicsIsError,
-    monthlyBudgetUsd == null || outcomeProjection !== undefined || outcomeIsError,
-  ]);
-  // The reassurance banner names the brand's OWN outcome, so it must also DISAPPEAR on
-  // that outcome — hiding a "waiting for your first positive replies" notice the moment
-  // an unrelated click lands would contradict the sentence it just showed. The outcome
-  // count rides `/revenue`, so the banner reveals with revenue too.
-  const recommendedLearningUsd = recommendedLearningSpendUsd(outcomeUnitCostUsd);
+  // The brand has landed its first result when ANY funnel it sells converts, and the
+  // banner retires on the window it promised — features-service dates the brand's first
+  // spend as the first point of its own return curve, so nothing is invented here.
   const showFirstOutcomeReassurance = shouldShowReassurance({
     revealed: statsRevealed && revenueRevealed,
     paused: isBrandPaused,
-    outcomeCount: goalOutcomeCount(optimizationGoal, data?.spend, totalWebsiteClicks),
-    recommendedSpendUsd: recommendedLearningUsd,
-    spentUsd: data?.spend?.totalSpentCents != null ? data.spend.totalSpentCents / 100 : null,
+    outcomeCount: brandOutcomeCount(data?.spend),
+    daysRunning: daysSinceFirstSpend(data?.roiHistory?.daily?.[0]?.date, new Date()),
   });
 
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
@@ -417,10 +336,7 @@ export default function BrandOverviewPage() {
     return (
       <DashboardPage width="wide" className="space-y-4">
         {showFirstOutcomeReassurance && (
-        <FirstOutcomeReassuranceBanner
-          subject="Your campaign"
-          goal={optimizationGoal}
-        />
+        <FirstOutcomeReassuranceBanner subject="Your campaign" />
       )}
         <RevenueEmptyState />
       </DashboardPage>
@@ -430,11 +346,10 @@ export default function BrandOverviewPage() {
   return (
     <DashboardPage width="wide" className="space-y-4">
       {showFirstOutcomeReassurance && (
-        <FirstOutcomeReassuranceBanner
-          subject="Your campaign"
-          goal={optimizationGoal}
-        />
+        <FirstOutcomeReassuranceBanner subject="Your campaign" />
       )}
+      {/* No `expectedOutcome`: it fed the Outcome line's dashed forecast, and this level
+          charts the return instead. */}
       <RevenueOverviewSection
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
@@ -445,13 +360,6 @@ export default function BrandOverviewPage() {
         visitToSignupPct={visitToSignupPct}
         revenuePending={!revenueRevealed}
         activityPending={!activityRevealed}
-        expectedOutcome={
-          outcomeRevealed
-            ? {
-                value: expectedMonthlyOutcome,
-              }
-            : undefined
-        }
         costPending={!costRevealed}
         todayCostPending={!costRevealed}
         dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}
