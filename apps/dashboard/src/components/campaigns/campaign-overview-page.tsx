@@ -323,12 +323,16 @@ export function CampaignOverviewPage() {
   // features-service `?campaignId=` (via api-service forward). Keyed by campaignId so
   // it's a distinct cache entry from the brand-wide Top-audiences card.
   const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, audienceStatsGoal, "campaign", campaignId],
+    ["featureAudienceStats", featureSlug, brandId, campaignFunnelKey ?? audienceStatsGoal, "campaign", campaignId],
     // No `limit` — the server would pre-pick its top 3 by ITS OWN sortMetric, a different
     // column than this card shows. The card sorts + slices on the brand's metric instead.
+    // A campaign sells exactly ONE funnel and states which, so it names it: the goal
+    // cannot, since `reply_meeting` and `visit_meeting` both answer to `meetingBooked`
+    // and would price a reply-driven chain against clicks it never buys. A campaign that
+    // predates the funnel keeps the goal.
     () => fetchFeatureAudienceStats(featureSlug, {
       brandId,
-      goal: audienceStatsGoal,
+      ...(campaignFunnelKey ? { funnel: campaignFunnelKey } : { goal: audienceStatsGoal }),
       campaignId,
     }),
     { enabled, ...pollOptions },

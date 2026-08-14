@@ -2582,7 +2582,9 @@ export type FeatureAudienceStatsGoal =
   | "websiteVisit"
   | "positiveReply"
   | "formSubmission";
-export type FeatureAudienceStatsSortMetric = "cpc" | "cppr";
+/** `returnPerDollar` is the BRAND-level order (descending, unmeasurable last); the two
+ *  cost metrics order a funnel-scoped read (ascending, cheapest first). */
+export type FeatureAudienceStatsSortMetric = "cpc" | "cppr" | "returnPerDollar";
 
 export interface FeatureAudienceStatsRow {
   audienceId: string;
@@ -2654,6 +2656,11 @@ export interface AudienceProjection {
   /** PROJECTED dollars of lifetime revenue per dollar spent. Null (never 0) when
    *  unmeasurable. An audience with no measured grain inherits `brandProjection`. */
   returnPerDollar: number | null;
+  /** Brand-level read only: the declared funnel this row was priced through — the
+   *  best-returning one for THIS audience, which is routinely not the brand's. */
+  basisFunnelKey?: string | null;
+  /** Brand-level read only: the lifetime revenue that chain values a client at. */
+  lifetimeRevenueUsd?: number | null;
   /**
    * PROJECTED cost of winning a customer as a SHARE of what that customer is worth —
    * `100 / returnPerDollar`, served rather than divided here so two surfaces cannot
@@ -2669,7 +2676,8 @@ export interface AudienceProjection {
 export interface FeatureAudienceStatsResponse {
   featureSlug: string;
   brandId: string;
-  goal: FeatureAudienceStatsGoal;
+  /** Null on the brand-level read — there is no goal there, only the return. */
+  goal: FeatureAudienceStatsGoal | null;
   brandProfileId: string | null;
   sortMetric: FeatureAudienceStatsSortMetric;
   audiences: FeatureAudienceStatsRow[];
@@ -2686,6 +2694,10 @@ const AudienceProjectionSchema = z.object({
   costPerPaidClientUsd: z.coerce.number().nullable(),
   returnPerDollar: z.coerce.number().nullable(),
   costOfAcquisitionPct: z.coerce.number().nullable().optional(),
+  // Brand-level read only: an audience's best chain is routinely NOT the brand's, and
+  // two audiences can be priced through chains the brand values differently.
+  basisFunnelKey: z.string().nullable().optional(),
+  lifetimeRevenueUsd: z.coerce.number().nullable().optional(),
 });
 
 const FeatureAudienceStatsRowSchema = z.object({
@@ -2731,9 +2743,13 @@ const FeatureAudienceStatsResponseSchema = z.object({
     z.literal("websiteVisit"),
     z.literal("positiveReply"),
     z.literal("formSubmission"),
-  ]),
+  ]).nullable(),
   brandProfileId: z.string().nullable(),
-  sortMetric: z.union([z.literal("cpc"), z.literal("cppr")]),
+  sortMetric: z.union([
+    z.literal("cpc"),
+    z.literal("cppr"),
+    z.literal("returnPerDollar"),
+  ]),
   audiences: z.array(FeatureAudienceStatsRowSchema),
   brandProjection: AudienceProjectionSchema.extend({
     lifetimeRevenueUsd: z.coerce.number().nullable(),
@@ -2798,7 +2814,18 @@ export async function fetchFeatureAudienceStats(
   featureSlug: string,
   params: {
     brandId: string;
-    goal: FeatureAudienceStatsGoal;
+    /**
+     * The SALES FUNNEL to price the cost columns on — the canonical parameter, and what
+     * a CAMPAIGN-scoped surface sends, since a campaign sells exactly one funnel and
+     * states which on its own row.
+     */
+    funnel?: SalesFunnelKeyWire;
+    /**
+     * DEPRECATED. The retired brand goal, kept only for a caller that still has one.
+     * It cannot name a chain — `reply_meeting` and `visit_meeting` both answer to
+     * `meetingBooked` — so prefer `funnel`.
+     */
+    goal?: FeatureAudienceStatsGoal;
     brandProfileId?: string;
     limit?: number;
     /** Audience lifecycle statuses to include. Comma-separated subset of
@@ -2813,7 +2840,14 @@ export async function fetchFeatureAudienceStats(
   },
   token?: string,
 ): Promise<FeatureAudienceStatsResponse> {
-  const query = new URLSearchParams({ brandId: params.brandId, goal: params.goal });
+  // Sending NEITHER is the BRAND-LEVEL read, and it is a first-class request rather
+  // than a missing parameter: features-service then prices every audience through the
+  // best-returning funnel the brand declared and sorts on return descending. That is
+  // the only honest answer at brand level — a brand runs several funnels at once, so
+  // naming one would denominate the whole table in one chain's terms.
+  const query = new URLSearchParams({ brandId: params.brandId });
+  if (params.funnel) query.set("funnel", params.funnel);
+  else if (params.goal) query.set("goal", params.goal);
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
   if (params.statuses) query.set("statuses", params.statuses);

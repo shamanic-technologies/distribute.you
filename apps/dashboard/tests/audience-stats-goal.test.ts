@@ -48,8 +48,14 @@ describe("one mapping, no inline copies", () => {
   // Three surfaces used to inline their own ternary. Two of them were 2-branch only
   // (`isVisitDrivenGoal(g) ? "signup" : "meetingBooked"`), so a sales / form_submissions /
   // website_purchase brand already asked for the wrong goal there too.
+  // The brand Overview is NOT in this list any more: its Top-audiences card names
+  // neither a funnel nor a goal, which features-service v0.129.0 treats as the
+  // brand-level read (every audience priced through the best-returning funnel the
+  // brand declared, sorted on return). A brand runs several funnels at once, so there
+  // is no goal to derive there — guarded in `brand-overview-roi-focus.test.ts`.
+  // These two still resolve one, as the fallback for a campaign that predates the
+  // funnel model and for the funnel-scoped cost columns.
   const sites = [
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     "../src/components/campaigns/campaign-overview-page.tsx",
     "../src/components/audiences/customer-audiences-page.tsx",
   ];

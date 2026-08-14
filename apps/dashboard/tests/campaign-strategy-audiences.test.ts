@@ -66,10 +66,15 @@ describe('Audiences page under a campaign', () => {
   it('asks features-service for THIS campaign outreach, on its own cache key', () => {
     const at = src.indexOf('"featureAudienceStats"');
     expect(at).toBeGreaterThan(-1);
-    // Measured: the query key + the fetch call fit in 520 chars.
-    const body = src.slice(at, at + 520);
+    // Measured: 823 chars from the query key to the end of `campaignId,`. The block
+    // grew when the brand read stopped naming a goal — a `toContain` fails when the
+    // slice is too SHORT (the target gets cut out), so this is measured, not guessed.
+    const body = src.slice(at, at + 900);
     expect(body).toContain('campaignScopeKey');
     expect(body).toContain('campaignId,');
+    // A campaign names its FUNNEL; the brand-level read names neither it nor a goal.
+    expect(body).toContain('funnel: campaignFunnelKey');
+    expect(body).toContain('brandLevelMoney');
   });
 
   it('says the audiences are the brand shared set, not the campaign own', () => {
