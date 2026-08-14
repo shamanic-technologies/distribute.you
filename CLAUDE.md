@@ -83,7 +83,13 @@ Concretely, the brand Overview shows `Outreach` plus four money cards — **Pipe
 
 **Every ROI figure on the page prints ONE decimal** (`11.7×`), byte-equal across the ROI stat card, the chart headline, the chart's y-axis and the Campaigns table. Coarsening above 10× was tried and reverted: at a real 11.7 the headline read `12×` two inches under a stat card reading `11.7×`.
 
-**Rank audiences on RETURN, never on cost per outcome** — cost per outcome ranks by cheapness, so an audience converting to nothing outranks an expensive one that pays. `projection.returnPerDollar` is the same definition `funnel-ranking` uses, so an audience's return and the brand's are one statistic at two grains; `brandProjection.returnPerDollar` is rendered above the rows so each reads as beating the brand or not. Guard: `tests/brand-overview-roi-focus.test.ts`. (#3349, #3355; features-service v0.127.0)
+**Rank audiences on RETURN, never on cost per outcome** — cost per outcome ranks by cheapness, so an audience converting to nothing outranks an expensive one that pays. `projection.returnPerDollar` is the same definition `funnel-ranking` uses, so an audience's return and the brand's are one statistic at two grains.
+
+**The Top-3 card is BRAND-scoped by default and states NOTHING but the return there** (`TopAudiencesCard`, `campaignScoped` opts the campaign Overview out). Two things were removed from it, and both are the same rule:
+- **It states no brand-wide return of its own.** It used to render `brandProjection.returnPerDollar` above the rows, so a reader could see an audience beating the brand or not. That number is **PROJECTED** (conversion rates × lifetime revenue) while the ROI stat card two inches above is **REALIZED** (`costEconomics.roiMultiple`, actual pipeline ÷ actual spend) — so one page carried two different numbers under one word (prod: `2.5×` under `2.7×`) and read as contradicting itself. Both were correct; printing both was the bug. **One return per page.** Do NOT re-add a second brand-grain figure here, and do NOT "reconcile" them — they answer different questions and a card is the wrong place to explain that.
+- **No cost per outcome at brand level.** `$45 cppr` under an audience names ONE funnel's step on a surface that sums several — the same reason the brand Overview drops the funnel step pairs. A row with no projection prints `-` rather than falling back to a funnel cost. The campaign Overview passes `campaignScoped` and keeps both the cost subtitle and the cost fallback, because it sells exactly one funnel.
+
+Guard: `tests/brand-overview-roi-focus.test.ts`. (#3349, #3355; features-service v0.127.0)
 
 **The rule runs one level down too: the brand AUDIENCES table and the brand Overview's campaigns section.**
 
