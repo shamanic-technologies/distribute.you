@@ -55,7 +55,12 @@ export function RevenueOverviewSection({
     repliedPositive?: SignalSeries;
     salesMeetings?: SignalSeries;
   };
-  optimizationGoal: BrandOptimizationGoal;
+  /**
+   * The goal, for the surfaces that still have one — the activity chart's step labels
+   * and the Outcome line's signal. A BRAND has none (it runs several funnels at once)
+   * and renders neither, so it passes nothing rather than a picked default.
+   */
+  optimizationGoal?: BrandOptimizationGoal;
   /**
    * The sales funnel this section is scoped to, when it is scoped to one — forwarded to
    * the activity chart and used for the Outcome line's own signal. A campaign states one
@@ -63,8 +68,10 @@ export function RevenueOverviewSection({
    * exactly as before.
    */
   funnelKey?: SalesFunnelKeyWire | null;
-  visitToMeetingPct: number | null | undefined;
-  visitToSignupPct: number | null | undefined;
+  /** Conversion rates the activity chart labels its bars with. Absent at brand level,
+   *  which does not render that chart. */
+  visitToMeetingPct?: number | null;
+  visitToSignupPct?: number | null;
   dailyBudgetCents?: number | null;
   brandId: string;
   featureSlug: string;
@@ -143,7 +150,9 @@ export function RevenueOverviewSection({
   // goal's answer.
   const isVisitDriven = funnelKey
     ? funnelSteps(funnelKey).some((s) => s.key === "website_visits")
-    : isVisitDrivenGoal(optimizationGoal);
+    : optimizationGoal
+      ? isVisitDrivenGoal(optimizationGoal)
+      : false;
   const outcomeSeries = isVisitDriven
     ? pipelineActualSeries?.clicks
     : pipelineActualSeries?.repliedPositive;
@@ -222,7 +231,7 @@ export function RevenueOverviewSection({
           past (actuals) + today + forecast, with the 7/30/90-day window toggle.
           Channel-scoped, so it renders on the campaign Overview and not on the
           brand one (see `showActivityChart`). */}
-      {showActivityChart && (
+      {showActivityChart && optimizationGoal && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
           <h3 className="font-medium text-gray-800 mb-4">Outreach activity</h3>
           {activityLoading ? (

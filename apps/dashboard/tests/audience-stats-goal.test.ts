@@ -80,8 +80,11 @@ describe("column + sort gates follow the goal FAMILY, not one literal", () => {
     expect(line).toContain("positiveReply");
   });
 
+  // The brand Overview is NOT here: its Top-audiences card passes no `metric` at all.
+  // The card ranks on the served return and its second line is the row's own cost per
+  // paying client — goal-free, and the same figure the Audiences table's `$ CAC` shows.
+  // A CAMPAIGN still picks a column, correctly: it sells one funnel.
   for (const rel of [
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
     "../src/components/campaigns/campaign-overview-page.tsx",
   ]) {
     it(`${rel.split("/").pop()} picks the card's column from the shared helper`, () => {

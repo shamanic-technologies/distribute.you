@@ -8,7 +8,6 @@ import {
   getBrand,
   getFeatureRevenue,
   fetchFeatureStats,
-  getBrandSalesEconomics,
   getBrandDailyBudget,
   getBrandPause,
   getBrandConversionToken,
@@ -22,7 +21,6 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import { audienceRankMetric } from "@/lib/strategy-model";
 import {
   brandOutcomeCount,
   daysSinceFirstSpend,
@@ -36,9 +34,6 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
-
-const DEFAULT_VISIT_TO_MEETING_PCT = 20;
-const DEFAULT_VISIT_TO_SIGNUP_PCT = 25;
 
 function countByDay(series: RevenueOverview["outreachContacted"]): Map<string, number> | null {
   if (!series) return null;
@@ -180,18 +175,9 @@ export default function BrandOverviewPage() {
   const featureStats = featureStatsData?.stats ?? {};
   const totalWebsiteClicks = featureStats.recipientsClicked ?? 0;
 
-  // Brand goal config → goal-specific stat card copy.
-  const { data: economicsData, isError: economicsIsError } = useAuthQuery(
-    ["brandSalesEconomics", brandId],
-    () => getBrandSalesEconomics(brandId),
-    { enabled, ...pollOptions },
-  );
-  const optimizationGoal =
-    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
-  const visitToMeetingPct =
-    economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
-  const visitToSignupPct =
-    economicsData?.salesEconomics?.visitToSignupPct ?? DEFAULT_VISIT_TO_SIGNUP_PCT;
+  // NO sales-economics read here. It resolved the brand goal — a retired,
+  // server-defaulted column — plus the two conversion rates the Outreach-activity
+  // chart labels its bars with, and this level renders neither.
 
   const { data: budgetData, isError: budgetIsError } = useAuthQuery(
     ["brandDailyBudget", brandId],
@@ -224,7 +210,6 @@ export default function BrandOverviewPage() {
     conversionTokenData?.status === "live_waiting";
   // The Top-3-audiences card's cost column — the SAME choice the Audiences table leads
   // with, so the two pages cannot state different economics for one brand at one moment.
-  const audienceStatsMetric = audienceRankMetric(optimizationGoal, trackerSetUp);
   const monthlyBudgetUsd =
     budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
       ? (budgetData.dailyBudgetCents / 100) * 30
@@ -281,7 +266,6 @@ export default function BrandOverviewPage() {
   // must not hold the chart.
   const activityRevealed = useCoordinatedReveal([
     pipelineActivity !== undefined || pipelineIsError,
-    economicsData !== undefined || economicsIsError,
     revenueSettled,
   ]);
   // The cost card's spend block rides the `/revenue` payload now → it reveals
@@ -354,10 +338,7 @@ export default function BrandOverviewPage() {
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
-        optimizationGoal={optimizationGoal}
         trackerSetUp={trackerSetUp}
-        visitToMeetingPct={visitToMeetingPct}
-        visitToSignupPct={visitToSignupPct}
         revenuePending={!revenueRevealed}
         activityPending={!activityRevealed}
         costPending={!costRevealed}
@@ -379,7 +360,6 @@ export default function BrandOverviewPage() {
             data={audienceStatsRevealed ? audienceStatsData : undefined}
             audiences={audienceStatsRevealed ? activeAudiences : undefined}
             pending={!audienceStatsRevealed}
-            metric={audienceStatsMetric}
           />
         }
         topRow={
@@ -393,8 +373,7 @@ export default function BrandOverviewPage() {
             stats={featureStats}
             spend={revenueRevealed ? data?.spend : null}
             pending={!(statsRevealed && revenueRevealed)}
-            optimizationGoal={optimizationGoal}
-            outreachOverride={outreachTotal}
+                outreachOverride={outreachTotal}
             economics={revenueRevealed ? data?.costEconomics : null}
             totalPipelineUsd={revenueRevealed ? data?.totalPipelineUsd : null}
             showEconomics
