@@ -33,11 +33,13 @@ describe("brand overview reveals on settle (error must not eternally skeleton)",
     expect(overview).not.toContain("useCoordinatedReveal([data !== undefined])");
   });
 
-  it("the graph + stats + audience + outcome barriers also settle on error", () => {
+  it("the graph + stats + audience barriers also settle on error", () => {
     expect(overview).toContain("|| pipelineIsError");
     expect(overview).toContain("|| featureStatsIsError");
     expect(overview).toContain("|| audienceStatsIsError");
-    expect(overview).toContain("|| outcomeIsError");
+    // The outcome-projection barrier went with its query: it resolved a workflow for a
+    // goal a brand does not have, and fed a forecast the Return-on-spend chart replaced.
+    expect(overview).not.toContain("outcomeIsError");
   });
 
   it("keeps the per-card-barrier props (no single page-wide AND gate)", () => {

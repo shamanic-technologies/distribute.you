@@ -8,8 +8,15 @@ import { LEARNING_WINDOW_OUTCOMES } from "@/lib/first-outcome-reassurance";
 interface FirstOutcomeReassuranceBannerProps {
   /** Headline subject — the brand Overview says "Your campaign", the campaign page "This campaign". */
   subject: string;
-  /** The brand's optimization goal; names the outcome the customer is actually waiting for. */
-  goal: BrandOptimizationGoal;
+  /**
+   * The goal whose outcome the customer is waiting for, when the surface HAS one.
+   *
+   * A campaign sells exactly one funnel, so it can name what it is buying and price a
+   * learning window in it. A brand runs several at once and has no goal at all, so it
+   * passes none and the copy speaks in results and in time — the two things that are
+   * true whatever chain converts first.
+   */
+  goal?: BrandOptimizationGoal | null;
 }
 
 /**
@@ -18,10 +25,12 @@ interface FirstOutcomeReassuranceBannerProps {
  * two shipped as byte-parallel copies, which is exactly how a goal-aware sentence ends
  * up correct on one page and stale on the other.
  *
- * The copy names the brand's OWN outcome (`outcomeNounPlural`) rather than a fixed funnel
- * step: telling a positive-replies brand to wait for its first site visits describes
- * something it does not buy. The gate that hides this banner reads the same goal's count
- * (`goalOutcomeCount`), so the sentence and the disappearance agree.
+ * With a goal, the copy names that outcome (`outcomeNounPlural`) rather than a fixed
+ * funnel step: telling a positive-replies campaign to wait for its first site visits
+ * describes something it does not buy. Without one — the brand Overview, where a brand
+ * runs several funnels and has no goal — it says "results", and the gate counts outcomes
+ * of every kind (`brandOutcomeCount`), so the sentence and the disappearance agree
+ * either way.
  *
  * The learning window is stated as a MULTIPLE of the brand's expected cost per outcome,
  * not as a dollar total. A figure like "$2,579" reads as a bill on a screen that has not
@@ -33,8 +42,11 @@ export function FirstOutcomeReassuranceBanner({
   subject,
   goal,
 }: FirstOutcomeReassuranceBannerProps) {
-  const outcomes = outcomeNounPlural(goal);
-  const outcome = outcomeNoun(goal);
+  // Named outcome when the surface sells one chain; "results" when it sells several.
+  // Not a default goal: picking one would name a chain the brand may never have
+  // declared, which is the retired-goal bug this whole line of work removed.
+  const outcomes = goal ? outcomeNounPlural(goal) : "results";
+  const outcome = goal ? outcomeNoun(goal) : null;
   return (
     <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
       <div className="flex gap-3">
@@ -48,8 +60,9 @@ export function FirstOutcomeReassuranceBanner({
             weeks before the first {outcomes} appear here.
           </p>
           <p className="mt-1 leading-6">
-            Plan on about {LEARNING_WINDOW_OUTCOMES}x the expected cost per {outcome}{" "}
-            before you judge the results.
+            {outcome
+              ? `Plan on about ${LEARNING_WINDOW_OUTCOMES}x the expected cost per ${outcome} before you judge the results.`
+              : "Give it the full window before you judge the return."}
           </p>
         </div>
       </div>

@@ -138,15 +138,20 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(page).toContain("trackerSetUp={trackerSetUp}");
   });
 
-  it("still computes the goal-specific expected monthly outcome for projections without showing it in the footer", () => {
-    expect(page).toContain("getWorkflowProjection");
-    expect(page).toContain('"overview-outcome"');
-    expect(page).toContain("selectWorkflowForOptimizationGoal(outcomeProjection, optimizationGoal");
-    expect(page).toContain("workflowOutcomeUnitCost(activeOutcomeWorkflow, optimizationGoal");
-    // The unit cost now lives in its own memo (the reassurance banner reads it too), so
-    // the expected count divides by that memo rather than a local `unitCost` const.
-    expect(page).toContain("monthlyBudgetUsd / outcomeUnitCostUsd");
-    expect(page).toContain("expectedMonthlyOutcome");
+  // The brand Overview no longer resolves a workflow at all. That query answered "how
+  // many of the GOAL's outcome does this budget buy", and a brand has no goal — it runs
+  // several funnels at once, so the objective came off the retired, server-defaulted
+  // brand column. Its two consumers are gone with it: the Outcome line's dashed forecast
+  // (the Return-on-spend chart replaced that card here) and a spend cap that priced the
+  // reassurance banner's learning window in that goal's outcome.
+  //
+  // The CAMPAIGN Overview still resolves one, correctly: it sells exactly one funnel.
+  it("resolves no workflow at brand level, since a brand has no goal to resolve one for", () => {
+    expect(page).not.toContain("getWorkflowProjection");
+    expect(page).not.toContain('"overview-outcome"');
+    expect(page).not.toContain("selectWorkflowForOptimizationGoal");
+    expect(page).not.toContain("expectedMonthlyOutcome");
+    // The Outcome card itself is unchanged — the campaign Overview still renders it.
     expect(outcome).not.toContain("expected?:");
     expect(outcome).toContain("expected");
   });
