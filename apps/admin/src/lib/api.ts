@@ -1511,7 +1511,7 @@ export async function getFeatureRevenueByCampaign(
 }
 
 // ─── Per-workflow revenue for ONE brand (grouped) ────────────────────────────
-// GET /features/:slug/revenue?brandId=&groupBy=workflowSlug → one lean group per
+// GET /features/:slug/revenue?brandId=&groupBy=workflow → one lean group per
 // workflow the brand has run, carrying the SAME realized-money block the brand
 // and per-campaign answers already carry.
 //
@@ -1521,18 +1521,23 @@ export async function getFeatureRevenueByCampaign(
 // re-dividing the ratios in the browser — banned, and it would contradict the
 // brand Overview. features-service owns the figure.
 //
-// ⚠️ The producer is shipping this in parallel and OWNS the parameter name, the
-// field names and how it identifies a workflow. The schema below mirrors the
-// `groupBy=campaignId` contract on the same endpoint — the producer's own
-// established shape — and is deliberately tolerant: the workflow identifier is
-// accepted under either spelling and `costPerAcquisitionUsd` is `.nullish()`.
-// Conform this reader to the deployed shape (api-registry, live > source) once
-// the producer's PR states it.
+// Conformed to the DEPLOYED shape (features-service #772 → v0.130.0), which the
+// producer designed: the parameter is `groupBy=workflow` — NOT `workflowSlug`,
+// which is what this reader guessed while the producer was still building —
+// and a group is a DYNASTY, keyed `workflowDynastySlug`, with `workflowSlugs`
+// listing the versions folded into it. That key is what the cross-org benchmark
+// is keyed on too, so the two halves of the scorecard join directly.
+//
+// `workflowSlug`/`workflowName` stay readable and `.nullish()`: they are what an
+// older or differently-shaped body would carry, and reading them costs nothing
+// while making the row survive a producer that speaks the versioned vocabulary.
 const FeatureRevenueByWorkflowSchema = z.object({
   groups: z.array(
     z.object({
-      // Whichever the producer keys on; at least one must be present.
       workflowDynastySlug: z.string().nullish(),
+      // The versions folded into the dynasty (deployed shape); unused by the
+      // table, read so a shape change here surfaces as a parse error not silence.
+      workflowSlugs: z.array(z.string()).nullish(),
       workflowSlug: z.string().nullish(),
       workflowDynastyName: z.string().nullish(),
       workflowName: z.string().nullish(),
@@ -1555,7 +1560,7 @@ export async function getFeatureRevenueByWorkflow(
   brandId: string,
   token?: string,
 ): Promise<FeatureRevenueByWorkflowGroup[]> {
-  const query = new URLSearchParams({ brandId, groupBy: "workflowSlug" });
+  const query = new URLSearchParams({ brandId, groupBy: "workflow" });
   const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
   const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
   if (!parsed.success) {
