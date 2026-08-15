@@ -13,10 +13,14 @@ describe("OutreachStatCards copy", () => {
   );
   const auto = read("../src/components/revenue/outreach-stat-cards-auto.tsx");
 
-  it("accepts the brand optimization goal instead of the old funnel-stage gate", () => {
+  it("defaults to NO goal, so a surface that names no chain shows no chain's steps", () => {
     expect(cards).toContain("type { BrandOptimizationGoal }");
     expect(cards).toContain("optimizationGoal?: BrandOptimizationGoal");
-    expect(cards).toContain('optimizationGoal ?? "sales_meetings"');
+    // The old `?? "sales_meetings"` default put one chain's steps on every surface,
+    // including those that state none. The brand column it stood in for is retired
+    // (NOT NULL, server-defaulted), so the default was a guess dressed as a value.
+    expect(cards).toContain("const goal = optimizationGoal ?? null;");
+    expect(cards).not.toContain('optimizationGoal ?? "sales_meetings"');
     expect(cards).not.toContain(deprecatedStageField);
   });
 
@@ -170,14 +174,17 @@ describe("OutreachStatCards copy", () => {
     expect(page).toContain("economics={revenueRevealed ? data?.costEconomics : null}");
   });
 
-  // The auto variant still resolves a goal: it renders on entity pages that state no
-  // funnel. The brand Overview does NOT — it reads no sales-economics at all now, since
-  // every surface on it that needed a goal either moved to the return or was deleted.
-  it("resolves the goal where a surface still has one, and nowhere else", () => {
-    expect(auto).toContain(
-      'economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings"',
-    );
-    expect(auto).toContain("optimizationGoal={optimizationGoal}");
+  // NOTHING reads the retired brand column any more. The auto variant takes the
+  // CAMPAIGN's own funnel when it is on a campaign route, and at brand level renders
+  // the money cards with no funnel pair at all — the same split the brand Overview
+  // takes, since a brand sells through several funnels at once.
+  it("reads no brand goal anywhere, and keys the row on the campaign's funnel", () => {
+    expect(auto).not.toContain("salesEconomics");
+    expect(auto).not.toContain("optimizationGoal");
+    expect(auto).toContain("campaignData?.campaign.funnelKey");
+    expect(auto).toContain("funnelKey={funnelKey}");
+    expect(auto).toContain("showEconomics={!campaignId}");
+    expect(auto).toContain("showFunnelMetrics={!!campaignId}");
     expect(page).not.toContain("optimizationGoal");
     expect(page).not.toContain("getBrandSalesEconomics");
   });

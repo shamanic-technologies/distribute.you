@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { goalForFunnelKey } from "@/lib/sales-funnels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
@@ -18,6 +19,7 @@ import {
   listAudiences,
   getWorkflowProjection,
   optimizationGoalForRuntimeGoal,
+  type BrandOptimizationGoal,
   salesObjectiveForOptimizationGoal,
   keepLastGoodWorkflowProjection,
   keepLastGoodFeatureRevenue,
@@ -199,20 +201,23 @@ export function CampaignOverviewPage() {
     () => getBrandSalesEconomics(brandId),
     { enabled, ...pollOptions },
   );
-  const brandOptimizationGoal =
-    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
-  // Prefer the campaign's OWN goal (v2 per-campaign goal) when set; fall back to the
-  // brand goal only when the campaign inherits (null). RuntimeGoal → brand-goal vocab
-  // so it drives the goal-labelled display surfaces. Pure display of campaign config.
-  const optimizationGoal = campaign?.goal
+  // The campaign's OWN goal, from campaign-service — NOT the brand column, which is
+  // retired and would name a chain this campaign never ran. Null when a campaign
+  // predates the field; the funnel it states is the richer answer anyway, and every
+  // step surface here already prefers it.
+  // The funnel a campaign states it sells — the richer answer, and what every step
+  // surface here prefers.
+  const campaignFunnelKey = campaign?.funnelKey ?? null;
+  const optimizationGoal: BrandOptimizationGoal = campaign?.goal
     ? optimizationGoalForRuntimeGoal(campaign.goal)
-    : brandOptimizationGoal;
+    : campaignFunnelKey
+      ? goalForFunnelKey(campaignFunnelKey)
+      : "sales_meetings";
   // What this campaign actually SELLS, read off the campaign row. It is the richer of the
   // two fields: `sales_meetings` covers both meeting funnels, so the goal alone cannot say
   // whether the chain starts at a positive reply or at a click onto the site — and every
   // step-labelled surface below (stat cards, activity bars, the Outcome line) needs to
   // know. NULL on a pre-funnel campaign, which correctly falls back to the goal.
-  const campaignFunnelKey = campaign?.funnelKey ?? null;
   const visitToMeetingPct =
     economicsData?.salesEconomics?.visitToMeetingPct ?? DEFAULT_VISIT_TO_MEETING_PCT;
   const visitToSignupPct =

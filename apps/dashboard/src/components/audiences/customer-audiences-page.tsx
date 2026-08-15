@@ -21,10 +21,10 @@ import {
   fetchFeatureAudienceStats,
   generateAudienceAvatar,
   getBrandConversionToken,
-  getBrandSalesEconomics,
   getCampaign,
   listAudiences,
   optimizationGoalForRuntimeGoal,
+  type BrandOptimizationGoal,
   setAudienceStatus,
   type AudienceStatus,
   type AudienceWire,
@@ -32,6 +32,7 @@ import {
   type FeatureAudienceStatsGoal,
 } from "@/lib/api";
 import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
+import { goalForFunnelKey } from "@/lib/sales-funnels";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 
@@ -307,19 +308,16 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // Absent on the brand route (no campaign) and on a campaign that predates the model.
   const campaignFunnelKey = campaign?.funnelKey ?? null;
 
-  // Brand optimization goal → audience-stats goal (sorts by CPC for signup, CPPR
-  // otherwise). Same resolution as the brand Overview. Under a campaign, its OWN goal
-  // wins when set (`null` = inherit the brand's).
-  const { data: economicsData } = useAuthQuery(
-    ["brandSalesEconomics", brandId],
-    () => getBrandSalesEconomics(brandId),
-    pollOptions,
-  );
-  const brandOptimizationGoal =
-    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
-  const optimizationGoal = campaign?.goal
+  // The CAMPAIGN's own goal, from campaign-service, else the goal its own FUNNEL
+  // implies. Never the brand column: it is retired (NOT NULL with a server default) and
+  // a brand runs several funnels anyway, so at brand level the money columns render and
+  // none of this is read.
+  const optimizationGoal: BrandOptimizationGoal = campaign?.goal
     ? optimizationGoalForRuntimeGoal(campaign.goal)
-    : brandOptimizationGoal;
+    : campaignFunnelKey
+      ? goalForFunnelKey(campaignFunnelKey)
+      : "sales_meetings";
+
   // Conversion-tracker liveness (lead-service pixel). status: "not_set_up" (no ping,
   // no event) | "live_waiting" (tag pinging, no conversion yet) | "live" (real
   // conversions). Signup + form-submission outcomes only exist once the brand's site

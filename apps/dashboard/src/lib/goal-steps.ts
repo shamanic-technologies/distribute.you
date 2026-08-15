@@ -263,15 +263,21 @@ export function funnelSteps(funnelKey: SalesFunnelKeyWire): GoalStep[] {
  * one. Every funnel-aware surface reads THIS, never `goalSteps` directly.
  */
 export function stepsFor(
-  goal: BrandOptimizationGoal,
+  goal: BrandOptimizationGoal | null | undefined,
   funnelKey?: SalesFunnelKeyWire | null,
 ): GoalStep[] {
-  return funnelKey ? funnelSteps(funnelKey) : goalSteps(goal);
+  if (funnelKey) return funnelSteps(funnelKey);
+  if (goal) return goalSteps(goal);
+  // Neither: the surface states no chain and there is no goal to stand in for one —
+  // the brand goal is retired, and defaulting to it named a chain the brand may never
+  // have declared. `Outreach` is the honest floor: every lead we contacted is in it
+  // whatever the funnel, so a surface with no chain shows that and nothing more.
+  return [OUTREACH_STEP];
 }
 
 /** `goalLeadTabs`, keyed on the funnel when one is stated. */
 export function leadTabsFor(
-  goal: BrandOptimizationGoal,
+  goal: BrandOptimizationGoal | null | undefined,
   funnelKey?: SalesFunnelKeyWire | null,
 ): LeadTab[] {
   return stepsFor(goal, funnelKey)
@@ -282,7 +288,7 @@ export function leadTabsFor(
 
 /** `goalChartMetricKeys`, keyed on the funnel when one is stated. */
 export function chartMetricKeysFor(
-  goal: BrandOptimizationGoal,
+  goal: BrandOptimizationGoal | null | undefined,
   funnelKey?: SalesFunnelKeyWire | null,
 ): ChartMetricKey[] {
   return stepsFor(goal, funnelKey)
@@ -292,7 +298,7 @@ export function chartMetricKeysFor(
 
 /** `goalOutcomeStep`, keyed on the funnel when one is stated. */
 export function outcomeStepFor(
-  goal: BrandOptimizationGoal,
+  goal: BrandOptimizationGoal | null | undefined,
   funnelKey?: SalesFunnelKeyWire | null,
 ): GoalStep | null {
   return stepsFor(goal, funnelKey).find((s) => s.outcome !== undefined) ?? null;
@@ -362,7 +368,7 @@ export function goalOutcomeTab(
 
 /** `goalOutcomeTab`, keyed on the funnel when one is stated. */
 export function outcomeTabFor(
-  goal: BrandOptimizationGoal,
+  goal: BrandOptimizationGoal | null | undefined,
   funnelKey?: SalesFunnelKeyWire | null,
 ): { tab: OutcomeTab; label: string; leadField: OutcomeLeadField; dateField: OutcomeLeadDateField } | null {
   const step = outcomeStepFor(goal, funnelKey);

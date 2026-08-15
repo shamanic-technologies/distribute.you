@@ -97,3 +97,46 @@ describe("the daily digest is news about the return", () => {
     expect(tpl).not.toContain("{{outcomeCount}}");
   });
 });
+
+/**
+ * The retired brand goal is read NOWHERE.
+ *
+ * `org_brands.optimization_goal` is `NOT NULL` with a server default, so it reads
+ * "website purchases" for a brand that stated nothing — brand-service's own schema
+ * comment says nothing reads it. Any surface that resolved it was naming a chain the
+ * brand may never have declared.
+ */
+describe("no surface reads the retired brand goal", () => {
+  const SRC_DIR = path.join(__dirname, "../src");
+
+  function walk(dir: string): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return walk(full);
+      return /\.tsx?$/.test(entry.name) ? [full] : [];
+    });
+  }
+
+  it("finds zero readers of salesEconomics.optimizationGoal in the whole app", () => {
+    const offenders = walk(SRC_DIR).filter((file) =>
+      /salesEconomics\??\.optimizationGoal/.test(fs.readFileSync(file, "utf-8")),
+    );
+    expect(offenders.map((f) => path.relative(SRC_DIR, f))).toEqual([]);
+  });
+
+  it("derives a goal from a FUNNEL, never a funnel from a goal", () => {
+    const funnels = read("lib/sales-funnels.ts");
+    // Lossless direction: every funnel terminates in exactly one outcome. The reverse
+    // is lossy — `sales_meetings` covers both meeting chains — and stays banned.
+    expect(funnels).toContain("export function goalForFunnelKey(");
+    expect(read("lib/campaign-funnel.ts")).not.toContain("primaryFunnelForGoal");
+  });
+
+  it("lets a surface state no chain at all, instead of defaulting to one", () => {
+    const steps = read("lib/goal-steps.ts");
+    // Neither funnel nor goal → the Outreach floor, which is true whatever a brand sells.
+    expect(steps).toContain("if (funnelKey) return funnelSteps(funnelKey);");
+    expect(steps).toContain("if (goal) return goalSteps(goal);");
+    expect(steps).toContain("return [OUTREACH_STEP];");
+  });
+});
