@@ -154,11 +154,12 @@ describe("Leads — a queued lead is not a contacted lead", () => {
 
   it("exports the leads CSV in the words the dashboard uses", () => {
     const csv = fs.readFileSync(path.join(__dirname, "../src/lib/leads-csv.ts"), "utf-8");
-    // `lead.contacted` IS the Outreach-tab predicate and `lead.clicked` the
-    // Website-Visits one, so the columns carry the tab's word.
-    expect(csv).toContain('{ label: "Outreach", value: (l) => yesNo(l.contacted) }');
+    // `lead.contacted` IS the base tab's predicate and `lead.clicked` the
+    // Website-Visits one, so the columns carry the tab's word — which is now
+    // "Contacted", because this page counts people rather than sequences sent.
+    expect(csv).toContain('{ label: "Contacted", value: (l) => yesNo(l.contacted) }');
     expect(csv).toContain('{ label: "Website visit", value: (l) => yesNo(l.clicked) }');
-    expect(csv).toContain('{ label: "First outreach at", value: (l) => date(l.firstContactedAt) }');
+    expect(csv).toContain('{ label: "First contacted at", value: (l) => date(l.firstContactedAt) }');
     expect(csv).toContain('{ label: "First website visit at", value: (l) => date(l.firstClickedAt) }');
     // `Replied` stays: the flag covers negative replies too, so the Positive-replies
     // tab is a subset of it and renaming the column would overstate what it means.
