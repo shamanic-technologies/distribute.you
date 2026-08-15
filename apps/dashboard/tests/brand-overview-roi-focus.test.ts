@@ -160,6 +160,10 @@ describe("brand surfaces list campaigns and state money", () => {
     // Every funnel-scoped pair is off at brand level; the campaign route keeps them all.
     expect(audiences).toContain("showReplyColsForGoal && !brandLevelMoney");
     expect(audiences).toContain('optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney');
+    // The website-visit pair is funnel-scoped like the rest — it was the one pair the
+    // first sweep missed, so it is pinned by name here rather than left to the goal.
+    expect(audiences).toContain("const showVisitCols = !isPositiveReplies && !brandLevelMoney;");
+    expect(audiences).not.toContain("{!isPositiveReplies && (");
     expect(audiences).toContain('label="ROI"');
     expect(audiences).toContain('label="% CAC"');
     expect(audiences).toContain('label="$ CAC"');
@@ -170,6 +174,19 @@ describe("brand surfaces list campaigns and state money", () => {
     // % CAC is READ, never derived by inverting the return sitting beside it.
     expect(audiences).toContain("stats?.projection?.costOfAcquisitionPct");
     expect(audiences).not.toContain("100 /");
+  });
+
+  it("states what the audience has actually cost beside what it is projected to be worth", () => {
+    // REALIZED spend, served ready-made by features-service on the same net basis
+    // billing charges — the browser divides nothing to get it.
+    expect(audiences).toContain('label="$ Invested"');
+    expect(audiences).toContain("formatCents(stats.evidence.totalCostInUsdCents)");
+    // Sorted on the field it renders, or the column shows one order and states another.
+    expect(audiences).toContain('case "invested":');
+    expect(audiences).toContain("return stats?.evidence.totalCostInUsdCents ?? null;");
+    // Brand level only: it sits beside $ CAC, which exists nowhere else.
+    const money = audiences.slice(audiences.indexOf("{brandLevelMoney && ("));
+    expect(money.slice(0, 2000)).toContain('label="$ Invested"');
   });
 
   it("leads the brand Audiences table with the highest return, not the cheapest cost", () => {

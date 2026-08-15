@@ -64,7 +64,7 @@ function formatUsd(usd: number | null | undefined): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-type SortCol = "audience" | "roi" | "cacPct" | "cacUsd" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
+type SortCol = "audience" | "roi" | "cacPct" | "cacUsd" | "invested" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
 
 /**
  * Sort key for an audience row under a given column. `audience` sorts by name
@@ -88,6 +88,11 @@ function sortValue(
       return stats?.projection?.costPerPaidClientUsd ?? null;
     case "cacPct":
       return stats?.projection?.costOfAcquisitionPct ?? null;
+    // REALIZED spend, unlike the three projections above it — the audience's own net
+    // committed cost as features-service serves it, sorted on the same field the cell
+    // renders.
+    case "invested":
+      return stats?.evidence.totalCostInUsdCents ?? null;
     case "replies":
       return stats?.evidence.positiveReplies ?? null;
     case "cppr":
@@ -380,6 +385,11 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // sales-meetings reply columns. website_purchase stays visit-only (single close path).
   const showReplyColsForGoal = showMeetingCols || optimizationGoal === "sales";
   const showReplyCols = showReplyColsForGoal && !brandLevelMoney;
+  // The website-visit pair is funnel-scoped like every pair above it: it names the
+  // first step of the visit-led chains while the rows beside it are attributed across
+  // every funnel the brand sells through. Off at brand level for that reason, and off
+  // for positive_replies because a click is not in the reply→paid funnel at all.
+  const showVisitCols = !isPositiveReplies && !brandLevelMoney;
   // Seed the initial sort column from the brand goal once it resolves — cheapest
   // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), CP Sale
   // (sales / website purchases), else CPC (website visits) — until the user picks a
@@ -671,7 +681,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${brandLevelMoney ? "min-w-[720px]" : isPositiveReplies ? "min-w-[820px]" : showReplyCols && showSaleCols ? "min-w-[1320px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            <table className={`${brandLevelMoney ? "min-w-[820px]" : isPositiveReplies ? "min-w-[820px]" : showReplyCols && showSaleCols ? "min-w-[1320px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
@@ -705,6 +715,14 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                         sortDir={sortDir}
                         onSort={onSort}
                         info="What winning one paying client from this audience is projected to cost, from what this audience has produced so far priced through the brand's own economics. Lower is better."
+                      />
+                      <SortHeader
+                        label="$ Invested"
+                        col="invested"
+                        sortCol={sortCol}
+                        sortDir={sortDir}
+                        onSort={onSort}
+                        info="What this audience has actually cost so far, net of any discount, on the same basis billing charges. The three columns to its left are projections of what it is worth going forward, so this is not a multiplier of them."
                       />
                     </>
                   )}
@@ -766,8 +784,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                       <SortHeader label="Form submissions" col="formSubmissions" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                     </>
                   )}
-                  {/* positive_replies: clicks aren't in the reply→paid funnel — hide CPC + Website Visits. */}
-                  {!isPositiveReplies && (
+                  {showVisitCols && (
                     <>
                       <SortHeader
                         label="Cost per website visit"
@@ -844,6 +861,17 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {formatUsd(stats?.projection?.costPerPaidClientUsd)}
+                          </td>
+                          {/* Realized spend, served ready-made — skeletoned like every
+                              other stats-overlay cell so it never flashes "-" first. */}
+                          <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                            {statsLoading ? (
+                              <Skeleton className="ml-auto h-4 w-12" />
+                            ) : stats ? (
+                              formatCents(stats.evidence.totalCostInUsdCents)
+                            ) : (
+                              "-"
+                            )}
                           </td>
                         </>
                       )}
@@ -950,9 +978,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           </td>
                         </>
                       )}
-                      {/* positive_replies: clicks aren't in the reply→paid funnel — hide the CPC +
-                          Website Visits cells. */}
-                      {!isPositiveReplies && (
+                      {showVisitCols && (
                         <>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
