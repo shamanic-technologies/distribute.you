@@ -95,7 +95,9 @@ describe("brand Workflows scorecard: the table", () => {
 
   it("reads the brand figures from features-service, never from a runs/spend join", () => {
     expect(page).toContain("getFeatureRevenueByWorkflow");
-    expect(api).toContain('groupBy: "workflowSlug"');
+    // The parameter the producer actually deployed (features-service #772).
+    expect(api).toContain('groupBy: "workflow"');
+    expect(api).not.toContain('groupBy: "workflowSlug"');
   });
 });
 
@@ -132,6 +134,18 @@ describe("buildBrandWorkflowRows", () => {
     });
     expect(row.fleet?.cpprUsd).toBe(92.8);
     expect(row.name).toBe("Brand wf-a");
+  });
+
+  it("joins the DEPLOYED shape — a dynasty group listing its folded versions", () => {
+    // features-service #772: a group is a dynasty, keyed workflowDynastySlug,
+    // carrying workflowSlugs. That key is what the cross-org benchmark uses too.
+    const [row] = buildBrandWorkflowRows(
+      [{ ...group("wf-a"), workflowSlugs: ["wf-a-v1", "wf-a-v2"] }],
+      [fleet("wf-a")],
+    );
+    expect(row.slug).toBe("wf-a");
+    expect(row.brand.roiMultiple).toBe(3.2);
+    expect(row.fleet?.investedUsd).toBe(1299.47);
   });
 
   it("keeps a workflow the brand ran that the fleet read is silent on", () => {
