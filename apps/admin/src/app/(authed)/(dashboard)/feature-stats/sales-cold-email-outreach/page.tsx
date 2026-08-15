@@ -3,287 +3,39 @@
 import { useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   getCrossOrgCostProjection,
   getCrossOrgCostPerOutcomeTrend,
   getCrossOrgLifetimeCostPerOutcome,
-  getCrossOrgWorkflowCostPerOutcome,
-  type CrossOrgObjective,
   type CrossOrgTrendPoint,
-  type CrossOrgWorkflowCostRow,
 } from "@/lib/api";
 import { pollOptionsSlower } from "@/lib/query-options";
-import { ScoreCard } from "@/components/visibility/score-card";
 import { Skeleton } from "@/components/skeleton";
-
-const FEATURE_SLUG = "sales-cold-email-outreach";
-
-// The maximization objectives, cross-org. `key` is the canonical camelCase the
-// features-service trend + per-workflow endpoints accept; `noun` is the outcome.
-const OBJECTIVES: { key: CrossOrgObjective; label: string; noun: string }[] = [
-  { key: "websiteVisit", label: "Cost per click (CPC)", noun: "click" },
-  { key: "positiveReply", label: "Cost per positive reply", noun: "positive reply" },
-  { key: "signup", label: "Cost per signup", noun: "signup" },
-  { key: "formSubmission", label: "Cost per form submission", noun: "form submission" },
-  { key: "meetingBooked", label: "Cost per meeting", noun: "meeting" },
-  // `purchase` stays the trend/workflow query key (features-service still
-  // accepts it); only the display label was renamed to "website purchase".
-  { key: "purchase", label: "Cost per website purchase", noun: "website purchase" },
-];
-
-// A display-only outcome (summary table row) with no moving-average trend of
-// its own — only a lifetime all-time avg. `Sales` is the new combined goal
-// (paying client won via visit→paid OR reply→paid, valued at CLTV); the
-// features-service trend/per-workflow endpoints do NOT accept it as an
-// `objective`, so it appears as an all-time figure only, not a ticker/selector.
-type DisplayObjective = { key: string; label: string; noun: string };
-const SALES_OBJECTIVE: DisplayObjective = {
-  key: "sales",
-  label: "Cost per sale (CLTV)",
-  noun: "sale",
-};
-
-// Trailing display days for the moving-average series (matches the Details chart
-// so the two sections share one cached query per objective).
-const TREND_DAYS = 90;
-// The stock-style weekly change window.
-const GROWTH_DAYS = 7;
+import { GrowthBadge, OutcomeCard, SortableTh, Sparkline } from "@/components/feature-stats/primitives";
+import {
+  FEATURE_SLUG,
+  TREND_DAYS,
+  cmpValues,
+  fmtUsd,
+  growth7d,
+  latestCost,
+  nextSort,
+  num,
+  type Sort,
+} from "@/lib/feature-stats-format";
+import {
+  OBJECTIVES,
+  SALES_OBJECTIVE,
+  type DisplayObjective,
+} from "@/lib/feature-stats-objectives";
 
 /**
- * The ONE currency format for this whole page: 2 decimals under $10 ($5.78),
- * rounded whole dollars at/above $10 ($12).
+ * Economics — the cross-org price of each outcome, one row per outcome.
+ *
+ * The objective-selectable zoom-in (trend chart + per-workflow cost split) is
+ * its own page at `./details`, and the per-workflow cross-brand table is at
+ * `./workflows`; this page states the price and nothing else.
  */
-const usd2 = (n: number) =>
-  n < 10
-    ? n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const num = (n: number) => Math.round(n).toLocaleString("en-US");
-
-/** USD from a backend USD number; "—" when null (never a false $0). */
-function fmtUsd(value: number | null | undefined): string {
-  if (value === null || value === undefined) return "—";
-  return usd2(value);
-}
-
-/** Alias of fmtUsd — the whole page shares one currency format now. */
-const fmtStock = fmtUsd;
-
-type SortDir = "asc" | "desc";
-
-/** Comparator that always sinks null/undefined to the bottom, then orders by dir. */
-function cmpValues(
-  a: number | string | null | undefined,
-  b: number | string | null | undefined,
-  dir: SortDir,
-): number {
-  const an = a === null || a === undefined;
-  const bn = b === null || b === undefined;
-  if (an && bn) return 0;
-  if (an) return 1;
-  if (bn) return -1;
-  const d =
-    typeof a === "string" || typeof b === "string"
-      ? String(a).localeCompare(String(b))
-      : (a as number) - (b as number);
-  return dir === "asc" ? d : -d;
-}
-
-/** Clickable table header — click to sort by this column, click again to flip direction. */
-function SortableTh({
-  label,
-  sortKey,
-  sort,
-  onSort,
-  align = "right",
-  className = "",
-}: {
-  label: string;
-  sortKey: string;
-  sort: { key: string; dir: SortDir } | null;
-  onSort: (key: string) => void;
-  align?: "left" | "right";
-  className?: string;
-}) {
-  const isActive = sort?.key === sortKey;
-  const arrow = !isActive ? "↕" : sort!.dir === "asc" ? "▲" : "▼";
-  return (
-    <th className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : ""} ${className}`}>
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-1 select-none hover:text-gray-700 ${
-          align === "right" ? "flex-row-reverse" : ""
-        }`}
-      >
-        <span>{label}</span>
-        <span className={`text-[10px] ${isActive ? "text-brand-600" : "text-gray-300"}`}>{arrow}</span>
-      </button>
-    </th>
-  );
-}
-
-function formatDateShort(iso: string): string {
-  return new Date(`${iso}T00:00:00.000Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-/** The most recent backed window value = the current cross-org moving average (100-avg). */
-function latestCost(points: CrossOrgTrendPoint[] | undefined): number | null {
-  if (!points) return null;
-  for (let i = points.length - 1; i >= 0; i--) {
-    if (points[i].costPerOutcomeUsd !== null) return points[i].costPerOutcomeUsd;
-  }
-  return null;
-}
-
-/**
- * Stock-style weekly change: latest backed point vs the closest backed point
- * ~GROWTH_DAYS before it, as a signed fraction. Null when either side is
- * missing. This is a display delta over the two points the sparkline already
- * draws — no hidden metric derived from raw events.
- */
-function growth7d(points: CrossOrgTrendPoint[] | undefined): number | null {
-  if (!points || points.length === 0) return null;
-  let latestIdx = -1;
-  for (let i = points.length - 1; i >= 0; i--) {
-    if (points[i].costPerOutcomeUsd !== null) {
-      latestIdx = i;
-      break;
-    }
-  }
-  if (latestIdx < 0) return null;
-  const latest = points[latestIdx];
-  const latestMs = new Date(`${latest.date}T00:00:00.000Z`).getTime();
-  const targetMs = latestMs - GROWTH_DAYS * 24 * 60 * 60 * 1000;
-  // Walk back from the latest point to the first backed point at/before the target day.
-  let prev: CrossOrgTrendPoint | null = null;
-  for (let i = latestIdx - 1; i >= 0; i--) {
-    if (points[i].costPerOutcomeUsd === null) continue;
-    prev = points[i];
-    if (new Date(`${points[i].date}T00:00:00.000Z`).getTime() <= targetMs) break;
-  }
-  if (!prev || prev.costPerOutcomeUsd === null || prev.costPerOutcomeUsd === 0) return null;
-  const a = latest.costPerOutcomeUsd as number;
-  const b = prev.costPerOutcomeUsd as number;
-  return (a - b) / b;
-}
-
-/**
- * Cost-change badge: arrow shows direction (▲ up / ▼ down); color is
- * cost-semantic — a rising cost is bad (red), a falling cost is good (green).
- */
-function GrowthBadge({ growth }: { growth: number | null }) {
-  if (growth === null || growth === 0) {
-    return <span className="text-xs text-gray-400">—</span>;
-  }
-  const up = growth > 0;
-  const cls = up ? "text-red-600" : "text-green-600";
-  const arrow = up ? "▲" : "▼";
-  const pct = (Math.abs(growth) * 100).toFixed(1);
-  return (
-    <span className={`text-xs font-medium ${cls}`} title={`${up ? "+" : "-"}${pct}% vs last week`}>
-      {arrow} {pct}% <span className="text-gray-400 font-normal">wk</span>
-    </span>
-  );
-}
-
-/** Minimal sparkline — the moving-average series shape, no axes/grid/tooltip. */
-function Sparkline({ points, growth }: { points: CrossOrgTrendPoint[]; growth: number | null }) {
-  const data = points.filter((p) => p.costPerOutcomeUsd !== null);
-  if (data.length < 2) {
-    return <div className="h-10 flex items-center text-[10px] text-gray-300">no trend yet</div>;
-  }
-  // Cost-semantic: rising cost red, falling cost green.
-  const stroke = growth === null || growth === 0 ? "#94a3b8" : growth > 0 ? "#dc2626" : "#16a34a";
-  return (
-    <div className="h-10">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-          <Line
-            type="monotone"
-            dataKey="costPerOutcomeUsd"
-            dot={false}
-            stroke={stroke}
-            strokeWidth={1.5}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/** Stock-ticker card: label, big price (100-avg), weekly change, sparkline. */
-function OutcomeCard({
-  label,
-  price,
-  growth,
-  points,
-  pending,
-}: {
-  label: string;
-  price: number | null;
-  growth: number | null;
-  points: CrossOrgTrendPoint[];
-  pending: boolean;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
-      {pending ? (
-        <Skeleton className="h-8 w-20" />
-      ) : (
-        <div className="flex items-baseline gap-2">
-          <p className="text-2xl font-semibold text-gray-800">{fmtStock(price)}</p>
-          <GrowthBadge growth={growth} />
-        </div>
-      )}
-      <div className="mt-2">
-        {pending ? <Skeleton className="h-10 w-full rounded" /> : <Sparkline points={points} growth={growth} />}
-      </div>
-    </div>
-  );
-}
-
-function TrendTooltip({
-  active,
-  payload,
-  noun,
-}: {
-  active?: boolean;
-  payload?: Array<{ payload: CrossOrgTrendPoint; value: number }>;
-  noun: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const p = payload[0].payload;
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-sm">
-      <p className="text-gray-500">{formatDateShort(p.date)}</p>
-      <p className="mt-1 font-semibold text-gray-900">
-        {p.costPerOutcomeUsd === null ? "—" : usd2(p.costPerOutcomeUsd)} / {noun}
-      </p>
-      <p className="mt-0.5 text-gray-400">
-        {num(p.windowOutcomeCount)} outcomes · {usd2(p.windowSpentUsd)} spend
-      </p>
-    </div>
-  );
-}
-
-export default function SalesColdEmailOutreachStatsPage() {
-  const [objective, setObjective] = useState<CrossOrgObjective>("websiteVisit");
-  const active = OBJECTIVES.find((o) => o.key === objective)!;
-
+export default function FeatureStatsEconomicsPage() {
   const projection = useQuery({
     queryKey: ["crossOrgCostProjection", FEATURE_SLUG],
     queryFn: () => getCrossOrgCostProjection(FEATURE_SLUG),
@@ -300,7 +52,7 @@ export default function SalesColdEmailOutreachStatsPage() {
   });
 
   // One moving-average series per objective. Same queryKey + params as the
-  // Details section's trend query, so the selected objective's fetch dedupes.
+  // Details page's trend query, so navigating there costs no extra fetch.
   const trends = useQueries({
     queries: OBJECTIVES.map((o) => ({
       queryKey: ["crossOrgTrend", FEATURE_SLUG, o.key],
@@ -356,37 +108,10 @@ export default function SalesColdEmailOutreachStatsPage() {
   // the full ledger incl. the all-time-only Sales row.
   const tableSummaries: OutcomeSummary[] = [...summaries, salesSummary];
 
-  const trend = trends[OBJECTIVES.findIndex((o) => o.key === objective)];
-  const workflows = useQuery({
-    queryKey: ["crossOrgWorkflowCost", FEATURE_SLUG, objective],
-    queryFn: () => getCrossOrgWorkflowCostPerOutcome(FEATURE_SLUG, objective),
-    ...pollOptionsSlower,
-  });
-
-  // Per-workflow table sort — DEFAULT 100-avg (recent) ascending, cheapest first;
-  // nulls sink to the bottom. Every header is clickable to re-sort / flip.
-  const [wfSort, setWfSort] = useState<{ key: string; dir: SortDir }>({ key: "recent", dir: "asc" });
   // Summary table sort — default is the natural outcome order (null = unsorted);
   // headers are clickable to sort.
-  const [sumSort, setSumSort] = useState<{ key: string; dir: SortDir } | null>(null);
-  const toggle =
-    (cur: { key: string; dir: SortDir } | null, set: (v: { key: string; dir: SortDir }) => void) =>
-    (key: string) =>
-      set(cur && cur.key === key ? { key, dir: cur.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
-  const onWfSort = toggle(wfSort, setWfSort);
-  const onSumSort = toggle(sumSort, setSumSort);
-
-  const wfKey: Record<string, (r: CrossOrgWorkflowCostRow) => number | string | null | undefined> = {
-    name: (r) => r.workflowDynastyName,
-    recent: (r) => r.recentCostPerOutcomeUsd,
-    avg: (r) => r.costPerOutcomeUsd,
-    spend: (r) => r.spentUsd,
-    clicks: (r) => r.observedClicks,
-    replies: (r) => r.observedPositiveReplies,
-  };
-  const rows = [...(workflows.data?.workflows ?? [])].sort((a, b) =>
-    cmpValues(wfKey[wfSort.key](a), wfKey[wfSort.key](b), wfSort.dir),
-  );
+  const [sumSort, setSumSort] = useState<Sort | null>(null);
+  const onSumSort = (key: string) => setSumSort(nextSort(sumSort, key));
 
   const sumKey: Record<string, (s: OutcomeSummary) => number | string | null | undefined> = {
     outcome: (s) => s.objective.label,
@@ -398,23 +123,17 @@ export default function SalesColdEmailOutreachStatsPage() {
     ? [...tableSummaries].sort((a, b) => cmpValues(sumKey[sumSort.key](a), sumKey[sumSort.key](b), sumSort.dir))
     : tableSummaries;
 
-  const points = trend.data?.points ?? [];
-  const currentAvg = latestCost(trend.data?.points);
-
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
       <header>
-        <h1 className="text-xl font-semibold text-gray-900">Sales Cold Emails Outreach</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Economics</h1>
         <p className="mt-1 text-sm text-gray-500">
           Cross-org economics — averaged across every client brand running this feature.
           {projection.data ? ` ${num(projection.data.brandCount)} brands with usable economics.` : ""}
         </p>
       </header>
 
-      {/* Expected economics (cross-org) — stock-ticker cards + summary table, one row per outcome. */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">Expected economics (cross-org)</h2>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {summaries.map((s) => (
             <OutcomeCard
@@ -452,11 +171,11 @@ export default function SalesColdEmailOutreachStatsPage() {
                     {lifetime.isPending ? (
                       <Skeleton className="h-4 w-14 ml-auto" />
                     ) : (
-                      fmtStock(s.allTime)
+                      fmtUsd(s.allTime)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">
-                    {s.pending ? <Skeleton className="h-4 w-14 ml-auto" /> : fmtStock(s.price)}
+                    {s.pending ? <Skeleton className="h-4 w-14 ml-auto" /> : fmtUsd(s.price)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {s.pending ? <Skeleton className="h-4 w-12 ml-auto" /> : <GrowthBadge growth={s.growth} />}
@@ -482,158 +201,6 @@ export default function SalesColdEmailOutreachStatsPage() {
           green (good), a rising cost is red. A blank means no cross-org outcomes yet. Sale (CLTV) is
           the combined goal (a paying client won via the visit→paid or reply→paid path); it shows an
           all-time avg only.
-        </p>
-      </section>
-
-      {/* Observed cost-per-outcome — Details: the objective-selectable zoom-in (trend + per-workflow). */}
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-gray-900">Observed cost-per-outcome - Details</h2>
-          <div className="inline-flex flex-wrap rounded-lg border border-brand-200 bg-brand-50 p-0.5">
-            {OBJECTIVES.map((o) => (
-              <button
-                key={o.key}
-                type="button"
-                onClick={() => setObjective(o.key)}
-                className={`px-3 py-1.5 text-xs rounded-md transition ${
-                  o.key === objective
-                    ? "bg-white text-brand-700 font-medium shadow-sm"
-                    : "text-brand-600 hover:text-brand-800"
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <ScoreCard
-            label={`Current ${active.label.toLowerCase()}`}
-            value={fmtUsd(currentAvg)}
-            subtitle={
-              trend.data
-                ? `Moving avg, last ~${num(trend.data.windowOutcomes)} ${active.noun}s`
-                : "Moving avg"
-            }
-            pending={trend.isPending}
-          />
-        </div>
-
-        {/* Trend chart. */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900">{active.label} over time</h3>
-          <p className="mt-1 text-xs text-gray-500">
-            Cross-org moving average, trailing window of ~
-            {trend.data ? num(trend.data.windowOutcomes) : "100"} {active.noun}s.
-          </p>
-          <div className="mt-4 h-[280px]">
-            {trend.isPending ? (
-              <Skeleton className="h-full w-full rounded-lg" />
-            ) : points.length === 0 || points.every((p) => p.costPerOutcomeUsd === null) ? (
-              <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                Not enough cross-org {active.noun}s yet to plot a trend.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDateShort}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    tickLine={false}
-                    axisLine={{ stroke: "#e2e8f0" }}
-                    minTickGap={24}
-                  />
-                  <YAxis
-                    tickFormatter={(v) => usd2(Number(v))}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={64}
-                  />
-                  <Tooltip content={<TrendTooltip noun={active.noun} />} />
-                  <Line
-                    type="monotone"
-                    dataKey="costPerOutcomeUsd"
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    connectNulls
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Per-workflow split. */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="w-full min-w-[820px] text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
-                <SortableTh label="Workflow" sortKey="name" sort={wfSort} onSort={onWfSort} align="left" />
-                <SortableTh label={`${active.label} 100-avg`} sortKey="recent" sort={wfSort} onSort={onWfSort} />
-                <SortableTh label={`${active.label} avg`} sortKey="avg" sort={wfSort} onSort={onWfSort} />
-                <SortableTh label="Spend" sortKey="spend" sort={wfSort} onSort={onWfSort} />
-                <SortableTh label="Clicks" sortKey="clicks" sort={wfSort} onSort={onWfSort} />
-                <SortableTh label="Positive replies" sortKey="replies" sort={wfSort} onSort={onWfSort} />
-              </tr>
-            </thead>
-            <tbody>
-              {workflows.isPending ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-gray-50">
-                    <td className="px-4 py-3" colSpan={6}>
-                      <Skeleton className="h-4 w-full rounded" />
-                    </td>
-                  </tr>
-                ))
-              ) : workflows.isError ? (
-                <tr>
-                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={6}>
-                    Couldn&apos;t load the workflow split (the cross-org query is slow). Retry shortly.
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={6}>
-                    No workflow data yet.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row) => (
-                  <tr
-                    key={row.workflowDynastySlug}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 text-gray-800">{row.workflowDynastyName}</td>
-                    {/* 100-avg = recent trailing-window moving average (features-service) — the primary sort column, shown first. */}
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">
-                      {fmtUsd(row.recentCostPerOutcomeUsd)}
-                    </td>
-                    {/* avg = lifetime pooled cost-per-outcome. */}
-                    <td className="px-4 py-3 text-right text-gray-600">
-                      {fmtUsd(row.costPerOutcomeUsd)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-600">{fmtUsd(row.spentUsd)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">{num(row.observedClicks)}</td>
-                    <td className="px-4 py-3 text-right text-gray-600">
-                      {num(row.observedPositiveReplies)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-gray-400">
-          Both cost columns come straight from features-service (cross-org, all brands): 100-avg =
-          the recent trailing-window moving average, avg = the lifetime pooled rate. Default sort is
-          100-avg ascending (cheapest first); click any header to re-sort or flip direction. Values
-          populate once a workflow has spend; a blank means no cross-org outcomes of that type yet.
         </p>
       </section>
     </div>
