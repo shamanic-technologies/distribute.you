@@ -185,7 +185,11 @@ export function OutreachStatCards({
   const trackerLive =
     conversionToken?.status === "live" ||
     conversionToken?.status === "live_waiting";
-  const goal = optimizationGoal ?? "sales_meetings";
+  // No default goal. The brand one is retired — `NOT NULL` with a server default, so it
+  // reads "website purchases" for a brand that stated nothing — and defaulting to it put
+  // a chain's steps on a surface that never named one. Absent goal AND absent funnel
+  // means the step helpers return the Outreach floor and no funnel pair renders.
+  const goal = optimizationGoal ?? null;
   // Which steps this row states, keyed on the FUNNEL when the surface is scoped to one and
   // on the goal otherwise. Every pair below is decided from this list rather than from a
   // `goal === "x"` test, so a chain that does not buy a click cannot be given the

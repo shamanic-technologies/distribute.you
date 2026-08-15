@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchFeatureStats,
-  getBrandSalesEconomics,
+  getCampaign,
   getFeatureRevenue,
   keepLastGoodFeatureRevenue,
 } from "@/lib/api";
@@ -55,13 +55,17 @@ export function OutreachStatCardsAuto({
     { enabled, ...pollOptions },
   );
 
-  // Brand goal config drives the stat-card copy. Shares the brand
-  // settings + campaign-creation query key → one fetch.
-  const { data: economicsData } = useAuthQuery(
-    ["brandSalesEconomics", brandId],
-    () => getBrandSalesEconomics(brandId),
-    { enabled, ...pollOptions },
+  // WHICH steps this row shows comes from the campaign's own SALES FUNNEL, never from
+  // the brand goal — that column is retired in brand-service (NOT NULL with a server
+  // default, so it reads "website purchases" for a brand that stated nothing) and it
+  // cannot separate the two meeting chains either. Same `["campaign", id]` key the
+  // campaign Overview and the top bar already poll → one request for all three.
+  const { data: campaignData } = useAuthQuery(
+    ["campaign", campaignId ?? "none"],
+    () => getCampaign(campaignId as string),
+    { enabled: !!campaignId },
   );
+  const funnelKey = campaignData?.campaign.funnelKey ?? null;
 
   // `/revenue` carries the `spend` block that feeds the cost cards (CPC / CPS /
   // CPSM). Byte-identical query key + keep-last-good to the brand Overview
@@ -88,8 +92,6 @@ export function OutreachStatCardsAuto({
   if (!enabled) return null;
 
   const featureStats = featureStatsData?.stats ?? {};
-  const optimizationGoal =
-    economicsData?.salesEconomics?.optimizationGoal ?? "sales_meetings";
 
   // `spend` (server-computed CPC / CPS / CPSM) comes from the `/revenue` payload,
   // read verbatim by `OutreachStatCards`. Absent/cold → the cost cards render
@@ -100,7 +102,14 @@ export function OutreachStatCardsAuto({
       stats={featureStats}
       spend={revenueData?.spend}
       pending={!statsRevealed}
-      optimizationGoal={optimizationGoal}
+      funnelKey={funnelKey}
+      economics={revenueData?.costEconomics}
+      totalPipelineUsd={revenueData?.totalPipelineUsd}
+      // A BRAND sells through several funnels at once, so its row states MONEY and no
+      // funnel steps — the same split the brand Overview takes. A campaign sells one,
+      // so its own steps are what it buys.
+      showEconomics={!campaignId}
+      showFunnelMetrics={!!campaignId}
       outreachOverride={outreachOverride}
     />
   );

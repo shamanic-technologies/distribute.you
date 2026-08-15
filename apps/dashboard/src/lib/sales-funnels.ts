@@ -781,3 +781,27 @@ export function funnelDestinationChips(
 
   return chips;
 }
+
+/**
+ * The goal a funnel implies — the LOSSLESS direction of a mapping that is lossy the
+ * other way round.
+ *
+ * Deriving a funnel FROM a goal is banned and stays banned: `sales_meetings` covers
+ * both meeting chains, so it prints a chain the campaign never stated. Going the other
+ * way is exact, because every funnel terminates in exactly one outcome — which is why
+ * features-service publishes the same echo on `funnel-ranking`.
+ *
+ * It exists so a campaign that predates `campaign.goal` still answers the goal-keyed
+ * helpers from its OWN funnel, rather than from the retired brand column.
+ */
+export function goalForFunnelKey(key: SalesFunnelKeyWire): BrandOptimizationGoal {
+  switch (normalizeSalesFunnelKey(key)) {
+    case "reply_meeting":
+    case "visit_meeting":
+      return "sales_meetings";
+    case "visit_signup":
+      return "signups";
+    case "visit_form":
+      return "form_submissions";
+  }
+}
