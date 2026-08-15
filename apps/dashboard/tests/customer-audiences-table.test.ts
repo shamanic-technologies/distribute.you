@@ -76,10 +76,13 @@ describe("Audiences page", () => {
 
   it("hides the CPC + Website Visits columns for the positive_replies goal", () => {
     // Single-step reply→paid goal: clicks aren't in the funnel, so both the header and
-    // body cells for CPC + Website Visits are gated off (CPPR columns stay).
+    // body cells for CPC + Website Visits are gated off (CPPR columns stay). The same
+    // flag also drops them at brand level, where a visit names one funnel's first step
+    // while the rows beside it are attributed across every funnel the brand sells.
     expect(src).toContain('"positive_replies"');
     expect(src).toContain("const isPositiveReplies");
-    expect(src).toContain("{!isPositiveReplies && (");
+    expect(src).toContain("const showVisitCols = !isPositiveReplies && !brandLevelMoney;");
+    expect(src).toContain("{showVisitCols && (");
   });
 
   it("joins per-audience evidence from features-service audience-stats by audienceId", () => {
