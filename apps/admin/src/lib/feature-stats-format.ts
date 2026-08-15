@@ -46,6 +46,22 @@ export function fmtCount(value: number | null | undefined): string {
   return num(value);
 }
 
+/**
+ * ROI prints ONE decimal (`11.7×`) everywhere. Coarsening above 10× was tried
+ * and reverted on the customer dashboard: at a real 11.7 a headline read `12×`
+ * two inches under a card reading `11.7×`.
+ */
+export function fmtRoi(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `${value.toFixed(1)}×`;
+}
+
+/** A served percentage, one decimal; "—" when unmeasurable (never a false 0%). */
+export function fmtPct(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `${value.toFixed(1)}%`;
+}
+
 export type SortDir = "asc" | "desc";
 export type Sort = { key: string; dir: SortDir };
 

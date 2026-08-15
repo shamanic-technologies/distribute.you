@@ -1510,6 +1510,63 @@ export async function getFeatureRevenueByCampaign(
   }));
 }
 
+// ─── Per-workflow revenue for ONE brand (grouped) ────────────────────────────
+// GET /features/:slug/revenue?brandId=&groupBy=workflowSlug → one lean group per
+// workflow the brand has run, carrying the SAME realized-money block the brand
+// and per-campaign answers already carry.
+//
+// Why not derive it from the per-campaign grouping: a workflow routinely carries
+// several campaigns (one prod brand: 20 campaigns over ~15 workflows, four of
+// them on one workflow), so rolling those up means summing pipeline and
+// re-dividing the ratios in the browser — banned, and it would contradict the
+// brand Overview. features-service owns the figure.
+//
+// ⚠️ The producer is shipping this in parallel and OWNS the parameter name, the
+// field names and how it identifies a workflow. The schema below mirrors the
+// `groupBy=campaignId` contract on the same endpoint — the producer's own
+// established shape — and is deliberately tolerant: the workflow identifier is
+// accepted under either spelling and `costPerAcquisitionUsd` is `.nullish()`.
+// Conform this reader to the deployed shape (api-registry, live > source) once
+// the producer's PR states it.
+const FeatureRevenueByWorkflowSchema = z.object({
+  groups: z.array(
+    z.object({
+      // Whichever the producer keys on; at least one must be present.
+      workflowDynastySlug: z.string().nullish(),
+      workflowSlug: z.string().nullish(),
+      workflowDynastyName: z.string().nullish(),
+      workflowName: z.string().nullish(),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: z.object({
+        totalCostUsd: z.number().nullish(),
+        costOfAcquisitionPct: z.number().nullable(),
+        costPerAcquisitionUsd: z.number().nullish(),
+        roiMultiple: z.number().nullable(),
+      }),
+    }),
+  ),
+});
+export type FeatureRevenueByWorkflowGroup = z.infer<
+  typeof FeatureRevenueByWorkflowSchema
+>["groups"][number];
+
+export async function getFeatureRevenueByWorkflow(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<FeatureRevenueByWorkflowGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "workflowSlug" });
+  const raw = await apiCall<unknown>(`/features/${featureSlug}/revenue?${query.toString()}`, { token });
+  const parsed = FeatureRevenueByWorkflowSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getFeatureRevenueByWorkflow: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getFeatureRevenueByWorkflow: invalid response shape");
+  }
+  return parsed.data.groups;
+}
+
 /** POST /brands — upsert brand by URL, returns brandId */
 export async function upsertBrand(
   url: string,
