@@ -11,6 +11,7 @@
  * Alias-free (type-only imports) so it carries real unit tests.
  */
 import type { CrossOrgWorkflowCostRow, CrossOrgWorkflowOutreachRow } from "./api";
+import type { WorkflowCatalogueEntry } from "./feature-stats-workflow-catalogue";
 
 export type WorkflowPerfRow = {
   slug: string;
@@ -35,35 +36,50 @@ function numOrNull(value: number | null | undefined): number | null {
 }
 
 /**
- * Join the three cross-org reads into one row per dynasty.
+ * Join the cross-org reads and the workflow catalogue into one row per dynasty.
  *
- * The row set is the UNION of the three sources: a workflow the outreach read
- * has not caught up on still shows its money, with "—" where a source is
- * silent. Dropping it would under-report the fleet.
+ * The row set is the UNION of every source: a workflow the outreach read has not
+ * caught up on still shows its money, with "—" where a source is silent.
+ * Dropping it would under-report the fleet.
+ *
+ * The catalogue is in that union for the same reason, one step further: all
+ * three stats reads are keyed on spend and outcomes, so a workflow that has
+ * never run is absent from every one of them. Without the catalogue a workflow
+ * created from this page would be invisible on it until its first billed run —
+ * the page would look like the creation had not happened.
  */
 export function buildWorkflowPerfRows(
   replyRows: CrossOrgWorkflowCostRow[],
   visitRows: CrossOrgWorkflowCostRow[],
   outreachRows: CrossOrgWorkflowOutreachRow[],
+  catalogueRows: WorkflowCatalogueEntry[] = [],
 ): WorkflowPerfRow[] {
   const byReply = new Map(replyRows.map((r) => [r.workflowDynastySlug, r]));
   const byVisit = new Map(visitRows.map((r) => [r.workflowDynastySlug, r]));
   const byOutreach = new Map(outreachRows.map((r) => [r.workflow.workflowDynastySlug, r]));
+  const byCatalogue = new Map(catalogueRows.map((r) => [r.workflowDynastySlug, r]));
 
   const slugs = [
-    ...new Set([...byReply.keys(), ...byVisit.keys(), ...byOutreach.keys()]),
+    ...new Set([
+      ...byReply.keys(),
+      ...byVisit.keys(),
+      ...byOutreach.keys(),
+      ...byCatalogue.keys(),
+    ]),
   ];
 
   return slugs.map((slug) => {
     const reply = byReply.get(slug);
     const visit = byVisit.get(slug);
     const outreach = byOutreach.get(slug);
+    const catalogue = byCatalogue.get(slug);
     return {
       slug,
       name:
         reply?.workflowDynastyName ??
         visit?.workflowDynastyName ??
         outreach?.workflow.workflowDynastyName ??
+        catalogue?.workflowDynastyName ??
         slug,
       // Both cost endpoints report the same counts for a dynasty; prefer the
       // objective whose outcome the column names, then fall back.
