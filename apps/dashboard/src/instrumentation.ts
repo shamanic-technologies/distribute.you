@@ -310,6 +310,14 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   // from the Search API instead of scraping the customer's own page title.
   { provider: "logo-dev", envVar: "LOGO_DEV_TOKEN" },
   { provider: "logo-dev-secret", envVar: "LOGO_DEV_SECRET_KEY" },
+  // Vercel AI Gateway. chat-service reaches DeepSeek V4 Flash (and any future
+  // gateway-routed model) through it, and resolves the credential from
+  // key-service under the provider slug `vercel` — byte-critical, it is the same
+  // string its `GATEWAY_PROVIDER` constant and the costs catalog use. Registering
+  // it here is the whole wiring: the loop skips a provider whose env var is
+  // absent, so this line is inert until `AI_GATEWAY_API_KEY` lands on the box and
+  // active on the next boot after it does.
+  { provider: "vercel", envVar: "AI_GATEWAY_API_KEY" },
   { provider: "scrape-do", envVar: "SCRAPE_DO_API_KEY" },
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
