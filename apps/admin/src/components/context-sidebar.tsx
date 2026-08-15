@@ -1086,6 +1086,19 @@ function FeatureLevelSidebar({ orgId, brandId, featureSlug, pathname }: {
         </div>
       )}
       <div className="pt-2 mt-2 border-t border-gray-100">
+        {/* The brand's workflow SCORECARD — what each workflow returned for this
+            brand, beside the cross-brand benchmark. Distinct from the workflow
+            EDITOR one level down under Feature Settings, which forks and archives
+            workflows rather than scoring them; the two are labelled apart. */}
+        <SidebarLink
+          item={{
+            id: "workflow-stats",
+            label: "Workflows",
+            href: `${basePath}/workflow-stats`,
+            icon: <WorkflowIcon />,
+          }}
+          isActive={pathname.startsWith(`${basePath}/workflow-stats`)}
+        />
         <SidebarLink
           item={{
             id: "feature-settings",
@@ -1130,7 +1143,11 @@ function FeatureSettingsLevelSidebar({ orgId, brandId, featureSlug, pathname }: 
       ? [
           {
             id: "workflows",
-            label: "Workflows",
+            // "Workflow editor", not "Workflows": the feature level now carries a
+            // Workflows SCORECARD, and two entries in one nav tree reading the
+            // same word for a scorecard and an editor is a nav contradicting
+            // itself. The app-level entry keeps "Workflows" — different tree.
+            label: "Workflow editor",
             href: `${basePath}/workflows`,
             icon: <WorkflowIcon />,
             maturity: FEATURE_GATES["workflows"].maturity,
@@ -1211,7 +1228,7 @@ function WorkflowLevelSidebar({ orgId, brandId, featureSlug, workflowId, pathnam
   ];
 
   return (
-    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows`} backLabel="Workflows">
+    <SidebarSection title={title} backHref={`/orgs/${orgId}/brands/${brandId}/features/${featureSlug}/workflows`} backLabel="Workflow editor">
       {items.map((item) => (
         <SidebarLink
           key={item.id}
