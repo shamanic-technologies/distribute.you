@@ -56,7 +56,7 @@ export function buildLeadsCsv(
     { label: "Company country", value: (l) => l.lead?.organization?.country ?? "" },
     // Engagement funnel (tab membership lives here)
     { label: "Status", value: (l) => statusLabelFor(l) },
-    { label: "Outreach", value: (l) => yesNo(l.contacted) },
+    { label: "Contacted", value: (l) => yesNo(l.contacted) },
     { label: "Sent", value: (l) => yesNo(l.sent) },
     { label: "Delivered", value: (l) => yesNo(l.delivered) },
     { label: "Website visit", value: (l) => yesNo(l.clicked) },
@@ -70,7 +70,7 @@ export function buildLeadsCsv(
     { label: "Audience", value: (l) => l.audience?.name ?? "" },
     // Per-event timestamps
     { label: "Served at", value: (l) => date(l.servedAt) },
-    { label: "First outreach at", value: (l) => date(l.firstContactedAt) },
+    { label: "First contacted at", value: (l) => date(l.firstContactedAt) },
     { label: "First sent at", value: (l) => date(l.firstSentAt) },
     { label: "First delivered at", value: (l) => date(l.firstDeliveredAt) },
     { label: "First website visit at", value: (l) => date(l.firstClickedAt) },

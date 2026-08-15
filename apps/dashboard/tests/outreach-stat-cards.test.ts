@@ -24,8 +24,13 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain(deprecatedStageField);
   });
 
-  it("renames the always-visible acquisition card to Outreach (opens removed)", () => {
-    expect(cards).toContain('label="Outreach"');
+  it("names the always-visible acquisition card from a prop, defaulting to Outreach", () => {
+    // The label is a prop because the count under it differs by surface: the brand
+    // Overview counts email SEQUENCES sent, the Leads page counts the PEOPLE its tabs
+    // reach. Same word over both read as one number contradicting itself.
+    expect(cards).toContain('outreachLabel = "Outreach"');
+    expect(cards).toContain("outreachLabel?: string;");
+    expect(cards).toContain("label={outreachLabel}");
     expect(cards).toContain(
       "stats.leadsContacted ?? stats.recipientsContacted ?? 0",
     );

@@ -30,6 +30,7 @@ import type { RevenueOverview } from "@/lib/revenue-view";
  */
 export function OutreachStatCardsAuto({
   outreachOverride,
+  outreachLabel,
 }: {
   /**
    * When set, the Outreach count comes from this value instead of the legacy
@@ -39,6 +40,12 @@ export function OutreachStatCardsAuto({
    * `outreachContacted` single source (features-service #371/#372).
    */
   outreachOverride?: number | null;
+  /**
+   * What that first card is CALLED. Passed through untouched — a caller supplying its
+   * own count says in the same breath what the count is OF (the Leads page counts
+   * people, the Overview counts email sequences). Absent → "Outreach".
+   */
+  outreachLabel?: string;
 } = {}) {
   const params = useParams();
   const brandId = params.brandId as string;
@@ -111,6 +118,7 @@ export function OutreachStatCardsAuto({
       showEconomics={!campaignId}
       showFunnelMetrics={!!campaignId}
       outreachOverride={outreachOverride}
+      outreachLabel={outreachLabel}
     />
   );
 }

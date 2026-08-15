@@ -44,10 +44,15 @@ import { useSharePathPrefix } from "@/components/share/share-mode-context";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
 // funnels (`leadTabsForFunnels`); this map only names them.
+//
+// The base tab says "Contacted", not the funnel step's own word, because this page
+// counts PEOPLE while the brand Overview counts the email sequences we sent them —
+// two honest numbers that read as one broken one under a shared label (prod: 9,915
+// sequences against 7,895 leads on the same brand, the same afternoon).
 const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
   "positive-replies": "Positive replies",
   clicks: "Website Visits",
-  outreach: "Outreach",
+  outreach: "Contacted",
   signups: "Signups",
   meetings: "Meetings",
   "form-submissions": "Form submissions",
@@ -1146,7 +1151,7 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 pb-24 overflow-y-auto transition-all`}>
-        <OutreachStatCardsAuto outreachOverride={loading ? null : contactedCount} />
+        <OutreachStatCardsAuto outreachOverride={loading ? null : contactedCount} outreachLabel="Contacted" />
         <div className="flex items-start justify-between mb-4">
           <h1 className="font-display text-xl font-bold text-gray-800">
             Leads

@@ -103,6 +103,7 @@ export function OutreachStatCards({
   optimizationGoal,
   funnelKey,
   outreachOverride,
+  outreachLabel = "Outreach",
   economics,
   totalPipelineUsd,
   showEconomics = false,
@@ -138,6 +139,17 @@ export function OutreachStatCards({
    * `/stats`-sourced count (entity pages that don't fetch `/revenue`).
    */
   outreachOverride?: number | null;
+  /**
+   * What the first card is CALLED, because two surfaces count two different things
+   * under it and the word has to say which.
+   *
+   * The brand Overview counts email SEQUENCES sent (undeduped by lead, so it tracks
+   * the spend beside it) and keeps "Outreach". The Leads page counts the PEOPLE its
+   * tabs can reach — one row per lead however many follow-ups they received — so it
+   * says "Contacted". Prod, one brand, one moment: 9,915 against 7,895. Neither is
+   * wrong; printing both under one word is.
+   */
+  outreachLabel?: string;
   /**
    * features-service `/revenue` `costEconomics` block — the money cards (ROI,
    * $ CAC, % CAC), rendered verbatim. Absent on a surface that carries no
@@ -316,7 +328,7 @@ export function OutreachStatCards({
     <div className="flex flex-nowrap gap-3 overflow-x-auto">
       <Cell>
         <ScoreCard
-          label="Outreach"
+          label={outreachLabel}
           value={formatCount(outreach)}
           pending={pending}
         />
