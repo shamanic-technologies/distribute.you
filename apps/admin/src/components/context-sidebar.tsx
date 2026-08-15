@@ -54,7 +54,11 @@ const SIDEBAR_BADGE_QUERY = {
   refetchOnReconnect: false,
 };
 
-interface SidebarItem {
+// Exported so a SECOND sidebar (the feature-stats sub-nav, which renders to the
+// RIGHT of this one rather than replacing it) draws its rows with the same
+// primitives. A second copy of the row/section markup is how two sidebars end up
+// looking like two different products.
+export interface SidebarItem {
   id: string;
   label: string;
   href: string;
@@ -64,7 +68,7 @@ interface SidebarItem {
   maturity?: Maturity;
 }
 
-function SidebarLink({
+export function SidebarLink({
   item,
   isActive,
   badgePending = false,
@@ -134,7 +138,7 @@ function BackLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-function SidebarSection({ title, backHref, backLabel, children, footer }: {
+export function SidebarSection({ title, backHref, backLabel, children, footer }: {
   title?: string;
   backHref?: string;
   backLabel?: string;

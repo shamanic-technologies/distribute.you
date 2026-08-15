@@ -5875,6 +5875,63 @@ export async function getCrossOrgWorkflowCostPerOutcome(
 }
 
 /**
+ * Cross-org (fleet-wide) per-workflow-dynasty OUTREACH VOLUME.
+ *
+ * `workflow-cost-per-outcome` above carries the money and the two outcome
+ * counts, but nothing that says how many people a workflow actually mailed to
+ * earn them. That number lives on the ranked leaderboard's per-workflow `stats`
+ * bag, so the Workflow page reads BOTH and joins on `workflowDynastySlug`.
+ *
+ * `recipientsContacted` is the outreach count — the people the workflow
+ * contacted, which is what "outreach" means on every other surface in the
+ * fleet. `completedRuns` counts workflow-execution rows (one workflow contacting
+ * 638 people can log ~15,000 of them), so it is NOT an outreach volume and must
+ * never be labelled as one.
+ *
+ * Every field is `.nullish()` → renders "—", never a fabricated 0.
+ */
+const CrossOrgWorkflowOutreachRowSchema = z.object({
+  workflow: z.object({
+    workflowDynastySlug: z.string(),
+    workflowDynastyName: z.string().nullish(),
+  }),
+  stats: z.object({
+    recipientsContacted: z.coerce.number().nullish(),
+    recipientsSent: z.coerce.number().nullish(),
+    completedRuns: z.coerce.number().nullish(),
+  }),
+});
+const CrossOrgWorkflowOutreachSchema = z.object({
+  results: z.array(CrossOrgWorkflowOutreachRowSchema),
+});
+export type CrossOrgWorkflowOutreachRow = z.infer<typeof CrossOrgWorkflowOutreachRowSchema>;
+
+/**
+ * `limit` has to be stated because the endpoint defaults to the top 3. It is a
+ * ceiling on a fleet-wide dynasty list (a couple of dozen rows today), not a
+ * page size — the Workflow page needs every workflow, not a leaderboard.
+ */
+export async function getCrossOrgWorkflowOutreach(
+  featureSlug: string,
+  limit = 500,
+): Promise<CrossOrgWorkflowOutreachRow[]> {
+  const query = new URLSearchParams({
+    featureSlug,
+    groupBy: "workflow",
+    limit: String(limit),
+  });
+  const raw = await apiCall<unknown>(`/public/features/ranked?${query.toString()}`);
+  const parsed = CrossOrgWorkflowOutreachSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getCrossOrgWorkflowOutreach: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getCrossOrgWorkflowOutreach: invalid response shape");
+  }
+  return parsed.data.results;
+}
+
+/**
  * Cross-org (fleet-wide) LIFETIME (all-history) pooled average cost-per-outcome
  * for every objective in one call. Total fleet spend ÷ total fleet outcomes —
  * the window→∞ limit of the moving-average trend. Each objective is `null` when
