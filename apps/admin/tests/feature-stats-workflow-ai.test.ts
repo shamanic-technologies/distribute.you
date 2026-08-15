@@ -90,6 +90,19 @@ describe("workflow catalogue instructions", () => {
     expect(instructions).toContain("no numbers yet");
   });
 
+  it("forbids inventing an enumerated identifier from the user's words", () => {
+    // 2026-08-15: the model heard "Deepseek Flash v4", wrote `deepseek-flash-v4`
+    // into three prod DAGs, and reported them validated. The real alias is
+    // `deepseek-flash`, and it was one get_endpoint_details call away.
+    expect(instructions).toContain("Never turn the spoken name into a slug");
+    expect(instructions).toContain("get_endpoint_details");
+    expect(instructions).toContain("Do not answer from memory");
+  });
+
+  it("says validate_workflow does not check the value, so it is not proof", () => {
+    expect(instructions).toContain("validate_workflow does NOT check this");
+  });
+
   it("still names the catalogue when the feature runs nothing", () => {
     expect(workflowCatalogueInstructions("x", [])).toContain("none yet");
   });

@@ -306,4 +306,28 @@ describe("Platform config registration at startup", () => {
       expect(apiKeyUsages!.length).toBeGreaterThanOrEqual(4); // emails + keys + prompts + chat
     });
   });
+
+  // 2026-08-15: asked to duplicate three cold-email workflows onto DeepSeek, the
+  // workflow chat wrote `deepseek-flash-v4` — a slug it built from the user's
+  // words — into three production DAGs, then reported them "testé, 100% valide"
+  // on the strength of a validate_workflow call that does not look at values.
+  // The real alias was one get_endpoint_details away.
+  describe("workflow chat — identifiers are read, never invented", () => {
+    it("forbids turning a spoken name into a slug", () => {
+      expect(content).toContain("Never transcribe an identifier from the user's words");
+      expect(content).toContain("get_endpoint_details");
+    });
+
+    it("makes the model say so BEFORE writing a value the service does not permit", () => {
+      expect(content).toContain("say so before you write anything");
+    });
+
+    it("blocks the answer-from-memory shortcut that caused this", () => {
+      expect(content).toContain("Do not answer this question from memory");
+    });
+
+    it("states that a validated DAG is not a proven one", () => {
+      expect(content).toContain("will NOT catch this");
+    });
+  });
 });
