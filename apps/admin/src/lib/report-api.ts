@@ -251,12 +251,17 @@ export async function fetchOrgName(orgId: string): Promise<string> {
   );
 }
 
+/** The report's own leads view buckets by intake status and renders a Skipped
+ *  state (`components/report/public-leads-view.tsx`), so it reads every
+ *  lifecycle status like the operator surfaces do — see `ALL_LEAD_STATUSES` in
+ *  `lib/api.ts` for why the parameter exists. Spelled out here rather than
+ *  imported: the report tree stays free of the Clerk-authed api client. */
 export async function fetchLeads(orgId: string, brandId: string, featureSlug: string): Promise<Lead[]> {
   return unstable_cache(
     async () => {
       const result = await adminGet<{ leads: Lead[] }>(
         "listBrandLeads",
-        `/leads?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}`,
+        `/leads?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}&status=all`,
         orgId,
       );
       const leads = result.leads ?? [];
