@@ -72,3 +72,33 @@ describe("every Overview money reader asks for net pricing", () => {
     });
   }
 });
+
+/**
+ * The rule is not "every reader in api.ts" — it is every reader of a money
+ * endpoint, wherever it lives. The outcome digest builds its own URL server-side
+ * (it runs on the cron, with admin identity, so it never touches the browser api
+ * client), which is exactly why it stayed on the gross default for months while
+ * the four readers above were swept to net. A brand on a usage discount then got
+ * one return in its inbox and a different one on its Overview, at the same
+ * moment, both labelled the same word.
+ *
+ * `outcome-digest.ts` imports through the `@` alias, so this is a source
+ * substring guard like the ones above, scoped to the one function.
+ */
+const digestSrc = fs.readFileSync(path.join(__dirname, "../src/lib/outcome-digest.ts"), "utf-8");
+
+describe("the outcome digest reads the same net basis as the Overview", () => {
+  const start = digestSrc.indexOf("async function fetchBrandRevenue");
+  const body = digestSrc.slice(start, digestSrc.indexOf("\nasync function", start + 1));
+
+  it("fetchBrandRevenue requests net pricing", () => {
+    expect(start, "fetchBrandRevenue not found in outcome-digest.ts").toBeGreaterThan(-1);
+    expect(body).toContain('pricing: "net"');
+  });
+
+  it("sends pricing unconditionally, never behind a caller flag", () => {
+    // A caller-tunable basis is what let two surfaces drift apart in the first
+    // place. The digest reports the brand's return; there is one right answer.
+    expect(body).not.toMatch(/if \(.*pricing/);
+  });
+});
