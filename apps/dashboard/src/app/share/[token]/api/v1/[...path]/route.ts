@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { shareApiAccess } from "@/lib/share-api-allowlist";
 import { resolveShareToken } from "@/lib/share-report";
+import { SERVICE_IDENTITY } from "@/lib/service-identity";
 
 /**
  * The read path for the public share view.
@@ -75,10 +76,11 @@ export async function GET(
         "Content-Type": "application/json",
         "X-API-Key": API_KEY,
         "x-external-org-id": brand.orgId,
-        // A stable synthetic caller, one per org, mirroring the public report in
-        // `apps/admin`. Stable because api-service resolves the (org, user) pair
-        // downstream and a per-visit identity would churn that row on every read.
-        "x-external-user-id": `share-public:${brand.orgId}`,
+        // A stable synthetic caller, keyed on the JOB rather than the org: the
+        // gateway resolves the (org, user) pair through client-service, which
+        // upserts a `users` row for whatever it is handed, so a per-org id was a
+        // row per org forever. The org travels on its own header above.
+        "x-external-user-id": SERVICE_IDENTITY.sharePublic,
         // Pinned to the credential's brand rather than forwarded from the client:
         // the caller does not get to say which brand it is asking about.
         "x-brand-id": brand.id,

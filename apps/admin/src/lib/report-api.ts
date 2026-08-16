@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
+import { SERVICE_IDENTITY } from "./service-identity";
 import type {
   Brand,
   Campaign,
@@ -76,7 +77,7 @@ export async function adminGet<T>(
         "Content-Type": "application/json",
         "X-API-Key": ADMIN_KEY,
         "x-external-org-id": orgId,
-        "x-external-user-id": `report-public:${orgId}`,
+        "x-external-user-id": SERVICE_IDENTITY.reportPublic,
         ...extraHeaders,
       },
       cache: "no-store",
@@ -122,7 +123,7 @@ export async function adminPost<T>(
         "Content-Type": "application/json",
         "X-API-Key": ADMIN_KEY,
         "x-external-org-id": orgId,
-        "x-external-user-id": `report-public:${orgId}`,
+        "x-external-user-id": SERVICE_IDENTITY.reportPublic,
         ...extraHeaders,
       },
       body: JSON.stringify(body),
