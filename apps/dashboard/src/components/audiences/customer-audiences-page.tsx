@@ -679,7 +679,9 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
         });
         return (
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-            <table className={`${brandLevelMoney ? "min-w-[820px]" : isPositiveReplies ? "min-w-[820px]" : showReplyCols && showSaleCols ? "min-w-[1320px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1100px]" : "min-w-[900px]"} w-full text-sm`}>
+            {/* Campaign widths carry the extra `$ Invested` column the brand table
+                already counts inside its own money block. */}
+            <table className={`${brandLevelMoney ? "min-w-[820px]" : isPositiveReplies ? "min-w-[940px]" : showReplyCols && showSaleCols ? "min-w-[1440px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1220px]" : "min-w-[1020px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
@@ -794,6 +796,21 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                       />
                       <SortHeader label="Website Visits" col="clicks" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                     </>
+                  )}
+                  {/* Realized spend, campaign-scoped. It sits directly left of Outreach
+                      here, which is where the brand table already carries it — every
+                      funnel pair above is off at brand level, so the two tables print
+                      this column in the same place. Same served field, same net basis
+                      billing charges; the browser divides nothing to get it. */}
+                  {campaignScoped && (
+                    <SortHeader
+                      label="$ Invested"
+                      col="invested"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={onSort}
+                      info="What this audience has actually cost so far on this campaign, net of any discount, on the same basis billing charges. The cost columns to its left are per-outcome prices, so this is the total behind them rather than a multiple of them."
+                    />
                   )}
                   <SortHeader label="Outreach" col="outreach" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                   <SortHeader label="Remaining" col="remaining" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
@@ -997,6 +1014,17 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                             )}
                           </td>
                         </>
+                      )}
+                      {campaignScoped && (
+                        <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
+                          {statsLoading ? (
+                            <Skeleton className="ml-auto h-4 w-12" />
+                          ) : stats ? (
+                            formatCents(stats.evidence.totalCostInUsdCents)
+                          ) : (
+                            "-"
+                          )}
+                        </td>
                       )}
                       <td className="px-4 py-3 text-right font-medium text-gray-700 tabular-nums">
                         {statsLoading ? (

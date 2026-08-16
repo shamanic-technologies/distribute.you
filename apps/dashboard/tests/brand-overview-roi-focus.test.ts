@@ -184,9 +184,17 @@ describe("brand surfaces list campaigns and state money", () => {
     // Sorted on the field it renders, or the column shows one order and states another.
     expect(audiences).toContain('case "invested":');
     expect(audiences).toContain("return stats?.evidence.totalCostInUsdCents ?? null;");
-    // Brand level only: it sits beside $ CAC, which exists nowhere else.
+    // Brand level: it sits beside $ CAC, which exists nowhere else.
     const money = audiences.slice(audiences.indexOf("{brandLevelMoney && ("));
     expect(money.slice(0, 2000)).toContain('label="$ Invested"');
+    // Campaign level carries the same column, directly left of Outreach — which is
+    // where the brand table already prints it, since every funnel pair above is off
+    // there. Both read the same served field; neither divides anything.
+    expect(audiences).toContain("{campaignScoped && (\n                    <SortHeader\n                      label=\"$ Invested\"");
+    const outreachHeaderAt = audiences.indexOf('<SortHeader label="Outreach"');
+    const campaignInvestedAt = audiences.indexOf('{campaignScoped && (\n                    <SortHeader');
+    expect(campaignInvestedAt).toBeGreaterThan(-1);
+    expect(campaignInvestedAt).toBeLessThan(outreachHeaderAt);
   });
 
   it("leads the brand Audiences table with the highest return, not the cheapest cost", () => {
