@@ -310,6 +310,14 @@ const PLATFORM_KEYS: { provider: string; envVar: string }[] = [
   // from the Search API instead of scraping the customer's own page title.
   { provider: "logo-dev", envVar: "LOGO_DEV_TOKEN" },
   { provider: "logo-dev-secret", envVar: "LOGO_DEV_SECRET_KEY" },
+  // The three model vendors chat-service calls directly since v0.51.0, when the
+  // Vercel AI Gateway was removed for reselling these same models well above their
+  // list prices. Each slug is byte-critical: chat-service resolves the credential
+  // through `GET /keys/platform/{provider}/decrypt` using exactly these strings, so
+  // a rename reads downstream as "vendor unconfigured" rather than as a config error.
+  { provider: "deepseek", envVar: "DEEPSEEK_API_KEY" },
+  { provider: "moonshot", envVar: "MOONSHOT_API_KEY" },
+  { provider: "zai", envVar: "ZAI_API_KEY" },
   { provider: "scrape-do", envVar: "SCRAPE_DO_API_KEY" },
   { provider: "apify", envVar: "APIFY_API_KEY" },
   { provider: "featured-username", envVar: "FEATURED_COM_USERNAME" },
