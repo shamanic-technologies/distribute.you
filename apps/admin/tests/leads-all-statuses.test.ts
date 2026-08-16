@@ -44,3 +44,21 @@ describe('Admin leads reads ask for every lifecycle status', () => {
     }
   });
 });
+
+/**
+ * lead-service v0.52.0 started honouring `limit` on the leads list, which turned
+ * the report's decorative `limit=50` into a real first page under a heading that
+ * says "Every prospect considered". The bound is off that call for good; sizing
+ * this page properly is a slim list plus a per-lead read for the panel.
+ */
+describe('The public report leads read is not bounded', () => {
+  const reportApi = fs.readFileSync(path.join(__dirname, '../src/lib/report-api.ts'), 'utf-8');
+  const at = reportApi.indexOf('export async function fetchLeads(');
+  const body = reportApi.slice(at, reportApi.indexOf('\n}', at));
+
+  it('sends no limit on the leads call', () => {
+    expect(at).toBeGreaterThan(-1);
+    expect(body).toContain('`/leads?brandId=${brandId}&status=all`');
+    expect(body).not.toContain('limit=');
+  });
+});
