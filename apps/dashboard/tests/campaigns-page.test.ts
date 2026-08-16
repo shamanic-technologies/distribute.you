@@ -124,9 +124,11 @@ describe("Campaigns page (GA)", () => {
 
   // Return leads, because that is what the table is sorted by. A table that
   // displays one order and ranks by another reads as unordered.
-  it("orders the columns ROI, % CAC, Revenue, Sales funnel, Channel, Status", () => {
+  // `$ Invested` sits immediately right of `$ Revenue`: the money block reads
+  // projection, projection, projection, then the one realized figure behind them.
+  it("orders the columns ROI, % CAC, $ Revenue, $ Invested, Sales funnel, Channel, Status", () => {
     const head = table.slice(table.indexOf("<thead>"), table.indexOf("</thead>"));
-    const order = ["ROI", "% CAC", "Revenue", "Sales funnel", "Channel", "Status"];
+    const order = ["ROI", "% CAC", "$ Revenue", "$ Invested", "Sales funnel", "Channel", "Status"];
     let at = -1;
     for (const label of order) {
       const next = head.indexOf(`${label}"`) >= 0 ? head.indexOf(`${label}"`) : head.indexOf(label);
@@ -227,10 +229,15 @@ describe("Campaigns page (GA)", () => {
     expect(table).toContain("COLUMN_INFO.roi");
     expect(table).toContain("COLUMN_INFO.cacPct");
     expect(table).toContain("COLUMN_INFO.revenue");
+    expect(table).toContain("COLUMN_INFO.invested");
     // The revenue column is expected pipeline, not money collected — the whole
     // reason it carries a tip.
     expect(table).toContain("Expected pipeline revenue:");
     expect(table).toContain("not money already collected");
+    // `$ Invested` is the one REALIZED figure beside three projections, so its tip
+    // says so rather than leaving a reader to multiply it by the ROI next to it.
+    expect(table).toContain("net of any discount, on the same basis billing charges");
+    expect(table).toContain("not a multiplier of them");
   });
 
   it("renders all four campaign stats from server fields, no client cost math", () => {
@@ -238,6 +245,9 @@ describe("Campaigns page (GA)", () => {
     expect(table).toContain("totalPipelineUsd");
     expect(table).toContain("roiMultiple");
     expect(table).toContain("costOfAcquisitionPct");
+    // `$ Invested` renders the served net spend verbatim — the same field ROI and
+    // % CAC divide by, so a row cannot contradict its own return.
+    expect(table).toContain("fmtUsd(revenue?.actualCostUsd)");
     // No client-side cost derivation (the CPC-incident rule): no dividing a cost
     // by a count, no reduce-summing a cost breakdown.
     expect(table).not.toMatch(/actualCostUsd\s*\/\s*/);

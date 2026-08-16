@@ -47,10 +47,15 @@ function fmtPct(pct: number | null | undefined): string {
 /**
  * What each number column means, in the words a reader needs to trust it.
  *
- * All three are PROJECTIONS, and saying so is the point: the revenue is what the
- * outcomes so far are expected to be worth, not money collected, and ROI and
+ * The first three are PROJECTIONS, and saying so is the point: the revenue is what
+ * the outcomes so far are expected to be worth, not money collected, and ROI and
  * % CAC are computed from it. A column that reads as banked revenue when it is a
  * forecast is the same statement under two meanings.
+ *
+ * `$ Invested` is the one REALIZED figure in the group, which is exactly why it sits
+ * beside them and says so: it is the net spend billing charges, the same number ROI
+ * and % CAC divide by. A reader who assumes one basis will try to multiply
+ * `$ Invested x ROI`, so the tip states the difference outright.
  */
 const COLUMN_INFO = {
   roi: "What a customer is worth over their lifetime, divided by what it costs to win one. 11.7x means every $1 spent is projected to return $11.70. Based on the conversion rates and lifetime revenue set in Brand Settings.",
@@ -58,6 +63,8 @@ const COLUMN_INFO = {
     "What winning a customer costs, as a share of what that customer is worth over their lifetime. 9% means $9 spent for every $100 earned. Lower is better, and it is the inverse of ROI.",
   revenue:
     "Expected pipeline revenue: the outcomes this campaign has produced so far, valued with the conversion rates and customer lifetime revenue you set in Brand Settings. It is a projection of what this pipeline is worth, not money already collected.",
+  invested:
+    "What this campaign has actually cost so far, net of any discount, on the same basis billing charges. The columns to its left are projections of what it is worth going forward, so this is not a multiplier of them.",
 } as const;
 
 /** A right-aligned numeric header with its (i) sitting after the label. */
@@ -275,7 +282,7 @@ export function CampaignsTable({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[820px] text-sm">
         <thead>
           {/* Return first: the table is sorted by ROI, so it leads with the
               column that decides the order.
@@ -285,7 +292,8 @@ export function CampaignsTable({
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             <th className="px-4 py-3 text-right"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
             <th className="px-4 py-3 text-right"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
-            <th className="px-4 py-3 text-right"><NumericHead label="Revenue" tip={COLUMN_INFO.revenue} /></th>
+            <th className="px-4 py-3 text-right"><NumericHead label="$ Revenue" tip={COLUMN_INFO.revenue} /></th>
+            <th className="px-4 py-3 text-right"><NumericHead label="$ Invested" tip={COLUMN_INFO.invested} /></th>
             <th className="px-4 py-3">Sales funnel</th>
             <th className="px-4 py-3">Channel</th>
             <th className="px-4 py-3">Status</th>
@@ -295,14 +303,14 @@ export function CampaignsTable({
           {!settled ? (
             [0, 1, 2].map((i) => (
               <tr key={`sk-${i}`}>
-                <td className="px-4 py-3" colSpan={6}>
+                <td className="px-4 py-3" colSpan={7}>
                   <Skeleton className="h-5 w-full" />
                 </td>
               </tr>
             ))
           ) : rows.length === 0 ? (
             <tr>
-              <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>
+              <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
                 {featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
               </td>
             </tr>
@@ -316,6 +324,10 @@ export function CampaignsTable({
                 <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.totalPipelineUsd)}</td>
+                {/* The realized half: `costEconomics.actualCostUsd`, read verbatim off the
+                    same `pricing=net` group. A row with no group at all reads `—` rather
+                    than $0 — "we have no figure" and "it cost nothing" differ. */}
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.actualCostUsd)}</td>
                 <td className="px-4 py-3 text-gray-800">
                   <FunnelCell funnelKey={campaign.funnelKey} />
                 </td>
