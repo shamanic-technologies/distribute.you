@@ -18,4 +18,17 @@ describe('Campaign leads endpoint', () => {
   it('should have a listCampaignLeads that uses the query-param endpoint', () => {
     expect(content).toContain('/leads?campaignId=');
   });
+
+  /**
+   * Both lead readers ask for the slim projection. The full projection is what
+   * the campaign-scoped read used to send, back when a campaign scope meant one
+   * stored campaign row and a handful of leads. lead-service now answers a
+   * campaign read for the whole campaign IDENTITY, so its size matches the
+   * brand's: measured 53,777 rows / 156 MB / 54s full, against 102 MB / 6.6s
+   * slim, on one production brand. The page polls this every 30 seconds.
+   */
+  it('asks for the slim projection on BOTH the campaign and the brand read', () => {
+    expect(content).toContain('/leads?campaignId=${campaignId}&view=basic');
+    expect(content).toContain('/leads?brandId=${brandId}&view=basic');
+  });
 });

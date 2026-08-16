@@ -3525,18 +3525,26 @@ function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } {
   return parsed.data as unknown as { leads: Lead[] };
 }
 
+// `view=basic` returns the slim lead projection (thin person + thin org, no
+// employmentHistory / extra org columns). Both readers feed the SAME
+// `EngagedLeadsPage`, which renders its table, status tabs, search and detail
+// panel from thin fields only — so neither scope has a use for the full one.
+//
+// The campaign read went without it for as long as a campaign scope meant one
+// stored campaign row and a handful of leads. lead-service now answers a
+// campaign-scoped read for the whole campaign IDENTITY, so its size matches the
+// brand's: one production brand measured 53,777 rows / 156 MB / 54s on the full
+// projection against 102 MB / 6.6s on the slim one. The page polls this every
+// 30 seconds per open tab, and the gateway used to buffer the whole body into
+// memory, which is what OOM-crash-looped api-service.
+// Requires api-service to forward the `view` param.
+// See shamanic-technologies/distribute.you#1620.
 export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?campaignId=${campaignId}`, { token });
+  const raw = await apiCall<unknown>(`/leads?campaignId=${campaignId}&view=basic`, { token });
   return parseLeadsResponse(raw, "listCampaignLeads");
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
-  // `view=basic` returns the slim lead projection (thin person + thin org, no
-  // employmentHistory / extra org columns). The brand leads page renders the
-  // table, status tabs, search, and detail panel from thin fields only, so the
-  // full payload (~150 MB for a 50k-lead brand, pulled every poll) is wasteful.
-  // Requires api-service to forward the `view` param. listCampaignLeads +
-  // feature leads stay full-fat. See shamanic-technologies/distribute.you#1620.
   const raw = await apiCall<unknown>(`/leads?brandId=${brandId}&view=basic`, { token });
   return parseLeadsResponse(raw, "listBrandLeads");
 }
