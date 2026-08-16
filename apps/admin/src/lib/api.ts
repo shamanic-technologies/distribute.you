@@ -1552,19 +1552,27 @@ const FeatureRevenueByWorkflowSchema = z.object({
         costPerAcquisitionUsd: z.number().nullish(),
         roiMultiple: z.number().nullable(),
       }),
-      // Volume + outcome cost per workflow. features-service answers all of
-      // these for the WHOLE brand on the un-grouped read; the per-workflow
-      // grouping is catching up, so they are read `.nullish()` under the
-      // producer's own established names — the page ships now and the columns
-      // fill in the moment the producer deploys, with no consumer change if the
-      // names hold. Absent ≠ zero: the cell renders —.
-      recipientsContacted: z.number().nullish(),
-      recipientsClicked: z.number().nullish(),
-      recipientsRepliesPositive: z.number().nullish(),
-      spend: z
+      // What the return was made of: how many people the workflow reached and
+      // what each outcome cost, per dynasty, for THIS brand (features-service
+      // #776 → v0.131.0 — the shape the producer designed, conformed to here).
+      //
+      // Every figure rides REALIZED (billed) spend, the same basis
+      // `costEconomics` rides, so a row's ROI and its cost per click are two
+      // views of one number. Deliberately NOT the un-grouped read's `spend`
+      // block, whose cost-per-outcome columns are COMMITTED and floored against
+      // a fleet benchmark — a committed numerator beside a realized ROI would
+      // be two currencies in one row.
+      //
+      // Kept `.nullish()` as a block so a body predating v0.131.0 still parses
+      // and the columns read — rather than 502-ing the whole page.
+      outcomes: z
         .object({
+          recipientsContacted: z.number().nullish(),
+          recipientsClicked: z.number().nullish(),
+          recipientsRepliesPositive: z.number().nullish(),
+          // OBSERVED, never floored: null is "it bought none of these", not 0.
+          cpcCents: z.number().nullish(),
           cpprCents: z.number().nullish(),
-          totalCpcCents: z.number().nullish(),
         })
         .nullish(),
     }),
