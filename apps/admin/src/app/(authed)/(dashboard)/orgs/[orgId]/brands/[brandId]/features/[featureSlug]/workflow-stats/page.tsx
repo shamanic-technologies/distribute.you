@@ -59,9 +59,10 @@ export default function BrandWorkflowStatsPage() {
   // table's stated reason, never holds the page in a skeleton forever.
   const pending = brand.isPending && !brand.isError;
 
-  // The producer is shipping the per-workflow volume + outcome-cost fields in
-  // parallel. While they are absent every row is blank on those five, which is
-  // stated rather than left as five unexplained columns of dashes.
+  // features-service serves the volume half from v0.131.0. An older body has no
+  // such block at all, so every row goes blank on those five at once — stated
+  // rather than left as five unexplained columns of dashes. A single workflow
+  // that merely bought no clicks is a per-row null, not this.
   const engagementMissing =
     !pending &&
     rows.length > 0 &&
@@ -159,9 +160,9 @@ export default function BrandWorkflowStatsPage() {
         )}
         {engagementMissing && (
           <p className="text-xs text-amber-700">
-            Positive replies, website visits and outreach are blank because features-service does not
-            break them down per workflow yet — it answers them for the whole brand. They fill in on
-            their own once it does.
+            Positive replies, website visits and outreach are blank for every row — features-service
+            is answering from a build that predates the per-workflow breakdown. They fill in on their
+            own once it catches up.
           </p>
         )}
 

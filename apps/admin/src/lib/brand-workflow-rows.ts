@@ -24,12 +24,12 @@ export type BrandWorkflowRow = {
   cacUsd: number | null;
   pipelineUsd: number | null;
   /**
-   * Volume + outcome cost, per workflow, for THIS brand.
+   * What the return was made of: how many people this workflow reached and what
+   * each outcome cost, for THIS brand.
    *
-   * features-service answers all five for the whole brand on the un-grouped
-   * read; the per-workflow grouping is catching up, so they are read under the
-   * producer's own established names and stay null until it deploys. Null is
-   * "we could not measure this" — never a zero.
+   * OBSERVED, never floored — a workflow with spend that bought none of an
+   * outcome reports null, "we could not measure this", never a 0 and never a
+   * fleet estimate. Projection has its own surface.
    */
   positiveReplies: number | null;
   cpprUsd: number | null;
@@ -83,11 +83,11 @@ export function buildBrandWorkflowRows(
     cacPct: numOrNull(g.costEconomics.costOfAcquisitionPct),
     cacUsd: numOrNull(g.costEconomics.costPerAcquisitionUsd),
     pipelineUsd: numOrNull(g.headline.totalPipelineUsd),
-    positiveReplies: numOrNull(g.recipientsRepliesPositive),
-    cpprUsd: centsToUsd(g.spend?.cpprCents),
-    websiteVisits: numOrNull(g.recipientsClicked),
-    cpwvUsd: centsToUsd(g.spend?.totalCpcCents),
-    outreach: numOrNull(g.recipientsContacted),
+    positiveReplies: numOrNull(g.outcomes?.recipientsRepliesPositive),
+    cpprUsd: centsToUsd(g.outcomes?.cpprCents),
+    websiteVisits: numOrNull(g.outcomes?.recipientsClicked),
+    cpwvUsd: centsToUsd(g.outcomes?.cpcCents),
+    outreach: numOrNull(g.outcomes?.recipientsContacted),
     // `totalCostUsd` is the pre-rename spelling the producer retired; reading
     // both keeps the column alive whichever one an older body carries.
     investedUsd: numOrNull(g.costEconomics.actualCostUsd ?? g.costEconomics.totalCostUsd),

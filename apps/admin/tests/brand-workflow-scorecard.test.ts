@@ -111,10 +111,13 @@ describe("buildBrandWorkflowRows", () => {
       costPerAcquisitionUsd: 92.8,
       roiMultiple: 3.2,
     },
-    recipientsContacted: 638,
-    recipientsClicked: 52,
-    recipientsRepliesPositive: 14,
-    spend: { cpprCents: 9280, totalCpcCents: 2490 },
+    outcomes: {
+      recipientsContacted: 638,
+      recipientsClicked: 52,
+      recipientsRepliesPositive: 14,
+      cpcCents: 2490,
+      cpprCents: 9280,
+    },
   });
 
   it("carries every column off THIS brand's group", () => {
@@ -200,8 +203,31 @@ describe("buildBrandWorkflowRows", () => {
     expect(fmtPct(row.cacPct)).toBe("—");
   });
 
-  it("leaves the volume columns null while the producer answers them brand-wide only", () => {
-    // Absent per-workflow ≠ zero outreach: the cell reads —, and the page says why.
+  it("reads null, not zero, for an outcome the workflow bought none of", () => {
+    // features-service reports OBSERVED rates: a workflow with spend and no
+    // click reports null, never a 0 and never a floored fleet estimate.
+    const [row] = buildBrandWorkflowRows([
+      {
+        workflowDynastySlug: "wf-a",
+        headline: { totalPipelineUsd: 4200 },
+        costEconomics: { costOfAcquisitionPct: 31, roiMultiple: 3.2 },
+        outcomes: {
+          recipientsContacted: 638,
+          recipientsClicked: 0,
+          recipientsRepliesPositive: 0,
+          cpcCents: null,
+          cpprCents: null,
+        },
+      },
+    ]);
+    expect(row.outreach).toBe(638);
+    expect(row.positiveReplies).toBe(0);
+    expect(row.websiteVisits).toBe(0);
+    expect(row.cpprUsd).toBeNull();
+    expect(row.cpwvUsd).toBeNull();
+  });
+
+  it("still renders a body predating the volume block instead of dropping the row", () => {
     const [row] = buildBrandWorkflowRows([
       {
         workflowDynastySlug: "wf-a",
@@ -209,11 +235,9 @@ describe("buildBrandWorkflowRows", () => {
         costEconomics: { costOfAcquisitionPct: 31, roiMultiple: 3.2 },
       },
     ]);
+    expect(row.roiMultiple).toBe(3.2);
     expect(row.outreach).toBeNull();
-    expect(row.positiveReplies).toBeNull();
-    expect(row.websiteVisits).toBeNull();
     expect(row.cpprUsd).toBeNull();
-    expect(row.cpwvUsd).toBeNull();
   });
 
   it("deduplicates — one row per workflow dynasty", () => {
