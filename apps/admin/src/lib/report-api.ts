@@ -261,7 +261,19 @@ export async function fetchLeads(orgId: string, brandId: string, featureSlug: st
     async () => {
       const result = await adminGet<{ leads: Lead[] }>(
         "listBrandLeads",
-        `/leads?brandId=${brandId}&limit=${REPORT_FETCH_LIMIT}&status=all`,
+        // NO `limit`. The section is titled "Every prospect considered" and
+        // prints its own row count, so a first page rendered under that heading
+        // states something false. The filter below is applied AFTER the fetch as
+        // well, so a bound would be a bound on the wrong population: the first N
+        // brand rows can belong entirely to another feature and this report
+        // would show none of its own.
+        //
+        // This call carried a bound of 50 for as long as lead-service ignored it.
+        // v0.52.0 honours it (distribute.you#3416), which turned a decorative
+        // parameter into a load-bearing one overnight — so it comes out.
+        // Fixing the size properly means a slim list plus a per-lead read for
+        // the panel, which is a real change to this page, not a query param.
+        `/leads?brandId=${brandId}&status=all`,
         orgId,
       );
       const leads = result.leads ?? [];
