@@ -7,7 +7,6 @@ import {
   buildBrandWorkflowRows,
 } from "../src/lib/brand-workflow-rows";
 import { fmtPct, fmtRoi } from "../src/lib/feature-stats-format";
-import type { WorkflowPerfRow } from "../src/lib/feature-stats-workflow-rows";
 
 const FEATURE_DIR = join(
   __dirname,
@@ -57,7 +56,7 @@ describe("brand Workflows scorecard: the table", () => {
     }
   });
 
-  it("renders the fleet page's six columns beside them", () => {
+  it("renders the volume and outcome-cost columns, same order, beside them", () => {
     for (const label of [
       "Positive replies",
       "CPPR",
@@ -70,9 +69,13 @@ describe("brand Workflows scorecard: the table", () => {
     }
   });
 
-  it("labels the two halves apart — one is this brand, the other is everyone", () => {
+  it("is brand-scoped end to end — no cross-brand half, no fleet reads", () => {
     expect(page).toContain("This brand");
-    expect(page).toContain("All client brands");
+    expect(page).not.toContain("All client brands");
+    expect(page).not.toContain("getCrossOrgWorkflowCostPerOutcome");
+    expect(page).not.toContain("getCrossOrgWorkflowOutreach");
+    expect(page).not.toContain("crossOrgWorkflowCost");
+    expect(page).not.toContain("buildWorkflowPerfRows");
   });
 
   it("computes nothing: no ratio is derived in the browser", () => {
@@ -81,16 +84,12 @@ describe("brand Workflows scorecard: the table", () => {
     expect(body).not.toContain("100 /");
   });
 
-  it("shares the fleet Workflow page's query keys so the two cannot disagree", () => {
-    expect(page).toContain('["crossOrgWorkflowCost", featureSlug, "positiveReply"]');
-    expect(page).toContain('["crossOrgWorkflowCost", featureSlug, "websiteVisit"]');
-    expect(page).toContain('["crossOrgWorkflowOutreach", featureSlug]');
-  });
-
-  it("reveals on settle and STATES why the brand columns are blank rather than skeletoning", () => {
-    expect(page).toContain("!q.isPending || q.isError");
+  it("reveals on settle and STATES why the columns are blank rather than skeletoning", () => {
+    expect(page).toContain("brand.isPending && !brand.isError");
     expect(page).toContain("brand.isError");
     expect(page).toContain("features-service serves the");
+    // The five the producer does not break down per workflow yet.
+    expect(page).toContain("engagementMissing");
   });
 
   it("reads the brand figures from features-service, never from a runs/spend join", () => {
@@ -102,63 +101,65 @@ describe("brand Workflows scorecard: the table", () => {
 });
 
 describe("buildBrandWorkflowRows", () => {
-  const fleet = (slug: string): WorkflowPerfRow => ({
-    slug,
-    name: `Fleet ${slug}`,
-    positiveReplies: 14,
-    cpprUsd: 92.8,
-    websiteVisits: 52,
-    cpwvUsd: 24.9,
-    outreach: 638,
-    investedUsd: 1299.47,
-  });
   const group = (slug: string) => ({
     workflowDynastySlug: slug,
     workflowDynastyName: `Brand ${slug}`,
     headline: { totalPipelineUsd: 4200 },
     costEconomics: {
-      totalCostUsd: 1299.47,
+      actualCostUsd: 1299.47,
       costOfAcquisitionPct: 31,
       costPerAcquisitionUsd: 92.8,
       roiMultiple: 3.2,
     },
+    recipientsContacted: 638,
+    recipientsClicked: 52,
+    recipientsRepliesPositive: 14,
+    spend: { cpprCents: 9280, totalCpcCents: 2490 },
   });
 
-  it("joins this brand's money to the fleet benchmark for the same workflow", () => {
-    const [row] = buildBrandWorkflowRows([group("wf-a")], [fleet("wf-a")]);
-    expect(row.brand).toEqual({
+  it("carries every column off THIS brand's group", () => {
+    const [row] = buildBrandWorkflowRows([group("wf-a")]);
+    expect(row).toEqual({
+      slug: "wf-a",
+      name: "Brand wf-a",
       roiMultiple: 3.2,
       cacPct: 31,
       cacUsd: 92.8,
       pipelineUsd: 4200,
+      positiveReplies: 14,
+      cpprUsd: 92.8,
+      websiteVisits: 52,
+      cpwvUsd: 24.9,
+      outreach: 638,
+      investedUsd: 1299.47,
     });
-    expect(row.fleet?.cpprUsd).toBe(92.8);
-    expect(row.name).toBe("Brand wf-a");
+  });
+
+  it("prints the BILLED spend the return divides by, not the committed total", () => {
+    // ROI rides actualCostUsd; a $ Invested column showing anything else would
+    // make the row contradict its own ROI.
+    const [row] = buildBrandWorkflowRows([
+      { ...group("wf-a"), costEconomics: { ...group("wf-a").costEconomics, actualCostUsd: 800 } },
+    ]);
+    expect(row.investedUsd).toBe(800);
+  });
+
+  it("still fills $ Invested from the pre-rename spelling", () => {
+    const g = group("wf-a");
+    const [row] = buildBrandWorkflowRows([
+      { ...g, costEconomics: { ...g.costEconomics, actualCostUsd: null, totalCostUsd: 512 } },
+    ]);
+    expect(row.investedUsd).toBe(512);
   });
 
   it("joins the DEPLOYED shape — a dynasty group listing its folded versions", () => {
     // features-service #772: a group is a dynasty, keyed workflowDynastySlug,
-    // carrying workflowSlugs. That key is what the cross-org benchmark uses too.
-    const [row] = buildBrandWorkflowRows(
-      [{ ...group("wf-a"), workflowSlugs: ["wf-a-v1", "wf-a-v2"] }],
-      [fleet("wf-a")],
-    );
+    // carrying workflowSlugs. Upgrading to v2 is one row, not two.
+    const [row] = buildBrandWorkflowRows([
+      { ...group("wf-a"), workflowSlugs: ["wf-a-v1", "wf-a-v2"] },
+    ]);
     expect(row.slug).toBe("wf-a");
-    expect(row.brand.roiMultiple).toBe(3.2);
-    expect(row.fleet?.investedUsd).toBe(1299.47);
-  });
-
-  it("keeps a workflow the brand ran that the fleet read is silent on", () => {
-    const [row] = buildBrandWorkflowRows([group("wf-a")], []);
-    expect(row.fleet).toBeNull();
-    expect(row.brand.roiMultiple).toBe(3.2);
-  });
-
-  it("keeps a fleet workflow this brand never ran, with the brand side null", () => {
-    const [row] = buildBrandWorkflowRows([], [fleet("wf-z")]);
-    expect(row.brand).toEqual({ roiMultiple: null, cacPct: null, cacUsd: null, pipelineUsd: null });
-    expect(row.fleet?.slug).toBe("wf-z");
-    expect(row.name).toBe("Fleet wf-z");
+    expect(row.roiMultiple).toBe(3.2);
   });
 
   it("reads the workflow key under either spelling, preferring the dynasty", () => {
@@ -174,39 +175,49 @@ describe("buildBrandWorkflowRows", () => {
   });
 
   it("drops a group carrying no workflow key rather than inventing a name", () => {
-    const rows = buildBrandWorkflowRows(
-      [
-        {
-          workflowDynastySlug: null,
-          workflowSlug: null,
-          headline: { totalPipelineUsd: 100 },
-          costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
-        },
-      ],
-      [],
-    );
+    const rows = buildBrandWorkflowRows([
+      {
+        workflowDynastySlug: null,
+        workflowSlug: null,
+        headline: { totalPipelineUsd: 100 },
+        costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
+      },
+    ]);
     expect(rows).toHaveLength(0);
   });
 
   it("emits null (not 0) for an unmeasurable figure so the cell reads —", () => {
-    const [row] = buildBrandWorkflowRows(
-      [
-        {
-          workflowDynastySlug: "wf-a",
-          headline: { totalPipelineUsd: null },
-          costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
-        },
-      ],
-      [],
-    );
-    expect(row.brand.roiMultiple).toBeNull();
-    expect(row.brand.cacUsd).toBeNull();
-    expect(fmtRoi(row.brand.roiMultiple)).toBe("—");
-    expect(fmtPct(row.brand.cacPct)).toBe("—");
+    const [row] = buildBrandWorkflowRows([
+      {
+        workflowDynastySlug: "wf-a",
+        headline: { totalPipelineUsd: null },
+        costEconomics: { costOfAcquisitionPct: null, roiMultiple: null },
+      },
+    ]);
+    expect(row.roiMultiple).toBeNull();
+    expect(row.cacUsd).toBeNull();
+    expect(fmtRoi(row.roiMultiple)).toBe("—");
+    expect(fmtPct(row.cacPct)).toBe("—");
   });
 
-  it("deduplicates the union — one row per workflow", () => {
-    const rows = buildBrandWorkflowRows([group("wf-a")], [fleet("wf-a"), fleet("wf-b")]);
+  it("leaves the volume columns null while the producer answers them brand-wide only", () => {
+    // Absent per-workflow ≠ zero outreach: the cell reads —, and the page says why.
+    const [row] = buildBrandWorkflowRows([
+      {
+        workflowDynastySlug: "wf-a",
+        headline: { totalPipelineUsd: 4200 },
+        costEconomics: { costOfAcquisitionPct: 31, roiMultiple: 3.2 },
+      },
+    ]);
+    expect(row.outreach).toBeNull();
+    expect(row.positiveReplies).toBeNull();
+    expect(row.websiteVisits).toBeNull();
+    expect(row.cpprUsd).toBeNull();
+    expect(row.cpwvUsd).toBeNull();
+  });
+
+  it("deduplicates — one row per workflow dynasty", () => {
+    const rows = buildBrandWorkflowRows([group("wf-a"), group("wf-a"), group("wf-b")]);
     expect(rows.map((r) => r.slug).sort()).toEqual(["wf-a", "wf-b"]);
   });
 
@@ -226,10 +237,12 @@ describe("buildBrandWorkflowRows", () => {
     ]);
   });
 
-  it("sorts the fleet columns off the fleet half, not the brand half", () => {
-    const [row] = buildBrandWorkflowRows([group("wf-a")], [fleet("wf-a")]);
+  it("sorts every column off this brand's own figure", () => {
+    const [row] = buildBrandWorkflowRows([group("wf-a")]);
     expect(BRAND_WORKFLOW_SORT_KEYS.invested(row)).toBe(1299.47);
     expect(BRAND_WORKFLOW_SORT_KEYS.revenue(row)).toBe(4200);
+    expect(BRAND_WORKFLOW_SORT_KEYS.outreach(row)).toBe(638);
+    expect(BRAND_WORKFLOW_SORT_KEYS.cppr(row)).toBe(92.8);
   });
 });
 
