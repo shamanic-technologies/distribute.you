@@ -136,9 +136,9 @@ describe("Context sidebar", () => {
     expect(brandSidebar).not.toContain("backHref");
   });
 
-  it("should have unified Keys entry at org level", () => {
+  it("should have the API Key entry at org level", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('"Keys"');
+    expect(content).toContain('"API Key"');
     expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 

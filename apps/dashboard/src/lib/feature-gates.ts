@@ -29,7 +29,9 @@ export interface FeatureGate {
 
 export const FEATURE_GATES = {
   "services-crm": { flag: "alpha-services-crm", maturity: "alpha" },
-  keys: { flag: "alpha-keys", maturity: "alpha" },
+  // The org API-key page graduated to GA — no entry here. It had been gated on
+  // `alpha-keys`, which in the dashboard resolves to false for everyone, so the
+  // gate hid the surface rather than staging it.
   "brand-info": { flag: "alpha-brand-info", maturity: "alpha" },
   "brand-features": { flag: "alpha-brand-features", maturity: "alpha" },
   // Workflows page (brand-scoped + app-level) and its sidebar entries. The

@@ -281,7 +281,6 @@ function AppLevelSidebar() {
 // state) there is nothing to navigate to, so the sidebar is the switcher alone.
 function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
   const crmEnabled = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
-  const keysEnabled = useFeatureFlag(FEATURE_GATES["keys"].flag);
   const isSettingsPath =
     pathname.startsWith(`/orgs/${orgId}/billing`) ||
     pathname.startsWith(`/orgs/${orgId}/api-keys`) ||
@@ -309,18 +308,20 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
             item={{ id: "billing", label: "Billing", href: `/orgs/${orgId}/billing`, icon: <BillingIcon /> }}
             isActive={pathname.startsWith(`/orgs/${orgId}/billing`)}
           />
-          {keysEnabled && (
-            <SidebarLink
-              item={{
-                id: "api-keys",
-                label: "Keys",
-                href: `/orgs/${orgId}/api-keys`,
-                icon: <KeyIcon />,
-                maturity: FEATURE_GATES["keys"].maturity,
-              }}
-              isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
-            />
-          )}
+          {/* GA. It was gated on `alpha-keys`, and `useFeatureFlag` returns
+              false unconditionally in the dashboard — so this entry was hidden
+              from everyone, staff included, and the page was reachable only by
+              typing its URL. `/provider-keys` is a redirect kept for old links. */}
+          <SidebarLink
+            item={{
+              id: "api-keys",
+              label: "API Key",
+              href: `/orgs/${orgId}/api-keys`,
+              icon: <KeyIcon />,
+            }}
+            isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
+          />
+
           {crmEnabled && (
             <SidebarLink
               item={{
