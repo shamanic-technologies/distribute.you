@@ -1,107 +1,119 @@
 /**
- * The brand Workflows scorecard's row model: one row per workflow the brand has
- * run, with THIS brand's realized money on the left and the cross-brand
- * benchmark for the same workflow on the right.
+ * The brand Workflows scorecard's row model: one row per workflow dynasty the
+ * brand has run, every figure scoped to THIS brand and realized.
  *
- * The two halves answer different questions on purpose — "what did this workflow
- * return for me" versus "what does it return across the fleet" — so they are
- * labelled apart and never summed together. Every figure on both sides is a
- * field features-service served; this module joins and orders, it does not
- * compute.
+ * There is no cross-brand half. The page answers "which of MY workflows paid",
+ * and a fleet benchmark sitting in the same table under the same column names
+ * invites the reader to compare one brand against everyone line for line —
+ * two different questions wearing one heading. The fleet answer keeps its own
+ * page (`/feature-stats/<slug>/workflows`), where every row IS the fleet.
+ *
+ * Every figure is a field features-service served for this brand; this module
+ * joins, converts cents to dollars and orders. It computes no ratio.
  *
  * Alias-free (type-only imports) so it carries real unit tests.
  */
 import type { FeatureRevenueByWorkflowGroup } from "./api";
-import type { WorkflowPerfRow } from "./feature-stats-workflow-rows";
 
 export type BrandWorkflowRow = {
   slug: string;
   name: string;
-  /** THIS brand, realized. Null where features-service could not measure it. */
-  brand: {
-    roiMultiple: number | null;
-    cacPct: number | null;
-    cacUsd: number | null;
-    pipelineUsd: number | null;
-  };
-  /** The same workflow across every brand — the benchmark, not this brand's. */
-  fleet: WorkflowPerfRow | null;
+  /** Realized money, all four already served on the per-workflow grouping. */
+  roiMultiple: number | null;
+  cacPct: number | null;
+  cacUsd: number | null;
+  pipelineUsd: number | null;
+  /**
+   * Volume + outcome cost, per workflow, for THIS brand.
+   *
+   * features-service answers all five for the whole brand on the un-grouped
+   * read; the per-workflow grouping is catching up, so they are read under the
+   * producer's own established names and stay null until it deploys. Null is
+   * "we could not measure this" — never a zero.
+   */
+  positiveReplies: number | null;
+  cpprUsd: number | null;
+  websiteVisits: number | null;
+  cpwvUsd: number | null;
+  outreach: number | null;
+  /**
+   * Realized spend — the ACTUAL billed amount, which is the same denominator
+   * ROI and %CAC ride. Deliberately not the committed total (actual + open
+   * provisioned holds): a row whose ROI divides by one number and whose spend
+   * column prints another contradicts itself.
+   */
+  investedUsd: number | null;
 };
 
 function numOrNull(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/** Pure unit conversion, not a derived metric. */
+function centsToUsd(value: number | null | undefined): number | null {
+  const cents = numOrNull(value);
+  return cents === null ? null : cents / 100;
+}
+
 /**
  * The workflow key a brand group is filed under.
  *
  * The producer owns how it identifies a workflow, so both spellings are read and
- * the dynasty is preferred — that is what the cross-org rows key on. A group
- * carrying neither is unfileable and is dropped rather than rendered under a
- * fabricated name.
+ * the dynasty is preferred. A group carrying neither is unfileable and is
+ * dropped rather than rendered under a fabricated name.
  */
 export function brandGroupKey(group: FeatureRevenueByWorkflowGroup): string | null {
   return group.workflowDynastySlug ?? group.workflowSlug ?? null;
 }
 
-/**
- * Join the brand's per-workflow money to the cross-brand benchmark.
- *
- * Rows are the UNION: a workflow the brand ran but the fleet read has nothing
- * for still shows its own money, and a fleet workflow this brand never ran still
- * shows the benchmark, each with `—` on the other side. Dropping either would
- * hide a workflow that exists.
- */
+/** One row per workflow dynasty this brand has run. */
 export function buildBrandWorkflowRows(
   brandGroups: FeatureRevenueByWorkflowGroup[],
-  fleetRows: WorkflowPerfRow[],
 ): BrandWorkflowRow[] {
-  const byFleet = new Map(fleetRows.map((r) => [r.slug, r]));
   const byBrand = new Map<string, FeatureRevenueByWorkflowGroup>();
   for (const g of brandGroups) {
     const key = brandGroupKey(g);
     if (key) byBrand.set(key, g);
   }
 
-  const slugs = [...new Set([...byBrand.keys(), ...byFleet.keys()])];
-
-  return slugs.map((slug) => {
-    const g = byBrand.get(slug);
-    const fleet = byFleet.get(slug) ?? null;
-    return {
-      slug,
-      name: g?.workflowDynastyName ?? g?.workflowName ?? fleet?.name ?? slug,
-      brand: {
-        roiMultiple: numOrNull(g?.costEconomics.roiMultiple),
-        cacPct: numOrNull(g?.costEconomics.costOfAcquisitionPct),
-        cacUsd: numOrNull(g?.costEconomics.costPerAcquisitionUsd),
-        pipelineUsd: numOrNull(g?.headline.totalPipelineUsd),
-      },
-      fleet,
-    };
-  });
+  return [...byBrand.entries()].map(([slug, g]) => ({
+    slug,
+    name: g.workflowDynastyName ?? g.workflowName ?? slug,
+    roiMultiple: numOrNull(g.costEconomics.roiMultiple),
+    cacPct: numOrNull(g.costEconomics.costOfAcquisitionPct),
+    cacUsd: numOrNull(g.costEconomics.costPerAcquisitionUsd),
+    pipelineUsd: numOrNull(g.headline.totalPipelineUsd),
+    positiveReplies: numOrNull(g.recipientsRepliesPositive),
+    cpprUsd: centsToUsd(g.spend?.cpprCents),
+    websiteVisits: numOrNull(g.recipientsClicked),
+    cpwvUsd: centsToUsd(g.spend?.totalCpcCents),
+    outreach: numOrNull(g.recipientsContacted),
+    // `totalCostUsd` is the pre-rename spelling the producer retired; reading
+    // both keeps the column alive whichever one an older body carries.
+    investedUsd: numOrNull(g.costEconomics.actualCostUsd ?? g.costEconomics.totalCostUsd),
+  }));
 }
 
 /**
  * Column key → the value it sorts on.
  *
- * A row the brand has never run sorts by a null on every brand column, so those
- * sink to the bottom under the shared comparator — which is the right reading of
- * "rank this brand's workflows".
+ * A column features-service cannot yet answer sorts on null, which the shared
+ * comparator sinks to the bottom — the right reading of "we could not measure
+ * this", and it never reorders the columns that ARE answered.
  */
 export const BRAND_WORKFLOW_SORT_KEYS: Record<
   string,
   (r: BrandWorkflowRow) => number | string | null
 > = {
   name: (r) => r.name,
-  roi: (r) => r.brand.roiMultiple,
-  cacPct: (r) => r.brand.cacPct,
-  cacUsd: (r) => r.brand.cacUsd,
-  revenue: (r) => r.brand.pipelineUsd,
-  positiveReplies: (r) => r.fleet?.positiveReplies ?? null,
-  cppr: (r) => r.fleet?.cpprUsd ?? null,
-  websiteVisits: (r) => r.fleet?.websiteVisits ?? null,
-  cpwv: (r) => r.fleet?.cpwvUsd ?? null,
-  outreach: (r) => r.fleet?.outreach ?? null,
-  invested: (r) => r.fleet?.investedUsd ?? null,
+  roi: (r) => r.roiMultiple,
+  cacPct: (r) => r.cacPct,
+  cacUsd: (r) => r.cacUsd,
+  revenue: (r) => r.pipelineUsd,
+  positiveReplies: (r) => r.positiveReplies,
+  cppr: (r) => r.cpprUsd,
+  websiteVisits: (r) => r.websiteVisits,
+  cpwv: (r) => r.cpwvUsd,
+  outreach: (r) => r.outreach,
+  invested: (r) => r.investedUsd,
 };

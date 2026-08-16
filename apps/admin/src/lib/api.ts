@@ -1543,11 +1543,30 @@ const FeatureRevenueByWorkflowSchema = z.object({
       workflowName: z.string().nullish(),
       headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: z.object({
+        // The deployed name (features-service#402 renamed the ambiguous
+        // `totalCostUsd`); the old spelling stays readable so an older body
+        // still fills the column instead of silently reading undefined.
+        actualCostUsd: z.number().nullish(),
         totalCostUsd: z.number().nullish(),
         costOfAcquisitionPct: z.number().nullable(),
         costPerAcquisitionUsd: z.number().nullish(),
         roiMultiple: z.number().nullable(),
       }),
+      // Volume + outcome cost per workflow. features-service answers all of
+      // these for the WHOLE brand on the un-grouped read; the per-workflow
+      // grouping is catching up, so they are read `.nullish()` under the
+      // producer's own established names — the page ships now and the columns
+      // fill in the moment the producer deploys, with no consumer change if the
+      // names hold. Absent ≠ zero: the cell renders —.
+      recipientsContacted: z.number().nullish(),
+      recipientsClicked: z.number().nullish(),
+      recipientsRepliesPositive: z.number().nullish(),
+      spend: z
+        .object({
+          cpprCents: z.number().nullish(),
+          totalCpcCents: z.number().nullish(),
+        })
+        .nullish(),
     }),
   ),
 });
