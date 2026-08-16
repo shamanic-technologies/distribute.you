@@ -21,12 +21,33 @@ describe('Admin leads reads ask for every lifecycle status', () => {
     expect(adminApi).toContain('const ALL_LEAD_STATUSES = "status=all";');
   });
 
-  it('asks for every status on the brand read', () => {
-    expect(adminApi).toContain('`/leads?brandId=${brandId}&${ALL_LEAD_STATUSES}`');
+  it('asks for every status, on the slim projection, on the brand read', () => {
+    expect(adminApi).toContain(
+      '`/leads?brandId=${brandId}&${ALL_LEAD_STATUSES}&${SLIM_LEAD_PROJECTION}`',
+    );
   });
 
-  it('asks for every status on the campaign read', () => {
-    expect(adminApi).toContain('`/leads?campaignId=${campaignId}&${ALL_LEAD_STATUSES}`');
+  it('asks for every status, on the slim projection, on the campaign read', () => {
+    expect(adminApi).toContain(
+      '`/leads?campaignId=${campaignId}&${ALL_LEAD_STATUSES}&${SLIM_LEAD_PROJECTION}`',
+    );
+  });
+
+  it('names the projection once too', () => {
+    expect(adminApi).toContain('const SLIM_LEAD_PROJECTION = "view=basic";');
+  });
+
+  /**
+   * The report is the one reader that needs the full payload: its job-title
+   * column reads `employmentHistory`, which the slim projection drops. If that
+   * ever stops being true the report can join the others.
+   */
+  it('leaves the report read on the full projection', () => {
+    expect(reportApi).not.toContain('view=basic');
+    const usesEmploymentHistory = read(
+      '../src/app/report/[orgId]/[brandId]/[featureSlug]/leads/page.tsx',
+    ).includes('employmentHistory');
+    expect(usesEmploymentHistory).toBe(true);
   });
 
   it('asks for every status on the report read, which renders a Skipped state', () => {

@@ -1979,21 +1979,48 @@ function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } {
  * Buffered, Claimed and Served tabs. Asking for `all` is what keeps those tabs
  * whole once the producer's default changes.
  *
- * Today's lead-service ignores the parameter, so this is a no-op until that
- * change is promoted — which is why it ships first. The reverse order (producer
- * first) is what empties the staff tabs.
- *
- * Requires api-service to forward the `status` param.
+ * Shipped ahead of the producer, while lead-service still ignored the parameter,
+ * so there was never a window with empty staff tabs. The reverse order is what
+ * breaks. Live since lead-service v0.51.0.
  */
 const ALL_LEAD_STATUSES = "status=all";
 
+/**
+ * The slim lead projection, which is all these pages render.
+ *
+ * Asking for every lifecycle status is what makes the staff tabs whole, and it
+ * is also what makes this the heaviest read in the console: one production brand
+ * answers with 57,622 rows. On the full projection that is 171.5 MB, in a browser
+ * tab, every 30 seconds, per open tab.
+ *
+ * Nothing here reads a field the full projection adds. The table renders the
+ * organization's name and domain, the person's name, headline and LinkedIn; the
+ * detail panel adds email status, industry, employee count and the served
+ * timestamp. Every one of those is in the slim projection — what it drops is
+ * `employmentHistory` plus social and street-address columns, and the only
+ * consumer of any of those anywhere in this app is the public report's job-title
+ * lookup, which is a different reader and keeps the full payload.
+ *
+ * Measured against production for that brand: 171.5 MB full, 112.4 MB slim.
+ * That is the projection half of the problem. The row count is the other half
+ * and is a redesign of these pages, not a query parameter — the tabs group by
+ * lifecycle state, so they need every row to count one.
+ */
+const SLIM_LEAD_PROJECTION = "view=basic";
+
 export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?campaignId=${campaignId}&${ALL_LEAD_STATUSES}`, { token });
+  const raw = await apiCall<unknown>(
+    `/leads?campaignId=${campaignId}&${ALL_LEAD_STATUSES}&${SLIM_LEAD_PROJECTION}`,
+    { token },
+  );
   return parseLeadsResponse(raw, "listCampaignLeads");
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}&${ALL_LEAD_STATUSES}`, { token });
+  const raw = await apiCall<unknown>(
+    `/leads?brandId=${brandId}&${ALL_LEAD_STATUSES}&${SLIM_LEAD_PROJECTION}`,
+    { token },
+  );
   return parseLeadsResponse(raw, "listBrandLeads");
 }
 
