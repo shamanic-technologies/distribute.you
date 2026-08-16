@@ -1964,13 +1964,36 @@ function parseLeadsResponse(raw: unknown, fn: string): { leads: Lead[] } {
   return parsed.data as unknown as { leads: Lead[] };
 }
 
+/**
+ * Every lifecycle status, for the staff surfaces that render them.
+ *
+ * lead-service's leads list is narrowing its default to the actionable
+ * population — `buffered,claimed,served` — and `skipped` has to be asked for.
+ * That is right for the customer dashboard, which buckets purely on engagement
+ * evidence: a skipped lead was never served, carries no delivery evidence, and
+ * cannot appear under any of its tabs. For one production brand those rows are
+ * 53,760 of 53,777 (~82% of a body polled every 30 seconds).
+ *
+ * The admin app is the one surface that DOES render them: its brand, feature
+ * and campaign leads views group by consolidated status and expose Skipped,
+ * Buffered, Claimed and Served tabs. Asking for `all` is what keeps those tabs
+ * whole once the producer's default changes.
+ *
+ * Today's lead-service ignores the parameter, so this is a no-op until that
+ * change is promoted — which is why it ships first. The reverse order (producer
+ * first) is what empties the staff tabs.
+ *
+ * Requires api-service to forward the `status` param.
+ */
+const ALL_LEAD_STATUSES = "status=all";
+
 export async function listCampaignLeads(campaignId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?campaignId=${campaignId}`, { token });
+  const raw = await apiCall<unknown>(`/leads?campaignId=${campaignId}&${ALL_LEAD_STATUSES}`, { token });
   return parseLeadsResponse(raw, "listCampaignLeads");
 }
 
 export async function listBrandLeads(brandId: string, token?: string): Promise<{ leads: Lead[] }> {
-  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}`, { token });
+  const raw = await apiCall<unknown>(`/leads?brandId=${brandId}&${ALL_LEAD_STATUSES}`, { token });
   return parseLeadsResponse(raw, "listBrandLeads");
 }
 
