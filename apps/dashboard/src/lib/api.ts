@@ -342,25 +342,6 @@ export async function sendAuthNotification(
 }
 
 // Campaign email notifications (create/stop)
-export async function sendCampaignEmail(
-  eventType: "campaign_created" | "campaign_stopped",
-  campaign: { brandIds: string[]; id: string; name: string },
-  token?: string
-): Promise<void> {
-  const brandId = campaign.brandIds?.[0];
-  if (!brandId) return;
-  await apiCall<unknown>("/emails/send", {
-    token,
-    method: "POST",
-    body: {
-      eventType,
-      brandId,
-      campaignId: campaign.id,
-      metadata: { campaignName: campaign.name },
-    },
-  });
-}
-
 // User identity resolution
 export async function resolveUser(
   params: {
@@ -542,27 +523,6 @@ async function enrichCampaignsWithBrandUrls(
   });
 }
 
-export async function listCampaigns(token?: string): Promise<{ campaigns: Campaign[] }> {
-  const { campaigns } = await apiCall<{ campaigns: RawCampaign[] }>("/campaigns", { token });
-  return { campaigns: await enrichCampaignsWithBrandUrls(campaigns, token) };
-}
-
-export async function getCampaignStats(campaignId: string, token?: string): Promise<CampaignStats> {
-  return apiCall<CampaignStats>(`/campaigns/${campaignId}/stats`, { token });
-}
-
-export async function getCampaignBatchStats(
-  campaignIds: string[],
-  token?: string,
-  brandId?: string
-): Promise<Record<string, CampaignStats>> {
-  const query = brandId ? `?brandId=${brandId}` : "";
-  const result = await apiCall<{ campaigns: CampaignStats[] }>(`/campaigns/stats${query}`, { token });
-  const byId = Object.fromEntries(result.campaigns.map((s) => [s.campaignId, s]));
-  // Only return stats for requested campaign IDs
-  return Object.fromEntries(campaignIds.filter((id) => byId[id]).map((id) => [id, byId[id]]));
-}
-
 export interface BrandDeliveryStats {
   recipientStats: RecipientStats;
   emailStats: EmailStats;
@@ -685,11 +645,6 @@ export async function getPlatformPrices(token?: string): Promise<PlatformPrice[]
   }
   return parsed.data;
 }
-
-export async function stopCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
-  return apiCall<{ campaign: Campaign }>(`/campaigns/${campaignId}/stop`, { token, method: "POST" });
-}
-
 
 // Brands
 export interface Brand {
@@ -3233,28 +3188,6 @@ const RunEventSchema = z
 
 const ListEventsResponseSchema = z.object({ events: z.array(RunEventSchema) });
 
-/** GET /events?campaignId={id} — returns run events for a campaign via runs-service proxy */
-export async function listCampaignEvents(
-  campaignId: string,
-  options?: { level?: EventLevel; limit?: number; offset?: number; token?: string }
-): Promise<{ events: RunEvent[] }> {
-  const params = new URLSearchParams();
-  params.set("campaignId", campaignId);
-  if (options?.level) params.set("level", options.level);
-  if (options?.limit != null) params.set("limit", String(options.limit));
-  if (options?.offset != null) params.set("offset", String(options.offset));
-  const raw = await apiCall<unknown>(`/events?${params.toString()}`, { token: options?.token });
-  const parsed = ListEventsResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] listCampaignEvents: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] listCampaignEvents: invalid response shape");
-  }
-  return parsed.data as unknown as { events: RunEvent[] };
-}
-
 /** GET /brands/:brandId/runs — returns runs or empty list if brand not found (404) */
 export async function listBrandRuns(brandId: string, token?: string): Promise<{ runs: BrandRun[] }> {
   try {
@@ -3277,34 +3210,6 @@ export async function listCampaignsByBrand(brandId: string, token?: string): Pro
 // Single campaign
 export async function getCampaign(campaignId: string, token?: string): Promise<{ campaign: Campaign }> {
   const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, { token });
-  const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
-  return { campaign: enriched };
-}
-
-/**
- * PATCH /v1/campaigns/:id — update ONE campaign's per-campaign config (v2). Every
- * field is optional; passing null (or omitting) makes the campaign INHERIT the
- * brand-level value (goal / active audience set / services / click destination /
- * daily budget). `maxBudgetDailyUsd` is a whole-USD string. campaign-service paces
- * the sales feature on `campaign ?? brand`, so writing a field overrides the brand;
- * writing null clears it back to inheriting.
- */
-export async function updateCampaign(
-  campaignId: string,
-  patch: {
-    goal?: RuntimeGoal | null;
-    audienceIds?: string[] | null;
-    servicesOffered?: string[] | null;
-    clickDestinationUrl?: string | null;
-    maxBudgetDailyUsd?: string | null;
-  },
-  token?: string,
-): Promise<{ campaign: Campaign }> {
-  const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, {
-    token,
-    method: "PATCH",
-    body: patch as unknown as Record<string, unknown>,
-  });
   const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
   return { campaign: enriched };
 }
@@ -3582,10 +3487,6 @@ export interface Email {
     error?: string;
     errorSummary?: ErrorSummary;
   } | null;
-}
-
-export async function listCampaignEmails(campaignId: string, token?: string): Promise<{ emails: Email[] }> {
-  return apiCall<{ emails: Email[] }>(`/campaigns/${campaignId}/emails`, { token });
 }
 
 export async function listBrandEmails(brandId: string, token?: string): Promise<{ emails: Email[] }> {
@@ -4334,28 +4235,6 @@ export async function createWorkflow(
 // campaign is paced on that funnel's own ceiling in billing and priced on its own
 // economics, and campaign-service 400s one that states none. A feature that sells
 // through no sales funnel (PR, hiring, VC, AI visibility) states an explicit null.
-export async function createCampaign(
-  params: {
-    name: string;
-    workflowSlug: string;
-    brandUrls: string[];
-    funnelKey: SalesFunnelKeyWire | null;
-    maxBudgetDailyUsd?: string;
-    maxBudgetWeeklyUsd?: string;
-    maxBudgetMonthlyUsd?: string;
-    maxBudgetTotalUsd?: string;
-  } & Record<string, unknown>,
-  token?: string
-): Promise<{ campaign: Campaign }> {
-  const { campaign } = await apiCall<{ campaign: RawCampaign }>("/campaigns", {
-    token,
-    method: "POST",
-    body: params as unknown as Record<string, unknown>,
-  });
-  const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
-  return { campaign: enriched };
-}
-
 export async function createCampaignWithoutBrandEnrichment(
   params: {
     name: string;
@@ -4885,12 +4764,6 @@ export async function getMediaKit(id: string, options?: { token?: string; header
   return apiCall<MediaKit>(`/press-kits/media-kits/${id}`, { token: options?.token, headers: options?.headers });
 }
 
-/** List media kits associated with a campaign */
-export async function listMediaKitsByCampaign(campaignId: string, options?: { token?: string; headers?: Record<string, string> }): Promise<MediaKitSummary[]> {
-  const res = await apiCall<{ mediaKits: MediaKitSummary[] }>(`/press-kits/media-kits?campaign_id=${campaignId}`, { token: options?.token, headers: options?.headers });
-  return res.mediaKits;
-}
-
 /** Initiate media kit generation (org via x-org-id, brand via x-brand-id header) */
 export async function editMediaKit(
   params: { instruction: string; headers?: Record<string, string> },
@@ -5106,16 +4979,6 @@ export async function listBrandOutlets(
   };
 }
 
-export async function listCampaignOutlets(
-  campaignId: string,
-  token?: string,
-): Promise<{ outlets: CampaignOutlet[] }> {
-  return apiCall<{ outlets: CampaignOutlet[] }>(
-    `/campaigns/${campaignId}/outlets`,
-    { token },
-  );
-}
-
 export async function requestOutletPurchasePrices(
   outletIds: string[],
   token?: string,
@@ -5274,16 +5137,6 @@ export async function listBrandJournalists(
   );
 }
 
-export async function listCampaignJournalists(
-  campaignId: string,
-  token?: string,
-): Promise<{ journalists: DiscoveredJournalist[] }> {
-  return apiCall<{ journalists: DiscoveredJournalist[] }>(
-    `/campaigns/${campaignId}/journalists`,
-    { token },
-  );
-}
-
 // --- Discovery actions & cost stats ---
 
 export async function discoverOutlets(
@@ -5402,16 +5255,6 @@ export interface ArticleDiscoveryItem {
     createdAt: string;
     updatedAt: string;
   };
-}
-
-export async function listCampaignArticles(
-  campaignId: string,
-  token?: string,
-): Promise<{ discoveries: ArticleDiscoveryItem[] }> {
-  return apiCall<{ discoveries: ArticleDiscoveryItem[] }>(
-    `/discoveries?campaignId=${campaignId}`,
-    { token },
-  );
 }
 
 export async function listBrandArticles(

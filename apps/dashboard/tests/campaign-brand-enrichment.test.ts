@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   getBrandsByIds,
   getCampaign,
-  listCampaigns,
   listCampaignsByBrand,
 } from "../src/lib/api";
 
@@ -19,6 +18,10 @@ function jsonResponse(body: unknown, status = 200): MockResponse {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
 }
 
+// The org-wide `listCampaigns` reader was removed with the other dead campaign
+// readers: the customer dashboard never called it (only the brand-scoped variant
+// and `getCampaign` have callers). Its two enrichment cases went with it; the
+// pipeline they covered is the same one the two remaining readers exercise.
 describe("campaign brand-url enrichment", () => {
   const calls: { url: string; init?: FetchInit }[] = [];
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -93,36 +96,6 @@ describe("campaign brand-url enrichment", () => {
     expect(campaign.brandUrls).toEqual(["https://one.com", "https://two.com"]);
   });
 
-  it("listCampaigns dedup-unions brandIds into a single batch call", async () => {
-    routeHandlers["/campaigns"] = async () =>
-      jsonResponse({
-        campaigns: [
-          baseRaw("c1", ["b1", "b2"]),
-          baseRaw("c2", ["b2", "b3"]),
-          baseRaw("c3", []),
-        ],
-      });
-    routeHandlers["/brands/by-ids?"] = async () =>
-      jsonResponse({
-        brands: [
-          brand("b1", "https://one.com"),
-          brand("b2", "https://two.com"),
-          brand("b3", "https://three.com"),
-        ],
-      });
-
-    const { campaigns } = await listCampaigns();
-
-    const brandCalls = calls.filter((c) => c.url.includes("/brands/by-ids"));
-    expect(brandCalls).toHaveLength(1);
-    const sentIds = new URL(brandCalls[0].url, "http://localhost").searchParams.get("ids")!;
-    expect(sentIds.split(",").sort()).toEqual(["b1", "b2", "b3"]);
-
-    expect(campaigns[0].brandUrls).toEqual(["https://one.com", "https://two.com"]);
-    expect(campaigns[1].brandUrls).toEqual(["https://two.com", "https://three.com"]);
-    expect(campaigns[2].brandUrls).toEqual([]);
-  });
-
   it("logs and omits a brand id that is missing from the batch response", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     routeHandlers["/campaigns/:id"] = async () =>
@@ -136,16 +109,6 @@ describe("campaign brand-url enrichment", () => {
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("brand id b-missing missing from /v1/brands/by-ids response"),
     );
-  });
-
-  it("skips the batch call entirely when no campaign has brandIds", async () => {
-    routeHandlers["/campaigns"] = async () =>
-      jsonResponse({ campaigns: [baseRaw("c1", []), baseRaw("c2", [])] });
-
-    const { campaigns } = await listCampaigns();
-
-    expect(calls.some((c) => c.url.includes("/brands/by-ids"))).toBe(false);
-    expect(campaigns.every((c) => c.brandUrls.length === 0)).toBe(true);
   });
 
   it("listCampaignsByBrand enriches via the same batch pipeline", async () => {
