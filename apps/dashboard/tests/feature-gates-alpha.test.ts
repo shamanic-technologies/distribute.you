@@ -6,9 +6,9 @@ import { FEATURE_GATES, MATURITY_STYLES, GA_BRAND_FEATURES } from "../src/lib/fe
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
 describe("feature-gates registry", () => {
-  it("gates services-crm + keys as alpha with alpha-* flags", () => {
+  it("gates services-crm as alpha; the API-key page is GA so it carries no gate", () => {
     expect(FEATURE_GATES["services-crm"]).toEqual({ flag: "alpha-services-crm", maturity: "alpha" });
-    expect(FEATURE_GATES["keys"]).toEqual({ flag: "alpha-keys", maturity: "alpha" });
+    expect(FEATURE_GATES).not.toHaveProperty("keys");
   });
 
   it("gates brand-info + brand-features as alpha with alpha-* flags", () => {
@@ -74,9 +74,8 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     expect(sidebar).toMatch(/FEATURE_GATES/);
   });
 
-  it("gates CRM + Keys behind their alpha flags", () => {
+  it("gates CRM behind its alpha flag", () => {
     expect(sidebar).toMatch(/FEATURE_GATES\["services-crm"\]/);
-    expect(sidebar).toMatch(/FEATURE_GATES\["keys"\]/);
   });
 
   // Scope the next assertions to the OrgLevelSidebar function body only —
