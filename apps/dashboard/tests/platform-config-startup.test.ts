@@ -44,6 +44,12 @@ describe("Platform config registration at startup", () => {
       { provider: "gandi-org3", envVar: "GANDI_ORG3_TOKEN" },
       { provider: "mailforge", envVar: "MAILFORGE_API_KEY" },
       { provider: "primeforge", envVar: "PRIMEFORGE_API_KEY" },
+      // The three model vendors chat-service calls directly. Byte-critical: it
+      // resolves each credential by exactly this slug, so a rename reads as
+      // "vendor unconfigured" downstream rather than as a config error.
+      { provider: "deepseek", envVar: "DEEPSEEK_API_KEY" },
+      { provider: "moonshot", envVar: "MOONSHOT_API_KEY" },
+      { provider: "zai", envVar: "ZAI_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -58,9 +64,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 37 platform keys", () => {
+    it("should register exactly 40 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(37);
+      expect(matches).toHaveLength(40);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
