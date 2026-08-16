@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseFeatureRevenue } from "./revenue-parse";
+import { SERVICE_IDENTITY } from "./service-identity";
 import type { ConversionLead, RevenueOverview } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
@@ -546,7 +547,7 @@ async function listApiUsersForOrg(
   for (let offset = 0; ; offset += PAGE_LIMIT) {
     const url = `${config.apiUrl}/v1/users?limit=${PAGE_LIMIT}&offset=${offset}`;
     const data = await fetchJson(url, {
-      headers: adminHeaders(config, orgId, `outcome-digest:${orgId}`),
+      headers: adminHeaders(config, orgId, SERVICE_IDENTITY.outcomeDigest),
     }, fetchFn, ApiUsersResponseSchema, "listApiUsersForOrg");
     if (data.users.length === 0 && offset < data.total) {
       throw new Error("[dashboard-outcome-digest] listApiUsersForOrg returned an empty non-terminal page");
@@ -605,7 +606,7 @@ async function listBrandsForOrg(
   orgId: string,
 ): Promise<BrandSummary[]> {
   const data = await fetchJson(`${config.apiUrl}/v1/brands`, {
-    headers: adminHeaders(config, orgId, `outcome-digest:${orgId}`),
+    headers: adminHeaders(config, orgId, SERVICE_IDENTITY.outcomeDigest),
   }, fetchFn, BrandsResponseSchema, "listBrandsForOrg");
   return data.brands.map((brand) => ({
     id: brand.id,
@@ -631,7 +632,7 @@ async function fetchBrandRevenue(
   // pricing-basis rule exists to prevent.
   const params = new URLSearchParams({ brandId, pricing: "net" });
   const raw = await fetchJsonUntyped(`${config.apiUrl}/v1/features/${OUTCOME_DIGEST_FEATURE_SLUG}/revenue?${params.toString()}`, {
-    headers: adminHeaders(config, orgId, `outcome-digest:${orgId}`),
+    headers: adminHeaders(config, orgId, SERVICE_IDENTITY.outcomeDigest),
   }, fetchFn, "fetchBrandRevenue");
   return parseFeatureRevenue(raw, "outcomeDigestRevenue");
 }
