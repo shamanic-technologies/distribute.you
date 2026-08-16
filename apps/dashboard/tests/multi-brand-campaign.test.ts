@@ -9,14 +9,15 @@ describe("Multi-brand campaign support", () => {
   const apiRel = "../src/lib/api.ts";
   const apiContent = fs.readFileSync(path.join(__dirname, apiRel), "utf-8");
 
-  it("createCampaign in api.ts uses brandUrls: string[] and no custom headers param", () => {
-    // Extract just the createCampaign function block
-    const fnStart = apiContent.indexOf("export async function createCampaign");
-    const fnEnd = apiContent.indexOf("\n}", fnStart) + 2;
-    const fnBody = apiContent.slice(fnStart, fnEnd);
-    expect(fnBody).toContain("brandUrls: string[]");
-    expect(fnBody).not.toContain("brandUrl: string");
-    expect(fnBody).not.toContain("headers?: Record<string, string>");
+  // The plain `createCampaign` reader is gone from the customer dashboard — the one
+  // campaign write it makes is `createCampaignWithoutBrandEnrichment`, at the end of
+  // onboarding. That variant still takes brandUrls, which this covers.
+  it("createCampaignWithoutBrandEnrichment takes brandUrls, not custom headers", () => {
+    const fnStart = apiContent.indexOf("export async function createCampaignWithoutBrandEnrichment");
+    expect(fnStart).toBeGreaterThan(-1);
+    const fnBlock = apiContent.slice(fnStart, fnStart + 900);
+    expect(fnBlock).toContain("brandUrls");
+    expect(fnBlock).not.toContain("headers?:");
   });
 
   it("extractBrandFields sends brandIds in the body, not via headers", () => {

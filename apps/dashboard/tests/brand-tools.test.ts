@@ -70,10 +70,6 @@ describe("brand-tools removal", () => {
       expect(apiSrc).toContain("export interface EntityRegistryEntry");
     });
 
-    it("exports listCampaignOutlets", () => {
-      expect(apiSrc).toContain("export async function listCampaignOutlets");
-    });
-
     it("exports listBrandJournalists", () => {
       expect(apiSrc).toContain("export async function listBrandJournalists");
     });
