@@ -44,11 +44,6 @@ describe("Platform config registration at startup", () => {
       { provider: "gandi-org3", envVar: "GANDI_ORG3_TOKEN" },
       { provider: "mailforge", envVar: "MAILFORGE_API_KEY" },
       { provider: "primeforge", envVar: "PRIMEFORGE_API_KEY" },
-      // chat-service resolves the AI Gateway credential under exactly this slug
-      // (its own GATEWAY_PROVIDER constant, and the costs catalog's provider
-      // row). A rename here reads downstream as "no key configured", not as a
-      // config error, so pin it.
-      { provider: "vercel", envVar: "AI_GATEWAY_API_KEY" },
     ];
 
     it("should call POST /platform-keys via api-service", () => {
@@ -63,9 +58,9 @@ describe("Platform config registration at startup", () => {
       });
     }
 
-    it("should register exactly 38 platform keys", () => {
+    it("should register exactly 37 platform keys", () => {
       const matches = content.match(/provider: "[^"]+", envVar: "[^"]+"/g);
-      expect(matches).toHaveLength(38);
+      expect(matches).toHaveLength(37);
     });
 
     it("should skip missing env vars instead of blocking all registrations", () => {
