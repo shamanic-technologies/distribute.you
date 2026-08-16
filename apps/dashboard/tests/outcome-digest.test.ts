@@ -202,7 +202,7 @@ describe("daily outcome digest", () => {
           ],
         });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1&pricing=net") {
         return jsonResponse(brandRevenue(3, day));
       }
       throw new Error(`Unexpected fetch ${url}`);
@@ -293,7 +293,7 @@ describe("daily outcome digest", () => {
           }],
         });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1&pricing=net") {
         return jsonResponse(brandRevenue(3, day));
       }
       if (url === "https://api.example.test/v1/emails/send") {
@@ -352,7 +352,7 @@ describe("daily outcome digest", () => {
           }],
         });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1&pricing=net") {
         // Pipeline present, but zero positive replies on the reported day.
         return jsonResponse(brandRevenue(0, day));
       }
@@ -401,7 +401,7 @@ describe("daily outcome digest", () => {
           }],
         });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_empty") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_empty&pricing=net") {
         return jsonResponse({
           featureSlug: "sales-cold-email-outreach",
           headline: { totalPipelineUsd: 0 },
@@ -457,11 +457,11 @@ describe("daily outcome digest", () => {
           ],
         });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_bad") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_bad&pricing=net") {
         // brand_bad's revenue keeps timing out — must NOT abort the whole run.
         throw Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_good") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_good&pricing=net") {
         return jsonResponse(brandRevenue(3, day));
       }
       throw new Error(`Unexpected fetch ${url}`);
@@ -505,7 +505,7 @@ describe("daily outcome digest", () => {
           brands: [{ id: "brand_1", domain: "acme.test", name: "Acme", brandUrl: "https://acme.test", createdAt: null, updatedAt: null, logoUrl: null }],
         });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1&pricing=net") {
         revenueAttempts += 1;
         if (revenueAttempts === 1) {
           throw Object.assign(new Error("timeout"), { name: "TimeoutError" });
@@ -625,7 +625,7 @@ describe("daily outcome digest", () => {
           brands: [{ id: "brand_1", domain: "acme.test", name: "Acme", brandUrl: "https://acme.test", createdAt: null, updatedAt: null, logoUrl: null }],
         });
       }
-      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1") {
+      if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1&pricing=net") {
         return jsonResponse(revenue);
       }
       throw new Error(`Unexpected fetch ${url}`);

@@ -621,7 +621,15 @@ async function fetchBrandRevenue(
   orgId: string,
   brandId: string,
 ): Promise<RevenueOverview> {
-  const params = new URLSearchParams({ brandId });
+  // NET, like every other money reader in the app. The org pays net — its usage
+  // discount is frozen onto each cost row at write — so the brand Overview's ROI,
+  // its spend and its cost cards are all net. Omitting the param defaults
+  // features-service to GROSS, which is how a 50%-off brand read `2.3x` in the
+  // email it received at 08:00 while its own Overview showed `3.9x` at the same
+  // moment (prod: $373.91 gross against $206.81 net, the ratio being exactly the
+  // gap). One number under one word, in two places, is the bug the whole
+  // pricing-basis rule exists to prevent.
+  const params = new URLSearchParams({ brandId, pricing: "net" });
   const raw = await fetchJsonUntyped(`${config.apiUrl}/v1/features/${OUTCOME_DIGEST_FEATURE_SLUG}/revenue?${params.toString()}`, {
     headers: adminHeaders(config, orgId, `outcome-digest:${orgId}`),
   }, fetchFn, "fetchBrandRevenue");
