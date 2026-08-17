@@ -61,3 +61,68 @@ describe("Instantly audit — queued today", () => {
     );
   });
 });
+
+/**
+ * `queuedOverdue` (instantly-service v0.73.0) is the BACKLOG subset of
+ * `queuedNextToday` — steps whose nominal due date is strictly before today.
+ * It answers what the merged today-or-overdue bucket cannot: 50 followups all
+ * due today is a busy account, 50 we owed last week is a stuck one.
+ *
+ * Two properties the producer documents and this page must respect: it is a
+ * SUBSET counter (`queuedOverdue <= queuedNextToday`), and it is NOT part of the
+ * four-bucket partition of `queueSize` — folding it into that sum double-counts
+ * steps already inside `queuedNextToday` and breaks the ✅/❌ debug marker.
+ */
+describe("Instantly audit — overdue backlog", () => {
+  it("reads the producer's field, on the row type and the schema", () => {
+    expect(api).toContain("queuedOverdue?: number;");
+    expect(api).toContain("queuedOverdue: z.number().optional(),");
+  });
+
+  it("gives the backlog its own sortable column", () => {
+    expect(page).toContain(
+      '{ key: "queuedOverdue", label: "Overdue", numeric: true, align: "right" },',
+    );
+    // And a header tooltip that states the subset relationship, so nobody adds
+    // it to Queued today while reading the table.
+    expect(page).toContain(
+      "A subset of Queued today, never added to it.",
+    );
+  });
+
+  it("renders the served value, with a dash when the producer omits it", () => {
+    expect(page).toContain("{num(r.queuedOverdue)}");
+    expect(page).toContain("r.queuedOverdue === undefined ? (");
+    expect(page).toContain(
+      '<Row label="— of which overdue (owed before today)">',
+    );
+  });
+
+  it("never derives the backlog from other fields", () => {
+    // The only honest source is the producer. No client-side subtraction of the
+    // date buckets, no ratio of the daily limit.
+    expect(page).not.toMatch(/queuedNextToday\s*-\s*/);
+    expect(page).not.toMatch(/const\s+overdue\s*=/);
+  });
+
+  it("keeps the backlog out of the four-bucket partition assertion", () => {
+    // The debug column still reconciles queueSize against exactly the four
+    // buckets; queuedOverdue re-counts steps already in queuedNextToday.
+    expect(page).toContain("const ok = r.queueSize === visibleSum;");
+    expect(page).toContain("r.queuedFirstUnsent +");
+    expect(page).toContain("r.queuedNextTomorrow +");
+    expect(page).toContain("r.queuedNextLater;");
+    expect(page).not.toContain("r.queuedOverdue +");
+    expect(page).not.toContain("+ r.queuedOverdue");
+  });
+
+  it("keeps the due-today figure unchanged", () => {
+    // queuedTodayFor stays Initial + Followups. Overdue is a read on the same
+    // Followups half, never an addition to the day's due volume.
+    const defs = page.match(/function queuedTodayFor\(/g) ?? [];
+    expect(defs).toHaveLength(1);
+    expect(page).toContain(
+      "return r.queuedFirstUnsentSequences + r.queuedNextToday;",
+    );
+  });
+});
