@@ -4991,6 +4991,18 @@ export interface InstantlyAccountHealthRow {
   queuedNextToday: number; // steps whose projected send date is today (UTC) or overdue
   queuedNextTomorrow: number; // steps projected tomorrow (UTC)
   queuedNextLater: number; // steps projected after tomorrow
+  // BACKLOG — the subset of queuedNextToday whose nominal due date is STRICTLY
+  // BEFORE today, i.e. steps we owed on an earlier day and never dispatched.
+  // queuedOverdue <= queuedNextToday always, and it is NOT a fifth bucket: adding
+  // it into the four-bucket partition above double-counts steps already inside
+  // queuedNextToday and breaks the queueSize invariant. It answers the one
+  // question the merged today-or-overdue bucket cannot — is Instantly draining
+  // this mailbox, or falling behind what we assign it?
+  //
+  // `.optional()` because it landed in instantly-service v0.73.0 (#600): an older
+  // producer omits it, and the honest render for an absent figure is a dash, not
+  // a fabricated 0. Never derive it from the other fields.
+  queuedOverdue?: number;
   accountType: string | null; // "google" | "microsoft" | "imap"; null when unknown
 }
 
@@ -5035,6 +5047,7 @@ const InstantlyAccountHealthRowSchema = z.object({
   queuedNextToday: z.number(),
   queuedNextTomorrow: z.number(),
   queuedNextLater: z.number(),
+  queuedOverdue: z.number().optional(),
   accountType: z.string().nullable(),
 });
 const InstantlyAccountHealthSchema = z.object({

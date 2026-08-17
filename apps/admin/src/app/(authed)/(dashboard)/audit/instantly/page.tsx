@@ -119,6 +119,11 @@ const COLUMNS = [
   { key: "sentToday", label: "Sent today", numeric: true, align: "right" },
   { key: "dailyLimit", label: "Daily max send", numeric: true, align: "right" },
   { key: "queuedToday", label: "Queued today", numeric: true, align: "right" },
+  // Backlog, its own column rather than a sub-line: an operator sorts this table
+  // to find the accounts falling behind, and a figure buried under another number
+  // cannot be sorted on. `queuedOverdue` is a SUBSET of the Followups half of
+  // Queued today, never an addition to it.
+  { key: "queuedOverdue", label: "Overdue", numeric: true, align: "right" },
   { key: "queuedNextTomorrow", label: "Queued tomorrow", numeric: true, align: "right" },
   { key: "queuedNextLater", label: "Queued later", numeric: true, align: "right" },
   // DEBUG (temporary): backend Queued steps (queueSize) + a ✅/❌ reconciliation vs
@@ -135,6 +140,8 @@ const COLUMN_HINT: Partial<Record<SortKey, string>> = {
   dailyLimit: "Per-account daily max send limit (+ daily warmup send volume)",
   queuedToday:
     "Emails actually due today = Initial (one first email per never-started lead) + Followups (steps projected today/overdue). This is the number send selection compares against the daily max.",
+  queuedOverdue:
+    "Backlog — the part of Followups we owed on an EARLIER day and never dispatched (nominal due date strictly before today). A subset of Queued today, never added to it. 50 followups all due today is a busy account; 50 we owed last week is a stuck one, and a figure that grows week over week is the tell.",
   queuedNextTomorrow: "Steps projected tomorrow (UTC)",
   queuedNextLater: "Steps projected after tomorrow",
   queuedTotal:
@@ -587,6 +594,10 @@ function AccountDetailPanel({
               {num(row.queuedFirstUnsentSequences)}
             </Row>
             <Row label="— Followups (steps today/overdue)">{num(row.queuedNextToday)}</Row>
+            {/* Subset of the line above, never added to it. */}
+            <Row label="— of which overdue (owed before today)">
+              {row.queuedOverdue === undefined ? "—" : num(row.queuedOverdue)}
+            </Row>
           </Group>
 
           <Group title="Queue (all remaining steps)">
@@ -917,6 +928,29 @@ function AccountHealthSection() {
                             </td>
                           );
                         })()}
+                        {/* Overdue: the backlog subset of Followups. Red when there is
+                            any, gray 0 when there is none, and a dash when the producer
+                            served no figure — an absent value is not a zero. */}
+                        <td className="py-2.5 px-2 text-right">
+                          {r.queuedOverdue === undefined ? (
+                            <span className="text-gray-400">—</span>
+                          ) : (
+                            <span
+                              className={`tabular-nums ${
+                                r.queuedOverdue > 0
+                                  ? "font-medium text-red-600"
+                                  : "text-gray-400"
+                              }`}
+                              title={
+                                r.queuedOverdue > 0
+                                  ? `${num(r.queuedOverdue)} of the ${num(r.queuedNextToday)} followups were due before today`
+                                  : "Nothing owed from an earlier day"
+                              }
+                            >
+                              {num(r.queuedOverdue)}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-2.5 px-2 text-right tabular-nums text-gray-700">
                           {num(r.queuedNextTomorrow)}
                         </td>
