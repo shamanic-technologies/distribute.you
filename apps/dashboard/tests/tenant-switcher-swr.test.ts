@@ -144,12 +144,16 @@ describe("Tenant switcher first-frame identity", () => {
 
     // Both switcher surfaces gate on the tenant the URL is on — a brand page must
     // not fall back to the org's name.
-    const desktop = sliceFrom(switcher, "export function TenantSwitcher()", 1400);
+    // The in-flight org switch takes the FIRST branch (it names the target the
+    // user just clicked, which is a truthful identity we do hold), so the unknown
+    // check reads `: !identityKnown ? (` rather than `{!identityKnown ? (`.
+    // Measured offsets to the assertion: 1972 desktop / 1044 mobile.
+    const desktop = sliceFrom(switcher, "export function TenantSwitcher()", 2600);
     expect(desktop).toContain("const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;");
-    expect(desktop).toContain("{!identityKnown ? (");
+    expect(desktop).toContain("!identityKnown ? (");
 
-    const mobile = sliceFrom(switcher, "export function MobileTenantChip()", 1400);
+    const mobile = sliceFrom(switcher, "export function MobileTenantChip()", 1800);
     expect(mobile).toContain("const identityKnown = t.brandId ? t.brandKnown : t.orgKnown;");
-    expect(mobile).toContain("{!identityKnown ? (");
+    expect(mobile).toContain("!identityKnown ? (");
   });
 });

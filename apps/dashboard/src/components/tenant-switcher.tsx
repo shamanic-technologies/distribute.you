@@ -59,6 +59,19 @@ const CheckMark = () => (
   </svg>
 );
 
+/**
+ * Shown on the row the user just clicked, and on the switcher itself, for the
+ * whole window between the click and the navigation. That window is two or three
+ * Clerk round-trips long and nothing else on screen moves during it — the labels
+ * are keyed on the URL org, which has not changed yet.
+ */
+const Spinner = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={`${className} animate-spin text-brand-600 flex-shrink-0`} viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+  </svg>
+);
+
 const PlusTile = ({ sizeClass }: { sizeClass: string }) => (
   <div className={`${sizeClass} border-2 border-dashed border-gray-300 rounded flex items-center justify-center flex-shrink-0`}>
     <span className="text-gray-400 text-xs font-bold leading-none">+</span>
@@ -169,6 +182,9 @@ function TenantMenu({
 
         {expanded === "org" && (
           <Submenu title="Switch organization">
+            {t.switchError && (
+              <p className="px-4 py-1.5 text-xs text-red-600 md:px-3">{t.switchError}</p>
+            )}
             {t.isStaff && (
               <div className="px-3 pb-1.5">
                 <input
@@ -190,14 +206,23 @@ function TenantMenu({
                   {t.allOrgs.map((o) => (
                     <button
                       key={o.id}
-                      onClick={() => go(() => t.handleOrgSwitch(o.id))}
+                      // Deliberately NOT through `go()`: closing the menu first
+                      // removes the only surface that can show the switch running,
+                      // and the switch runs for seconds. The menu closes when the
+                      // navigation lands.
+                      onClick={() => t.handleOrgSwitch(o.id, o.name)}
+                      disabled={!!t.switchingOrgId}
                       className={`flex w-full items-center gap-2 rounded-md px-4 py-2 text-left text-sm transition md:px-3 ${
                         t.orgId === o.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                      } ${t.switchingOrgId && t.switchingOrgId !== o.id ? "opacity-50" : ""}`}
                     >
                       <OrgAvatar name={o.name} imageUrl={o.imageUrl} hasImage={o.hasImage} sizeClass="w-5 h-5" />
                       <span className="truncate">{o.name}</span>
-                      {t.orgId === o.id && <CheckMark />}
+                      {t.switchingOrgId === o.id ? (
+                        <Spinner className="ml-auto w-4 h-4" />
+                      ) : (
+                        t.orgId === o.id && <CheckMark />
+                      )}
                     </button>
                   ))}
                 </>
@@ -205,9 +230,12 @@ function TenantMenu({
                 t.memberships.map((m) => (
                   <button
                     key={m.organization.id}
-                    onClick={() => go(() => t.handleOrgSwitch(m.organization.id))}
+                    onClick={() => t.handleOrgSwitch(m.organization.id, m.organization.name)}
+                    disabled={!!t.switchingOrgId}
                     className={`flex w-full items-center gap-2 rounded-md px-4 py-2 text-left text-sm transition md:px-3 ${
                       t.orgId === m.organization.id ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                    } ${
+                      t.switchingOrgId && t.switchingOrgId !== m.organization.id ? "opacity-50" : ""
                     }`}
                   >
                     <OrgAvatar
@@ -217,7 +245,11 @@ function TenantMenu({
                       sizeClass="w-5 h-5"
                     />
                     <span className="truncate">{m.organization.name}</span>
-                    {t.orgId === m.organization.id && <CheckMark />}
+                    {t.switchingOrgId === m.organization.id ? (
+                      <Spinner className="ml-auto w-4 h-4" />
+                    ) : (
+                      t.orgId === m.organization.id && <CheckMark />
+                    )}
                   </button>
                 ))
               )}
@@ -341,6 +373,11 @@ export function TenantSwitcher() {
   const [open, setOpen] = useState(false);
   const rootRef = useCloseOnOutsideClick(() => setOpen(false));
 
+  // An org row no longer closes the menu on click (it has to stay open to show the
+  // switch running), so the arrival is what closes it.
+  const arrivedOrgId = t.orgId;
+  useEffect(() => { setOpen(false); }, [arrivedOrgId]);
+
   const brandLabel = t.displayBrand?.name || t.displayBrand?.domain || "Brand";
   const buttonLabel = t.brandId ? brandLabel : t.displayOrgName;
   // The row shows whichever tenant the URL is on, so it is only truthful once THAT
@@ -359,7 +396,17 @@ export function TenantSwitcher() {
         onClick={() => setOpen((v) => !v)}
         className={`flex ${CHROME_ROW_HEIGHT} w-full items-center gap-2 px-3 text-left transition hover:bg-gray-50`}
       >
-        {!identityKnown ? (
+        {t.switchingOrgId ? (
+          // The label reads the URL org, which does not move until the navigation
+          // lands. Name the target instead, so the click has a visible answer for
+          // the whole wait.
+          <>
+            <Spinner className="w-[22px] h-[22px]" />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+              {t.switchingOrgName ? `Switching to ${t.switchingOrgName}…` : "Switching…"}
+            </span>
+          </>
+        ) : !identityKnown ? (
           <IdentitySkeleton markClass="w-[22px] h-[22px]" barClass="h-3.5 flex-1" />
         ) : (
           <>
@@ -406,6 +453,9 @@ export function MobileTenantChip() {
   const [open, setOpen] = useState(false);
   const rootRef = useCloseOnOutsideClick(() => setOpen(false));
 
+  const arrivedOrgId = t.orgId;
+  useEffect(() => { setOpen(false); }, [arrivedOrgId]);
+
   if (!t.orgId) return null;
   const label = t.brandId
     ? t.displayBrand?.name || t.displayBrand?.domain || "Brand"
@@ -419,7 +469,14 @@ export function MobileTenantChip() {
         onClick={() => setOpen((v) => !v)}
         className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-gray-100"
       >
-        {!identityKnown ? (
+        {t.switchingOrgId ? (
+          <>
+            <Spinner className="w-5 h-5" />
+            <span className="min-w-0 truncate text-sm font-semibold text-gray-900">
+              {t.switchingOrgName ? `Switching to ${t.switchingOrgName}…` : "Switching…"}
+            </span>
+          </>
+        ) : !identityKnown ? (
           <IdentitySkeleton markClass="w-5 h-5" barClass="h-3.5 w-24" />
         ) : (
           <>
