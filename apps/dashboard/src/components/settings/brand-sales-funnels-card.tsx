@@ -14,6 +14,9 @@ import {
   type BrandSalesFunnelSet,
   type DeclaredSalesFunnel,
 } from "@/lib/api";
+import { useFeatures } from "@/lib/features-context";
+import { channelsForFunnel, funnelChannelBudgets, typedFunnelTotalUsd } from "@/lib/funnel-channels";
+import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import {
   NOTHING_DECLARED,
   SALES_FUNNELS,
@@ -76,12 +79,24 @@ type FunnelState = {
   touched: boolean;
   draft: FunnelDraft;
   /**
-   * The daily ceiling, in whole dollars, as typed. Kept OUT of `draft` on
-   * purpose: `draft` is exactly what brand-service's patch reads, and this is
-   * billing's. Two services, two writes, one form.
+   * The daily ceiling PER ACQUISITION CHANNEL, in whole dollars, as typed, keyed
+   * on the channel's feature slug. Kept OUT of `draft` on purpose: `draft` is
+   * exactly what brand-service's patch reads, and this is billing's. Two
+   * services, two writes, one form.
+   *
+   * Per channel rather than per funnel because the same funnel is worked through
+   * several offers at once, each running its own campaign: one figure for the
+   * funnel could not say how the money splits between them, and billing refuses
+   * a slug-less write on a split funnel for exactly that reason.
    */
-  budgetUsd: string;
-  /** What billing has stored for this funnel, in cents. Zero = not funded. */
+  budgetUsdByChannel: Record<string, string>;
+  /** What billing has stored per channel, in cents. Zero = not funded. */
+  savedCentsByChannel: Record<string, number>;
+  /**
+   * What billing has stored for the funnel AS A WHOLE, in cents: the served sum
+   * of the channels above, never re-added here. The product minimum and its
+   * grandfather bind this, not any single channel.
+   */
   savedBudgetCents: number;
   error: string | null;
 };
@@ -100,7 +115,8 @@ function initialStates(): Record<SalesFunnelKey, FunnelState> {
       saved: NOTHING_DECLARED,
       touched: false,
       draft: emptyDraft(def),
-      budgetUsd: "",
+      budgetUsdByChannel: {},
+      savedCentsByChannel: {},
       savedBudgetCents: 0,
       error: null,
     };
@@ -136,6 +152,11 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     ["brandFunnelBudgets", brandId],
     () => getBrandFunnelBudgets(brandId),
   );
+
+  // Which channels each funnel may be sold through is features-service's own
+  // statement, carried on the feature list the app already fetches — so this
+  // dedupes on the shared `["features"]` key rather than adding a read.
+  const { features } = useFeatures();
 
   const brand = brandData?.brand ?? null;
   const brandDomain = brand?.domain ?? null;
@@ -209,6 +230,22 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
         if (next[def.key].touched || openKey === def.key) continue;
         const saved = declared.get(def.key);
         const cents = funded.get(def.key) ?? 0;
+        // The money splits across the channels this funnel may be sold through,
+        // and billing serves that grain. A channel with no row is not funded.
+        const perChannel = funnelChannelBudgets(
+          def.key,
+          channelsForFunnel(def.key, features),
+          budgetData?.channels,
+          cents,
+        );
+        const savedCentsByChannel: Record<string, number> = {};
+        const budgetUsdByChannel: Record<string, string> = {};
+        for (const { channel, savedCents } of perChannel) {
+          savedCentsByChannel[channel.featureSlug] = savedCents;
+          // A daily budget always renders as whole dollars, never cents.
+          budgetUsdByChannel[channel.featureSlug] =
+            savedCents > 0 ? String(Math.round(savedCents / 100)) : "";
+        }
         next[def.key] = {
           ...next[def.key],
           // The set lists switched-off funnels too, keeping every number on them
@@ -217,8 +254,8 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
           // brand told us it no longer sells through.
           declared: saved !== undefined && saved.active !== false,
           saved: saved ?? NOTHING_DECLARED,
-          // A daily budget always renders as whole dollars, never cents.
-          budgetUsd: cents > 0 ? String(Math.round(cents / 100)) : "",
+          budgetUsdByChannel,
+          savedCentsByChannel,
           savedBudgetCents: cents,
           draft: saved
             ? funnelDraftFromDeclared(def, saved)
@@ -241,6 +278,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     brandError,
     funnelError,
     budgetError,
+    features,
     openKey,
   ]);
 
@@ -281,16 +319,45 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   // billing's write, separate from brand-service's. A funnel's money and a
   // funnel's economics live in two services, so pressing one button makes two
   // writes; neither can stand in for the other.
+  // The money is stated PER CHANNEL, so a funnel worked through two offers makes
+  // two writes. They run in SEQUENCE, not in parallel: each response carries the
+  // whole set, and billing recomputes the funnel total on every one, so two
+  // concurrent writes would each answer with a set that predates the other and
+  // the last one home would cache a total missing its sibling.
   const budgetMutation = useMutation({
-    mutationFn: (vars: { def: SalesFunnelDef; cents: number }) =>
-      saveBrandFunnelBudget(brandId, vars.def.key, vars.cents),
+    mutationFn: async (vars: {
+      def: SalesFunnelDef;
+      moves: { featureSlug: string; cents: number }[];
+    }) => {
+      let set: Awaited<ReturnType<typeof saveBrandFunnelBudget>> | null = null;
+      for (const move of vars.moves) {
+        set = await saveBrandFunnelBudget(
+          brandId,
+          vars.def.key,
+          move.cents,
+          move.featureSlug,
+        );
+      }
+      return set!;
+    },
     onSuccess: (set, vars) => {
       queryClient.setQueryData(["brandFunnelBudgets", brandId], set);
+      // Show exactly what persisted, per channel and for the funnel as a whole,
+      // so the card can never claim a ceiling billing normalized differently.
       const cents = set.funnels.find((f) => f.funnelKey === vars.def.key)?.dailyBudgetCents ?? 0;
-      patch(vars.def.key, {
-        savedBudgetCents: cents,
-        budgetUsd: cents > 0 ? String(Math.round(cents / 100)) : "",
-      });
+      const savedCentsByChannel: Record<string, number> = {};
+      const budgetUsdByChannel: Record<string, string> = {};
+      for (const { channel, savedCents } of funnelChannelBudgets(
+        vars.def.key,
+        channelsForFunnel(vars.def.key, features),
+        set.channels,
+        cents,
+      )) {
+        savedCentsByChannel[channel.featureSlug] = savedCents;
+        budgetUsdByChannel[channel.featureSlug] =
+          savedCents > 0 ? String(Math.round(savedCents / 100)) : "";
+      }
+      patch(vars.def.key, { savedBudgetCents: cents, savedCentsByChannel, budgetUsdByChannel });
     },
     onError: (err, vars) => {
       console.error("[dashboard] saveBrandFunnelBudget failed", err);
@@ -375,10 +442,21 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     setOpenKey(def.key);
   }
 
-  /** Whole dollars typed for this funnel's ceiling. Blank reads as unfunded. */
-  function budgetUsdOf(key: SalesFunnelKey): number {
-    const parsed = parseLocaleNumberInput(states[key].budgetUsd.trim());
+  /** Whole dollars typed for one channel of a funnel. Blank reads as unfunded. */
+  function channelUsdOf(key: SalesFunnelKey, featureSlug: string): number {
+    const parsed = parseLocaleNumberInput(
+      (states[key].budgetUsdByChannel[featureSlug] ?? "").trim(),
+    );
     return parsed === null ? 0 : Math.max(0, Math.round(parsed));
+  }
+
+  /** What each of this funnel's channels is typed at, keyed on the feature slug. */
+  function typedUsdByChannel(key: SalesFunnelKey): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const channel of channelsForFunnel(key, features)) {
+      out[channel.featureSlug] = channelUsdOf(key, channel.featureSlug);
+    }
+    return out;
   }
 
   function confirm(def: SalesFunnelDef) {
@@ -403,7 +481,13 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     // carried under its floor by the per-funnel attribution keeps that figure
     // and may be raised; the gate would otherwise refuse the whole form, so
     // editing a conversion rate on such a funnel was impossible.
-    const budgetUsd = budgetUsdOf(def.key);
+    //
+    // The floor binds the funnel TOTAL, never one channel: a customer splitting
+    // one funded funnel across two offers must not be refused for each half
+    // being under a bar the whole clears. billing holds the same rule and its
+    // 400 is what decides.
+    const usdByChannel = typedUsdByChannel(def.key);
+    const budgetUsd = typedFunnelTotalUsd(usdByChannel);
     if (funnelBudgetBelowMinimum(def.key, budgetUsd, state.savedBudgetCents)) {
       patch(def.key, { error: funnelBudgetFloorMessage(def.key, state.savedBudgetCents) });
       return;
@@ -416,9 +500,12 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
     // turn a rate edit into a money write for no reason. This runs BEFORE the
     // nothing-changed exit below, because a budget edit alone is a real change
     // even when the economics are untouched.
-    const cents = budgetUsd * 100;
-    const budgetMoved = cents !== state.savedBudgetCents;
-    if (budgetMoved) budgetMutation.mutate({ def, cents });
+    // Only the channels that MOVED are written, so funding one offer never
+    // re-states its sibling's ceiling.
+    const moves = Object.entries(usdByChannel)
+      .map(([featureSlug, usd]) => ({ featureSlug, cents: usd * 100 }))
+      .filter((m) => m.cents !== (state.savedCentsByChannel[m.featureSlug] ?? 0));
+    if (moves.length > 0) budgetMutation.mutate({ def, moves });
 
     if (state.declared && isEmptyFunnelPatch(body)) {
       patch(def.key, { touched: false, error: null });
@@ -613,39 +700,59 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
                 </div>
               ))}
 
-              {/* The money. Whole dollars, never cents — a daily budget is a
-                  configured ceiling, not a charge. Empty means the funnel is not
-                  funded, which is how it is put down without forgetting how it
-                  sells: every number below it stays exactly as it is. */}
+              {/* The money, one ceiling per acquisition channel this funnel can
+                  be sold through. Whole dollars, never cents — a daily budget is
+                  a configured ceiling, not a charge. Empty means that channel is
+                  not funded, which is how one offer is put down without
+                  forgetting how the funnel sells: every number below stays as it
+                  is, and the funnel's other channels keep running.
+
+                  Funding a channel IS choosing it, which is why there is no
+                  toggle beside these fields: a switch would be a second way to
+                  say what the amount already says. */}
               <div>
                 <label className="mb-1 flex items-center gap-1 text-xs text-gray-500">
-                  Daily budget
+                  Daily budget per channel
                   <InfoTooltip
                     tip={funnelBudgetTip(def.key, state.savedBudgetCents)}
                     placement="top"
                   />
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                    $
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={state.budgetUsd}
-                    onChange={(e) =>
-                      patch(def.key, {
-                        budgetUsd: e.target.value.replace(/\D/g, ""),
-                        touched: true,
-                        error: null,
-                      })
-                    }
-                    placeholder="0"
-                    className="w-full rounded-lg border border-gray-200 py-2 pl-7 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                    /day
-                  </span>
+                <div className="space-y-2">
+                  {channelsForFunnel(def.key, features).map((channel) => (
+                    <div key={channel.featureSlug} className="flex items-center gap-2.5">
+                      <AcquisitionChannelMark def={channel} size="sm" />
+                      <span className="min-w-0 flex-1 truncate text-sm text-gray-700">
+                        {channel.name}
+                      </span>
+                      <div className="relative w-32 shrink-0">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                          $
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          aria-label={`Daily budget for ${channel.name}`}
+                          value={state.budgetUsdByChannel[channel.featureSlug] ?? ""}
+                          onChange={(e) =>
+                            patch(def.key, {
+                              budgetUsdByChannel: {
+                                ...state.budgetUsdByChannel,
+                                [channel.featureSlug]: e.target.value.replace(/\D/g, ""),
+                              },
+                              touched: true,
+                              error: null,
+                            })
+                          }
+                          placeholder="0"
+                          className="w-full rounded-lg border border-gray-200 py-2 pl-7 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                          /day
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

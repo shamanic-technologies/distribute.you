@@ -1476,11 +1476,28 @@ const FunnelBudgetRowSchema = z.object({
   updatedAt: z.string(),
 });
 
+// ONE (funnel, acquisition-channel) pair's own ceiling. A channel IS a
+// features-service feature slug, so this row keys on the slug and nothing else.
+const FunnelChannelBudgetRowSchema = z.object({
+  funnelKey: z.enum(SALES_FUNNEL_KEYS_WIRE).transform(normalizeSalesFunnelKey),
+  featureSlug: z.string(),
+  dailyBudgetCents: z.coerce.number(),
+  updatedAt: z.string(),
+});
+
 const BrandFunnelBudgetsResponseSchema = z.object({
   brandId: z.string(),
   // Null only for a brand that has neither a brand-level budget nor ceilings.
   dailyBudgetCents: z.coerce.number().nullable(),
   funnels: z.array(FunnelBudgetRowSchema),
+  // The finer grain: one row per (funnel, channel). `funnels` above is its
+  // per-funnel SUM, served, so nothing here ever adds these up itself.
+  //
+  // `.optional()` because billing shipped it additively and this app merges to
+  // prod with no staging buffer: an older billing serves the set without it, and
+  // a required field would drop every budget row on that deploy. Absent reads as
+  // "one channel per funnel", which is what every brand was before the split.
+  channels: z.array(FunnelChannelBudgetRowSchema).optional(),
 });
 
 export type BrandFunnelBudgets = z.infer<typeof BrandFunnelBudgetsResponseSchema>;
@@ -1531,21 +1548,28 @@ export async function stateBrandFunnelBudgets(
 }
 
 /**
- * PATCH /brands/:brandId/funnel-budgets/:funnelKey — one funnel's ceiling, which
- * is what brand Settings edits. Zero is an ordinary value: it means the brand is
- * not funding that chain right now, which is how a customer pauses one without
+ * PATCH /brands/:brandId/funnel-budgets/:funnelKey — one ceiling, which is what
+ * brand Settings edits. Zero is an ordinary value: it means the brand is not
+ * funding that chain right now, which is how a customer pauses one without
  * losing what they told us about how it sells.
+ *
+ * `featureSlug` names WHICH acquisition channel of that funnel is being funded.
+ * Omitting it addresses the funnel as a whole, which billing resolves to its
+ * single channel when it funds one and REFUSES (409) when the funnel is split
+ * across several — guessing which offer the money was for would move it onto the
+ * wrong campaign. So a caller that can name the channel always should.
  */
 export async function saveBrandFunnelBudget(
   brandId: string,
   funnelKey: string,
   dailyBudgetCents: number,
+  featureSlug?: string,
   token?: string,
 ): Promise<BrandFunnelBudgets> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/funnel-budgets/${funnelKey}`, {
     token,
     method: "PATCH",
-    body: { dailyBudgetCents },
+    body: featureSlug ? { dailyBudgetCents, featureSlug } : { dailyBudgetCents },
     headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });
   const parsed = BrandFunnelBudgetsResponseSchema.safeParse(raw);
@@ -2446,6 +2470,20 @@ export interface Feature {
   entities: FeatureEntity[];
   byokProvider?: string | null;
   workflowSlug?: string | null;
+  /**
+   * Which sales funnels this feature may be SOLD THROUGH, in brand-service's
+   * funnel vocabulary. features-service states it per feature, because not every
+   * acquisition channel can sell every funnel: the feedback-request offer buys a
+   * conversation, while the website-led chains start with a click it cannot sell.
+   *
+   * An EMPTY array is a statement ("sells through none", every non-sales
+   * feature); ABSENT means the producer has not shipped the field to this
+   * environment yet. The two are read apart deliberately, so a consumer never
+   * mistakes "we could not ask" for "it sells through nothing".
+   *
+   * `listFeatures` runs no Zod, so declaring it here is enough for it to arrive.
+   */
+  salesFunnels?: string[];
 }
 
 // ─── Stats Registry & Stats Types ────────────────────────────────────────────

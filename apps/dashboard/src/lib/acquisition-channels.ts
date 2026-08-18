@@ -77,7 +77,7 @@ export const ACQUISITION_CHANNELS: AcquisitionChannelDef[] = [
     },
   },
   {
-    featureSlug: "feedback-request-cold-email-outreach",
+    featureSlug: "sales-feedback-request-cold-email-outreach",
     name: "Feedback Request Cold Email Outreach",
     summary: "We ask your buyers about the problem you solve, rather than pitching them.",
     mark: {
