@@ -48,7 +48,7 @@ describe("the brand Overview is scoped to the brand's money", () => {
     // The lens-only `costPerConversionUsd` is absent on this response and left the card
     // on a dash; deriving it here instead (spend ÷ an outcome count, or pipeline ÷ ROI)
     // would put a number on screen that features-service never computed.
-    expect(cards).not.toContain("actualCostUsd /");
+    expect(cards).not.toContain("committedCostUsd /");
     expect(cards).not.toContain("/ economics");
     expect(cards).toContain("formatUsd(economics?.costPerAcquisitionUsd)");
   });

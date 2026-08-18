@@ -140,17 +140,23 @@ export interface ConversionEvent {
 
 /**
  * Derived cost economics for the feature+brand — computed by features-service
- * (single source). Always present on a 200; the two ratios are null per the
- * documented null semantics. `actualCostUsd` is real (>= 0) even when pipeline is null.
+ * (single source). Always present on a 200; the ratios are null per the documented
+ * null semantics.
+ *
+ * ONE spend basis, and it is COMMITTED (billed + the open provisioned holds). It is
+ * byte the same total the `spend` block reports as `totalSpentCents`, so the ROI a
+ * campaign row shows and the "Total spent" the Overview shows can never describe
+ * different money. features-service serves a billed-only sibling too; the dashboard
+ * does not read it and never falls back to it, because a billed figure rendered under
+ * a committed label is the contradiction this replaced.
  */
 export interface CostEconomics {
-  /** ACTUAL (billed) run cost in $, brand (+ optional campaign), feature-scoped. ROI/CAC
-   *  ride realized spend, so this EXCLUDES provisioned holds (renamed from the ambiguous
-   *  `totalCostUsd` — features-service#402). */
-  actualCostUsd: number;
-  /** (actualCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
+  /** COMMITTED run spend in $, brand (+ optional campaign), feature-scoped — billed
+   *  PLUS open holds. Null is "we have no figure", never "it cost nothing". */
+  committedCostUsd: number | null;
+  /** (committedCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
   costOfAcquisitionPct: number | null;
-  /** totalPipelineUsd / actualCostUsd. Null when cost is 0 or pipeline is null. */
+  /** totalPipelineUsd / committedCostUsd. Null when cost is 0 or pipeline is null. */
   roiMultiple: number | null;
   /**
    * REALIZED dollar cost of winning ONE customer, for the scope this body describes —
@@ -169,7 +175,7 @@ export interface CostEconomics {
    * features-service is the single source — the dashboard never derives it.
    */
   expectedConversions?: number | null;
-  /** Lens-only: `actualCostUsd / expectedConversions`; null when expectedConversions is 0. */
+  /** Lens-only: `committedCostUsd / expectedConversions`; null when expectedConversions is 0. */
   costPerConversionUsd?: number | null;
 }
 

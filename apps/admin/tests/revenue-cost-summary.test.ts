@@ -58,6 +58,10 @@ describe("Cost & efficiency card on feature Overview (served costEconomics)", ()
   it("the /revenue parser threads costEconomics through the view-model", () => {
     const parser = read("lib/revenue-parse.ts");
     expect(parser).toContain("costEconomics: CostEconomicsSchema");
-    expect(parser).toContain("costEconomics: d.costEconomics");
+    // ONE spend basis, COMMITTED. The billed-only sibling features-service still
+    // serves is not read and is never a fallback: a billed figure under a committed
+    // label is what made a brand's Overview and its campaigns table disagree.
+    expect(parser).toContain("committedCostUsd: d.costEconomics.committedCostUsd ?? null");
+    expect(parser).not.toContain("d.costEconomics.actualCostUsd");
   });
 });

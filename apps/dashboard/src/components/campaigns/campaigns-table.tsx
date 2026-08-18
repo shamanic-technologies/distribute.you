@@ -52,10 +52,16 @@ function fmtPct(pct: number | null | undefined): string {
  * % CAC are computed from it. A column that reads as banked revenue when it is a
  * forecast is the same statement under two meanings.
  *
- * `$ Invested` is the one REALIZED figure in the group, which is exactly why it sits
- * beside them and says so: it is the net spend billing charges, the same number ROI
- * and % CAC divide by. A reader who assumes one basis will try to multiply
- * `$ Invested x ROI`, so the tip states the difference outright.
+ * `$ Invested` is the one figure here that already happened, which is exactly why it
+ * sits beside them and says so: it is COMMITTED spend, billed plus the holds open on
+ * sends this campaign has already queued, and it is byte the same number ROI and % CAC
+ * divide by. A reader who assumes one basis will try to multiply `$ Invested x ROI`,
+ * so the tip states the difference outright.
+ *
+ * Committed, not billed-only, and the two are NOT interchangeable: features-service
+ * serves exactly one spend basis and this is it. Reading the billed-only sibling here
+ * would put a smaller number under the same label the ROI was computed from, which is
+ * the contradiction that made a brand read $202 on its Overview beside $191 here.
  */
 const COLUMN_INFO = {
   roi: "What a customer is worth over their lifetime, divided by what it costs to win one. 11.7x means every $1 spent is projected to return $11.70. Based on the conversion rates and lifetime revenue set in Brand Settings.",
@@ -64,7 +70,7 @@ const COLUMN_INFO = {
   revenue:
     "Expected pipeline revenue: the outcomes this campaign has produced so far, valued with the conversion rates and customer lifetime revenue you set in Brand Settings. It is a projection of what this pipeline is worth, not money already collected.",
   invested:
-    "What this campaign has actually cost so far, net of any discount, on the same basis billing charges. The columns to its left are projections of what it is worth going forward, so this is not a multiplier of them.",
+    "What this campaign has cost so far, net of any discount: money already billed plus money reserved for emails it has queued. It is the same figure the ROI and % CAC beside it are calculated from. Those two are projections of what it is worth going forward, so this is not a multiplier of them.",
 } as const;
 
 /** A right-aligned numeric header with its (i) sitting after the label. */
@@ -324,10 +330,12 @@ export function CampaignsTable({
                 <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.totalPipelineUsd)}</td>
-                {/* The realized half: `costEconomics.actualCostUsd`, read verbatim off the
-                    same `pricing=net` group. A row with no group at all reads `—` rather
-                    than $0 — "we have no figure" and "it cost nothing" differ. */}
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.actualCostUsd)}</td>
+                {/* `costEconomics.committedCostUsd`, read verbatim off the same
+                    `pricing=net` group — the exact number the ROI and %CAC beside it
+                    divide by, so a row cannot contradict its own return. A row with no
+                    group at all reads `—` rather than $0 — "we have no figure" and "it
+                    cost nothing" differ. */}
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.committedCostUsd)}</td>
                 <td className="px-4 py-3 text-gray-800">
                   <FunnelCell funnelKey={campaign.funnelKey} />
                 </td>

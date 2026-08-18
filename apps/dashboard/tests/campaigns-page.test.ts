@@ -234,9 +234,11 @@ describe("Campaigns page (GA)", () => {
     // reason it carries a tip.
     expect(table).toContain("Expected pipeline revenue:");
     expect(table).toContain("not money already collected");
-    // `$ Invested` is the one REALIZED figure beside three projections, so its tip
-    // says so rather than leaving a reader to multiply it by the ROI next to it.
-    expect(table).toContain("net of any discount, on the same basis billing charges");
+    // `$ Invested` is the one already-happened figure beside three projections, so
+    // its tip says so rather than leaving a reader to multiply it by the ROI next to
+    // it — and it names BOTH halves of the committed basis, since a reader who reads
+    // "cost" as billed-only will not understand why it exceeds what they were charged.
+    expect(table).toContain("money already billed plus money reserved for emails it has queued");
     expect(table).toContain("not a multiplier of them");
   });
 
@@ -245,12 +247,12 @@ describe("Campaigns page (GA)", () => {
     expect(table).toContain("totalPipelineUsd");
     expect(table).toContain("roiMultiple");
     expect(table).toContain("costOfAcquisitionPct");
-    // `$ Invested` renders the served net spend verbatim — the same field ROI and
-    // % CAC divide by, so a row cannot contradict its own return.
-    expect(table).toContain("fmtUsd(revenue?.actualCostUsd)");
+    // `$ Invested` renders the served COMMITTED net spend verbatim — the same field
+    // ROI and % CAC divide by, so a row cannot contradict its own return.
+    expect(table).toContain("fmtUsd(revenue?.committedCostUsd)");
     // No client-side cost derivation (the CPC-incident rule): no dividing a cost
     // by a count, no reduce-summing a cost breakdown.
-    expect(table).not.toMatch(/actualCostUsd\s*\/\s*/);
+    expect(table).not.toMatch(/committedCostUsd\s*\/\s*/);
     expect(table).not.toMatch(/\.reduce\(/);
   });
 

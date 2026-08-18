@@ -124,9 +124,11 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
   it("the /revenue parser threads costEconomics + the spend block through the view-model", () => {
     const parser = read("lib/revenue-parse.ts");
     expect(parser).toContain("costEconomics: CostEconomicsSchema");
-    // costEconomics is normalized: the renamed billed run-cost prefers `actualCostUsd`,
-    // falling back to legacy `totalCostUsd` during the features-service rollout.
-    expect(parser).toContain("actualCostUsd: d.costEconomics.actualCostUsd ?? d.costEconomics.totalCostUsd");
+    // ONE spend basis, COMMITTED. The billed-only sibling features-service still
+    // serves is never read here and never a fallback: a billed figure under a
+    // committed label is what made the Overview and the campaigns table disagree.
+    expect(parser).toContain("committedCostUsd: d.costEconomics.committedCostUsd ?? null");
+    expect(parser).not.toContain("d.costEconomics.actualCostUsd");
     // The canonical spend block is parsed (nullable + optional) and flattened.
     expect(parser).toContain("spend: SpendSchema.nullable().optional()");
     expect(parser).toContain("spend: d.spend");

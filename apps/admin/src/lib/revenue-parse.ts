@@ -47,7 +47,11 @@ const RevenueEventSchema = z.object({
   contributionUsd: z.number(),
 });
 const CostEconomicsSchema = z.object({
-  totalCostUsd: z.number(),
+  // COMMITTED spend (billed + open holds) — features-service's single basis and what
+  // the two ratios below divide by. `.nullish()` for rollout tolerance; the reader
+  // carried the pre-#402 `totalCostUsd` as REQUIRED long after the producer dropped it,
+  // so every parse here threw.
+  committedCostUsd: z.number().nullish(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
 });
@@ -74,7 +78,11 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
   return {
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
-    costEconomics: d.costEconomics,
+    costEconomics: {
+      committedCostUsd: d.costEconomics.committedCostUsd ?? null,
+      costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
+      roiMultiple: d.costEconomics.roiMultiple,
+    },
     timeSeries: d.timeSeries,
     organizations: d.organizations,
     leads: d.leads,
