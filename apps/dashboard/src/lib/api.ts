@@ -2856,7 +2856,7 @@ export async function getFeatureRevenue(
 ): Promise<RevenueOverview> {
   const query = new URLSearchParams({ brandId });
   if (campaignId) query.set("campaignId", campaignId);
-  // pricing=net → every MONEY metric (spend block, costEconomics actualCostUsd,
+  // pricing=net → every MONEY metric (spend block, costEconomics committedCostUsd,
   // CAC, ROI, cps/cpsm/cpfs) reflects the org's FROZEN post-usage-discount cost
   // (frozen at cost-write in runs-service; features-service does NOT recompute the
   // discount — never multiply client-side). Coherent with the NET-paced campaign
@@ -2901,10 +2901,15 @@ export function keepLastGoodFeatureRevenue(
 // dashboard renders, never computes (CLAUDE.md: a displayed stat is
 // features-service-owned). One call powers the whole Campaigns table.
 const CampaignRevenueCostEconomicsSchema = z.object({
-  // Accept both the current `actualCostUsd` and legacy `totalCostUsd` name for
-  // rollout tolerance (mirrors CostEconomicsSchema in revenue-parse.ts).
-  actualCostUsd: z.number().optional(),
-  totalCostUsd: z.number().optional(),
+  // COMMITTED (billed + open holds) — features-service's single spend basis, and the
+  // exact number ROI and %CAC divide by, so a row cannot contradict its own return.
+  // `.optional()` for rollout tolerance only; it is required on the wire today.
+  //
+  // The billed-only sibling is deliberately NOT read here and NOT used as a fallback:
+  // actual means actual and committed means committed, so rendering billed spend under
+  // a committed label would reprint the very contradiction this replaced. Absent →
+  // null → the cell reads "—".
+  committedCostUsd: z.number().optional(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   expectedConversions: z.number().nullish(),
@@ -2924,7 +2929,9 @@ const FeatureRevenueByCampaignSchema = z.object({
 export interface CampaignRevenueGroup {
   campaignId: string;
   totalPipelineUsd: number | null;
-  actualCostUsd: number;
+  /** COMMITTED spend for this campaign — the number ROI and %CAC divide by. Null means
+   *  "we have no figure", never "it cost nothing", so the cell reads "—" rather than $0. */
+  committedCostUsd: number | null;
   costOfAcquisitionPct: number | null;
   roiMultiple: number | null;
   expectedConversions: number | null;
@@ -2952,7 +2959,7 @@ export async function getFeatureRevenueByCampaign(
   return parsed.data.groups.map((g) => ({
     campaignId: g.campaignId,
     totalPipelineUsd: g.headline.totalPipelineUsd,
-    actualCostUsd: g.costEconomics.actualCostUsd ?? g.costEconomics.totalCostUsd ?? 0,
+    committedCostUsd: g.costEconomics.committedCostUsd ?? null,
     costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
     roiMultiple: g.costEconomics.roiMultiple,
     expectedConversions: g.costEconomics.expectedConversions ?? null,

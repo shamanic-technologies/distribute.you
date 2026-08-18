@@ -1471,7 +1471,13 @@ const FeatureRevenueByCampaignSchema = z.object({
       campaignId: z.string(),
       headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: z.object({
-        totalCostUsd: z.number(),
+        // COMMITTED spend (billed + open holds) — features-service's single basis and
+        // what `roiMultiple` divides by. `.nullish()` for rollout tolerance only.
+        //
+        // This reader carried the pre-#402 `totalCostUsd` as a REQUIRED field long
+        // after the producer dropped it, so every parse here threw. Admin tests are
+        // not a CI gate, which is exactly how that rots unseen.
+        committedCostUsd: z.number().nullish(),
         costOfAcquisitionPct: z.number().nullable(),
         roiMultiple: z.number().nullable(),
       }),
@@ -1482,8 +1488,9 @@ const FeatureRevenueByCampaignSchema = z.object({
 export interface CampaignRevenueGroup {
   campaignId: string;
   totalPipelineUsd: number | null;
-  totalCostUsd: number;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  /** COMMITTED spend for this campaign. Null is "no figure", never "cost nothing". */
+  committedCostUsd: number | null;
+  /** totalPipelineUsd / committedCostUsd. Null when cost is 0 or pipeline is null. */
   roiMultiple: number | null;
 }
 
@@ -1505,7 +1512,7 @@ export async function getFeatureRevenueByCampaign(
   return parsed.data.groups.map((g) => ({
     campaignId: g.campaignId,
     totalPipelineUsd: g.headline.totalPipelineUsd,
-    totalCostUsd: g.costEconomics.totalCostUsd,
+    committedCostUsd: g.costEconomics.committedCostUsd ?? null,
     roiMultiple: g.costEconomics.roiMultiple,
   }));
 }
@@ -1543,11 +1550,14 @@ const FeatureRevenueByWorkflowSchema = z.object({
       workflowName: z.string().nullish(),
       headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: z.object({
-        // The deployed name (features-service#402 renamed the ambiguous
-        // `totalCostUsd`); the old spelling stays readable so an older body
-        // still fills the column instead of silently reading undefined.
-        actualCostUsd: z.number().nullish(),
-        totalCostUsd: z.number().nullish(),
+        // COMMITTED spend (billed + open holds) — the one basis features-service
+        // serves, and the number `roiMultiple` / `costOfAcquisitionPct` /
+        // `costPerAcquisitionUsd` all divide by. `.nullish()` for rollout tolerance.
+        //
+        // The billed-only sibling is deliberately absent from this reader: rendering
+        // it as "$ Invested" beside a committed-basis ROI is the contradiction
+        // features-service#779 removed.
+        committedCostUsd: z.number().nullish(),
         costOfAcquisitionPct: z.number().nullable(),
         costPerAcquisitionUsd: z.number().nullish(),
         roiMultiple: z.number().nullable(),
@@ -1556,12 +1566,13 @@ const FeatureRevenueByWorkflowSchema = z.object({
       // what each outcome cost, per dynasty, for THIS brand (features-service
       // #776 → v0.131.0 — the shape the producer designed, conformed to here).
       //
-      // Every figure rides REALIZED (billed) spend, the same basis
+      // Every figure rides COMMITTED spend, the same single basis
       // `costEconomics` rides, so a row's ROI and its cost per click are two
-      // views of one number. Deliberately NOT the un-grouped read's `spend`
-      // block, whose cost-per-outcome columns are COMMITTED and floored against
-      // a fleet benchmark — a committed numerator beside a realized ROI would
-      // be two currencies in one row.
+      // views of one number. (This block rode billed-only until
+      // features-service#779; the ROI moved to committed, so staying billed-only
+      // is what would now put two currencies in one row.) Still NOT the
+      // un-grouped read's `spend` block, whose cost-per-outcome columns are
+      // floored against a fleet benchmark.
       //
       // Kept `.nullish()` as a block so a body predating v0.131.0 still parses
       // and the columns read — rather than 502-ing the whole page.
@@ -5447,7 +5458,10 @@ export interface CustomerEconomics {
 }
 
 export interface CustomerCurrentEconomics {
-  realizedSpendUsd: number | null;
+  /** COMMITTED spend (billed + open holds) — the single basis, and the number
+   *  `currentCacUsd`, `roiMultiple` and `cacPct` below all divide by. The billed-only
+   *  sibling the producer still serves is deliberately not read here. */
+  committedSpendUsd: number | null;
   expectedPipelineUsd: number | null;
   currentCacUsd: number | null;
   roiMultiple: number | null; // LTR / CAC = pipeline / spend; ≥ 1 ⟺ below breakeven

@@ -31,7 +31,7 @@ function rawRevenue(
     featureSlug: "sales-cold-email-outreach",
     ...(series ?? {}),
     headline: { totalPipelineUsd: 1000 },
-    costEconomics: { actualCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
+    costEconomics: { committedCostUsd: 10, costOfAcquisitionPct: null, roiMultiple: null },
     timeSeries: [],
     organizations: [],
     leads: [],

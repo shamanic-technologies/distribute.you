@@ -106,7 +106,7 @@ describe("buildBrandWorkflowRows", () => {
     workflowDynastyName: `Brand ${slug}`,
     headline: { totalPipelineUsd: 4200 },
     costEconomics: {
-      actualCostUsd: 1299.47,
+      committedCostUsd: 1299.47,
       costOfAcquisitionPct: 31,
       costPerAcquisitionUsd: 92.8,
       roiMultiple: 3.2,
@@ -138,21 +138,24 @@ describe("buildBrandWorkflowRows", () => {
     });
   });
 
-  it("prints the BILLED spend the return divides by, not the committed total", () => {
-    // ROI rides actualCostUsd; a $ Invested column showing anything else would
+  it("prints the COMMITTED spend the return divides by", () => {
+    // ROI rides committedCostUsd; a $ Invested column showing anything else would
     // make the row contradict its own ROI.
     const [row] = buildBrandWorkflowRows([
-      { ...group("wf-a"), costEconomics: { ...group("wf-a").costEconomics, actualCostUsd: 800 } },
+      { ...group("wf-a"), costEconomics: { ...group("wf-a").costEconomics, committedCostUsd: 800 } },
     ]);
     expect(row.investedUsd).toBe(800);
   });
 
-  it("still fills $ Invested from the pre-rename spelling", () => {
+  it("reads NOTHING when the committed figure is absent, rather than borrowing the billed one", () => {
+    // The producer still serves a billed-only sibling. Falling back onto it would put
+    // a smaller number under a label the ROI was computed from, which is the exact
+    // contradiction the single-basis fix removed. "-" is the honest cell.
     const g = group("wf-a");
     const [row] = buildBrandWorkflowRows([
-      { ...g, costEconomics: { ...g.costEconomics, actualCostUsd: null, totalCostUsd: 512 } },
+      { ...g, costEconomics: { ...g.costEconomics, committedCostUsd: null } },
     ]);
-    expect(row.investedUsd).toBe(512);
+    expect(row.investedUsd).toBeNull();
   });
 
   it("joins the DEPLOYED shape — a dynasty group listing its folded versions", () => {

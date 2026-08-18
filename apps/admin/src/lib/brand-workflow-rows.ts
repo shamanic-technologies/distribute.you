@@ -88,9 +88,10 @@ export function buildBrandWorkflowRows(
     websiteVisits: numOrNull(g.outcomes?.recipientsClicked),
     cpwvUsd: centsToUsd(g.outcomes?.cpcCents),
     outreach: numOrNull(g.outcomes?.recipientsContacted),
-    // `totalCostUsd` is the pre-rename spelling the producer retired; reading
-    // both keeps the column alive whichever one an older body carries.
-    investedUsd: numOrNull(g.costEconomics.actualCostUsd ?? g.costEconomics.totalCostUsd),
+    // COMMITTED spend, the number the ROI and % CAC on this same row divide by.
+    // No fallback onto the billed-only sibling: it is a smaller figure answering a
+    // different question, so rendering it here would make the row contradict itself.
+    investedUsd: numOrNull(g.costEconomics.committedCostUsd),
   }));
 }
 

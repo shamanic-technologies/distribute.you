@@ -65,14 +65,20 @@ export interface ConversionEvent {
 /**
  * Derived cost economics for the feature+brand — computed by features-service
  * (single source). Always present on a 200; the two ratios are null per the
- * documented null semantics. `totalCostUsd` is real (>= 0) even when pipeline is null.
+ * documented null semantics.
+ *
+ * ONE spend basis, COMMITTED (billed + the open provisioned holds), byte the same
+ * total the `spend` block reports. The billed-only sibling features-service also
+ * serves is not read here and is never a fallback: it answers a different question,
+ * so putting it under this name would make one payload state two spends.
  */
 export interface CostEconomics {
-  /** Total run cost in $, brand (+ optional campaign), feature-scoped. */
-  totalCostUsd: number;
-  /** (totalCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
+  /** COMMITTED run spend in $, brand (+ optional campaign), feature-scoped. Null is
+   *  "we have no figure", never "it cost nothing". */
+  committedCostUsd: number | null;
+  /** (committedCostUsd / totalPipelineUsd) * 100. Null when pipeline is null or 0. */
   costOfAcquisitionPct: number | null;
-  /** totalPipelineUsd / totalCostUsd. Null when cost is 0 or pipeline is null. */
+  /** totalPipelineUsd / committedCostUsd. Null when cost is 0 or pipeline is null. */
   roiMultiple: number | null;
 }
 

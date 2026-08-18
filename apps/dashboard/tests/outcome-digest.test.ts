@@ -97,7 +97,7 @@ describe("daily outcome digest", () => {
     return {
       featureSlug: "sales-cold-email-outreach",
       headline: { totalPipelineUsd: 12500 },
-      costEconomics: { actualCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
+      costEconomics: { committedCostUsd: 250, costOfAcquisitionPct: 2, roiMultiple: 50 },
       // The digest only fires when the return went UP on the day, so every fixture
       // that expects a send carries an improving curve. Both figures are served —
       // the email prints these two points and computes nothing.
@@ -406,7 +406,7 @@ describe("daily outcome digest", () => {
           featureSlug: "sales-cold-email-outreach",
           headline: { totalPipelineUsd: 0 },
           costEconomics: {
-            actualCostUsd: 0,
+            committedCostUsd: 0,
             costOfAcquisitionPct: null,
             roiMultiple: null,
           },

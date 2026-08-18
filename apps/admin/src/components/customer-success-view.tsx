@@ -309,8 +309,8 @@ function RightPanel({ row, names, onClose }: { row: CustomerRow; names: Record<s
         </div>
       </PanelSection>
 
-      <PanelSection title="Realized economics">
-        <PanelRow label="Realized spend" value={usd(row.currentEconomics.realizedSpendUsd)} />
+      <PanelSection title="Current economics">
+        <PanelRow label="Committed spend" value={usd(row.currentEconomics.committedSpendUsd)} />
         <PanelRow label="Expected pipeline" value={usd(row.currentEconomics.expectedPipelineUsd)} />
         <PanelRow label="Current CAC" value={usd(row.currentEconomics.currentCacUsd)} />
         <PanelRow label="Breakeven CAC (LTR)" value={usd(row.breakevenCacUsd)} />

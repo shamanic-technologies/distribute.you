@@ -84,11 +84,14 @@ const RevenueEventSchema = z.object({
   contributionUsd: z.number(),
 });
 const CostEconomicsSchema = z.object({
-  // features-service renamed the billed run-cost `totalCostUsd` → `actualCostUsd`
-  // (ROI/CAC ride realized spend, holds excluded — features-service#402). Accept BOTH
-  // for rollout tolerance; the flatten normalizes to `actualCostUsd`.
-  actualCostUsd: z.number().optional(),
-  totalCostUsd: z.number().optional(),
+  // COMMITTED spend (billed + open holds) — features-service's single basis, and what
+  // ROI, % CAC and $ CAC below all divide by. `.optional()` for rollout tolerance only;
+  // required on the wire today.
+  //
+  // The billed-only sibling (`actualCostUsd`) is NOT read and NOT a fallback. Actual
+  // means actual, committed means committed; putting one under the other's label is
+  // exactly what made a brand's Overview and its campaigns table disagree.
+  committedCostUsd: z.number().optional(),
   costOfAcquisitionPct: z.number().nullable(),
   roiMultiple: z.number().nullable(),
   // The dollar cost of winning one customer, answered on EVERY response including
@@ -235,9 +238,7 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
     featureSlug: d.featureSlug,
     totalPipelineUsd: d.headline.totalPipelineUsd,
     costEconomics: {
-      // Normalize the renamed field: prefer `actualCostUsd`, fall back to legacy
-      // `totalCostUsd` until features-service is live everywhere.
-      actualCostUsd: d.costEconomics.actualCostUsd ?? d.costEconomics.totalCostUsd ?? 0,
+      committedCostUsd: d.costEconomics.committedCostUsd ?? null,
       costOfAcquisitionPct: d.costEconomics.costOfAcquisitionPct,
       roiMultiple: d.costEconomics.roiMultiple,
       costPerAcquisitionUsd: d.costEconomics.costPerAcquisitionUsd ?? null,
