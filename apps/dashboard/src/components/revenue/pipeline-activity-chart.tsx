@@ -38,7 +38,18 @@ type MetricDef = {
   expected: string;
 };
 
-const OUTREACH: MetricDef = { key: "outreach", label: "Outreach", actual: "#334155", expected: "#cbd5e1" };
+// The outreach bar counts SEQUENCES LAUNCHED on the day — a lead handed to the
+// sending provider — not emails delivered that day. A brand routinely sends
+// hundreds of emails on a day this bar reads 0, because the queue and the
+// follow-up steps of leads launched days earlier are what go out. "Outreach"
+// read as "emails sent" and made those days look like an outage; the label
+// states the fact the bar carries.
+const OUTREACH: MetricDef = {
+  key: "outreach",
+  label: "New leads contacted",
+  actual: "#334155",
+  expected: "#cbd5e1",
+};
 const CLICKS: MetricDef = { key: "clicks", label: "Website Visits", actual: "#0891b2", expected: "#bae6fd" };
 const POSITIVE_REPLIES: MetricDef = {
   key: "repliedPositive",
