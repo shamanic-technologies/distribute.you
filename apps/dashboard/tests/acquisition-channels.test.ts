@@ -16,7 +16,7 @@ describe("a channel IS a feature slug", () => {
   it("identifies every live channel by its features-service slug", () => {
     expect(ACQUISITION_CHANNELS.map((c) => c.featureSlug)).toEqual([
       "sales-cold-email-outreach",
-      "sales-feedback-request-cold-email-outreach",
+      "feedback-request-cold-email-outreach",
     ]);
   });
 
@@ -125,7 +125,7 @@ describe("acquisitionChannelForFeatureSlug", () => {
       "Sales Cold Email Outreach",
     );
     expect(
-      acquisitionChannelForFeatureSlug("sales-feedback-request-cold-email-outreach")?.name,
+      acquisitionChannelForFeatureSlug("feedback-request-cold-email-outreach")?.name,
     ).toBe("Feedback Request Cold Email Outreach");
   });
 

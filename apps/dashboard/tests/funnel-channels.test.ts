@@ -8,7 +8,7 @@ import {
 import { ACQUISITION_CHANNELS } from "../src/lib/acquisition-channels";
 
 const SALES = "sales-cold-email-outreach";
-const FEEDBACK = "sales-feedback-request-cold-email-outreach";
+const FEEDBACK = "feedback-request-cold-email-outreach";
 
 /** What features-service states today, in its own canonical spellings. */
 const FEATURES: ChannelFeatureRow[] = [
