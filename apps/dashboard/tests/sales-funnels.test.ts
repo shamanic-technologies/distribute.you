@@ -1033,22 +1033,46 @@ describe("the Sales Funnels card funds each funnel", () => {
   it("keeps the ceiling OUT of the funnel patch", () => {
     // `draft` is exactly what brand-service's partial patch reads. Putting money
     // in it would send billing's field to a service that has no column for it.
-    const state = sliceFrom(src, "type FunnelState = {", 900);
-    expect(state).toContain("budgetUsd: string");
+    // Measured: the block is 1316 chars, its last field at 1264. Give it room.
+    const state = sliceFrom(src, "type FunnelState = {", 1400);
+    // The money is PER CHANNEL: the same funnel is worked through several offers
+    // at once, each its own campaign, so one figure could not say how it splits.
+    expect(state).toContain("budgetUsdByChannel: Record<string, string>");
+    expect(state).toContain("savedCentsByChannel: Record<string, number>");
+    // The funnel total stays too: the product minimum binds it, not one channel.
     expect(state).toContain("savedBudgetCents: number");
     const draft = sliceFrom(lib, "export type FunnelDraft = {", 400);
     expect(draft).not.toContain("budget");
   });
 
+  it("funds each channel of a funnel separately, and never re-adds the total", () => {
+    // billing serves the per-funnel figure as the SUM of its channels, so the
+    // card renders that served number. A client-side sum is the compute-a-stat-
+    // in-the-browser bug, and it would drift from what billing charges.
+    const lib2 = read("../src/lib/funnel-channels.ts");
+    expect(lib2).toContain("export function channelsForFunnel");
+    expect(lib2).toContain("export function funnelChannelBudgets");
+    // Which channel may sell which funnel is features-service's statement.
+    expect(lib2).not.toContain("reply_meeting:");
+    expect(src).toContain("channelsForFunnel(def.key, features)");
+    // The write names the channel: billing 409s a slug-less write on a funnel
+    // split across several, because guessing which offer the money was for
+    // would move it onto the wrong campaign.
+    expect(src).toContain("move.featureSlug");
+  });
+
   it("writes the ceiling only when it moved, and before the nothing-changed exit", () => {
     // A budget edit alone is a real change even when the economics are
     // untouched — so the early return for an empty patch must not swallow it.
-    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 2400);
+    // Measured: the block is 3015 chars and the exit sits at 2770.
+    const confirm = sliceFrom(src, "function confirm(def: SalesFunnelDef) {", 3100);
     const write = confirm.indexOf("budgetMutation.mutate");
     const exit = confirm.indexOf("isEmptyFunnelPatch(body)");
     expect(write).toBeGreaterThan(-1);
     expect(exit).toBeGreaterThan(write);
-    expect(confirm).toContain("cents !== state.savedBudgetCents");
+    // Only the channels that MOVED are written, so funding one offer never
+    // re-states its sibling's ceiling.
+    expect(confirm).toContain("state.savedCentsByChannel[m.featureSlug]");
   });
 
   it("refuses a funded funnel under its floor, reading what it is funded at now", () => {

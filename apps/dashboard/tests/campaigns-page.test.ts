@@ -75,10 +75,15 @@ describe("Campaigns page (GA)", () => {
   // channel's own mark + catalogue name, and the funnel's mark + name. A second
   // wording for either would be the same thing under two names on two screens.
   it("draws Channel and Sales funnel from the brand-Settings catalogues", () => {
-    expect(table).toContain("acquisitionChannelForWorkflowSlug");
+    // The channel is READ off the campaign's own feature slug, never inferred
+    // from the workflow: a channel IS a feature slug, and two cold-email
+    // channels differ only by their offer, so a workflow guess cannot tell them
+    // apart and never could.
+    expect(table).toContain("acquisitionChannelForFeatureSlug");
+    expect(table).not.toContain("acquisitionChannelForWorkflowSlug");
     expect(table).toContain("<AcquisitionChannelMark");
     expect(table).toContain("<SalesFunnelMark");
-    expect(table).toContain("<ChannelCell workflowSlug={campaign.workflowSlug} />");
+    expect(table).toContain("<ChannelCell featureSlug={campaign.featureSlug} />");
     expect(table).toContain(
       "<FunnelCell funnelKey={campaign.funnelKey} />",
     );

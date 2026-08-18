@@ -2,8 +2,10 @@
 
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import {
-  partitionChannelsByAvailability,
+  ACQUISITION_CHANNELS,
+  COMING_SOON_CHANNELS,
   type AcquisitionChannelDef,
+  type ComingSoonChannelDef,
 } from "@/lib/acquisition-channels";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 
@@ -11,21 +13,22 @@ import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-m
 // the same funnel can be fed by cold email today and by paid clicks later, so
 // the two are separate lists rather than one.
 //
-// This card STATES what we run, it does not ask. brand-service stores no channel
-// selection, so a toggle here would take the answer and persist none of it, and
-// a control that silently discards a choice is worse than no control. The choice
-// arrives the day there is a field to write it to; until then the honest surface
-// is the list of what runs today and what is coming.
+// This card STATES what we run, it does not ask. A channel is not chosen here:
+// it is FUNDED, on the funnel it feeds, in the card above. Funding a
+// (funnel, channel) pair is what makes it run, so a toggle here would be a
+// second way to say a thing the money already says. The choice lives where the
+// money is; this list says what there is to choose from.
 
 export function BrandAcquisitionChannelsCard() {
-  const { live, comingSoon } = partitionChannelsByAvailability();
+  const live = ACQUISITION_CHANNELS;
+  const comingSoon = COMING_SOON_CHANNELS;
 
-  function renderChannel(def: AcquisitionChannelDef) {
-    const dimmed = def.comingSoon;
+  function renderChannel(def: AcquisitionChannelDef | ComingSoonChannelDef) {
+    const dimmed = !("featureSlug" in def);
 
     return (
       <li
-        key={def.key}
+        key={"featureSlug" in def ? def.featureSlug : def.id}
         className={`rounded-xl border border-gray-200 ${
           dimmed ? "bg-gray-50" : "bg-white"
         }`}

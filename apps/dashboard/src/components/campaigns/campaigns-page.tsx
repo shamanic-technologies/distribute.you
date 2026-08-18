@@ -8,7 +8,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { getFeatureRevenue, keepLastGoodFeatureRevenue } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
-import { acquisitionChannelForWorkflowSlug } from "@/lib/acquisition-channels";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
@@ -68,8 +68,8 @@ export function CampaignsPage() {
   const topChannel = useMemo(() => {
     const top = rows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
-    const def = acquisitionChannelForWorkflowSlug(top.campaign.workflowSlug);
-    return def ? def.name : channelSlugLabel(top.campaign.workflowSlug);
+    const def = acquisitionChannelForFeatureSlug(top.campaign.featureSlug);
+    return def ? def.name : channelSlugLabel(top.campaign.featureSlug);
   }, [rows]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate

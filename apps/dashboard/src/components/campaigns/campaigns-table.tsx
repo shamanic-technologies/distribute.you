@@ -12,7 +12,7 @@ import {
   type CampaignRevenueGroup,
 } from "@/lib/api";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { acquisitionChannelForWorkflowSlug } from "@/lib/acquisition-channels";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
@@ -162,13 +162,18 @@ function StatusPill({ status }: { status: string }) {
  * platform's own logo (or our duotone mark) beside the catalogue name. A slug we
  * carry no channel for keeps the prettified text and no tile — a mark we cannot
  * source is worse than none.
+ *
+ * It reads the campaign's OWN feature slug, because a channel IS a feature slug.
+ * The workflow slug used to stand in for it, which answered "cold email" for
+ * every email workflow whatever its offer — with two cold-email channels that
+ * guess cannot tell them apart.
  */
-function ChannelCell({ workflowSlug }: { workflowSlug: string | null }) {
-  const def = acquisitionChannelForWorkflowSlug(workflowSlug);
+function ChannelCell({ featureSlug }: { featureSlug: string | null }) {
+  const def = acquisitionChannelForFeatureSlug(featureSlug);
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {def && <AcquisitionChannelMark def={def} size="sm" />}
-      <span className="truncate">{def ? def.name : channelSlugLabel(workflowSlug)}</span>
+      <span className="truncate">{def ? def.name : channelSlugLabel(featureSlug)}</span>
     </div>
   );
 }
@@ -340,7 +345,7 @@ export function CampaignsTable({
                   <FunnelCell funnelKey={campaign.funnelKey} />
                 </td>
                 <td className="px-4 py-3 text-gray-800">
-                  <ChannelCell workflowSlug={campaign.workflowSlug} />
+                  <ChannelCell featureSlug={campaign.featureSlug} />
                 </td>
                 <td className="px-4 py-3">
                   <StatusPill status={campaign.status} />
