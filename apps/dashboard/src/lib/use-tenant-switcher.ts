@@ -111,6 +111,15 @@ export function useTenantSwitcher() {
   const [allOrgs, setAllOrgs] = useState<TenantOrgOption[]>([]);
   const [orgSearch, setOrgSearch] = useState("");
   const [orgsLoading, setOrgsLoading] = useState(false);
+  // The org the user just clicked, held from the click until the navigation is
+  // under way. A switch costs two or three Clerk round-trips before anything can
+  // paint, and the sidebar label is keyed on the URL org — which has not moved
+  // yet — so without this the whole window is indistinguishable from a dead
+  // button. Carries the NAME as well as the id: the target is frequently absent
+  // from every list we hold (staff god-mode), so there is nothing to look it up
+  // in once the menu starts closing.
+  const [switchingOrg, setSwitchingOrg] = useState<{ id: string; name: string } | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
 
   // Parse path structure: /orgs/[orgId]/brands/[brandId]/<section>/[id]
   // The product ships ONE feature → no `/features/[featureSlug]` segment.
@@ -216,48 +225,87 @@ export function useTenantSwitcher() {
     { enabled: !!brandId },
   );
 
-  const handleOrgSwitch = useCallback(async (clerkOrgId: string) => {
-    // Update Clerk's client-side active org so useOrganization() reflects the switch
-    // immediately (label, QueryProvider remount). Then push the URL so middleware's
-    // organizationSyncOptions confirms server-side and /api/v1/* calls run under the
-    // new org. Both directions are required: setActive alone left the URL stale
-    // (PR #1058 prod incident, polls 404'd); router.push alone left the client UI
-    // stale until the session cookie refreshed.
-    //
-    // No cache clear here: the QueryProvider remounts under the org key (fresh empty
-    // in-memory cache) and the per-query persister is org-prefixed, so org A's
-    // labels can reach neither org B's memory nor its disk key space.
-    //
-    // AWAIT setActive before navigating: it resolves once the Clerk session (and its
-    // org claim) has rotated to the new org. Navigating / firing an API call before
-    // that resolves carries the OLD org in the lag window → write commits under the
-    // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
-    // is the backstop; awaiting closes the race at the source.
-    //
-    // STAFF god-mode: the target may be a customer org the staff member is NOT a
-    // member of. Clerk `setActive` rejects a non-member org, so first make them a
-    // real member (role org:admin) server-side. Idempotent. Only staff hit this
-    // (the route 403s otherwise); customers always switch to an org they own.
-    if (isStaff) {
-      try {
-        await fetch(`/api/admin/orgs/${clerkOrgId}/join`, { method: "POST" });
-      } catch (err) {
-        console.error("Failed to join org:", err);
+  const handleOrgSwitch = useCallback(async (clerkOrgId: string, orgName?: string) => {
+    // Mark the switch pending SYNCHRONOUSLY, before the first await. Everything
+    // below is network, and until `router.push` lands there is nothing on screen
+    // that reflects the click — the switcher label reads the URL org, which is
+    // still the old one. Reported as "je change d'org et il ne se passe rien,
+    // des fois j'attends 30s".
+    setSwitchError(null);
+    setSwitchingOrg({ id: clerkOrgId, name: orgName ?? "" });
+
+    try {
+      // Update Clerk's client-side active org so useOrganization() reflects the switch
+      // immediately (label, QueryProvider remount). Then push the URL so middleware's
+      // organizationSyncOptions confirms server-side and /api/v1/* calls run under the
+      // new org. Both directions are required: setActive alone left the URL stale
+      // (PR #1058 prod incident, polls 404'd); router.push alone left the client UI
+      // stale until the session cookie refreshed.
+      //
+      // No cache clear here: the QueryProvider remounts under the org key (fresh empty
+      // in-memory cache) and the per-query persister is org-prefixed, so org A's
+      // labels can reach neither org B's memory nor its disk key space.
+      //
+      // AWAIT setActive before navigating: it resolves once the Clerk session (and its
+      // org claim) has rotated to the new org. Navigating / firing an API call before
+      // that resolves carries the OLD org in the lag window → write commits under the
+      // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
+      // is the backstop; awaiting closes the race at the source.
+      //
+      // STAFF god-mode: the target may be a customer org the staff member is NOT a
+      // member of. Clerk `setActive` rejects a non-member org, so first make them a
+      // real member (role org:admin) server-side. Idempotent. Only staff hit this
+      // (the route 403s otherwise); customers always switch to an org they own.
+      //
+      // Skip it entirely when Clerk's own membership list — already loaded on the
+      // client, so free to read — says the membership exists. That check is
+      // authoritative-POSITIVE only: the list is paginated, so an ABSENT membership
+      // proves nothing and still goes through the (idempotent) route. Staff switch
+      // mostly into orgs they joined long ago, and this was a full Clerk Backend API
+      // round-trip on every one of those clicks.
+      const alreadyMember = (userMemberships?.data ?? []).some(
+        (m) => m.organization.id === clerkOrgId,
+      );
+      if (isStaff && !alreadyMember) {
+        const res = await fetch(`/api/admin/orgs/${clerkOrgId}/join`, { method: "POST" });
+        // Fail loud. Continuing past a failed join reaches `setActive` on an org the
+        // user does not belong to, which REJECTS — and that rejection was unhandled
+        // inside a click handler, so `router.push` never ran and nothing was shown.
+        // That is the "sometimes it never does anything at all" half of the report.
+        if (!res.ok) {
+          throw new Error(`Could not open that organization (join failed: ${res.status}).`);
+        }
       }
+      if (setActive) {
+        await setActive({ organization: clerkOrgId });
+      }
+      // Re-mint the session token so the new active org (and, for staff god-mode, the
+      // freshly-added membership) are in the cookie BEFORE the navigation hits the
+      // middleware. `setActive` resolves on the client before its Set-Cookie has
+      // propagated, so without this the next request reaches `proxy.ts`
+      // `organizationSyncOptions` carrying the STALE token (active = previous org /
+      // not-a-member of the target) → Clerk bounces the URL back → OrgActivator
+      // re-syncs the client to the previous org → the switch reverts on its own.
+      // No `.catch` here: a failed re-mint IS that revert, so it belongs in the
+      // handler's catch where the user is told, not swallowed.
+      await session?.getToken({ skipCache: true });
+      router.push(`/orgs/${clerkOrgId}`);
+    } catch (err) {
+      console.error("[dashboard] org switch failed:", err);
+      setSwitchingOrg(null);
+      setSwitchError(
+        err instanceof Error ? err.message : "Could not switch organization.",
+      );
     }
-    if (setActive) {
-      await setActive({ organization: clerkOrgId });
-    }
-    // Re-mint the session token so the new active org (and, for staff god-mode, the
-    // freshly-added membership) are in the cookie BEFORE the navigation hits the
-    // middleware. `setActive` resolves on the client before its Set-Cookie has
-    // propagated, so without this the next request reaches `proxy.ts`
-    // `organizationSyncOptions` carrying the STALE token (active = previous org /
-    // not-a-member of the target) → Clerk bounces the URL back → OrgActivator
-    // re-syncs the client to the previous org → the switch reverts on its own.
-    await session?.getToken({ skipCache: true }).catch(() => {});
-    router.push(`/orgs/${clerkOrgId}`);
-  }, [isStaff, setActive, session, router]);
+  }, [isStaff, userMemberships?.data, setActive, session, router]);
+
+  // Drop the pending state once the URL has actually moved to the target. The
+  // navigation is what ends the switch, not the promise resolving — `router.push`
+  // returns before the destination renders, so clearing it there would blank the
+  // label again for the rest of the wait.
+  useEffect(() => {
+    if (switchingOrg && orgId === switchingOrg.id) setSwitchingOrg(null);
+  }, [switchingOrg, orgId]);
 
   const handleBrandSwitch = useCallback((newBrandId: string) => {
     if (orgId) router.push(`/orgs/${orgId}/brands/${newBrandId}`);
@@ -342,6 +390,12 @@ export function useTenantSwitcher() {
     brandKnown,
     handleOrgSwitch,
     handleBrandSwitch,
+    // The click is answered here, not by the destination: `switchingOrgId` spins
+    // the clicked row and re-labels the switcher with the target, `switchError`
+    // states a refusal instead of leaving a dead button behind.
+    switchingOrgId: switchingOrg?.id ?? null,
+    switchingOrgName: switchingOrg?.name || null,
+    switchError,
     router,
   };
 }
