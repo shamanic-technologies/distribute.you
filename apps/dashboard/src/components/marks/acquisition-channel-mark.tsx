@@ -1,9 +1,10 @@
 "use client";
 
 import { EnvelopeSimpleIcon } from "@phosphor-icons/react/dist/csr/EnvelopeSimple";
+import { ChatCircleTextIcon } from "@phosphor-icons/react/dist/csr/ChatCircleText";
 import { ChatTeardropTextIcon } from "@phosphor-icons/react/dist/csr/ChatTeardropText";
 import type { Icon } from "@phosphor-icons/react";
-import type { AcquisitionChannelDef, AcquisitionChannelKey } from "@/lib/acquisition-channels";
+import type { AcquisitionChannelMark as ChannelMark, OwnChannelGlyph } from "@/lib/acquisition-channels";
 import { BrandLogo } from "@/components/brand-logo";
 
 // The tile that stands for one acquisition channel. It lives here rather than in
@@ -14,9 +15,14 @@ import { BrandLogo } from "@/components/brand-logo";
 // Phosphor duotone for the channels that are ours: each mark carries a tinted
 // fill under its stroke, so it fills its tile the way a real logo does. A
 // channel on somebody else's platform wears that platform's logo instead.
-const OWN_CHANNEL_ICONS: Partial<Record<AcquisitionChannelKey, Icon>> = {
-  cold_email: EnvelopeSimpleIcon,
-  cold_sms: ChatTeardropTextIcon,
+//
+// Keyed on the mark's own glyph token rather than on the channel's identity, so
+// the catalogue stays a plain unit-testable module with no icon import and a new
+// channel picks a glyph instead of editing a map over here.
+const OWN_CHANNEL_ICONS: Record<OwnChannelGlyph, Icon> = {
+  "envelope": EnvelopeSimpleIcon,
+  "chat-circle": ChatCircleTextIcon,
+  "chat-teardrop": ChatTeardropTextIcon,
 };
 
 type MarkSize = "sm" | "md";
@@ -30,12 +36,13 @@ export function AcquisitionChannelMark({
   size = "md",
   dimmed = false,
 }: {
-  def: AcquisitionChannelDef;
+  // Structural on purpose: a channel we run and one that is coming carry
+  // different identities (a feature slug vs a local display id) and the same
+  // mark, so this renders either without knowing which it was handed.
+  def: { mark: ChannelMark };
   size?: MarkSize;
   dimmed?: boolean;
 }) {
-  const OwnIcon = OWN_CHANNEL_ICONS[def.key];
-
   if (def.mark.kind === "vendor") {
     // A real provider logo is never tinted: the tile stays white so the mark
     // reads as the vendor's own.
@@ -55,15 +62,15 @@ export function AcquisitionChannelMark({
     );
   }
 
+  const OwnIcon = OWN_CHANNEL_ICONS[def.mark.glyph];
+
   return (
     <span
       className={`flex shrink-0 items-center justify-center ${TILE[size]} ${def.mark.tone.iconBg} ${
         dimmed ? "opacity-60" : ""
       }`}
     >
-      {OwnIcon && (
-        <OwnIcon size={GLYPH[size]} weight="duotone" className={def.mark.tone.iconText} />
-      )}
+      <OwnIcon size={GLYPH[size]} weight="duotone" className={def.mark.tone.iconText} />
     </span>
   );
 }

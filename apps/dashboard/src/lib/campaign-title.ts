@@ -16,7 +16,7 @@
 // is type-only and erases at compile time.
 
 import {
-  acquisitionChannelForWorkflowSlug,
+  acquisitionChannelForFeatureSlug,
   type AcquisitionChannelDef,
 } from "./acquisition-channels";
 import { campaignFunnel, type CampaignFunnelRow } from "./campaign-funnel";
@@ -26,20 +26,23 @@ import type { SalesFunnelDef } from "./sales-funnels";
 export interface CampaignTitleRow extends CampaignFunnelRow {
   /** campaign-service's stored name. Read ONLY when neither half resolves. */
   name: string;
-  /** A campaign has no channel field — its workflow IS the channel. */
-  workflowSlug: string | null;
+  /**
+   * The channel the campaign runs on. A channel IS a feature slug, and the
+   * campaign states its own, so this is read — never inferred from the workflow.
+   */
+  featureSlug: string | null;
 }
 
 /**
- * A workflow slug we carry no channel for, prettified.
+ * A feature slug we carry no channel for, prettified.
  *
  * Named as the slug spells itself rather than as a channel we do not carry: an
  * invented channel name is worse than the raw one, because the catalogue is what
  * every other surface reads.
  */
-export function channelSlugLabel(workflowSlug: string | null): string {
-  if (!workflowSlug) return "—";
-  return workflowSlug
+export function channelSlugLabel(featureSlug: string | null): string {
+  if (!featureSlug) return "—";
+  return featureSlug
     .split("-")
     .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
     .join(" ");
@@ -52,7 +55,7 @@ export interface CampaignTitleParts {
   channel: AcquisitionChannelDef | null;
   /** What the funnel half reads. Null when there is nothing honest to say. */
   funnelLabel: string | null;
-  /** What the channel half reads. Null when the campaign carries no workflow. */
+  /** What the channel half reads. Null when the campaign states no channel. */
   channelLabel: string | null;
   /**
    * The whole title, one string.
@@ -77,11 +80,11 @@ export interface CampaignTitleParts {
  */
 export function campaignTitleParts(campaign: CampaignTitleRow): CampaignTitleParts {
   const funnel = campaignFunnel(campaign.funnelKey);
-  const channel = acquisitionChannelForWorkflowSlug(campaign.workflowSlug);
+  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug);
 
   const funnelLabel = funnel ? funnel.name : null;
-  const channelLabel = campaign.workflowSlug
-    ? (channel?.name ?? channelSlugLabel(campaign.workflowSlug))
+  const channelLabel = campaign.featureSlug
+    ? (channel?.name ?? channelSlugLabel(campaign.featureSlug))
     : null;
 
   const halves = [funnelLabel, channelLabel].filter((h): h is string => h !== null);

@@ -20,7 +20,7 @@ const row = (over: Partial<CampaignTitleRow> = {}): CampaignTitleRow => ({
   id: "c1",
   name: "Stored name from provisioning",
   funnelKey: "sales_meetings_from_conversation",
-  workflowSlug: "sales-cold-email-outreach",
+  featureSlug: "sales-cold-email-outreach",
   ...over,
 });
 
@@ -28,7 +28,7 @@ describe("campaignTitleParts", () => {
   it("names the funnel it runs and the channel it runs on", () => {
     const parts = campaignTitleParts(row());
     expect(parts.funnel?.key).toBe("reply_meeting");
-    expect(parts.channel?.key).toBe("cold_email");
+    expect(parts.channel?.featureSlug).toBe("sales-cold-email-outreach");
     expect(parts.label).toBe("Sales Meeting from Conversation · Sales Cold Email Outreach");
   });
 
@@ -40,8 +40,8 @@ describe("campaignTitleParts", () => {
   });
 
   it("never reads the stored name while either half resolves", () => {
-    // Funnel only: a campaign with no workflow still says what it buys.
-    expect(campaignTitleParts(row({ workflowSlug: null })).label).toBe(
+    // Funnel only: a campaign stating no channel still says what it buys.
+    expect(campaignTitleParts(row({ featureSlug: null })).label).toBe(
       "Sales Meeting from Conversation",
     );
     // Channel only: a pre-funnel campaign with no goal in hand still says how.
@@ -53,7 +53,7 @@ describe("campaignTitleParts", () => {
   it("keeps the stored name when NEITHER half resolves", () => {
     // Nothing composed can be said, so the campaign keeps the name it was given
     // rather than rendering an em-dash where its identity should be.
-    const parts = campaignTitleParts(row({ funnelKey: null, workflowSlug: null }));
+    const parts = campaignTitleParts(row({ funnelKey: null, featureSlug: null }));
     expect(parts.label).toBe("Stored name from provisioning");
     expect(parts.funnel).toBeNull();
     expect(parts.channel).toBeNull();
@@ -70,14 +70,14 @@ describe("campaignTitleParts", () => {
     expect(parts.label).toBe("Sales Cold Email Outreach");
   });
 
-  it("prettifies a workflow slug the channel catalogue does not carry", () => {
-    const parts = campaignTitleParts(row({ workflowSlug: "some-future-channel" }));
+  it("prettifies a feature slug the channel catalogue does not carry", () => {
+    const parts = campaignTitleParts(row({ featureSlug: "some-future-channel" }));
     expect(parts.channel).toBeNull();
     expect(parts.channelLabel).toBe("Some Future Channel");
     expect(parts.label).toBe("Sales Meeting from Conversation · Some Future Channel");
   });
 
-  it("channelSlugLabel says nothing for a campaign with no workflow", () => {
+  it("channelSlugLabel says nothing for a campaign stating no channel", () => {
     expect(channelSlugLabel(null)).toBe("—");
   });
 

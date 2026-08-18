@@ -3,63 +3,74 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   ACQUISITION_CHANNELS,
-  acquisitionChannelForWorkflowSlug,
-  partitionChannelsByAvailability,
-  type AcquisitionChannelDef,
+  COMING_SOON_CHANNELS,
+  acquisitionChannelForFeatureSlug,
 } from "../src/lib/acquisition-channels";
 
 const read = (rel: string) => fs.readFileSync(path.resolve(__dirname, rel), "utf-8");
 
-/** A second live channel, so the grouping holds on a future fleet too. */
-const TWO_LIVE: AcquisitionChannelDef[] = [
-  ACQUISITION_CHANNELS[0],
-  { ...ACQUISITION_CHANNELS[1], comingSoon: false },
-  ACQUISITION_CHANNELS[2],
-];
-
-describe("ACQUISITION_CHANNELS definitions", () => {
-  it("declares the eight channels, in order, each with its own key", () => {
-    expect(ACQUISITION_CHANNELS.map((c) => c.key)).toEqual([
-      "cold_email",
-      "google_ads",
-      "meta_ads",
-      "linkedin_ads",
-      "x_ads",
-      "reddit_ads",
-      "cold_whatsapp",
-      "cold_sms",
+describe("a channel IS a feature slug", () => {
+  // There is no second vocabulary for a channel anywhere in the fleet: features-service
+  // owns what a feature is, a campaign states which one it runs, and billing funds a
+  // (funnel, feature) pair. A local key here would be a fourth name for one thing.
+  it("identifies every live channel by its features-service slug", () => {
+    expect(ACQUISITION_CHANNELS.map((c) => c.featureSlug)).toEqual([
+      "sales-cold-email-outreach",
+      "feedback-request-cold-email-outreach",
     ]);
+  });
+
+  it("carries no local channel-key vocabulary", () => {
+    const lib = read("../src/lib/acquisition-channels.ts");
+    expect(lib).not.toContain("AcquisitionChannelKey");
+    expect(lib).not.toContain("cold_email");
+    expect(lib).not.toContain("acquisitionChannelForWorkflowSlug");
   });
 
   it("names every channel, distinctly, and says what running it means", () => {
     expect(ACQUISITION_CHANNELS.map((c) => c.name)).toEqual([
       "Sales Cold Email Outreach",
-      "Google Ads",
-      "Meta Ads",
-      "LinkedIn Ads",
-      "X Ads",
-      "Reddit Ads",
-      "Sales Cold WhatsApp Outreach",
-      "Sales Cold SMS Outreach",
+      "Feedback Request Cold Email Outreach",
     ]);
-    expect(new Set(ACQUISITION_CHANNELS.map((c) => c.name)).size).toBe(
-      ACQUISITION_CHANNELS.length,
-    );
-    for (const channel of ACQUISITION_CHANNELS) {
+    const names = [...ACQUISITION_CHANNELS, ...COMING_SOON_CHANNELS].map((c) => c.name);
+    expect(new Set(names).size).toBe(names.length);
+    for (const channel of [...ACQUISITION_CHANNELS, ...COMING_SOON_CHANNELS]) {
       expect(channel.summary.length).toBeGreaterThan(0);
     }
   });
+});
 
-  // Cold email is the one channel we run today. The rest state that they are
-  // coming rather than offering a choice we cannot honour.
-  it("has exactly one live channel today, and it is cold email", () => {
-    expect(partitionChannelsByAvailability().live.map((c) => c.key)).toEqual(["cold_email"]);
+describe("what is coming carries no feature slug", () => {
+  // A channel we cannot run exists in no service, so inventing the slug it will one
+  // day have would put an identifier on screen that nothing can resolve. It is its
+  // own list, structurally unable to be funded or resolved from a campaign.
+  it("lists what is coming without a feature slug", () => {
+    expect(COMING_SOON_CHANNELS.map((c) => c.id)).toEqual([
+      "google-ads",
+      "meta-ads",
+      "linkedin-ads",
+      "x-ads",
+      "reddit-ads",
+      "cold-whatsapp",
+      "cold-sms",
+    ]);
+    for (const channel of COMING_SOON_CHANNELS) {
+      expect(channel).not.toHaveProperty("featureSlug");
+    }
   });
 
+  it("cannot be resolved as a channel a campaign runs", () => {
+    for (const channel of COMING_SOON_CHANNELS) {
+      expect(acquisitionChannelForFeatureSlug(channel.id)).toBeNull();
+    }
+  });
+});
+
+describe("marks", () => {
   // A channel on somebody else's platform wears that platform's real logo; one
   // that is ours has no vendor to borrow from, so it carries its own tone.
   it("marks a vendor channel by domain and one of ours by tone", () => {
-    for (const channel of ACQUISITION_CHANNELS) {
+    for (const channel of [...ACQUISITION_CHANNELS, ...COMING_SOON_CHANNELS]) {
       if (channel.mark.kind === "vendor") {
         expect(channel.mark.domain).toMatch(/^[a-z0-9.-]+\.[a-z]{2,}$/);
       } else {
@@ -67,71 +78,74 @@ describe("ACQUISITION_CHANNELS definitions", () => {
         expect(channel.mark.tone.iconText).toMatch(/^text-[a-z]+-600$/);
       }
     }
-    const vendors = ACQUISITION_CHANNELS.filter((c) => c.mark.kind === "vendor");
-    expect(vendors.map((c) => c.key)).toEqual([
-      "google_ads",
-      "meta_ads",
-      "linkedin_ads",
-      "x_ads",
-      "reddit_ads",
-      "cold_whatsapp",
+    const vendors = COMING_SOON_CHANNELS.filter((c) => c.mark.kind === "vendor");
+    expect(vendors.map((c) => c.id)).toEqual([
+      "google-ads",
+      "meta-ads",
+      "linkedin-ads",
+      "x-ads",
+      "reddit-ads",
+      "cold-whatsapp",
     ]);
+    // Every channel we RUN is ours, so none of them borrows a vendor logo.
+    for (const channel of ACQUISITION_CHANNELS) {
+      expect(channel.mark.kind).toBe("own");
+    }
   });
 
   // A tint outside the html.dark remap paints a bright block on the dark
   // surface, and the default theme is light so nobody would notice.
   it("only uses tints the dark remap covers", () => {
     const css = read("../src/app/globals.css");
-    for (const channel of ACQUISITION_CHANNELS) {
+    for (const channel of [...ACQUISITION_CHANNELS, ...COMING_SOON_CHANNELS]) {
       if (channel.mark.kind !== "own") continue;
       expect(css).toContain(`html.dark .${channel.mark.tone.iconBg}`);
     }
   });
 
-});
-
-describe("availability grouping", () => {
-  // What we run and what is coming are two different statements, so they are two
-  // groups rather than one list with a marker on some of its members.
-  it("puts what we run today first, then what is coming", () => {
-    const { live, comingSoon } = partitionChannelsByAvailability();
-    expect(live.map((c) => c.key)).toEqual(["cold_email"]);
-    expect(comingSoon.map((c) => c.key)).not.toContain("cold_email");
-    expect(live.length + comingSoon.length).toBe(ACQUISITION_CHANNELS.length);
-  });
-
-  it("keeps the catalogue's own order inside each group", () => {
-    const { live, comingSoon } = partitionChannelsByAvailability(TWO_LIVE);
-    expect(live.map((c) => c.key)).toEqual(["cold_email", "google_ads"]);
-    expect(comingSoon.map((c) => c.key)).toEqual(["meta_ads"]);
+  // The glyph is a token rather than a component, so the catalogue keeps no icon
+  // import and stays directly unit-testable. The mark component owns the map.
+  it("names its glyph rather than importing one", () => {
+    const lib = read("../src/lib/acquisition-channels.ts");
+    expect(lib).not.toContain("@phosphor-icons");
+    const mark = read("../src/components/marks/acquisition-channel-mark.tsx");
+    for (const channel of [...ACQUISITION_CHANNELS, ...COMING_SOON_CHANNELS]) {
+      if (channel.mark.kind !== "own") continue;
+      expect(mark).toContain(`"${channel.mark.glyph}"`);
+    }
   });
 });
 
-describe("acquisitionChannelForWorkflowSlug", () => {
-  // A campaign carries no channel field: the workflow it runs IS the channel,
-  // and the product is cold-email-only today.
-  it("reads an email workflow as the cold-email channel", () => {
-    expect(acquisitionChannelForWorkflowSlug("sales-cold-email-outreach-v3")?.key).toBe(
-      "cold_email",
+describe("acquisitionChannelForFeatureSlug", () => {
+  // The campaign states its own feature slug, so this is a display lookup. The
+  // workflow slug used to stand in for it and answered "cold email" for every
+  // email workflow whatever its offer, which two cold-email channels break.
+  it("resolves a campaign's stated channel", () => {
+    expect(acquisitionChannelForFeatureSlug("sales-cold-email-outreach")?.name).toBe(
+      "Sales Cold Email Outreach",
     );
-    expect(acquisitionChannelForWorkflowSlug("pr-cold-email-outreach")?.key).toBe("cold_email");
+    expect(
+      acquisitionChannelForFeatureSlug("feedback-request-cold-email-outreach")?.name,
+    ).toBe("Feedback Request Cold Email Outreach");
   });
 
   // A slug we carry no channel for names nothing rather than claiming a channel
   // the catalogue does not have.
   it("answers null for a slug with no catalogue entry", () => {
-    expect(acquisitionChannelForWorkflowSlug(null)).toBeNull();
-    expect(acquisitionChannelForWorkflowSlug("")).toBeNull();
-    expect(acquisitionChannelForWorkflowSlug("google-ads-search")).toBeNull();
+    expect(acquisitionChannelForFeatureSlug(null)).toBeNull();
+    expect(acquisitionChannelForFeatureSlug("")).toBeNull();
+    expect(acquisitionChannelForFeatureSlug("pr-cold-email-outreach")).toBeNull();
+    // A workflow slug is not a feature slug, and must not resolve as one.
+    expect(acquisitionChannelForFeatureSlug("sales-cold-email-outreach-v3")).toBeNull();
   });
 });
 
 describe("the card states, it does not ask", () => {
   const card = read("../src/components/settings/brand-acquisition-channels-card.tsx");
 
-  // brand-service stores no channel selection, so a control here would take the
-  // answer and persist none of it. A toggle that silently discards a choice is
-  // worse than no toggle, so the card says what runs and offers nothing.
+  // A channel is not chosen here, it is FUNDED on the funnel it feeds in the card
+  // above: funding a (funnel, channel) pair is what makes it run, so a toggle here
+  // would be a second way to say a thing the money already says.
   it("has no writer at all", () => {
     expect(card).not.toContain("useMutation");
     expect(card).not.toContain("saveBrand");
@@ -157,7 +171,8 @@ describe("the card states, it does not ask", () => {
   it("says which channels run today and which are coming", () => {
     expect(card).toContain("Coming soon");
     expect(card).toContain("Running");
-    expect(card).toContain("partitionChannelsByAvailability");
+    expect(card).toContain("ACQUISITION_CHANNELS");
+    expect(card).toContain("COMING_SOON_CHANNELS");
   });
 
   // Names and copy live once, in the catalogue, so the card cannot drift into a
@@ -165,6 +180,7 @@ describe("the card states, it does not ask", () => {
   it("reads the catalogue rather than restating it", () => {
     expect(card).not.toContain("Google Ads");
     expect(card).not.toContain("LinkedIn Ads");
+    expect(card).not.toContain("Feedback Request");
     expect(card).toContain('from "@/lib/acquisition-channels"');
   });
 
@@ -185,6 +201,22 @@ describe("the card states, it does not ask", () => {
       "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
     );
     expect(page).toContain("<BrandAcquisitionChannelsCard />");
+  });
+});
+
+describe("a campaign's channel is read, never inferred", () => {
+  // Two cold-email channels differ only by their offer, so a guess off the
+  // workflow slug cannot tell them apart and never could.
+  it("resolves the channel from the campaign's own feature slug", () => {
+    for (const rel of [
+      "../src/components/campaigns/campaigns-table.tsx",
+      "../src/components/campaigns/campaigns-page.tsx",
+      "../src/lib/campaign-title.ts",
+    ]) {
+      const src = read(rel);
+      expect(src).not.toContain("acquisitionChannelForWorkflowSlug");
+      expect(src).toContain("acquisitionChannelForFeatureSlug");
+    }
   });
 });
 
