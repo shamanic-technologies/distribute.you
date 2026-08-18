@@ -2720,7 +2720,7 @@ export function Onboarding() {
           </button>
         }
       >
-        {/* Continues the landing: the visitor clicked "Launch from my website" on a
+        {/* Continues the landing: the visitor clicked "Launch from $1/day" on a
             page headlined "Sell like crazy, autonomously.", so the first screen after
             signup repeats that promise rather than re-pitching a converted user with a
             different one. The three cards are not a feature tour (which NN/g's "skip
