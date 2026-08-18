@@ -83,6 +83,14 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(chart).not.toContain("projectedMetric");
   });
 
+  it("the outreach bar is labelled for what it counts: leads launched, not emails sent", () => {
+    // The bar counts sequences launched on the day. A brand sending hundreds of
+    // emails from its queue while launching no new lead reads 0 here, which under
+    // the old "Outreach" label was reported as "no email sent today".
+    expect(chart).toContain('label: "New leads contacted"');
+    expect(chart).not.toContain('label: "Outreach"');
+  });
+
   it("activity chart keeps the 7/30/90-day window toggle and forecast bars", () => {
     expect(chart).toContain("RANGES");
     expect(chart).toContain("setRangeDays");
