@@ -4,7 +4,6 @@ import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
-import { shareApiBasePath, shareTokenFromPathname } from "./share-mode";
 // `normalizeSalesFunnelKey` is a RUNTIME import; the rest is type-only. No cycle
 // survives the build: sales-funnels.ts reads this module's goal types with
 // `import type`, which is erased, so the edge only runs in this direction.
@@ -137,22 +136,9 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
     let url: string;
 
-    // PUBLIC SHARE VIEW. The same page components run under `/share/<token>/…`
-    // with no Clerk session, so their reads cannot go to `/api/v1` (which takes
-    // its org from that session). They go to the share tree's own proxy, which
-    // derives the org from the credential in the URL, exports no verb but GET,
-    // and refuses any read that is not about the credential's brand. No
-    // Authorization header is sent: a visitor who happens to be signed in to
-    // their own account must not have it influence what a shared link shows.
-    const shareToken = shareTokenFromPathname(
-      typeof window === "undefined" ? null : window.location.pathname,
-    );
-
     if (token) {
       url = `${API_URL}/v1${endpoint}`;
       headers["X-API-Key"] = token;
-    } else if (shareToken) {
-      url = `${shareApiBasePath(shareToken)}${endpoint}`;
     } else {
       url = `/api/v1${endpoint}`;
       const activeOrgId = activeOrgIdFromPath();
@@ -1789,99 +1775,6 @@ export async function saveBrandFunnelBudget(
       raw,
     });
     throw new Error("[dashboard] saveBrandFunnelBudget: invalid response shape");
-  }
-  return parsed.data;
-}
-
-// ── Brand share token (read-only public view) ──
-// The credential someone OUTSIDE the org presents to open a read-only view of
-// one brand, at `/share/<token>`. brand-service returns the raw credential and
-// NOT a URL — it does not know where the public page lives — so the URL is
-// composed in `lib/brand-share.ts`.
-//
-// `shareToken` is null only on the READ of a brand nobody has shared: absent by
-// default is the whole model, so a null is "not shareable", never "we failed to
-// read it".
-export interface BrandShareToken {
-  shareToken: string | null;
-  createdAt: string | null;
-  updatedAt: string | null;
-}
-
-const BrandShareTokenSchema = z.object({
-  shareToken: z.string().nullable(),
-  createdAt: z.string().nullable(),
-  updatedAt: z.string().nullable(),
-});
-
-function parseBrandShareToken(raw: unknown, fn: string): BrandShareToken {
-  const parsed = BrandShareTokenSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error(`[dashboard] ${fn}: response shape mismatch`, {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error(`[dashboard] ${fn}: invalid response shape`);
-  }
-  return parsed.data;
-}
-
-/** GET /brands/:brandId/share-token — the current credential, or null when the
- *  brand is not shareable. A READ: it does not mint one, so opening the share
- *  menu cannot start sharing. */
-export async function getBrandShareToken(
-  brandId: string,
-  token?: string,
-): Promise<BrandShareToken> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/share-token`, { token });
-  return parseBrandShareToken(raw, "getBrandShareToken");
-}
-
-/** POST /brands/:brandId/share-token — make the brand shareable. Idempotent: a
- *  brand that already has a credential keeps it, because minting again would
- *  invalidate a link somebody is already holding. */
-export async function createBrandShareToken(
-  brandId: string,
-  token?: string,
-): Promise<BrandShareToken> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/share-token`, {
-    token,
-    method: "POST",
-  });
-  return parseBrandShareToken(raw, "createBrandShareToken");
-}
-
-/** POST /brands/:brandId/share-token/rotate — mint a NEW credential; the previous
- *  one stops resolving immediately, which is what makes a leaked link
- *  recoverable. */
-export async function rotateBrandShareToken(
-  brandId: string,
-  token?: string,
-): Promise<BrandShareToken> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/share-token/rotate`, {
-    token,
-    method: "POST",
-  });
-  return parseBrandShareToken(raw, "rotateBrandShareToken");
-}
-
-/** DELETE /brands/:brandId/share-token — the brand becomes unshareable and every
- *  link handed out for it stops resolving. A no-op on an unshared brand. */
-export async function revokeBrandShareToken(
-  brandId: string,
-  token?: string,
-): Promise<{ revoked: boolean }> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/share-token`, {
-    token,
-    method: "DELETE",
-  });
-  const parsed = z.object({ revoked: z.boolean() }).safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] revokeBrandShareToken: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] revokeBrandShareToken: invalid response shape");
   }
   return parsed.data;
 }

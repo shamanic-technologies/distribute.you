@@ -41,7 +41,6 @@ import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
 import { tenantBasePath } from "@/lib/offer-path";
-import { useSharePathPrefix } from "@/components/share/share-mode-context";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
 // funnels (`leadTabsForFunnels`); this map only names them.
@@ -295,11 +294,9 @@ function AudienceSection({
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  // Present on the offer route, absent in the read-only share tree — which has no
-  // offer segment, so its link stays the brand-level one that does exist there.
+  // Present on the offer route, absent elsewhere — the link then stays the
+  // brand-level one.
   const offerId = params.offerId as string | undefined;
-  // Keeps in-app links inside the public share tree; empty in the dashboard.
-  const pathPrefix = useSharePathPrefix();
   const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
   const description = full?.description ?? null;
   return (
@@ -322,7 +319,7 @@ function AudienceSection({
       </div>
       {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
       <Link
-        href={`${pathPrefix}${tenantBasePath(orgId, brandId, offerId)}/audiences?audienceId=${inline.id}`}
+        href={`${tenantBasePath(orgId, brandId, offerId)}/audiences?audienceId=${inline.id}`}
         className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
       >
         View audience details

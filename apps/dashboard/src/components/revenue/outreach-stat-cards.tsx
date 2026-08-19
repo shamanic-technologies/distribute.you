@@ -7,7 +7,6 @@ import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker
 import { MaturityBadge } from "@/components/maturity-badge";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrandConversionToken } from "@/lib/api";
-import { useIsShareMode } from "@/components/share/share-mode-context";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
 import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { formatUsdAdaptive } from "@/lib/format-number";
@@ -172,7 +171,6 @@ export function OutreachStatCards({
   const params = useParams();
   const orgId = params.orgId as string | undefined;
   const brandId = params.brandId as string | undefined;
-  const readOnly = useIsShareMode();
   // Deep-link to the Conversion Tracking section of Brand Settings. The outcome
   // counts (Signups / Meetings) only populate once the client's site fires the
   // conversion snippet — so the beta cards carry a one-tap setup CTA. Built from
@@ -230,11 +228,8 @@ export function OutreachStatCards({
   // unblocks. Only built when the brand-scoped href resolves AND the tracker is
   // not yet live — a live/live_waiting tracker no longer needs setup, so the
   // cards fall back to a plain "—" until the first conversion produces a value.
-  // "Set up conversion tracker" is a job for the account holder, and its target
-  // is a settings page a shared link does not reach. Dropped on the share view
-  // rather than pointed somewhere else.
   const trackerButton =
-    setupHref && !trackerLive && !readOnly ? <ConversionTrackerButton href={setupHref} /> : null;
+    setupHref && !trackerLive ? <ConversionTrackerButton href={setupHref} /> : null;
 
   const clickMetric = {
     label: "Website Visits",

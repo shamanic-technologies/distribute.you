@@ -6,7 +6,7 @@ import { SERVICE_IDENTITY, isServiceIdentity } from "../src/lib/service-identity
 /**
  * A platform job sending `x-external-user-id` CREATES A USER ROW: the api-service
  * admin path resolves the (org, user) pair through client-service, which upserts
- * `users` on whatever external id it is handed. Three call sites here have no
+ * `users` on whatever external id it is handed. The call sites here have no
  * person behind them and were keying that id on the ORG, so prod accumulated
  * **89 phantom rows against 64 real users** — and client-service's public user
  * count, the number the `/investors` page prints, read **153**.
@@ -47,7 +47,6 @@ const read = (p: string) => fs.readFileSync(path.join(__dirname, p), "utf-8");
 describe("no call site invents its own identity", () => {
   for (const [label, file] of [
     ["the outcome digest", "../src/lib/outcome-digest.ts"],
-    ["the share-link proxy", "../src/app/share/[token]/api/v1/[...path]/route.ts"],
   ] as const) {
     it(`${label} reads the catalogue`, () => {
       const src = read(file);

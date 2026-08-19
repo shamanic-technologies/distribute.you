@@ -38,9 +38,9 @@ describe("Onboarding survives the org it creates", () => {
 
   it("QueryProvider keeps ONE key for the whole onboarding flow", () => {
     const content = read(queryProviderPath);
-    expect(content).toContain('scope?: "onboarding" | "share"');
+    expect(content).toContain('scope?: "onboarding"');
     expect(content).toContain('const isOnboarding = scope === "onboarding"');
-    expect(content).toContain('? "onboarding"');
+    expect(content).toContain('isOnboarding ? "onboarding"');
     expect(content).toContain(': stableOrgId ?? "no-org"');
   });
 

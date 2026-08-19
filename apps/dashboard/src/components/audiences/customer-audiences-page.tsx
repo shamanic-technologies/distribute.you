@@ -11,7 +11,6 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { EditWithAIChat } from "@/components/ai-edit/edit-with-ai-chat";
-import { useIsShareMode } from "@/components/share/share-mode-context";
 import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
@@ -232,17 +231,11 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   const featureSlug = useSoleFeatureSlug();
   const revenueOk = isRevenueFeature(featureSlug);
   const campaignScoped = Boolean(campaignId);
-  // The public share view. Everything that CHANGES an audience goes; everything
-  // that describes one stays. A control that cannot work is worse than an absent
-  // one — the reader would click it and learn nothing.
-  const readOnly = useIsShareMode();
-
   const params = useParams();
   const brandId = params.brandId as string;
   // The OFFER this page is scoped to. An audience is a set of people picked for a
   // PROPOSITION, so human-service carries `offerId` on the row and this narrows the
-  // list to it. Absent on the read-only share tree, which has no offer segment —
-  // there it stays the brand-wide list it has always been.
+  // list to it. Absent off an offer route — there it stays the brand-wide list.
   const offerId = params.offerId as string | undefined;
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -593,19 +586,18 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
             </p>
           ) : null}
         </div>
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedId(null);
-              setAiOpen(true);
-            }}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            Edit with AI
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedId(null);
+            setAiOpen(true);
+          }}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+        >
+          <SparklesIcon className="w-4 h-4" />
+          Edit with AI
+        </button>
+
       </div>
 
       {/* Active / Archived tabs */}
@@ -1099,10 +1091,9 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
             ? statusMut.variables.status
             : undefined
         }
-        readOnly={readOnly}
       />
 
-      {!readOnly && <EditWithAIChat
+      <EditWithAIChat
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         title="Edit audiences with AI"
@@ -1125,7 +1116,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
             ? "fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-[95] flex flex-col border-l border-gray-200 animate-slide-in-right"
             : undefined
         }
-      />}
+      />
     </DashboardPage>
   );
 }
@@ -1177,7 +1168,6 @@ function AudienceDetailPanel({
   onSetStatus,
   statusActionPending,
   statusActionTarget,
-  readOnly,
 }: {
   audience: AudienceWire | null;
   shiftRight?: boolean;
@@ -1188,8 +1178,6 @@ function AudienceDetailPanel({
   onSetStatus: (status: AudienceStatus) => void;
   statusActionPending?: boolean;
   statusActionTarget?: AudienceStatus;
-  /** The public share view: everything that CHANGES an audience is dropped. */
-  readOnly?: boolean;
 }) {
   useEffect(() => {
     if (!audience) return;
@@ -1238,29 +1226,24 @@ function AudienceDetailPanel({
         <div className="space-y-4 p-4 md:p-5">
           {/* Expand and split with similar audience — opens the AI chat and
               auto-sends a prompt to generate audiences like this one. */}
-          {!readOnly && (
-            <button
-              type="button"
-              onClick={onEditWithAI}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
-            >
-              <SparklesIcon className="w-4 h-4" />
-              Expand and split with similar audience
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onEditWithAI}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-300"
+          >
+            <SparklesIcon className="w-4 h-4" />
+            Expand and split with similar audience
+          </button>
 
-          {/* Avatar — AI-generated image, (re)generate. On a shared link the
-              picture still shows; only the button that would replace it goes. */}
+          {/* Avatar — AI-generated image, (re)generate. */}
           <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4">
             <AudienceAvatar name={audience.name} avatarUrl={audience.avatarUrl} size={64} />
             <div className="min-w-0">
-              {!readOnly && (
-                <StatusButton
-                  label={audience.avatarUrl ? "Regenerate image" : "Generate image"}
-                  onClick={onRegenerateAvatar}
-                  busy={avatarPending}
-                />
-              )}
+              <StatusButton
+                label={audience.avatarUrl ? "Regenerate image" : "Generate image"}
+                onClick={onRegenerateAvatar}
+                busy={avatarPending}
+              />
               <p className="mt-1.5 text-xs text-gray-400">
                 AI-generated from this audience&apos;s traits.
               </p>
@@ -1320,24 +1303,20 @@ function AudienceDetailPanel({
             {count != null && <DetailRow label="Approx. matches" value={count.toLocaleString("en-US")} />}
           </div>
 
-          {/* Lifecycle actions. Absent on a shared link: pausing an audience is
-              a decision about who the brand contacts, and the reader is not the
-              one making it. */}
-          {!readOnly && (
-            <div className="flex flex-wrap gap-2">
-              {audience.status === "active" && (
-                <StatusButton label="Pause" onClick={() => onSetStatus("paused")} busy={busy("paused")} />
-              )}
-              {audience.status === "paused" && (
-                <StatusButton label="Resume" onClick={() => onSetStatus("active")} busy={busy("active")} />
-              )}
-              {audience.status === "archived" ? (
-                <StatusButton label="Restore" onClick={() => onSetStatus("active")} busy={busy("active")} />
-              ) : (
-                <StatusButton label="Archive" variant="danger" onClick={() => onSetStatus("archived")} busy={busy("archived")} />
-              )}
-            </div>
-          )}
+          {/* Lifecycle actions. */}
+          <div className="flex flex-wrap gap-2">
+            {audience.status === "active" && (
+              <StatusButton label="Pause" onClick={() => onSetStatus("paused")} busy={busy("paused")} />
+            )}
+            {audience.status === "paused" && (
+              <StatusButton label="Resume" onClick={() => onSetStatus("active")} busy={busy("active")} />
+            )}
+            {audience.status === "archived" ? (
+              <StatusButton label="Restore" onClick={() => onSetStatus("active")} busy={busy("active")} />
+            ) : (
+              <StatusButton label="Archive" variant="danger" onClick={() => onSetStatus("archived")} busy={busy("archived")} />
+            )}
+          </div>
         </div>
       </aside>
     </div>

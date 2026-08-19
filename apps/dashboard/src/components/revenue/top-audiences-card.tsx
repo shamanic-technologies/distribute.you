@@ -6,7 +6,6 @@ import { tenantBasePath } from "@/lib/offer-path";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
-import { useSharePathPrefix } from "@/components/share/share-mode-context";
 import {
   AUDIENCE_RANK_METRIC_INFO,
   AUDIENCE_RANK_METRIC_LABEL,
@@ -199,11 +198,9 @@ export function TopAudiencesCard({
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  // Present on the offer route, absent in the read-only share tree — which has no
-  // offer segment, so its link stays the brand-level one that does exist there.
+  // Present on the offer route, absent elsewhere — the link then stays the
+  // brand-level one.
   const offerId = params.offerId as string | undefined;
-  // Keeps in-app links inside the public share tree; empty in the dashboard.
-  const pathPrefix = useSharePathPrefix();
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
@@ -251,7 +248,7 @@ export function TopAudiencesCard({
           return (
             <Link
               key={key}
-              href={`${pathPrefix}${tenantBasePath(orgId, brandId, offerId)}/audiences?audienceId=${key}`}
+              href={`${tenantBasePath(orgId, brandId, offerId)}/audiences?audienceId=${key}`}
               className="-mx-1 flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-gray-50"
             >
               <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />
