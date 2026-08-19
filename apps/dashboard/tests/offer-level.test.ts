@@ -98,6 +98,14 @@ describe("the sidebar knows the offer level", () => {
     expect(brandLevel).not.toContain('label: "Campaigns"');
     expect(brandLevel).not.toContain('label: "Audiences"');
     expect(brandLevel).toContain('label: "Brand Settings"');
+    // LEADS is the deliberate exception to the move: a lead is a person, not a
+    // statement about a proposition, and a campaign that predates the offer level
+    // names no offer — so those people belong to the brand and to no offer, and a
+    // brand-level list is the only place they are reachable from. It sits at
+    // `/leads`, never under `audiences/`, which is the offer's segment now.
+    expect(brandLevel).toContain('label: "Leads"');
+    expect(brandLevel).toContain("href: `${basePath}/leads`");
+    expect(brandLevel).not.toContain("`${basePath}/audiences/leads`");
   });
 
   it("climbs a campaign to its offer, never to the brand two levels up", () => {
