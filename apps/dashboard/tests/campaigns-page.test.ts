@@ -266,20 +266,25 @@ describe("Campaigns page (GA)", () => {
     expect(page).toContain("brandRevenueQ.data?.costEconomics.costPerAcquisitionUsd");
   });
 
-  // The sidebar carries no campaign name and several sit under one brand, so
-  // the top bar names the one you drilled into. Tenant identity stays in the
-  // switcher — this is page context, on campaign routes only.
+  // The top bar names where you are below the tenant: the offer, and the
+  // campaign under it. Tenant identity (org, brand) stays in the switcher.
+  //
+  // This guard used to pin the campaign at path segment 4 — `parts[4] !==
+  // "campaigns"` — which is exactly the assertion that let the bar break in
+  // silence when campaigns moved under the offer. It now pins the PARSER by
+  // name, so a future level shift fails in one place that has a test on it.
   it("names the open campaign in the top bar", () => {
     const header = read("components/header.tsx");
     const context = read("components/header-page-context.tsx");
     expect(header).toContain("<HeaderPageContext />");
-    expect(context).toContain('parts[4] !== "campaigns"');
+    expect(context).toContain("export function offerRouteFromPath");
+    expect(context).toContain('p[4] !== "offers"');
     // The campaign is named as what it IS (funnel x channel), never by
     // campaign-service's stored name, which predates the per-funnel model.
     expect(context).toContain("<CampaignTitle");
     expect(context).not.toContain("campaign?.name");
     // Byte-equal to the campaign overview's key → one deduped poll.
-    expect(context).toContain('["campaign", campaignId ?? "none"]');
+    expect(context).toContain('["campaign", route?.campaignId ?? "none"]');
     // A placeholder word would state a name we do not have yet.
     expect(context).not.toContain('|| "Campaign"');
   });

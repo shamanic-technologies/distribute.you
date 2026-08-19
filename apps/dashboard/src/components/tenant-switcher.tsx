@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
+import { OfferMark } from "./marks/offer-mark";
 import { BrandLogo } from "./brand-logo";
 import { OrgAvatar } from "./org-avatar";
 import { CHROME_ROW_HEIGHT } from "@/lib/chrome-row";
@@ -106,17 +106,12 @@ function IdentitySkeleton({ markClass, barClass }: { markClass: string; barClass
 }
 
 /**
- * The offer mark. An offer has no domain and no vendor to borrow a logo from — it
- * is ours — so it takes the repo's OWN-thing treatment: a Phosphor DUOTONE mark in
- * a tinted tile, sized to match the org avatar and brand logo it sits under. The
- * tint is `bg-purple-50`, which is inside the closed set the `html.dark` remap
- * covers; a colour outside that set paints a bright block on the dark surface.
+ * The offer mark, from the SHARED component. It was defined here and is now
+ * drawn by the top-bar breadcrumb too — two definitions is how the switcher and
+ * the bar come to disagree about what an offer looks like, which is the same
+ * reason the acquisition-channel and sales-funnel marks are components.
  */
-const OfferTile = () => (
-  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-purple-50 text-purple-600">
-    <TagIcon weight="duotone" className="h-3.5 w-3.5" />
-  </span>
-);
+const OfferTile = () => <OfferMark size="md" />;
 
 const BillingIcon = () => (
   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
