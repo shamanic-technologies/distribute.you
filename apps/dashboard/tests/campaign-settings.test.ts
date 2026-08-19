@@ -14,8 +14,9 @@ const CAMPAIGN = `${APP}/offers/[offerId]/campaigns/[id]`;
  * `@` alias, which vitest does not resolve in this repo, so its exported helpers
  * cannot be called from here.
  */
-describe("Campaign Settings", () => {
+describe("Campaign Settings — the daily budget, and only that", () => {
   const card = read("components/settings/campaign-settings-card.tsx");
+  const page = read(`${CAMPAIGN}/settings/page.tsx`);
   const sidebar = read("components/context-sidebar.tsx");
 
   it("sits under the campaign, with its entry in the campaign sidebar", () => {
@@ -29,100 +30,112 @@ describe("Campaign Settings", () => {
     expect(campaignLevel).toContain("href: `${campaignBase}/settings`");
   });
 
-  it("edits ONLY the four fields campaign-service stores per campaign", () => {
-    const api = read("lib/api.ts");
-    const patch = api.slice(
-      api.indexOf("export type CampaignSettingsPatch"),
-      api.indexOf("export type CampaignSettingsPatch") + 260,
-    );
-    for (const field of ["name", "audienceIds", "servicesOffered", "clickDestinationUrl"]) {
-      expect(patch).toContain(field);
-    }
-    // The budget is a MIRROR of the (funnel x channel) ceiling funded on Offer
-    // Settings, not an independent knob — a second editable figure would diverge
-    // from the one billing charges. The offer / funnel / channel / feature are what
-    // the campaign IS, so changing one makes it a different campaign. `goal` is
-    // legacy and read-only.
-    for (const banned of [
-      "maxBudgetDailyUsd",
-      "dailyBudgetCents",
-      "funnelKey",
-      "offerId",
-      "featureSlug",
-      "goal",
+  it("carries a daily budget and nothing else", () => {
+    // What a campaign SAYS and who it says it to are statements about the offer,
+    // which has its own Settings page. Four editable copies of the offer's answer
+    // one click below the offer itself is what this screen used to be.
+    expect(card).toContain("Daily budget");
+    for (const gone of [
+      "Click destination",
+      "Services offered",
+      "SourceChoice",
+      "ChipList",
+      "audienceSource",
+      "servicesSource",
+      "destinationSource",
+      "listAudiences",
+      "getBrandUserFields",
     ]) {
-      expect(patch).not.toContain(banned);
+      expect(card).not.toContain(gone);
     }
+    expect(page).toContain("may spend in a day");
   });
 
-  it("sends the DIFF, so an untouched field is omitted and a cleared one is null", () => {
-    // campaign-service leaves an omitted key untouched and clears an explicit null,
-    // which is the only reason "inherit" is expressible at all.
-    expect(card).toContain("export function buildCampaignPatch");
-    expect(card).toContain('draft.audienceSource === "own" ? draft.audienceIds : null');
-    expect(card).toContain('draft.servicesSource === "own" ? draft.services : null');
-    expect(card).toContain('draft.destinationSource === "own" ? draft.destination.trim() : null');
+  it("edits BILLING's own row, never a campaign-service mirror of it", () => {
+    // A campaign is (offer x funnel x channel) and billing keys a ceiling on
+    // exactly that triple, so this is the campaign's own money — the same stored
+    // row Offer Settings edits for every channel of the funnel at once.
+    expect(card).toContain("saveBrandFunnelBudget(brandId, scope!.def.key, cents, scope!.featureSlug, offerId)");
+    expect(card).toContain("getBrandFunnelBudgets");
+    expect(card).not.toContain("updateCampaign");
+    expect(card).not.toContain("maxBudgetDailyUsd");
   });
 
-  it("states whether a field is inherited, and never leaves it to a blank box", () => {
-    // The whole point of the screen: a blank input cannot tell "this campaign sends
-    // people nowhere" from "this campaign uses the brand's destination", and those
-    // are opposite meanings. Every inheritable field is a stated CHOICE plus, only
-    // under the second option, the input.
-    expect(card).toContain('type Source = "inherit" | "own"');
-    expect(card).toContain("function SourceChoice");
-    for (const field of ["audienceSource", "servicesSource", "destinationSource"]) {
-      expect(card).toContain(`${field}: Source`);
-      expect(card).toContain(`draft.${field} === "own" && (`);
-    }
-    // And it shows what inheriting resolves to, so "inherit" is not a promise the
-    // reader has to go and verify.
-    expect(card).toContain("inheritedValue");
+  it("dropped the per-campaign settings write rather than leaving it unrendered", () => {
+    const api = read("lib/api.ts");
+    expect(api).not.toContain("export type CampaignSettingsPatch");
+    expect(api).not.toContain("export async function updateCampaign(");
   });
 
-  it("refuses an emptied override instead of persisting a third state", () => {
-    // The wire has no empty state (`minItems: 1` / `minLength: 1`), so an emptied
-    // override is an unfinished edit — and the refusal names the two real options.
-    expect(card).toContain("export function campaignSettingsBlocker");
-    expect(card).toContain("or switch it back to inheriting the brand's.");
-    expect(card).toContain("disabled={blocker !== null}");
+  it("reads the ONE narrowing both budget surfaces read", () => {
+    // A second copy of it is how this page and Offer Settings would start
+    // disagreeing about the same campaign's money.
+    expect(card).toContain("offerScopedCents");
+    const lib = read("lib/funnel-channels.ts");
+    expect(lib).toContain("export function offerScopedCents");
+    expect(lib).toContain("savedCents: offerScopedCents(");
+  });
+
+  it("treats zero as the stop, and states what it means", () => {
+    // Zero is an ordinary value: it is how a customer stops this campaign without
+    // losing anything they told us about how it sells.
+    expect(card).toContain('if (trimmed === "") return 0;');
+    expect(card).toContain("Set it to zero to stop it");
+    expect(card).toContain("not funded right now, so it is not sending");
+  });
+
+  it("binds the floor to the FUNNEL total, through the shared helpers", () => {
+    // A customer splitting one funded funnel across two offers must not be
+    // refused for each half being under a bar the whole clears. billing holds the
+    // same rule and its 400 is what decides.
+    expect(card).toContain("funnelBudgetBelowMinimum");
+    expect(card).toContain("funnelBudgetFloorMessage");
+    expect(card).toContain("export function projectedFunnelTotalUsd");
+    expect(card).toContain("savedFunnelCents - savedOwnCents");
+  });
+
+  it("states a campaign that names no funnel or channel instead of guessing one", () => {
+    // The pre-funnel campaigns predate the model, so they point at no ceiling.
+    expect(card).toContain("export function campaignBudgetScope");
+    expect(card).toContain("if (!campaign.funnelKey || !campaign.featureSlug) return null;");
+    expect(card).toContain("predates the sales funnels");
   });
 
   it("prints its own copy on a refusal, never the api client's message", () => {
     // `apiCall` puts the whole downstream body verbatim into `ApiError.message`.
-    expect(card).toContain("export function campaignSettingsErrorMessage");
+    expect(card).toContain("export function campaignBudgetErrorMessage");
     expect(card).toContain("err instanceof ApiError");
     expect(card).not.toContain("error.message");
     expect(card).not.toContain("err.message");
   });
 
   it("uses the shared Save row and a LIVE dirty compare", () => {
-    // Not a fifth hand-rolled copy, and not a sticky edited latch — typing a value
-    // and undoing it has to disarm the button.
     expect(card).toContain("<SettingsSaveRow");
     expect(card).not.toContain('{saving ? "Saving..." : "Save"}');
-    expect(card).toContain("const patch = buildCampaignPatch(draft, baseline);");
-    expect(card).toContain("const dirty = Object.keys(patch).length > 0;");
+    expect(card).toContain("const dirty = value.trim() !== baseline;");
   });
 
-  it("re-seeds the form from a fresher payload, never a once-per-mount latch", () => {
+  it("re-seeds the field from a fresher payload, never a once-per-mount latch", () => {
     // The local-first cache paints the on-disk snapshot FIRST, so a boolean
-    // `hydrated` latch would pin the form to the previous visit's copy and ignore
-    // the server answer that lands a moment later.
-    expect(card).toContain("seededFrom.current === campaign");
-    expect(card).toContain("if (!touched) setDraft(next);");
+    // `hydrated` latch would pin the field to the previous visit's figure.
+    expect(card).toContain("seededFrom.current === budgetData");
+    expect(card).toContain("if (!touched) setValue(next);");
   });
 
-  it("writes the response into the cache, then invalidates the list", () => {
-    expect(card).toContain('queryClient.setQueryData(["campaign", campaignId], res);');
-    expect(card).toContain('queryClient.invalidateQueries({ queryKey: ["campaigns"] });');
+  it("shows exactly what persisted, so it cannot claim a ceiling billing normalized", () => {
+    expect(card).toContain('queryClient.setQueryData(["brandFunnelBudgets", brandId], set);');
+    expect(card).toContain("const persisted = scope ? campaignSavedCents(scope, offerId, set) : 0;");
+  });
+
+  it("renders the budget in whole dollars, never cents", () => {
+    // A daily budget is a configured ceiling; cents read wrong on one.
+    expect(card).toContain("Math.round(savedCents / 100)");
+    expect(card).toContain("/ day");
   });
 
   it("adds no unlisted query root", () => {
-    // Every read it makes is a key the rest of the app already persists, so the page
-    // paints from disk instead of cold-skeletoning on every visit.
     const persist = read("lib/persist-cache.ts");
-    for (const root of ["campaign", "campaigns", "audiences", "brand", "brandUserFields"]) {
+    for (const root of ["campaign", "campaigns", "brandFunnelBudgets"]) {
       expect(persist).toContain(`"${root}"`);
     }
   });

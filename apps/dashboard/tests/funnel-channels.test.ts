@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   channelsForFunnel,
   funnelChannelBudgets,
+  offerScopedCents,
   typedFunnelTotalUsd,
   type ChannelFeatureRow,
 } from "../src/lib/funnel-channels";
@@ -240,6 +241,63 @@ describe("funnelChannelBudgets, narrowed to one offer", () => {
         (g) => g.savedCents,
       ),
     ).toEqual([4200, 0]);
+  });
+});
+
+/**
+ * The narrowing itself, which BOTH budget surfaces read: Offer Settings through
+ * `funnelChannelBudgets` (every channel of a funnel at once) and Campaign
+ * Settings directly (the one channel its campaign runs). One rule, so the two
+ * pages can never disagree about a campaign's money.
+ */
+describe("offerScopedCents", () => {
+  const OFFER = "11111111-1111-1111-1111-111111111111";
+  const SIBLING = "22222222-2222-2222-2222-222222222222";
+  const row = (offerId: string | null, cents: number) => ({
+    funnelKey: "reply_meeting",
+    featureSlug: SALES,
+    offerId,
+    dailyBudgetCents: cents,
+  });
+
+  it("reads the pair figure when there is no offer grain, or no caller offer", () => {
+    expect(offerScopedCents("reply_meeting", SALES, 5000, undefined, OFFER)).toBe(5000);
+    expect(offerScopedCents("reply_meeting", SALES, 5000, [row(OFFER, 3000)], undefined)).toBe(5000);
+  });
+
+  it("reads THIS offer's own ceiling, never the pair's sum", () => {
+    expect(
+      offerScopedCents("reply_meeting", SALES, 5000, [row(OFFER, 3000), row(SIBLING, 2000)], OFFER),
+    ).toBe(3000);
+  });
+
+  it("reads a lone offer-less row as this offer's, being the only offer's money", () => {
+    expect(offerScopedCents("reply_meeting", SALES, 5000, [row(null, 5000)], OFFER)).toBe(5000);
+  });
+
+  it("reads zero when the pair is funded only for other offers", () => {
+    expect(offerScopedCents("reply_meeting", SALES, 2000, [row(SIBLING, 2000)], OFFER)).toBe(0);
+  });
+
+  it("matches a funnel key under either spelling, and ignores another funnel's rows", () => {
+    expect(
+      offerScopedCents(
+        "reply_meeting",
+        SALES,
+        5000,
+        [{ ...row(OFFER, 3000), funnelKey: "sales_meetings_from_conversation" }],
+        OFFER,
+      ),
+    ).toBe(3000);
+    expect(
+      offerScopedCents(
+        "reply_meeting",
+        SALES,
+        5000,
+        [{ ...row(OFFER, 3000), funnelKey: "website_purchases" }],
+        OFFER,
+      ),
+    ).toBe(5000);
   });
 });
 
