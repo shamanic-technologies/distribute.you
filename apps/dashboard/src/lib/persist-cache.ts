@@ -123,6 +123,12 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandCostBreakdown",
   "brandCostBreakdownToday",
   "brandConversionToken",
+  // Offers — the level between the brand and its campaigns. The list feeds the
+  // brand Overview's Offers table AND the tenant switcher's third tier, and the
+  // by-id read is the offer sidebar's own label, so an unlisted root would
+  // cold-skeleton the chrome on every visit.
+  "brandOffers",
+  "brandOffer",
   // Brand entity sub-lists (big — persisted so their pages skip the reload skeleton)
   "brandLeads",
   "brandEmails",
@@ -141,6 +147,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "featureStats",
   "featureRevenue",
   "featureRevenueByCampaign",
+  "featureRevenueByOffer",
   "featurePipelineActivity",
   "featureAudienceStats",
   "featureWorkflows",

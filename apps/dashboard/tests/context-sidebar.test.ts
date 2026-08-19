@@ -31,6 +31,9 @@ describe("Context sidebar", () => {
     expect(content).toContain('"app"');
     expect(content).toContain('"org"');
     expect(content).toContain('"brand"');
+    // The OFFER level sits between the brand and its campaigns — a brand is an
+    // identity, an offer is a proposition, and campaigns sell one of those.
+    expect(content).toContain('"offer"');
     expect(content).toContain('"campaign"');
     expect(content).not.toContain('"brandSettings"');
     expect(content).not.toContain('"appFeature"');

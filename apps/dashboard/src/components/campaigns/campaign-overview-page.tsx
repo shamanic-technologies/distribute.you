@@ -30,6 +30,7 @@ import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { tenantBasePath } from "@/lib/offer-path";
 import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
@@ -90,6 +91,9 @@ export function CampaignOverviewPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
+  // A campaign lives under the OFFER it sells, so every link it builds climbs to
+  // the offer, never to the brand two levels up.
+  const offerId = params.offerId as string | undefined;
   const campaignId = params.id as string;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
@@ -120,7 +124,7 @@ export function CampaignOverviewPage() {
   // OutreachStatCardsAuto's campaign-scoped key → one deduped poll.
   const { data, isError: revenueIsError } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug, "campaign", campaignId],
-    () => getFeatureRevenue(featureSlug, brandId, campaignId),
+    () => getFeatureRevenue(featureSlug, brandId, { campaignId }),
     {
       enabled,
       ...pollOptions,
@@ -389,7 +393,7 @@ export function CampaignOverviewPage() {
     spentUsd: data?.spend?.totalSpentCents != null ? data.spend.totalSpentCents / 100 : null,
   });
 
-  const basePath = `/orgs/${orgId}/brands/${brandId}`;
+  const basePath = tenantBasePath(orgId, brandId, offerId);
   const campaignsPath = `${basePath}/campaigns`;
 
   // A campaign has no budget of its own to show any more. The money is funded per

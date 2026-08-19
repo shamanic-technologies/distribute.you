@@ -40,7 +40,7 @@ export function fmtUsd(usd: number | null | undefined): string {
 function fmtRoi(multiple: number | null | undefined): string {
   return multiple == null ? "—" : `${multiple.toFixed(1)}×`;
 }
-function fmtPct(pct: number | null | undefined): string {
+export function fmtPct(pct: number | null | undefined): string {
   return pct == null ? "—" : `${Math.round(pct)}%`;
 }
 
@@ -63,7 +63,7 @@ function fmtPct(pct: number | null | undefined): string {
  * would put a smaller number under the same label the ROI was computed from, which is
  * the contradiction that made a brand read $202 on its Overview beside $191 here.
  */
-const COLUMN_INFO = {
+export const COLUMN_INFO = {
   roi: "What a customer is worth over their lifetime, divided by what it costs to win one. 11.7x means every $1 spent is projected to return $11.70. Based on the conversion rates and lifetime revenue set in Brand Settings.",
   cacPct:
     "What winning a customer costs, as a share of what that customer is worth over their lifetime. 9% means $9 spent for every $100 earned. Lower is better, and it is the inverse of ROI.",
@@ -74,7 +74,7 @@ const COLUMN_INFO = {
 } as const;
 
 /** A right-aligned numeric header with its (i) sitting after the label. */
-function NumericHead({ label, tip }: { label: string; tip: string }) {
+export function NumericHead({ label, tip }: { label: string; tip: string }) {
   return (
     <span className="inline-flex items-center justify-end gap-1">
       {label}
@@ -92,7 +92,7 @@ function NumericHead({ label, tip }: { label: string; tip: string }) {
  * early campaign is under 1x by construction, and painting that red calls a
  * campaign that has not finished learning a failure.
  */
-function RoiCell({ multiple }: { multiple: number | null | undefined }) {
+export function RoiCell({ multiple }: { multiple: number | null | undefined }) {
   const good = multiple != null && multiple > 1;
   return (
     <span className={`font-semibold tabular-nums ${good ? "text-green-600" : "text-gray-900"}`}>
@@ -214,7 +214,7 @@ interface CampaignRow {
  * Both queries key exactly as the Campaigns page always keyed them, so a surface that
  * renders the table beside its own reads shares one cache entry and one poll.
  */
-export function useCampaignRows(brandId: string, featureSlug: string) {
+export function useCampaignRows(brandId: string, featureSlug: string, offerId?: string) {
   const revenueEnabled = isRevenueFeature(featureSlug);
 
   const campaignsQ = useAuthQuery(
@@ -246,9 +246,18 @@ export function useCampaignRows(brandId: string, featureSlug: string) {
   // exactly one line per live campaign, and features-service totals each identity
   // server-side (a campaign's stopped ancestors' runs ride on its live campaign's group).
   // A stopped campaign is history, not a line.
+  //
+  // Offer. A campaign is (offer x funnel x channel), so an offer-scoped surface
+  // lists the campaigns that sell THAT proposition. campaign-service carries the
+  // offer on the row, so this is a filter on a stored value, never a guess: a
+  // campaign that carries no offer belongs to none and is left out rather than
+  // folded into whichever offer the reader happens to be looking at.
   const featureCampaigns = useMemo(
-    () => campaigns.filter((c) => c.featureSlug === featureSlug),
-    [campaigns, featureSlug],
+    () =>
+      campaigns.filter(
+        (c) => c.featureSlug === featureSlug && (!offerId || c.offerId === offerId),
+      ),
+    [campaigns, featureSlug, offerId],
   );
   const liveCampaigns = useMemo(
     () => featureCampaigns.filter((c) => isActiveStatus(c.status)),
@@ -282,14 +291,17 @@ export function CampaignsTable({
   brandId,
   featureSlug,
   basePath,
+  offerId,
 }: {
   brandId: string;
   featureSlug: string;
-  /** `/orgs/:orgId/brands/:brandId` — a row opens that campaign underneath it. */
+  /** `/orgs/:orgId/brands/:brandId/offers/:offerId` — a row opens that campaign underneath it. */
   basePath: string;
+  /** The OFFER whose campaigns to list. Omitted → every campaign of the brand. */
+  offerId?: string;
 }) {
   const router = useRouter();
-  const { rows, settled, featureCampaigns } = useCampaignRows(brandId, featureSlug);
+  const { rows, settled, featureCampaigns } = useCampaignRows(brandId, featureSlug, offerId);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">

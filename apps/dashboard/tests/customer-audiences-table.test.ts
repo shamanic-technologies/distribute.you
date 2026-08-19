@@ -14,10 +14,13 @@ describe("Audiences page", () => {
   );
 
   it("reads audiences from the gateway, not brand-service personas", () => {
-    expect(src).toContain('listAudiences(brandId, { status: "active" })');
-    expect(src).toContain('listAudiences(brandId, { status: "paused" })');
-    expect(src).toContain('listAudiences(brandId, { status: "archived" })');
-    expect(src).toContain('["audiences", brandId, "active"]');
+    // Scoped to the OFFER when the route names one — an audience is a set of
+    // people picked for a PROPOSITION, and human-service carries `offerId` on the
+    // row. `undefined` is the brand-wide read the share tree still makes.
+    expect(src).toContain('listAudiences(brandId, { status: "active", offerId })');
+    expect(src).toContain('listAudiences(brandId, { status: "paused", offerId })');
+    expect(src).toContain('listAudiences(brandId, { status: "archived", offerId })');
+    expect(src).toContain('["audiences", brandId, "active", offerId ?? "brand"]');
     expect(src).not.toContain("listPersonas");
     expect(src).not.toContain("createPersona");
     expect(src).not.toContain("/brands/");

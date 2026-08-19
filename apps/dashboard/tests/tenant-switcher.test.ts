@@ -96,9 +96,29 @@ describe("Tenant switcher", () => {
     expect(submenu).not.toMatch(/(?:^|[\s"])absolute[\s"]/);
   });
 
-  it("never opens more than one submenu, so a third tier stays impossible", () => {
-    expect(switcher).toContain('useState<"org" | "brand" | null>');
+  it("carries THREE tiers — org, brand, offer — and opens one at a time", () => {
+    // The switcher used to cap at two tiers, on Carbon / GitLab Pajamas guidance.
+    // It carries three now, deliberately: the OFFER is a real level of the product
+    // (a brand is an identity, an offer is a proposition, and campaigns, audiences
+    // and leads all belong to the offer), so leaving it out would mean there is no
+    // way to change proposition from the chrome at all.
+    expect(switcher).toContain('useState<"org" | "brand" | "offer" | null>');
+    expect(switcher).toContain("Switch offer");
+    expect(switcher).toContain("t.handleOfferSwitch(o.offerId)");
+    // What that guidance protects against is several open panels stacking into a
+    // maze, and that still cannot happen: ONE tier is expanded at a time, so no
+    // more than two panels are ever on screen, exactly as with two tiers.
     expect(switcher).toContain("setExpanded((prev) => (prev === key ? null : key))");
+    // A FOURTH tier is not here — a campaign is picked from its offer's own table,
+    // with the numbers beside it.
+    expect(switcher).not.toContain('"campaign"');
+  });
+
+  it("never asserts an offer name it does not have", () => {
+    // Same rule as the org and brand tiers: an unknown tenant renders a skeleton,
+    // never a fabricated label beside a generic mark.
+    expect(switcher).toContain("t.offerId && !t.offerKnown ?");
+    expect(hook).toContain("const offerKnown = !!displayOffer");
   });
 
   it("draws the hierarchy with a 1px connector rail, not a bare indent", () => {

@@ -17,8 +17,11 @@ import * as path from 'path';
 
 const read = (p: string) => fs.readFileSync(path.join(__dirname, p), 'utf-8');
 
-const CAMPAIGN_BASE = '../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/campaigns/[id]';
-const BRAND_BASE = '../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]';
+// Org > Brand > Offer > Campaign: the campaign routes sit under the offer they
+// sell, and the Audiences route moved down with them — an audience is picked for
+// a PROPOSITION, so it belongs to the offer rather than to the brand identity.
+const OFFER_BASE = '../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]';
+const CAMPAIGN_BASE = `${OFFER_BASE}/campaigns/[id]`;
 
 describe('campaign-level Audiences route', () => {
   it('the campaign audiences route scopes to the campaign in the path', () => {
@@ -27,8 +30,8 @@ describe('campaign-level Audiences route', () => {
     expect(src).toContain('<CustomerAudiencesPage campaignId={campaignId} />');
   });
 
-  it('the BRAND audiences route stays brand-wide — no campaign scope', () => {
-    const audiences = read(`${BRAND_BASE}/audiences/page.tsx`);
+  it('the OFFER audiences route states no campaign scope', () => {
+    const audiences = read(`${OFFER_BASE}/audiences/page.tsx`);
     expect(audiences).toContain('<CustomerAudiencesPage />');
     expect(audiences).not.toContain('campaignId');
   });
@@ -66,12 +69,14 @@ describe('Audiences page under a campaign', () => {
   it('asks features-service for THIS campaign outreach, on its own cache key', () => {
     const at = src.indexOf('"featureAudienceStats"');
     expect(at).toBeGreaterThan(-1);
-    // Measured: 823 chars from the query key to the end of `campaignId,`. The block
-    // grew when the brand read stopped naming a goal — a `toContain` fails when the
-    // slice is too SHORT (the target gets cut out), so this is measured, not guessed.
-    const body = src.slice(at, at + 900);
+    // Measured: 1061 chars from the query key to the end of the scope spread. A
+    // `toContain` fails when the slice is too SHORT (the target gets cut out), so
+    // this is measured, not guessed — re-measure it when the block grows.
+    const body = src.slice(at, at + 1200);
     expect(body).toContain('campaignScopeKey');
-    expect(body).toContain('campaignId,');
+    // At most ONE narrower grain reaches features-service: a campaign already belongs
+    // to exactly one offer, so stating both would be two answers to one question.
+    expect(body).toContain('...(campaignId ? { campaignId } : { offerId })');
     // A campaign names its FUNNEL; the brand-level read names neither it nor a goal.
     expect(body).toContain('funnel: campaignFunnelKey');
     expect(body).toContain('brandLevelMoney');

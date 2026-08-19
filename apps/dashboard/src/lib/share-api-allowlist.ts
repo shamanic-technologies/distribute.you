@@ -58,6 +58,12 @@ const SHARE_READ_RULES: ShareReadRule[] = [
   // never read. Withholding it would withhold nothing a reader cannot already
   // take from the site, while making a live tracker read as "not set up".
   { pattern: /^\/brands\/([^/]+)\/conversion-token$/, binding: "path" },
+  // The brand's OFFERS — the names the shared Overview's Offers table renders
+  // beside the return of each. Brand-pinned in the path like the rules above, and
+  // it carries nothing but the propositions this brand sells, which is what the
+  // page the link opens is about. The offer's own funnels and user-fields are NOT
+  // here: no shared page renders them, and an allowlist lists what the pages need.
+  { pattern: /^\/brands\/([^/]+)\/offers$/, binding: "path" },
 
   // Outreach evidence. Every one of these is already brand-scoped upstream; the
   // `brandId` parameter is what we pin.

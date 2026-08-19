@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { TagIcon } from "@phosphor-icons/react/dist/csr/Tag";
 import { BrandLogo } from "./brand-logo";
 import { OrgAvatar } from "./org-avatar";
 import { CHROME_ROW_HEIGHT } from "@/lib/chrome-row";
@@ -17,8 +18,17 @@ import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
  *    is exactly two, so the breadcrumb was carrying no orientation value.
  *  - Atlassian + Vercel both migrated product navigation OUT of the top bar into
  *    the sidebar for information density.
- *  - Carbon + GitLab Pajamas: a left panel supports TWO tiers, never three. Only
- *    one submenu is ever open, so a third tier stays impossible.
+ *  - Carbon + GitLab Pajamas warn that a left panel supports TWO tiers, never
+ *    three. This switcher now carries THREE — Org > Brand > Offer — and that is a
+ *    deliberate departure, owner-decided, not a drift: the OFFER is a real level of
+ *    the product (a brand is an identity, an offer is a proposition, and campaigns,
+ *    audiences and leads all belong to the offer), so leaving it out would mean
+ *    there is no way to change proposition from the chrome at all. What that
+ *    guidance is really protecting against is several open panels stacking into a
+ *    maze, and the single-open-submenu state below still holds: at most one tier is
+ *    expanded, so no more than two panels are ever on screen, exactly as with two
+ *    tiers. A FOURTH tier (the campaign) is deliberately NOT here — a campaign is
+ *    picked from its offer's own list, which is a table with the numbers beside it.
  *  - Atlassian's app switcher is the canonical two-level-in-one-menu shape, and
  *    it is a SIDE-BY-SIDE split (orgs on one rail, their children beside them),
  *    not a nested accordion — so on a wide viewport each submenu opens as a
@@ -95,6 +105,19 @@ function IdentitySkeleton({ markClass, barClass }: { markClass: string; barClass
   );
 }
 
+/**
+ * The offer mark. An offer has no domain and no vendor to borrow a logo from — it
+ * is ours — so it takes the repo's OWN-thing treatment: a Phosphor DUOTONE mark in
+ * a tinted tile, sized to match the org avatar and brand logo it sits under. The
+ * tint is `bg-purple-50`, which is inside the closed set the `html.dark` remap
+ * covers; a colour outside that set paints a bright block on the dark surface.
+ */
+const OfferTile = () => (
+  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded bg-purple-50 text-purple-600">
+    <TagIcon weight="duotone" className="h-3.5 w-3.5" />
+  </span>
+);
+
 const BillingIcon = () => (
   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -128,7 +151,7 @@ function TenantMenu({
   t: ReturnType<typeof useTenantSwitcher>;
   onDone: () => void;
 }) {
-  const [expanded, setExpanded] = useState<"org" | "brand" | null>(null);
+  const [expanded, setExpanded] = useState<"org" | "brand" | "offer" | null>(null);
 
   // Staff god-mode: load the all-orgs list when the ORG submenu opens. Debounced
   // on search. Never fires for customers (the route 403s anyway).
@@ -139,9 +162,12 @@ function TenantMenu({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t.isStaff, expanded, t.orgSearch]);
 
-  const toggleSection = (key: "org" | "brand") => {
+  // ONE tier is expanded at a time, whatever the depth — so a third tier adds a
+  // row, never a second open panel.
+  const toggleSection = (key: "org" | "brand" | "offer") => {
     setExpanded((prev) => (prev === key ? null : key));
     if (key === "brand") t.fetchBrands();
+    if (key === "offer") t.fetchOffers();
   };
 
   const go = (fn: () => void) => { onDone(); fn(); };
@@ -268,7 +294,7 @@ function TenantMenu({
       {/* BRAND — tier 2, drawn as a child of the org above via a 1px connector
           rail. Indent alone doesn't read as hierarchy (and no fetched source
           endorses indent-only nesting), so the rail + the disclosure chevron
-          carry the relationship. This is the LAST tier. */}
+          carry the relationship. */}
       {t.orgId && (
         <div className="relative px-1 pl-6">
           <span aria-hidden className="absolute left-[18px] top-0 h-[22px] w-px bg-gray-200" />
@@ -333,6 +359,67 @@ function TenantMenu({
                 <PlusTile sizeClass="w-[18px] h-[18px]" />
                 <span>New brand</span>
               </button>
+            </Submenu>
+          )}
+        </div>
+      )}
+
+      {/* OFFER — tier 3, and the LAST one. Drawn as a child of the brand above it
+          by the same 1px rail, one indent further. A brand is an IDENTITY; an offer
+          is a PROPOSITION, and it owns the campaigns, the audiences and the leads —
+          so changing proposition is as ordinary a move as changing brand, and it
+          belongs in the same menu. Only rendered under a brand: without one there is
+          no set of offers to pick from. */}
+      {t.brandId && (
+        <div className="relative px-1 pl-10">
+          <span aria-hidden className="absolute left-[34px] top-0 h-[22px] w-px bg-gray-200" />
+          <span aria-hidden className="absolute left-[34px] top-[22px] h-px w-2.5 bg-gray-200" />
+          <button
+            type="button"
+            onClick={() => toggleSection("offer")}
+            className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition hover:bg-gray-50 ${
+              expanded === "offer" ? "bg-gray-50" : ""
+            }`}
+          >
+            {t.offerId && !t.offerKnown ? (
+              <IdentitySkeleton markClass="w-5 h-5" barClass="h-3.5 flex-1" />
+            ) : (
+              <>
+                <OfferTile />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">
+                  {t.offerId ? t.displayOffer?.name : "All offers"}
+                </span>
+              </>
+            )}
+            <Chevron open={expanded === "offer"} direction="right" />
+          </button>
+
+          {expanded === "offer" && (
+            <Submenu title="Switch offer">
+              <div className="max-h-56 overflow-y-auto">
+                {t.offersLoading ? (
+                  <p className="px-4 py-2 text-xs text-gray-400 md:px-3">Loading…</p>
+                ) : t.offers.length === 0 ? (
+                  <p className="px-4 py-2 text-xs text-gray-400 md:px-3">No offers</p>
+                ) : (
+                  t.offers.map((o) => (
+                    <button
+                      key={o.offerId}
+                      onClick={() => go(() => t.handleOfferSwitch(o.offerId))}
+                      className={`flex w-full items-center gap-2 rounded-md px-4 py-2 text-left text-sm transition md:px-3 ${
+                        t.offerId === o.offerId ? "bg-brand-50 text-brand-700" : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <OfferTile />
+                      <span className="truncate">{o.name}</span>
+                      {t.offerId === o.offerId && <CheckMark />}
+                    </button>
+                  ))
+                )}
+              </div>
+              {/* No "New offer" entry: creating a second proposition is not a
+                  chrome action yet, and an entry that opens nothing is worse than
+                  none. */}
             </Submenu>
           )}
         </div>

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { tenantBasePath } from "@/lib/offer-path";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { getFeatureRevenue, keepLastGoodFeatureRevenue } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
@@ -39,14 +40,16 @@ export function CampaignsPage() {
   const params = useParams();
   const orgId = String(params.orgId);
   const brandId = String(params.brandId);
+  // The Campaigns list lives UNDER an offer: a campaign sells one proposition.
+  const offerId = params.offerId ? String(params.offerId) : undefined;
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
-  const basePath = `/orgs/${orgId}/brands/${brandId}`;
+  const basePath = tenantBasePath(orgId, brandId, offerId);
 
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
   // different campaigns. Both queries dedupe on their keys, so this costs no network.
-  const { rows, settled: tableSettled } = useCampaignRows(brandId, featureSlug);
+  const { rows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
 
   // Brand-level (ungrouped) revenue — the global header's blended pipeline + $CAC.
   // Read straight off features-service (never a client sum/average of the groups).
@@ -101,7 +104,7 @@ export function CampaignsPage() {
           <StatTile label="#1 acquisition channel" value={topChannel} pending={!tableSettled} />
         </div>
 
-        <CampaignsTable brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
+        <CampaignsTable brandId={brandId} featureSlug={featureSlug} basePath={basePath} offerId={offerId} />
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useCallback, useEffect } from "react";
 import { isAdminEmail } from "@/lib/admin-allowlist";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrand, listBrands } from "@/lib/api";
+import { getBrand, listBrands, listBrandOffers, getBrandOffer, type Offer } from "@/lib/api";
 import { useTenantIdentity } from "@/components/tenant-identity-provider";
 
 export interface TenantBrand {
@@ -45,7 +45,14 @@ export function orgDomainFromName(name?: string | null): string | null {
 }
 
 /**
- * The single source of truth for org → brand identity + switching.
+ * The single source of truth for org → brand → offer identity + switching.
+ *
+ * Three tiers, because the OFFER is a real level of the product: a brand is an
+ * IDENTITY (name, domain, logo, tracking snippet) and an offer is a PROPOSITION,
+ * and campaigns, audiences and leads all belong to the offer. The offer reads
+ * mirror the brand ones exactly — a LIST for the dropdown plus an authoritative
+ * by-id read for the label, because the list can legitimately not contain the one
+ * the URL is on.
  *
  * Consumed by BOTH tenant surfaces so they can never drift:
  *  - `breadcrumb-nav.tsx` (the onboarding chrome)
@@ -121,12 +128,15 @@ export function useTenantSwitcher() {
   const [switchingOrg, setSwitchingOrg] = useState<{ id: string; name: string } | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
 
-  // Parse path structure: /orgs/[orgId]/brands/[brandId]/<section>/[id]
+  // Parse path structure:
+  // /orgs/[orgId]/brands/[brandId]/offers/[offerId]/<section>/[id]
   // The product ships ONE feature → no `/features/[featureSlug]` segment.
   const pathParts = pathname.split("/").filter(Boolean);
   const orgId = pathParts[0] === "orgs" && pathParts[1] ? pathParts[1] : null;
   const brandId = orgId && pathParts[2] === "brands" && pathParts[3] ? pathParts[3] : null;
-  const section = brandId ? pathParts[4] ?? null : null;
+  const offerId =
+    brandId && pathParts[4] === "offers" && pathParts[5] ? pathParts[5] : null;
+  const section = offerId ? pathParts[6] ?? null : brandId ? pathParts[4] ?? null : null;
 
   // ── Org identity ────────────────────────────────────────────────────────────
   // Display the org from the URL (per-tab), NOT `useOrganization()`. Clerk's active
@@ -224,6 +234,38 @@ export function useTenantSwitcher() {
     () => getBrand(brandId!),
     { enabled: !!brandId },
   );
+
+  // ── Offers ──────────────────────────────────────────────────────────────────
+  // The third tier. An offer is a PROPOSITION under the brand identity, and it is
+  // where campaigns, audiences and leads live, so switching offer is as ordinary a
+  // move as switching brand. Same discipline as the brand tier: a LIST for the
+  // dropdown, plus an authoritative BY-ID read for the label, because the list can
+  // legitimately not contain the offer the URL is on (created in another tab).
+  const offersQuery = useAuthQuery(
+    ["brandOffers", brandId],
+    () => listBrandOffers(brandId!),
+    { enabled: !!brandId },
+  );
+  const offers: Offer[] = offersQuery.data?.offers ?? [];
+  // Reveal on SETTLE: a failed list falls through to the empty state, never sits
+  // on "Loading…" forever.
+  const offersLoading = offersQuery.isPending && !offersQuery.isError;
+
+  const offerQuery = useAuthQuery(
+    ["brandOffer", brandId, offerId],
+    () => getBrandOffer(brandId!, offerId!),
+    { enabled: !!brandId && !!offerId },
+  );
+  const displayOffer: Offer | undefined = offerId
+    ? offers.find((o) => o.offerId === offerId) ?? offerQuery.data?.offer
+    : undefined;
+  // Same rule as `orgKnown` / `brandKnown`: a surface renders a skeleton while this
+  // is false rather than asserting a name we do not have.
+  const offerKnown = !!displayOffer;
+
+  const handleOfferSwitch = useCallback((newOfferId: string) => {
+    if (orgId && brandId) router.push(`/orgs/${orgId}/brands/${brandId}/offers/${newOfferId}`);
+  }, [orgId, brandId, router]);
 
   const handleOrgSwitch = useCallback(async (clerkOrgId: string, orgName?: string) => {
     // Mark the switch pending SYNCHRONOUSLY, before the first await. Everything
@@ -371,6 +413,7 @@ export function useTenantSwitcher() {
     pathParts,
     orgId,
     brandId,
+    offerId,
     section,
     isStaff,
     memberships: userMemberships?.data ?? [],
@@ -386,10 +429,16 @@ export function useTenantSwitcher() {
     displayOrgImageUrl,
     displayOrgHasImage,
     displayBrand,
+    offers,
+    offersLoading,
+    fetchOffers: offersQuery.refetch,
+    displayOffer,
     orgKnown,
     brandKnown,
+    offerKnown,
     handleOrgSwitch,
     handleBrandSwitch,
+    handleOfferSwitch,
     // The click is answered here, not by the destination: `switchingOrgId` spins
     // the clicked row and re-labels the switcher with the target, `switchError`
     // states a refusal instead of leaving a dead button behind.

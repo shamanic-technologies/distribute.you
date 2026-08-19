@@ -82,7 +82,7 @@ export function OutreachStatCardsAuto({
     campaignId
       ? ["featureRevenue", brandId, featureSlug, "campaign", campaignId]
       : ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId, campaignId),
+    () => getFeatureRevenue(featureSlug, brandId, { campaignId }),
     {
       enabled,
       ...pollOptions,

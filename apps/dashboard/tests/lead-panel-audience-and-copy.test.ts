@@ -27,7 +27,10 @@ describe("Leads right panel — audience card and email copy", () => {
   const filePath = path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx");
   const src = fs.readFileSync(filePath, "utf-8");
 
-  const sliceFrom = (marker: string, length = 1800) => {
+  // Measured: 1805 chars from `function AudienceSection(` to the link at the end
+  // of it. A `toContain` guard fails when the slice is too SHORT, so this is
+  // measured against the file, never guessed — re-measure when the block grows.
+  const sliceFrom = (marker: string, length = 2200) => {
     const at = src.indexOf(marker);
     expect(at, `marker not found: ${marker}`).toBeGreaterThan(-1);
     return src.slice(at, at + length);

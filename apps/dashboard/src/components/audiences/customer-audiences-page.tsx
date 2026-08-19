@@ -239,6 +239,11 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
 
   const params = useParams();
   const brandId = params.brandId as string;
+  // The OFFER this page is scoped to. An audience is a set of people picked for a
+  // PROPOSITION, so human-service carries `offerId` on the row and this narrows the
+  // list to it. Absent on the read-only share tree, which has no offer segment —
+  // there it stays the brand-wide list it has always been.
+  const offerId = params.offerId as string | undefined;
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
@@ -278,8 +283,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
     isPending: activePending,
     isFetching: activeFetching,
   } = useAuthQuery(
-    ["audiences", brandId, "active"],
-    () => listAudiences(brandId, { status: "active" }),
+    ["audiences", brandId, "active", offerId ?? "brand"],
+    () => listAudiences(brandId, { status: "active", offerId }),
     pollOptions,
   );
   const {
@@ -287,8 +292,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
     isPending: pausedPending,
     isFetching: pausedFetching,
   } = useAuthQuery(
-    ["audiences", brandId, "paused"],
-    () => listAudiences(brandId, { status: "paused" }),
+    ["audiences", brandId, "paused", offerId ?? "brand"],
+    () => listAudiences(brandId, { status: "paused", offerId }),
     pollOptions,
   );
   const {
@@ -296,8 +301,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
     isPending: archivedPending,
     isFetching: archivedFetching,
   } = useAuthQuery(
-    ["audiences", brandId, "archived"],
-    () => listAudiences(brandId, { status: "archived" }),
+    ["audiences", brandId, "archived", offerId ?? "brand"],
+    () => listAudiences(brandId, { status: "archived", offerId }),
     pollOptions,
   );
 
@@ -430,7 +435,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // Under a campaign the numbers count THAT campaign's outreach only
   // (features-service `?campaignId=`), on its own cache key so it never shares an
   // entry with the brand-wide read.
-  const campaignScopeKey = campaignId ?? "brand-wide";
+  const campaignScopeKey = campaignId ?? offerId ?? "brand-wide";
   const { data: audienceStatsData, isPending: statsIsPending, isPlaceholderData: statsIsPlaceholder } = useAuthQuery(
     [
       "featureAudienceStats",
@@ -453,7 +458,10 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
             ? { funnel: campaignFunnelKey }
             : { goal: audienceStatsGoal }),
         statuses: "active,paused,archived",
-        campaignId,
+        // At most one narrower grain reaches features-service: a campaign already
+        // belongs to exactly one offer, so stating both would be two answers to one
+        // question (and it 400s).
+        ...(campaignId ? { campaignId } : { offerId }),
       }),
     { enabled: Boolean(featureSlug), ...pollOptions },
   );

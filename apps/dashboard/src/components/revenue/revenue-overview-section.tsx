@@ -24,6 +24,7 @@ import type { RevenueOverview, SignalSeries } from "@/lib/revenue-view";
 export function RevenueOverviewSection({
   data,
   dailyBudgetCents,
+  budgetNote,
   brandId,
   featureSlug,
   basePath,
@@ -73,6 +74,10 @@ export function RevenueOverviewSection({
   visitToMeetingPct?: number | null;
   visitToSignupPct?: number | null;
   dailyBudgetCents?: number | null;
+  /** Why no ceiling is shown beside today's spend — forwarded to the cost card.
+   *  An offer has no budget of its own (money is funded per brand), so its page
+   *  states that rather than borrowing the brand's figure or inventing a share. */
+  budgetNote?: string;
   brandId: string;
   featureSlug: string;
   /** /orgs/:orgId/brands/:brandId/features/:slug — for the Top-campaigns links. */
@@ -219,6 +224,7 @@ export function RevenueOverviewSection({
         <RevenueCostSummary
           spend={data?.spend}
           dailyBudgetCents={dailyBudgetCents}
+          budgetNote={budgetNote}
           pending={revenueLoading}
           costPending={costPending}
           todayCostPending={todayCostPending}
