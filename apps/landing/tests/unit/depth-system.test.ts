@@ -56,8 +56,11 @@ describe("the descent", () => {
     // Eleven separately-coloured sections read as stacked bands. One gradient
     // behind transparent sections reads as a single move downward, which is the
     // whole effect.
-    const body = css.slice(css.indexOf("body.depth {"));
+    const body = css.slice(css.indexOf(".depth {"));
     expect(body.slice(0, 900)).toContain("linear-gradient(");
+    // The static pages put it on <body>; the React pages cannot, because their
+    // root layout owns <body> and is shared with pages that are not a descent.
+    expect(body.slice(0, 300)).toContain("min-height: 100vh");
     expect(css).toContain("[data-strata] {");
     const shared = css.slice(css.indexOf("[data-strata] {"));
     expect(shared.slice(0, 200)).toContain("background: transparent");

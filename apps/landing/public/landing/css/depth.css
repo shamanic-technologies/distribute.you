@@ -53,7 +53,12 @@
    viewport would decouple it from the scroll, which is the whole effect, and
    that pinning is broken on iOS besides.
 --------------------------------------------------------------------------- */
-body.depth {
+/* Applied to <body> on the static pages, and to a full-height WRAPPER on the
+   React ones — their root layout owns <body> and is shared with pages that are
+   not a descent, so the class cannot live there. `min-height` is what makes the
+   wrapper case cover the viewport when the content is short. */
+.depth {
+  min-height: 100vh;
   background:
     /* the sun, top right, above everything */
     radial-gradient(circle at 76% 2%, rgba(255, 236, 189, 0.5), transparent 32rem),
