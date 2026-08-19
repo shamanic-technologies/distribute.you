@@ -1799,10 +1799,20 @@ export async function listBrandRuns(brandId: string, token?: string): Promise<{ 
   }
 }
 
-// Campaign by brand
+/**
+ * Every campaign of a brand, whatever its status.
+ *
+ * `status` is OMITTED on purpose: campaign-service accepts exactly `ongoing`
+ * and `stopped` and 400s anything else, so omitting it is what "every status"
+ * means there. This used to send `status=all` — a value the dashboard invented
+ * and the producer never accepted — which 400'd, surfaced as a 500 through the
+ * gateway, and left every campaign surface rendering its empty state.
+ *
+ * Byte-equal with the customer dashboard's copy, per the lockstep rule.
+ */
 export async function listCampaignsByBrand(brandId: string, token?: string): Promise<{ campaigns: Campaign[] }> {
   const { campaigns } = await apiCall<{ campaigns: RawCampaign[] }>(
-    `/campaigns?brandId=${brandId}&status=all`,
+    `/campaigns?brandId=${brandId}`,
     { token },
   );
   return { campaigns: await enrichCampaignsWithBrandUrls(campaigns, token) };

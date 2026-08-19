@@ -6,8 +6,8 @@
  * UPSERTS a `users` row for whatever external user id it is handed. That is right
  * for a person signing in; it is a row-per-call-site for a cron.
  *
- * These call sites have no person behind them — a nightly digest scan, a public
- * report read — so each was inventing an id keyed on the
+ * These call sites have no person behind them — a nightly digest scan and a
+ * public report read — so each was inventing an id keyed on the
  * org (`outcome-digest:org_ABC`). One row per org per job, forever: prod reached
  * **89 such rows against 64 real users**, and client-service's public user count
  * (the figure the `/investors` page prints) read **153**, because its exclusion
