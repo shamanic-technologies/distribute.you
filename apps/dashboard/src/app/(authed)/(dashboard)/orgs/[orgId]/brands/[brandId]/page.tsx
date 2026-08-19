@@ -29,6 +29,7 @@ import {
 import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { CampaignsTable } from "@/components/campaigns/campaigns-table";
+import { OffersTable } from "@/components/offers/offers-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
@@ -53,17 +54,43 @@ function withActual(metric: PipelineActivityMetric, actual: number | null): Pipe
 }
 
 /**
- * Brand overview = the (sole) feature's Revenue & Conversions overview, rendered
- * inline at the brand root. The product ships ONE feature, so the feature level
- * was flattened into the brand — this replaces the old feature-grid + Ahrefs
- * metrics overview AND the redirect into `/features/[slug]/overview`. The
- * `?view=overview` hierarchy param is now a no-op (the brand root always shows
- * the overview).
+ * Brand overview AND offer overview — ONE component, scoped by the route.
+ *
+ * A BRAND is an identity (a name, a domain, a logo, a tracking snippet); an OFFER
+ * is a proposition (what it promises, and the funnels it is sold through). So the
+ * two levels answer different questions with the same numbers, and this file is
+ * mounted at both: `.../brands/[brandId]` with no `offerId`, and
+ * `.../brands/[brandId]/offers/[offerId]`, which re-exports it. That is the repo's
+ * scope-PROP pattern (`CustomerAudiencesPage({ campaignId })`) read off the route
+ * instead of a prop, and it is deliberately not a second copy — two copies is how
+ * one brand comes to read one way here and another way one click down.
+ *
+ * What the scope changes, and nothing else:
+ *  - every features-service read carries `offerId`, so the money is the offer's;
+ *  - the audiences list and the Top-audiences card are the offer's, because an
+ *    audience belongs to a proposition, not to an identity;
+ *  - the bottom table lists the offer's CAMPAIGNS; at brand level it lists the
+ *    brand's OFFERS instead, since a campaign sells one offer and naming them on
+ *    the brand would skip the level that owns them.
+ *
+ * Neither level renders the per-day Outreach-activity bars: that chart labels the
+ * steps of ONE sales funnel on ONE channel, and an offer, exactly like the brand
+ * above it, is sold through several funnels and several channels at once. It is
+ * the campaign Overview that names one of each. That is also why no
+ * pipeline-activity read is made at offer scope at all: features-service serves it
+ * with a null expected series (the daily budget is funded per brand, and there is
+ * no per-offer ceiling to divide) and null signup / form-submission actuals (the
+ * conversion tracker is keyed to the brand's domain, so its outcomes are the
+ * brand's) — and drawing the brand's budget beside offer-only bars, or a share of
+ * it, would state a figure of a different scope than the bars beside it.
  */
 export default function BrandOverviewPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
+  // Present only on the offer route. `undefined` IS the brand level — a first-class
+  // scope, not a missing value.
+  const offerId = params.offerId as string | undefined;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
   const timezone = useMemo(() => {
@@ -84,8 +111,10 @@ export default function BrandOverviewPage() {
   const brand = brandData?.brand ?? null;
 
   const { data, isError: revenueIsError } = useAuthQuery(
-    ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId),
+    offerId
+      ? ["featureRevenue", brandId, featureSlug, "offer", offerId]
+      : ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId, { offerId }),
     {
       enabled,
       ...pollOptions,
@@ -99,10 +128,17 @@ export default function BrandOverviewPage() {
     },
   );
 
+  // NOT read at offer scope, and the reason is the same one that keeps the chart
+  // off this page at both levels: its forecast is `daily budget / cost per
+  // outreach`, and a budget is funded per BRAND — there is no per-offer ceiling to
+  // divide, so features-service serves a null expected series and a null daily
+  // budget for an offer. Its signup / form-submission actuals are null there too,
+  // because the conversion tracker is keyed to the brand's own domain. Reading it
+  // anyway would put brand-wide numbers on an offer-scoped page.
   const { data: pipelineActivity, isError: pipelineIsError } = useAuthQuery(
     ["featurePipelineActivity", brandId, featureSlug, timezone],
     () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
-    { enabled, ...pollOptions },
+    { enabled: enabled && !offerId, ...pollOptions },
   );
 
   // ── Single-source graph ACTUALS (features-service#371/#372/#377) ───────────
@@ -168,8 +204,10 @@ export default function BrandOverviewPage() {
   // Feature-level stats (Impressions / Clicks / CPC cards). Shares the Campaigns
   // page's query key + 5s cadence so both observers refetch one cache entry.
   const { data: featureStatsData, isError: featureStatsIsError } = useAuthQuery(
-    ["featureStats", featureSlug, brandId],
-    () => fetchFeatureStats(featureSlug, { brandId }),
+    offerId
+      ? ["featureStats", featureSlug, brandId, "offer", offerId]
+      : ["featureStats", featureSlug, brandId],
+    () => fetchFeatureStats(featureSlug, { brandId, offerId }),
     { enabled, ...pollOptions },
   );
   const featureStats = featureStatsData?.stats ?? {};
@@ -225,7 +263,7 @@ export default function BrandOverviewPage() {
   // Real audience-level cost evidence from features-service. This replaces the
   // old provider-cost-source list; no dashboard-side mock/hash audience split.
   const { data: audienceStatsData, isError: audienceStatsIsError } = useAuthQuery(
-    ["featureAudienceStats", featureSlug, brandId, "brand-return"],
+    ["featureAudienceStats", featureSlug, brandId, "brand-return", offerId ?? "brand"],
     // No `limit` — features-service would pre-pick the top 3 by ITS OWN sortMetric, which
     // is a different column than the one this card shows for a sale-terminating goal. The
     // card sorts and slices on the brand's metric instead (a brand has a handful of active
@@ -234,14 +272,16 @@ export default function BrandOverviewPage() {
     // audience through the best-returning funnel the brand declared and sorts on return
     // descending, which is the only honest answer here — a brand runs several funnels at
     // once, so naming one would denominate the card in a single chain's terms.
-    () => fetchFeatureAudienceStats(featureSlug, { brandId }),
-    { enabled, ...pollOptions },
+    // `offerId` is a SCOPE, not a funnel or a goal: it narrows which audiences are
+    // priced, never the chain they are priced through.
+    () => fetchFeatureAudienceStats(featureSlug, { brandId, offerId }),
+    { enabled: enabled && !!offerId, ...pollOptions },
   );
 
   const { data: audiencesData, isError: audiencesIsError } = useAuthQuery(
-    ["audiences", brandId],
-    () => listAudiences(brandId),
-    { enabled, ...pollOptions },
+    offerId ? ["audiences", brandId, "offer", offerId] : ["audiences", brandId],
+    () => listAudiences(brandId, { offerId }),
+    { enabled: enabled && !!offerId, ...pollOptions },
   );
   const activeAudiences = audiencesData?.audiences.filter((a) => a.status === "active");
 
@@ -264,8 +304,11 @@ export default function BrandOverviewPage() {
   // `/revenue` (mergedPipelineActivity), which cleanly falls back to the
   // pipeline-activity actuals when `data` is absent, so an errored `/revenue`
   // must not hold the chart.
+  // At offer scope the activity query is switched off for good (see its comment),
+  // so there is nothing to wait for — it counts as settled rather than pending, or
+  // the group would sit unrevealed forever.
   const activityRevealed = useCoordinatedReveal([
-    pipelineActivity !== undefined || pipelineIsError,
+    pipelineActivity !== undefined || pipelineIsError || !!offerId,
     revenueSettled,
   ]);
   // The cost card's spend block rides the `/revenue` payload now → it reveals
@@ -275,8 +318,8 @@ export default function BrandOverviewPage() {
     featureStatsData !== undefined || featureStatsIsError,
   ]);
   const audienceStatsRevealed = useCoordinatedReveal([
-    audienceStatsData !== undefined || audienceStatsIsError,
-    audiencesData !== undefined || audiencesIsError,
+    audienceStatsData !== undefined || audienceStatsIsError || !offerId,
+    audiencesData !== undefined || audiencesIsError || !offerId,
   ]);
   // The brand has landed its first result when ANY funnel it sells converts, and the
   // banner retires on the window it promised — features-service dates the brand's first
@@ -288,7 +331,8 @@ export default function BrandOverviewPage() {
     daysRunning: daysSinceFirstSpend(data?.roiHistory?.daily?.[0]?.date, new Date()),
   });
 
-  const basePath = `/orgs/${orgId}/brands/${brandId}`;
+  const brandPath = `/orgs/${orgId}/brands/${brandId}`;
+  const basePath = offerId ? `${brandPath}/offers/${offerId}` : brandPath;
 
   if (!brandLoading && !brand) {
     // Reached e.g. via a stale last-brand cookie pointing at a deleted brand.
@@ -343,7 +387,18 @@ export default function BrandOverviewPage() {
         activityPending={!activityRevealed}
         costPending={!costRevealed}
         todayCostPending={!costRevealed}
-        dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}
+        // NULL at offer scope, deliberately. The daily budget is funded per BRAND,
+        // so there is no per-offer ceiling; printing the brand's beside this
+        // offer's spend would state a denominator of a wider scope than the
+        // numerator, and dividing it across the offers would invent a share
+        // nobody configured. The card then states what was spent and claims no
+        // ceiling, and the tip below says why.
+        dailyBudgetCents={offerId ? null : budgetData?.dailyBudgetCents ?? null}
+        budgetNote={
+          offerId
+            ? "There is no daily budget for a single offer: the budget is funded for the whole brand, so this figure is what this offer spent today, with no ceiling of its own to compare it against."
+            : undefined
+        }
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
@@ -355,12 +410,18 @@ export default function BrandOverviewPage() {
         // Chart what came back per dollar, not the cumulative count of one funnel's
         // signal — a brand runs several funnels and is judged on the return.
         showRoiTrend
+        // The Top-3 audiences card is OFFER-level only. An audience is a set of
+        // people picked for a proposition, so at brand level it would rank the
+        // audiences of several offers against each other under one heading — the
+        // same reason the funnel step pairs are off this page.
         costBottomCard={
-          <TopAudiencesCard
-            data={audienceStatsRevealed ? audienceStatsData : undefined}
-            audiences={audienceStatsRevealed ? activeAudiences : undefined}
-            pending={!audienceStatsRevealed}
-          />
+          offerId ? (
+            <TopAudiencesCard
+              data={audienceStatsRevealed ? audienceStatsData : undefined}
+              audiences={audienceStatsRevealed ? activeAudiences : undefined}
+              pending={!audienceStatsRevealed}
+            />
+          ) : undefined
         }
         topRow={
           /* Brand-level stat row: what we sent, what the pipeline is worth, and
@@ -382,21 +443,38 @@ export default function BrandOverviewPage() {
         }
       />
 
-      {/* The campaigns behind the numbers above, full width under the chart.
-          The SAME table the Campaigns page renders — one component, so a campaign
-          cannot read one way here and another way one click over — ordered by the
-          return the Overview's own headline is stated in. */}
+      {/* What is behind the numbers above, full width under the chart — and what
+          that is depends on the level. An OFFER is sold by campaigns, so its page
+          lists them (the SAME table the Campaigns page renders — one component, so
+          a campaign cannot read one way here and another way one click over). A
+          BRAND is an identity that sells one or more PROPOSITIONS, and a campaign
+          belongs to one of those, so naming campaigns here would skip the level
+          that owns them. Both are ordered by the return the headline above is
+          stated in. */}
       <div className="space-y-3 pt-2">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-display text-lg font-bold text-gray-800">Campaigns</h2>
-          <Link
-            href={`${basePath}/campaigns`}
-            className="text-sm text-brand-600 hover:underline"
-          >
-            View all
-          </Link>
+          <h2 className="font-display text-lg font-bold text-gray-800">
+            {offerId ? "Campaigns" : "Offers"}
+          </h2>
+          {offerId && (
+            <Link
+              href={`${basePath}/campaigns`}
+              className="text-sm text-brand-600 hover:underline"
+            >
+              View all
+            </Link>
+          )}
         </div>
-        <CampaignsTable brandId={brandId} featureSlug={featureSlug} basePath={basePath} />
+        {offerId ? (
+          <CampaignsTable
+            brandId={brandId}
+            featureSlug={featureSlug}
+            basePath={basePath}
+            offerId={offerId}
+          />
+        ) : (
+          <OffersTable brandId={brandId} featureSlug={featureSlug} basePath={brandPath} />
+        )}
       </div>
     </DashboardPage>
   );

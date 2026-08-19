@@ -40,6 +40,7 @@ import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
 import { OutreachStatCardsAuto } from "@/components/revenue/outreach-stat-cards-auto";
+import { tenantBasePath } from "@/lib/offer-path";
 import { useSharePathPrefix } from "@/components/share/share-mode-context";
 
 // Labels for the Leads tabs. WHICH of them render comes from the active campaigns'
@@ -294,6 +295,9 @@ function AudienceSection({
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
+  // Present on the offer route, absent in the read-only share tree — which has no
+  // offer segment, so its link stays the brand-level one that does exist there.
+  const offerId = params.offerId as string | undefined;
   // Keeps in-app links inside the public share tree; empty in the dashboard.
   const pathPrefix = useSharePathPrefix();
   const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
@@ -318,7 +322,7 @@ function AudienceSection({
       </div>
       {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
       <Link
-        href={`${pathPrefix}/orgs/${orgId}/brands/${brandId}/audiences?audienceId=${inline.id}`}
+        href={`${pathPrefix}${tenantBasePath(orgId, brandId, offerId)}/audiences?audienceId=${inline.id}`}
         className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
       >
         View audience details
@@ -841,6 +845,11 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
 export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   const params = useParams();
   const brandId = params.brandId as string;
+  // The OFFER this page is scoped to, when the route names one. lead-service has no
+  // offer filter yet, so the ROWS are still the brand's — the money and the
+  // audiences joined onto them are the offer's, which is every scope the backend
+  // can honestly answer today.
+  const offerId = params.offerId as string | undefined;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("positive-replies");
   const [search, setSearch] = useState("");
@@ -890,8 +899,10 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   const { data: revenueData } = useAuthQuery(
     campaignId
       ? ["featureRevenue", brandId, featureSlug, "campaign", campaignId]
-      : ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId, campaignId),
+      : offerId
+        ? ["featureRevenue", brandId, featureSlug, "offer", offerId]
+        : ["featureRevenue", brandId, featureSlug],
+    () => getFeatureRevenue(featureSlug, brandId, { campaignId, offerId }),
     {
       enabled: revenueEnabled,
       refetchInterval: POLL_INTERVAL,
@@ -1138,8 +1149,8 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
   // to enrich the panel's Audience card (description / Size / Remaining) by joining
   // the lead's attributed `audience.id`; the name + avatar already ride the row.
   const { data: audiencesData } = useAuthQuery(
-    ["audiences", brandId],
-    () => listAudiences(brandId),
+    offerId ? ["audiences", brandId, "offer", offerId] : ["audiences", brandId],
+    () => listAudiences(brandId, { offerId }),
     {},
   );
   const selectedAudienceInline = selectedLead?.audience ?? null;

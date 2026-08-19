@@ -417,6 +417,14 @@ export interface Campaign {
    * key can, so every surface naming what a campaign buys should read this.
    */
   funnelKey: SalesFunnelKeyWire | null;
+  /**
+   * The OFFER this campaign sells. A campaign is (offer x sales funnel x
+   * acquisition channel), so the offer is what says WHICH proposition the funnel
+   * and the channel are selling. Nullable on the wire for a campaign created
+   * before campaign-service carried the column; such a campaign belongs to no
+   * offer and is left out of an offer-scoped list rather than guessed into one.
+   */
+  offerId: string | null;
   audienceIds: string[] | null;
   servicesOffered: string[] | null;
   clickDestinationUrl: string | null;
@@ -1283,6 +1291,208 @@ export async function undeclareBrandSalesFunnel(
   return parsed.data;
 }
 
+// ─── Offers (Org > Brand > Offer > Campaign) ─────────────────────────────────
+//
+// A BRAND is an identity: a name, a domain, a logo, a conversion-tracking snippet.
+// An OFFER is a PROPOSITION: what it promises (the 7 Hormozi user-fields) and the
+// sales funnels it is sold through, with their conversion rates, lifetime revenue
+// and destinations. A brand selling a $200 self-serve plan and a $20k enterprise
+// contract has two offers, and everything that used to hang off the brand and is
+// really about the proposition — audiences, leads, campaigns, funnels — hangs off
+// the offer.
+//
+// brand-service owns the level. There is no `active` flag and no DELETE route, so
+// nothing here invents either.
+const OfferSchema = z.object({
+  offerId: z.string(),
+  brandId: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type Offer = z.infer<typeof OfferSchema>;
+
+const ListBrandOffersResponseSchema = z.object({ offers: z.array(OfferSchema) });
+const BrandOfferResponseSchema = z.object({ offer: OfferSchema });
+
+/** GET /brands/:brandId/offers — every proposition this brand sells. */
+export async function listBrandOffers(
+  brandId: string,
+  token?: string,
+): Promise<{ offers: Offer[] }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers`, { token });
+  const parsed = ListBrandOffersResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] listBrandOffers: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] listBrandOffers: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** GET /brands/:brandId/offers/:offerId — one offer, by id. */
+export async function getBrandOffer(
+  brandId: string,
+  offerId: string,
+  token?: string,
+): Promise<{ offer: Offer }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}`, { token });
+  const parsed = BrandOfferResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandOffer: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandOffer: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * POST /brands/:brandId/offers — a new proposition under this brand.
+ *
+ * The name is at most two words and 20 characters, and unique per brand;
+ * brand-service enforces all three and its 400 is the answer, so nothing is
+ * pre-empted here.
+ */
+export async function createBrandOffer(
+  brandId: string,
+  name: string,
+  token?: string,
+): Promise<{ offer: Offer }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers`, {
+    token,
+    method: "POST",
+    body: { name },
+  });
+  const parsed = BrandOfferResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] createBrandOffer: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] createBrandOffer: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PATCH /brands/:brandId/offers/:offerId — rename. The only mutable field. */
+export async function renameBrandOffer(
+  brandId: string,
+  offerId: string,
+  name: string,
+  token?: string,
+): Promise<{ offer: Offer }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}`, {
+    token,
+    method: "PATCH",
+    body: { name },
+  });
+  const parsed = BrandOfferResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] renameBrandOffer: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] renameBrandOffer: invalid response shape");
+  }
+  return parsed.data;
+}
+
+// The offer's funnels and user-fields are the SAME payloads the brand-scoped
+// routes serve — brand-service reuses the schemas upstream — so these readers
+// reuse the brand schemas verbatim rather than declaring a second copy that could
+// drift from them.
+
+/** GET /brands/:brandId/offers/:offerId/sales-funnels — how THIS offer is sold. */
+export async function getOfferSalesFunnels(
+  brandId: string,
+  offerId: string,
+  token?: string,
+): Promise<BrandSalesFunnelSet> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-funnels`, { token });
+  const parsed = GetBrandSalesFunnelsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOfferSalesFunnels: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getOfferSalesFunnels: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PUT /brands/:brandId/offers/:offerId/sales-funnels — state the WHOLE set. */
+export async function stateOfferSalesFunnels(
+  brandId: string,
+  offerId: string,
+  funnelKeys: string[],
+  token?: string,
+): Promise<BrandSalesFunnelSet> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/sales-funnels`, {
+    token,
+    method: "PUT",
+    body: { funnelKeys },
+  });
+  const parsed = GetBrandSalesFunnelsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] stateOfferSalesFunnels: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] stateOfferSalesFunnels: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** PUT /brands/:brandId/offers/:offerId/sales-funnels/:funnelKey — declare + price one. */
+export async function declareOfferSalesFunnel(
+  brandId: string,
+  offerId: string,
+  funnelKey: string,
+  patch: SalesFunnelPatch,
+  token?: string,
+): Promise<{ funnel: DeclaredSalesFunnel }> {
+  const raw = await apiCall<unknown>(
+    `/brands/${brandId}/offers/${offerId}/sales-funnels/${funnelKey}`,
+    { token, method: "PUT", body: patch },
+  );
+  const parsed = DeclareBrandSalesFunnelResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] declareOfferSalesFunnel: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] declareOfferSalesFunnel: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/** DELETE /brands/:brandId/offers/:offerId/sales-funnels/:funnelKey — stop selling through it. */
+export async function undeclareOfferSalesFunnel(
+  brandId: string,
+  offerId: string,
+  funnelKey: string,
+  token?: string,
+): Promise<BrandSalesFunnelSet> {
+  const raw = await apiCall<unknown>(
+    `/brands/${brandId}/offers/${offerId}/sales-funnels/${funnelKey}`,
+    { token, method: "DELETE" },
+  );
+  const parsed = GetBrandSalesFunnelsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] undeclareOfferSalesFunnel: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] undeclareOfferSalesFunnel: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ── Attach a website to a no-website brand (one-time domain setup) ──
 // A brand created via the "I have no website" onboarding path has domain === null.
 // This attaches a website URL, which brand-service sets as brands.url + domain; the
@@ -1979,13 +2189,18 @@ const ListAudiencesResponseSchema = z.object({
   offset: z.number(),
 });
 
-/** GET /orgs/audiences?brandId= — saved audiences for a brand. */
+/** GET /orgs/audiences?brandId= — saved audiences for a brand, or for one OFFER.
+ *
+ *  An audience belongs to an offer (human-service carries `offerId` on the row),
+ *  so an offer-scoped surface passes it and gets exactly that proposition's
+ *  audiences. Omitting it is the brand-wide read, unchanged. */
 export async function listAudiences(
   brandId: string,
-  params?: { status?: AudienceStatus; limit?: number; offset?: number },
+  params?: { status?: AudienceStatus; limit?: number; offset?: number; offerId?: string },
   token?: string,
 ): Promise<{ audiences: AudienceWire[]; total: number }> {
   const query = new URLSearchParams({ brandId });
+  if (params?.offerId) query.set("offerId", params.offerId);
   if (params?.status) query.set("status", params.status);
   if (params?.limit !== undefined) query.set("limit", String(params.limit));
   if (params?.offset !== undefined) query.set("offset", String(params.offset));
@@ -2184,6 +2399,51 @@ export async function saveBrandUserFields(
   if (!parsed.success) {
     console.error("[dashboard] saveBrandUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
     throw new Error("[dashboard] saveBrandUserFields: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * GET /brands/:brandId/offers/:offerId/user-fields — the 7 user-facing fields for
+ * ONE proposition. Byte-identical payload to the brand-scoped route (brand-service
+ * reuses the schema), so the reader reuses the schema rather than declaring a
+ * second copy that could drift from it.
+ */
+export async function getOfferUserFields(
+  brandId: string,
+  offerId: string,
+  token?: string,
+): Promise<{ fields: BrandUserFields }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/user-fields`, { token });
+  const parsed = BrandUserFieldsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOfferUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] getOfferUserFields: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * PUT /brands/:brandId/offers/:offerId/user-fields — confirm one or more fields
+ * for ONE proposition. Same body and same semantics as the brand-scoped write: a
+ * key sent is confirmed, a key omitted is left as stored, and an emptied field is
+ * sent (never omitted) so clearing it is expressible.
+ */
+export async function saveOfferUserFields(
+  brandId: string,
+  offerId: string,
+  fields: Partial<Record<UserFieldKey, UserFieldValue>>,
+  token?: string,
+): Promise<{ fields: BrandUserFields }> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/offers/${offerId}/user-fields`, {
+    token,
+    method: "PUT",
+    body: { fields },
+  });
+  const parsed = BrandUserFieldsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] saveOfferUserFields: response shape mismatch", { issues: parsed.error.issues, raw });
+    throw new Error("[dashboard] saveOfferUserFields: invalid response shape");
   }
   return parsed.data;
 }
@@ -2789,12 +3049,17 @@ export async function fetchStatsRegistry(token?: string): Promise<{ registry: St
 /** GET /features/:featureSlug/stats — stats for a feature */
 export async function fetchFeatureStats(
   featureSlug: string,
-  params?: { groupBy?: string; brandId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
+  params?: { groupBy?: string; brandId?: string; offerId?: string; campaignId?: string; workflowSlug?: string; workflowDynastySlug?: string },
   token?: string,
 ): Promise<FeatureStatsResponse> {
   const query = new URLSearchParams();
   if (params?.groupBy) query.set("groupBy", params.groupBy);
   if (params?.brandId) query.set("brandId", params.brandId);
+  // An OFFER narrows the brand to one proposition. features-service refuses an
+  // `offerId` stated together with a `campaignId` (400) — a campaign already
+  // belongs to exactly one offer, so the pair would be two answers to one
+  // question — so a caller states one grain, never both.
+  if (params?.offerId) query.set("offerId", params.offerId);
   if (params?.campaignId) query.set("campaignId", params.campaignId);
   if (params?.workflowSlug) query.set("workflowSlug", params.workflowSlug);
   if (params?.workflowDynastySlug) query.set("workflowDynastySlug", params.workflowDynastySlug);
@@ -2830,6 +3095,10 @@ export async function fetchFeatureAudienceStats(
      *  be filtered to a single campaign's outreach — the campaign overview passes it.
      *  Omitted → brand-wide numbers as before. (api-service forwards ?campaignId=.) */
     campaignId?: string;
+    /** Optional OFFER scope. An audience belongs to one proposition, so an
+     *  offer-scoped page narrows both the rows and the outreach they are priced
+     *  on. Mutually exclusive with `campaignId` (features-service 400s the pair). */
+    offerId?: string;
   },
   token?: string,
 ): Promise<FeatureAudienceStatsResponse> {
@@ -2844,6 +3113,7 @@ export async function fetchFeatureAudienceStats(
   if (params.brandProfileId) query.set("brandProfileId", params.brandProfileId);
   if (params.limit !== undefined) query.set("limit", String(params.limit));
   if (params.statuses) query.set("statuses", params.statuses);
+  if (params.offerId) query.set("offerId", params.offerId);
   if (params.campaignId) query.set("campaignId", params.campaignId);
   // pricing=net → per-audience MONEY metrics (metrics.cpcCents / cpprCents /
   // cpfsCents / cpsCents) reflect the org's FROZEN post-usage-discount cost, so the
@@ -2885,15 +3155,24 @@ export async function fetchGlobalStats(
 // features-service computes everything (MAX inside an entity, SUM across orgs);
 // the dashboard only renders. The wire→view-model parse is shared with the
 // public-report server build — see `parseFeatureRevenue` in `./revenue-parse`.
-/** GET /features/:slug/revenue — expected pipeline revenue for a brand (optionally one campaign). */
+/**
+ * GET /features/:slug/revenue — expected pipeline revenue for a brand, or for ONE
+ * grain under it.
+ *
+ * `scope` names at most one narrower grain: an OFFER (one proposition) or a
+ * CAMPAIGN (one offer x funnel x channel). Stating both is a 400 — a campaign
+ * already belongs to exactly one offer, so the pair would be two answers to one
+ * question — so this sends whichever the caller asked for and never both.
+ */
 export async function getFeatureRevenue(
   featureSlug: string,
   brandId: string,
-  campaignId?: string,
+  scope?: { campaignId?: string; offerId?: string },
   token?: string,
 ): Promise<RevenueOverview> {
   const query = new URLSearchParams({ brandId });
-  if (campaignId) query.set("campaignId", campaignId);
+  if (scope?.campaignId) query.set("campaignId", scope.campaignId);
+  else if (scope?.offerId) query.set("offerId", scope.offerId);
   // pricing=net → every MONEY metric (spend block, costEconomics committedCostUsd,
   // CAC, ROI, cps/cpsm/cpfs) reflects the org's FROZEN post-usage-discount cost
   // (frozen at cost-write in runs-service; features-service does NOT recompute the
@@ -3002,6 +3281,64 @@ export async function getFeatureRevenueByCampaign(
     roiMultiple: g.costEconomics.roiMultiple,
     expectedConversions: g.costEconomics.expectedConversions ?? null,
     costPerConversionUsd: g.costEconomics.costPerConversionUsd ?? null,
+  }));
+}
+
+// ─── Per-offer revenue (grouped) ─────────────────────────────────────────────
+// features-service `GET /features/:slug/revenue?groupBy=offerId` returns one LEAN
+// group per offer that has runs for the brand+feature — the same lean shape as the
+// per-campaign grouping, plus the campaign ids folded into it. Every displayed
+// figure is a READY field; the brand Overview's Offers table renders it and
+// divides nothing.
+const FeatureRevenueByOfferSchema = z.object({
+  groupBy: z.string(),
+  groups: z.array(
+    z.object({
+      offerId: z.string(),
+      campaignIds: z.array(z.string()),
+      headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+      costEconomics: CampaignRevenueCostEconomicsSchema,
+    }),
+  ),
+});
+
+export interface OfferRevenueGroup {
+  offerId: string;
+  /** The campaigns this offer is sold through — the same ids the Campaigns table keys on. */
+  campaignIds: string[];
+  totalPipelineUsd: number | null;
+  /** COMMITTED spend for this offer — the number ROI and %CAC divide by. Null means
+   *  "we have no figure", never "it cost nothing", so the cell reads "—" rather than $0. */
+  committedCostUsd: number | null;
+  costOfAcquisitionPct: number | null;
+  roiMultiple: number | null;
+}
+
+/** GET /features/:slug/revenue?groupBy=offerId — one lean revenue group per offer. */
+export async function getFeatureRevenueByOffer(
+  featureSlug: string,
+  brandId: string,
+  token?: string,
+): Promise<OfferRevenueGroup[]> {
+  const query = new URLSearchParams({ brandId, groupBy: "offerId", pricing: "net" });
+  const raw = await apiCall<unknown>(
+    `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
+    { token },
+  );
+  const parsed = FeatureRevenueByOfferSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getFeatureRevenueByOffer: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getFeatureRevenueByOffer: invalid response shape");
+  }
+  return parsed.data.groups.map((g) => ({
+    offerId: g.offerId,
+    campaignIds: g.campaignIds,
+    totalPipelineUsd: g.headline.totalPipelineUsd,
+    committedCostUsd: g.costEconomics.committedCostUsd ?? null,
+    costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
+    roiMultiple: g.costEconomics.roiMultiple,
   }));
 }
 

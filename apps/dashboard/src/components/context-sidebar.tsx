@@ -230,30 +230,41 @@ const SettingsIcon = () => (
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "org" | "brand" | "campaign";
+  type: "app" | "org" | "brand" | "offer" | "campaign";
   orgId?: string;
   brandId?: string;
+  offerId?: string;
   campaignId?: string;
 }
 
+/**
+ * The hierarchy is Org > Brand > Offer > Campaign, and this function keys on
+ * segment INDICES — so inserting the offer segment moved everything under it one
+ * place deeper. `.../brands/[brandId]/offers/[offerId]/campaigns/[id]` is
+ * segments 0..7, and a campaign is now read at 6/7 rather than 4/5.
+ */
 function getNavigationLevel(segments: string[]): NavigationLevel {
-  // /orgs/[orgId]/brands/[brandId]/<section>/...
+  // /orgs/[orgId]/brands/[brandId]/offers/[offerId]/<section>/...
   if (segments[0] === "orgs" && segments[1]) {
     const orgId = segments[1];
     if (segments[2] === "brands" && segments[3]) {
       const brandId = segments[3];
-      // Campaign LEVEL (v2 staff preview) — `.../campaigns/[campaignId]/...`
-      // drills into ONE campaign and swaps to the campaign sidebar. The campaigns
-      // LIST (`.../campaigns` with no id) stays brand-level so the brand
-      // "Campaigns" nav entry highlights.
-      if (segments[4] === "campaigns" && segments[5]) {
-        return { type: "campaign", orgId, brandId, campaignId: segments[5] };
+      if (segments[4] === "offers" && segments[5]) {
+        const offerId = segments[5];
+        // Campaign LEVEL — `.../campaigns/[campaignId]/...` drills into ONE
+        // campaign and swaps to the campaign sidebar. The campaigns LIST
+        // (`.../campaigns` with no id) stays offer-level so the offer
+        // "Campaigns" nav entry highlights.
+        if (segments[6] === "campaigns" && segments[7]) {
+          return { type: "campaign", orgId, brandId, offerId, campaignId: segments[7] };
+        }
+        return { type: "offer", orgId, brandId, offerId };
       }
-      // Every brand section — root overview, entity pages, AND settings /
-      // brand-info / workflows — renders the SAME brand sidebar. Settings + Info +
-      // Workflows are flat links in that sidebar's footer, so the sidebar stays
-      // mounted and the clicked link goes blue instead of swapping to a separate
-      // Settings sidebar level.
+      // Every brand section — root overview AND settings / brand-info /
+      // workflows — renders the SAME brand sidebar. Settings + Info + Workflows
+      // are flat links in that sidebar's footer, so the sidebar stays mounted and
+      // the clicked link goes blue instead of swapping to a separate Settings
+      // sidebar level.
       return { type: "brand", orgId, brandId };
     }
     return { type: "org", orgId };
@@ -353,9 +364,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const featureSlug = useSoleFeatureSlug();
   const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  // Campaigns (v2, campaign-centered) — GA. Shown to every customer on a revenue
-  // feature; the staff preview gate and its beta badge are gone.
-  const campaignsOk = isRevenueFeature(featureSlug);
   // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog
   // resolves. Folded flat into this footer so the brand sidebar stays mounted on
   // /brand-info + /workflows (no separate Settings sidebar level).
@@ -381,40 +389,11 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    // Campaigns — campaign-centered v2. GA (revenue features only). Sits right
-    // below Overview.
-    ...(campaignsOk
-      ? [
-          {
-            id: "campaigns",
-            label: "Campaigns",
-            href: `${basePath}/campaigns`,
-            icon: <CampaignsIcon />,
-          } satisfies SidebarItem,
-        ]
-      : []),
-    // Audiences — Apollo-style targeting cards. GA (revenue features only).
-    ...(revenueOk
-      ? [
-          {
-            id: "audiences",
-            label: "Audiences",
-            href: `${basePath}/audiences`,
-            icon: <AudiencesIcon />,
-          } satisfies SidebarItem,
-        ]
-      : []),
-    // Leads sits directly below Audiences. GA (revenue features only).
-    ...(revenueOk
-      ? [
-          {
-            id: "audience-leads",
-            label: "Leads",
-            href: `${basePath}/audiences/leads`,
-            icon: <LeadsIcon />,
-          } satisfies SidebarItem,
-        ]
-      : []),
+    // Campaigns, Audiences and Leads moved DOWN a level, to the offer. A campaign
+    // sells one proposition and an audience is a set of people picked for one, so
+    // at brand level each of those lists would pool several offers under one
+    // heading. The brand Overview lists the offers instead, and each opens its own
+    // sidebar with all three.
   ];
 
   return (
@@ -499,15 +478,18 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 // (campaign-filtered pages); Strategy + Audiences are campaign-scoped views of the
 // brand's shared config (a campaign inherits what campaign-service does not store
 // per campaign). GA: shown on every revenue feature, no staff gate, no beta badge.
-function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
+function CampaignLevelSidebar({ orgId, brandId, offerId, campaignId, pathname }: {
   orgId: string;
   brandId: string;
+  offerId: string;
   campaignId: string;
   pathname: string;
 }) {
   const featureSlug = useSoleFeatureSlug();
   const revenueOk = isRevenueFeature(featureSlug);
-  const basePath = `/orgs/${orgId}/brands/${brandId}`;
+  // A campaign lives under the OFFER it sells, so its base path and its back-link
+  // both climb to the offer, never to the brand two levels up.
+  const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
   const campaignBase = `${basePath}/campaigns/${campaignId}`;
 
   const items: SidebarItem[] =
@@ -568,6 +550,108 @@ function CampaignLevelSidebar({ orgId, brandId, campaignId, pathname }: {
   );
 }
 
+// Offer Level Sidebar — the level between the brand and its campaigns.
+//
+// It carries what a PROPOSITION owns: its Overview, the campaigns that sell it,
+// the audiences picked for it and the leads those audiences produced. All four
+// used to sit on the brand, where they pooled every offer under one heading.
+// Brand Settings is not here: identity, domain and the conversion snippet belong
+// to the brand, so they live in the sidebar the back-link leads to.
+function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
+  orgId: string;
+  brandId: string;
+  offerId: string;
+  pathname: string;
+}) {
+  const featureSlug = useSoleFeatureSlug();
+  const { isLoading: featuresLoading } = useFeatures();
+  const brandPath = `/orgs/${orgId}/brands/${brandId}`;
+  const basePath = `${brandPath}/offers/${offerId}`;
+  const revenueOk = isRevenueFeature(featureSlug);
+  // Campaigns — GA. Shown to every customer on a revenue feature; the staff
+  // preview gate and its beta badge are gone.
+  const campaignsOk = isRevenueFeature(featureSlug);
+  const defsReady = !featuresLoading;
+
+  const items: SidebarItem[] = [
+    ...(revenueOk
+      ? [
+          {
+            id: "overview",
+            label: "Overview",
+            href: basePath,
+            icon: <OverviewIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    ...(campaignsOk
+      ? [
+          {
+            id: "campaigns",
+            label: "Campaigns",
+            href: `${basePath}/campaigns`,
+            icon: <CampaignsIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    ...(revenueOk
+      ? [
+          {
+            id: "audiences",
+            label: "Audiences",
+            href: `${basePath}/audiences`,
+            icon: <AudiencesIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    ...(revenueOk
+      ? [
+          {
+            id: "audience-leads",
+            label: "Leads",
+            href: `${basePath}/audiences/leads`,
+            icon: <LeadsIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+  ];
+
+  return (
+    <SidebarSection
+      topSlot={<TenantSwitcher />}
+      backHref={brandPath}
+      backLabel="Brand"
+      footer={
+        <div className="border-t border-gray-100">
+          <ReferralCard />
+        </div>
+      }
+    >
+      {!defsReady ? (
+        <>
+          {[0, 1, 2].map((i) => (
+            <SidebarNavRowSkeleton key={`offer-${i}`} />
+          ))}
+        </>
+      ) : (
+        items.map((item) => (
+          <SidebarLink
+            key={item.id}
+            item={item}
+            isActive={
+              item.id === "overview"
+                ? pathname === basePath
+                : item.id === "audiences"
+                  ? pathname === item.href
+                  : pathname.startsWith(item.href)
+            }
+          />
+        ))
+      )}
+    </SidebarSection>
+  );
+}
+
 export function ContextSidebar() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -580,11 +664,21 @@ export function ContextSidebar() {
       return <OrgLevelSidebar orgId={level.orgId!} pathname={pathname} />;
     case "brand":
       return <BrandLevelSidebar orgId={level.orgId!} brandId={level.brandId!} pathname={pathname} />;
+    case "offer":
+      return (
+        <OfferLevelSidebar
+          orgId={level.orgId!}
+          brandId={level.brandId!}
+          offerId={level.offerId!}
+          pathname={pathname}
+        />
+      );
     case "campaign":
       return (
         <CampaignLevelSidebar
           orgId={level.orgId!}
           brandId={level.brandId!}
+          offerId={level.offerId!}
           campaignId={level.campaignId!}
           pathname={pathname}
         />

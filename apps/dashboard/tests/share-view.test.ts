@@ -173,6 +173,6 @@ describe("in-app links stay inside the share tree", () => {
   ])("%s prefixes its audience link", (file) => {
     const page = src(file);
     expect(page).toContain("const pathPrefix = useSharePathPrefix();");
-    expect(page).toContain("href={`${pathPrefix}/orgs/${orgId}/brands/${brandId}/audiences");
+    expect(page).toContain("href={`${pathPrefix}${tenantBasePath(orgId, brandId, offerId)}/audiences");
   });
 });

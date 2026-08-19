@@ -224,7 +224,9 @@ describe("brand-level audience reads name neither a funnel nor a goal", () => {
   const api = read("lib/api.ts");
 
   it("sends only the brandId from the Overview's Top-audiences card", () => {
-    expect(overview).toContain("fetchFeatureAudienceStats(featureSlug, { brandId })");
+    // `offerId` is a SCOPE (which audiences are priced), never a funnel or a goal
+    // (the chain they are priced through) — it is `undefined` at brand level.
+    expect(overview).toContain("fetchFeatureAudienceStats(featureSlug, { brandId, offerId })");
     // The goal mapping is gone from this page entirely.
     expect(overview).not.toContain("goalForOptimizationGoal");
     expect(overview).not.toContain("audienceStatsGoal");

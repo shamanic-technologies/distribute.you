@@ -33,7 +33,14 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     // features-service /revenue `spend` block — no client cost-breakdown fetch.
     expect(overview).not.toContain("getBrandCostBreakdown");
     expect(overview).not.toContain("costBreakdown={costData?.costs ?? []}");
-    expect(overview).toContain("dailyBudgetCents={budgetData?.dailyBudgetCents ?? null}");
+    // NULL at offer scope: a budget is funded per BRAND, so an offer has no ceiling
+    // of its own. Borrowing the brand's would put a denominator of a wider scope
+    // than the numerator beside it, and splitting it across the offers would invent
+    // a share nobody configured.
+    expect(overview).toContain(
+      "dailyBudgetCents={offerId ? null : budgetData?.dailyBudgetCents ?? null}",
+    );
+    expect(overview).toContain("budgetNote={");
     const section = read("components/revenue/revenue-overview-section.tsx");
     // The cost summary lives in the right-of-chart column, replacing the old
     // org/lead/event counters, fed by the revenue payload's spend block.
@@ -96,7 +103,7 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     const api = read("lib/api.ts");
     const audiencesCard = read("components/revenue/top-audiences-card.tsx");
     expect(overview).toContain("fetchFeatureAudienceStats");
-    expect(overview).toContain("listAudiences(brandId)");
+    expect(overview).toContain("listAudiences(brandId, { offerId })");
     expect(overview).toContain("featureAudienceStats");
     expect(overview).toContain("<TopAudiencesCard");
     expect(overview).toContain("audiences={audienceStatsRevealed ? activeAudiences : undefined}");

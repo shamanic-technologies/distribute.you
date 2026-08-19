@@ -47,6 +47,7 @@ function formatBudgetCents(cents: number): string {
 export function RevenueCostSummary({
   spend = null,
   dailyBudgetCents = null,
+  budgetNote,
   pending = false,
   costPending,
   todayCostPending,
@@ -57,6 +58,13 @@ export function RevenueCostSummary({
    *  pre-rollout payload → the figures render $0 / no sources. */
   spend?: Spend | null;
   dailyBudgetCents?: number | null;
+  /**
+   * Why there is no ceiling beside today's spend, when a caller knows the reason.
+   * Appended to the tip rather than shown as a warning: an absent denominator is
+   * not an error, but a reader who expects one is owed the reason instead of being
+   * left to wonder whether the figure failed to load.
+   */
+  budgetNote?: string;
   pending?: boolean;
   /** Reveal gate for the Total-spent figure when it resolves on a DIFFERENT chain
    *  than the revenue data. The feature Overview now sources spend from `/revenue`
@@ -112,7 +120,7 @@ export function RevenueCostSummary({
             <div className="min-w-0">
               <div className="flex items-center gap-1">
                 <p className="text-xs text-gray-400">Budget spent today</p>
-                <InfoTooltip tip={TODAY_SPENT_TIP} />
+                <InfoTooltip tip={budgetNote ? `${TODAY_SPENT_TIP} ${budgetNote}` : TODAY_SPENT_TIP} />
               </div>
               {budgetSpentPending ? (
                 <Skeleton className="mt-1 h-7 w-28" />

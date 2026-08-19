@@ -199,7 +199,7 @@ describe("Campaigns page (GA)", () => {
   // clutter was only how it showed. The empty state reads the same scoped set, or a
   // brand whose only campaigns belong to another feature would be told it has some.
   it("lists only the campaigns of the feature whose figures it renders", () => {
-    expect(table).toContain("campaigns.filter((c) => c.featureSlug === featureSlug)");
+    expect(table).toContain("c.featureSlug === featureSlug");
     expect(table).toContain('featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."');
     expect(table).not.toContain('campaigns.length === 0 ? "No campaigns yet."');
   });
