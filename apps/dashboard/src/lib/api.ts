@@ -3701,6 +3701,27 @@ export interface Lead {
   // runtime; typed optional so a not-yet-attributed lead renders "-".
   audienceId?: string | null;
   audience?: { id: string; name: string; avatarUrl: string | null } | null;
+  /**
+   * The OFFER this lead belongs to — the offer named by the CAMPAIGN it was
+   * served under, resolved by lead-service off the attribution it froze on the
+   * membership row. Read straight from the wire, never joined here: the
+   * dashboard holds neither the campaign→offer map nor the offer's name, and
+   * the Audience field above is the precedent for why a client-side join is the
+   * wrong layer even when it is possible.
+   *
+   * `null` = the campaign names no offer (a campaign that stopped before offers
+   * existed), or lead-service could not resolve one — it is fail-soft there, so
+   * an absent offer is "we could not say", never "there is none". Either way
+   * the section is dropped rather than showing a guess.
+   *
+   * `name` can be null on a present id: lead-service states the id it was given
+   * even when brand-service does not list the offer back. Render the id's
+   * section without a name rather than hiding a real attribution.
+   *
+   * Optional because `LeadDeliverySchema.passthrough()` keeps it at runtime and
+   * a lead read before lead-service v0.55.0 carries none.
+   */
+  offer?: { id: string; name: string | null } | null;
   lead: FullLead | null;
 }
 

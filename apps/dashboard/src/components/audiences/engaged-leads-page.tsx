@@ -284,6 +284,49 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
 // same as the brand-overview Top-3-audiences card), which opens that audience's
 // detail panel with its colored targeting tags. The link renders off `inline.id`,
 // so it is present even before / without the human-service lookup.
+/**
+ * The OFFER this lead belongs to — what it was contacted to be sold.
+ *
+ * It sits ABOVE the audience deliberately, and the order is the model: an offer
+ * is WHAT we were selling this person, an audience is WHY we picked them for
+ * it. The audience was chosen for the offer, so reading the panel top-down
+ * gives the proposition before the reason.
+ *
+ * Rendered straight from `lead.offer`, which lead-service resolves off the
+ * campaign the lead was served under. No client-side join — the dashboard holds
+ * neither the campaign-to-offer map nor the offer's name, and the audience card
+ * below is this repo's own precedent for why that join belongs upstream even
+ * where it is possible.
+ *
+ * A lead with no offer renders NOTHING rather than an empty card: lead-service
+ * is fail-soft here, so an absent offer means "we could not say" as often as
+ * "there is none", and a card reading `-` would assert the second.
+ *
+ * A present id with a null NAME still renders, without the name. The
+ * attribution is real and the link works; hiding it would lose a true fact over
+ * a missing label.
+ */
+function OfferSection({ offer }: { offer: { id: string; name: string | null } }) {
+  const params = useParams();
+  const orgId = params.orgId as string;
+  const brandId = params.brandId as string;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Offer</h3>
+      <p className="text-sm font-medium text-gray-800">
+        {offer.name ?? <span className="text-gray-500">Unnamed offer</span>}
+      </p>
+      <Link
+        href={`/orgs/${orgId}/brands/${brandId}/offers/${offer.id}`}
+        className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
+      >
+        View offer
+      </Link>
+    </div>
+  );
+}
+
 function AudienceSection({
   inline,
   full,
@@ -1303,6 +1346,7 @@ export function EngagedLeadsPage({
                 </div>
               </div>
             )}
+            {selectedLead.offer && <OfferSection offer={selectedLead.offer} />}
             {selectedAudienceInline && (
               <AudienceSection inline={selectedAudienceInline} full={selectedAudienceFull} />
             )}
