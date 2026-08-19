@@ -1,0 +1,355 @@
+/* ===========================================================================
+   DEPTH — the vertical world every distribute page is a cross-section of.
+
+   A page is read top to bottom as a descent. The top is the sky: light, warm,
+   open, where the fruit already hangs. The bottom is the soil: dark, dense,
+   where a seed is planted. The product is the tree between them, and the last
+   thing a reader meets on any page is the ground they plant in — which is why
+   the final call to action lives in the dark, not in a bright band bolted to
+   the footer.
+
+   Two mechanisms, and they are deliberately separate:
+
+   1. The BODY carries one continuous gradient from sky to soil. That is what
+      makes the descent feel like a single move rather than eleven stacked
+      bands. Sections are transparent and simply sit on it.
+
+   2. A section declares WHICH STRATUM it is in (`data-strata`), and that
+      remaps the surface tokens — panel, line, text, muted — the way the
+      dashboard's `html.dark` layer remaps Tailwind utilities. Without this a
+      white card renders on black soil and glares; with it, one attribute on a
+      <section> re-skins everything inside it.
+
+   Why strata rather than interpolating every token off a 0..1 depth: text and
+   its background do NOT interpolate together. A mid-depth blend gives grey ink
+   on a grey field, which is unreadable exactly where the argument gets
+   technical. The strata are hand-picked for contrast; the gradient between
+   them is what carries the continuity.
+
+   The single light-to-dark flip happens at the TRUNK. One decisive crossing
+   reads as "we went underground"; a slow eleven-step fade reads as a bug.
+   =========================================================================== */
+
+:root {
+  /* The two ends of the world. Everything else is picked between them. */
+  --sky: #fdfcfa;
+  --soil: #080b11;
+
+  /* Sap. The accent rises through every stratum unchanged, which is the point:
+     it is the one thing that connects the seed to the fruit. Blue #2563eb is
+     the charter accent (green is retired fleet-wide). */
+  --sap: #2563eb;
+  --sap-bright: #3b82f6;
+  --sap-glow: rgba(37, 99, 235, 0.14);
+}
+
+/* ---------------------------------------------------------------------------
+   1. The descent itself.
+
+   Stops are placed against where the strata actually sit on a page, not evenly:
+   the light half is given more room because most of the reading happens there,
+   and the crossing at ~50% is compressed so it reads as a horizon rather than a
+   long smear. The gradient scrolls with the page on purpose: pinning it to the
+   viewport would decouple it from the scroll, which is the whole effect, and
+   that pinning is broken on iOS besides.
+--------------------------------------------------------------------------- */
+body.depth {
+  background:
+    /* the sun, top right, above everything */
+    radial-gradient(circle at 76% 2%, rgba(255, 236, 189, 0.5), transparent 32rem),
+    /* the descent */
+    linear-gradient(
+      180deg,
+      #fdfcfa 0%,
+      #f8f9fc 12%,
+      #f1f5fb 24%,
+      #e7eef8 36%,
+      #cdd8ea 44%,
+      #a8b6cf 48%,
+      #5d6c8c 50.5%,
+      #33405c 52%,
+      #262f45 55%,
+      #182032 66%,
+      #101625 80%,
+      #080b11 100%
+    ),
+    var(--sky);
+  background-repeat: no-repeat;
+  background-size: 100% 100vh, 100% 100%, auto;
+  background-attachment: scroll;
+}
+
+/* ---------------------------------------------------------------------------
+   2. The strata.
+
+   Each remaps the surface tokens the page's own components already read, so a
+   card, a table or an input needs no depth-specific class of its own. Adding a
+   new component costs nothing; putting it in a new stratum costs one attribute.
+
+   Order, and what each one owns on a page:
+     sky      the dream. What you get. Nothing technical.
+     canopy   the spread. Every channel, as fruit on the tree.
+     branch   the mechanism. One API, many limbs.
+     trunk    the price. The crossing into the dark.
+     root     the proof. Our own measured data.
+     soil     the offer. Where the seed goes.
+--------------------------------------------------------------------------- */
+
+[data-strata] {
+  background: transparent;
+  color: var(--text);
+  position: relative;
+  isolation: isolate;
+}
+
+[data-strata="sky"] {
+  --panel: #ffffff;
+  --panel-2: #fbfcfe;
+  --line: #e6e9f1;
+  --line-soft: #eff2f7;
+  --text: #12151d;
+  --muted: #5a6478;
+  --faint: #8b93a5;
+  --shadow: 0 24px 60px rgba(20, 30, 60, 0.1);
+}
+
+[data-strata="canopy"] {
+  --panel: #ffffff;
+  --panel-2: #f7faff;
+  --line: #dfe6f2;
+  --line-soft: #eaeff8;
+  --text: #12151d;
+  --muted: #566078;
+  --faint: #858ea3;
+  --shadow: 0 24px 60px rgba(20, 30, 60, 0.11);
+}
+
+[data-strata="branch"] {
+  --panel: #ffffff;
+  --panel-2: #f3f7fd;
+  --line: #d5dfef;
+  --line-soft: #e4ebf6;
+  --text: #101420;
+  --muted: #505b73;
+  --faint: #7e8799;
+  --shadow: 0 26px 64px rgba(18, 28, 58, 0.13);
+}
+
+/* The crossing. Ink flips here, so every token below is a dark-surface token. */
+[data-strata="trunk"] {
+  --panel: #232d42;
+  --panel-2: #1c2537;
+  --line: #35415c;
+  --line-soft: #2b344a;
+  --text: #eef1f8;
+  --muted: #a5b0c7;
+  --faint: #7c879e;
+  --shadow: 0 26px 70px rgba(0, 0, 0, 0.4);
+}
+
+[data-strata="root"] {
+  --panel: #1a2233;
+  --panel-2: #141b29;
+  --line: #2c3549;
+  --line-soft: #232b3c;
+  --text: #e8edf7;
+  --muted: #9aa5bd;
+  --faint: #727d94;
+  --shadow: 0 26px 70px rgba(0, 0, 0, 0.5);
+}
+
+[data-strata="soil"] {
+  --panel: #121826;
+  --panel-2: #0d1220;
+  --line: #242c3e;
+  --line-soft: #1b2231;
+  --text: #f2f5fb;
+  --muted: #98a3ba;
+  --faint: #6d788f;
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+   3. Motifs.
+
+   One per stratum, all pure CSS — no image asset, because the homepage carries
+   its stylesheet inline and a request per band would cost more than the effect
+   is worth. Every motif is `pointer-events:none`, sits at z-index -1 under the
+   section's own content, and is hidden from assistive tech.
+
+   `prefers-reduced-motion` does not apply (nothing animates); `forced-colors`
+   drops them entirely, since a decorative field has no meaning to preserve.
+--------------------------------------------------------------------------- */
+
+[data-strata]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Sky — light grain, densest near the sun. */
+[data-strata="sky"]::before {
+  background:
+    radial-gradient(circle at 78% 6%, rgba(255, 228, 168, 0.34), transparent 22rem),
+    radial-gradient(circle at 14% 30%, rgba(37, 99, 235, 0.05), transparent 26rem);
+}
+
+/* Canopy — leaf veins: two fine diagonal families crossing. */
+[data-strata="canopy"]::before {
+  background-image:
+    repeating-linear-gradient(
+      58deg,
+      rgba(37, 99, 235, 0.13) 0 1px,
+      transparent 1px 46px
+    ),
+    repeating-linear-gradient(
+      -58deg,
+      rgba(37, 99, 235, 0.09) 0 1px,
+      transparent 1px 46px
+    );
+}
+
+/* Branch — limbs: sparse, wider, more vertical than the canopy. */
+[data-strata="branch"]::before {
+  background-image:
+    repeating-linear-gradient(
+      74deg,
+      rgba(37, 99, 235, 0.14) 0 1px,
+      transparent 1px 86px
+    ),
+    repeating-linear-gradient(
+      -74deg,
+      rgba(37, 99, 235, 0.09) 0 1px,
+      transparent 1px 120px
+    );
+}
+
+/* Trunk — wood grain: vertical, irregular by using three different periods. */
+[data-strata="trunk"]::before {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.075) 0 1px,
+      transparent 1px 23px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05) 0 1px,
+      transparent 1px 61px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(37, 99, 235, 0.16) 0 2px,
+      transparent 2px 149px
+    );
+}
+
+/* Root — a branching network: radials of decreasing size, off-grid. */
+[data-strata="root"]::before {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.26), transparent 14rem),
+    radial-gradient(circle at 68% 44%, rgba(37, 99, 235, 0.19), transparent 18rem),
+    radial-gradient(circle at 34% 82%, rgba(37, 99, 235, 0.15), transparent 12rem),
+    repeating-linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.045) 0 1px,
+      transparent 1px 38px
+    );
+}
+
+/* Soil — dense, close, almost nothing gets through. One warm point of sap
+   marks where the seed goes. */
+[data-strata="soil"]::before {
+  background-image:
+    radial-gradient(circle at 50% 88%, var(--sap-glow), transparent 20rem),
+    repeating-linear-gradient(
+      116deg,
+      rgba(255, 255, 255, 0.03) 0 1px,
+      transparent 1px 17px
+    ),
+    repeating-linear-gradient(
+      -116deg,
+      rgba(255, 255, 255, 0.025) 0 1px,
+      transparent 1px 29px
+    );
+}
+
+@media (forced-colors: active) {
+  [data-strata]::before {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   4. The horizon.
+
+   The one place the descent is stated rather than felt: a hairline where the
+   light half ends. Put it on the FIRST dark stratum of a page, whichever that
+   is, so a page with a different section order still marks its own crossing.
+--------------------------------------------------------------------------- */
+.horizon {
+  position: relative;
+}
+.horizon::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(37, 99, 235, 0.55) 22%,
+    rgba(255, 236, 189, 0.65) 50%,
+    rgba(37, 99, 235, 0.55) 78%,
+    transparent
+  );
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   5. The seed.
+
+   The terminal call to action on every page. Not a button in a band: a point
+   in the ground, with the sap glowing under it.
+--------------------------------------------------------------------------- */
+.seed {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 30px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--sap-bright), var(--sap));
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.09) inset,
+    0 14px 40px rgba(37, 99, 235, 0.42),
+    0 0 90px rgba(37, 99, 235, 0.22);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.seed:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+    0 18px 50px rgba(37, 99, 235, 0.5),
+    0 0 120px rgba(37, 99, 235, 0.3);
+}
+.seed:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seed {
+    transition: none;
+  }
+  .seed:hover {
+    transform: none;
+  }
+}
