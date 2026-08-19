@@ -170,3 +170,21 @@ describe("the sap", () => {
   });
 
 });
+
+describe("legibility below the crossing", () => {
+  // Measured in a real browser against each stratum's own panel. These are the
+  // floors those measurements have to keep clearing, so a future tweak to a
+  // token cannot quietly drop the dark half back under the bar.
+  it("keeps the quietest ink above the small-text bar", () => {
+    // `--faint` carries real copy — the microcopy under a call to action, the
+    // hint under a stat — at around 10px. AA-large is not the bar for that, and
+    // the dark strata sat at 3.8-4.0 before this.
+    for (const stratum of ["trunk", "root", "soil"]) {
+      const at = css.indexOf(`[data-strata="${stratum}"] {`);
+      const block = css.slice(at, css.indexOf("}", at));
+      expect(block, `${stratum} left --faint under the bar`).toContain(
+        "--faint: #8b95ab",
+      );
+    }
+  });
+});

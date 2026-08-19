@@ -140,37 +140,59 @@
   --shadow: 0 26px 64px rgba(18, 28, 58, 0.13);
 }
 
+/* The ACCENT is remapped below the crossing for the same reason the surfaces
+   are: the charter blue is #2563eb, which measures 2.66:1 on the trunk and
+   fails even the large-text bar, so every eyebrow and every accented word in
+   the dark half was unreadable. #60a5fa clears AA on all three dark strata
+   (5.4 / 6.3 / 7.0). It is remapped under the name the pages ALREADY read —
+   `--green`, a variable whose name is historical and whose value has been blue
+   since the charter changed — exactly as `--panel` and `--text` are, so no page
+   needs a depth-specific rule of its own. The hue does not move; only the
+   lightness does, so the sap still reads as one colour top to bottom. */
+
 /* The crossing. Ink flips here, so every token below is a dark-surface token. */
 [data-strata="trunk"] {
+  --green: #60a5fa;
+  --green-bright: #93c5fd;
+  --green-line: rgba(96, 165, 250, 0.34);
+  --green-dim: rgba(96, 165, 250, 0.14);
   --panel: #232d42;
   --panel-2: #1c2537;
   --line: #35415c;
   --line-soft: #2b344a;
   --text: #eef1f8;
   --muted: #a5b0c7;
-  --faint: #7c879e;
+  --faint: #8b95ab;
   --shadow: 0 26px 70px rgba(0, 0, 0, 0.4);
 }
 
 [data-strata="root"] {
+  --green: #60a5fa;
+  --green-bright: #93c5fd;
+  --green-line: rgba(96, 165, 250, 0.34);
+  --green-dim: rgba(96, 165, 250, 0.14);
   --panel: #1a2233;
   --panel-2: #141b29;
   --line: #2c3549;
   --line-soft: #232b3c;
   --text: #e8edf7;
   --muted: #9aa5bd;
-  --faint: #727d94;
+  --faint: #8b95ab;
   --shadow: 0 26px 70px rgba(0, 0, 0, 0.5);
 }
 
 [data-strata="soil"] {
+  --green: #60a5fa;
+  --green-bright: #93c5fd;
+  --green-line: rgba(96, 165, 250, 0.34);
+  --green-dim: rgba(96, 165, 250, 0.14);
   --panel: #121826;
   --panel-2: #0d1220;
   --line: #242c3e;
   --line-soft: #1b2231;
   --text: #f2f5fb;
   --muted: #98a3ba;
-  --faint: #6d788f;
+  --faint: #8b95ab;
   --shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
 }
 
