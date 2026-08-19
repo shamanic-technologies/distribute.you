@@ -725,13 +725,25 @@ describe("Sales Funnels card", () => {
     expect(src).not.toContain("MaturityBadge");
   });
 
-  // brand-service stores the declared set and each funnel's own economics, so
-  // the card persists what the brand states. The preview framing is gone.
-  it("persists a funnel through the brand-service funnel routes", () => {
-    expect(src).toContain("declareBrandSalesFunnel");
-    expect(src).toContain("undeclareBrandSalesFunnel");
-    expect(src).toContain("getBrandSalesFunnels");
+  // brand-service stores the declared set and each funnel's own economics PER
+  // OFFER, so the card persists what the offer states. The brand-scoped routes
+  // resolve to whichever offer the service picks and 409 SEVERAL_OFFERS once a
+  // brand has two, so a page that names one offer must never reach for them.
+  it("persists a funnel through the OFFER funnel routes, never the brand ones", () => {
+    expect(src).toContain("getOfferSalesFunnels(brandId, offerId)");
+    expect(src).toContain("declareOfferSalesFunnel(brandId, offerId, vars.def.key, vars.patch)");
+    expect(src).toContain("undeclareOfferSalesFunnel(brandId, offerId, vars.def.key)");
+    expect(src).not.toContain("declareBrandSalesFunnel");
+    expect(src).not.toContain("undeclareBrandSalesFunnel");
+    expect(src).not.toContain("getBrandSalesFunnels");
     expect(src).not.toContain("Preview only");
+  });
+
+  // Two propositions of one brand sell through different funnels at different
+  // rates. Sharing a cache entry would paint the sibling offer's funnels here.
+  it("carries the offer in every funnel query key", () => {
+    expect(src).toContain('["offerSalesFunnels", brandId, offerId]');
+    expect(src).not.toContain('["brandSalesFunnels", brandId]');
   });
 
   // The brand-level writers hold ONE lifetime revenue and ONE destination for
@@ -813,8 +825,12 @@ describe("Sales Funnels card", () => {
   // An unlisted root is default-OFF, so the card would cold-skeleton on every
   // visit instead of painting from disk like the rest of the page.
   it("persists its own query root", () => {
-    expect(src).toContain('["brandSalesFunnels", brandId]');
-    expect(read("../src/lib/persist-cache.ts")).toContain('"brandSalesFunnels"');
+    expect(src).toContain('["offerSalesFunnels", brandId, offerId]');
+    const persist = read("../src/lib/persist-cache.ts");
+    expect(persist).toContain('"offerSalesFunnels"');
+    // The brand-scoped root went with the card's last brand-scoped read. A root
+    // no query writes is dead weight the persister still sweeps.
+    expect(persist).not.toContain('"brandSalesFunnels"');
   });
 
   // Several funnels run at once and none outranks another; ordering them is a
@@ -920,20 +936,38 @@ describe("Sales Funnels card", () => {
 
   // It REPLACED the two flat sections rather than sitting under them: a funnel
   // owns the rates, the lifetime revenue and the landing page they held one set
-  // at a time for the whole brand.
-  it("is the brand settings page's only sales-economics surface", () => {
+  // at a time for the whole brand. And it sits on OFFER Settings now, because
+  // what a funnel is worth is a fact about the proposition, not the identity.
+  it("is the offer settings page's only sales-economics surface", () => {
     const page = read(
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]/settings/page.tsx",
     );
-    expect(page).toContain("<BrandSalesFunnelsCard brandId={brandId} />");
+    expect(page).toContain("<BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />");
+    expect(page).toContain("<BrandOfferCard brandId={brandId} offerId={offerId} />");
     expect(page).not.toContain("BrandSalesEconomicsCard");
     expect(page).not.toContain("BrandClickDestinationCard");
     expect(page).not.toContain("Sales Economics");
-    // Channels sit under the funnels they feed. Anchored on the JSX, since the
-    // import lines carry both names above everything they render.
-    expect(page.indexOf("<BrandAcquisitionChannelsCard />")).toBeGreaterThan(
-      page.indexOf("<BrandSalesFunnelsCard brandId={brandId} />"),
+  });
+
+  // Brand Settings holds identity only: the domain and the conversion-tracking
+  // snippet. Everything about what the brand SELLS moved down a level.
+  it("is gone from brand Settings, which keeps identity only", () => {
+    const page = read(
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
     );
+    expect(page).not.toContain("BrandSalesFunnelsCard");
+    expect(page).not.toContain("BrandOfferCard");
+    expect(page).not.toContain("BrandAcquisitionChannelsCard");
+    expect(page).toContain("<BrandDomainCard brandId={brandId} />");
+    expect(page).toContain("<BrandConversionTrackingCard brandId={brandId} />");
+  });
+
+  // The offer sidebar is the only way in, so a page with no entry is a page
+  // nobody reaches.
+  it("is reachable from the offer sidebar", () => {
+    const sidebar = read("../src/components/context-sidebar.tsx");
+    expect(sidebar).toContain('id: "offer-settings"');
+    expect(sidebar).toContain('label: "Offer Settings"');
   });
 });
 
@@ -1027,7 +1061,19 @@ describe("the Sales Funnels card funds each funnel", () => {
     // sells, billing says how much it is funded. The card composes both.
     expect(src).toContain('["brandFunnelBudgets", brandId]');
     expect(src).toContain("getBrandFunnelBudgets(brandId)");
-    expect(src).toContain("getBrandFunnelBudgets(brandId)");
+  });
+
+  // billing keys a ceiling on (org, brand, funnel, acquisition channel) and has
+  // no offer dimension. The funnel DECLARATION moved to the offer; the money did
+  // not, and an offer-scoped budget route invented here would write nowhere.
+  it("keeps the money brand-scoped while the declaration is offer-scoped", () => {
+    expect(src).toContain("saveBrandFunnelBudget(");
+    expect(src).not.toContain("saveOfferFunnelBudget");
+    expect(src).not.toContain("getOfferFunnelBudgets");
+    // Still one write per channel that MOVED, in sequence, so funding one
+    // channel never re-states its sibling's ceiling.
+    expect(src).toContain("move.featureSlug");
+    expect(src).toContain("(m) => m.cents !== (state.savedCentsByChannel[m.featureSlug] ?? 0)");
   });
 
   it("keeps the ceiling OUT of the funnel patch", () => {

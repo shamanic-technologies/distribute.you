@@ -150,23 +150,41 @@ describe("the offer card wires both buttons", () => {
     expect(body).not.toContain("SERVICES_PREFILL_KEYS");
   });
 
-  it("is always editable — Brand Settings is the authed edit surface", () => {
+  it("is always editable — Offer Settings is the authed edit surface", () => {
     // The card moved here from the retired Strategy page, whose campaign
-    // (preview, no writer) branch died with it. On Brand Settings there is no
+    // (preview, no writer) branch died with it. On Offer Settings there is no
     // campaign scope, so the buttons always render and Save is always offered
     // when dirty.
     expect(page).not.toContain("campaignScoped");
     expect(page).toContain("PrefillButton");
   });
 
+  // The 7 fields are what an OFFER promises, so they are read and written on the
+  // offer's own routes under a key carrying the offer. The brand-scoped routes
+  // have one place to put them, which is one place too few once a brand sells two
+  // propositions.
+  it("reads and writes the user-fields offer-scoped", () => {
+    expect(page).toContain("getOfferUserFields(brandId, offerId)");
+    expect(page).toContain("saveOfferUserFields(brandId, offerId, profileToUserFieldsPayload(fields))");
+    expect(page).toContain('["offerUserFields", brandId, offerId]');
+    expect(page).not.toContain("getBrandUserFields");
+    expect(page).not.toContain('["brandUserFields", brandId]');
+  });
+
+  // The extraction reads the brand's WEBSITE, which is brand identity and has no
+  // per-offer answer. What comes back lands in this offer's draft.
+  it("keeps the website extraction brand-scoped", () => {
+    expect(page).toContain("extractBrandFields([brandId]");
+  });
+
   it("confirms dirty services before generating the levers", () => {
-    // brand-service injects the brand's CONFIRMED fields as authoritative context, so
+    // brand-service injects the CONFIRMED fields as authoritative context, so
     // services typed but not saved are invisible to the generation.
     const at = page.indexOf("const prefillLeversMut");
     expect(at).toBeGreaterThan(-1);
     const body = page.slice(at, at + 900);
     expect(body).toContain("if (servicesDirty)");
-    expect(body).toContain("saveBrandUserFields(brandId, { services: draftServices })");
+    expect(body).toContain("saveOfferUserFields(brandId, offerId, { services: draftServices })");
   });
 
   it("never renders a backend error message to the user", () => {
