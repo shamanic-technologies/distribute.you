@@ -100,6 +100,45 @@ export function channelsForFunnel(
 }
 
 /**
+ * ONE campaign's own ceiling: what the brand funds (funnel, channel, offer) at.
+ *
+ * This is the narrowing, and it lives here alone because two surfaces read it —
+ * Offer Settings edits every channel of a funnel, Campaign Settings edits the one
+ * channel its campaign runs, and a second copy is how they would start disagreeing
+ * about the same campaign's money.
+ *
+ * `pairCents` is billing's per-pair figure, which spans every offer selling that
+ * pair. The narrowing is deliberately conservative, and every branch of it lands
+ * on that figure for a brand with one offer:
+ *
+ *   - no offer grain served, or no caller offer → the pair figure, unchanged;
+ *   - a row for THIS offer → that row;
+ *   - no row for this offer but exactly one for the pair carrying NO offer →
+ *     that row, because a ceiling stated before the dimension existed is the
+ *     money of the brand's only offer (and equals the pair figure anyway);
+ *   - otherwise the pair is funded, for other offers → zero for this one.
+ */
+export function offerScopedCents(
+  funnelKey: SalesFunnelKey,
+  featureSlug: string,
+  pairCents: number,
+  offerRows: FunnelOfferBudgetRow[] | undefined,
+  offerId: string | undefined,
+): number {
+  if (offerRows === undefined || offerId === undefined) return pairCents;
+  const pairRows = offerRows.filter(
+    (r) => namesFunnel(r.funnelKey, funnelKey) && r.featureSlug === featureSlug,
+  );
+  if (pairRows.length === 0) return pairCents;
+  const exact = pairRows.find((r) => r.offerId === offerId);
+  if (exact) return exact.dailyBudgetCents;
+  if (pairRows.length === 1 && pairRows[0].offerId === null) {
+    return pairRows[0].dailyBudgetCents;
+  }
+  return 0;
+}
+
+/**
  * What the brand funds each of this funnel's channels at.
  *
  * `rows` is billing's per-pair grain. A channel with no row is not funded, which
@@ -116,15 +155,8 @@ export function channelsForFunnel(
  * what the card edits: two offers selling the same funnel on the same channel
  * are two campaigns funded separately, and the pair figure is their sum, so
  * showing it under one offer's name would offer to spend the sibling's money.
- * The narrowing is deliberately conservative, and every branch of it lands on
- * today's pair figure for a brand with one offer:
- *
- *   - no offer grain served, or no caller offer → the pair figure, unchanged;
- *   - a row for THIS offer → that row;
- *   - no row for this offer but exactly one for the pair carrying NO offer →
- *     that row, because a ceiling stated before the dimension existed is the
- *     money of the brand's only offer (and equals the pair figure anyway);
- *   - otherwise the pair is funded, for other offers → zero for this one.
+ * `offerScopedCents` above holds that narrowing, so Campaign Settings reads the
+ * very same rule for the one channel it edits.
  */
 export function funnelChannelBudgets(
   funnelKey: SalesFunnelKey,
@@ -145,22 +177,16 @@ export function funnelChannelBudgets(
       .filter((r) => namesFunnel(r.funnelKey, funnelKey))
       .map((r) => [r.featureSlug, r.dailyBudgetCents]),
   );
-  const mine =
-    offerRows === undefined || offerId === undefined
-      ? undefined
-      : offerRows.filter((r) => namesFunnel(r.funnelKey, funnelKey));
-  return offerable.map((channel) => {
-    const pairCents = byChannel.get(channel.featureSlug) ?? 0;
-    if (mine === undefined) return { channel, savedCents: pairCents };
-    const pairRows = mine.filter((r) => r.featureSlug === channel.featureSlug);
-    if (pairRows.length === 0) return { channel, savedCents: pairCents };
-    const exact = pairRows.find((r) => r.offerId === offerId);
-    if (exact) return { channel, savedCents: exact.dailyBudgetCents };
-    if (pairRows.length === 1 && pairRows[0].offerId === null) {
-      return { channel, savedCents: pairRows[0].dailyBudgetCents };
-    }
-    return { channel, savedCents: 0 };
-  });
+  return offerable.map((channel) => ({
+    channel,
+    savedCents: offerScopedCents(
+      funnelKey,
+      channel.featureSlug,
+      byChannel.get(channel.featureSlug) ?? 0,
+      offerRows,
+      offerId,
+    ),
+  }));
 }
 
 /**

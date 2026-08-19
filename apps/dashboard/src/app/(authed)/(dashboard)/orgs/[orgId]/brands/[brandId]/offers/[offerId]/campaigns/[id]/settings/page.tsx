@@ -5,13 +5,14 @@ import { DashboardPage } from "@/components/dashboard-page";
 import { CampaignSettingsCard } from "@/components/settings/campaign-settings-card";
 
 /**
- * Campaign Settings — the sibling of Offer Settings, one level down.
+ * Campaign Settings — the money, and only the money.
  *
- * The offer states what the proposition promises and how it is sold; a campaign
- * states only the four things campaign-service stores per campaign, and each of
- * those can be left unstated so the brand's answer is used instead. The card
- * carries the whole argument for what is here and what deliberately is not; the
- * page just names the scope once so nothing inside can drift onto another one.
+ * A campaign is (offer x sales funnel x acquisition channel), so what it SAYS and
+ * who it says it to are statements about the offer, which has its own Settings
+ * page. What is left, and what is genuinely per-campaign, is what it may spend in
+ * a day — including nothing, which is how a customer stops one. The card carries
+ * the whole argument; the page names the scope once so nothing inside can drift
+ * onto another one.
  */
 export default function CampaignSettingsPage() {
   const params = useParams();
@@ -23,8 +24,8 @@ export default function CampaignSettingsPage() {
     <DashboardPage width="wide">
       <h1 className="mb-2 text-2xl font-semibold text-gray-900">Campaign Settings</h1>
       <p className="mb-8 text-sm text-gray-500">
-        Anything you leave unset here follows the brand, so a campaign only has to state what it
-        does differently.
+        What this campaign may spend in a day. Everything it says, and who it says it to, is stated
+        once on Offer Settings.
       </p>
 
       <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={campaignId} />
