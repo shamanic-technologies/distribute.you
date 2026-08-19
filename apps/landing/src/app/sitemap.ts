@@ -1,6 +1,14 @@
 import { MetadataRoute } from "next";
 import { PROD_URLS } from "@/lib/env-urls";
 import { listArticles } from "@/lib/blog/db";
+import {
+  allFunnels,
+  allPairs,
+  channelPath,
+  fetchChannelCatalogue,
+  funnelPath,
+  pairPath,
+} from "@/lib/channel-catalogue";
 
 // Sitemap is generated at build time. When DATABASE_URL is not configured
 // (e.g. CI build runners without a Neon binding) we skip article rows
@@ -100,5 +108,46 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticEntries, ...articleEntries];
+  // The channel catalogue is DERIVED, never listed by hand. It is ~150 pages
+  // today and grows every time features-service publishes a channel or
+  // brand-service ships a sales funnel, so a hardcoded list would be stale the
+  // day after it was written — which is exactly how the static block above
+  // drifted before. Deriving it means a new channel is indexable the moment it
+  // is published, with no edit here.
+  //
+  // Fail-soft on purpose, and only here: an unreachable producer at BUILD time
+  // would otherwise abort the whole prerender, taking every unrelated page's
+  // sitemap row with it. A crawler rediscovers these on the next deploy. This
+  // is the same carve-out the article rows above take.
+  let catalogueEntries: MetadataRoute.Sitemap = [];
+  try {
+    const { channels } = await fetchChannelCatalogue();
+    catalogueEntries = [
+      ...channels.map((c) => ({
+        url: `${baseUrl}${channelPath(c.slug)}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      })),
+      ...allFunnels(channels).map((f) => ({
+        url: `${baseUrl}${funnelPath(f.key)}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      })),
+      ...allPairs(channels).map(({ channel, funnel }) => ({
+        url: `${baseUrl}${pairPath(channel.slug, funnel.key)}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      })),
+    ];
+  } catch (error) {
+    console.error(
+      "[landing] channel catalogue unavailable, sitemap ships without it",
+      error,
+    );
+  }
+
+  return [...staticEntries, ...articleEntries, ...catalogueEntries];
 }
