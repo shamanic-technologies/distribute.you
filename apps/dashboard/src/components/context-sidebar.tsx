@@ -213,6 +213,21 @@ const LeadsIcon = () => (
   </svg>
 );
 
+/**
+ * The offers nav mark — a TAG, matching the tile the tenant switcher draws for
+ * an offer. The same thing wears the same mark wherever it appears, or the
+ * switcher and the sidebar read as two products. Heroicons outline here rather
+ * than the switcher's Phosphor duotone, because this is a nav glyph beside
+ * other nav glyphs: the repo picks its icon set by ROLE, and a control takes
+ * the single-weight set.
+ */
+const OffersIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 6h.008v.008H6V6z" />
+  </svg>
+);
+
 const CampaignsIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
@@ -386,6 +401,20 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
             label: "Overview",
             href: explicitHierarchyHref(basePath),
             icon: <OverviewIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    // OFFERS — the brand's own list, directly under Overview. It is to the brand
+    // what Campaigns is to an offer: the Overview carries the table beneath its
+    // chart, and this gives the same table a page of its own. One COMPONENT
+    // serves both, so a row cannot read one way here and another there.
+    ...(revenueOk
+      ? [
+          {
+            id: "brand-offers",
+            label: "Offers",
+            href: `${basePath}/offers`,
+            icon: <OffersIcon />,
           } satisfies SidebarItem,
         ]
       : []),
