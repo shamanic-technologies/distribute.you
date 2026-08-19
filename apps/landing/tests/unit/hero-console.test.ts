@@ -22,7 +22,10 @@ const staticHtmlSrc = fs.readFileSync(staticHtmlPath, "utf-8");
 // the pipeline story instead of selling. The #stack section further down uses
 // the same acronyms deliberately, so a file-wide guard would assert something
 // this change does not mean.
-const heroStart = html.indexOf('<section class="hero">');
+// Anchored on the opening of the tag, not the whole of it: the section carries
+// a depth stratum now, and a guard that pins every attribute breaks the moment
+// one is added for a reason that has nothing to do with what it guards.
+const heroStart = html.indexOf('<section class="hero"');
 const hero = html.slice(heroStart, html.indexOf("</section>", heroStart));
 
 describe("heroMonthlyOutcomes", () => {

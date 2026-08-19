@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { URLS } from "@distribute/content";
+import {
+  channelPath,
+  fetchChannelCatalogue,
+  groupChannelsByFamily,
+} from "@/lib/channel-catalogue";
+import { channelMark, OWN_MARK_SRC, vendorLogoUrl } from "@/lib/channel-marks";
 
 interface BestPublicMetric {
   workflowSlug: string;
@@ -1009,10 +1015,99 @@ async function withCacBoot(html: string) {
     );
 }
 
+// The constellation: every acquisition channel we can run, drawn as one field
+// of marks. It is the section that makes "one API, every channel" a thing you
+// can SEE rather than a claim, so it is built from the live catalogue and never
+// from a hand-kept list — a channel published tomorrow appears with no edit
+// here, and one we retire disappears.
+//
+// Grouped by family, because "34 logos" is a wall and "we reach them one to
+// one / we buy their attention / we earn their attention" is an argument.
+const CONSTELLATION_TOKEN = "__CONSTELLATION__";
+const CONSTELLATION_MARK_PX = 28;
+
+function constellationMark(channel: { slug: string; name: string }): string {
+  const mark = channelMark(channel.slug);
+  if (mark.kind === "vendor") {
+    const url = vendorLogoUrl(mark.domain, CONSTELLATION_MARK_PX);
+    if (url) {
+      return `<img class="cst-logo" src="${escapeHtml(url)}" alt="" width="${CONSTELLATION_MARK_PX}" height="${CONSTELLATION_MARK_PX}" loading="lazy" decoding="async">`;
+    }
+  }
+  // Ours, or a vendor whose logo we cannot sign for. Either way our own mark is
+  // the honest one: a broken image would read as a channel we cannot run.
+  return `<img class="cst-logo cst-own" src="${OWN_MARK_SRC}" alt="" width="${CONSTELLATION_MARK_PX}" height="${CONSTELLATION_MARK_PX}" loading="lazy" decoding="async">`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function withConstellation(html: string): Promise<string> {
+  if (!html.includes(CONSTELLATION_TOKEN)) return html;
+  // A homepage that rendered an empty constellation would advertise that we run
+  // no channels at all, so anything short of a usable catalogue removes the
+  // section instead.
+  //
+  // The guard covers the SHAPE, not only the transport. A producer answering
+  // 200 with a body we did not expect is indistinguishable from an outage as
+  // far as this section is concerned, and letting it through threw on the
+  // grouping and took the whole homepage down with it — the request had
+  // succeeded, so a catch around the fetch alone never saw it.
+  const groups = await fetchChannelCatalogue()
+    .then((catalogue) => {
+      if (!Array.isArray(catalogue?.channels) || catalogue.channels.length === 0) {
+        throw new Error(
+          `[landing] channel catalogue returned no usable channels`,
+        );
+      }
+      return groupChannelsByFamily(catalogue.channels);
+    })
+    .catch((error) => {
+      console.error(
+        "[landing] channel catalogue unavailable, omitting the constellation",
+        error,
+      );
+      return null;
+    });
+  if (!groups) return html.replaceAll(CONSTELLATION_TOKEN, "");
+  const channelCount = groups.reduce((n, g) => n + g.channels.length, 0);
+  const body = groups
+    .map(
+      (group) => `
+        <div class="cst-group">
+          <h3>${escapeHtml(group.label)}</h3>
+          <p>${escapeHtml(group.blurb)}</p>
+          <ul class="cst-row">
+            ${group.channels
+              .map(
+                (c) => `<li><a class="cst-item" href="${escapeHtml(channelPath(c.slug))}">
+                  <span class="cst-tile">${constellationMark(c)}</span>
+                  <span class="cst-name">${escapeHtml(c.name)}</span>
+                </a></li>`,
+              )
+              .join("")}
+          </ul>
+        </div>`,
+    )
+    .join("");
+
+  return html.replaceAll(
+    CONSTELLATION_TOKEN,
+    `<p class="cst-count">${channelCount} channels, one API. Every one of them bookable today.</p>${body}`,
+  );
+}
+
 export async function staticResponse(fileName: string) {
-  const html = await withCacBoot(
-    await withTickerMetrics(
-      await withLivePerformanceMetrics(staticHtml(fileName)),
+  const html = await withConstellation(
+    await withCacBoot(
+      await withTickerMetrics(
+        await withLivePerformanceMetrics(staticHtml(fileName)),
+      ),
     ),
   );
 

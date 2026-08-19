@@ -23,6 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="icon" href="/landing/logo/logo-distribute-blue.svg" type="image/svg+xml">
 
+  <link rel="stylesheet" href="css/depth.css?v=1">
   <style>
     :root{
       --bg:#f7f8fc;
@@ -776,7 +777,12 @@
       padding:65px 30px;
       border:1px solid var(--green-line);
       border-radius:19px;
-      background:linear-gradient(180deg,rgba(37,99,235,.09),rgba(255,255,255,.9));
+      /* Reads the tokens rather than hardcoding its own stops. The old value
+         ended on rgba(255,255,255,.9), which is correct on a light page and
+         turns the copy inside it unreadable the moment the box sits in the
+         ground: the ink is light down there and the box was still nearly
+         white. A token cannot fix a colour that does not consult it. */
+      background:linear-gradient(180deg,var(--green-dim),var(--panel));
     }
     .closing-box::before{
       content:'';
@@ -787,7 +793,7 @@
       left:50%;
       transform:translateX(-50%);
       border-radius:50%;
-      background:rgba(37,99,235,.12);
+      background:var(--green-dim);
       filter:blur(40px);
     }
     .closing .eyebrow,.closing h2,.closing p,.closing .closing-actions,.closing .microcopy{position:relative}
@@ -1020,6 +1026,40 @@
     .sp-fast{background:linear-gradient(90deg,var(--green),var(--green-bright));min-width:14px}
     .sp-note{margin-top:11px;font-size:13.5px;color:var(--muted);line-height:1.6}
 
+    /* ---- #channels : the constellation ---- */
+    /* Every channel we can run, as one field of marks. Built from the live
+       catalogue, so a channel published tomorrow appears here with no edit and
+       one we retire disappears. Grouped by family because 30-odd logos is a
+       wall, while "we reach them / we buy their attention / we earn it" is an
+       argument. */
+    .cst-count{margin:0 0 30px;font-size:15px;color:var(--muted)}
+    .cst-group{margin-bottom:34px}
+    .cst-group h3{font-size:17px;letter-spacing:-.01em;color:var(--text);margin-bottom:5px}
+    .cst-group p{font-size:13.5px;color:var(--muted);margin-bottom:16px;max-width:56ch}
+    .cst-row{display:flex;flex-wrap:wrap;gap:9px;list-style:none;padding:0;margin:0}
+    .cst-item{
+      display:flex;align-items:center;gap:9px;
+      padding:8px 14px 8px 8px;
+      border:1px solid var(--line);border-radius:999px;background:var(--panel);
+      transition:transform .14s ease,border-color .14s ease;
+    }
+    .cst-item:hover{transform:translateY(-1px);border-color:var(--green-line)}
+    .cst-tile{
+      display:grid;place-items:center;flex:0 0 auto;
+      width:28px;height:28px;border-radius:50%;
+      background:#ffffff;overflow:hidden;
+    }
+    .cst-logo{width:28px;height:28px;object-fit:contain;border-radius:50%}
+    /* Our own mark sits on the same white tile as a vendor's, so ours reads as
+       one channel among the others rather than as a different kind of thing. */
+    .cst-own{padding:4px}
+    .cst-name{font-size:13.5px;color:var(--text);white-space:nowrap}
+    .cst-cta{margin-top:8px}
+    @media (max-width:640px){
+      .cst-name{font-size:12.5px}
+      .cst-item{padding:6px 12px 6px 6px}
+    }
+
     /* ---- #stack : what you stop paying for ---- */
     .stack-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:26px;align-items:start}
     .stack-list{display:flex;flex-direction:column;gap:10px}
@@ -1236,7 +1276,7 @@
   }
   </script>
 </head>
-<body>
+<body class="depth">
   <a class="announcement" href="https://dashboard.distribute.you/sign-up" aria-label="Create an account and claim $400 in matched credits">
     <div class="wrap announcement-inner">
       <span><b>New accounts:</b> $400 in matched credits until <span id="announce-date" style="text-decoration:underline">today</span> 🎉</span>
@@ -1281,7 +1321,7 @@
   </header>
 
   <main id="top">
-    <section class="hero">
+    <section class="hero" data-strata="sky">
       <div class="wrap hero-grid">
         <div>
           <div class="category-label">The #1 B2B Sales-As-A-Software</div>
@@ -1321,7 +1361,7 @@
       </div>
     </section>
 
-    <section id="testimonials" class="s-testimonials">
+    <section id="testimonials" class="s-testimonials" data-strata="sky">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">What clients say</div>
@@ -1363,7 +1403,7 @@
       </div>
     </section>
 
-    <section id="proof" class="cac">
+    <section id="proof" class="cac" data-strata="canopy">
       <div class="wrap cac-grid">
         <div class="cac-left">
           <div class="eyebrow">Live cost of acquisition</div>
@@ -1392,7 +1432,20 @@
       </div>
     </section>
 
-    <section id="measure">
+    <section id="channels" data-strata="canopy">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="eyebrow">Every channel</div>
+          <h2>One API. <span class="accent">Every way to reach a buyer.</span></h2>
+        </div>
+        __CONSTELLATION__
+        <div class="cst-cta">
+          <a class="button primary" href="/channels">See what each one costs</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="measure" data-strata="canopy">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">Cost of acquisition, measured</div>
@@ -1443,7 +1496,7 @@
 
     <hr class="divider">
 
-    <section id="engine">
+    <section id="engine" data-strata="branch">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">Why the number goes down</div>
@@ -1512,7 +1565,7 @@
 
     <hr class="divider">
 
-    <section id="how">
+    <section id="how" data-strata="branch">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">The 30-second setup</div>
@@ -1552,7 +1605,7 @@
       </div>
     </section>
 
-    <section id="speed">
+    <section id="speed" data-strata="branch">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">Time to first signal</div>
@@ -1582,7 +1635,7 @@
     </section>
 
 
-    <section id="stack">
+    <section id="stack" data-strata="trunk" class="horizon">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">What you stop paying for</div>
@@ -1654,7 +1707,7 @@
     <hr class="divider">
 
     <!-- PRODUCT OWNER NOTE: This pricing copy intentionally states only the facts shared by both possible billing models. Before publishing a stronger "pay only per outcome" or "metered usage" claim, align the homepage, dashboard, and Terms of Service. -->
-    <section id="pricing">
+    <section id="pricing" data-strata="trunk">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">What you actually risk</div>
@@ -1692,7 +1745,7 @@
       </div>
     </section>
 
-    <section>
+    <section data-strata="trunk">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">Best fit</div>
@@ -1725,7 +1778,7 @@
       </div>
     </section>
 
-    <section id="roi">
+    <section id="roi" data-strata="root">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">Run your own numbers</div>
@@ -1811,7 +1864,7 @@
     })();
     </script>
 
-    <section id="agencies">
+    <section id="agencies" data-strata="root">
       <div class="wrap">
         <div class="section-head">
           <div class="eyebrow">For agencies and operators</div>
@@ -1880,7 +1933,7 @@
 
     <hr class="divider">
 
-    <section id="faq">
+    <section id="faq" data-strata="soil">
       <div class="wrap faq">
         <div class="section-head">
           <div class="eyebrow">Before you launch</div>
@@ -1949,14 +2002,14 @@
       </div>
     </section>
 
-    <section class="closing">
+    <section class="closing" data-strata="soil">
       <div class="wrap">
         <div class="closing-box">
           <div class="eyebrow">Your website is enough to start</div>
           <h2>30 seconds to launch. Then distribute.you runs the campaign.</h2>
           <p>Drop your URL, approve the buyers, and set the budget. distribute.you handles the prospecting, emails, follow-ups, and reply filtering. You step in when someone is interested.</p>
           <div class="closing-actions">
-            <a class="button primary" href="https://dashboard.distribute.you/sign-up">Launch my campaign. $400 free →</a>
+            <a class="seed" href="https://dashboard.distribute.you/sign-up">Plant your seed. $400 free</a>
           </div>
           <div class="microcopy">Under 30-second setup · from $1/day · no seats · pause anytime</div>
         </div>

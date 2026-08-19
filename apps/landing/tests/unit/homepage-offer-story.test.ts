@@ -122,7 +122,8 @@ describe("homepage copy discipline", () => {
 
 describe("homepage agency multi-tenant section", () => {
   it("gives agencies a real section, not a footer band", () => {
-    expect(html).toContain('<section id="agencies">');
+    // Same reason as the hero guard: the tag carries a depth stratum now.
+    expect(html).toContain('<section id="agencies"');
     expect(html).not.toContain("agency-band");
   });
 
