@@ -9,8 +9,8 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   extractBrandFields,
   fieldResultsToMap,
-  getBrandUserFields,
-  saveBrandUserFields,
+  getOfferUserFields,
+  saveOfferUserFields,
   USER_FIELD_KEYS,
   USER_PROFILE_FIELDS,
 } from "@/lib/api";
@@ -49,7 +49,7 @@ function userFieldsToProfile(fields: BrandUserFields | undefined): ProfileFields
 }
 
 /**
- * A fields bag → the saveBrandUserFields PUT body. All 7 user-field keys are sent
+ * A fields bag → the saveOfferUserFields PUT body. All 7 user-field keys are sent
  * (every sent key is confirmed server-side), INCLUDING the ones the user emptied.
  * The PUT replaces the value of each key it receives and leaves an omitted key
  * untouched, and a key with no confirmed row falls back to the AI `suggested`
@@ -116,14 +116,22 @@ function PrefillButton({
  * value equation, edited inline. The 7 user-fields are confirmed brand data, and
  * the stronger they are the better each email converts.
  *
- * Moved here from the retired Strategy page, which was a read-only recap of the
- * brand's objective + best model. Brand Settings is where a brand is CHANGED, so
- * this card is the edit surface: each lever is a hover-to-edit zone (the pencil
- * appears on hover); Save confirms the edited values via saveBrandUserFields.
- * The two "Update from my website" buttons are a RESET into the draft — nothing
- * is persisted until the user presses Save.
+ * Offer Settings is where a proposition is CHANGED, so this card is the edit
+ * surface: each lever is a hover-to-edit zone (the pencil appears on hover); Save
+ * confirms the edited values via saveOfferUserFields. The two "Update from my
+ * website" buttons are a RESET into the draft — nothing is persisted until the
+ * user presses Save.
+ *
+ * The 7 fields are what an OFFER promises, so they are read and written on the
+ * offer's own routes and cached under a key carrying the offer. A brand selling a
+ * $200 self-serve plan and a $20k contract has two different answers to every one
+ * of these, and the brand-scoped routes have exactly one place to put them.
+ *
+ * The WEBSITE extraction stays brand-scoped: it reads the brand's site, which is
+ * brand identity and has no per-offer answer. What comes back lands in this
+ * offer's draft.
  */
-export function BrandOfferCard({ brandId }: { brandId: string }) {
+export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId: string }) {
   const queryClient = useQueryClient();
   // Offer-fields inline edit: null = follow the saved baseline, an object = working edits.
   const [offerDraft, setOfferDraft] = useState<ProfileFields | null>(null);
@@ -132,9 +140,9 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
   // Each carries a provenance ("confirmed" once the user saved it, "suggested"
   // while it is still the AI prefill).
   const { data: userFieldsData, isPending: profilePending } = useAuthQuery(
-    ["brandUserFields", brandId],
-    () => getBrandUserFields(brandId),
-    { ...pollOptions, enabled: !!brandId },
+    ["offerUserFields", brandId, offerId],
+    () => getOfferUserFields(brandId, offerId),
+    { ...pollOptions, enabled: !!brandId && !!offerId },
   );
 
   // Baseline bag = each user-field's value (list-kind default []). The edited
@@ -144,10 +152,11 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
   const offerDirty = offerDraft !== null && !fieldsEqual(offerDraft, offerBaseline);
 
   const saveOfferMut = useMutation({
-    mutationFn: (fields: ProfileFields) => saveBrandUserFields(brandId, profileToUserFieldsPayload(fields)),
+    mutationFn: (fields: ProfileFields) =>
+      saveOfferUserFields(brandId, offerId, profileToUserFieldsPayload(fields)),
     onSuccess: () => {
       setOfferDraft(null);
-      queryClient.invalidateQueries({ queryKey: ["brandUserFields", brandId] });
+      queryClient.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
     },
   });
 
@@ -229,8 +238,8 @@ export function BrandOfferCard({ brandId }: { brandId: string }) {
     // list of services the backend has never seen.
     mutationFn: async () => {
       if (servicesDirty) {
-        await saveBrandUserFields(brandId, { services: draftServices });
-        await queryClient.invalidateQueries({ queryKey: ["brandUserFields", brandId] });
+        await saveOfferUserFields(brandId, offerId, { services: draftServices });
+        await queryClient.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
       }
       return extractBrandFields([brandId], prefillDefsFor(LEVER_PREFILL_KEYS, USER_PROFILE_FIELDS), {
         resetCache: true,

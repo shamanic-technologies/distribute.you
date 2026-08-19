@@ -140,67 +140,34 @@ describe("acquisitionChannelForFeatureSlug", () => {
   });
 });
 
-describe("the card states, it does not ask", () => {
-  const card = read("../src/components/settings/brand-acquisition-channels-card.tsx");
-
-  // A channel is not chosen here, it is FUNDED on the funnel it feeds in the card
-  // above: funding a (funnel, channel) pair is what makes it run, so a toggle here
-  // would be a second way to say a thing the money already says.
-  it("has no writer at all", () => {
-    expect(card).not.toContain("useMutation");
-    expect(card).not.toContain("saveBrand");
-    expect(card).not.toContain("updateBrand");
+describe("there is no channels card", () => {
+  // The card STATED what runs and persisted nothing, so it collected no answer and
+  // lost none when it went. A channel is not chosen anywhere: it is FUNDED on the
+  // funnel it feeds, on Offer Settings, and funding a (funnel, channel) pair is
+  // what makes it run. The catalogue survives because the campaign surfaces and the
+  // funnel budget rows read it for the channel's name and mark.
+  it("keeps no settings card of its own", () => {
+    expect(
+      fs.existsSync(
+        path.resolve(__dirname, "../src/components/settings/brand-acquisition-channels-card.tsx"),
+      ),
+    ).toBe(false);
+    for (const rel of [
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]/settings/page.tsx",
+    ]) {
+      expect(read(rel)).not.toContain("BrandAcquisitionChannelsCard");
+    }
   });
 
-  it("offers no control of any kind", () => {
-    expect(card).not.toContain('type="checkbox"');
-    expect(card).not.toContain('role="button"');
-    expect(card).not.toContain("onClick");
-    expect(card).not.toContain("onKeyDown");
-    expect(card).not.toContain("useState");
-  });
-
-  // GA: every customer reads it, so no beta gate and no badge.
-  it("renders its own heading for everyone", () => {
-    expect(card).toContain("Acquisition Channels");
-    expect(card).not.toContain("useIsBetaUser");
-    expect(card).not.toContain("MaturityBadge");
-  });
-
-  // Two statements, never one list: what we run, and what is coming.
-  it("says which channels run today and which are coming", () => {
-    expect(card).toContain("Coming soon");
-    expect(card).toContain("Running");
-    expect(card).toContain("ACQUISITION_CHANNELS");
-    expect(card).toContain("COMING_SOON_CHANNELS");
-  });
-
-  // Names and copy live once, in the catalogue, so the card cannot drift into a
-  // second wording for the same channel.
-  it("reads the catalogue rather than restating it", () => {
-    expect(card).not.toContain("Google Ads");
-    expect(card).not.toContain("LinkedIn Ads");
-    expect(card).not.toContain("Feedback Request");
-    expect(card).toContain('from "@/lib/acquisition-channels"');
-  });
-
-  // The Campaigns table draws the same mark for the channel a campaign runs on,
-  // so the tile is one component rather than two copies of an icon map.
+  // The Campaigns table and the funnel budget rows draw the same mark for a
+  // channel, so the tile is one component rather than two copies of an icon map.
   it("draws its mark through the shared component", () => {
     const mark = read("../src/components/marks/acquisition-channel-mark.tsx");
-    expect(card).toContain("<AcquisitionChannelMark def={def}");
-    expect(card).not.toContain("OWN_CHANNEL_ICONS");
     expect(mark).toContain("EnvelopeSimpleIcon");
     expect(mark).toContain('weight="duotone"');
     // A provider logo is never tinted: its tile stays white.
     expect(mark).toContain("bg-white");
-  });
-
-  it("is mounted on brand Settings", () => {
-    const page = read(
-      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx",
-    );
-    expect(page).toContain("<BrandAcquisitionChannelsCard />");
   });
 });
 
@@ -222,9 +189,7 @@ describe("a campaign's channel is read, never inferred", () => {
 
 describe("copy", () => {
   it("carries no em-dash", () => {
-    const card = read("../src/components/settings/brand-acquisition-channels-card.tsx");
     const lib = read("../src/lib/acquisition-channels.ts");
-    expect(card).not.toContain("—");
     expect(lib).not.toContain("—");
   });
 });

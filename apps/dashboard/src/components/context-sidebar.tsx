@@ -622,7 +622,21 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
       backHref={brandPath}
       backLabel="Brand"
       footer={
+        // Anchored to the bottom, outside the scrollable nav, exactly like the
+        // brand sidebar's own Settings link: what the offer PROMISES and the
+        // funnels it is sold through are configuration, not a place you work.
         <div className="border-t border-gray-100">
+          <div className="p-2 space-y-0.5">
+            <SidebarLink
+              item={{
+                id: "offer-settings",
+                label: "Offer Settings",
+                href: `${basePath}/settings`,
+                icon: <SettingsIcon />,
+              }}
+              isActive={pathname === `${basePath}/settings`}
+            />
+          </div>
           <ReferralCard />
         </div>
       }

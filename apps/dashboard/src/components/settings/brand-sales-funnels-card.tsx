@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import { useMutation } from "@tanstack/react-query";
 import {
-  declareBrandSalesFunnel,
+  declareOfferSalesFunnel,
   getBrand,
   getBrandSalesEconomics,
-  getBrandSalesFunnels,
+  getOfferSalesFunnels,
   getBrandFunnelBudgets,
   saveBrandFunnelBudget,
-  undeclareBrandSalesFunnel,
+  undeclareOfferSalesFunnel,
   type BrandSalesFunnelSet,
   type DeclaredSalesFunnel,
 } from "@/lib/api";
@@ -50,10 +50,24 @@ import { BrandLogo } from "@/components/brand-logo";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
-// The funnels a brand sells through, and what each one is worth. Several can run
-// at once, and each keeps its own conversion rates, lifetime revenue and landing
-// page, because a self-serve purchase customer and an enterprise meeting
+// The funnels an OFFER is sold through, and what each one is worth. Several can
+// run at once, and each keeps its own conversion rates, lifetime revenue and
+// landing page, because a self-serve purchase customer and an enterprise meeting
 // customer are not worth the same and do not land on the same page.
+//
+// The scope is the OFFER, never the brand. A brand is an identity; an offer is
+// the proposition, and conversion rates, lifetime revenue and destinations are
+// facts about the proposition. brand-service still serves the brand-scoped funnel
+// routes and resolves them to the brand's sole offer, which is why the card
+// worked before the offer level shipped — but on a page that names ONE offer
+// those routes write to whichever offer the service picks, and they answer 409
+// SEVERAL_OFFERS the moment a brand has two. So every read and every write here
+// carries the offer, and the query key carries it too: two offers of one brand
+// sharing one cache entry would show each other's funnels.
+//
+// The MONEY is the exception, and deliberately so: billing keys a ceiling on
+// (org, brand, funnel, acquisition channel) and has no offer dimension, so the
+// budgets stay on the brand-scoped billing routes and the brand-scoped key.
 //
 // brand-service stores all of it PER FUNNEL, so this card writes: confirming a
 // funnel declares it and prices it, removing one drops its economics with the
@@ -130,7 +144,13 @@ function byCatalogueOrder(a: DeclaredSalesFunnel, b: DeclaredSalesFunnel): numbe
   return order.indexOf(a.funnelKey) - order.indexOf(b.funnelKey);
 }
 
-export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
+export function BrandSalesFunnelsCard({
+  brandId,
+  offerId,
+}: {
+  brandId: string;
+  offerId: string;
+}) {
   const queryClient = useQueryClient();
 
   // The economics + brand keys are the ones the sibling settings cards already
@@ -142,12 +162,17 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   const { data: brandData, isError: brandError } = useAuthQuery(["brand", brandId], () =>
     getBrand(brandId),
   );
+  // The offer is IN the key. Two propositions of one brand sell through
+  // different funnels at different rates, so one shared entry would paint the
+  // sibling offer's funnels on this one.
   const { data: funnelData, isError: funnelError } = useAuthQuery(
-    ["brandSalesFunnels", brandId],
-    () => getBrandSalesFunnels(brandId),
+    ["offerSalesFunnels", brandId, offerId],
+    () => getOfferSalesFunnels(brandId, offerId),
   );
-  // billing owns the money side. A funnel with no row here is simply not funded,
-  // which is why an absent row reads as zero rather than as an unknown.
+  // billing owns the money side, and it keys a ceiling on (org, brand, funnel,
+  // channel) with no offer dimension — so this read stays brand-scoped, on the
+  // brand key. A funnel with no row here is simply not funded, which is why an
+  // absent row reads as zero rather than as an unknown.
   const { data: budgetData, isError: budgetError } = useAuthQuery(
     ["brandFunnelBudgets", brandId],
     () => getBrandFunnelBudgets(brandId),
@@ -285,7 +310,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
   /** Write the funnel we just declared into the cached set, in catalogue order. */
   function cacheDeclared(funnel: DeclaredSalesFunnel) {
     queryClient.setQueryData(
-      ["brandSalesFunnels", brandId],
+      ["offerSalesFunnels", brandId, offerId],
       (prev: BrandSalesFunnelSet | undefined): BrandSalesFunnelSet => {
         const rest = (prev?.funnels ?? []).filter((f) => f.funnelKey !== funnel.funnelKey);
         return { funnels: [...rest, funnel].sort(byCatalogueOrder) };
@@ -295,7 +320,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
   const declareMutation = useMutation({
     mutationFn: (vars: { def: SalesFunnelDef; patch: ReturnType<typeof buildFunnelPatch> }) =>
-      declareBrandSalesFunnel(brandId, vars.def.key, vars.patch),
+      declareOfferSalesFunnel(brandId, offerId, vars.def.key, vars.patch),
     onSuccess: (res, vars) => {
       cacheDeclared(res.funnel);
       // Show exactly what persisted, so the card can never claim a value the
@@ -310,7 +335,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       setOpenKey(null);
     },
     onError: (err, vars) => {
-      console.error("[dashboard] declareBrandSalesFunnel failed", err);
+      console.error("[dashboard] declareOfferSalesFunnel failed", err);
       patch(vars.def.key, { error: funnelWriteErrorMessage(err) });
     },
     onSettled: () => setPendingKey(null),
@@ -367,9 +392,9 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
   const undeclareMutation = useMutation({
     mutationFn: (vars: { def: SalesFunnelDef }) =>
-      undeclareBrandSalesFunnel(brandId, vars.def.key),
+      undeclareOfferSalesFunnel(brandId, offerId, vars.def.key),
     onSuccess: (set, vars) => {
-      queryClient.setQueryData(["brandSalesFunnels", brandId], set);
+      queryClient.setQueryData(["offerSalesFunnels", brandId, offerId], set);
       // Switching a funnel off KEEPS its row and every number on it, so the form
       // keeps showing what the user entered — switching it back on returns that,
       // instead of an empty form they would have to retype.
@@ -390,7 +415,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
       setOpenKey(null);
     },
     onError: (err, vars) => {
-      console.error("[dashboard] undeclareBrandSalesFunnel failed", err);
+      console.error("[dashboard] undeclareOfferSalesFunnel failed", err);
       patch(vars.def.key, { error: funnelWriteErrorMessage(err) });
     },
     onSettled: () => setPendingKey(null),
@@ -588,7 +613,7 @@ export function BrandSalesFunnelsCard({ brandId }: { brandId: string }) {
 
           {locked && (
             <p className="mt-1 text-xs text-gray-400">
-              Needs a website. Set your brand domain above first.
+              Needs a website. Set your domain in Brand Settings first.
             </p>
           )}
 

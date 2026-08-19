@@ -23,8 +23,13 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"),
     "utf-8",
   );
-  const settingsPage = fs.readFileSync(
-    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/settings/page.tsx"),
+  // The offer card left brand Settings for Offer Settings: what a proposition
+  // promises belongs to the offer, not to the brand's identity.
+  const offerSettingsPage = fs.readFileSync(
+    path.join(
+      __dirname,
+      "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/offers/[offerId]/settings/page.tsx",
+    ),
     "utf-8",
   );
 
@@ -126,6 +131,6 @@ describe("Dashboard mobile responsiveness", () => {
     expect(brandInfoPage).toContain("mb-4 flex flex-col gap-3 sm:flex-row");
     expect(brandInfoPage).toContain("overflow-x-auto");
     expect(brandInfoPage).toContain("whitespace-nowrap");
-    expect(settingsPage).toContain("BrandOfferCard");
+    expect(offerSettingsPage).toContain("BrandOfferCard");
   });
 });

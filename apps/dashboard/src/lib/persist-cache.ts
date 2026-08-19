@@ -116,7 +116,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandUserFields",
   "brandExtractedFields",
   "brandSalesEconomics",
-  "brandSalesFunnels",
   "brandFunnelBudgets",
   "brandDailyBudget",
   "brandPause",
@@ -129,6 +128,12 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // cold-skeleton the chrome on every visit.
   "brandOffers",
   "brandOffer",
+  // Offer Settings reads both of these on every visit, and both are answered by
+  // the slow brand-service chain. Unlisted they are default-OFF, so the page
+  // would cold-skeleton every time instead of painting from disk. Each key
+  // carries the offer, so two propositions of one brand never share an entry.
+  "offerUserFields",
+  "offerSalesFunnels",
   // Brand entity sub-lists (big — persisted so their pages skip the reload skeleton)
   "brandLeads",
   "brandEmails",
