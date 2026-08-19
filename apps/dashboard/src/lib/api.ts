@@ -3503,6 +3503,72 @@ export async function getCampaign(campaignId: string, token?: string): Promise<{
   return { campaign: enriched };
 }
 
+/**
+ * The four per-campaign settings a customer may edit. Each is OPTIONAL in the
+ * patch and each carries the same two semantics, which is the whole reason this
+ * is a partial rather than a whole-object write:
+ *
+ *   - key ABSENT  → campaign-service leaves what is stored untouched
+ *   - key `null`  → the campaign states nothing of its own and INHERITS the
+ *                   brand's value at send time (`servicesOffered` /
+ *                   `clickDestinationUrl` fall back downstream off /start-run;
+ *                   `audienceIds: null` targets the brand's whole active set)
+ *
+ * So the diff against what is stored is what gets sent — a field the user never
+ * touched is omitted rather than restated, and a field they cleared is sent as an
+ * explicit `null` so "inherit" is expressible at all.
+ *
+ * `name` is the exception: campaign-service stores it NOT NULL, so it has no
+ * inherit state and is never sent as null.
+ *
+ * DELIBERATELY NOT HERE, and campaign-service accepting them is not a reason to
+ * add them:
+ *   - the BUDGET (`maxBudget*Usd` / `dailyBudgetCents`). Money is funded per
+ *     (sales funnel x acquisition channel) on Offer Settings; the figure a
+ *     campaign carries is a MIRROR of that ceiling, kept so `gate-check` can read
+ *     it without a hot call to billing. Editing the mirror would put a second,
+ *     divergent answer beside the one billing charges.
+ *   - `offerId` / `funnelKey` / `featureSlug` / the acquisition channel. A
+ *     campaign IS (offer x funnel x channel); changing one does not configure this
+ *     campaign, it makes it a different campaign.
+ *   - `goal`. Legacy and read-only — the funnel key is the richer word (it tells a
+ *     meeting won off a reply from one won on the website apart, and the goal
+ *     cannot), and nothing in the dashboard writes it.
+ */
+// A `type` rather than an `interface` on purpose: only a type alias gets TS's
+// implicit index signature, so only a type alias is assignable to `apiCall`'s
+// `body?: Record<string, unknown>`.
+export type CampaignSettingsPatch = {
+  name?: string;
+  audienceIds?: string[] | null;
+  servicesOffered?: string[] | null;
+  clickDestinationUrl?: string | null;
+};
+
+/**
+ * PATCH /v1/campaigns/:id — the per-campaign settings above.
+ *
+ * The api-service gateway forwards `req.body` verbatim to campaign-service (it does
+ * NOT re-declare the body the way the CREATE proxy does), so a field campaign-service
+ * accepts reaches it with no gateway change.
+ *
+ * A refusal comes back as the downstream body stringified into `ApiError.message`,
+ * so a caller MUST branch on the STATUS and print its own copy — never the message.
+ */
+export async function updateCampaign(
+  campaignId: string,
+  patch: CampaignSettingsPatch,
+  token?: string,
+): Promise<{ campaign: Campaign }> {
+  const { campaign } = await apiCall<{ campaign: RawCampaign }>(`/campaigns/${campaignId}`, {
+    token,
+    method: "PATCH",
+    body: patch,
+  });
+  const [enriched] = await enrichCampaignsWithBrandUrls([campaign], token);
+  return { campaign: enriched };
+}
+
 // Campaign sub-resources
 
 /** Snapshot of the lead's CURRENT employer organization (lead-service OrganizationView). */

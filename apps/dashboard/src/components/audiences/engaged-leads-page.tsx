@@ -839,7 +839,20 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
   );
 }
 
-export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
+export function EngagedLeadsPage({
+  campaignId,
+  scopeNote,
+}: {
+  campaignId?: string;
+  /**
+   * One line stating WHICH leads this page returns, for a route whose scope the
+   * heading alone does not settle. The brand-level route uses it because "the
+   * brand's leads" is very nearly, but not exactly, every offer's leads added up —
+   * a lead contacted by a campaign that names no offer is here and under no offer.
+   * A page that cannot say that truthfully passes nothing and renders no line.
+   */
+  scopeNote?: string;
+} = {}) {
   const params = useParams();
   const brandId = params.brandId as string;
   // The OFFER this page is scoped to, when the route names one. lead-service has no
@@ -1173,6 +1186,8 @@ export function EngagedLeadsPage({ campaignId }: { campaignId?: string } = {}) {
             <CsvDownloadButton filename={`leads-${brandId}.csv`} csv={leadsCsv} isEmpty={coveredLeads.length === 0} label="Export leads" />
           )}
         </div>
+
+        {scopeNote && <p className="-mt-2 mb-4 text-sm text-gray-500">{scopeNote}</p>}
 
         {loading ? (
           <LeadsLoadingSkeleton />

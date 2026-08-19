@@ -389,11 +389,29 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
           } satisfies SidebarItem,
         ]
       : []),
-    // Campaigns, Audiences and Leads moved DOWN a level, to the offer. A campaign
-    // sells one proposition and an audience is a set of people picked for one, so
-    // at brand level each of those lists would pool several offers under one
-    // heading. The brand Overview lists the offers instead, and each opens its own
-    // sidebar with all three.
+    // Campaigns and Audiences moved DOWN a level, to the offer. A campaign sells
+    // one proposition and an audience is a set of people picked for one, so at
+    // brand level each of those lists would pool several offers under one heading.
+    // The brand Overview lists the offers instead, and each opens its own sidebar.
+    //
+    // LEADS is the exception, and it is one on purpose. A lead is a PERSON, not a
+    // statement about a proposition, and lead-service attributes each one to the
+    // campaign that contacted them — including campaigns created before the offer
+    // level existed, which name no offer at all. Those people are the brand's and
+    // belong to no offer, so without a brand-level list they are reachable from
+    // nowhere. It lives at `/leads` rather than under `audiences/`: audiences are
+    // the offer's now, so a brand path under that segment would name a level that
+    // is no longer there.
+    ...(revenueOk
+      ? [
+          {
+            id: "brand-leads",
+            label: "Leads",
+            href: `${basePath}/leads`,
+            icon: <LeadsIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
   ];
 
   return (
@@ -528,9 +546,23 @@ function CampaignLevelSidebar({ orgId, brandId, offerId, campaignId, pathname }:
       backHref={`${basePath}/campaigns`}
       backLabel="Campaigns"
       // Brand Settings is a BRAND-level surface, so it belongs to the brand
-      // sidebar the back-link leads to, not inside a campaign.
+      // sidebar the back-link leads to, not inside a campaign. What DOES belong
+      // here is the campaign's own settings, anchored at the bottom exactly like
+      // Offer Settings in the offer sidebar and Brand Settings in the brand one:
+      // configuration is not a place you work.
       footer={
         <div className="border-t border-gray-100">
+          <div className="p-2 space-y-0.5">
+            <SidebarLink
+              item={{
+                id: "campaign-settings",
+                label: "Campaign Settings",
+                href: `${campaignBase}/settings`,
+                icon: <SettingsIcon />,
+              }}
+              isActive={pathname === `${campaignBase}/settings`}
+            />
+          </div>
           <ReferralCard />
         </div>
       }
