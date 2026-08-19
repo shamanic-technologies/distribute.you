@@ -3473,10 +3473,24 @@ export async function listBrandRuns(brandId: string, token?: string): Promise<{ 
   }
 }
 
-// Campaign by brand
+/**
+ * Every campaign of a brand, whatever its status.
+ *
+ * `status` is OMITTED on purpose, and that is what "every status" means to
+ * campaign-service. It accepts exactly `ongoing` and `stopped`, and 400s
+ * anything else — so the `status=all` this used to send was a value the
+ * dashboard invented and the producer never accepted. The 400 surfaced as a 500
+ * through the gateway, the query threw, and every surface reading it rendered
+ * its empty state: a brand with a live campaign read "No campaign yet".
+ *
+ * The lesson is the general one about a filter value: an enum belongs to the
+ * service that validates it, and "all" is almost never a member — it is the
+ * ABSENCE of the filter. Do not reintroduce it here, and do not teach
+ * campaign-service to accept it: omitting the parameter already means this.
+ */
 export async function listCampaignsByBrand(brandId: string, token?: string): Promise<{ campaigns: Campaign[] }> {
   const { campaigns } = await apiCall<{ campaigns: RawCampaign[] }>(
-    `/campaigns?brandId=${brandId}&status=all`,
+    `/campaigns?brandId=${brandId}`,
     { token },
   );
   return { campaigns: await enrichCampaignsWithBrandUrls(campaigns, token) };
