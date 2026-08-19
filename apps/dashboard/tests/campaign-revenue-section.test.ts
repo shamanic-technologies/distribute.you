@@ -15,12 +15,17 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 describe("RevenueCostSummary — replaceable bottom card", () => {
   const card = read("components/revenue/revenue-cost-summary.tsx");
   const overview = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
-  it("accepts a bottomCard prop and renders it when provided", () => {
+  it("renders the caller's bottom card when one is given", () => {
     expect(card).toContain("bottomCard");
-    expect(card).toContain("bottomCard !== undefined ? bottomCard");
+    expect(card).toContain("{bottomCard ?? null}");
   });
-  it("keeps Top cost sources as the generic fallback only", () => {
-    expect(card).toContain("Top cost sources");
+  // There is deliberately NO default any more. The fallback used to be a top-3
+  // of the PROVIDERS the money went to, which answers a question no customer
+  // asked -- they buy an outcome, and the vendor mix behind it is our supply
+  // chain. A caller that passes nothing now gets nothing.
+  it("falls back to nothing, not to a provider breakdown", () => {
+    expect(card).not.toContain("Top cost sources");
+    expect(card).not.toContain("bottomCard !== undefined");
     expect(overview).toContain("costBottomCard=");
     expect(overview).toContain("<TopAudiencesCard");
   });

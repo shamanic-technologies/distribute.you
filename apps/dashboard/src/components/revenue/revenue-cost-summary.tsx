@@ -1,10 +1,7 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
-import { getPlatformPrices } from "@/lib/api";
+import { type ReactNode } from "react";
 import type { Spend } from "@/lib/revenue-view";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { ProviderLogo } from "@/components/provider-logo";
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
@@ -17,17 +14,17 @@ const TODAY_SPENT_TIP =
   "Committed today: billed plus credits reserved for follow-ups scheduled today. It can dip when a reserved follow-up sends or gets cancelled because a contact replied or couldn't be reached.";
 
 /**
- * Cost summary for the feature Overview — actual spend and the top-3 cost
- * sources (provider logo + share, no $ amounts). Every figure (Total spent,
- * Budget spent today, the top-3 sources + their share %) is read VERBATIM from
- * the features-service `/revenue` `spend` block — the dashboard no longer sums
- * the runs breakdown or computes provider shares in the browser (that diverged
- * from the displayed Total spent).
+ * The spend column beside the Overview chart: what today's budget has spent, and
+ * what the whole thing has cost. Both are read VERBATIM from the
+ * features-service `/revenue` `spend` block — the dashboard does not sum the
+ * runs breakdown in the browser (that diverged from the displayed Total spent).
+ *
+ * It used to carry a third figure, a top-3 of the PROVIDERS the money went to.
+ * That is gone, with nothing in its place: a customer buys an outcome, and which
+ * vendors sit behind it is our supply chain rather than their result. It was
+ * also the one thing on the page that said nothing about whether their money
+ * was working. `spend.sources` is still on the wire and simply not read.
  */
-
-function formatCostName(name: string): string {
-  return name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 function formatUsd(usd: number): string {
   if (usd <= 0) return "$0";
@@ -73,27 +70,15 @@ export function RevenueCostSummary({
   costPending?: boolean;
   /** Reveal gate for today's actual spend window. */
   todayCostPending?: boolean;
-  /** Replaces the default "Top cost sources" card (e.g. a campaign budget card
-   *  on the campaign page, where a brand-wide cost-source split doesn't apply). */
+  /** Rendered under the spend card. There is no default: a caller that passes
+   *  nothing gets nothing. The offer and campaign Overviews pass their Top-3
+   *  audiences here; the brand Overview passes nothing, because an audience
+   *  belongs to an offer. */
   bottomCard?: ReactNode;
 }) {
   // Total-spent reveals on its own source where given; otherwise tracks `pending`.
   const totalSpentPending = costPending ?? pending;
   const budgetSpentPending = todayCostPending ?? totalSpentPending;
-
-  // Static catalog → costName -> providerDomain for the provider logos (the only
-  // client-side join: the provider-domain decomposition lives in the price
-  // catalog, not features-service; the spend amounts/shares come from the server).
-  const { data: platformPrices } = useAuthQuery(
-    ["platformPrices"],
-    () => getPlatformPrices(),
-    { staleTime: 60 * 60 * 1000 },
-  );
-  const domainByCost = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const p of platformPrices ?? []) m.set(p.name, p.providerDomain);
-    return m;
-  }, [platformPrices]);
 
   // All spend figures are server-computed (features-service#396) — rendered
   // verbatim, no client reduce / share-% math.
@@ -103,14 +88,9 @@ export function RevenueCostSummary({
   // the rollout. Server-provided either way — no client actual+provisioned sum.
   const totalCostUsd = (spend?.totalSpentCents ?? 0) / 100;
   const todayCommittedCents = spend?.totalSpentTodayCents ?? spend?.todaySpentCents ?? 0;
-  const top3 = (spend?.sources ?? []).slice(0, 3).map((s) => ({
-    name: s.source,
-    pct: s.sharePct,
-    domain: domainByCost.get(s.source) ?? null,
-  }));
 
-  // Right-of-chart column on the Overview: Total spent plus a compact top-3
-  // cost-source list.
+  // Right-of-chart column: what today's budget has spent and what the whole
+  // thing has cost, then whatever the caller puts beneath.
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4">
@@ -148,31 +128,14 @@ export function RevenueCostSummary({
         </div>
       </div>
 
-      {/* Bottom card — the campaign page swaps in its own (budget) card via
-          `bottomCard`; the Overview keeps the default Top-3 cost-source list. */}
-      {bottomCard !== undefined ? bottomCard : pending ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top cost sources</p>
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Skeleton className="h-4 w-4 rounded-full" />
-              <Skeleton className="h-4 flex-1" />
-              <Skeleton className="h-4 w-8" />
-            </div>
-          ))}
-        </div>
-      ) : top3.length > 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Top cost sources</p>
-          {top3.map((s) => (
-            <div key={s.name} className="flex items-center gap-2">
-              <ProviderLogo domain={s.domain} size={16} />
-              <span className="text-sm text-gray-700 flex-1 truncate">{formatCostName(s.name)}</span>
-              <span className="text-sm font-medium text-gray-800 tabular-nums">{Math.round(s.pct)}%</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {/* Whatever the caller puts under the spend card, or nothing.
+          There is deliberately NO default. This used to fall back to a Top-3
+          cost-source list — which vendor the money went to — and that answers a
+          question no customer asked: they buy an outcome, and the provider mix
+          behind it is our supply chain, not their result. It is also the one
+          figure on the page that says nothing about whether their money is
+          working. Removed with nothing in its place. */}
+      {bottomCard ?? null}
     </div>
   );
 }

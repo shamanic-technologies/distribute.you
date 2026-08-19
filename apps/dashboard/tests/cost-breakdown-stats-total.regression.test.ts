@@ -56,10 +56,12 @@ describe("RevenueCostSummary renders spend verbatim (no client aggregation)", ()
   );
   const card = fs.readFileSync(cardPath, "utf-8");
 
-  it("reads Total spent + today + sources from the spend block", () => {
+  it("reads Total spent and today from the spend block", () => {
     expect(card).toContain("spend?.totalSpentCents");
     expect(card).toContain("spend?.todaySpentCents");
-    expect(card).toContain("spend?.sources");
+    // `spend.sources` is still on the wire and deliberately NOT read: the
+    // provider breakdown it fed was removed from the page.
+    expect(card).not.toContain("spend?.sources");
   });
 
   it("does not sum a cost-breakdown array in the browser", () => {

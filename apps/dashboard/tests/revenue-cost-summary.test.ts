@@ -20,12 +20,17 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(card).not.toContain("Return multiple on spend");
   });
 
-  it("top cost sources show provider logo + share, no $ amounts", () => {
-    expect(card).toContain("Top cost sources");
-    expect(card).toContain("ProviderLogo");
-    expect(card).toContain("{Math.round(s.pct)}%");
-    // The provider rows must not print a dollar figure.
-    expect(card).not.toContain("formatUsd(s.cents");
+  // The card used to carry a top-3 of the PROVIDERS the money went to. It is
+  // gone, with nothing in its place: a customer buys an outcome, and which
+  // vendors sit behind it is our supply chain rather than their result. It was
+  // also the one figure on the page that said nothing about whether their money
+  // was working.
+  it("names no provider - the cost-source breakdown is gone, not relabelled", () => {
+    expect(card).not.toContain("Top cost sources");
+    expect(card).not.toContain("ProviderLogo");
+    expect(card).not.toContain("spend?.sources");
+    // And it no longer pays for the price catalogue it only needed for logos.
+    expect(card).not.toContain("getPlatformPrices");
   });
 
   it("Overview wires the server-computed spend block into the summary card", () => {
@@ -53,11 +58,10 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     expect(section).not.toContain("Lead conversions");
   });
 
-  it("Total spent and provider shares render the server spend block verbatim", () => {
-    // No client reduce / share-% math: the figures come straight off `spend`.
+  it("Total spent renders the server spend block verbatim", () => {
+    // No client reduce: the figures come straight off `spend`.
     expect(card).toContain("spend?.totalSpentCents");
     expect(card).toContain("spend?.todaySpentCents");
-    expect(card).toContain("spend?.sources");
     expect(card).not.toContain("parseFloat(c.actualCostInUsdCents)");
     expect(card).not.toContain("reduce(");
   });

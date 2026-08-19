@@ -6,16 +6,16 @@
  * UPSERTS a `users` row for whatever external user id it is handed. That is right
  * for a person signing in; it is a row-per-call-site for a cron.
  *
- * These three call sites have no person behind them — a nightly digest scan, a
- * public report read, a share-link read — so each was inventing an id keyed on the
+ * These call sites have no person behind them — a nightly digest scan, a public
+ * report read — so each was inventing an id keyed on the
  * org (`outcome-digest:org_ABC`). One row per org per job, forever: prod reached
  * **89 such rows against 64 real users**, and client-service's public user count
  * (the figure the `/investors` page prints) read **153**, because its exclusion
  * list only knew about `system-%` and two test ids.
  *
  * So the id is keyed on the JOB, not the org, and it lives in the `system-`
- * namespace client-service already excludes. Three rows instead of eighty-nine,
- * counted as users by nobody.
+ * namespace client-service already excludes. A handful of rows instead of
+ * eighty-nine, counted as users by nobody.
  *
  * Nothing is lost by dropping the org from the id: the org travels on its own
  * header and is stored on the run row (`runs.organization_id`), so per-org
@@ -28,8 +28,6 @@ export const SERVICE_IDENTITY = {
   outcomeDigest: "system-outcome-digest",
   /** The no-login public report proxy (`admin/lib/report-api.ts`). */
   reportPublic: "system-report-public",
-  /** The read-only share-link proxy (`app/share/[token]/api/v1`). */
-  sharePublic: "system-share-public",
 } as const;
 
 /**

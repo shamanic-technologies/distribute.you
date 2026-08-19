@@ -7,9 +7,8 @@
  * exactly the kind of change that leaves one of them behind — pointing a link at a
  * route that no longer exists, which `tsc` cannot see.
  *
- * `offerId` is OPTIONAL because two surfaces legitimately have none: the brand
- * Overview itself, and the read-only `/share/<token>` mirror, which has no offer
- * segment. Omitting it returns the brand path, which is what those want.
+ * `offerId` is OPTIONAL because the brand Overview itself legitimately has none.
+ * Omitting it returns the brand path, which is what that wants.
  *
  * Alias-free (no `@/…` import), so it carries real unit tests rather than a
  * source-substring guard.

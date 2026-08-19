@@ -33,9 +33,7 @@ describe("conversion tracker setup CTA + live status", () => {
     // Built only when the brand-scoped href resolves AND the tracker is not yet
     // live — once lead-service reports live/live_waiting the CTA must stop, so the
     // stat cards never nag "set up" while Brand Settings shows "Tracker live".
-    // …and never on the public share view, where its target is a settings page a
-    // shared link does not reach.
-    expect(cards).toContain("setupHref && !trackerLive && !readOnly ?");
+    expect(cards).toContain("setupHref && !trackerLive ?");
     expect(cards).toContain('conversionToken?.status === "live"');
     expect(cards).toContain('conversionToken?.status === "live_waiting"');
     expect(cards).toContain('["brandConversionToken", brandId]');

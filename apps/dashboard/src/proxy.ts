@@ -13,10 +13,6 @@ const isPublicRoute = createRouteMatcher([
   "/forgot-password(.*)",
   "/sso-callback(.*)",
   "/claim(.*)",
-  // Public read-only brand view. The credential in the URL is the whole
-  // authority — there is no session to check, and requiring one would defeat
-  // the point of a link you hand to someone outside the org.
-  "/share(.*)",
   "/api/public(.*)",
   "/api/cron(.*)",
 ]);

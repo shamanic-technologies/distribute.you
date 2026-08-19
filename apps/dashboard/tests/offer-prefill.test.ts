@@ -151,11 +151,10 @@ describe("the offer card wires both buttons", () => {
   });
 
   it("is always editable — Brand Settings is the authed edit surface", () => {
-    // The card moved here from the retired Strategy page, whose share (read-only)
-    // and campaign (preview, no writer) branches died with it. On Brand Settings
-    // there is no read-only link and no campaign scope, so the buttons always
-    // render and Save is always offered when dirty.
-    expect(page).not.toContain("useIsShareMode");
+    // The card moved here from the retired Strategy page, whose campaign
+    // (preview, no writer) branch died with it. On Brand Settings there is no
+    // campaign scope, so the buttons always render and Save is always offered
+    // when dirty.
     expect(page).not.toContain("campaignScoped");
     expect(page).toContain("PrefillButton");
   });
