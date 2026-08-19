@@ -1009,102 +1009,10 @@ async function withCacBoot(html: string) {
     );
 }
 
-// Time-to-first-interested-reply. The homepage answers "how long before
-// anything happens" with an OBSERVED CEILING, never an average and never a
-// promise: the slowest model's median, phrased as an upper bound.
-//
-// Two rules this encodes, both load-bearing:
-//  - A model that produced ZERO interested replies has no latency to report.
-//    Its `sampleSize` is 0 and it is dropped, exactly like the 0-outcome cost
-//    "husk" filter in fetchBestModelUsd.
-//  - Below the sample floor the phrase is NULL and the whole sentence is
-//    REMOVED from the page. "We could not measure this yet" and "it took N
-//    days" are different statements; the degenerate branch must not print a
-//    best-available substitute.
-const FIRST_REPLY_LINE_TOKEN = "__FIRST_REPLY_LINE__";
-const MIN_FIRST_REPLY_SAMPLE = 5;
-const MIN_FIRST_REPLY_MODELS = 2;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-export interface FirstReplyLatencyEntry {
-  medianMs: number | null;
-  sampleSize: number | null;
-}
-
-// Exported for unit tests: the pure ceiling phrase, no fetch.
-export function firstReplyCeilingPhrase(
-  entries: FirstReplyLatencyEntry[],
-): string | null {
-  const backed = entries.flatMap((e) => {
-    const median = numericOrNull(e.medianMs);
-    const sample = numericOrNull(e.sampleSize) ?? 0;
-    return median !== null && median > 0 && sample > 0
-      ? [{ median, sample }]
-      : [];
-  });
-  const totalSample = backed.reduce((sum, e) => sum + e.sample, 0);
-  if (
-    backed.length < MIN_FIRST_REPLY_MODELS ||
-    totalSample < MIN_FIRST_REPLY_SAMPLE
-  ) {
-    return null;
-  }
-  const ceilingDays = Math.max(...backed.map((e) => e.median)) / DAY_MS;
-  return ceilingDays <= 7
-    ? "in under a week"
-    : `in under ${Math.ceil(ceilingDays)} days`;
-}
-
-async function fetchFirstReplyCeiling(): Promise<string | null> {
-  const apiUrl = resolvePublicApiUrl();
-  const slug = encodeURIComponent(SALES_COLD_EMAIL_FEATURE_SLUG);
-  const res = await fetch(
-    `${apiUrl}/v1/public/features/workflow-engagement-latency?featureSlug=${slug}&groupBy=workflow`,
-    {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 300 },
-      signal: AbortSignal.timeout(8_000),
-    },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[landing] /v1/public/features/workflow-engagement-latency failed: ${res.status}`,
-    );
-  }
-  const data = (await res.json()) as {
-    results?: Array<{ timeToFirstPositiveReply?: FirstReplyLatencyEntry }>;
-  };
-  return firstReplyCeilingPhrase(
-    (data.results ?? []).map((r) => ({
-      medianMs: r.timeToFirstPositiveReply?.medianMs ?? null,
-      sampleSize: r.timeToFirstPositiveReply?.sampleSize ?? null,
-    })),
-  );
-}
-
-async function withFirstReplyLine(html: string) {
-  if (!html.includes(FIRST_REPLY_LINE_TOKEN)) return html;
-  // A slow or unreachable endpoint drops the sentence rather than printing a
-  // stale hardcoded delay. The section stands on the two claims above it, which
-  // are facts about our own setup and need no sample.
-  const phrase = await fetchFirstReplyCeiling().catch((error) => {
-    console.error("[landing] first-reply latency unavailable, omitting the line", error);
-    return null;
-  });
-  return html.replaceAll(
-    FIRST_REPLY_LINE_TOKEN,
-    phrase
-      ? `<p class="speed-observed"><span class="speed-live-dot"></span>Across every campaign that produced an interested reply, the first one landed ${phrase}.</p>`
-      : "",
-  );
-}
-
 export async function staticResponse(fileName: string) {
-  const html = await withFirstReplyLine(
-    await withCacBoot(
-      await withTickerMetrics(
-        await withLivePerformanceMetrics(staticHtml(fileName)),
-      ),
+  const html = await withCacBoot(
+    await withTickerMetrics(
+      await withLivePerformanceMetrics(staticHtml(fileName)),
     ),
   );
 
