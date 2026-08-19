@@ -1063,17 +1063,34 @@ describe("the Sales Funnels card funds each funnel", () => {
     expect(src).toContain("getBrandFunnelBudgets(brandId)");
   });
 
-  // billing keys a ceiling on (org, brand, funnel, acquisition channel) and has
-  // no offer dimension. The funnel DECLARATION moved to the offer; the money did
-  // not, and an offer-scoped budget route invented here would write nowhere.
-  it("keeps the money brand-scoped while the declaration is offer-scoped", () => {
+  // A ceiling funds one CAMPAIGN, and a campaign is (offer × funnel × channel).
+  // billing keys it on all three (v0.64.0), so a write naming only two addresses
+  // every offer worked through that pair at once: the day a brand states a
+  // second, funding one would silently fund the other and neither could be
+  // stopped without stopping both.
+  //
+  // The STORE stays brand-scoped — one read, one key, three grains served — so
+  // there is no offer-scoped budget route to invent here.
+  it("names the offer the ceiling funds, on a brand-scoped store", () => {
     expect(src).toContain("saveBrandFunnelBudget(");
     expect(src).not.toContain("saveOfferFunnelBudget");
     expect(src).not.toContain("getOfferFunnelBudgets");
+    expect(src).toContain('["brandFunnelBudgets", brandId]');
     // Still one write per channel that MOVED, in sequence, so funding one
     // channel never re-states its sibling's ceiling.
     expect(src).toContain("move.featureSlug");
     expect(src).toContain("(m) => m.cents !== (state.savedCentsByChannel[m.featureSlug] ?? 0)");
+    // The offer rides beside the channel on the write, and the fields are seeded
+    // from the offer's OWN ceilings — or the button would offer to spend money
+    // belonging to a sibling offer. Measured: the mutation block is 1220 chars.
+    const mutation = sliceFrom(src, "const budgetMutation = useMutation({", 1220);
+    expect(mutation).toContain("move.featureSlug,\n          offerId,");
+    expect(mutation).toContain("set.offers,\n        offerId,");
+    // billing takes it as an optional coordinate, never a required one: every
+    // ceiling stated before the dimension existed carries none.
+    const api = read("../src/lib/api.ts");
+    expect(api).toContain("...(offerId ? { offerId } : {}),");
+    expect(api).toContain("offerId: z.string().nullable(),");
   });
 
   it("keeps the ceiling OUT of the funnel patch", () => {

@@ -1681,6 +1681,17 @@ const FunnelChannelBudgetRowSchema = z.object({
   updatedAt: z.string(),
 });
 
+// ONE (funnel, channel, offer) triple's own ceiling — a CAMPAIGN's ceiling, the
+// campaign being that triple. `offerId` is null on every row stated before
+// billing carried the offer dimension.
+const FunnelOfferBudgetRowSchema = z.object({
+  funnelKey: z.enum(SALES_FUNNEL_KEYS_WIRE).transform(normalizeSalesFunnelKey),
+  featureSlug: z.string(),
+  offerId: z.string().nullable(),
+  dailyBudgetCents: z.coerce.number(),
+  updatedAt: z.string(),
+});
+
 const BrandFunnelBudgetsResponseSchema = z.object({
   brandId: z.string(),
   // Null only for a brand that has neither a brand-level budget nor ceilings.
@@ -1694,6 +1705,15 @@ const BrandFunnelBudgetsResponseSchema = z.object({
   // a required field would drop every budget row on that deploy. Absent reads as
   // "one channel per funnel", which is what every brand was before the split.
   channels: z.array(FunnelChannelBudgetRowSchema).optional(),
+  // The finest grain, and the one a campaign is actually funded at: one row per
+  // (funnel, channel, offer). `channels` above is its per-pair SUM and `funnels`
+  // the per-funnel one — both served, so nothing here adds any of them up.
+  //
+  // `.optional()` for the same reason `channels` is, and `offerId` is NULLABLE
+  // because every ceiling stated before billing carried the dimension names no
+  // offer. Such a row is not "for no offer": it is the money of a brand that had
+  // exactly one, which is every brand today.
+  offers: z.array(FunnelOfferBudgetRowSchema).optional(),
 });
 
 export type BrandFunnelBudgets = z.infer<typeof BrandFunnelBudgetsResponseSchema>;
@@ -1749,23 +1769,32 @@ export async function stateBrandFunnelBudgets(
  * funding that chain right now, which is how a customer pauses one without
  * losing what they told us about how it sells.
  *
- * `featureSlug` names WHICH acquisition channel of that funnel is being funded.
- * Omitting it addresses the funnel as a whole, which billing resolves to its
- * single channel when it funds one and REFUSES (409) when the funnel is split
- * across several — guessing which offer the money was for would move it onto the
- * wrong campaign. So a caller that can name the channel always should.
+ * `featureSlug` and `offerId` name the other two coordinates of the campaign the
+ * money funds: a ceiling is keyed on (org, brand, funnel, channel, offer), so a
+ * write naming fewer of them addresses a group rather than one campaign. billing
+ * resolves a missing coordinate to the single member when there is one and
+ * REFUSES (409) when there are several — guessing which campaign the money was
+ * for would move it onto the wrong one. So a caller that can name them should.
+ *
+ * `offerId` is optional on the wire (billing v0.64.0) rather than required,
+ * because the ceilings stated before it existed carry none.
  */
 export async function saveBrandFunnelBudget(
   brandId: string,
   funnelKey: string,
   dailyBudgetCents: number,
   featureSlug?: string,
+  offerId?: string,
   token?: string,
 ): Promise<BrandFunnelBudgets> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/funnel-budgets/${funnelKey}`, {
     token,
     method: "PATCH",
-    body: featureSlug ? { dailyBudgetCents, featureSlug } : { dailyBudgetCents },
+    body: {
+      dailyBudgetCents,
+      ...(featureSlug ? { featureSlug } : {}),
+      ...(offerId ? { offerId } : {}),
+    },
     headers: { "x-run-id": globalThis.crypto.randomUUID() },
   });
   const parsed = BrandFunnelBudgetsResponseSchema.safeParse(raw);
