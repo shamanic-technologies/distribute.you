@@ -308,7 +308,7 @@ export function funnelBudgetTip(key: SalesFunnelKey, savedCents: number): string
   if (!isGrandfatheredFunding(key, savedCents)) {
     return `${opening} From $${FUNNEL_MIN_DAILY_BUDGET_USD[key]} a day once you do fund it.`;
   }
-  return `${opening} It is funded at $${Math.round(savedCents / 100)} a day today, which you can keep or raise.`;
+  return `${opening} It is funded at $${Math.round(savedCents / 100)} a day today across every offer that sells through it, which you can keep or raise.`;
 }
 
 /**
@@ -321,7 +321,7 @@ export function funnelBudgetFloorMessage(key: SalesFunnelKey, savedCents: number
     return `A daily budget for this funnel starts at $${minimum}. Leave it empty to stop funding it.`;
   }
   const current = Math.round(savedCents / 100);
-  return `This funnel is funded at $${current} a day. Keep it there or raise it, but it cannot go lower while it stays under $${minimum}. Leave it empty to stop funding it.`;
+  return `This funnel is funded at $${current} a day across every offer that sells through it. Keep it there or raise it, but it cannot go lower while it stays under $${minimum}. Leave it empty to stop funding it.`;
 }
 
 /**

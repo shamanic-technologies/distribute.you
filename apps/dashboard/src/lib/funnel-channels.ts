@@ -49,6 +49,21 @@ export interface ChannelFeatureRow {
   salesFunnels?: string[];
 }
 
+/**
+ * One (funnel, channel, offer) ceiling off billing — the finest grain it serves,
+ * and the one a campaign is actually funded at.
+ *
+ * `offerId` is null on every ceiling stated before billing carried the offer
+ * dimension. Such a row is not "for no offer": it is the money of a brand that
+ * had exactly one, which is every brand today.
+ */
+export interface FunnelOfferBudgetRow {
+  funnelKey: string;
+  featureSlug: string;
+  offerId: string | null;
+  dailyBudgetCents: number;
+}
+
 /** One channel of one funnel, with the ceiling the brand funds it at. */
 export interface FunnelChannelBudget {
   channel: AcquisitionChannelDef;
@@ -96,12 +111,28 @@ export function channelsForFunnel(
  * channel, which is what that ceiling has always meant: one channel per funnel.
  * Spreading it across the offerable set instead would invent a split the brand
  * never made.
+ *
+ * `offerRows` + `offerId` narrow each pair to ONE offer's own ceiling, which is
+ * what the card edits: two offers selling the same funnel on the same channel
+ * are two campaigns funded separately, and the pair figure is their sum, so
+ * showing it under one offer's name would offer to spend the sibling's money.
+ * The narrowing is deliberately conservative, and every branch of it lands on
+ * today's pair figure for a brand with one offer:
+ *
+ *   - no offer grain served, or no caller offer → the pair figure, unchanged;
+ *   - a row for THIS offer → that row;
+ *   - no row for this offer but exactly one for the pair carrying NO offer →
+ *     that row, because a ceiling stated before the dimension existed is the
+ *     money of the brand's only offer (and equals the pair figure anyway);
+ *   - otherwise the pair is funded, for other offers → zero for this one.
  */
 export function funnelChannelBudgets(
   funnelKey: SalesFunnelKey,
   offerable: AcquisitionChannelDef[],
   rows: { funnelKey: string; featureSlug: string; dailyBudgetCents: number }[] | undefined,
   funnelTotalCents: number,
+  offerRows?: FunnelOfferBudgetRow[],
+  offerId?: string,
 ): FunnelChannelBudget[] {
   if (rows === undefined) {
     return offerable.map((channel, i) => ({
@@ -114,10 +145,22 @@ export function funnelChannelBudgets(
       .filter((r) => namesFunnel(r.funnelKey, funnelKey))
       .map((r) => [r.featureSlug, r.dailyBudgetCents]),
   );
-  return offerable.map((channel) => ({
-    channel,
-    savedCents: byChannel.get(channel.featureSlug) ?? 0,
-  }));
+  const mine =
+    offerRows === undefined || offerId === undefined
+      ? undefined
+      : offerRows.filter((r) => namesFunnel(r.funnelKey, funnelKey));
+  return offerable.map((channel) => {
+    const pairCents = byChannel.get(channel.featureSlug) ?? 0;
+    if (mine === undefined) return { channel, savedCents: pairCents };
+    const pairRows = mine.filter((r) => r.featureSlug === channel.featureSlug);
+    if (pairRows.length === 0) return { channel, savedCents: pairCents };
+    const exact = pairRows.find((r) => r.offerId === offerId);
+    if (exact) return { channel, savedCents: exact.dailyBudgetCents };
+    if (pairRows.length === 1 && pairRows[0].offerId === null) {
+      return { channel, savedCents: pairRows[0].dailyBudgetCents };
+    }
+    return { channel, savedCents: 0 };
+  });
 }
 
 /**

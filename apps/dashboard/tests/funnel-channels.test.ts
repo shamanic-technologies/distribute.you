@@ -134,6 +134,115 @@ describe("funnelChannelBudgets", () => {
   });
 });
 
+// A ceiling funds one CAMPAIGN, and a campaign is (offer × funnel × channel).
+// The pair figure is the SUM of the offers worked through it, so showing it
+// under one offer's name would offer to spend the sibling's money.
+//
+// Every branch below lands on today's pair figure for a brand with ONE offer,
+// which is 100% of live traffic.
+describe("funnelChannelBudgets, narrowed to one offer", () => {
+  const offerable = channelsForFunnel("reply_meeting", FEATURES);
+  const pairs = [{ funnelKey: "reply_meeting", featureSlug: SALES, dailyBudgetCents: 5000 }];
+  const OFFER = "11111111-1111-1111-1111-111111111111";
+  const SIBLING = "22222222-2222-2222-2222-222222222222";
+
+  const cents = (rows: Parameters<typeof funnelChannelBudgets>[4], id?: string) =>
+    funnelChannelBudgets("reply_meeting", offerable, pairs, 5000, rows, id).map(
+      (g) => g.savedCents,
+    );
+
+  it("reads the pair figure when billing serves no offer grain", () => {
+    expect(cents(undefined, OFFER)).toEqual([5000, 0]);
+  });
+
+  it("reads the pair figure when the caller names no offer", () => {
+    expect(
+      cents([
+        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: OFFER, dailyBudgetCents: 3000 },
+      ]),
+    ).toEqual([5000, 0]);
+  });
+
+  it("reads this offer's own ceiling, not the pair's sum", () => {
+    expect(
+      cents(
+        [
+          { funnelKey: "reply_meeting", featureSlug: SALES, offerId: OFFER, dailyBudgetCents: 3000 },
+          {
+            funnelKey: "reply_meeting",
+            featureSlug: SALES,
+            offerId: SIBLING,
+            dailyBudgetCents: 2000,
+          },
+        ],
+        OFFER,
+      ),
+    ).toEqual([3000, 0]);
+  });
+
+  // A ceiling stated before billing carried the dimension names no offer. That
+  // is not "money for no offer": it is the money of a brand that had exactly
+  // one, so this offer may spend it — and it equals the pair figure anyway,
+  // which is what makes the one-offer case byte-identical to before.
+  it("adopts a lone offer-less ceiling as this offer's", () => {
+    expect(
+      cents(
+        [
+          { funnelKey: "reply_meeting", featureSlug: SALES, offerId: null, dailyBudgetCents: 5000 },
+        ],
+        OFFER,
+      ),
+    ).toEqual([5000, 0]);
+  });
+
+  // Two claimants and neither is us: the pair is funded, but not for this offer,
+  // so it reads zero rather than borrowing a figure it cannot spend.
+  it("reads zero when the pair is funded only for other offers", () => {
+    expect(
+      cents(
+        [
+          {
+            funnelKey: "reply_meeting",
+            featureSlug: SALES,
+            offerId: SIBLING,
+            dailyBudgetCents: 3000,
+          },
+          { funnelKey: "reply_meeting", featureSlug: SALES, offerId: null, dailyBudgetCents: 2000 },
+        ],
+        OFFER,
+      ),
+    ).toEqual([0, 0]);
+  });
+
+  // The rename reaches this grain too, so both spellings must match the funnel.
+  it("matches an offer row under the canonical spelling", () => {
+    expect(
+      cents(
+        [
+          {
+            funnelKey: "sales_meetings_from_conversation",
+            featureSlug: SALES,
+            offerId: OFFER,
+            dailyBudgetCents: 3000,
+          },
+        ],
+        OFFER,
+      ),
+    ).toEqual([3000, 0]);
+  });
+
+  // An older billing serving no per-pair rows at all still attributes the whole
+  // funnel ceiling to the first channel: the offer grain cannot exist without
+  // the pair grain, so that branch is untouched.
+  it("keeps the no-pairs branch ahead of the offer narrowing", () => {
+    expect(
+      funnelChannelBudgets("reply_meeting", offerable, undefined, 4200, [], OFFER).map(
+        (g) => g.savedCents,
+      ),
+    ).toEqual([4200, 0]);
+  });
+});
+
 describe("typedFunnelTotalUsd", () => {
   // The product minimum binds the funnel TOTAL: $12 + $12 clears a $24 floor,
   // so a customer splitting one funded funnel is never refused for each half

@@ -169,10 +169,12 @@ export function BrandSalesFunnelsCard({
     ["offerSalesFunnels", brandId, offerId],
     () => getOfferSalesFunnels(brandId, offerId),
   );
-  // billing owns the money side, and it keys a ceiling on (org, brand, funnel,
-  // channel) with no offer dimension — so this read stays brand-scoped, on the
-  // brand key. A funnel with no row here is simply not funded, which is why an
-  // absent row reads as zero rather than as an unknown.
+  // billing owns the money side. Its store is BRAND-scoped and answers at three
+  // grains at once — per funnel, per (funnel, channel), per (funnel, channel,
+  // offer) — so the read stays on the brand key, shared with every other surface
+  // that asks what this brand is funded at, and the offer narrowing happens
+  // below where the finest grain is read. A funnel with no row is simply not
+  // funded, which is why an absent row reads as zero rather than as an unknown.
   const { data: budgetData, isError: budgetError } = useAuthQuery(
     ["brandFunnelBudgets", brandId],
     () => getBrandFunnelBudgets(brandId),
@@ -256,12 +258,16 @@ export function BrandSalesFunnelsCard({
         const saved = declared.get(def.key);
         const cents = funded.get(def.key) ?? 0;
         // The money splits across the channels this funnel may be sold through,
-        // and billing serves that grain. A channel with no row is not funded.
+        // and then across the offers worked through each — billing serves both
+        // grains. The fields show THIS offer's own ceilings, because they are
+        // what the button writes; a channel with no row is not funded.
         const perChannel = funnelChannelBudgets(
           def.key,
           channelsForFunnel(def.key, features),
           budgetData?.channels,
           cents,
+          budgetData?.offers,
+          offerId,
         );
         const savedCentsByChannel: Record<string, number> = {};
         const budgetUsdByChannel: Record<string, string> = {};
@@ -344,11 +350,17 @@ export function BrandSalesFunnelsCard({
   // billing's write, separate from brand-service's. A funnel's money and a
   // funnel's economics live in two services, so pressing one button makes two
   // writes; neither can stand in for the other.
-  // The money is stated PER CHANNEL, so a funnel worked through two offers makes
+  // The money is stated PER CHANNEL, so a funnel sold through two channels makes
   // two writes. They run in SEQUENCE, not in parallel: each response carries the
   // whole set, and billing recomputes the funnel total on every one, so two
   // concurrent writes would each answer with a set that predates the other and
   // the last one home would cache a total missing its sibling.
+  //
+  // Each write NAMES THE OFFER it funds, alongside the channel. A ceiling funds
+  // one campaign and a campaign is (offer × funnel × channel), so a write naming
+  // only two of the three addresses every offer worked through that pair at
+  // once: the day a brand states a second, funding one would silently fund the
+  // other and neither could be stopped without stopping both.
   const budgetMutation = useMutation({
     mutationFn: async (vars: {
       def: SalesFunnelDef;
@@ -361,6 +373,7 @@ export function BrandSalesFunnelsCard({
           vars.def.key,
           move.cents,
           move.featureSlug,
+          offerId,
         );
       }
       return set!;
@@ -377,6 +390,8 @@ export function BrandSalesFunnelsCard({
         channelsForFunnel(vars.def.key, features),
         set.channels,
         cents,
+        set.offers,
+        offerId,
       )) {
         savedCentsByChannel[channel.featureSlug] = savedCents;
         budgetUsdByChannel[channel.featureSlug] =
