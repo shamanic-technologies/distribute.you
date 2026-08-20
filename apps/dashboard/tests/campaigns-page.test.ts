@@ -293,7 +293,54 @@ describe("Campaigns page (GA)", () => {
     expect(page).toContain("brandRevenueQ.isError");
     expect(table).toContain("campaignsQ.isError");
     expect(table).toContain("groupsQ.isError");
+    // The per-channel fan-out is in the gate too: one channel's read failing must
+    // not hold the table, and one still loading must not let it paint half its money.
+    expect(table).toContain("channelGroupQs.every");
     expect(page).toContain("headerSettled");
     expect(page).toContain("tableSettled");
+  });
+
+  it("lists an offer's campaigns across CHANNELS, not one feature slug", () => {
+    // An offer is sold through several acquisition channels at once, each its own
+    // campaign. Pinning the offer-scoped list to a single slug showed a customer one
+    // of their campaigns and silently dropped the rest — which is exactly what
+    // happened the day a second cold-email channel was funded and provisioned.
+    //
+    // The feature filter's REASON survives: it keeps out the brand's PR,
+    // AI-visibility and VC campaigns, which run no sales funnel and can never fill
+    // these columns. So the offer-scoped test asks that question directly, off the
+    // channel catalogue, which means a THIRD channel needs no edit here.
+    expect(table).toContain("acquisitionChannelForFeatureSlug(c.featureSlug) !== null");
+    // The brand-scoped list (no offer) stays pinned to its one feature: with no offer
+    // to bound it, spanning channels would mix propositions.
+    expect(table).toContain("c.featureSlug === featureSlug");
+  });
+
+  it("reads each channel's money from its own channel, and never adds channels up", () => {
+    // That endpoint prices ONE channel at a time and a campaign is paced and priced
+    // on its own channel's money, so the rows are merged by campaign id. A sum here
+    // would be a browser-computed metric AND would drift from what billing charges.
+    expect(table).toContain("useQueries");
+    expect(table).toContain('["featureRevenueByCampaign", brandId, slug]');
+    // Merged by campaign id — a campaign IS a channel, so it appears in exactly one
+    // channel's answer and the merge can never make two sources disagree on a row.
+    expect(table).toContain("m.set(g.campaignId, g)");
+    // Measured: 902 chars from the memo that names the channels to the closing brace
+    // of the queries call. Do NOT pad — this is a not-toContain guard, so a slice
+    // running past the block would read neighbouring code and fail on correct code.
+    const fanoutAt = table.indexOf("const channelSlugs = useMemo(");
+    const fanout = table.slice(fanoutAt, fanoutAt + 902);
+    expect(fanout).not.toContain("reduce");
+    expect(fanout).not.toContain("+=");
+  });
+
+  it("carries the org gate explicitly on the fan-out", () => {
+    // `useQueries` is not `useAuthQuery`, so the DIS-143 cross-org gate does not come
+    // for free. It is asked for rather than re-derived — a second copy of that gate
+    // is how one surface keeps the isolation and another quietly loses it.
+    expect(table).toContain("useOrgQueryGate");
+    expect(table).toContain("enabled: orgConsistent &&");
+    const gate = read("lib/use-auth-query.ts");
+    expect(gate).toContain("export function useOrgQueryGate");
   });
 });

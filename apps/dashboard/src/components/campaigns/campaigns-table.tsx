@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
@@ -216,6 +217,7 @@ interface CampaignRow {
  */
 export function useCampaignRows(brandId: string, featureSlug: string, offerId?: string) {
   const revenueEnabled = isRevenueFeature(featureSlug);
+  const orgConsistent = useOrgQueryGate();
 
   const campaignsQ = useAuthQuery(
     ["campaigns", brandId],
@@ -252,22 +254,78 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // offer on the row, so this is a filter on a stored value, never a guess: a
   // campaign that carries no offer belongs to none and is left out rather than
   // folded into whichever offer the reader happens to be looking at.
+  //
+  // ...and that is why an offer-scoped list spans CHANNELS. One offer is sold
+  // through several at once — each its own campaign, its own ceiling, its own
+  // measurement — so pinning the list to a single slug shows the reader one of
+  // their campaigns and silently drops the rest. It did: a customer funded a second
+  // cold-email channel, campaign-service provisioned and ran it, and the offer
+  // screen kept showing one line. The feature filter's REASON survives intact — it
+  // exists to keep out the brand's PR, AI-visibility and VC campaigns, which run no
+  // sales funnel and can never fill these columns — so the offer-scoped test asks
+  // exactly that instead: is this campaign's feature an ACQUISITION CHANNEL? The
+  // catalogue answers, so a third channel needs no edit here.
+  //
+  // The brand-scoped list (no offer) is untouched and stays pinned to its one
+  // feature: with no offer to bound it, spanning channels would mix propositions.
   const featureCampaigns = useMemo(
     () =>
-      campaigns.filter(
-        (c) => c.featureSlug === featureSlug && (!offerId || c.offerId === offerId),
+      campaigns.filter((c) =>
+        offerId
+          ? c.offerId === offerId && acquisitionChannelForFeatureSlug(c.featureSlug) !== null
+          : c.featureSlug === featureSlug,
       ),
     [campaigns, featureSlug, offerId],
   );
+
+  // One revenue read PER CHANNEL present in the list, because that endpoint prices
+  // one channel at a time and a campaign is paced and priced on its own channel's
+  // money. The rows are merged by campaign id, never added up: each row shows the
+  // figures its own channel's group carries, so this is a display union and not a
+  // browser-computed metric.
+  //
+  // `useQueries` rather than `useAuthQuery`, because the SIZE of this fan-out is
+  // decided at render and a hook cannot be called per member. It therefore carries
+  // the org gate explicitly (`useOrgQueryGate`) — the one thing `useAuthQuery` would
+  // have done for it, and the one that must not be lost.
+  //
+  // Each key is byte-equal to the single-channel key above, so the channel the page
+  // is already reading costs no second request.
+  const channelSlugs = useMemo(() => {
+    const slugs = new Set<string>();
+    for (const c of featureCampaigns) if (c.featureSlug) slugs.add(c.featureSlug);
+    return [...slugs].sort();
+  }, [featureCampaigns]);
+
+  // Gated on the channel catalogue, NOT on `isRevenueFeature`: that set decides which
+  // features get a revenue PAGE, and this is a data read. A channel sells a sales
+  // funnel, so it has money to report; if it has none yet the groups come back empty
+  // and the row reads `—`, which is the honest answer rather than a withheld one.
+  const channelGroupQs = useQueries({
+    queries: channelSlugs.map((slug) => ({
+      queryKey: ["featureRevenueByCampaign", brandId, slug] as const,
+      queryFn: () => getFeatureRevenueByCampaign(slug, brandId),
+      enabled: orgConsistent && acquisitionChannelForFeatureSlug(slug) !== null,
+      refetchInterval: POLL_INTERVAL,
+    })),
+  });
   const liveCampaigns = useMemo(
     () => featureCampaigns.filter((c) => isActiveStatus(c.status)),
     [featureCampaigns],
   );
+  // Every channel's groups in one lookup, keyed by campaign. A campaign appears in
+  // exactly one channel's answer (it IS a channel), so this merge can never make two
+  // sources disagree about one row.
+  const channelGroupData = channelGroupQs.map((q) => q.data);
   const groupsById = useMemo(() => {
     const m = new Map<string, CampaignRevenueGroup>();
     for (const g of groupsQ.data ?? []) m.set(g.campaignId, g);
+    for (const groups of channelGroupData) {
+      for (const g of groups ?? []) m.set(g.campaignId, g);
+    }
     return m;
-  }, [groupsQ.data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupsQ.data, ...channelGroupData]);
 
   // Ordered by ROI DESC. Every row is running by construction (the live filter above), so
   // there is no status term — the order is the ROI column the table leads with, because a
@@ -279,10 +337,13 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   }, [liveCampaigns, groupsById]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate
-  // query (CLAUDE.md: reveal-on-settle).
+  // query (CLAUDE.md: reveal-on-settle). The per-channel fan-out is in the gate for
+  // the same reason the others are: one channel's read failing must not hold the
+  // table, and one still loading must not let it paint half its money.
   const settled =
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
-    (groupsQ.data !== undefined || groupsQ.isError);
+    (groupsQ.data !== undefined || groupsQ.isError) &&
+    channelGroupQs.every((q) => q.data !== undefined || q.isError);
 
   return { rows, settled, featureCampaigns };
 }

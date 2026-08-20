@@ -68,4 +68,33 @@ export function useAuthQuery<T>(
   });
 }
 
+/**
+ * The same org-consistency gate, for a caller that cannot use `useAuthQuery`.
+ *
+ * `useQueries` is the one legitimate reason: a surface fanning out over a set whose
+ * SIZE is decided at render (one read per acquisition channel an offer sells
+ * through) cannot call a hook per member without breaking the rules of hooks. Such a
+ * caller still must not fire a cross-org read, so it asks for the verdict here
+ * rather than re-deriving it — a second copy of this gate is how one surface keeps
+ * the DIS-143 isolation and another quietly loses it.
+ *
+ * Returns false while the active org is unresolved or disagrees with the URL. AND it
+ * into every `enabled` in the fan-out.
+ */
+export function useOrgQueryGate(): boolean {
+  const { organization } = useOrganization();
+  const pathname = usePathname();
+
+  const urlOrgId = pathname?.match(/\/orgs\/([^/]+)/)?.[1] ?? null;
+  const activeOrgId = organization?.id ?? null;
+
+  // Same monotonic null-blink latch as above, and for the same reason: a transient
+  // `organization: null` during JWT rotation must not re-disable a settled read.
+  const lastResolvedActiveOrgId = useRef<string | null>(null);
+  if (activeOrgId) lastResolvedActiveOrgId.current = activeOrgId;
+  const effectiveActiveOrgId = activeOrgId ?? lastResolvedActiveOrgId.current;
+
+  return !urlOrgId || urlOrgId === effectiveActiveOrgId;
+}
+
 export { useQueryClient };
