@@ -151,6 +151,12 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // Feature-level stats / revenue / activity
   "featureStats",
   "featureRevenue",
+  // The offer and brand grains of the same money — a page scoped to one of them
+  // asks features-service across every channel it covers, so these are DIFFERENT
+  // answers from the per-feature entry above and get their own roots. Unlisted, a
+  // root is default-OFF and the money block cold-skeletons on every visit.
+  "offerRevenue",
+  "brandRevenue",
   "featureRevenueByCampaign",
   "featureRevenueByOffer",
   "featurePipelineActivity",
