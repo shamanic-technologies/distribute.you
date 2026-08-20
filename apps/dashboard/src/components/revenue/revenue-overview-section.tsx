@@ -79,7 +79,10 @@ export function RevenueOverviewSection({
    *  states that rather than borrowing the brand's figure or inventing a share. */
   budgetNote?: string;
   brandId: string;
-  featureSlug: string;
+  /** Null on a CAMPAIGN-scoped page until the campaign resolves and names its own
+   *  channel — the section does not read it, so a caller must not have to invent a
+   *  slug it does not yet know just to satisfy the type. */
+  featureSlug: string | null;
   /** /orgs/:orgId/brands/:brandId/features/:slug — for the Top-campaigns links. */
   basePath: string;
   /** Optional control rendered on the right side of the section header. */

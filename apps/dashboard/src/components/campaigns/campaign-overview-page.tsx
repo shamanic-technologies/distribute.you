@@ -28,8 +28,7 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
-import { isRevenueFeature } from "@/lib/revenue-feature";
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { tenantBasePath } from "@/lib/offer-path";
 import {
   selectWorkflowForOptimizationGoal,
@@ -95,8 +94,6 @@ export function CampaignOverviewPage() {
   // the offer, never to the brand two levels up.
   const offerId = params.offerId as string | undefined;
   const campaignId = params.id as string;
-  const featureSlug = useSoleFeatureSlug();
-  const enabled = isRevenueFeature(featureSlug);
   const timezone = useMemo(() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -120,11 +117,35 @@ export function CampaignOverviewPage() {
   );
   const campaign = campaignData?.campaign ?? null;
 
+  // The channel THIS campaign runs on — read off the campaign, never resolved from
+  // the brand's sole feature.
+  //
+  // A campaign IS (offer x funnel x channel), and an offer is sold through several
+  // channels at once. Asking the brand for "its" feature returns whichever single
+  // one is GA, so every read on this page was scoped to a channel the open campaign
+  // may not even run on: a campaign on the brand's second channel had its spend,
+  // its stats and its audiences fetched for the FIRST one, which does not carry it —
+  // so the page answered `$0 spent today` for a campaign that had committed $10.32
+  // that day, while the list one click away read it correctly. Two surfaces, one
+  // campaign, two numbers, and neither erroring.
+  //
+  // The campaign read above already carries the answer, so this costs no request.
+  const featureSlug = campaign?.featureSlug ?? null;
+  // Gated on the channel CATALOGUE, not on the brand's revenue-feature set: that set
+  // decides which features get a revenue page on a BRAND-scoped surface, and this
+  // page is scoped to one campaign. A campaign sells a funnel through a channel, so
+  // it has money to show whichever channel it is — and gating on the brand's GA
+  // feature is what would blank this page for a campaign on any other one.
+  const isChannelCampaign = acquisitionChannelForFeatureSlug(featureSlug) !== null;
+  // Never fire under a GUESSED slug: until the campaign resolves we do not know its
+  // channel, and a read fired on the wrong one lands in that channel's cache entry.
+  const enabled = featureSlug !== null && isChannelCampaign;
+
   // Revenue + conversions SCOPED TO THE CAMPAIGN. Byte-equal key to
   // OutreachStatCardsAuto's campaign-scoped key → one deduped poll.
   const { data, isError: revenueIsError } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug, "campaign", campaignId],
-    () => getFeatureRevenue(featureSlug, brandId, { campaignId }),
+    () => getFeatureRevenue(featureSlug!, brandId, { campaignId }),
     {
       enabled,
       ...pollOptions,
@@ -141,7 +162,7 @@ export function CampaignOverviewPage() {
   // brand-scoped — the campaign's inherited forecast context.
   const { data: pipelineActivity, isError: pipelineIsError } = useAuthQuery(
     ["featurePipelineActivity", brandId, featureSlug, timezone],
-    () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
+    () => getFeaturePipelineActivity(featureSlug!, { brandId, days: 7, timezone }),
     { enabled, ...pollOptions },
   );
 
@@ -193,7 +214,7 @@ export function CampaignOverviewPage() {
   // Byte-equal key to OutreachStatCardsAuto's campaign key → one deduped poll.
   const { data: featureStatsData, isError: featureStatsIsError } = useAuthQuery(
     ["featureStats", featureSlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureSlug, { campaignId }),
+    () => fetchFeatureStats(featureSlug!, { campaignId }),
     { enabled, ...pollOptions },
   );
   const featureStats = featureStatsData?.stats ?? {};
@@ -269,7 +290,7 @@ export function CampaignOverviewPage() {
     ],
     () =>
       getWorkflowProjection({
-        featureSlug,
+        featureSlug: featureSlug!,
         brandId,
         objective: salesObjectiveForOptimizationGoal(optimizationGoal),
         budgetUsd: monthlyBudgetUsd ?? undefined,
@@ -339,7 +360,7 @@ export function CampaignOverviewPage() {
     // cannot, since `reply_meeting` and `visit_meeting` both answer to `meetingBooked`
     // and would price a reply-driven chain against clicks it never buys. A campaign that
     // predates the funnel keeps the goal.
-    () => fetchFeatureAudienceStats(featureSlug, {
+    () => fetchFeatureAudienceStats(featureSlug!, {
       brandId,
       ...(campaignFunnelKey ? { funnel: campaignFunnelKey } : { goal: audienceStatsGoal }),
       campaignId,
@@ -417,7 +438,11 @@ export function CampaignOverviewPage() {
     );
   }
 
-  if (!isRevenueFeature(featureSlug)) {
+  // The campaign resolved and runs on something this app has no channel for. Gated
+  // on the campaign's OWN channel, so a campaign on the brand's second (or third)
+  // channel renders exactly like one on its first — keying this on the brand's sole
+  // GA feature is what would blank the page for every campaign but one.
+  if (!campaignLoading && !isChannelCampaign) {
     return (
       <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
