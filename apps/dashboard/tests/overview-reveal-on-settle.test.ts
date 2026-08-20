@@ -82,3 +82,66 @@ describe("RevenueOverviewSection drops the defensive !data re-guard", () => {
     expect(section.slice(at, at + 240)).toContain("pending={revenueLoading}");
   });
 });
+
+/**
+ * The money on the brand / offer Overview is asked at the grain the PAGE is.
+ *
+ * A feature IS an acquisition channel in this fleet, so the per-feature read answers
+ * "what did this return THROUGH THIS ONE CHANNEL". While a brand ran one channel that
+ * was the same answer as the brand's; it stopped being so the day a second was funded,
+ * and the page then paired one channel's spend with billing's brand-wide ceiling and
+ * read `$40 / 50` for a brand whose channels had spent $40.07 and $10.32 against their
+ * own $40 and $10 — both halves real, about different things, nothing erroring.
+ */
+describe("brand / offer Overview asks for its own grain, not one channel's", () => {
+  const page = fs.readFileSync(
+    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"),
+    "utf-8",
+  );
+  const api = fs.readFileSync(path.join(__dirname, "../src/lib/api.ts"), "utf-8");
+
+  it("reads the offer grain when an offer is open, the brand grain otherwise", () => {
+    expect(page).toContain("offerId ? getOfferRevenue(offerId, brandId) : getBrandRevenue(brandId)");
+    // The per-feature read answers for ONE channel and must not come back to this page.
+    expect(page).not.toContain("getFeatureRevenue(");
+  });
+
+  it("keys carry the grain, so the two answers cannot share a cache entry", () => {
+    expect(page).toContain('["offerRevenue", brandId, offerId]');
+    expect(page).toContain('["brandRevenue", brandId]');
+  });
+
+  it("both readers exist and share ONE parser", () => {
+    expect(api).toContain("export async function getOfferRevenue");
+    expect(api).toContain("export async function getBrandRevenue");
+    // The money block a consumer renders is identical at all three grains, so a
+    // second parser would be a second place for it to drift.
+    expect(api).toContain('parseFeatureRevenue(raw, "getOfferRevenue")');
+    expect(api).toContain('parseFeatureRevenue(raw, "getBrandRevenue")');
+  });
+
+  it("asks for the NET basis, like every other money read", () => {
+    // Coherent with the NET-paced budget, so `spent today / budget` cannot exceed
+    // 100% for a discounted org.
+    const at = api.indexOf("export async function getBrandRevenue");
+    expect(api.slice(at, at + 400)).toContain('pricing: "net"');
+  });
+
+  it("never sums the per-channel breakdown in the browser", () => {
+    // features-service combines the parts because most of them do not add — a lead
+    // worked through two channels is one lead, and a ratio of sums is neither the sum
+    // nor the average of ratios. Measured: 1408 chars from the offer reader's
+    // signature to the brand reader's closing brace. Do NOT pad a not-toContain
+    // slice — running past them reads neighbouring code and fails on correct code.
+    const at = api.indexOf("export async function getOfferRevenue");
+    const readers = api.slice(at, at + 1408);
+    expect(readers).not.toContain("reduce");
+    expect(readers).not.toContain("+=");
+  });
+
+  it("both roots are persistable, or the money block cold-skeletons every visit", () => {
+    const persist = fs.readFileSync(path.join(__dirname, "../src/lib/persist-cache.ts"), "utf-8");
+    expect(persist).toContain('"offerRevenue"');
+    expect(persist).toContain('"brandRevenue"');
+  });
+});

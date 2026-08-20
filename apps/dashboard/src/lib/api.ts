@@ -3109,6 +3109,62 @@ export async function getFeatureRevenue(
 }
 
 /**
+ * What an OFFER returned — across every acquisition channel it is sold through.
+ *
+ * The read above names ONE channel, because a feature IS a channel in this fleet.
+ * An offer is sold through several at once, so a screen scoped to an offer that
+ * asks the per-feature read describes whichever channel it happened to name and
+ * understates the offer by whatever the others did. Silently: nothing errors, the
+ * figures are simply about less than they claim. Measured on the brand that
+ * surfaced this — `$40.07` from the per-feature read against `$50.38` here, on the
+ * same day, for the same offer.
+ *
+ * features-service combines the parts; this only asks. Money adds because a run
+ * belongs to exactly one channel, but people do not (a lead worked through two
+ * channels is one lead) and no ratio does (a ratio of sums is neither the sum nor
+ * the average of ratios) — which is why summing per-channel reads in the browser
+ * would be wrong as well as banned.
+ *
+ * Same body as the per-feature read plus `brandId`, `offerId` and a per-channel
+ * `channels` breakdown, minus `featureSlug`. The parser is shared deliberately: the
+ * money block a consumer renders is identical, so a second one would be a second
+ * place for it to drift. The breakdown is not read yet and is stripped on parse.
+ */
+export async function getOfferRevenue(
+  offerId: string,
+  brandId: string,
+  token?: string,
+): Promise<RevenueOverview> {
+  const query = new URLSearchParams({ brandId });
+  // Same NET basis and the same reason as the per-feature read above — see its
+  // comment. Never a per-caller toggle.
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(`/offers/${offerId}/revenue?${query.toString()}`, { token });
+  return parseFeatureRevenue(raw, "getOfferRevenue");
+}
+
+/**
+ * What a BRAND returned — across every acquisition channel it runs.
+ *
+ * The offer read above, one level further up, and NOT the sum of it: a brand holds
+ * several offers and each runs several channels, so the same non-additivity applies
+ * one grain higher and features-service owns it there too.
+ *
+ * This is what a brand-scoped surface must ask. Asking the per-feature read there
+ * is what produced a fraction with two grains in it — one channel's spend over
+ * billing's brand-wide ceiling, `$40 / 50` for a brand whose channels had spent
+ * $40.07 and $10.32 against their own $40 and $10.
+ */
+export async function getBrandRevenue(
+  brandId: string,
+  token?: string,
+): Promise<RevenueOverview> {
+  const query = new URLSearchParams({ pricing: "net" });
+  const raw = await apiCall<unknown>(`/brands/${brandId}/revenue?${query.toString()}`, { token });
+  return parseFeatureRevenue(raw, "getBrandRevenue");
+}
+
+/**
  * `structuralSharing` merge for the `["featureRevenue", ...]` query. The
  * server-computed `spend` block (cost card) and the actual series
  * (`outreachContacted`, `clicked`, `repliedPositive`, `meetingsBooked`,

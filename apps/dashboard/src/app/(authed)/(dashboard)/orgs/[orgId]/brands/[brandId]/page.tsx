@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
-  getFeatureRevenue,
+  getOfferRevenue,
+  getBrandRevenue,
   fetchFeatureStats,
   getBrandDailyBudget,
   getBrandPause,
@@ -110,11 +111,28 @@ export default function BrandOverviewPage() {
   );
   const brand = brandData?.brand ?? null;
 
+  // The money on this page is asked at the grain the page IS — the offer when one
+  // is open, the brand otherwise — never of a single acquisition channel.
+  //
+  // A feature IS a channel here, so the per-feature read answers "what did this
+  // return THROUGH THIS ONE CHANNEL" while the page presents it as the offer's or
+  // the brand's. That was invisible while a brand ran one channel and stopped being
+  // so the day a second was funded: the page paired one channel's spend with
+  // billing's brand-wide ceiling and read `$40 / 50`, for a brand whose two channels
+  // had spent $40.07 and $10.32 against their own $40 and $10. Both halves real,
+  // about different things, and nothing erroring.
+  //
+  // features-service combines the parts, because most of them do not add — a lead
+  // worked through two channels is one lead, and a ratio of sums is neither the sum
+  // nor the average of ratios. Asking N per-channel reads and adding them here would
+  // be wrong on top of being the browser-computed metric this repo forbids.
+  //
+  // Keys carry the grain, so the offer's entry and the brand's can never collide.
   const { data, isError: revenueIsError } = useAuthQuery(
     offerId
-      ? ["featureRevenue", brandId, featureSlug, "offer", offerId]
-      : ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId, { offerId }),
+      ? ["offerRevenue", brandId, offerId]
+      : ["brandRevenue", brandId],
+    () => (offerId ? getOfferRevenue(offerId, brandId) : getBrandRevenue(brandId)),
     {
       enabled,
       ...pollOptions,
@@ -294,7 +312,7 @@ export default function BrandOverviewPage() {
   // downstream Neon scale-to-zero). Gating on `data !== undefined` alone left the
   // whole section skeletoned FOREVER after a transient error — no error UI, no
   // recovery. Settling on `isError` paints "—"/stale instead; the error still logs
-  // loud (React Query + `getFeatureRevenue` safeParse throw), and the monotonic
+  // loud (React Query + the revenue reader's safeParse throw), and the monotonic
   // latch keeps the section revealed while the next 30s poll recovers real data.
   // A query disabled by the org-consistency gate has isError:false → NOT settled,
   // so cross-org isolation is unchanged (reseed-from-disk covers that case).
