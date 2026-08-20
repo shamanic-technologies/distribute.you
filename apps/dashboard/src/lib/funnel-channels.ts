@@ -201,3 +201,24 @@ export function funnelChannelBudgets(
 export function typedFunnelTotalUsd(usdByChannel: Record<string, number>): number {
   return Object.values(usdByChannel).reduce((sum, usd) => sum + (usd > 0 ? usd : 0), 0);
 }
+
+/**
+ * What THIS OFFER funds a funnel at, across its channels, in cents.
+ *
+ * The figure billing serves for a funnel spans every offer selling it, so on a
+ * page scoped to one offer it names money the reader cannot see and cannot edit:
+ * a card would state a ceiling above fields that add up to less, and both would
+ * be correct. This adds up the offer-scoped per-channel figures the card already
+ * holds — the ones `funnelChannelBudgets` narrowed — so the tag and the fields
+ * under it can only ever say the same thing.
+ *
+ * The funnel-wide figure is still the right one for the product MINIMUM, which
+ * binds what the funnel sums to across offers; that is billing's rule and it is
+ * unchanged here.
+ */
+export function offerFunnelTotalCents(savedCentsByChannel: Record<string, number>): number {
+  return Object.values(savedCentsByChannel).reduce(
+    (sum, cents) => sum + (cents > 0 ? cents : 0),
+    0,
+  );
+}

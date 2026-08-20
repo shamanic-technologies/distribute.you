@@ -1096,8 +1096,8 @@ describe("the Sales Funnels card funds each funnel", () => {
   it("keeps the ceiling OUT of the funnel patch", () => {
     // `draft` is exactly what brand-service's partial patch reads. Putting money
     // in it would send billing's field to a service that has no column for it.
-    // Measured: the block is 1316 chars, its last field at 1264. Give it room.
-    const state = sliceFrom(src, "type FunnelState = {", 1400);
+    // Measured: the block is 1640 chars, its last field at 1616. Give it room.
+    const state = sliceFrom(src, "type FunnelState = {", 1720);
     // The money is PER CHANNEL: the same funnel is worked through several offers
     // at once, each its own campaign, so one figure could not say how it splits.
     expect(state).toContain("budgetUsdByChannel: Record<string, string>");
@@ -1108,13 +1108,25 @@ describe("the Sales Funnels card funds each funnel", () => {
     expect(draft).not.toContain("budget");
   });
 
-  it("funds each channel of a funnel separately, and never re-adds the total", () => {
-    // billing serves the per-funnel figure as the SUM of its channels, so the
-    // card renders that served number. A client-side sum is the compute-a-stat-
-    // in-the-browser bug, and it would drift from what billing charges.
+  it("funds each channel of a funnel separately, and states what THIS offer funds", () => {
+    // The tag on a closed card names this offer's money — the sum of the very
+    // per-channel figures the open form edits — never billing's funnel figure,
+    // which spans every offer selling the funnel and would read higher than the
+    // fields under it on a page scoped to one. That is not a browser-computed
+    // stat: both numbers are billing's, at two grains, and this page can only
+    // honestly state the finer one.
     const lib2 = read("../src/lib/funnel-channels.ts");
     expect(lib2).toContain("export function channelsForFunnel");
     expect(lib2).toContain("export function funnelChannelBudgets");
+    expect(lib2).toContain("export function offerFunnelTotalCents");
+    expect(src).toContain("offerFunnelTotalCents(state.savedCentsByChannel)");
+    // Measured: the tag block runs 572 chars from its guard to its closing
+    // brace. Do NOT pad it — this is a not-toContain guard, so a slice running
+    // past the block would read the next thing that mentions the funnel-wide
+    // figure and fail on correct code.
+    const tag = sliceFrom(src, "{state.declared && !isOpen && (", 572);
+    expect(tag).toContain("offerFundedCents");
+    expect(tag).not.toContain("savedBudgetCents");
     // Which channel may sell which funnel is features-service's statement.
     expect(lib2).not.toContain("reply_meeting:");
     expect(src).toContain("channelsForFunnel(def.key, features)");
@@ -1179,14 +1191,15 @@ describe("the Sales Funnels card funds each funnel", () => {
   it("states the funded ceiling on the tag, and says so when there is none", () => {
     // The money IS the selection now. A declared funnel at zero is one the brand
     // described but is not paying for, so a green tag claiming it runs would be
-    // a statement about spend that is not happening.
-    expect(src).toContain("state.savedBudgetCents > 0");
+    // a statement about spend that is not happening. The figure is THIS offer's,
+    // for the reason pinned in the channel-funding test above.
+    expect(src).toContain("offerFundedCents > 0");
     expect(src).toContain("Not funded");
   });
 
   it("renders the ceiling in whole dollars, never cents", () => {
     // A daily budget is a configured ceiling, not a charge.
-    expect(src).toContain('Math.round(state.savedBudgetCents / 100).toLocaleString("en-US")');
+    expect(src).toContain('Math.round(offerFundedCents / 100).toLocaleString("en-US")');
   });
 });
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   channelsForFunnel,
   funnelChannelBudgets,
+  offerFunnelTotalCents,
   offerScopedCents,
   typedFunnelTotalUsd,
   type ChannelFeatureRow,
@@ -313,5 +314,42 @@ describe("typedFunnelTotalUsd", () => {
     expect(typedFunnelTotalUsd({ [SALES]: 0, [FEEDBACK]: 0 })).toBe(0);
     expect(typedFunnelTotalUsd({ [SALES]: 30, [FEEDBACK]: -5 })).toBe(30);
     expect(typedFunnelTotalUsd({})).toBe(0);
+  });
+});
+
+describe("offerFunnelTotalCents", () => {
+  // The tag on a closed card and the fields inside the open one are one
+  // statement about one offer's money. A customer funding $40 and $10 is funding
+  // $50, whatever a sibling offer of the same brand funds the same funnel at.
+  it("adds up what this offer funds, across its channels", () => {
+    expect(offerFunnelTotalCents({ [SALES]: 4000, [FEEDBACK]: 1000 })).toBe(5000);
+  });
+
+  it("reads an unfunded channel as nothing, and no channels as nothing", () => {
+    expect(offerFunnelTotalCents({ [SALES]: 4000, [FEEDBACK]: 0 })).toBe(4000);
+    expect(offerFunnelTotalCents({})).toBe(0);
+  });
+
+  // The figure billing serves for the funnel spans every offer selling it, so a
+  // card reading it would state a ceiling above the fields under it and both
+  // would be correct. This is what the sum is narrowed FROM.
+  it("stays below the funnel figure when a sibling offer funds the same funnel", () => {
+    const mine = funnelChannelBudgets(
+      "reply_meeting",
+      channelsForFunnel("reply_meeting", FEATURES),
+      [
+        { funnelKey: "reply_meeting", featureSlug: SALES, dailyBudgetCents: 9000 },
+        { funnelKey: "reply_meeting", featureSlug: FEEDBACK, dailyBudgetCents: 1000 },
+      ],
+      10000,
+      [
+        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: "mine", dailyBudgetCents: 4000 },
+        { funnelKey: "reply_meeting", featureSlug: SALES, offerId: "theirs", dailyBudgetCents: 5000 },
+        { funnelKey: "reply_meeting", featureSlug: FEEDBACK, offerId: "mine", dailyBudgetCents: 1000 },
+      ],
+      "mine",
+    );
+    const byChannel = Object.fromEntries(mine.map((b) => [b.channel.featureSlug, b.savedCents]));
+    expect(offerFunnelTotalCents(byChannel)).toBe(5000);
   });
 });
