@@ -131,7 +131,11 @@ describe("both Overview surfaces let the card pick the top 3", () => {
       // features-service applies `limit` AFTER sorting by ITS OWN sortMetric, so a limit
       // hands the card three rows chosen on a column it does not show.
       const src = read(rel);
-      const at = src.indexOf("fetchFeatureAudienceStats(featureSlug, {");
+      // Anchored on the CALL, not on how each page spells its slug argument: the
+      // campaign page resolves the channel off the campaign it opened, so its slug
+      // is null until that read settles and the call site asserts it non-null under
+      // the `enabled` gate. The brand page passes it plainly. Both must drop `limit`.
+      const at = src.indexOf("fetchFeatureAudienceStats(");
       expect(at).toBeGreaterThan(-1);
       expect(src.slice(at, at + 200)).not.toContain("limit:");
     });

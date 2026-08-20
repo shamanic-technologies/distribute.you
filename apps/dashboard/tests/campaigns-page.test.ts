@@ -377,6 +377,27 @@ describe("Campaigns page (GA)", () => {
     expect(fanout).not.toContain("+=");
   });
 
+  it("scopes the campaign DETAIL page to the campaign's own channel", () => {
+    // A campaign IS (offer x funnel x channel). Resolving the brand's sole GA
+    // feature instead scoped every read to a channel the open campaign may not run
+    // on: a campaign on the brand's second channel had its spend fetched for the
+    // FIRST one, which does not carry it, so the page read `$0 spent today` for a
+    // campaign that had committed $10.32 that day — while the list one click away
+    // read it correctly. Two surfaces, one campaign, two numbers, neither erroring.
+    const detail = read("components/campaigns/campaign-overview-page.tsx");
+    expect(detail).toContain("const featureSlug = campaign?.featureSlug ?? null");
+    // The brand's sole-feature resolver must not come back to this page.
+    expect(detail).not.toContain("useSoleFeatureSlug");
+    // No read may fire under a guessed slug: until the campaign resolves we do not
+    // know its channel, and a read fired on the wrong one lands in that channel's
+    // cache entry.
+    expect(detail).toContain("const enabled = featureSlug !== null && isChannelCampaign");
+    // Availability is decided by the campaign's OWN channel, not by which feature is
+    // GA for the brand — that is what would blank the page for every campaign but one.
+    expect(detail).toContain("!campaignLoading && !isChannelCampaign");
+    expect(detail).not.toContain("isRevenueFeature");
+  });
+
   it("carries the org gate explicitly on the fan-out", () => {
     // `useQueries` is not `useAuthQuery`, so the DIS-143 cross-org gate does not come
     // for free. It is asked for rather than re-derived — a second copy of that gate

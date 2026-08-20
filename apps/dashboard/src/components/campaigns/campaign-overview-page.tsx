@@ -29,8 +29,7 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
-import { isRevenueFeature } from "@/lib/revenue-feature";
-import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { tenantBasePath } from "@/lib/offer-path";
 import {
   selectWorkflowForOptimizationGoal,
@@ -47,7 +46,6 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
-import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { StatusPill } from "@/components/campaigns/campaigns-table";
 import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { DashboardPage } from "@/components/dashboard-page";
@@ -99,8 +97,6 @@ export function CampaignOverviewPage() {
   // the offer, never to the brand two levels up.
   const offerId = params.offerId as string | undefined;
   const campaignId = params.id as string;
-  const featureSlug = useSoleFeatureSlug();
-  const enabled = isRevenueFeature(featureSlug);
   const timezone = useMemo(() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -139,11 +135,35 @@ export function CampaignOverviewPage() {
     ? campaignBudgetCents(campaign, campaign.offerId ?? undefined, funnelBudgets)
     : null;
 
+  // The channel THIS campaign runs on — read off the campaign, never resolved from
+  // the brand's sole feature.
+  //
+  // A campaign IS (offer x funnel x channel), and an offer is sold through several
+  // channels at once. Asking the brand for "its" feature returns whichever single
+  // one is GA, so every read on this page was scoped to a channel the open campaign
+  // may not even run on: a campaign on the brand's second channel had its spend,
+  // its stats and its audiences fetched for the FIRST one, which does not carry it —
+  // so the page answered `$0 spent today` for a campaign that had committed $10.32
+  // that day, while the list one click away read it correctly. Two surfaces, one
+  // campaign, two numbers, and neither erroring.
+  //
+  // The campaign read above already carries the answer, so this costs no request.
+  const featureSlug = campaign?.featureSlug ?? null;
+  // Gated on the channel CATALOGUE, not on the brand's revenue-feature set: that set
+  // decides which features get a revenue page on a BRAND-scoped surface, and this
+  // page is scoped to one campaign. A campaign sells a funnel through a channel, so
+  // it has money to show whichever channel it is — and gating on the brand's GA
+  // feature is what would blank this page for a campaign on any other one.
+  const isChannelCampaign = acquisitionChannelForFeatureSlug(featureSlug) !== null;
+  // Never fire under a GUESSED slug: until the campaign resolves we do not know its
+  // channel, and a read fired on the wrong one lands in that channel's cache entry.
+  const enabled = featureSlug !== null && isChannelCampaign;
+
   // Revenue + conversions SCOPED TO THE CAMPAIGN. Byte-equal key to
   // OutreachStatCardsAuto's campaign-scoped key → one deduped poll.
   const { data, isError: revenueIsError } = useAuthQuery(
     ["featureRevenue", brandId, featureSlug, "campaign", campaignId],
-    () => getFeatureRevenue(featureSlug, brandId, { campaignId }),
+    () => getFeatureRevenue(featureSlug!, brandId, { campaignId }),
     {
       enabled,
       ...pollOptions,
@@ -160,7 +180,7 @@ export function CampaignOverviewPage() {
   // brand-scoped — the campaign's inherited forecast context.
   const { data: pipelineActivity, isError: pipelineIsError } = useAuthQuery(
     ["featurePipelineActivity", brandId, featureSlug, timezone],
-    () => getFeaturePipelineActivity(featureSlug, { brandId, days: 7, timezone }),
+    () => getFeaturePipelineActivity(featureSlug!, { brandId, days: 7, timezone }),
     { enabled, ...pollOptions },
   );
 
@@ -212,7 +232,7 @@ export function CampaignOverviewPage() {
   // Byte-equal key to OutreachStatCardsAuto's campaign key → one deduped poll.
   const { data: featureStatsData, isError: featureStatsIsError } = useAuthQuery(
     ["featureStats", featureSlug, "campaign", campaignId],
-    () => fetchFeatureStats(featureSlug, { campaignId }),
+    () => fetchFeatureStats(featureSlug!, { campaignId }),
     { enabled, ...pollOptions },
   );
   const featureStats = featureStatsData?.stats ?? {};
@@ -288,7 +308,7 @@ export function CampaignOverviewPage() {
     ],
     () =>
       getWorkflowProjection({
-        featureSlug,
+        featureSlug: featureSlug!,
         brandId,
         objective: salesObjectiveForOptimizationGoal(optimizationGoal),
         budgetUsd: monthlyBudgetUsd ?? undefined,
@@ -358,7 +378,7 @@ export function CampaignOverviewPage() {
     // cannot, since `reply_meeting` and `visit_meeting` both answer to `meetingBooked`
     // and would price a reply-driven chain against clicks it never buys. A campaign that
     // predates the funnel keeps the goal.
-    () => fetchFeatureAudienceStats(featureSlug, {
+    () => fetchFeatureAudienceStats(featureSlug!, {
       brandId,
       ...(campaignFunnelKey ? { funnel: campaignFunnelKey } : { goal: audienceStatsGoal }),
       campaignId,
@@ -436,7 +456,11 @@ export function CampaignOverviewPage() {
     );
   }
 
-  if (!isRevenueFeature(featureSlug)) {
+  // The campaign resolved and runs on something this app has no channel for. Gated
+  // on the campaign's OWN channel, so a campaign on the brand's second (or third)
+  // channel renders exactly like one on its first — keying this on the brand's sole
+  // GA feature is what would blank the page for every campaign but one.
+  if (!campaignLoading && !isChannelCampaign) {
     return (
       <DashboardPage width="wide">
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-sm text-gray-400">
@@ -446,11 +470,15 @@ export function CampaignOverviewPage() {
     );
   }
 
-  // The header states WHICH campaign is open, and what it is allowed to spend. It
-  // names the campaign as what it IS — the sales funnel it buys × the acquisition
-  // channel it buys through — rather than campaign-service's stored `name`, which
-  // was written at provision time and predates the per-funnel model, so it says
-  // nothing about either.
+  // This page states NO campaign identity of its own — there is no heading here.
+  // The top bar (HeaderPageContext) already names the open campaign as what it
+  // IS, the sales funnel it buys × the acquisition channel it buys through, with
+  // both marks, off the same `["campaign", id]` query this page polls. An h1
+  // repeating it printed one statement twice, a few pixels apart, which is the
+  // duplication this repo treats as a bug — the same reason the `Campaigns /`
+  // back-link went, the bar already links back to the list. A campaign is named
+  // ONCE per screen, in the bar, because that is the part that survives every
+  // sub-route of the campaign rather than only its Overview.
   //
   // There is NO run-status bar here any more. That bar stated three BRAND-level
   // things — the retired optimization goal, the brand pause flag and the brand's
@@ -463,45 +491,36 @@ export function CampaignOverviewPage() {
   // campaign's own status. Nothing here is editable, and campaign-service's own
   // budget column is still nowhere on the page.
   //
-  // It used to carry a `Campaigns /` back-link alongside, restated a few pixels
-  // above by the top bar, which already links back to the list
-  // (HeaderPageContext). Printing it twice on one screen is the duplication this
-  // repo treats as a bug. The surface is GA, so there is no maturity badge here
-  // nor on the nav entry.
+  // The surface is GA, so there is no maturity badge here nor on the nav entry.
   //
-  // What it DOES state on the right is this campaign's own daily ceiling and its
-  // own status, both READ-ONLY: the ceiling is billing's (offer x funnel x
-  // channel) row, which is what a campaign is, and the status is the campaign's
-  // own word. Neither is the brand-level figure the old bar printed. They are
+  // What the page DOES state at its top right is this campaign's own daily
+  // ceiling and its own status, both READ-ONLY. Neither duplicates the bar: the
+  // bar names WHICH campaign is open, this line says whether it is running and
+  // what it may spend while it does. The ceiling is billing's (offer x funnel x
+  // channel) row, which is exactly what a campaign is, so it is this campaign's
+  // money rather than the brand-wide sum the old run-status bar printed. Both are
   // drawn with the very same pill and the very same whole-dollar formatter the
   // Campaigns table uses, so a campaign reads one way in the list and the same
   // way once it is open. Editing stays on Campaign Settings — a second editor is
   // how one number comes to have two owners.
-  const CampaignHeader = (
-    <div className="flex min-w-0 items-center justify-between gap-3">
-      <h1 className="font-display flex min-w-0 items-center text-xl font-bold text-gray-800">
-        {campaign ? <CampaignTitle campaign={campaign} size="sm" /> : "Campaign"}
-      </h1>
-      {campaign && (
-        <div className="flex shrink-0 items-center gap-2.5">
-          {funnelBudgetsPending && !funnelBudgets ? (
-            <Skeleton className="h-4 w-16" />
-          ) : (
-            <span className="text-sm tabular-nums text-gray-600">
-              {fmtDailyBudgetUsd(campaignBudgetCentsValue)}
-              <span className="text-gray-400"> / day</span>
-            </span>
-          )}
-          <StatusPill status={campaign.status} />
-        </div>
+  const CampaignStatusLine = campaign ? (
+    <div className="flex items-center justify-end gap-2.5">
+      {funnelBudgetsPending && !funnelBudgets ? (
+        <Skeleton className="h-4 w-16" />
+      ) : (
+        <span className="text-sm tabular-nums text-gray-600">
+          {fmtDailyBudgetUsd(campaignBudgetCentsValue)}
+          <span className="text-gray-400"> / day</span>
+        </span>
       )}
+      <StatusPill status={campaign.status} />
     </div>
-  );
+  ) : null;
 
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-        {CampaignHeader}
+        {CampaignStatusLine}
         {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"
@@ -515,7 +534,7 @@ export function CampaignOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
-      {CampaignHeader}
+      {CampaignStatusLine}
       {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"

@@ -10,7 +10,7 @@ const exists = (rel: string) => fs.existsSync(path.join(SRC, rel));
  * The campaign Overview states ONE daily budget, read-only, and it is the
  * campaign's OWN.
  *
- * Three figures have stood in this header over time and only the third is
+ * Three figures have stood at the top of this page over time and only the third is
  * honest. First a `CampaignBudgetControl` editor writing campaign-service's
  * `maxBudgetDailyUsd`, one line above a `BrandStatusControl` pill stating the
  * BRAND's total — two controls, two numbers, one label. Both were removed, and
@@ -20,7 +20,7 @@ const exists = (rel: string) => fs.existsSync(path.join(SRC, rel));
  *
  * billing now keys a ceiling on (org, brand, funnel, channel, offer) — exactly
  * what a campaign IS — so there is a per-campaign figure to state, and this
- * header states it. That is not the old bar coming back: the grain is different,
+ * top-right line states it. That is not the old bar coming back: the grain is different,
  * nothing here is editable (Campaign Settings owns the write), and the pill is
  * the CAMPAIGN's own status rather than the brand pause flag.
  *
