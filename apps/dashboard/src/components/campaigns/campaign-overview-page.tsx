@@ -46,7 +46,6 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
-import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
@@ -427,11 +426,15 @@ export function CampaignOverviewPage() {
     );
   }
 
-  // The header states WHICH campaign is open, and nothing else. It names the
-  // campaign as what it IS — the sales funnel it buys × the acquisition channel
-  // it buys through — rather than campaign-service's stored `name`, which was
-  // written at provision time and predates the per-funnel model, so it says
-  // nothing about either. The heading is the campaign's NAME and nothing else.
+  // This page states NO campaign identity of its own — there is no heading here.
+  // The top bar (HeaderPageContext) already names the open campaign as what it
+  // IS, the sales funnel it buys × the acquisition channel it buys through, with
+  // both marks, off the same `["campaign", id]` query this page polls. An h1
+  // repeating it printed one statement twice, a few pixels apart, which is the
+  // duplication this repo treats as a bug — the same reason the `Campaigns /`
+  // back-link went, the bar already links back to the list. A campaign is named
+  // ONCE per screen, in the bar, because that is the part that survives every
+  // sub-route of the campaign rather than only its Overview.
   //
   // There is NO run-status bar here any more, and no budget on the page at all. The bar
   // stated three BRAND-level things — the retired optimization goal, the brand pause flag
@@ -442,21 +445,11 @@ export function CampaignOverviewPage() {
   // drop its ceiling to zero. `effectiveBudgetCents` still resolves the campaign's own
   // override for the cost card's denominator.
   //
-  // It used to carry a `Campaigns /` back-link alongside, restated a few pixels
-  // above by the top bar, which already links back to the list
-  // (HeaderPageContext). Printing it twice on one screen is the duplication this
-  // repo treats as a bug. The surface is GA, so there is no maturity badge here
-  // nor on the nav entry.
-  const CampaignHeader = (
-    <h1 className="font-display flex min-w-0 items-center text-xl font-bold text-gray-800">
-      {campaign ? <CampaignTitle campaign={campaign} size="sm" /> : "Campaign"}
-    </h1>
-  );
+  // The surface is GA, so there is no maturity badge here nor on the nav entry.
 
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-        {CampaignHeader}
         {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"
@@ -470,7 +463,6 @@ export function CampaignOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
-      {CampaignHeader}
       {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"

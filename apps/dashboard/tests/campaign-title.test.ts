@@ -120,25 +120,20 @@ describe("the surfaces that name a campaign", () => {
     expect(title).toContain("!composed");
   });
 
-  it("states the campaign name once on the page, with no badge beside it", () => {
-    // The top bar already links back to the list and the sidebar's Campaigns
-    // entry already carries the beta badge. Restating either in the h1 puts the
-    // same thing on screen twice.
+  it("states the campaign name ONCE per screen, in the top bar and not on the page", () => {
+    // The bar already names the open campaign, with both marks, off the same
+    // query this page polls — an h1 repeating it printed one statement twice a
+    // few pixels apart. The sidebar's Campaigns entry carries any badge.
     expect(overview).not.toContain("<MaturityBadge");
     expect(overview).not.toContain("maturity-badge");
-    const header = overview.slice(
-      overview.indexOf("const CampaignHeader = ("),
-      overview.indexOf("const CampaignHeader = (") + 400,
-    );
-    expect(header).not.toContain(">\n        Campaigns\n");
-    expect(header).toContain("<CampaignTitle");
+    expect(overview).not.toContain("CampaignHeader");
+    expect(overview).not.toContain("<CampaignTitle");
+    expect(overview).not.toContain("campaigns/campaign-title");
   });
 
-  it("titles the campaign Overview and the top bar with the same component", () => {
-    expect(overview).toContain("<CampaignTitle");
+  it("titles the campaign in the top bar, from the funnel and channel it buys", () => {
     expect(context).toContain("<CampaignTitle");
-    // The stored name is stale by construction — neither surface reads it.
-    expect(overview).not.toContain("campaign?.name ??");
+    // The stored name is stale by construction — the bar never reads it.
     expect(context).not.toContain("campaign?.name");
   });
 
