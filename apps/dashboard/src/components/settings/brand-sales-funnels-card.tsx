@@ -15,7 +15,12 @@ import {
   type DeclaredSalesFunnel,
 } from "@/lib/api";
 import { useFeatures } from "@/lib/features-context";
-import { channelsForFunnel, funnelChannelBudgets, typedFunnelTotalUsd } from "@/lib/funnel-channels";
+import {
+  channelsForFunnel,
+  funnelChannelBudgets,
+  offerFunnelTotalCents,
+  typedFunnelTotalUsd,
+} from "@/lib/funnel-channels";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import {
   NOTHING_DECLARED,
@@ -108,8 +113,12 @@ type FunnelState = {
   savedCentsByChannel: Record<string, number>;
   /**
    * What billing has stored for the funnel AS A WHOLE, in cents: the served sum
-   * of the channels above, never re-added here. The product minimum and its
-   * grandfather bind this, not any single channel.
+   * of the channels above, across EVERY offer selling it, never re-added here.
+   * The product minimum and its grandfather bind this, not any single channel —
+   * which is the one question that genuinely spans offers, and the only thing
+   * this is read for. Nothing DISPLAYS it: this page is scoped to one offer, so
+   * a figure covering the sibling's money would name money the reader can
+   * neither see nor edit (see `offerFunnelTotalCents`).
    */
   savedBudgetCents: number;
   error: string | null;
@@ -584,6 +593,9 @@ export function BrandSalesFunnelsCard({
     const lifetime = showNumbers ? funnelLifetimeLabel(state.draft) : null;
     const rateFields = funnelRateFields(def);
     const dimmed = !state.declared && !isOpen;
+    // What this offer funds the funnel at — the sum of the very figures the open
+    // form edits, so the closed card and the open one cannot disagree.
+    const offerFundedCents = offerFunnelTotalCents(state.savedCentsByChannel);
 
     const header = (
       <div className="flex items-start gap-3 p-4">
@@ -656,12 +668,20 @@ export function BrandSalesFunnelsCard({
         {/* What the brand is spending on this funnel, not merely that it picked
             it: the money IS the selection now. A declared funnel at zero is one
             it has described but is not paying for, and it says so rather than
-            wearing a green tag that claims it runs. */}
+            wearing a green tag that claims it runs.
+
+            It states what THIS OFFER funds, which is what the fields inside the
+            card edit. billing's own funnel figure spans every offer selling the
+            funnel, so on this page it would name money the reader can neither
+            see nor change — a tag reading more than the fields under it add up
+            to, with both correct. The funnel-wide figure still governs the
+            product minimum below, which is the one thing that really does bind
+            across offers. */}
         {state.declared && !isOpen && (
-          state.savedBudgetCents > 0 ? (
+          offerFundedCents > 0 ? (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
               <CheckCircleIcon className="h-3.5 w-3.5" />
-              ${Math.round(state.savedBudgetCents / 100).toLocaleString("en-US")}/day
+              ${Math.round(offerFundedCents / 100).toLocaleString("en-US")}/day
             </span>
           ) : (
             <span className="inline-flex shrink-0 items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-500">
