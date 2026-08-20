@@ -7,6 +7,7 @@ import { goalForFunnelKey } from "@/lib/sales-funnels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
+  getBrandFunnelBudgets,
   getCampaign,
   getFeatureRevenue,
   fetchFeatureStats,
@@ -45,7 +46,10 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
+import { StatusPill } from "@/components/campaigns/campaigns-table";
+import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { DashboardPage } from "@/components/dashboard-page";
+import { Skeleton } from "@/components/skeleton";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 // Campaign-level Overview (v2, staff/god-mode PREVIEW while the campaign concept
@@ -115,6 +119,21 @@ export function CampaignOverviewPage() {
     { ...pollOptions },
   );
   const campaign = campaignData?.campaign ?? null;
+
+  // This campaign's OWN daily ceiling, read-only. billing keys a ceiling on
+  // (org, brand, funnel, channel, offer), which is exactly what a campaign is, so
+  // this is the campaign's money and not a brand-wide sum wearing its name — the
+  // figure that used to sit here and had to go. The key is the one Campaign
+  // Settings and the Campaigns table already read, so all three share one request
+  // and the header can never state a ceiling the settings page would not edit.
+  const { data: funnelBudgets, isPending: funnelBudgetsPending } = useAuthQuery(
+    ["brandFunnelBudgets", brandId],
+    () => getBrandFunnelBudgets(brandId),
+    { ...pollOptions },
+  );
+  const campaignBudgetCentsValue = campaign
+    ? campaignBudgetCents(campaign, campaign.offerId ?? undefined, funnelBudgets)
+    : null;
 
   // The channel THIS campaign runs on — read off the campaign, never resolved from
   // the brand's sole feature.
@@ -416,15 +435,15 @@ export function CampaignOverviewPage() {
   const basePath = tenantBasePath(orgId, brandId, offerId);
   const campaignsPath = `${basePath}/campaigns`;
 
-  // A campaign has no budget of its own to show any more. The money is funded per
-  // SALES FUNNEL, and a campaign runs one funnel — so the ceiling that governs it
-  // belongs to the funnel, and it is stated where the customer sets it (brand
-  // Settings), not restated here against a campaign that does not own it. The
-  // per-campaign ceiling survives in campaign-service only as a mirror of the
-  // funnel's, which is machinery, not a number to put on screen.
+  // The BRAND-level daily-budget read below is the outcome forecast's, and only
+  // that: billing answers it with the SUM of every funnel's ceiling, which is the
+  // right number for "what does the money buy per month" and the wrong one to
+  // print under one campaign's name. The header's ceiling is a different read at
+  // a different grain — billing's (offer x funnel x channel) row, this campaign's
+  // own — and the two must not be confused for each other.
   //
-  // The brand-level read is still used BELOW for the outcome forecast — billing
-  // answers it with the SUM of the funnel ceilings, so the forecast is unchanged.
+  // campaign-service's own per-campaign budget column stays out of both: it is a
+  // mirror nothing edits, so it is machinery rather than a number for a screen.
 
   if (!campaignLoading && !campaign) {
     return (
@@ -461,20 +480,47 @@ export function CampaignOverviewPage() {
   // ONCE per screen, in the bar, because that is the part that survives every
   // sub-route of the campaign rather than only its Overview.
   //
-  // There is NO run-status bar here any more, and no budget on the page at all. The bar
-  // stated three BRAND-level things — the retired optimization goal, the brand pause flag
-  // and the brand's daily budget — on a page scoped to ONE campaign and ONE funnel: the
-  // goal word cannot even name which of the two meeting funnels this is, and the dollar
-  // figure is billing's SUM of every funnel's ceiling, not this campaign's. Money is
-  // funded per sales funnel on Brand Settings, which is also how a funnel is paused:
-  // drop its ceiling to zero. `effectiveBudgetCents` still resolves the campaign's own
-  // override for the cost card's denominator.
+  // There is NO run-status bar here any more. That bar stated three BRAND-level
+  // things — the retired optimization goal, the brand pause flag and the brand's
+  // daily budget — on a page scoped to ONE campaign and ONE funnel: the goal word
+  // cannot even name which of the two meeting funnels this is, and its dollar
+  // figure was billing's SUM of every funnel's ceiling rather than this
+  // campaign's. What replaced it is neither of those: billing now keys a ceiling
+  // on (offer x funnel x channel), which is exactly what a campaign is, so the
+  // figure on the right is the campaign's own money and the pill is the
+  // campaign's own status. Nothing here is editable, and campaign-service's own
+  // budget column is still nowhere on the page.
   //
   // The surface is GA, so there is no maturity badge here nor on the nav entry.
+  //
+  // What the page DOES state at its top right is this campaign's own daily
+  // ceiling and its own status, both READ-ONLY. Neither duplicates the bar: the
+  // bar names WHICH campaign is open, this line says whether it is running and
+  // what it may spend while it does. The ceiling is billing's (offer x funnel x
+  // channel) row, which is exactly what a campaign is, so it is this campaign's
+  // money rather than the brand-wide sum the old run-status bar printed. Both are
+  // drawn with the very same pill and the very same whole-dollar formatter the
+  // Campaigns table uses, so a campaign reads one way in the list and the same
+  // way once it is open. Editing stays on Campaign Settings — a second editor is
+  // how one number comes to have two owners.
+  const CampaignStatusLine = campaign ? (
+    <div className="flex items-center justify-end gap-2.5">
+      {funnelBudgetsPending && !funnelBudgets ? (
+        <Skeleton className="h-4 w-16" />
+      ) : (
+        <span className="text-sm tabular-nums text-gray-600">
+          {fmtDailyBudgetUsd(campaignBudgetCentsValue)}
+          <span className="text-gray-400"> / day</span>
+        </span>
+      )}
+      <StatusPill status={campaign.status} />
+    </div>
+  ) : null;
 
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
+        {CampaignStatusLine}
         {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"
@@ -488,6 +534,7 @@ export function CampaignOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
+      {CampaignStatusLine}
       {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"

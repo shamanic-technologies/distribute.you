@@ -8,10 +8,12 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
+  getBrandFunnelBudgets,
   getFeatureRevenueByCampaign,
   type Campaign,
   type CampaignRevenueGroup,
 } from "@/lib/api";
+import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
@@ -72,6 +74,8 @@ export const COLUMN_INFO = {
     "Expected pipeline revenue: the outcomes this campaign has produced so far, valued with the conversion rates and customer lifetime revenue you set in Brand Settings. It is a projection of what this pipeline is worth, not money already collected.",
   invested:
     "What this campaign has cost so far, net of any discount: money already billed plus money reserved for emails it has queued. It is the same figure the ROI and % CAC beside it are calculated from. Those two are projections of what it is worth going forward, so this is not a multiplier of them.",
+  budget:
+    "The most this campaign may spend in a day. It is a ceiling you set, not money spent, so nothing is charged against it until the campaign sends. Zero means it is stopped, and you change it in Campaign Settings.",
 } as const;
 
 /** A right-aligned numeric header with its (i) sitting after the label. */
@@ -147,7 +151,7 @@ function statusLabel(status: string): string {
  * been running keeps running when that brand funds its funnels, so the page never has
  * to explain away a live campaign that never gets a turn.
  */
-function StatusPill({ status }: { status: string }) {
+export function StatusPill({ status }: { status: string }) {
   const cls = isActiveStatus(status)
     ? RUNNING_STATUS_STYLE
     : (STATUS_STYLES[status.toLowerCase()] ?? "bg-gray-100 text-gray-600 border-gray-200");
@@ -198,10 +202,12 @@ function FunnelCell({ funnelKey }: { funnelKey: Campaign["funnelKey"] }) {
   );
 }
 
-// One row = a campaign joined to its revenue group.
+// One row = a campaign joined to its revenue group and to its own daily ceiling.
 interface CampaignRow {
   campaign: Campaign;
   revenue: CampaignRevenueGroup | null;
+  /** billing's ceiling for THIS campaign, in cents. Null = billing had no answer. */
+  budgetCents: number | null;
 }
 
 
@@ -229,6 +235,14 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     ["featureRevenueByCampaign", brandId, featureSlug],
     () => getFeatureRevenueByCampaign(featureSlug, brandId),
     { enabled: revenueEnabled, refetchInterval: POLL_INTERVAL },
+  );
+
+  // What the brand funds each campaign at. The key is byte-equal to the one both
+  // Offer Settings and Campaign Settings already read, so a surface rendering the
+  // table beside either costs no second request — and the figure a row states is
+  // by construction the figure those pages edit.
+  const budgetsQ = useAuthQuery(["brandFunnelBudgets", brandId], () =>
+    getBrandFunnelBudgets(brandId),
   );
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
@@ -331,10 +345,21 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // there is no status term — the order is the ROI column the table leads with, because a
   // table that displays one order and sorts by another reads as unordered. A campaign with
   // no ROI yet has nothing to rank on, so it sits last rather than at zero.
+  //
+  // Each row's ceiling is narrowed by the campaign's OWN `offerId`, not by the
+  // surface's: billing's per-pair figure spans every offer selling that pair, so
+  // a row that borrowed the pair total would state a sibling offer's money under
+  // this campaign's name. Reading the row's own offer makes the brand-scoped list
+  // and the offer-scoped one state the same number for the same campaign.
+  const budgets = budgetsQ.data;
   const rows = useMemo<CampaignRow[]>(() => {
-    const joined = liveCampaigns.map((c) => ({ campaign: c, revenue: groupsById.get(c.id) ?? null }));
+    const joined = liveCampaigns.map((c) => ({
+      campaign: c,
+      revenue: groupsById.get(c.id) ?? null,
+      budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets),
+    }));
     return joined.sort((a, b) => (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1));
-  }, [liveCampaigns, groupsById]);
+  }, [liveCampaigns, groupsById, budgets]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate
   // query (CLAUDE.md: reveal-on-settle). The per-channel fan-out is in the gate for
@@ -343,6 +368,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   const settled =
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (groupsQ.data !== undefined || groupsQ.isError) &&
+    (budgetsQ.data !== undefined || budgetsQ.isError) &&
     channelGroupQs.every((q) => q.data !== undefined || q.isError);
 
   return { rows, settled, featureCampaigns };
@@ -366,7 +392,7 @@ export function CampaignsTable({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full min-w-[820px] text-sm">
+      <table className="w-full min-w-[900px] text-sm">
         <thead>
           {/* Return first: the table is sorted by ROI, so it leads with the
               column that decides the order.
@@ -380,6 +406,11 @@ export function CampaignsTable({
             <th className="px-4 py-3 text-right"><NumericHead label="$ Invested" tip={COLUMN_INFO.invested} /></th>
             <th className="px-4 py-3">Sales funnel</th>
             <th className="px-4 py-3">Channel</th>
+            {/* The ceiling sits beside the status because the two answer one
+                question together — is this campaign running, and how hard. It is
+                deliberately NOT in the money block on the left: those are charges
+                and projections of charges, and a budget is neither. */}
+            <th className="px-4 py-3 text-right"><NumericHead label="$ Budget" tip={COLUMN_INFO.budget} /></th>
             <th className="px-4 py-3">Status</th>
           </tr>
         </thead>
@@ -387,19 +418,19 @@ export function CampaignsTable({
           {!settled ? (
             [0, 1, 2].map((i) => (
               <tr key={`sk-${i}`}>
-                <td className="px-4 py-3" colSpan={7}>
+                <td className="px-4 py-3" colSpan={8}>
                   <Skeleton className="h-5 w-full" />
                 </td>
               </tr>
             ))
           ) : rows.length === 0 ? (
             <tr>
-              <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
+              <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>
                 {featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
               </td>
             </tr>
           ) : (
-            rows.map(({ campaign, revenue }) => (
+            rows.map(({ campaign, revenue, budgetCents }) => (
               <tr
                 key={campaign.id}
                 onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
@@ -419,6 +450,12 @@ export function CampaignsTable({
                 </td>
                 <td className="px-4 py-3 text-gray-800">
                   <ChannelCell featureSlug={campaign.featureSlug} />
+                </td>
+                {/* Whole dollars, always: a ceiling is a configured whole-dollar
+                    value. `$0` is a real answer — the campaign is stopped — and a
+                    dash means billing had none, which is a different statement. */}
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                  {fmtDailyBudgetUsd(budgetCents)}
                 </td>
                 <td className="px-4 py-3">
                   <StatusPill status={campaign.status} />

@@ -67,13 +67,18 @@ describe("Campaign Settings — the daily budget, and only that", () => {
     expect(api).not.toContain("export async function updateCampaign(");
   });
 
-  it("reads the ONE narrowing both budget surfaces read", () => {
-    // A second copy of it is how this page and Offer Settings would start
-    // disagreeing about the same campaign's money.
-    expect(card).toContain("offerScopedCents");
+  it("reads the ONE narrowing every budget surface reads", () => {
+    // A second copy of it is how this page, Offer Settings, the Campaigns table
+    // and the campaign Overview would start disagreeing about one campaign's
+    // money. The card holds no copy of its own: it imports the shared helpers.
+    expect(card).toContain('from "@/lib/campaign-budget"');
+    expect(card).toContain("campaignSavedCents");
     const lib = read("lib/funnel-channels.ts");
     expect(lib).toContain("export function offerScopedCents");
     expect(lib).toContain("savedCents: offerScopedCents(");
+    const budget = read("lib/campaign-budget.ts");
+    expect(budget).toContain("export function campaignSavedCents");
+    expect(budget).toContain("return offerScopedCents(");
   });
 
   it("treats zero as the stop, and states what it means", () => {
@@ -96,8 +101,10 @@ describe("Campaign Settings — the daily budget, and only that", () => {
 
   it("states a campaign that names no funnel or channel instead of guessing one", () => {
     // The pre-funnel campaigns predate the model, so they point at no ceiling.
-    expect(card).toContain("export function campaignBudgetScope");
-    expect(card).toContain("if (!campaign.funnelKey || !campaign.featureSlug) return null;");
+    const budget = read("lib/campaign-budget.ts");
+    expect(budget).toContain("export function campaignBudgetScope");
+    expect(budget).toContain("if (!campaign.funnelKey || !campaign.featureSlug) return null;");
+    expect(card).toContain("campaignBudgetScope(campaign)");
     expect(card).toContain("predates the sales funnels");
   });
 

@@ -131,9 +131,22 @@ describe("Campaigns page (GA)", () => {
   // displays one order and ranks by another reads as unordered.
   // `$ Invested` sits immediately right of `$ Revenue`: the money block reads
   // projection, projection, projection, then the one realized figure behind them.
-  it("orders the columns ROI, % CAC, $ Revenue, $ Invested, Sales funnel, Channel, Status", () => {
+  // `$ Budget` sits with the STATUS, not with the money block: those four are
+  // charges and projections of charges, and a ceiling is neither. Beside the
+  // pill it answers the other half of one question — is this campaign running,
+  // and how hard.
+  it("orders the columns ROI, % CAC, $ Revenue, $ Invested, Sales funnel, Channel, $ Budget, Status", () => {
     const head = table.slice(table.indexOf("<thead>"), table.indexOf("</thead>"));
-    const order = ["ROI", "% CAC", "$ Revenue", "$ Invested", "Sales funnel", "Channel", "Status"];
+    const order = [
+      "ROI",
+      "% CAC",
+      "$ Revenue",
+      "$ Invested",
+      "Sales funnel",
+      "Channel",
+      "$ Budget",
+      "Status",
+    ];
     let at = -1;
     for (const label of order) {
       const next = head.indexOf(`${label}"`) >= 0 ? head.indexOf(`${label}"`) : head.indexOf(label);
@@ -259,6 +272,36 @@ describe("Campaigns page (GA)", () => {
     // by a count, no reduce-summing a cost breakdown.
     expect(table).not.toMatch(/committedCostUsd\s*\/\s*/);
     expect(table).not.toMatch(/\.reduce\(/);
+  });
+
+  // A row states what its campaign may spend in a day beside whether it is
+  // running — the ceiling and the status are one answer in two cells.
+  it("states each campaign's own daily ceiling, narrowed by the ROW's own offer", () => {
+    // billing's per-pair figure spans every offer selling that pair, so a row
+    // that borrowed the pair total would print a sibling offer's money under
+    // this campaign's name. Reading the row's own offer is what makes the
+    // brand-scoped list and the offer-scoped one agree about one campaign.
+    expect(table).toContain("campaignBudgetCents(c, c.offerId ?? undefined, budgets)");
+    expect(table).toContain("fmtDailyBudgetUsd(budgetCents)");
+    // The shared narrowing, so the table, the campaign Overview and Campaign
+    // Settings cannot disagree about one campaign's money.
+    expect(table).toContain('from "@/lib/campaign-budget"');
+    // The key Campaign Settings and Offer Settings already read → no new poll.
+    expect(table).toContain('["brandFunnelBudgets", brandId]');
+    // A ceiling is not a charge, and the tip says so rather than letting a
+    // reader read it as spend beside four columns that are.
+    expect(table).toContain("COLUMN_INFO.budget");
+    expect(table).toContain("It is a ceiling you set, not money spent");
+    // Nothing is derived here: no summing ceilings, no dividing one.
+    expect(table).not.toMatch(/budgetCents\s*[/*+]\s*/);
+  });
+
+  it("holds the table's own shape as the column count grows", () => {
+    // A stale colSpan silently narrows the skeleton and the empty state, and a
+    // stale min-w lets the last column fold.
+    expect(table).toContain("min-w-[900px]");
+    expect(table).not.toContain("colSpan={7}");
+    expect((table.match(/colSpan=\{8\}/g) ?? []).length).toBe(2);
   });
 
   it("global header blended pipeline + CAC read the brand-level revenue field, not a client sum", () => {
