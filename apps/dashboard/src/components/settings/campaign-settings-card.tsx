@@ -8,19 +8,13 @@ import {
   getCampaign,
   saveBrandFunnelBudget,
   type BrandFunnelBudgets,
-  type Campaign,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
-import { offerScopedCents } from "@/lib/funnel-channels";
+import { campaignBudgetScope, campaignSavedCents } from "@/lib/campaign-budget";
 import {
   FUNNEL_MIN_DAILY_BUDGET_USD,
-  SALES_FUNNELS,
   funnelBudgetBelowMinimum,
   funnelBudgetFloorMessage,
-  normalizeSalesFunnelKey,
-  type SalesFunnelDef,
-  type SalesFunnelKey,
 } from "@/lib/sales-funnels";
 import { SettingsSaveRow } from "@/components/settings/settings-save-row";
 import { Skeleton } from "@/components/skeleton";
@@ -55,61 +49,14 @@ import { Skeleton } from "@/components/skeleton";
  * the whole clears. billing holds the same rule and its 400 is what decides.
  */
 
-/** What a campaign's budget row is, once its coordinates resolve. */
-interface Scope {
-  def: SalesFunnelDef;
-  featureSlug: string;
-  channelName: string;
-}
-
 /**
- * The (funnel, channel) a campaign's money is keyed on, or null.
- *
- * A campaign that names neither — the pre-funnel campaigns, which predate the
- * model — has no ceiling to point at, and guessing one would offer to spend money
- * against a row billing would refuse. So the card says so instead.
+ * `campaignBudgetScope` (which funnel + channel this campaign's money is keyed
+ * on) and `campaignSavedCents` (what billing stores for it) live in
+ * `lib/campaign-budget.ts`, because the Campaigns table and the campaign
+ * Overview state the very same figure read-only. One narrowing, one home — a
+ * second copy is how this card and those two would come to disagree about the
+ * same campaign's money.
  */
-export function campaignBudgetScope(campaign: Campaign): Scope | null {
-  if (!campaign.funnelKey || !campaign.featureSlug) return null;
-  let key: SalesFunnelKey;
-  try {
-    key = normalizeSalesFunnelKey(campaign.funnelKey);
-  } catch {
-    // A funnel spelling shipped upstream that this catalogue does not carry yet.
-    // Refusing to render beats editing a ceiling under the wrong funnel's floor.
-    return null;
-  }
-  const def = SALES_FUNNELS.find((f) => f.key === key);
-  if (!def) return null;
-  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug);
-  return {
-    def,
-    featureSlug: campaign.featureSlug,
-    channelName: channel?.name ?? campaign.featureSlug,
-  };
-}
-
-/** This campaign's own stored ceiling, in cents. */
-export function campaignSavedCents(
-  scope: Scope,
-  offerId: string,
-  budgets: BrandFunnelBudgets | undefined,
-): number {
-  if (!budgets) return 0;
-  const pairCents =
-    budgets.channels === undefined
-      ? (budgets.funnels.find((f) => f.funnelKey === scope.def.key)?.dailyBudgetCents ?? 0)
-      : (budgets.channels.find(
-          (c) => c.funnelKey === scope.def.key && c.featureSlug === scope.featureSlug,
-        )?.dailyBudgetCents ?? 0);
-  return offerScopedCents(
-    scope.def.key,
-    scope.featureSlug,
-    pairCents,
-    budgets.offers,
-    offerId,
-  );
-}
 
 /**
  * What the whole funnel would be funded at once this campaign's typed figure
