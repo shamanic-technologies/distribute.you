@@ -146,7 +146,7 @@ describe("the offer readers", () => {
       "getBrandOffer",
       "createBrandOffer",
       "renameBrandOffer",
-      "getFeatureRevenueByOffer",
+      "getBrandOfferMoney",
     ]) {
       expect(api).toContain(`export async function ${fn}(`);
       expect(api).toContain(`[dashboard] ${fn}: invalid response shape`);
@@ -158,10 +158,13 @@ describe("the offer readers", () => {
     expect(api).toContain('else if (scope?.offerId) query.set("offerId", scope.offerId);');
   });
 
-  it("reads the offers table off ?groupBy=offerId and divides nothing", () => {
+  it("reads the offers table at the OFFER grain and divides nothing", () => {
     const table = read("components/offers/offers-table.tsx");
-    expect(api).toContain('groupBy: "offerId"');
-    expect(table).toContain("getFeatureRevenueByOffer");
+    // A row spans every channel the offer sells through. `?groupBy=offerId` on the
+    // per-feature read groups by offer but answers for ONE channel, which is what
+    // put a single channel's money under the offer's name.
+    expect(table).toContain("getBrandOfferMoney");
+    expect(table).not.toContain("getFeatureRevenueByOffer");
     expect(table).toContain("revenue?.roiMultiple");
     expect(table).toContain("fmtUsd(revenue?.committedCostUsd)");
     // Committed spend is the exact number ROI and % CAC divide by, so a row cannot
@@ -172,7 +175,7 @@ describe("the offer readers", () => {
 
   it("persists the offer roots, or every offer surface cold-skeletons", () => {
     const persist = read("lib/persist-cache.ts");
-    for (const root of ["brandOffers", "brandOffer", "featureRevenueByOffer"]) {
+    for (const root of ["brandOffers", "brandOffer", "brandOfferMoney"]) {
       expect(persist).toContain(`"${root}"`);
     }
   });

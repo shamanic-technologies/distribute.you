@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { listBrandOffers, getFeatureRevenueByOffer, type Offer, type OfferRevenueGroup } from "@/lib/api";
+import { listBrandOffers, getBrandOfferMoney, type Offer, type OfferRevenueGroup } from "@/lib/api";
 import {
   COLUMN_INFO,
   NumericHead,
@@ -23,12 +23,22 @@ import { Skeleton } from "@/components/skeleton";
  * brand's Overview lists is the propositions it sells, and the campaigns that sell
  * one of them belong to that offer's Overview one click down.
  *
- * Every number is a READY features-service field off `?groupBy=offerId`. The only
- * client work is joining the offer row (its NAME, which brand-service owns) to its
- * revenue group by offerId — a display lookup, never a derived metric. Nothing here
- * sums the groups: the brand's own headline figures come from features-service's
- * un-grouped read on the page above, so the table and the headline can never
- * disagree the way a client-side sum of the rows would let them.
+ * Every number is a READY features-service field, asked at the OFFER grain: each
+ * row is that offer's money across EVERY acquisition channel it is sold through.
+ * The only client work is joining the offer row (its NAME, which brand-service
+ * owns) to its money by offerId — a display lookup, never a derived metric.
+ *
+ * It used to ask `?groupBy=offerId` on the per-feature read, which groups by offer
+ * but answers for ONE channel, and printed that under the offer's name directly
+ * beneath brand cards showing the whole thing. On the brand that surfaced it, whose
+ * single offer runs four channels, the row read $2,625.44 / 2.7x under cards
+ * reading $2,670.44 / 2.6x — both real, about different things, nothing erroring.
+ *
+ * Nothing here sums the rows either: the brand's own headline figures come from
+ * features-service's brand-grain read on the page above, so the table and the
+ * headline can never disagree the way a client-side sum would let them. Across
+ * several offers the rows deliberately do NOT sum to the brand — a lead served
+ * under two offers' campaigns is one lead to the brand and belongs to both.
  */
 
 const OFFER_COLUMN_INFO = {
@@ -62,9 +72,12 @@ export function OffersTable({
     refetchInterval: POLL_INTERVAL,
   });
 
+  // Asked at the OFFER grain — each row combined across every channel that offer is
+  // sold through — never of one channel. The key carries no feature for the same
+  // reason: there is no channel in this answer.
   const groupsQ = useAuthQuery(
-    ["featureRevenueByOffer", brandId, featureSlug],
-    () => getFeatureRevenueByOffer(featureSlug, brandId),
+    ["brandOfferMoney", brandId],
+    () => getBrandOfferMoney(brandId),
     { enabled: revenueEnabled, refetchInterval: POLL_INTERVAL },
   );
 
