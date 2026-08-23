@@ -6,6 +6,8 @@ import {
   fetchFeatureStats,
   getCampaign,
   getFeatureRevenue,
+  getOfferRevenue,
+  getBrandRevenue,
   keepLastGoodFeatureRevenue,
 } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
@@ -50,6 +52,7 @@ export function OutreachStatCardsAuto({
   const params = useParams();
   const brandId = params.brandId as string;
   const campaignId = params.id as string | undefined;
+  const offerId = params.offerId as string | undefined;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
 
@@ -75,14 +78,28 @@ export function OutreachStatCardsAuto({
   const funnelKey = campaignData?.campaign.funnelKey ?? null;
 
   // `/revenue` carries the `spend` block that feeds the cost cards (CPC / CPS /
-  // CPSM). Byte-identical query key + keep-last-good to the brand Overview
-  // (`brands/[brandId]/page.tsx`), so React Query dedupes to one poll when both
-  // are cached and a transient degenerate 200 can't blank a $ card mid-session.
+  // CPSM), asked at the grain this row IS: the campaign when one is open, else the
+  // offer, else the brand. Byte-identical query keys + keep-last-good to the brand
+  // Overview and the Campaigns header, so React Query dedupes to one poll per grain
+  // and a transient degenerate 200 can't blank a $ card mid-session.
+  //
+  // Only the CAMPAIGN branch names a channel, and it may: a campaign runs exactly
+  // one. The other two spanned several while asking the per-feature read, so the
+  // cost cards on a brand- or offer-scoped page described one channel under the
+  // brand's or the offer's name — measured on the brand that surfaced it, $2,625.44
+  // of one channel standing in for $2,668.47 across four.
   const { data: revenueData } = useAuthQuery(
     campaignId
       ? ["featureRevenue", brandId, featureSlug, "campaign", campaignId]
-      : ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId, { campaignId }),
+      : offerId
+        ? ["offerRevenue", brandId, offerId]
+        : ["brandRevenue", brandId],
+    () =>
+      campaignId
+        ? getFeatureRevenue(featureSlug, brandId, { campaignId })
+        : offerId
+          ? getOfferRevenue(offerId, brandId)
+          : getBrandRevenue(brandId),
     {
       enabled,
       ...pollOptions,

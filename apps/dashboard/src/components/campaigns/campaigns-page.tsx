@@ -7,7 +7,7 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { tenantBasePath } from "@/lib/offer-path";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { getFeatureRevenue, keepLastGoodFeatureRevenue } from "@/lib/api";
+import { getOfferRevenue, getBrandRevenue, keepLastGoodFeatureRevenue } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
@@ -51,11 +51,22 @@ export function CampaignsPage() {
   // different campaigns. Both queries dedupe on their keys, so this costs no network.
   const { rows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
 
-  // Brand-level (ungrouped) revenue — the global header's blended pipeline + $CAC.
-  // Read straight off features-service (never a client sum/average of the groups).
+  // The header's money is asked at the grain this page IS — the offer when one is
+  // open, the brand otherwise — never of a single acquisition channel. Same reads,
+  // same keys and the same reason as the brand Overview, so the two surfaces cannot
+  // print different money for one subject.
+  //
+  // This header said "brand-level" while asking the per-feature read, and a feature
+  // IS a channel here. Measured on the brand that surfaced it, whose one offer runs
+  // four channels: the channel answers $2,625.44 / 2.67x, the brand and its offer
+  // both answer $2,668.47 / 2.62x. Both real, about different things.
+  //
+  // features-service combines the parts, because most of them do not add — a lead
+  // worked through two channels is one lead, and a ratio of sums is neither the sum
+  // nor the average of ratios. Never a client sum or average of the table's groups.
   const brandRevenueQ = useAuthQuery(
-    ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId),
+    offerId ? ["offerRevenue", brandId, offerId] : ["brandRevenue", brandId],
+    () => (offerId ? getOfferRevenue(offerId, brandId) : getBrandRevenue(brandId)),
     {
       enabled: revenueEnabled,
       refetchInterval: POLL_INTERVAL,
