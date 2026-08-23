@@ -3262,18 +3262,31 @@ export async function getFeatureRevenueByCampaign(
   }));
 }
 
-// ─── Per-offer revenue (grouped) ─────────────────────────────────────────────
-// features-service `GET /features/:slug/revenue?groupBy=offerId` returns one LEAN
-// group per offer that has runs for the brand+feature — the same lean shape as the
-// per-campaign grouping, plus the campaign ids folded into it. Every displayed
-// figure is a READY field; the brand Overview's Offers table renders it and
-// divides nothing.
-const FeatureRevenueByOfferSchema = z.object({
-  groupBy: z.string(),
-  groups: z.array(
+// ─── Per-offer revenue, at the OFFER grain ───────────────────────────────────
+// features-service `GET /brands/:brandId/offers` returns one LEAN row per offer,
+// each combined across EVERY acquisition channel that offer is sold through.
+//
+// The read this replaced was `/features/:slug/revenue?groupBy=offerId`, which
+// groups by offer but answers for ONE channel — a feature IS a channel here. So a
+// brand running several printed an offer's single-channel figures under the offer's
+// name, directly beneath brand cards showing the whole thing. Both real, about
+// different things, nothing erroring. Measured on the brand that surfaced it, whose
+// one offer runs four channels: $2,625.44 / 2.67x from the old read against
+// $2,670.44 / 2.62x here, the second being what the cards above it already said.
+//
+// features-service combines the channels; nothing is combined here. Money adds
+// across an offer's channels because a run belongs to exactly one, but people do
+// not (a lead worked through two channels is one lead) and no ratio does (a ratio
+// of sums is neither the sum nor the average of ratios).
+//
+// The gateway path carries the service segment because `/v1/brands/:id/offers` is
+// already the brand's offer CATALOG from brand-service — two different questions
+// sharing a noun (api-service#855).
+const BrandOfferMoneySchema = z.object({
+  brandId: z.string(),
+  offers: z.array(
     z.object({
       offerId: z.string(),
-      campaignIds: z.array(z.string()),
       headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: CampaignRevenueCostEconomicsSchema,
     }),
@@ -3282,8 +3295,6 @@ const FeatureRevenueByOfferSchema = z.object({
 
 export interface OfferRevenueGroup {
   offerId: string;
-  /** The campaigns this offer is sold through — the same ids the Campaigns table keys on. */
-  campaignIds: string[];
   totalPipelineUsd: number | null;
   /** COMMITTED spend for this offer — the number ROI and %CAC divide by. Null means
    *  "we have no figure", never "it cost nothing", so the cell reads "—" rather than $0. */
@@ -3292,31 +3303,36 @@ export interface OfferRevenueGroup {
   roiMultiple: number | null;
 }
 
-/** GET /features/:slug/revenue?groupBy=offerId — one lean revenue group per offer. */
-export async function getFeatureRevenueByOffer(
-  featureSlug: string,
+/**
+ * GET /features/brands/:brandId/offers — one lean money row per offer of a brand,
+ * each across every channel it sells through.
+ *
+ * An EMPTY `offers` array is a real answer and NOT the same as the 404: it means
+ * campaign-service lists campaigns for this brand but none states an offer yet.
+ */
+export async function getBrandOfferMoney(
   brandId: string,
   token?: string,
 ): Promise<OfferRevenueGroup[]> {
-  const query = new URLSearchParams({ brandId, groupBy: "offerId", pricing: "net" });
+  // Same NET basis as every other money read — coherent with the NET-paced budget.
+  const query = new URLSearchParams({ pricing: "net" });
   const raw = await apiCall<unknown>(
-    `/features/${encodeURIComponent(featureSlug)}/revenue?${query.toString()}`,
+    `/features/brands/${encodeURIComponent(brandId)}/offers?${query.toString()}`,
     { token },
   );
-  const parsed = FeatureRevenueByOfferSchema.safeParse(raw);
+  const parsed = BrandOfferMoneySchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getFeatureRevenueByOffer: response shape mismatch", {
+    console.error("[dashboard] getBrandOfferMoney: response shape mismatch", {
       issues: parsed.error.issues,
     });
-    throw new Error("[dashboard] getFeatureRevenueByOffer: invalid response shape");
+    throw new Error("[dashboard] getBrandOfferMoney: invalid response shape");
   }
-  return parsed.data.groups.map((g) => ({
-    offerId: g.offerId,
-    campaignIds: g.campaignIds,
-    totalPipelineUsd: g.headline.totalPipelineUsd,
-    committedCostUsd: g.costEconomics.committedCostUsd ?? null,
-    costOfAcquisitionPct: g.costEconomics.costOfAcquisitionPct,
-    roiMultiple: g.costEconomics.roiMultiple,
+  return parsed.data.offers.map((o) => ({
+    offerId: o.offerId,
+    totalPipelineUsd: o.headline.totalPipelineUsd,
+    committedCostUsd: o.costEconomics.committedCostUsd ?? null,
+    costOfAcquisitionPct: o.costEconomics.costOfAcquisitionPct,
+    roiMultiple: o.costEconomics.roiMultiple,
   }));
 }
 
