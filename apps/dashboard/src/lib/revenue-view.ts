@@ -302,9 +302,12 @@ export interface RoiHistory {
   undatedPipelineUsd: number;
 }
 
-/** Everything the overview + conversions pages render for a feature+brand. */
+/** Everything the overview + conversions pages render at a feature, offer or brand grain. */
 export interface RevenueOverview {
-  featureSlug: string;
+  /** The acquisition channel this answer is about, present ONLY on the per-feature read.
+   *  Absent at the offer and brand grains, which span several channels. No consumer
+   *  reads it. */
+  featureSlug?: string;
   /** Org-deduped expected pipeline. Null when no funnel is wired / no saved economics. */
   totalPipelineUsd: number | null;
   /** Cost economics from features-service (total spend + derived CAC % + ROI ×). */

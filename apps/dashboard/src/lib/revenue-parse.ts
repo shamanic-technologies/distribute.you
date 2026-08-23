@@ -196,7 +196,18 @@ const SpendSchema = z.object({
 });
 
 const FeatureRevenueResponseSchema = z.object({
-  featureSlug: z.string(),
+  // OPTIONAL because this parser is shared by all THREE money grains, and only the
+  // per-feature one names a channel. A feature IS an acquisition channel here, so the
+  // brand and offer bodies carry no such name by construction — a brand runs several
+  // channels and an offer sells through several, which is the whole reason those reads
+  // exist. Required, it made every brand and offer Overview throw the moment #3468
+  // repointed them: real data on the wire (pipeline $7,000, ROI 2.62x, CAC $953 on the
+  // brand that surfaced it), a failed parse, and a section painted as labels with no
+  // numbers under them — nothing on screen saying it had broken.
+  //
+  // Nothing reads it off the parsed value; it is kept so the per-feature body's own
+  // field is not silently stripped.
+  featureSlug: z.string().optional(),
   spend: SpendSchema.nullable().optional(),
   // features-service#416 renamed the Overview count-series (shape unchanged) and
   // added `sequences`. BOTH the new (`recipients*`) and legacy names are `.optional()`
