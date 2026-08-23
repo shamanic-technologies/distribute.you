@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { parseFeatureRevenue } from "../src/lib/revenue-parse";
 
 const SRC = path.join(__dirname, "../src");
 const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
@@ -143,5 +144,72 @@ describe("brand / offer Overview asks for its own grain, not one channel's", () 
     const persist = fs.readFileSync(path.join(__dirname, "../src/lib/persist-cache.ts"), "utf-8");
     expect(persist).toContain('"offerRevenue"');
     expect(persist).toContain('"brandRevenue"');
+  });
+});
+
+/**
+ * Sharing the parser across three grains means the parser must accept all three
+ * BODIES, and the one field they disagree on is the channel's name. A feature IS an
+ * acquisition channel here, so the brand and offer bodies carry no `featureSlug` by
+ * construction — that is the entire reason those reads exist. Required, it threw on
+ * every brand and offer Overview from the moment #3468 repointed them: real numbers
+ * on the wire, a failed parse, and a section rendered as headings with nothing under
+ * them. Verified against prod on the brand that surfaced it — pipeline $7,000, ROI
+ * 2.62x, $953 CAC served, zero of it on screen.
+ *
+ * Real unit tests rather than source-substring: `revenue-parse.ts` imports only zod
+ * and a type, so it is runtime-importable. Keep it that way.
+ */
+describe("the shared parser accepts every grain's body", () => {
+  // The three bodies differ ONLY in how they name their subject.
+  const body = (subject: Record<string, unknown>) => ({
+    ...subject,
+    headline: { totalPipelineUsd: 7000 },
+    costEconomics: {
+      committedCostUsd: 2668.62,
+      costOfAcquisitionPct: 38.12,
+      roiMultiple: 2.62,
+      costPerAcquisitionUsd: 953.08,
+    },
+    timeSeries: [],
+    organizations: [],
+    leads: [],
+    events: [],
+  });
+
+  it("parses a BRAND body, which names no channel", () => {
+    const view = parseFeatureRevenue(
+      body({ brandId: "75d7e3e8-6926-4f85-a557-976895400666", channels: [] }),
+      "getBrandRevenue",
+    );
+    expect(view.totalPipelineUsd).toBe(7000);
+    expect(view.costEconomics.roiMultiple).toBe(2.62);
+    expect(view.costEconomics.costPerAcquisitionUsd).toBe(953.08);
+    expect(view.featureSlug).toBeUndefined();
+  });
+
+  it("parses an OFFER body, which names no channel either", () => {
+    const view = parseFeatureRevenue(
+      body({ offerId: "o-1", brandId: "b-1", channels: [] }),
+      "getOfferRevenue",
+    );
+    expect(view.totalPipelineUsd).toBe(7000);
+    expect(view.costEconomics.committedCostUsd).toBe(2668.62);
+    expect(view.featureSlug).toBeUndefined();
+  });
+
+  it("still carries the per-feature body's own channel name through", () => {
+    // Optional must not mean stripped: the per-feature read does name one.
+    const view = parseFeatureRevenue(
+      body({ featureSlug: "sales-cold-email-outreach" }),
+      "getFeatureRevenue",
+    );
+    expect(view.featureSlug).toBe("sales-cold-email-outreach");
+  });
+
+  it("still throws on a genuinely rotten body", () => {
+    // Loosening one field must not turn the parser fail-soft — a missing headline is
+    // shape rot and has to keep failing loud.
+    expect(() => parseFeatureRevenue({ brandId: "b-1" }, "getBrandRevenue")).toThrow();
   });
 });
