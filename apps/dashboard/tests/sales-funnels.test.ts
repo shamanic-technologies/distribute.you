@@ -944,6 +944,9 @@ describe("Sales Funnels card", () => {
     );
     expect(page).toContain("<BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />");
     expect(page).toContain("<BrandOfferCard brandId={brandId} offerId={offerId} />");
+    // Funnels first: how the offer is sold is what a reader comes here to fund
+    // and change; the Hormozi fields under it are what that sale promises.
+    expect(page.indexOf("<BrandSalesFunnelsCard")).toBeLessThan(page.indexOf("<BrandOfferCard"));
     expect(page).not.toContain("BrandSalesEconomicsCard");
     expect(page).not.toContain("BrandClickDestinationCard");
     expect(page).not.toContain("Sales Economics");

@@ -657,9 +657,25 @@ export function orphanGoalSeedFor(
  * built here is only ever persisted through `buildFunnelPatch`, which sends a
  * field only once its value differs from what is actually stored.
  */
+/**
+ * The economics a prefill can be built from. Structural rather than
+ * `BrandSalesEconomics`, so BOTH the brand's stored economics and the EFFECTIVE read
+ * (`/sales-economics-effective`, which folds cross-brand averages in for a brand that
+ * has stated nothing yet, and carries a SUBSET of the rate columns) can seed one
+ * funnel — a brand-new brand in onboarding has only the effective read, and it is the
+ * better guess of the two. Every rate is optional and a missing one seeds blank, which
+ * is already how the function treats a stored null.
+ */
+export type FunnelSeedEconomics = Partial<
+  Record<FunnelRateKey | OrphanGoalSeed["from"], number | null>
+> & {
+  lifetimeRevenueUsd: number;
+  optimizationGoal?: BrandOptimizationGoal | null;
+};
+
 export function funnelDraftFromBrand(
   def: SalesFunnelDef,
-  economics: BrandSalesEconomics | null | undefined,
+  economics: FunnelSeedEconomics | null | undefined,
   clickDestinationUrl: string | null | undefined,
 ): FunnelDraft {
   const fields = funnelRateFields(def);

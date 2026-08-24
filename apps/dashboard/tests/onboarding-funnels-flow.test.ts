@@ -285,9 +285,8 @@ describe("onboarding — the primary step is skipped when there is nothing to pi
     // A goal the OUTCOMES catalogue does not price resolves to no outcome, so the
     // skip must NOT fire — the step renders and states the problem rather than
     // advancing with an unset outcome (which prices the budget step).
-    expect(flow).toContain("const soleFunnel = selectedFunnels.length === 1 ? selectedFunnels[0] : null;");
-    expect(flow).toContain("const soleFunnelOutcome = outcomeForFunnelGoal(soleFunnel?.goal);");
-    expect(flow).toContain("const skipPrimaryStep = soleFunnel !== null && soleFunnelOutcome !== null;");
+    expect(flow).toContain("const soleFunnelOutcome = outcomeForFunnelGoal(onePath ? selectedFunnels[0].goal : null);");
+    expect(flow).toContain("const skipPrimaryStep = onePath && soleFunnelOutcome !== null;");
   });
 
   it("reads the funnel-goal-to-outcome map from ONE home", () => {
@@ -312,5 +311,57 @@ describe("onboarding — the primary step is skipped when there is nothing to pi
     // A snapshot or in-flight checkout blob written before the skip shipped can
     // still point at `primary`. Same fail-safe shape as the retired-step branch.
     expect(flow).toContain('if (step === "primary" && skipPrimaryStep) {');
+  });
+});
+
+describe("onboarding pricing step — one picked path reads as one path", () => {
+  // Anchored on a string that exists ONLY in the pricing step: `onePath` itself is
+  // derived at the top of the flow (the primary-funnel skip reads it too), so
+  // anchoring on that declaration would slice from there and assert against
+  // unrelated code. Measured against the real file: 6915 chars from this line to
+  // `function OnboardingAudiences`. The not.toContain below must not overrun it.
+  const pricing = sliceFrom("const underfunded = underfundedFunnels();", 6915);
+
+  it("derives the single-path branch from the picked funnels, not from a separate flag", () => {
+    expect(flow).toContain("const onePath = selectedFunnels.length === 1;");
+  });
+
+  it("states one budget rather than 'each path' when there is only one", () => {
+    expect(pricing).toContain("Set your daily budget.");
+    expect(pricing).toContain("We spend up to your ceiling, and never more than that in a day.");
+  });
+
+  it("keeps the plural copy byte-identical for a real multi-path selection", () => {
+    // The existing post-paid guard (onboarding-flow.test.ts) pins this sentence, and
+    // a brand selling through several paths genuinely funds each one separately.
+    expect(pricing).toContain("Fund each path.");
+    expect(pricing).toContain("Each path spends up to its own ceiling");
+  });
+
+  it("never invites leaving the only path at 0, which Continue then refuses", () => {
+    // Continue is gated on `underfunded.length === 0` plus a funded path, so on a
+    // single-path selection "leave it at 0" describes a state the button rejects.
+    // Both skip invitations are therefore multi-path only.
+    expect(pricing).toContain('{!onePath && " Leave it at 0 to skip it for now."}');
+    expect(pricing).toContain("{onePath ? \"From\" : \"Not funded. From\"}");
+  });
+
+  it("drops the total, which on one path restates the number typed above it", () => {
+    expect(pricing).toContain("{!onePath && displayBudget != null && (");
+    // The count belongs to the card, so hiding the sum loses nothing.
+    expect(pricing).toContain("across {fundedFunnelCount}");
+  });
+
+  it("counts nothing when there is one thing to count", () => {
+    // "Your paths · 1 of 1" reads as a step the flow lost rather than as the only
+    // path there is.
+    expect(flow).toContain('? "Your path"');
+    expect(flow).toContain("`Your paths · ${funnelIndex + 1} of ${detailFunnels.length}`");
+  });
+
+  it("ships no em-dash in the copy it rewrote", () => {
+    // User-facing onboarding copy: the repo bans U+2014 outright, and both lines
+    // touched here carried one.
+    expect(pricing).not.toContain("—");
   });
 });

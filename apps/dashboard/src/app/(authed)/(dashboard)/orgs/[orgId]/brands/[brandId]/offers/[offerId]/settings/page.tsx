@@ -17,6 +17,9 @@ import { BrandSalesFunnelsCard } from "@/components/settings/brand-sales-funnels
  *
  * Both cards take the offer explicitly rather than reading the route themselves,
  * so the page states the scope once and neither card can drift onto another one.
+ *
+ * Sales Funnels leads: how the offer is sold is what a reader comes here to fund
+ * and change, and the Hormozi fields under it are what that sale promises.
  */
 export default function OfferSettingsPage() {
   const params = useParams();
@@ -27,10 +30,10 @@ export default function OfferSettingsPage() {
     <DashboardPage width="wide">
       <h1 className="mb-8 text-2xl font-semibold text-gray-900">Offer Settings</h1>
 
-      <BrandOfferCard brandId={brandId} offerId={offerId} />
+      <BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />
 
       <div className="mt-10">
-        <BrandSalesFunnelsCard brandId={brandId} offerId={offerId} />
+        <BrandOfferCard brandId={brandId} offerId={offerId} />
       </div>
     </DashboardPage>
   );

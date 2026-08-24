@@ -25,8 +25,20 @@ export default function OnboardingLayout({
         {/* Mobile app-shell column: a slim in-flow top bar (shrink-0), then the
             step body fills the rest (flex-1) so StepShell can pin its footer/CTA
             to the bottom without a floating overlay. `100svh` (small viewport
-            height) so the iOS Safari address bar never eats the pinned CTA. */}
-        <div className="flex min-h-[100svh] flex-col bg-gray-50">
+            height) so the iOS Safari address bar never eats the pinned CTA.
+
+            `max-h-[100svh]` is what makes that pinning REAL, and it is
+            load-bearing: a min-height alone leaves the column free to grow past
+            the viewport, so the flex children divide the GROWN height, the
+            scroller declared in StepShell never overflows, the page scrolls
+            instead, and the footer rides below the fold. Measured on the welcome
+            step before this: the CTA sat at 926px on a 667px screen and on a
+            915px one — below the fold on every phone. Capping the column makes
+            the height definite, so the body stops scrolling and the step's own
+            `overflow-y-auto` region takes over, with the CTA always on screen.
+            Reverted at sm+ (`sm:max-h-none`), where the shell is a centered
+            floating card and a hard cap would clip a tall step. */}
+        <div className="flex max-h-[100svh] min-h-[100svh] flex-col overflow-hidden bg-gray-50 sm:max-h-none sm:overflow-visible">
           <OnboardingTopChrome />
           {/* Mobile: full-bleed, stretch — each step (StepShell) fills the area
               edge-to-edge with no card chrome. sm+: the centered floating-card frame. */}

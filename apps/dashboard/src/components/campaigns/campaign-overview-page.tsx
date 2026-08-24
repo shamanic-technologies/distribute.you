@@ -302,7 +302,7 @@ export function CampaignOverviewPage() {
       brandId,
       featureSlug,
       "overview-outcome",
-      optimizationGoal,
+      campaignFunnelKey ?? optimizationGoal,
       monthlyBudgetUsd,
       economicsData?.salesEconomics?.updatedAt ?? "no-economics",
     ],
@@ -311,6 +311,12 @@ export function CampaignOverviewPage() {
         featureSlug: featureSlug!,
         brandId,
         objective: salesObjectiveForOptimizationGoal(optimizationGoal),
+        // A campaign runs exactly ONE funnel, so it states it — same param the
+        // audience-stats read above already sends. Without it the projection is
+        // priced from BOTH channels at once (`clicks·visitToMeeting +
+        // replies·replyToMeeting`), which on a conversation-led campaign forecasts
+        // the website chain it does not sell.
+        ...(campaignFunnelKey ? { funnel: campaignFunnelKey } : {}),
         budgetUsd: monthlyBudgetUsd ?? undefined,
       }),
     {

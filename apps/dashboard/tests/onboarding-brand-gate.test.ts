@@ -40,9 +40,13 @@ describe("DIS-111 edge gate lives in proxy.ts", () => {
     expect(proxy).toContain("onboardingComplete");
   });
 
-  it("redirects to /onboarding when the claim is not true", () => {
+  it("redirects to the onboarding flow when the claim is not true", () => {
     expect(proxy).toMatch(/onboardingComplete\s*!==\s*true/);
-    expect(proxy).toContain('new URL("/onboarding", req.url)');
+    // The destination is `onboardingHref()`, which resumes the in-progress brand
+    // when the org has one (see onboarding-brand-cookie.test.ts) and falls back to
+    // the bare flow otherwise. Both gate branches go through it.
+    expect(proxy).toContain("new URL(onboardingHref(), req.url)");
+    expect(proxy).toContain(': "/onboarding";');
   });
 
   it("exempts the onboarding flow, API routes, and the autoCreate hop (no loop)", () => {

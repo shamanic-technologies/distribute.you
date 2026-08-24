@@ -92,8 +92,12 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("prefetch={audiencePrefetch}");
     // The prewarm chains ICP -> suggestAudiences in the parent (background).
     expect(src).toMatch(/suggestBrandIcp\(id\)[\s\S]{0,400}suggestAudiences\(id, prompt\)/);
-    // Fallback path (no prewarm) still auto-fires the suggest — zero click.
-    expect(src).toContain("void runSuggest(nl)");
+    // BOTH paths auto-fire the suggest — zero click. The no-prewarm path always did;
+    // the prewarm path only did when it came back WITH candidates, so a prewarm whose
+    // ICP threw (which skips suggestAudiences entirely) left the step looking like it
+    // merely wanted a click. `seeded` is whichever sentence we ended up with.
+    expect(src).toContain("void runSuggest(seeded)");
+    expect(src.match(/void runSuggest\(seeded\)/g)?.length).toBe(2);
   });
 
   it("asks which services to promote and persists them on the brand profile", () => {

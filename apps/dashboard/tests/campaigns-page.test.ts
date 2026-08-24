@@ -299,9 +299,63 @@ describe("Campaigns page (GA)", () => {
   it("holds the table's own shape as the column count grows", () => {
     // A stale colSpan silently narrows the skeleton and the empty state, and a
     // stale min-w lets the last column fold.
-    expect(table).toContain("min-w-[900px]");
-    expect(table).not.toContain("colSpan={7}");
-    expect((table.match(/colSpan=\{8\}/g) ?? []).length).toBe(2);
+    expect(table).toContain("md:min-w-[900px]");
+    expect(table).not.toContain("colSpan={8}");
+    expect((table.match(/colSpan=\{9\}/g) ?? []).length).toBe(2);
+  });
+
+  /**
+   * On a phone the row answers the two questions a reader can act on: which
+   * campaign, and what it returns. Everything else folds away rather than
+   * scrolling sideways off the screen.
+   *
+   * "Which campaign" is the funnel and the channel together — a campaign IS
+   * (offer x funnel x channel), so naming one without the other names half of it.
+   * Below `md` they stack in ONE cell, and the two columns that carry them at
+   * desktop width hide. Strict complements: each value is on screen exactly once
+   * at every width, from the same component and the same binding.
+   */
+  describe("fits a phone", () => {
+    it("gates the width floor at the breakpoint the columns come back", () => {
+      // Unconditional, the floor re-widens the row past the viewport even with six
+      // columns hidden, pushing the survivors off to the right (the leads-table case).
+      expect(table).not.toMatch(/[^:]min-w-\[900px\]/);
+      expect(table).toContain("table-fixed");
+      expect(table).toContain("md:table-auto");
+      // ROI keeps its share only below `md` (it is a column at every width); the
+      // identity column has no desktop width to restore, it stops existing there.
+      expect(table).toContain('w-[30%] md:w-auto');
+      expect(table).toContain('w-[70%] md:hidden');
+    });
+
+    it("stacks the funnel above the channel in one mobile-only cell", () => {
+      const at = table.indexOf('<td className="px-4 py-3 md:hidden');
+      expect(at).toBeGreaterThan(-1);
+      const cell = table.slice(at, table.indexOf("</td>", at));
+      const funnelAt = cell.indexOf("<FunnelCell");
+      const channelAt = cell.indexOf("<ChannelCell");
+      expect(funnelAt).toBeGreaterThan(-1);
+      expect(channelAt).toBeGreaterThan(funnelAt);
+    });
+
+    it("hides every column the mobile cell speaks for, and the cell at md", () => {
+      // The Sales funnel and Channel columns are what folds INTO the mobile cell,
+      // so they must be the ones hidden below md — printing a value twice at one
+      // width is the same defect as printing it zero times.
+      for (const label of ["Sales funnel", "Channel"]) {
+        const at = table.indexOf(`>${label}<`);
+        expect(at).toBeGreaterThan(-1);
+        expect(table.slice(table.lastIndexOf("<th", at), at)).toContain("hidden md:table-cell");
+      }
+      for (const label of ["% CAC", "$ Revenue", "$ Invested", "$ Budget"]) {
+        const at = table.indexOf(`label="${label}"`);
+        expect(at).toBeGreaterThan(-1);
+        expect(table.slice(table.lastIndexOf("<th", at), at)).toContain("hidden md:table-cell");
+      }
+      // Header + cell for each of the seven folded columns (the four money ones,
+      // the two the mobile cell speaks for, and Status).
+      expect((table.match(/hidden md:table-cell/g) ?? []).length).toBe(14);
+    });
   });
 
   it("global header blended pipeline + CAC read the brand-level revenue field, not a client sum", () => {

@@ -7,7 +7,11 @@ import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
 // `normalizeSalesFunnelKey` is a RUNTIME import; the rest is type-only. No cycle
 // survives the build: sales-funnels.ts reads this module's goal types with
 // `import type`, which is erased, so the edge only runs in this direction.
-import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnels";
+import {
+  canonicalSalesFunnelKey,
+  normalizeSalesFunnelKey,
+  type SalesFunnelKeyWire,
+} from "./sales-funnels";
 
 const API_URL = process.env.NEXT_PUBLIC_DISTRIBUTE_API_URL || "https://api.distribute.you";
 
@@ -4469,12 +4473,22 @@ export async function getWorkflowProjection(
     featureSlug: string;
     brandId: string;
     objective: SalesObjective;
+    /** The funnel this surface sells, when it states one. Wins over `objective` at the
+     *  producer, which is the whole point: a campaign runs exactly ONE funnel, and the
+     *  objective it derives from a goal cannot say which of the two meeting chains that
+     *  is. Absent on a brand-level surface, which states no funnel by design. */
+    funnel?: SalesFunnelKeyWire;
     budgetUsd?: number;
   },
   token?: string,
 ): Promise<WorkflowProjectionResponse> {
   const ladder = await getWorkflowProjectionLadder(
-    { featureSlug: params.featureSlug, brandId: params.brandId, objective: params.objective },
+    {
+      featureSlug: params.featureSlug,
+      brandId: params.brandId,
+      objective: params.objective,
+      funnel: params.funnel,
+    },
     token,
   );
   return {
@@ -4561,6 +4575,12 @@ const WorkflowProjectionRowSchema = z.object({
 
 const WorkflowProjectionLadderResponseSchema = z.object({
   featureSlug: z.string(),
+  /** The SALES FUNNEL the projection was priced on — present ONLY on a `?funnel=`
+   *  request, and the authoritative answer to what was priced. The two meeting
+   *  funnels carry the SAME `goal`/`objective` echo and DIFFERENT numbers, which is
+   *  why the goal is retired as an identity: reading the echo tells you nothing
+   *  about which chain produced the money. Declared here or zod STRIPS it. */
+  funnelKey: z.string().nullable().optional(),
   objective: z.string().nullable().optional(),
   goal: z.string().nullable().optional(),
   rows: z.array(WorkflowProjectionRowSchema),
@@ -4586,7 +4606,32 @@ export async function getWorkflowProjectionLadder(
   params: {
     featureSlug: string;
     brandId: string;
+    /**
+     * The SALES FUNNEL to price on — the ONLY param that separates a meeting bought
+     * with a positive reply from one bought with a click onto the site. A goal cannot:
+     * `reply_meeting` and `visit_meeting` both echo `meetingBooked`, so a goal-keyed
+     * request is priced from BOTH channels at once (its outcome count is literally
+     * `clicks·visitToMeeting + replies·replyToMeeting`). Per dollar that buys ~86×
+     * more clicks than replies, so the click leg supplies nearly every projected
+     * outcome — and both the RANKING (`recommendedWorkflowDynastySlug` is an argmin on
+     * that mixed cost) and the economics then describe the website funnel. A brand
+     * selling through conversation read `$26` per meeting and `26.8×` return where its
+     * own reply chain gives `$283` and `2.1×`. features-service wins `funnel` over
+     * `goal`, so send this and nothing else; a funnel the brand never declared 404s
+     * rather than being silently priced.
+     */
+    funnel?: SalesFunnelKeyWire;
+    /**
+     * DEPRECATED — the retired vocabulary, kept only for the brand-level callers that
+     * state no funnel (a brand sells through several at once, so no single chain
+     * describes it) and for the legacy `getWorkflowProjection` wrapper. A surface that
+     * KNOWS its funnel must send `funnel` and neither of these. Removing them outright
+     * would not make those callers funnel-aware, it would silently drop them onto
+     * features-service's `meeting-booked` default — a worse wrong number than the one
+     * they send today. They go when the last sender does.
+     */
     goal?: FeatureAudienceStatsGoal;
+    /** DEPRECATED — see `goal`. */
     objective?: SalesObjective | string;
     audienceId?: string;
   },
@@ -4594,6 +4639,9 @@ export async function getWorkflowProjectionLadder(
 ): Promise<WorkflowProjectionLadderResponse> {
   const query = new URLSearchParams();
   query.set("brandId", params.brandId);
+  // funnel WINS over goal/objective at the producer, so a caller that states one gets
+  // its own chain priced whatever else it sends.
+  if (params.funnel) query.set("funnel", canonicalSalesFunnelKey(params.funnel));
   if (params.goal) query.set("goal", params.goal);
   if (params.objective) query.set("objective", params.objective);
   if (params.audienceId) query.set("audienceId", params.audienceId);
