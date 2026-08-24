@@ -396,8 +396,35 @@ if (tocLinks.length) {
 
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-  function goSignup() {
-    var site = state.url.replace(/^https?:\/\//i, '').trim();
+  /* Absolute URL, matching the hero form, so onboarding receives one shape from
+     every entry point (and can render it back as a URL). Scheme is added when
+     the visitor typed a bare host; the path is never stripped. */
+  function absoluteSite(raw) {
+    var value = String(raw || '').trim();
+    if (!value) return '';
+    if (!/^https?:\/\//i.test(value)) value = 'https://' + value;
+    try {
+      var parsed = new URL(value);
+      return parsed.hostname.indexOf('.') === -1 ? '' : parsed.href;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /* Signup is another origin: without a busy state the button sits unchanged
+     while the browser loads it, and reads as dead. */
+  function markLeaving(btn) {
+    if (!btn) return;
+    btn.setAttribute('disabled', '');
+    btn.setAttribute('aria-busy', 'true');
+    btn.style.opacity = '0.9';
+    btn.style.cursor = 'wait';
+    btn.textContent = 'Opening your signup';
+  }
+
+  function goSignup(btn) {
+    var site = absoluteSite(state.url);
+    markLeaving(btn);
     window.location.href = site ? SIGNUP + '?url=' + encodeURIComponent(site) : SIGNUP;
   }
 
@@ -508,7 +535,7 @@ if (tocLinks.length) {
       });
     }
     body.querySelector('[data-back]').addEventListener('click', function () { state.step = 0; render(); });
-    body.querySelector('[data-start]').addEventListener('click', function () { if (state.count != null) goSignup(); });
+    body.querySelector('[data-start]').addEventListener('click', function () { if (state.count != null) goSignup(this); });
   }
 
   /* ── Wire triggers ── */

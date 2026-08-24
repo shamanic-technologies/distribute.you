@@ -215,6 +215,14 @@
     .button.secondary{border-color:var(--line);background:#ffffff;color:var(--text)}
     .button.secondary:hover{border-color:#cfd6e4;background:var(--panel-2)}
     .button.small{min-height:39px;padding:0 15px;font-size:12px}
+    /* Signup lives on another origin, so between the click and its first paint
+       the browser keeps showing THIS page, unchanged. Without a busy state the
+       CTA reads as dead and gets clicked again. */
+    .button.is-busy{pointer-events:none;opacity:.9;transform:none}
+    .button .btn-spin{display:none}
+    .button.is-busy .btn-arrow{display:none}
+    .button.is-busy .btn-spin{display:block;animation:btn-spin .7s linear infinite}
+    @keyframes btn-spin{to{transform:rotate(360deg)}}
 
     .hero{padding:94px 0 66px;overflow:hidden}
     .hero-grid{
@@ -1294,8 +1302,9 @@
             <label class="sr-only" for="website-url">Your company website</label>
             <input id="website-url" name="url" type="url" inputmode="url" autocomplete="url" placeholder="https://yourcompany.com" required>
             <button class="button primary" type="submit">
-              Launch from $1/day
-              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 8h9M9 4.5 12.5 8 9 11.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span data-cta-label>Launch from $1/day</span>
+              <svg class="btn-arrow" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 8h9M9 4.5 12.5 8 9 11.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg class="btn-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" stroke-opacity=".35"/><path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
           </form>
 
@@ -2026,14 +2035,27 @@
       const form=document.getElementById('campaign-form');
       const input=document.getElementById('website-url');
       if(form&&input){
+        const submitBtn=form.querySelector('button[type="submit"]');
+        const labelEl=form.querySelector('[data-cta-label]');
+        // Set only once the destination is settled, never before the URL check.
+        // A rejected URL keeps the visitor on this page, so freezing the button
+        // there would leave a permanently dead CTA.
+        let leaving=false;
+        function beginLeaving(){
+          leaving=true;
+          if(submitBtn){submitBtn.classList.add('is-busy');submitBtn.setAttribute('aria-busy','true');}
+          if(labelEl){labelEl.textContent='Opening your signup';}
+        }
         form.addEventListener('submit',function(event){
           event.preventDefault();
+          if(leaving)return;
           let value=input.value.trim();
-          if(!value){window.location.href='https://dashboard.distribute.you/sign-up';return;}
+          if(!value){beginLeaving();window.location.href='https://dashboard.distribute.you/sign-up';return;}
           if(value&&!/^https?:\/\//i.test(value)){value='https://'+value;}
           try{
             const parsed=new URL(value);
             if(!parsed.hostname.includes('.')){throw new Error('Invalid host');}
+            beginLeaving();
             window.location.href='https://dashboard.distribute.you/sign-up?url='+encodeURIComponent(parsed.href);
           }catch(error){
             input.setCustomValidity('Enter a valid company website, for example https://yourcompany.com');
@@ -2300,7 +2322,7 @@ __CAC_BOOT_SLOT__
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init); else init();
   })();
 </script>
-<script src="js/pricing-modal-v1.js?v=6" defer></script>
+<script src="js/pricing-modal-v1.js?v=7" defer></script>
 <script src="js/support-button.js"></script>
 </body>
 </html>

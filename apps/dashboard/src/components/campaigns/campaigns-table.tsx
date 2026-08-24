@@ -391,8 +391,20 @@ export function CampaignsTable({
   const { rows, settled, featureCampaigns } = useCampaignRows(brandId, featureSlug, offerId);
 
   return (
+    /* Below `md` the row narrows to the two things a reader can act on: what the
+       campaign returns, and which campaign it is. "Which" is the funnel AND the
+       channel — a campaign IS (offer x funnel x channel), so naming one without
+       the other names half of it — so the two stack in one cell there and their
+       own columns hide, each value on screen exactly once at every width.
+
+       The floor is gated at the same breakpoint for a reason: unconditional, it
+       re-widens the row past a phone's viewport even with seven columns hidden, so
+       the two that survived get pushed off to the right and read as missing.
+       `table-fixed` below `md` is what makes the truncation bite — in the default
+       auto layout a column grows to its content, so one long funnel name widens
+       the whole row however many `truncate`s it carries. */
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full min-w-[900px] text-sm">
+      <table className="w-full table-fixed text-sm md:table-auto md:min-w-[900px]">
         <thead>
           {/* Return first: the table is sorted by ROI, so it leads with the
               column that decides the order.
@@ -400,32 +412,35 @@ export function CampaignsTable({
               which is the dashboard's reference entity table: a heavier,
               differently-tracked header reads as a different product. */}
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <th className="px-4 py-3 text-right"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
-            <th className="px-4 py-3 text-right"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
-            <th className="px-4 py-3 text-right"><NumericHead label="$ Revenue" tip={COLUMN_INFO.revenue} /></th>
-            <th className="px-4 py-3 text-right"><NumericHead label="$ Invested" tip={COLUMN_INFO.invested} /></th>
-            <th className="px-4 py-3">Sales funnel</th>
-            <th className="px-4 py-3">Channel</th>
+            <th className="px-4 py-3 text-right w-[30%] md:w-auto"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
+            {/* The phone's identity column: the funnel and the channel stacked.
+                It speaks for the two columns beside it, which hide at this width. */}
+            <th className="px-4 py-3 w-[70%] md:hidden">Campaign</th>
+            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
+            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Revenue" tip={COLUMN_INFO.revenue} /></th>
+            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Invested" tip={COLUMN_INFO.invested} /></th>
+            <th className="px-4 py-3 hidden md:table-cell">Sales funnel</th>
+            <th className="px-4 py-3 hidden md:table-cell">Channel</th>
             {/* The ceiling sits beside the status because the two answer one
                 question together — is this campaign running, and how hard. It is
                 deliberately NOT in the money block on the left: those are charges
                 and projections of charges, and a budget is neither. */}
-            <th className="px-4 py-3 text-right"><NumericHead label="$ Budget" tip={COLUMN_INFO.budget} /></th>
-            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Budget" tip={COLUMN_INFO.budget} /></th>
+            <th className="px-4 py-3 hidden md:table-cell">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
           {!settled ? (
             [0, 1, 2].map((i) => (
               <tr key={`sk-${i}`}>
-                <td className="px-4 py-3" colSpan={8}>
+                <td className="px-4 py-3" colSpan={9}>
                   <Skeleton className="h-5 w-full" />
                 </td>
               </tr>
             ))
           ) : rows.length === 0 ? (
             <tr>
-              <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>
+              <td className="px-4 py-8 text-center text-gray-500" colSpan={9}>
                 {featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
               </td>
             </tr>
@@ -437,27 +452,36 @@ export function CampaignsTable({
                 className="cursor-pointer transition hover:bg-gray-50"
               >
                 <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.totalPipelineUsd)}</td>
+                {/* The phone's identity cell. Same two components, same two
+                    bindings as the columns below — a second reading of either
+                    value is how one row comes to say two things. */}
+                <td className="px-4 py-3 md:hidden text-gray-800">
+                  <FunnelCell funnelKey={campaign.funnelKey} />
+                  <div className="mt-1 text-xs text-gray-500">
+                    <ChannelCell featureSlug={campaign.featureSlug} />
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group — the exact number the ROI and %CAC beside it
                     divide by, so a row cannot contradict its own return. A row with no
                     group at all reads `—` rather than $0 — "we have no figure" and "it
                     cost nothing" differ. */}
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.committedCostUsd)}</td>
-                <td className="px-4 py-3 text-gray-800">
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.committedCostUsd)}</td>
+                <td className="px-4 py-3 text-gray-800 hidden md:table-cell">
                   <FunnelCell funnelKey={campaign.funnelKey} />
                 </td>
-                <td className="px-4 py-3 text-gray-800">
+                <td className="px-4 py-3 text-gray-800 hidden md:table-cell">
                   <ChannelCell featureSlug={campaign.featureSlug} />
                 </td>
                 {/* Whole dollars, always: a ceiling is a configured whole-dollar
                     value. `$0` is a real answer — the campaign is stopped — and a
                     dash means billing had none, which is a different statement. */}
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
                   {fmtDailyBudgetUsd(budgetCents)}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 hidden md:table-cell">
                   <StatusPill status={campaign.status} />
                 </td>
               </tr>
