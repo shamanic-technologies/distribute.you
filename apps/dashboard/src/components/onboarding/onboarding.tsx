@@ -125,6 +125,7 @@ import {
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { validateInvite } from "@/lib/api";
 import { inviteCodeFromCookie } from "@/lib/invite-link";
+import { onboardingBrandCookieAssignment } from "@/lib/onboarding-brand-cookie";
 import { welcomeHeadline, welcomeDetail, referredByLine } from "@/lib/welcome-offer-copy";
 import {
   formatLocaleInteger,
@@ -1524,6 +1525,12 @@ export function Onboarding() {
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
+    // Remember the brand for the edge gate. Everything from here on is persisted
+    // in brand-service, but the wizard's own progress is not: it lives in
+    // sessionStorage, so closing the tab loses it, and `onboardingComplete` is
+    // only written at the terminal launch — so the gate bounces the user back here
+    // and needs to be told which brand to resume. Cleared at launch.
+    document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId });
     const serviceValue = serviceFields?.fields.services?.value;
     if (serviceValue != null) {
@@ -1630,6 +1637,8 @@ export function Onboarding() {
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
+    // Same resume cookie as the website path — see the note there.
+    document.cookie = onboardingBrandCookieAssignment(targetOrgId, newBrandId);
     posthog.capture("onboarding_brand_created", { flow: "beta", org_id: targetOrgId, brand_id: newBrandId, no_website: true });
     const serviceValue = serviceFields?.fields.services?.value;
     if (serviceValue != null) {

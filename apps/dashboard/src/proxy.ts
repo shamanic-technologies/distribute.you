@@ -6,6 +6,10 @@ import {
   matchBrandPath,
   hasExplicitHierarchyIntent,
 } from "@/lib/last-brand";
+import {
+  onboardingBrandCookieName,
+  onboardingResumeHref,
+} from "@/lib/onboarding-brand-cookie";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
@@ -35,8 +39,23 @@ const isApiRoute = createRouteMatcher(["/api(.*)"]);
 
 export default clerkMiddleware(
   async (auth, req) => {
-    const { userId, sessionClaims, sessionStatus } = await auth();
+    const { userId, orgId, sessionClaims, sessionStatus } = await auth();
     const pathname = req.nextUrl.pathname;
+
+    // Where an unfinished onboarding resumes. The wizard's own progress lives in
+    // sessionStorage, so it is gone the moment the tab closes — but the brand it
+    // created is still in brand-service, and `/onboarding?brandId=` re-hydrates
+    // everything from there (services, funnels, rates, lifetime revenue) and lands
+    // on the funnels step. Without the brand id the flow can only start over at
+    // the welcome screen, which is what a user who left at the budget step used to
+    // get. Org-scoped cookie, so a brand abandoned under one org never resumes
+    // inside another (onboarding can create a brand-new org).
+    const onboardingHref = (): string => {
+      const inProgressBrand = orgId
+        ? req.cookies.get(onboardingBrandCookieName(orgId))?.value
+        : undefined;
+      return inProgressBrand ? onboardingResumeHref(inProgressBrand) : "/onboarding";
+    };
     const isExplicitDashboardRoot =
       pathname === "/" && hasExplicitHierarchyIntent(req.nextUrl.searchParams);
 
@@ -63,7 +82,7 @@ export default clerkMiddleware(
     // (the root page itself is now a bare redirect to /orgs).
     if (userId && isExplicitDashboardRoot) {
       if (sessionClaims?.orgMeta?.onboardingComplete !== true) {
-        return NextResponse.redirect(new URL("/onboarding", req.url));
+        return NextResponse.redirect(new URL(onboardingHref(), req.url));
       }
       const orgsUrl = new URL("/orgs", req.url);
       orgsUrl.search = req.nextUrl.search;
@@ -96,7 +115,7 @@ export default clerkMiddleware(
       !req.nextUrl.searchParams.has("autoCreate") &&
       sessionClaims?.orgMeta?.onboardingComplete !== true
     ) {
-      return NextResponse.redirect(new URL("/onboarding", req.url));
+      return NextResponse.redirect(new URL(onboardingHref(), req.url));
     }
 
     // "Land on last-visited brand" — READ side. On a bare `/orgs/:orgId`,
