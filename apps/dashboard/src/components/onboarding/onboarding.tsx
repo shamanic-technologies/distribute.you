@@ -3654,15 +3654,23 @@ export function Onboarding() {
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
           Your offer · {offerIndex + 1} of {POST_PAYMENT_OFFER_LEVERS.length}
         </div>
-        <div className="flex items-center gap-2">
-          <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
-          {/* Only the confirmed state is badged. A prefilled lever is obviously
-              a draft, so labelling it adds nothing. */}
-          {fieldProvenance[lever.key] === "confirmed" && (
-            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
-              Confirmed
-            </span>
-          )}
+        {/* The copy-for-LLM button sits on the title row rather than under the
+            textarea: it acts on the QUESTION, not on what has been typed, so it
+            reads as an alternative way to answer instead of a step after the fact. */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h2 className="font-display text-2xl font-bold text-gray-900">{lever.title}</h2>
+            {/* Only the confirmed state is badged. A prefilled lever is obviously
+                a draft, so labelling it adds nothing. */}
+            {fieldProvenance[lever.key] === "confirmed" && (
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                Confirmed
+              </span>
+            )}
+          </div>
+          <div className="shrink-0">
+            <CopyForLLMButton text={buildLeverLLMPrompt(lever, current, hostname || domain || "my business")} />
+          </div>
         </div>
         <p className="mt-2 mb-5 text-sm leading-6 text-gray-500">{lever.why}</p>
         <textarea
@@ -3677,10 +3685,7 @@ export function Onboarding() {
           rows={5}
           className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-base leading-6 text-gray-900 focus:border-brand-400 focus:outline-none"
         />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
-          <CopyForLLMButton text={buildLeverLLMPrompt(lever, current, hostname || domain || "my business")} />
-        </div>
+        <p className="mt-3 text-xs text-gray-400">We prefilled this from your website. Edit it or keep it, then continue.</p>
       </StepShell>
     );
   }
