@@ -2016,6 +2016,13 @@ export interface AudienceWire {
    *  human-service serves it in prod (decoupled rollout). */
   description?: string | null;
   provider: string | null;
+  /** The OFFER (Org > Brand > Offer > Campaign) this audience belongs to. An audience is
+   *  assembled for one distinct thing the brand sells, so its detail page lives under that
+   *  offer — this is what a link to it is built from, at every scope. `null` = never filed
+   *  under an offer (rows predating the offer level), so there is no page to send a reader
+   *  to. Required on the wire, so required here: a renamed or absent field would read
+   *  `undefined` forever and every audience link would quietly disappear. */
+  offerId: string | null;
   status: AudienceStatus;
   source: string | null;
   filters: Record<string, unknown> | null;
@@ -2047,6 +2054,7 @@ const AudienceSchema = z.object({
   nlPrompt: z.string().nullable(),
   description: z.string().nullable().optional(),
   provider: z.string().nullable(),
+  offerId: z.string().nullable(),
   status: AudienceStatusSchema,
   source: z.string().nullable(),
   filters: z.record(z.string(), z.unknown()).nullable(),

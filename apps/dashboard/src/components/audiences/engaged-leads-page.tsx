@@ -282,8 +282,9 @@ function AudienceCell({ audience }: { audience: LeadAudience | null }) {
 // owns every audience number and the targeting filters. The card links there with
 // `?audienceId=` (the deep-link seed CustomerAudiencesPage reads on first paint,
 // same as the brand-overview Top-3-audiences card), which opens that audience's
-// detail panel with its colored targeting tags. The link renders off `inline.id`,
-// so it is present even before / without the human-service lookup.
+// detail panel with its colored targeting tags. That page lives under the audience's
+// OWN offer, so the link waits on the human-service lookup that states it — see
+// `audienceOfferId` below for why the route's offer is only the fallback.
 /**
  * The OFFER this lead belongs to — what it was contacted to be sold.
  *
@@ -337,9 +338,23 @@ function AudienceSection({
   const params = useParams();
   const orgId = params.orgId as string;
   const brandId = params.brandId as string;
-  // Present on the offer route, absent elsewhere — the link then stays the
-  // brand-level one.
-  const offerId = params.offerId as string | undefined;
+  // Present on the offer and campaign routes, absent on the brand one.
+  const routeOfferId = params.offerId as string | undefined;
+  // An audience's page lives under the OFFER it was assembled for, so the link is
+  // built from the AUDIENCE's own `offerId` — not from whichever route the reader
+  // happens to be on. Building it from the route sent every brand-level reader to
+  // `/brands/:id/audiences`, a path that does not exist (audiences moved down to
+  // the offer), so the card's one affordance was a 404 on the brand Leads page.
+  // The route id stays as the fallback for the case the lookup misses (an audience
+  // archived out of the list): inside an offer, that offer's page is the right one.
+  const audienceOfferId = full?.offerId ?? routeOfferId ?? null;
+  // No offer resolvable ⟹ NO link. Some audiences predate the offer level and are
+  // filed under none, so there is no page to open; a link to a 404 is worse than a
+  // card that simply states the audience. Same render while the lookup is in
+  // flight — we do not claim either way before we know.
+  const detailHref = audienceOfferId
+    ? `${tenantBasePath(orgId, brandId, audienceOfferId)}/audiences?audienceId=${inline.id}`
+    : null;
   const avatarUrl = inline.avatarUrl ?? full?.avatarUrl ?? null;
   const description = full?.description ?? null;
   return (
@@ -361,12 +376,14 @@ function AudienceSection({
         <p className="font-medium text-gray-800 text-sm">{inline.name}</p>
       </div>
       {description && <p className="mt-2 text-sm text-gray-600">{description}</p>}
-      <Link
-        href={`${tenantBasePath(orgId, brandId, offerId)}/audiences?audienceId=${inline.id}`}
-        className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
-      >
-        View audience details
-      </Link>
+      {detailHref && (
+        <Link
+          href={detailHref}
+          className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
+        >
+          View audience details
+        </Link>
+      )}
     </div>
   );
 }
