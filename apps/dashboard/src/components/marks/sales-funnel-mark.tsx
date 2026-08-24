@@ -19,10 +19,19 @@ const FUNNEL_ICONS: Record<SalesFunnelKey, Icon> = {
   visit_form: MagnetIcon,
 };
 
-type MarkSize = "sm" | "md";
+type MarkSize = "xs" | "sm" | "md";
+// THREE sizes, and `xs` exists because the breadcrumb sits beside the offer's
+// own mark: `OfferMark` renders 18px there, so a funnel or a channel drawn at
+// `sm` (32px) next to it reads as two different vocabularies in one line. `xs`
+// is byte-equal to that offer tile — 18px, `rounded`, a 12px glyph — so the
+// crumbs line up by construction rather than by two hand-tuned numbers.
 
-const TILE: Record<MarkSize, string> = { sm: "h-8 w-8 rounded-lg", md: "h-11 w-11 rounded-xl" };
-const GLYPH: Record<MarkSize, number> = { sm: 18, md: 26 };
+const TILE: Record<MarkSize, string> = {
+  xs: "h-[18px] w-[18px] rounded",
+  sm: "h-8 w-8 rounded-lg",
+  md: "h-11 w-11 rounded-xl",
+};
+const GLYPH: Record<MarkSize, number> = { xs: 12, sm: 18, md: 26 };
 
 export function SalesFunnelMark({
   def,

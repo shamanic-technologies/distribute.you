@@ -158,7 +158,7 @@ export function HeaderPageContext() {
           {campaign ? (
             <CampaignTitle
               campaign={campaign}
-              size="sm"
+              size="xs"
               className="font-medium text-gray-800"
             />
           ) : (
