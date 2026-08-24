@@ -126,17 +126,22 @@ describe("Context sidebar", () => {
     expect(content).not.toContain("/tools/press-kits");
   });
 
-  it("should NOT give the brand sidebar an org back link (the switcher owns the org)", () => {
-    // The org is a row inside the sidebar-top tenant switcher, so a back-link to
-    // it would be a second, competing way to change org.
+  it("should give NO sidebar level a back link at its top", () => {
+    // The tenant switcher at the top of every sidebar already names where you
+    // are and lets you move anywhere, so a "< Brand" / "< Campaigns" /
+    // "< Back to dashboard" row above it is a second, competing way up. The
+    // whole affordance is gone from every level: the props, the component, and
+    // the org settings sidebar's hand-rolled copy.
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).not.toContain('backLabel={organization?.name || "Overview"}');
+    expect(content).not.toContain("backHref");
+    expect(content).not.toContain("backLabel");
+    expect(content).not.toContain("function BackLink");
+    expect(content).not.toContain("Back to dashboard");
     const brandSidebar = content.slice(
       content.indexOf("function BrandLevelSidebar"),
       content.indexOf("function CampaignLevelSidebar"),
     );
     expect(brandSidebar).toContain("topSlot={<TenantSwitcher />}");
-    expect(brandSidebar).not.toContain("backHref");
   });
 
   it("should have the API Key entry at org level", () => {

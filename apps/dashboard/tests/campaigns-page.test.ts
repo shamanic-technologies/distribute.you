@@ -50,10 +50,9 @@ describe("Campaigns page (GA)", () => {
   });
 
   // The surface is called Campaigns everywhere it is named: nav entry, page
-  // heading, empty state, the back-link out of a campaign, and the URL.
+  // heading, empty state, and the URL.
   it("names the surface Campaigns, never Channels", () => {
     expect(sidebar).toContain('label: "Campaigns"');
-    expect(sidebar).toContain('backLabel="Campaigns"');
     expect(sidebar).not.toContain('label: "Channels"');
     expect(page).toContain(">Campaigns</h1>");
     expect(table).toContain("No campaigns yet.");

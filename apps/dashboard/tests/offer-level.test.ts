@@ -86,10 +86,9 @@ describe("the sidebar knows the offer level", () => {
     expect(offerLevel).toContain('href: `${basePath}/campaigns`');
     expect(offerLevel).toContain('href: `${basePath}/audiences`');
     expect(offerLevel).toContain('href: `${basePath}/audiences/leads`');
-    // Identity is the brand's, so Brand Settings is not in here — it lives in the
-    // sidebar the back-link leads to.
+    // Identity is the brand's, so Brand Settings is not in here — it lives in
+    // the brand sidebar, reached from the tenant switcher.
     expect(offerLevel).not.toContain('label: "Brand Settings"');
-    expect(offerLevel).toContain('backLabel="Brand"');
 
     const brandLevel = sidebar.slice(
       sidebar.indexOf("function BrandLevelSidebar"),
