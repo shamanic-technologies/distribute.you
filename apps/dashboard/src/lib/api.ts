@@ -1744,10 +1744,16 @@ export async function getBrandFunnelBudgets(
  * What signup checkout uses: the customer funds several funnels in one decision
  * and pays their sum, so a half-applied set would charge for something it did
  * not fund. A funnel absent from the body is removed.
+ *
+ * `offerId` names the PROPOSITION each ceiling funds, the same third coordinate
+ * the single-ceiling PATCH below takes: a ceiling is keyed on (org, brand, funnel,
+ * channel, offer), so one that names no offer addresses every offer selling that
+ * pair rather than the campaign it actually funds. Optional, because a brand whose
+ * offer cannot be resolved must still be able to fund its funnels.
  */
 export async function stateBrandFunnelBudgets(
   brandId: string,
-  funnels: { funnelKey: string; dailyBudgetCents: number }[],
+  funnels: { funnelKey: string; dailyBudgetCents: number; offerId?: string }[],
   token?: string,
 ): Promise<BrandFunnelBudgets> {
   const raw = await apiCall<unknown>(`/brands/${brandId}/funnel-budgets`, {
