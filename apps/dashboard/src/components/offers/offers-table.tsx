@@ -14,6 +14,7 @@ import {
   fmtUsd,
 } from "@/components/campaigns/campaigns-table";
 import { Skeleton } from "@/components/skeleton";
+import { OfferMark } from "@/components/marks/offer-mark";
 
 /**
  * The brand's offers, one line each, ordered by return.
@@ -102,8 +103,8 @@ export function OffersTable({
     (groupsQ.data !== undefined || groupsQ.isError);
 
   return (
-    /* Below `md` the table narrows to the two things a reader can act on: what the
-       offer returns, and which offer it is. The three columns between them fold.
+    /* Below `md` the table narrows to the two things a reader can act on: which
+       offer it is, and what it returns. The three columns behind them fold.
 
        The floor is gated at the same breakpoint for a reason: unconditional, it
        re-widens the row past a phone's viewport even with every other column
@@ -115,11 +116,11 @@ export function OffersTable({
       <table className="w-full table-fixed text-sm md:table-auto md:min-w-[720px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-4 py-3 w-[70%] md:w-auto">Offer</th>
             <th className="px-4 py-3 text-right w-[30%] md:w-auto"><NumericHead label="ROI" tip={OFFER_COLUMN_INFO.roi} /></th>
             <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="% CAC" tip={OFFER_COLUMN_INFO.cacPct} /></th>
             <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Revenue" tip={OFFER_COLUMN_INFO.revenue} /></th>
             <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Invested" tip={OFFER_COLUMN_INFO.invested} /></th>
-            <th className="px-4 py-3 w-[70%] md:w-auto">Offer</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -144,6 +145,17 @@ export function OffersTable({
                 onClick={() => router.push(`${basePath}/offers/${offer.offerId}`)}
                 className="cursor-pointer transition hover:bg-gray-50"
               >
+                {/* The offer leads the row: it is what the line is ABOUT, and the
+                    numbers behind it qualify it. The mark is the SHARED `OfferMark`
+                    the top bar and the tenant switcher draw, so one thing wears one
+                    mark everywhere. `min-w-0` on the flex wrapper is what lets
+                    `truncate` bite inside a fixed-layout cell. */}
+                <td className="px-4 py-3 font-medium text-gray-800">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <OfferMark size="sm" />
+                    <span className="truncate">{offer.name}</span>
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
@@ -153,7 +165,6 @@ export function OffersTable({
                     all reads "—" rather than $0 — "we have no figure" and "it cost
                     nothing" are different statements. */}
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.committedCostUsd)}</td>
-                <td className="px-4 py-3 font-medium text-gray-800 truncate">{offer.name}</td>
               </tr>
             ))
           )}
