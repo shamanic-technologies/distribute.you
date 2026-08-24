@@ -96,7 +96,12 @@ describe("sign-in email/password flow", () => {
     expect(signIn).toMatch(/signIn\.create\(/);
     expect(signIn).toMatch(/identifier:/);
     expect(signIn).toMatch(/type="password"/);
-    expect(signIn).toMatch(/setActive\(/);
+    // Activation moved into `advanceSignIn`, which routes a result to the step
+    // it is waiting on and takes Clerk's `setActive` as an argument — so the
+    // call site reads `activate(...)`. Assert both halves rather than the old
+    // literal, or this guard passes on a page that threads nothing.
+    expect(signIn).toMatch(/advanceSignIn\(signIn, setActive,/);
+    expect(signIn).toMatch(/activate\(\{ session: result\.createdSessionId/);
   });
 
   it("links to the forgot-password page", () => {

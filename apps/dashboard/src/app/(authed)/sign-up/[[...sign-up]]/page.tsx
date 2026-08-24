@@ -197,7 +197,16 @@ export default function SignUpPage() {
         posthog.capture("signup_email_verified");
         redirectAfterSignUp();
       } else {
-        setError("Verification incomplete. Please check the code and retry.");
+        // Reported, not just displayed — see the sign-in page: a non-complete
+        // status throws nothing, so an uncaptured branch is a stuck user who
+        // leaves no trace in the funnel.
+        posthog.capture("signup_email_incomplete", {
+          stage: "verify",
+          status: result.status ?? "unknown",
+        });
+        setError(
+          `We could not finish creating the account (${result.status}). Check the code and retry.`
+        );
       }
     } catch (err) {
       posthog.capture("signup_email_failed", authFailureProps(err, { stage: "verify" }));

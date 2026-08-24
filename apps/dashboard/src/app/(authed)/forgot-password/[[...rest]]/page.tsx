@@ -80,7 +80,16 @@ export default function ForgotPasswordPage() {
         posthog.capture("password_reset_completed");
         router.push("/orgs");
       } else {
-        setError("Reset incomplete. Please check the code and try again.");
+        // Reported, not just displayed. A non-complete status leaves no Clerk
+        // error to catch, so without this capture the only surface that knows
+        // the user is stuck is the screen they are looking at.
+        posthog.capture("password_reset_incomplete", {
+          stage: "reset",
+          status: result.status ?? "unknown",
+        });
+        setError(
+          `We could not finish the reset (${result.status}). Check the code and try again.`
+        );
       }
     } catch (err) {
       posthog.capture(
