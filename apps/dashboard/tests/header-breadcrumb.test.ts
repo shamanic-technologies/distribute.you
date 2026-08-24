@@ -2,10 +2,9 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const src = readFileSync(
-  join(process.cwd(), "src/components/header-page-context.tsx"),
-  "utf8",
-);
+const read = (rel: string) => readFileSync(join(process.cwd(), rel), "utf8");
+
+const src = read("src/components/header-page-context.tsx");
 
 describe("the top bar names where you are below the tenant", () => {
   // Org and brand stay in the sidebar switcher: they are what does NOT change
@@ -48,5 +47,30 @@ describe("the top bar names where you are below the tenant", () => {
     expect(src).toContain("CrumbSkeleton");
     expect(src).not.toContain('|| "Offer"');
     expect(src).not.toContain('|| "Campaign"');
+  });
+
+  // Every tile in the bar is the SAME size, and it holds by construction.
+  // `OfferMark`'s "sm" is 18px while the funnel and channel marks' "sm" is a
+  // 32px table tile, so passing "sm" to both drew an 18px offer beside two
+  // 32px campaign marks on one line — reported as the two crumbs reading as
+  // different styles. The campaign half now asks for "xs", which those two
+  // marks define as the same 18px `rounded` tile the offer wears.
+  it("draws the offer and the campaign at one tile size", () => {
+    expect(src).toContain('<OfferMark size="sm" />');
+    const call = src.slice(src.indexOf("<CampaignTitle"));
+    expect(call.slice(0, call.indexOf("/>"))).toContain('size="xs"');
+
+    const offer = read("src/components/marks/offer-mark.tsx");
+    expect(offer).toContain('size === "sm" ? "h-[18px] w-[18px]"');
+
+    for (const rel of [
+      "src/components/marks/sales-funnel-mark.tsx",
+      "src/components/marks/acquisition-channel-mark.tsx",
+    ]) {
+      const mark = read(rel);
+      expect(mark).toContain('type MarkSize = "xs" | "sm" | "md";');
+      expect(mark).toContain('xs: "h-[18px] w-[18px] rounded"');
+      expect(mark).toContain("xs: 12");
+    }
   });
 });

@@ -21,13 +21,15 @@ import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 // have to invent is worse than none. A campaign where NEITHER half resolves
 // falls back to campaign-service's stored name, with no mark.
 
+// `size` is handed straight to both marks, so `xs` here means the same 18px
+// tile the offer wears in the breadcrumb — see the note on `MarkSize`.
 export function CampaignTitle({
   campaign,
   size = "md",
   className = "",
 }: {
   campaign: CampaignTitleRow;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
   className?: string;
 }) {
   const { funnel, channel, funnelLabel, channelLabel, label } = campaignTitleParts(campaign);
