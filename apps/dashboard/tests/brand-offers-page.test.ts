@@ -45,3 +45,46 @@ describe("the brand has an Offers page of its own", () => {
     expect(page).not.toContain("totalPipelineUsd");
   });
 });
+
+/**
+ * On a phone the table answers the two questions a reader can act on: which offer,
+ * and what it returns. The three columns behind them fold away rather than
+ * scrolling sideways off the screen.
+ *
+ * The floor is the part that has to be breakpoint-gated: an unconditional
+ * `min-w-[720px]` re-widens the row past the viewport even with every other column
+ * hidden, which pushes the ones that survived off to the right and reads as missing
+ * data (CLAUDE.md, the leads-table case).
+ */
+describe("the Offers table fits a phone", () => {
+  const table = read("src/components/offers/offers-table.tsx");
+
+  it("gates the width floor at the breakpoint the columns come back", () => {
+    expect(table).toContain("md:min-w-[720px]");
+    // The bare floor would apply at every width, which is the bug.
+    expect(table).not.toMatch(/[^:]min-w-\[720px\]/);
+  });
+
+  // `truncate` alone does nothing in the default auto layout: the column grows to
+  // its content, so one long offer name widens the whole row. Fixed layout plus an
+  // explicit share per mobile column is what makes the truncation bite.
+  it("lays the two mobile columns out fixed, ROI beside the name", () => {
+    expect(table).toContain("table-fixed");
+    expect(table).toContain("md:table-auto");
+    expect(table).toContain('w-[30%] md:w-auto');
+    expect(table).toContain('w-[70%] md:w-auto');
+  });
+
+  // ROI and the offer name stay; the three money columns behind them fold. Each
+  // column carries the class on BOTH its header and its cell, or the header row
+  // and the body rows disagree about how many columns there are.
+  it("folds % CAC, $ Revenue and $ Invested away below md", () => {
+    expect((table.match(/hidden md:table-cell/g) ?? []).length).toBe(6);
+    for (const label of ["% CAC", "$ Revenue", "$ Invested"]) {
+      const at = table.indexOf(`label="${label}"`);
+      expect(at).toBeGreaterThan(-1);
+      // the header cell opening this label carries the fold
+      expect(table.slice(table.lastIndexOf("<th", at), at)).toContain("hidden md:table-cell");
+    }
+  });
+});
