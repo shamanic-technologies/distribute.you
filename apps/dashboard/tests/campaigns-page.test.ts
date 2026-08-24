@@ -225,16 +225,30 @@ describe("Campaigns page (GA)", () => {
     expect(pill.slice(0, pill.indexOf("\n}"))).toContain("isActiveStatus(status)");
   });
 
-  // A running campaign reads "Active" — the same word the brand status pill uses for
-  // the same idea. `ongoing` is campaign-service's internal spelling; printing it put
-  // two words for one concept on screen. Only the LABEL is translated: the pill still
-  // renders `campaign.status` and `isActiveStatus` still decides what running means.
-  it("says Active, never the wire's own word for it", () => {
+  // A campaign reads "Active" or "Paused" — never `ongoing` / `stopped`, which are
+  // campaign-service's internal spellings and put two words for one concept on
+  // screen. `stopped` reads Paused specifically because the controls modal stops and
+  // restarts a campaign through that same status while leaving its ceiling alone, so
+  // a stopped campaign is one waiting to be turned back on; it also keeps this pill
+  // and the modal's roll-up saying the same word about the same campaign. Only the
+  // LABEL is translated: the pill still renders `campaign.status` and `isActiveStatus`
+  // still decides what running means.
+  it("says Active and Paused, never the wire's own words for them", () => {
     const label = table.slice(table.indexOf("function statusLabel("));
     const body = label.slice(0, label.indexOf("\n}"));
-    expect(body).toContain('isActiveStatus(status) ? "Active" : status');
+    expect(body).toContain('if (isActiveStatus(status)) return "Active"');
+    expect(body).toContain('status.toLowerCase() === "stopped" ? "Paused" : status');
     const pill = table.slice(table.indexOf("function StatusPill("));
     expect(pill.slice(0, pill.indexOf("\n}"))).toContain("{statusLabel(status)}");
+  });
+
+  // One vocabulary across the two surfaces that name a campaign's state: the table's
+  // pill and the controls modal's roll-up. A row reading "stopped" in the list beside
+  // a "Paused" pill on that campaign's own page is one campaign described two ways.
+  it("shares its running/paused words with the controls roll-up", () => {
+    const lib = read("lib/campaign-controls.ts");
+    expect(lib).toContain('active: "Active"');
+    expect(lib).toContain('paused: "Paused"');
   });
 
   // Every number on the row is a projection built from the brand's own rates, so

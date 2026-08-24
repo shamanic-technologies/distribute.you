@@ -1,0 +1,379 @@
+// Is this running, and how hard — for one campaign, one offer, or a whole brand.
+//
+// A campaign IS (offer x sales funnel x acquisition channel), and it carries TWO
+// independent answers to that question:
+//
+//   - a STATUS, which campaign-service stores on the campaign row and flips
+//     through `PATCH /campaigns/:id` with `activate` / `stop`;
+//   - a daily CEILING, which billing keys on the triple and which
+//     `saveBrandFunnelBudget` writes.
+//
+// They are deliberately NOT one field. Stopping a campaign by dropping its
+// ceiling to zero would throw away the amount, and billing's floor only lets a
+// funnel funded under its minimum be KEPT or RAISED — so a campaign
+// grandfathered under the floor could be stopped that way and never restarted at
+// the same figure. A status flag costs nothing to reverse, which is what makes
+// "pause and resume" an ordinary action rather than a decision.
+//
+// This module holds the ROW MODEL the controls modal edits and the pure
+// derivations around it. Every grain edits the same rows — a campaign — because
+// that is the only thing either write can address: the brand and the offer are
+// scopes, not things billing or campaign-service fund. Nothing here sums a
+// brand-wide ceiling; billing serves that figure and the brand Overview reads it.
+//
+// Only relative value imports live here, so this module stays directly
+// unit-testable (vitest does not resolve the "@" alias).
+
+import { acquisitionChannelForFeatureSlug } from "./acquisition-channels";
+import {
+  campaignBudgetScope,
+  campaignSavedCents,
+  type BrandFunnelBudgetSet,
+  type CampaignBudgetRow,
+  type CampaignBudgetScope,
+} from "./campaign-budget";
+
+/**
+ * The fields this module reads off a campaign-service campaign.
+ *
+ * It extends `CampaignBudgetRow` rather than restating its two fields, so the
+ * funnel spelling stays whatever `lib/campaign-budget.ts` accepts — a second
+ * declaration would drift the moment the wire vocabulary moves again.
+ */
+export interface ControlCampaign extends CampaignBudgetRow {
+  id: string;
+  status: string;
+  offerId: string | null;
+}
+
+/**
+ * A campaign is RUNNING when campaign-service reports one of these words.
+ *
+ * The same set the Campaigns table's pill reads, restated here rather than
+ * imported because that module is a React component: `campaigns-table.tsx` is
+ * `"use client"` and pulls the `@` alias, which would make this file
+ * unimportable in vitest. The set is three words and a guard pins the two copies
+ * equal.
+ */
+const ACTIVE_STATUSES = new Set(["active", "running", "ongoing", "live"]);
+
+export function isRunningStatus(status: string): boolean {
+  return ACTIVE_STATUSES.has(status.toLowerCase());
+}
+
+/** One campaign, as the controls modal shows and edits it. */
+export interface ControlRow {
+  campaignId: string;
+  /** Is it running right now, per campaign-service's own word. */
+  running: boolean;
+  /**
+   * The (funnel, channel) its money is keyed on, or null for a campaign that
+   * predates the funnels. Such a row can still be stopped and restarted — the
+   * status is its own — but has no ceiling to point at, and guessing one would
+   * offer to spend money against a row billing would refuse.
+   */
+  scope: CampaignBudgetScope | null;
+  /** What billing stores for THIS campaign, in cents. Zero = funded at nothing. */
+  savedCents: number;
+  /** The offer this campaign sells, which is what narrows its ceiling. */
+  offerId: string | null;
+}
+
+/**
+ * Which campaigns a grain may control, in a stable order.
+ *
+ * The rows are the same at every grain and only the FILTER differs, because a
+ * campaign is the only thing either write can address. Three rules, each
+ * load-bearing:
+ *
+ *   - STOPPED campaigns are included. The modal is where a customer restarts
+ *     one, so a live-only list would make stopping irreversible from the UI.
+ *   - Only ACQUISITION-CHANNEL campaigns. A brand's PR or AI-visibility campaign
+ *     runs no sales funnel, so it has no ceiling and belongs to no offer; listing
+ *     it would offer a budget field that can never be written.
+ *   - The offer filter reads the campaign's OWN `offerId`. A campaign carrying
+ *     none belongs to no offer and is left out rather than folded into whichever
+ *     one the reader happens to be looking at.
+ *
+ * Order is running-first then by id, so the rows do not reshuffle under the
+ * cursor as toggles are flipped — the sort key is the SAVED status, never the
+ * draft.
+ */
+export function buildControlRows(
+  campaigns: ControlCampaign[],
+  budgets: BrandFunnelBudgetSet | undefined,
+  filter: { offerId?: string; campaignId?: string } = {},
+): ControlRow[] {
+  const scoped = campaigns.filter((c) => {
+    if (filter.campaignId) return c.id === filter.campaignId;
+    if (acquisitionChannelForFeatureSlug(c.featureSlug) === null) return false;
+    if (filter.offerId) return c.offerId === filter.offerId;
+    return true;
+  });
+  return scoped
+    .map((c) => {
+      const scope = campaignBudgetScope(c);
+      return {
+        campaignId: c.id,
+        running: isRunningStatus(c.status),
+        scope,
+        savedCents: scope ? campaignSavedCents(scope, c.offerId ?? undefined, budgets) : 0,
+        offerId: c.offerId,
+      };
+    })
+    .sort((a, b) => {
+      if (a.running !== b.running) return a.running ? -1 : 1;
+      return a.campaignId.localeCompare(b.campaignId);
+    });
+}
+
+/**
+ * What a scope is doing, as ONE word.
+ *
+ * Ordered and exhaustive over the rows, which is the point: a scope where some
+ * campaigns run and others do not is neither running nor stopped, and printing
+ * either of those two words for it states something false about half of them.
+ * `none` is its own answer as well — "there is nothing here" is not "everything
+ * is stopped".
+ */
+export type ControlRollup = "none" | "paused" | "partially-paused" | "active";
+
+export function rollupStatus(rows: ControlRow[]): ControlRollup {
+  if (rows.length === 0) return "none";
+  const running = rows.filter((r) => r.running).length;
+  if (running === 0) return "paused";
+  if (running === rows.length) return "active";
+  return "partially-paused";
+}
+
+export const ROLLUP_LABEL: Record<ControlRollup, string> = {
+  none: "No campaign",
+  paused: "Paused",
+  "partially-paused": "Partially paused",
+  active: "Active",
+};
+
+/**
+ * Each verdict's tint, from the closed set `html.dark` remaps. A colour outside
+ * that set paints a bright block on the dark surface and is invisible in the
+ * light default, so it looks correct until someone toggles the theme.
+ */
+export const ROLLUP_STYLE: Record<ControlRollup, string> = {
+  none: "bg-gray-100 text-gray-600 border-gray-200",
+  paused: "bg-gray-100 text-gray-500 border-gray-200",
+  "partially-paused": "bg-amber-50 text-amber-700 border-amber-200",
+  active: "bg-green-50 text-green-700 border-green-200",
+};
+
+/**
+ * What this SCOPE funds per day, in cents, across the campaigns it controls.
+ *
+ * Adds up the rows' OWN ceilings — the ones `campaignSavedCents` already
+ * narrowed to each campaign's offer — which is the same shape as the funnels
+ * card's per-offer total and for the same reason: billing's per-pair figure
+ * spans every offer selling that pair, so it names money a reader on one offer
+ * cannot see.
+ *
+ * This is NOT how the BRAND's total is obtained. billing serves that figure
+ * (`GET /brands/:id/daily-budget`) and the brand Overview reads it; recomposing
+ * it here is how two surfaces come to state one number two ways.
+ */
+export function scopeTotalCents(rows: ControlRow[]): number {
+  return rows.reduce((sum, r) => sum + (r.savedCents > 0 ? r.savedCents : 0), 0);
+}
+
+/** A budget field holds whole dollars, or nothing. Blank is zero — the stop. */
+export function parseDailyBudgetUsd(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === "") return 0;
+  if (!/^\d+$/.test(trimmed)) return null;
+  return Number(trimmed);
+}
+
+/** What the form holds for one row while it is being edited. */
+export interface ControlDraft {
+  running: boolean;
+  /** Whole dollars as typed. Empty string is a real value and means zero. */
+  budget: string;
+}
+
+/** One write the Confirm will make. */
+export interface StatusWrite {
+  campaignId: string;
+  activate: boolean;
+}
+
+export interface BudgetWrite {
+  campaignId: string;
+  funnelKey: string;
+  featureSlug: string;
+  offerId: string | null;
+  cents: number;
+}
+
+export interface ControlsDiff {
+  statusWrites: StatusWrite[];
+  budgetWrites: BudgetWrite[];
+  /** A row whose typed budget is not a whole number of dollars. */
+  invalidRows: string[];
+}
+
+/**
+ * Only what CHANGED, so a Confirm never re-states a value it was not asked to
+ * touch — the same discipline as the funnels card's partial patch. The two write
+ * kinds are computed independently: flipping a toggle must not restate an
+ * amount, and editing an amount must not restate a status.
+ *
+ * A row with no scope produces no budget write whatever is typed; the modal
+ * disables its field, and writing one would address a row billing would refuse.
+ */
+export function controlsDiff(
+  rows: ControlRow[],
+  drafts: Record<string, ControlDraft>,
+): ControlsDiff {
+  const statusWrites: StatusWrite[] = [];
+  const budgetWrites: BudgetWrite[] = [];
+  const invalidRows: string[] = [];
+
+  for (const row of rows) {
+    const draft = drafts[row.campaignId];
+    if (!draft) continue;
+
+    if (draft.running !== row.running) {
+      statusWrites.push({ campaignId: row.campaignId, activate: draft.running });
+    }
+
+    if (!row.scope) continue;
+    const typed = parseDailyBudgetUsd(draft.budget);
+    if (typed === null) {
+      invalidRows.push(row.campaignId);
+      continue;
+    }
+    const cents = typed * 100;
+    if (cents !== row.savedCents) {
+      budgetWrites.push({
+        campaignId: row.campaignId,
+        funnelKey: row.scope.def.key,
+        featureSlug: row.scope.featureSlug,
+        offerId: row.offerId,
+        cents,
+      });
+    }
+  }
+
+  return { statusWrites, budgetWrites, invalidRows };
+}
+
+/**
+ * What each FUNNEL would be funded at once this form lands, in whole dollars.
+ *
+ * The product minimum binds the funnel, not one campaign — a customer splitting
+ * one funded funnel across two offers or two channels must not be refused for
+ * each half being under a bar the whole clears. This modal can edit SEVERAL rows
+ * of one funnel at once, so projecting them one at a time would check each
+ * against a total the form is simultaneously changing.
+ *
+ * Siblings the modal does not show (another offer's campaign on the same funnel)
+ * are what billing's funnel figure carries beyond the rows here, so they are
+ * held constant.
+ *
+ * Computed ONLY to check the form before it is written. billing holds the same
+ * rule and its 400 is what decides; nothing displayed is derived from this.
+ */
+export function projectedFunnelTotalsUsd(
+  rows: ControlRow[],
+  drafts: Record<string, ControlDraft>,
+  savedFunnelCents: Record<string, number>,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (!row.scope) continue;
+    const key = row.scope.def.key;
+    if (!seen.has(key)) {
+      seen.add(key);
+      const inModal = rows
+        .filter((r) => r.scope?.def.key === key)
+        .reduce((sum, r) => sum + (r.savedCents > 0 ? r.savedCents : 0), 0);
+      const siblings = Math.max(0, (savedFunnelCents[key] ?? 0) - inModal);
+      out[key] = Math.round(siblings / 100);
+    }
+    const typed = parseDailyBudgetUsd(drafts[row.campaignId]?.budget ?? "");
+    out[key] += typed !== null && typed > 0 ? typed : 0;
+  }
+  return out;
+}
+
+/** Is there anything to write? */
+export function hasChanges(diff: ControlsDiff): boolean {
+  return diff.statusWrites.length > 0 || diff.budgetWrites.length > 0;
+}
+
+/**
+ * What Confirm is about to do, in a sentence, above the button that does it.
+ *
+ * Money and a campaign's life are what this modal changes, so what changed is
+ * stated before it is committed rather than reported after. `null` when nothing
+ * changed — there is no sentence to write, and the button is not offered.
+ */
+export function diffSummary(rows: ControlRow[], diff: ControlsDiff): string | null {
+  if (!hasChanges(diff)) return null;
+
+  const parts: string[] = [];
+  const activating = diff.statusWrites.filter((w) => w.activate).length;
+  const stopping = diff.statusWrites.length - activating;
+  if (activating > 0) parts.push(`${activating} ${plural(activating)} restarting`);
+  if (stopping > 0) parts.push(`${stopping} ${plural(stopping)} pausing`);
+
+  if (diff.budgetWrites.length > 0) {
+    const before = scopeTotalCents(rows);
+    const after = nextTotalCents(rows, diff);
+    parts.push(`daily budget ${fmtWhole(before)} to ${fmtWhole(after)}`);
+  }
+
+  return `${parts.join(", ")}.`;
+}
+
+function plural(n: number): string {
+  return n === 1 ? "campaign" : "campaigns";
+}
+
+function fmtWhole(cents: number): string {
+  return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+}
+
+/** What the rows would sum to once this diff lands. Used only by the summary. */
+export function nextTotalCents(rows: ControlRow[], diff: ControlsDiff): number {
+  const byId = new Map(diff.budgetWrites.map((w) => [w.campaignId, w.cents]));
+  return rows.reduce((sum, r) => {
+    const cents = byId.get(r.campaignId) ?? r.savedCents;
+    return sum + (cents > 0 ? cents : 0);
+  }, 0);
+}
+
+/**
+ * A refusal is rendered as OUR copy, branched on the status. `apiCall` puts the
+ * whole downstream response body verbatim into the thrown Error's `message`, and
+ * the api-service PATCH-campaign proxy additionally flattens campaign-service's
+ * body into an `error` string — so printing the message would put a JSON blob in
+ * front of a customer.
+ *
+ * Separate from the budget card's own message because this covers a FAN-OUT over
+ * two different write kinds, and a campaign refusing to restart is a different
+ * sentence from a ceiling being refused.
+ */
+export function controlWriteErrorMessage(status: number | null, kind: "status" | "budget"): string {
+  if (kind === "status") {
+    if (status === 400) return "This campaign cannot be restarted right now.";
+    if (status === 403) return "You do not have access to this campaign.";
+    if (status === 404) return "This campaign no longer exists.";
+    return "We could not change this campaign. Try again in a moment.";
+  }
+  if (status === 400) return "That daily budget was refused. Check the amount.";
+  if (status === 403) return "You do not have access to this campaign's budget.";
+  if (status === 404) return "This campaign no longer exists.";
+  if (status === 409) {
+    return "This funnel is sold through more than one campaign, so we could not tell which one this budget was for. Set it on Offer Settings instead.";
+  }
+  return "We could not save this daily budget. Try again in a moment.";
+}
