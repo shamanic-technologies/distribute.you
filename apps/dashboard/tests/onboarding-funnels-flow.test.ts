@@ -54,8 +54,11 @@ describe("onboarding — step order", () => {
     expect(flow).toContain('onContinue={() => setStep("funnels")}');
   });
 
-  it("routes consent back to the primary-funnel pick", () => {
-    expect(flow).toContain('<BackButton onClick={() => setStep("primary")} />');
+  it("routes consent back to wherever the user came from", () => {
+    // A brand that picked ONE funnel skipped the primary pick, so back must go to
+    // the funnel selection — routing it into `primary` would bounce forward again
+    // on the single-funnel fail-safe and trap the user on consent.
+    expect(flow).toContain('<BackButton onClick={() => setStep(skipPrimaryStep ? "funnels" : "primary")} />');
   });
 
   it("collects the economics per funnel after payment", () => {
@@ -115,14 +118,14 @@ describe("onboarding — what it writes", () => {
     // Distinct from declaring one funnel: this is what flips `declared` and what
     // removes a funnel the user unpicked. features-service reads that set to
     // arbitrate the goal, so it lands before the budget step prices an outcome.
-    const save = sliceFrom("async function saveFunnelsAndContinue()", 1100);
+    const save = sliceFrom("async function saveFunnelsAndContinue()", 1600);
     expect(save).toContain("stateBrandSalesFunnels(id, selectedFunnelKeys)");
-    expect(save).toContain('setStep("primary")');
+    expect(save).toContain("setStep(nextStep)");
   });
 
   it("picking the primary funnel persists nothing", () => {
-    // 1199 chars = the whole body, measured to its closing brace.
-    const save = sliceFrom("function savePrimaryFunnelAndContinue()", 1199);
+    // 1140 chars = the whole body, measured to its closing brace.
+    const save = sliceFrom("function savePrimaryFunnelAndContinue()", 1140);
     // It used to write the brand-level `optimizationGoal` — the retired vocabulary
     // features-service no longer reads — and had to restate five other metrics it
     // never showed to do it, which is how a placeholder once overwrote rates a
@@ -273,11 +276,51 @@ describe("onboarding — the primary step promises nothing about orchestration",
   });
 });
 
+// A radio over ONE option is a question with one possible answer, so a brand that
+// picked a single funnel never sees the primary-funnel step. The pick's only job is
+// to set the outcome that prices the budget step, and a single-funnel brand's
+// outcome is knowable without asking.
+describe("onboarding — the primary step is skipped when there is nothing to pick", () => {
+  it("derives the skip from the selection, and only when the funnel's goal is priced", () => {
+    // A goal the OUTCOMES catalogue does not price resolves to no outcome, so the
+    // skip must NOT fire — the step renders and states the problem rather than
+    // advancing with an unset outcome (which prices the budget step).
+    expect(flow).toContain("const soleFunnelOutcome = outcomeForFunnelGoal(onePath ? selectedFunnels[0].goal : null);");
+    expect(flow).toContain("const skipPrimaryStep = onePath && soleFunnelOutcome !== null;");
+  });
+
+  it("reads the funnel-goal-to-outcome map from ONE home", () => {
+    // Both the pick and the skip resolve the same thing; two copies is how they
+    // start disagreeing about which outcome a funnel buys.
+    expect(flow).toContain("function outcomeForFunnelGoal(goal: string | null | undefined): Outcome | null");
+    expect(flow).toContain("outcomeForFunnelGoal(primaryFunnel?.goal)");
+    // The lookup lives in the helper and nowhere else: exactly one occurrence of
+    // the catalogue read keyed on a funnel goal.
+    expect(flow.split("OUTCOMES.find((o) => o.key === goal)").length - 1).toBe(1);
+  });
+
+  it("sets the outcome the skipped step would have set, from the derived funnel", () => {
+    // Written from `soleFunnelOutcome`, never from `primaryFunnelKey`: the setter
+    // for that key runs in the same handler and has not applied on this render.
+    const save = sliceFrom("async function saveFunnelsAndContinue()", 1600);
+    expect(save).toContain('const nextStep: Step = skipPrimaryStep ? "consent" : "primary";');
+    expect(save).toContain("if (skipPrimaryStep && soleFunnelOutcome) setOutcome(soleFunnelOutcome);");
+  });
+
+  it("advances a resumed session that still names the step", () => {
+    // A snapshot or in-flight checkout blob written before the skip shipped can
+    // still point at `primary`. Same fail-safe shape as the retired-step branch.
+    expect(flow).toContain('if (step === "primary" && skipPrimaryStep) {');
+  });
+});
+
 describe("onboarding pricing step — one picked path reads as one path", () => {
-  // Measured against the real file: the pricing step runs from the `onePath` flag
-  // to the end of the component (`function OnboardingAudiences` starts at +6492).
-  // The not.toContain assertions below MUST NOT overrun that boundary.
-  const pricing = sliceFrom("const onePath = selectedFunnels.length === 1;", 6492);
+  // Anchored on a string that exists ONLY in the pricing step: `onePath` itself is
+  // derived at the top of the flow (the primary-funnel skip reads it too), so
+  // anchoring on that declaration would slice from there and assert against
+  // unrelated code. Measured against the real file: 6915 chars from this line to
+  // `function OnboardingAudiences`. The not.toContain below must not overrun it.
+  const pricing = sliceFrom("const underfunded = underfundedFunnels();", 6915);
 
   it("derives the single-path branch from the picked funnels, not from a separate flag", () => {
     expect(flow).toContain("const onePath = selectedFunnels.length === 1;");

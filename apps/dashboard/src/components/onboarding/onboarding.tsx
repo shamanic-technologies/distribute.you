@@ -250,6 +250,15 @@ function optimizationGoalForOutcome(outcome: Outcome): BrandOptimizationGoal {
   return outcome;
 }
 
+// The outcome a funnel's goal is priced as, or null when the catalogue prices no
+// such outcome. Read by BOTH the primary-funnel pick and the skip that fires when
+// the brand picked a single funnel — one home, so the two can never disagree about
+// which outcome a funnel buys.
+function outcomeForFunnelGoal(goal: string | null | undefined): Outcome | null {
+  if (!goal) return null;
+  return OUTCOMES.find((o) => o.key === goal)?.key ?? null;
+}
+
 // Conversion-rate fields, mirroring brand-sales-economics-card's PctKey set.
 type RateKey = "ltv" | "v2s" | "s2c" | "v2m" | "r2m" | "m2c" | "v2p" | "r2p" | "v2f" | "f2p";
 const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: string }> = {
@@ -958,6 +967,18 @@ export function Onboarding() {
   const selectedFunnels = offeredFunnels.filter((f) => selectedFunnelKeys.includes(f.key));
   const detailFunnels = orderedForDetail(selectedFunnels, primaryFunnelKey);
   const primaryFunnel = selectedFunnels.find((f) => f.key === primaryFunnelKey) ?? null;
+  // A brand that picked ONE path. Read by the budget step (which drops every "each
+  // path" sentence and its total) and by the primary-funnel skip below — one name
+  // for one fact, so the two screens cannot disagree about whether there is a set.
+  const onePath = selectedFunnels.length === 1;
+  // The primary-funnel step is a radio over the funnels the brand just picked, so a
+  // brand that picked exactly one is being asked a question with one possible
+  // answer. It is skipped — but ONLY when that funnel's goal actually resolves to
+  // an outcome, because the outcome is what the pick exists to set (it prices the
+  // budget step and names the funnel the projection resolves against). A goal the
+  // catalogue does not price falls through to the step, which states the problem.
+  const soleFunnelOutcome = outcomeForFunnelGoal(onePath ? selectedFunnels[0].goal : null);
+  const skipPrimaryStep = onePath && soleFunnelOutcome !== null;
   // What the brand's economics actually say, for the funnel screens to prefill from.
   // Deliberately NOT in the persisted snapshot: adding a field there forces an
   // ONBOARDING_STATE_VERSION bump, which strands an in-flight checkout — and this is
@@ -2321,19 +2342,25 @@ export function Onboarding() {
   // set on a resume never wipes a value the brand confirmed.
   async function saveFunnelsAndContinue() {
     setPrimaryFunnelKey((current) => resolvePrimaryKey(selectedFunnelKeys, current));
+    // One funnel picked: it IS the primary, so set what the primary step would have
+    // set (the outcome that prices the budget step) and go straight past it. The
+    // outcome is written from the DERIVED funnel here rather than from
+    // `primaryFunnelKey`, whose setter above has not applied yet on this render.
+    const nextStep: Step = skipPrimaryStep ? "consent" : "primary";
+    if (skipPrimaryStep && soleFunnelOutcome) setOutcome(soleFunnelOutcome);
     const id = brandIdRef.current;
     if (!id) {
       // No brand yet (fast click-through): the per-funnel writes after payment
       // declare each picked funnel on their own, so do not block the step.
       setError(null);
-      setStep("primary");
+      setStep(nextStep);
       return;
     }
     setError(null);
     setBusy(true);
     try {
       await stateBrandSalesFunnels(id, selectedFunnelKeys);
-      setStep("primary");
+      setStep(nextStep);
     } catch (err) {
       if (isInsufficientCredit(err)) {
         creditRetryRef.current = () => saveFunnelsAndContinue();
@@ -2350,8 +2377,7 @@ export function Onboarding() {
   }
 
   function savePrimaryFunnelAndContinue() {
-    const goal = primaryFunnel?.goal;
-    const nextOutcome = OUTCOMES.find((o) => o.key === goal)?.key ?? null;
+    const nextOutcome = outcomeForFunnelGoal(primaryFunnel?.goal);
     if (!nextOutcome) {
       setError("Pick the path you want us on first.");
       return;
@@ -3182,6 +3208,16 @@ export function Onboarding() {
   // Which of the picked funnels we optimize for first. This is the brand's
   // optimization goal, and the budget step right after prices the outcome this
   // funnel buys.
+  // A single-funnel brand never routes here from `saveFunnelsAndContinue`, but a
+  // RESUMED session can: a persisted snapshot or an in-flight checkout blob written
+  // before this skip shipped still names `primary`. Same fail-safe shape as the
+  // retired-step branch above — advance rather than render a one-option radio.
+  if (step === "primary" && skipPrimaryStep) {
+    if (soleFunnelOutcome) setOutcome(soleFunnelOutcome);
+    setStep("consent");
+    return null;
+  }
+
   if (step === "primary") {
     return (
       <StepShell
@@ -3228,7 +3264,10 @@ export function Onboarding() {
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => setStep("pricing")} label="Continue" />}
       >
-          <BackButton onClick={() => setStep("primary")} />
+          {/* Back goes where the user actually came FROM: a single-funnel brand
+              skipped the primary pick, so routing back into it would bounce
+              forward again on the fail-safe above and trap them on consent. */}
+          <BackButton onClick={() => setStep(skipPrimaryStep ? "funnels" : "primary")} />
           <div className="mb-4 flex items-start gap-2">
             <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
             <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
@@ -3744,12 +3783,11 @@ export function Onboarding() {
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   const fundedFunnelCount = selectedFunnels.filter((f) => funnelBudgetUsd(f.key) > 0).length;
   const underfunded = underfundedFunnels();
-  // A brand that picked ONE path reads every "each path" sentence as being about
-  // something it does not have, and two of them contradicted this screen's own
-  // button: Continue is gated on at least one funded path, so inviting the user to
-  // leave the only path at 0 promises a step it then refuses. The plural copy is
-  // kept byte-identical for a real multi-path selection.
-  const onePath = selectedFunnels.length === 1;
+  // `onePath` is derived once at the top of the flow: a brand that picked ONE path
+  // reads every "each path" sentence as being about something it does not have, and
+  // two of them contradicted this screen's own button (Continue is gated on at least
+  // one funded path, so inviting the user to leave the only path at 0 promises a step
+  // it then refuses). The plural copy is byte-identical for a real multi-path pick.
   return (
     <StepShell
       header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
