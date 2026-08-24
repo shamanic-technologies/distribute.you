@@ -366,8 +366,14 @@ const fmtCount = (n: number) => formatLocaleInteger(n);
 // Resolves the drafted ICP prompt and the suggested candidates (candidates null
 // when the ICP was empty or the suggest call failed — the step then falls back to
 // manual). One promise so the step can show a single "generating" state until ready.
+//
+// `icpFailed` is the reason, not just the absence: with an empty prompt the step
+// assembles its own sentence from the picked services, and that sentence is
+// indistinguishable on screen from an ICP brand-service actually drafted. A reader
+// who assumes it was drafted edits it as if we had read their site. So the step is
+// told WHY it is holding a locally-built sentence and says so.
 type AudiencePrefetch = {
-  promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null }>;
+  promise: Promise<{ prompt: string; candidates: AudienceCandidate[] | null; icpFailed: boolean }>;
 };
 
 type PendingCheckoutLaunch = {
@@ -996,6 +1002,14 @@ export function Onboarding() {
   // with candidates already (or nearly) ready — zero wait, zero click. Stashed in
   // state (not a ref) so a late-resolving prewarm still flows into the step as a prop.
   const [audiencePrefetch, setAudiencePrefetch] = useState<AudiencePrefetch | null>(null);
+  // Whether the loading-screen service extraction FAILED, and whether the heavier
+  // background hydrate that can still deliver the list is in flight. The services
+  // step renders one of three honest states off these — a list, "still reading", or
+  // a stated failure with a retry — instead of its "we drafted these" copy over an
+  // empty box, which is what a swallowed extract failure used to look like.
+  const [servicesExtractFailed, setServicesExtractFailed] = useState(false);
+  const [servicesHydrating, setServicesHydrating] = useState(false);
+  const [servicesRetrying, setServicesRetrying] = useState(false);
   const [launchStep, setLaunchStep] = useState(0);
   const [launchingBrand, setLaunchingBrand] = useState<{ domain: string | null; hostname: string } | null>(null);
   // Post-payment steps (phone → ltr → offer levers). `phone` is user-level
@@ -1388,7 +1402,7 @@ export function Onboarding() {
     // the user clicks through services/goal/rates to the audience step, candidates
     // are ready. Fail-soft — a failed ICP/suggest resolves candidates:null and the
     // step falls back to its own draft + manual "Suggest audiences".
-    const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null }> => {
+    const audiencePrewarm = (async (): Promise<{ prompt: string; candidates: AudienceCandidate[] | null; icpFailed: boolean }> => {
       // Fetch the real ICP first and HOLD it independently of the audience-suggest
       // step. suggestAudiences is flaky (fails often); if it throws AFTER the ICP
       // already resolved, we must still return that ICP — otherwise the real
@@ -1399,12 +1413,15 @@ export function Onboarding() {
       try {
         const { icp } = await suggestBrandIcp(id);
         prompt = icp.trim();
-        if (!prompt) return { prompt: "", candidates: null };
+        // An ICP that came back empty is the same situation as one that threw: we
+        // have nothing brand-service drafted, so the step must not present its own
+        // sentence as one.
+        if (!prompt) return { prompt: "", candidates: null, icpFailed: true };
         const { candidates } = await suggestAudiences(id, prompt);
-        return { prompt, candidates };
+        return { prompt, candidates, icpFailed: false };
       } catch (e) {
         console.error("[dashboard] audience prewarm (ICP + suggest) failed:", e);
-        return { prompt, candidates: null };
+        return { prompt, candidates: null, icpFailed: !prompt };
       }
     })();
     setAudiencePrefetch({ promise: audiencePrewarm });
@@ -1444,7 +1461,11 @@ export function Onboarding() {
         ...seeded,
         services: servicesEditedRef.current || nextServices.length === 0 ? prev.services ?? nextServices : nextServices,
       }));
-      if (!servicesEditedRef.current && nextServices.length > 0) setServices(nextServices);
+      // Two guards, two different situations. `servicesEditedRef` protects a list the
+      // user curated. `prev.length` protects one the loading-screen extract already
+      // filled: this hydrate resolves tens of seconds later, so a bare `setServices`
+      // here swaps the list out from under whoever is reading the step.
+      if (!servicesEditedRef.current && nextServices.length > 0) setServices((prev) => (prev.length ? prev : nextServices));
       setFieldProvenance((prev) => {
         const next = { ...prev };
         for (const key of USER_FIELD_KEYS) {
@@ -1570,6 +1591,11 @@ export function Onboarding() {
       return null;
     });
     if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
+    // The `.catch` above must stay — a failed extraction cannot strand someone on
+    // the loading screen — but swallowing it into `null` and walking on is what left
+    // the next step claiming it had drafted a list it never received. Record the
+    // outcome so that step can state which of the three things happened.
+    setServicesExtractFailed(!serviceFields);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -1586,14 +1612,20 @@ export function Onboarding() {
           ...prev,
           services: servicesEditedRef.current ? prev.services ?? nextServices : nextServices,
         }));
-        if (!servicesEditedRef.current) setServices(nextServices);
+        if (!servicesEditedRef.current) setServices((prev) => (prev.length ? prev : nextServices));
       }
     }
     fetchDoneRef.current = true;
     setLoadStep(LOADING_STEPS.length);
-    const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
-      console.error("[dashboard] onboarding background hydrate failed:", e);
-    });
+    // The hydrate is the only thing that can still deliver a list once the fast
+    // extraction has failed, so the services step needs to know it is running —
+    // otherwise its empty state reads as a verdict rather than as a wait.
+    setServicesHydrating(true);
+    const hydration = hydrateOnboardingInBackground(newBrandId)
+      .catch((e) => {
+        console.error("[dashboard] onboarding background hydrate failed:", e);
+      })
+      .finally(() => setServicesHydrating(false));
     hydrationPromiseRef.current = hydration;
   }
 
@@ -1676,6 +1708,7 @@ export function Onboarding() {
       return null;
     });
     if (serviceFields) captureSetupMilestone("services_extracted", servicesStartedAt);
+    setServicesExtractFailed(!serviceFields);
     brandIdRef.current = newBrandId;
     orgIdRef.current = targetOrgId;
     setBrandId(newBrandId);
@@ -1688,14 +1721,17 @@ export function Onboarding() {
           ...prev,
           services: servicesEditedRef.current ? prev.services ?? nextServices : nextServices,
         }));
-        if (!servicesEditedRef.current) setServices(nextServices);
+        if (!servicesEditedRef.current) setServices((prev) => (prev.length ? prev : nextServices));
       }
     }
     fetchDoneRef.current = true;
     setLoadStep(LOADING_STEPS.length);
-    const hydration = hydrateOnboardingInBackground(newBrandId).catch((e) => {
-      console.error("[dashboard] onboarding background hydrate (no-website) failed:", e);
-    });
+    setServicesHydrating(true);
+    const hydration = hydrateOnboardingInBackground(newBrandId)
+      .catch((e) => {
+        console.error("[dashboard] onboarding background hydrate (no-website) failed:", e);
+      })
+      .finally(() => setServicesHydrating(false));
     hydrationPromiseRef.current = hydration;
   }
 
@@ -2742,6 +2778,36 @@ export function Onboarding() {
   const outcomeMeta = OUTCOMES.find((o) => o.key === outcome)!;
 
   // ── Service-tag editor helpers ────────────────────────────────────
+  // Re-run the service extraction from the services step. Same call the loading
+  // screen makes, so it succeeds under exactly the conditions that one does — the
+  // point is that a failure is now recoverable in place instead of leaving the step
+  // permanently empty with nothing to press.
+  async function retryServicesExtract() {
+    const id = brandIdRef.current;
+    if (!id || servicesRetrying) return;
+    setServicesRetrying(true);
+    const startedAt = performance.now();
+    try {
+      const fields = await extractBrandFields([id], SERVICES_PROFILE_FIELDS, {
+        urlStrategy: noWebsiteMode ? undefined : "landing",
+        mode: "suggest",
+      });
+      captureSetupMilestone("services_extracted", startedAt);
+      const next = normalizeServices(fields.fields.services?.value);
+      setServicesExtractFailed(next.length === 0);
+      if (next.length > 0) {
+        setProfile((prev) => ({ ...prev, services: next }));
+        setServices((prev) => (prev.length ? prev : next));
+      }
+    } catch (e) {
+      console.error("[dashboard] retryServicesExtract failed:", e);
+      captureSetupMilestone("services_extract_failed", startedAt);
+      setServicesExtractFailed(true);
+    } finally {
+      setServicesRetrying(false);
+    }
+  }
+
   function addService(raw: string) {
     const value = raw.trim();
     setServiceDraft("");
@@ -2909,13 +2975,29 @@ export function Onboarding() {
   }
 
   if (step === "services") {
+    // A list on screen came from somewhere: either the extraction produced it or the
+    // user typed it. Either way there is a draft to talk about.
+    const servicesDrafted = services.length > 0;
+    // Nothing to show AND something still running that could deliver it. A retry is
+    // pointless here — the hydrate is already the retry.
+    const servicesPending = !servicesDrafted && (servicesHydrating || servicesRetrying);
+    // Nothing to show and nothing left running: the read is over and it produced
+    // nothing. Say that, and give the reader a way to ask again.
+    const servicesUnread = !servicesDrafted && !servicesPending && servicesExtractFailed;
     return (
       <StepShell
         header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
         footer={<NextButton onClick={() => { addService(serviceDraft); setStep("audiences"); }} disabled={services.length === 0 && serviceDraft.trim() === ""} />}
       >
         <h2 className="font-display text-2xl font-bold text-gray-900">What services do you want to promote with us?</h2>
-        <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
+        {/* The "we drafted these" line is a claim about a successful extraction. With
+            nothing extracted it described an empty box, which reads as "your site
+            sells nothing" — so it is gated on there being a draft to talk about. */}
+        {servicesDrafted ? (
+          <p className="mt-2 mb-6 text-gray-500">We drafted these from <span className="font-medium text-gray-700">{hostname}</span>. Add or remove until the list matches what you sell.</p>
+        ) : (
+          <p className="mt-2 mb-6 text-gray-500">Tell us what you sell. Add one per line.</p>
+        )}
         <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-gray-200 p-3 sm:p-4">
           {services.map((s, i) => (
             <span key={s} className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${TAG_TONES[i % TAG_TONES.length]}`}>
@@ -2937,7 +3019,29 @@ export function Onboarding() {
             className="min-w-0 flex-1 basis-full bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none sm:min-w-[8rem] sm:basis-auto"
           />
         </div>
-        {services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>}
+        {/* Three honest states, in order of what the reader most needs to know. A
+            still-running read is a wait, a settled empty read is a verdict, and the
+            two must never look the same — that ambiguity is the whole bug. */}
+        {servicesPending ? (
+          <p className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand-200 border-t-brand-600" />
+            Still reading <span className="font-medium text-gray-700">{hostname}</span>. You can start typing.
+          </p>
+        ) : servicesUnread ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-amber-800">
+            <span>We couldn&apos;t read your site. Add what you sell, or try again.</span>
+            <button
+              type="button"
+              onClick={retryServicesExtract}
+              disabled={servicesRetrying}
+              className="font-semibold text-brand-600 transition hover:text-brand-700 disabled:opacity-50"
+            >
+              {servicesRetrying ? "Reading…" : "Try again"}
+            </button>
+          </div>
+        ) : (
+          services.length === 0 && serviceDraft.trim() === "" && <p className="mt-2 text-xs text-gray-400">Add at least one service to continue.</p>
+        )}
       </StepShell>
     );
   }
@@ -3164,8 +3268,12 @@ export function Onboarding() {
         <BackButton
           onClick={() => (funnelIndex > 0 ? setFunnelIndex((i) => i - 1) : setStep("phone"))}
         />
+        {/* A counter over ONE item states nothing: "1 of 1" reads as a step the flow
+            is missing rather than as the only path there is. */}
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
-          Your paths · {funnelIndex + 1} of {detailFunnels.length}
+          {detailFunnels.length === 1
+            ? "Your path"
+            : `Your paths · ${funnelIndex + 1} of ${detailFunnels.length}`}
         </div>
         <div className="flex items-center gap-2">
           <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
@@ -3559,6 +3667,12 @@ export function Onboarding() {
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   const fundedFunnelCount = selectedFunnels.filter((f) => funnelBudgetUsd(f.key) > 0).length;
   const underfunded = underfundedFunnels();
+  // A brand that picked ONE path reads every "each path" sentence as being about
+  // something it does not have, and two of them contradicted this screen's own
+  // button: Continue is gated on at least one funded path, so inviting the user to
+  // leave the only path at 0 promises a step it then refuses. The plural copy is
+  // kept byte-identical for a real multi-path selection.
+  const onePath = selectedFunnels.length === 1;
   return (
     <StepShell
       header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
@@ -3576,9 +3690,17 @@ export function Onboarding() {
       }
     >
       <BackButton onClick={() => setStep("consent")} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Fund each path.</h2>
+      <h2 className="font-display text-2xl font-bold text-gray-900">
+        {onePath ? "Set your daily budget." : "Fund each path."}
+      </h2>
       <p className="mt-2 mb-5 text-gray-500">
-        Set what each path may spend a day. You can leave one at <strong>0</strong> and start it later — fund at least one to continue.
+        {onePath ? (
+          <>Set what we may spend a day on this path. You can change it whenever you like.</>
+        ) : (
+          <>
+            Set what each path may spend a day. You can leave one at <strong>0</strong> and start it later. Fund at least one to continue.
+          </>
+        )}
       </p>
       {cancelNotice && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{cancelNotice}</div>}
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -3586,7 +3708,9 @@ export function Onboarding() {
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
         <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-sm leading-6 text-brand-800">
-          Each path spends up to its own ceiling, and never more than that in a day.
+          {onePath
+            ? "We spend up to your ceiling, and never more than that in a day."
+            : "Each path spends up to its own ceiling, and never more than that in a day."}{" "}
           You pay as you go for what we actually spend. Cancel anytime.
         </p>
       </div>
@@ -3634,7 +3758,8 @@ export function Onboarding() {
               <div className="mt-2 flex items-center gap-1 pl-14 text-xs">
                 {under ? (
                   <span className="text-red-600">
-                    This path starts at {fmtUsd0(floor)} a day. Leave it at 0 to skip it for now.
+                    This path starts at {fmtUsd0(floor)} a day.
+                    {!onePath && " Leave it at 0 to skip it for now."}
                   </span>
                 ) : count != null ? (
                   <>
@@ -3642,7 +3767,9 @@ export function Onboarding() {
                     <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
                   </>
                 ) : (
-                  <span className="text-gray-400">Not funded — from {fmtUsd0(floor)} a day.</span>
+                  <span className="text-gray-400">
+                    {onePath ? "From" : "Not funded. From"} {fmtUsd0(floor)} a day.
+                  </span>
                 )}
               </div>
             </div>
@@ -3650,7 +3777,10 @@ export function Onboarding() {
         })}
       </div>
 
-      {displayBudget != null && (
+      {/* The total is a SUM, so it only says something when there is more than one
+          thing to add. With one path it restates the figure typed an inch above,
+          under a second label, alongside a count that card already carries. */}
+      {!onePath && displayBudget != null && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
           Daily budget: <strong className="text-gray-900">{fmtUsd0(displayBudget)} / day</strong>
           <span className="text-gray-400"> across {fundedFunnelCount} {fundedFunnelCount === 1 ? "path" : "paths"}</span>
@@ -3707,7 +3837,20 @@ function OnboardingAudiences({
     ? `Find the ideal customers for ${hostname || "my brand"}: the people most likely to buy ${services.join(", ")}.`
     : "";
   const [icpLoading, setIcpLoading] = useState(true);
+  // True when the sentence in the box was assembled HERE from the picked services
+  // rather than drafted by brand-service. The two are indistinguishable on screen,
+  // and a reader who assumes the second edits it as if we had read their site.
+  const [icpFallback, setIcpFallback] = useState(false);
   const icpFetchedRef = useRef(false);
+  // Mirrors of the two values the seed below has to compare against. It runs inside
+  // a promise callback created at MOUNT, so reading `prompt` / `fallbackPrompt`
+  // directly there reads the mount render: the "never clobber an edited prompt"
+  // guard tested a stale empty string and overwrote live text whenever the prewarm
+  // settled late — which a failing ICP call guarantees it does.
+  const promptRef = useRef(prompt);
+  promptRef.current = prompt;
+  const fallbackPromptRef = useRef(fallbackPrompt);
+  fallbackPromptRef.current = fallbackPrompt;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -3742,41 +3885,64 @@ function OnboardingAudiences({
       setIcpLoading(true);
       setLoading(true);
       prefetch.promise
-        .then(({ prompt: p, candidates: c }) => {
-          onPromptChange(prompt.trim() ? prompt : p || fallbackPrompt);
+        .then(({ prompt: p, candidates: c, icpFailed }) => {
+          const seeded = promptRef.current.trim() ? promptRef.current : p || fallbackPromptRef.current;
+          onPromptChange(seeded);
+          if (icpFailed) setIcpFallback(true);
           if (c) {
             onCandidatesChange(c);
             if (c.length === 0) setErr("No audiences matched that description. Try rephrasing.");
+            setLoading(false);
+            return;
           }
+          // The prewarm bails the moment the ICP throws, so `suggestAudiences` never
+          // ran. Leaving it there made a dead prewarm look like a step that merely
+          // wanted a click. The no-prefetch branch below already self-fires; so does
+          // this one now, off whatever sentence we ended up with.
+          //
+          // `loading` is HANDED OVER rather than cleared: runSuggest raises it again
+          // itself, so clearing it here (or in a shared `finally`) would drop the
+          // button back to its idle label for the whole call it just started — and
+          // leave it clickable, so a second suggest could be fired over the first.
+          if (seeded && brandId) {
+            void runSuggest(seeded);
+            return;
+          }
+          setLoading(false);
         })
         .catch((e) => {
           console.error("[dashboard] audience prefetch adopt failed:", e);
-          onPromptChange(prompt.trim() ? prompt : fallbackPrompt);
+          setIcpFallback(true);
+          onPromptChange(promptRef.current.trim() ? promptRef.current : fallbackPromptRef.current);
+          setLoading(false);
         })
         .finally(() => {
           setIcpLoading(false);
-          setLoading(false);
         });
       return;
     }
 
     if (!brandId) {
-      onPromptChange(prompt.trim() ? prompt : fallbackPrompt);
+      setIcpFallback(true);
+      onPromptChange(promptRef.current.trim() ? promptRef.current : fallbackPromptRef.current);
       setIcpLoading(false);
       return;
     }
     (async () => {
-      let nl = fallbackPrompt;
+      let nl = fallbackPromptRef.current;
       try {
         const { icp } = await suggestBrandIcp(brandId);
-        nl = icp.trim() || fallbackPrompt;
+        nl = icp.trim() || fallbackPromptRef.current;
+        if (!icp.trim()) setIcpFallback(true);
       } catch (e) {
         console.error("[dashboard] suggestBrandIcp (onboarding prefill) failed:", e);
+        setIcpFallback(true);
       } finally {
         setIcpLoading(false);
       }
-      onPromptChange(prompt.trim() ? prompt : nl);
-      if (nl) void runSuggest(nl);
+      const seeded = promptRef.current.trim() ? promptRef.current : nl;
+      onPromptChange(seeded);
+      if (seeded) void runSuggest(seeded);
     })();
   }, [brandId, prefetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -3884,6 +4050,14 @@ function OnboardingAudiences({
             </div>
           )}
         </div>
+        {/* A sentence we assembled from the picked services looks exactly like one
+            drafted off the site, so the reader is told which they are holding. Say it
+            only once there is something in the box to describe. */}
+        {icpFallback && !icpLoading && prompt.trim() && (
+          <p className="mt-2 text-xs text-gray-500">
+            We couldn&apos;t read enough from <span className="font-medium text-gray-700">{hostname}</span> to draft this, so we started it from your services. Edit it to match who you actually sell to.
+          </p>
+        )}
         {/* The outcome of the run sits BESIDE the button: the new cards render below the
             already-picked ones, which on a full selection is off-screen. */}
         <div className="mt-3 flex flex-wrap items-center gap-3">
