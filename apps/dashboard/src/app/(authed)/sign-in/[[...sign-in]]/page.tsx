@@ -35,11 +35,14 @@ type SignInStatus = SignInResult["status"];
  * What each non-complete sign-in status means, in the user's words.
  *
  * `complete` is the only status that yields a session, and every other one used
- * to fall into a single `else` that printed "Additional verification required.
- * Try Google sign-in." That was wrong twice over: it named a provider the
- * account may not have (a password account has no Google to fall back to), and
- * it hid the status that every correct password on this instance actually
- * reaches. Each status now says what it is.
+ * to fall into a single `else` that sent the user to Google. That was wrong
+ * twice over: it named a provider the account may not have (a password account
+ * has no Google to fall back to), and it hid the status that every correct
+ * password on this instance actually reaches. Each status now says what it is.
+ *
+ * The old copy is deliberately NOT quoted here: `sign-in-second-factor.test.ts`
+ * forbids that literal in this file, and a comment restating it would fail the
+ * guard the moment a formatter rejoined the line.
  */
 const SIGN_IN_STATUS_MESSAGE: Partial<Record<NonNullable<SignInStatus>, string>> = {
   needs_new_password:
