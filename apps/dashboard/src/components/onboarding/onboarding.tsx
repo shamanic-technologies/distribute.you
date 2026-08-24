@@ -107,6 +107,7 @@ import {
   SALES_FUNNELS,
   funnelBudgetBelowMinimum,
   funnelRateFields,
+  funnelDraftFromBrand,
   salesFunnelByKey,
   buildFunnelPatch,
   isEmptyFunnelPatch,
@@ -115,6 +116,7 @@ import {
   NOTHING_DECLARED,
   type SalesFunnelDef,
   type SalesFunnelKey,
+  type SalesFunnelKeyWire,
   type FunnelDraft,
   type DeclaredFunnelValues,
 } from "@/lib/sales-funnels";
@@ -955,6 +957,11 @@ export function Onboarding() {
   const selectedFunnels = offeredFunnels.filter((f) => selectedFunnelKeys.includes(f.key));
   const detailFunnels = orderedForDetail(selectedFunnels, primaryFunnelKey);
   const primaryFunnel = selectedFunnels.find((f) => f.key === primaryFunnelKey) ?? null;
+  // What the brand's economics actually say, for the funnel screens to prefill from.
+  // Deliberately NOT in the persisted snapshot: adding a field there forces an
+  // ONBOARDING_STATE_VERSION bump, which strands an in-flight checkout — and this is
+  // re-read from the wire on the post-payment page load anyway (prewarmStoredEconomics).
+  const [storedEconomics, setStoredEconomics] = useState<EffectiveSalesEconomics | null>(null);
   const [rates, setRates] = useState<Record<RateKey, number>>(() => restored?.rates ?? { ...DEFAULT_RATES });
   const [rateText, setRateText] = useState<Record<RateKey, string>>(() => restored?.rateText ?? { ...DEFAULT_RATE_TEXT });
   const [services, setServices] = useState<string[]>(() => restored?.services ?? []);
@@ -1765,6 +1772,11 @@ export function Onboarding() {
       throw new Error("Your conversion rates could not be loaded. Please try again.");
     }
     econRef.current = economics;
+    // ALSO state, not only the ref: the funnel detail screens seed their conversion
+    // rates from this, and a ref lands with no re-render — the form would stay blank
+    // under copy that says we prefilled it. `funnelDraft` derives the seed at render,
+    // so an untouched field picks the values up the moment they arrive.
+    setStoredEconomics(economics);
     return economics;
   }
 
@@ -1950,9 +1962,22 @@ export function Onboarding() {
 
   // Fetch the best-model projection LADDER (same endpoint + pick as the Strategy page,
   // so the numbers match). Prewarmed at the celebrate step, refetched after the LTR save.
-  function fetchBestModelLadder(id: string, outcomeArg: Outcome): Promise<void> {
-    const objective = objectiveForOptimizationGoal(optimizationGoalForOutcome(outcomeArg));
-    const p = getWorkflowProjectionLadder({ featureSlug: SALES_FEATURE_SLUG, brandId: id, objective })
+  //
+  // Keyed on the primary FUNNEL, never on a goal. `sales_meetings` covers both meeting
+  // funnels, so a goal-keyed request is priced from BOTH channels (`clicks·visitToMeeting
+  // + replies·replyToMeeting`) — and per dollar that buys ~86× more clicks than replies,
+  // so the click leg supplies nearly every projected outcome. Two things then describe
+  // the wrong chain: `recommendedWorkflowDynastySlug` is an argmin on that mixed cost, so
+  // the workflow crowned BEST is whichever is cheapest per CLICK (its cost per reply is
+  // incidental and can be several times the reply-cheapest one), and the economics beside
+  // it price the website funnel. Measured on a conversation-led brand: $26 per meeting and
+  // 26.8× return, where its own reply chain gives $283 and 2.1×.
+  function fetchBestModelLadder(id: string, funnelKey: string | null): Promise<void> {
+    const p = getWorkflowProjectionLadder({
+      featureSlug: SALES_FEATURE_SLUG,
+      brandId: id,
+      ...(funnelKey ? { funnel: funnelKey as SalesFunnelKeyWire } : {}),
+    })
       .then((ladder) => {
         setBestModelLadder(ladder);
       })
@@ -2109,7 +2134,7 @@ export function Onboarding() {
       startBackgroundLaunch().catch(() => {});
       const prewarmId = pending.brandId;
       if (prewarmId) {
-        void fetchBestModelLadder(prewarmId, pending.outcome);
+        void fetchBestModelLadder(prewarmId, pending.primaryFunnelKey);
         prewarmStoredEconomics(prewarmId);
       }
     } catch (err) {
@@ -2143,7 +2168,7 @@ export function Onboarding() {
       startBackgroundLaunch().catch(() => {});
       const prewarmId = pending.brandId;
       if (prewarmId) {
-        void fetchBestModelLadder(prewarmId, pending.outcome);
+        void fetchBestModelLadder(prewarmId, pending.primaryFunnelKey);
         prewarmStoredEconomics(prewarmId);
       }
     } catch (err) {
@@ -2241,7 +2266,7 @@ export function Onboarding() {
       // A stale ROI sitting beside freshly typed inputs is an incoherent surface, so the
       // ladder is dropped and the step skeletons until the new projection lands.
       setBestModelLadder(null);
-      await fetchBestModelLadder(id, outcome);
+      await fetchBestModelLadder(id, funnel.key);
     } catch (err) {
       console.error("[dashboard] onboarding: failed to price the primary funnel from the model step", err);
       // brand-service says exactly what was wrong with the funnel it was asked to
@@ -2355,8 +2380,24 @@ export function Onboarding() {
     const inheritedPage = typedElsewhere.find((d) => (d.destinations.page ?? "").trim())?.destinations.page;
     const inheritedBooking = typedElsewhere.find((d) => (d.destinations.booking ?? "").trim())?.destinations
       .booking;
+    // Rates seed from the brand's own economics through the SAME helper the Settings
+    // card uses, so one funnel's rate reads the same number in both places. Without
+    // this every conversion field rendered blank under copy promising we had prefilled
+    // it, and the user retyped what we already knew. Per key, in order: what they typed
+    // here, then the same key typed on another path, then the brand, then blank — the
+    // show-up rate is measured nowhere in the fleet and stays blank by design.
+    const def = salesFunnelByKey(funnel.key as SalesFunnelKey);
+    const seeded = funnelDraftFromBrand(def, storedEconomics, defaultDestinationUrl).rates;
+    const rates: Record<string, string> = {};
+    for (const rate of funnelRateFields(def)) {
+      const typedHere = own?.rates[rate.key];
+      const typedOnAnotherPath = typedElsewhere.find((d) => (d.rates[rate.key] ?? "").trim())?.rates[
+        rate.key
+      ];
+      rates[rate.key] = typedHere ?? typedOnAnotherPath ?? seeded[rate.key] ?? "";
+    }
     return {
-      rates: own?.rates ?? {},
+      rates,
       ltr: own?.ltr ?? inheritedLtr ?? rateText.ltv,
       destinations: {
         // A page destination defaults to the brand's own click destination. A
@@ -3277,7 +3318,9 @@ export function Onboarding() {
         </div>
         <div className="flex items-center gap-2">
           <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
-          {funnel.key === primaryFunnelKey && (
+          {/* A tag ranking one item against nothing: with a single path there is no
+              second one for it to be primary OVER, so it only invites the question. */}
+          {detailFunnels.length > 1 && funnel.key === primaryFunnelKey && (
             <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
               Primary
             </span>
@@ -3331,7 +3374,17 @@ export function Onboarding() {
               list, not one field. Each destination keeps its own draft value. */}
           {funnel.destinations.map((dest) => (
             <label key={dest.kind} className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-gray-700">{dest.label}</span>
+              {/* "Optional" belongs beside the LABEL, where a reader decides whether to
+                  fill the field — buried at the head of the hint under the input, it is
+                  read after the decision it was meant to inform. */}
+              <span className="flex items-center gap-1.5 text-xs font-medium text-gray-700">
+                {dest.label}
+                {dest.optional && (
+                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                    Optional
+                  </span>
+                )}
+              </span>
               <input
                 type="text"
                 value={draft.destinations[dest.kind] ?? ""}
@@ -3389,19 +3442,34 @@ export function Onboarding() {
         />
         {/* No "model" vocabulary — a customer does not care which model produced the
             number, only what the path is worth. The headline names the FUNNEL; the
-            machinery behind it stays out of the copy. */}
+            machinery behind it stays out of the copy.
+
+            A superlative over a set of ONE says nothing: "your most profitable path"
+            and "your primary goal" both promise a comparison the page cannot show when
+            the brand sells through a single chain, so with one path it simply states
+            what that path returns. */}
         <h2 className="font-display text-2xl font-bold text-gray-900">
-          Your most profitable path with us.
+          {selectedFunnels.length > 1 ? "Your most profitable path with us." : "What your path should return."}
         </h2>
         <p className="mt-2 mb-6 text-gray-500">
-          Based on your numbers, here is what your primary goal should return and what each outcome should cost. Estimated from companies like yours until your own results come in.
+          {selectedFunnels.length > 1
+            ? "Based on your numbers, here is what your primary goal should return and what each outcome should cost. Estimated from companies like yours until your own results come in."
+            : "Based on your numbers, here is what it should return and what each outcome should cost. Estimated from companies like yours until your own results come in."}
         </p>
         {primaryFunnel && (
           <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4">
             <div className="flex items-center gap-3">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${primaryFunnel.tone.iconBg} ${primaryFunnel.tone.iconText}`}>
-                <span className="text-xs font-bold">1</span>
-              </span>
+              {/* The numeral is a RANK, so it only means something beside a second path.
+                  On its own it reads as "1 of several" on a page showing one, so a single
+                  path wears the funnel's own mark — the same one the settings card and the
+                  Campaigns table draw for it. */}
+              {selectedFunnels.length > 1 ? (
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${primaryFunnel.tone.iconBg} ${primaryFunnel.tone.iconText}`}>
+                  <span className="text-xs font-bold">1</span>
+                </span>
+              ) : (
+                <SalesFunnelMark def={salesFunnelByKey(primaryFunnel.key as SalesFunnelKey)} size="sm" />
+              )}
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-gray-900">{primaryFunnel.title}</div>
                 <FunnelChain steps={primaryFunnel.steps} tone={primaryFunnel.tone} />
@@ -3415,7 +3483,7 @@ export function Onboarding() {
             )}
             {selectedFunnels.length > 1 && (
               <p className="mt-3 text-[11px] leading-5 text-gray-400">
-                Priced against your primary goal. Your other {selectedFunnels.length - 1 === 1 ? "path" : "paths"} stay on your account.
+                Priced against this path. Your other {selectedFunnels.length - 1 === 1 ? "path" : "paths"} stay on your account.
               </p>
             )}
           </div>
@@ -3505,7 +3573,7 @@ export function Onboarding() {
               roiMultiple={resolved.roiMultiple}
               floored={brandRow ? isRowFloored(brandRow) : false}
               cppr={cpprFromRow(brandRow)}
-              goal={goal}
+              funnelKey={(primaryFunnel?.key as SalesFunnelKeyWire | undefined) ?? null}
             />
           </div>
         ) : (

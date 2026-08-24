@@ -68,7 +68,9 @@ const PAGE_DESTINATION: Omit<FunnelDestinationView, "optional"> = {
 const BOOKING_DESTINATION: Omit<FunnelDestinationView, "optional"> = {
   kind: "booking",
   label: "Booking link",
-  hint: "Optional. The scheduling page we send a lead to once they are interested.",
+  // No "Optional." here: the render puts that beside the LABEL, where the decision is
+  // made. Saying it twice reads as two different caveats.
+  hint: "The scheduling page we send a lead to once they are interested.",
   placeholder: "https://cal.com/yourteam/30min",
 };
 
