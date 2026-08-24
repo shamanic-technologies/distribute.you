@@ -3623,7 +3623,54 @@ export async function getCampaign(campaignId: string, token?: string): Promise<{
  * billing keys a ceiling on exactly that triple, so Campaign Settings edits it
  * through `saveBrandFunnelBudget` above — billing's row, not a campaign-service
  * mirror of one.
+ *
+ * ...and its STATUS, which is `setCampaignStatus` below. That is not one of the
+ * four offer fields: whether a campaign runs is a fact about the campaign and
+ * nothing else, and it is the one thing an offer-level answer could never state.
  */
+
+/**
+ * PATCH /campaigns/:id — start or stop ONE campaign.
+ *
+ * The whole reason this exists beside `saveBrandFunnelBudget`: stopping a
+ * campaign and defunding it are different actions, and only one of them is
+ * reversible for free. Dropping a ceiling to zero throws the amount away, and
+ * billing's per-funnel floor only lets a funnel funded under its minimum be KEPT
+ * or RAISED — so a campaign grandfathered under the floor, stopped that way,
+ * could never be restarted at the figure it was running. A status flag keeps the
+ * ceiling untouched, so restarting is one click and the amount is still there.
+ *
+ * campaign-service maps `activate` to `ongoing` and `stop` to `stopped`, and
+ * stamps `stopReason: manual` on a stop — which its own code documents as NOT
+ * resumable, so nothing brings the campaign back on its own. That is the point:
+ * a person stopped it, a person restarts it.
+ *
+ * ⚠️ `activate` FIRES THE WORKFLOW IMMEDIATELY (`executeCampaignWorkflow` +
+ * `wakeScheduler`), so restarting spends now rather than at the next tick. The
+ * surface offering it says so.
+ *
+ * `x-brand-id` / `x-feature-slug` are REQUIRED for an activate: campaign-service
+ * validates the workflow's seven tracking headers before flipping the row and
+ * 400s naming the missing ones. api-service reads both off the inbound request
+ * and forwards them, so they are sent here rather than assumed.
+ */
+export async function setCampaignStatus(
+  campaignId: string,
+  status: "activate" | "stop",
+  identity: { brandId: string; featureSlug: string },
+  token?: string,
+): Promise<void> {
+  await apiCall<unknown>(`/campaigns/${campaignId}`, {
+    token,
+    method: "PATCH",
+    body: { status },
+    headers: {
+      "x-run-id": globalThis.crypto.randomUUID(),
+      "x-brand-id": identity.brandId,
+      "x-feature-slug": identity.featureSlug,
+    },
+  });
+}
 
 // Campaign sub-resources
 

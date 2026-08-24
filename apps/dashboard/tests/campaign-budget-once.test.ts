@@ -73,18 +73,30 @@ describe("campaign Overview — one daily budget, its own, read-only", () => {
     expect(page).toContain('["brandFunnelBudgets", brandId]');
   });
 
-  it("keeps the header read-only — the write lives on Campaign Settings", () => {
+  it("holds no editor of its own — the header opens the shared modal", () => {
+    // The page renders no field and holds no mutation. What it gained is a way IN:
+    // the same controls modal the brand and offer Overviews open, scoped here to
+    // this one campaign. Several windows onto one number are fine; a second
+    // NARROWING is not, which is why that rule lives in lib/campaign-budget.ts alone
+    // and every window reads it.
     expect(page).not.toContain("saveBrandFunnelBudget");
     expect(page).not.toContain("useMutation");
     expect(page).not.toContain("<input");
+    expect(page).toContain("CampaignControlsTrigger");
+    expect(page).toContain("campaignId={campaign.id}");
   });
 
-  it("draws the pill and the dollars exactly as the Campaigns table does", () => {
-    // One pill vocabulary and one whole-dollar formatter across both surfaces: a
-    // campaign that reads Active in green in the list must not read another word
-    // in another colour once it is open.
-    expect(page).toContain("StatusPill");
-    expect(page).toContain("fmtDailyBudgetUsd");
+  it("passes billing's own per-campaign figure to the trigger, never a recomposed one", () => {
+    expect(page).toContain("totalCentsOverride={campaignBudgetCentsValue}");
+  });
+
+  it("draws the pill and the dollars exactly as every other campaign surface does", () => {
+    // One vocabulary and one whole-dollar formatter across the surfaces that name a
+    // campaign's state: a campaign that reads Active in green in the list must not
+    // read another word in another colour once it is open.
+    const trigger = read("components/campaigns/campaign-controls-trigger.tsx");
+    expect(trigger).toContain("ROLLUP_LABEL");
+    expect(trigger).toContain("fmtDailyBudgetUsd");
     const table = read("components/campaigns/campaigns-table.tsx");
     expect(table).toContain("export function StatusPill");
     expect(table).toContain("fmtDailyBudgetUsd(budgetCents)");

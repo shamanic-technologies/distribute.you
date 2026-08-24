@@ -30,6 +30,7 @@ import {
 import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { CampaignsTable } from "@/components/campaigns/campaigns-table";
+import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { OffersTable } from "@/components/offers/offers-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -377,10 +378,31 @@ export default function BrandOverviewPage() {
     );
   }
 
+  // What is running here, and what it may spend in a day — read-only, above
+  // everything, and the way into the modal that changes it. The rows it controls
+  // are this scope's CAMPAIGNS whatever the grain, because a campaign is the only
+  // thing billing and campaign-service actually fund.
+  //
+  // The money is the one figure the two grains take from different places, and
+  // deliberately so. At BRAND level billing serves its own total, so it is read
+  // (`budgetData.dailyBudgetCents`, already fetched a few lines up for the cost
+  // card) rather than recomposed from the rows — recomposing it is how two
+  // surfaces come to state one number two ways. At OFFER level there is no served
+  // figure, so the trigger adds up the offer's own campaign ceilings, the same
+  // shape the funnels card uses for its per-offer total.
+  const ControlsLine = (
+    <CampaignControlsTrigger
+      brandId={brandId}
+      offerId={offerId}
+      totalCentsOverride={offerId ? undefined : (budgetData?.dailyBudgetCents ?? null)}
+    />
+  );
+
   // Only once revenue resolves do we know the brand has no pipeline yet.
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
+        {ControlsLine}
         {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner subject="Your campaign" />
       )}
@@ -391,6 +413,7 @@ export default function BrandOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
+      {ControlsLine}
       {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner subject="Your campaign" />
       )}

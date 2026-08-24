@@ -132,18 +132,28 @@ const STATUS_STYLES: Record<string, string> = {
   ended: "bg-gray-100 text-gray-500 border-gray-200",
 };
 /**
- * The word this dashboard uses for a campaign that is running: **Active**, the same
- * word the brand status pill already uses for the same idea.
+ * The two words this dashboard uses for a campaign: **Active** and **Paused**.
  *
- * campaign-service stores `ongoing`, which is its own internal spelling and not a
- * word anyone outside this fleet says. Printing it verbatim put two words for one
- * concept on screen — the brand reads "Active" one page up while its campaigns read
- * "ongoing" — so the wire value is translated here and nowhere else. Only the LABEL
- * moves: `isActiveStatus` remains the single definition of what running MEANS, and
- * it still drives the colour and the table's first sort key.
+ * campaign-service stores `ongoing` and `stopped`, which are its own internal
+ * spellings and not words anyone outside this fleet says. Printing them verbatim
+ * put two words for one concept on screen, so the wire value is translated here
+ * and nowhere else.
+ *
+ * `stopped` reads **Paused** because that is now what it is from the customer's
+ * side: the controls modal stops and restarts a campaign through the same status,
+ * leaving its ceiling untouched, so a stopped campaign is one waiting to be turned
+ * back on rather than one that has ended. It also keeps this pill and the modal's
+ * own roll-up saying the SAME word about the same campaign — a row reading
+ * "stopped" in the list beside a "Paused" pill on its own page is one campaign
+ * described two ways.
+ *
+ * Only the LABEL moves: `isActiveStatus` remains the single definition of what
+ * running MEANS, and it still drives the colour and the table's first sort key.
+ * Any other word campaign-service may write is printed as it comes.
  */
 function statusLabel(status: string): string {
-  return isActiveStatus(status) ? "Active" : status;
+  if (isActiveStatus(status)) return "Active";
+  return status.toLowerCase() === "stopped" ? "Paused" : status;
 }
 
 /**
@@ -173,7 +183,7 @@ export function StatusPill({ status }: { status: string }) {
  * every email workflow whatever its offer — with two cold-email channels that
  * guess cannot tell them apart.
  */
-function ChannelCell({ featureSlug }: { featureSlug: string | null }) {
+export function ChannelCell({ featureSlug }: { featureSlug: string | null }) {
   const def = acquisitionChannelForFeatureSlug(featureSlug);
   return (
     <div className="flex min-w-0 items-center gap-2.5">
@@ -192,7 +202,7 @@ function ChannelCell({ featureSlug }: { featureSlug: string | null }) {
  * chain the campaign never stated. campaign-service persists the funnel on every
  * campaign, so a missing one is a real gap and reads as one.
  */
-function FunnelCell({ funnelKey }: { funnelKey: Campaign["funnelKey"] }) {
+export function FunnelCell({ funnelKey }: { funnelKey: Campaign["funnelKey"] }) {
   const def = campaignFunnel(funnelKey);
   return (
     <div className="flex min-w-0 items-center gap-2.5">

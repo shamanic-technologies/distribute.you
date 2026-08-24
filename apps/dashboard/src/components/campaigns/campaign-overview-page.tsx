@@ -46,8 +46,8 @@ import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-se
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
-import { StatusPill } from "@/components/campaigns/campaigns-table";
-import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
+import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
+import { campaignBudgetCents } from "@/lib/campaign-budget";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -126,7 +126,7 @@ export function CampaignOverviewPage() {
   // figure that used to sit here and had to go. The key is the one Campaign
   // Settings and the Campaigns table already read, so all three share one request
   // and the header can never state a ceiling the settings page would not edit.
-  const { data: funnelBudgets, isPending: funnelBudgetsPending } = useAuthQuery(
+  const { data: funnelBudgets } = useAuthQuery(
     ["brandFunnelBudgets", brandId],
     () => getBrandFunnelBudgets(brandId),
     { ...pollOptions },
@@ -500,27 +500,32 @@ export function CampaignOverviewPage() {
   // The surface is GA, so there is no maturity badge here nor on the nav entry.
   //
   // What the page DOES state at its top right is this campaign's own daily
-  // ceiling and its own status, both READ-ONLY. Neither duplicates the bar: the
-  // bar names WHICH campaign is open, this line says whether it is running and
-  // what it may spend while it does. The ceiling is billing's (offer x funnel x
-  // channel) row, which is exactly what a campaign is, so it is this campaign's
-  // money rather than the brand-wide sum the old run-status bar printed. Both are
-  // drawn with the very same pill and the very same whole-dollar formatter the
-  // Campaigns table uses, so a campaign reads one way in the list and the same
-  // way once it is open. Editing stays on Campaign Settings — a second editor is
-  // how one number comes to have two owners.
+  // ceiling and its own status. Neither duplicates the bar: the bar names WHICH
+  // campaign is open, this line says whether it is running and what it may spend
+  // while it does. The ceiling is billing's (offer x funnel x channel) row, which
+  // is exactly what a campaign is, so it is this campaign's money rather than the
+  // brand-wide sum the old run-status bar printed.
+  //
+  // It is also the way IN to changing both, through the shared controls modal —
+  // the same one the brand and offer Overviews open, scoped here to one row. That
+  // is not the old editor-in-the-header coming back: the header renders no field
+  // and holds no mutation, and the modal writes through the SAME narrowing
+  // (`campaignBudgetScope` / `campaignSavedCents`) that Offer Settings and
+  // Campaign Settings read. Several windows onto one number are fine; a second
+  // narrowing is not, which is why that rule lives in `lib/campaign-budget.ts`
+  // alone.
+  //
+  // Status and budget stay two INDEPENDENT answers. Pausing flips
+  // campaign-service's own status and leaves the ceiling untouched, so the amount
+  // survives and restarting is one click — stopping a campaign by dropping its
+  // ceiling to zero would throw the figure away, and billing's per-funnel floor
+  // would then refuse to put a grandfathered campaign back where it was.
   const CampaignStatusLine = campaign ? (
-    <div className="flex items-center justify-end gap-2.5">
-      {funnelBudgetsPending && !funnelBudgets ? (
-        <Skeleton className="h-4 w-16" />
-      ) : (
-        <span className="text-sm tabular-nums text-gray-600">
-          {fmtDailyBudgetUsd(campaignBudgetCentsValue)}
-          <span className="text-gray-400"> / day</span>
-        </span>
-      )}
-      <StatusPill status={campaign.status} />
-    </div>
+    <CampaignControlsTrigger
+      brandId={brandId}
+      campaignId={campaign.id}
+      totalCentsOverride={campaignBudgetCentsValue}
+    />
   ) : null;
 
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
