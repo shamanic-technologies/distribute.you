@@ -13,12 +13,47 @@ import {
   clerkErrorCode,
   clerkErrorMessage,
   isGoogleOnlyAccountError,
+  sanitizeVerificationCode,
+  VERIFICATION_CODE_LENGTH,
 } from "@/lib/clerk-error";
 
 // SessionStorage key carrying the typed email/password from the sign-in form to
 // the sign-up page when an unknown email is entered. Consumed-once + cleared on
 // read by the sign-up page so the plaintext password never lingers on disk.
 const PREFILL_AUTH_KEY = "distribute_prefill_auth";
+
+// Same window the sign-up verify screen uses: long enough that a user cannot
+// chain resends and lose track of which code is live.
+const RESEND_COOLDOWN_SECONDS = 30;
+
+type SignInLike = NonNullable<ReturnType<typeof useSignIn>["signIn"]>;
+type SignInResult = Awaited<ReturnType<SignInLike["create"]>>;
+type SetActiveLike = NonNullable<ReturnType<typeof useSignIn>["setActive"]>;
+type SignInStatus = SignInResult["status"];
+
+/**
+ * What each non-complete sign-in status means, in the user's words.
+ *
+ * `complete` is the only status that yields a session, and every other one used
+ * to fall into a single `else` that printed "Additional verification required.
+ * Try Google sign-in." That was wrong twice over: it named a provider the
+ * account may not have (a password account has no Google to fall back to), and
+ * it hid the status that every correct password on this instance actually
+ * reaches. Each status now says what it is.
+ */
+const SIGN_IN_STATUS_MESSAGE: Partial<Record<NonNullable<SignInStatus>, string>> = {
+  needs_new_password:
+    "Your password has to be reset before you can sign in. Use “Forgot password?” below.",
+  needs_first_factor:
+    "We could not verify that password. Try again, or reset it below.",
+  needs_identifier: "Enter the email address for your account.",
+  needs_client_trust:
+    "This browser has to be verified before signing in. Check your email for the verification we just sent.",
+};
+
+const signInStatusMessage = (status: SignInStatus): string =>
+  (status && SIGN_IN_STATUS_MESSAGE[status]) ||
+  `We could not complete sign-in (${status}). Try again, or reset your password below.`;
 
 export default function SignInPage() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -39,6 +74,23 @@ export default function SignInPage() {
   // Distinct from `error`: shown when the email has no account, so we offer a
   // "Sign up" CTA (carrying the typed email+password) instead of a red error.
   const [emailNotFound, setEmailNotFound] = useState(false);
+
+  // Second factor. This instance requires an emailed code after a correct
+  // password, so this is the ordinary path for every password sign-in, not an
+  // edge case.
+  const [secondFactorPending, setSecondFactorPending] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeRejected, setCodeRejected] = useState(false);
+  const [resendNotice, setResendNotice] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+
+  // Tick the resend cooldown down to zero.
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -94,6 +146,46 @@ export default function SignInPage() {
     setLoading(true);
   };
 
+  /**
+   * Route a sign-in result to the step it is actually waiting on.
+   *
+   * Every branch reports itself. The status that broke this page was invisible
+   * in the funnel precisely because the branch that handled it captured
+   * nothing, so a stuck user left no trace to diagnose from.
+   */
+  const advanceSignIn = async (
+    resource: SignInLike,
+    activate: SetActiveLike,
+    result: SignInResult,
+    stage: string
+  ): Promise<void> => {
+    if (result.status === "complete") {
+      await activate({ session: result.createdSessionId });
+      rememberAuthMethod("email");
+      posthog.capture("signin_email_completed", { stage });
+      router.push("/orgs");
+      return;
+    }
+
+    if (result.status === "needs_second_factor") {
+      // Guarded on the pending flag: a second `prepare` would mail a fresh code
+      // and silently invalidate the one the user is already typing.
+      if (!secondFactorPending) {
+        await resource.prepareSecondFactor({ strategy: "email_code" });
+        setSecondFactorPending(true);
+        setResendCooldown(RESEND_COOLDOWN_SECONDS);
+        posthog.capture("signin_second_factor_started", { stage });
+      }
+      return;
+    }
+
+    posthog.capture("signin_email_incomplete", {
+      stage,
+      status: result.status ?? "unknown",
+    });
+    setError(signInStatusMessage(result.status));
+  };
+
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLoaded || !signIn || submitting) return;
@@ -103,16 +195,7 @@ export default function SignInPage() {
     try {
       posthog.capture("signin_email_started");
       const result = await signIn.create({ identifier: email, password });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        rememberAuthMethod("email");
-        posthog.capture("signin_email_completed");
-        router.push("/orgs");
-      } else {
-        // needs_second_factor / needs_new_password etc. are not enabled on this
-        // instance; surface a generic message rather than silently hanging.
-        setError("Additional verification required. Try Google sign-in.");
-      }
+      await advanceSignIn(signIn, setActive, result, "create");
     } catch (err) {
       posthog.capture("signin_email_failed", authFailureProps(err));
       console.error("Email sign in error:", err);
@@ -132,6 +215,55 @@ export default function SignInPage() {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSecondFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLoaded || !signIn || submitting) return;
+    setError("");
+    setCodeRejected(false);
+    setResendNotice("");
+    setSubmitting(true);
+    try {
+      const result = await signIn.attemptSecondFactor({
+        strategy: "email_code",
+        code,
+      });
+      await advanceSignIn(signIn, setActive, result, "second_factor");
+    } catch (err) {
+      posthog.capture(
+        "signin_second_factor_failed",
+        authFailureProps(err, { stage: "attempt" })
+      );
+      console.error("Second factor error:", err);
+      setCodeRejected(clerkErrorCode(err) === "form_code_incorrect");
+      setError(clerkErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResendSecondFactor = async () => {
+    if (!isLoaded || !signIn || resendCooldown > 0 || resending) return;
+    setError("");
+    setCodeRejected(false);
+    setResendNotice("");
+    setResending(true);
+    try {
+      await signIn.prepareSecondFactor({ strategy: "email_code" });
+      setCode("");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setResendNotice(`New code sent to ${email}`);
+    } catch (err) {
+      posthog.capture(
+        "signin_second_factor_failed",
+        authFailureProps(err, { stage: "resend" })
+      );
+      console.error("Resend second factor code error:", err);
+      setError(clerkErrorMessage(err));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -378,7 +510,9 @@ export default function SignInPage() {
                 color: "oklch(48% 0.006 264)",
               }}
             >
-              Sign in to your distribute dashboard
+              {secondFactorPending
+                ? `We sent a code to ${email}`
+                : "Sign in to your distribute dashboard"}
             </p>
           </div>
 
@@ -391,6 +525,100 @@ export default function SignInPage() {
               boxShadow: "0 1px 4px oklch(12% 0.008 264 / 0.06)",
             }}
           >
+            {secondFactorPending ? (
+              <form onSubmit={handleSecondFactor} className="flex flex-col gap-4">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={VERIFICATION_CODE_LENGTH}
+                  value={code}
+                  onChange={(e) => setCode(sanitizeVerificationCode(e.target.value))}
+                  placeholder="Enter 6-digit code"
+                  style={{ ...inputStyle, textAlign: "center", letterSpacing: "0.3em" }}
+                  required
+                />
+                {error && (
+                  <div role="alert">
+                    <p
+                      style={{
+                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontSize: "0.8125rem",
+                        color: "oklch(55% 0.2 25)",
+                      }}
+                    >
+                      {error}
+                    </p>
+                    {codeRejected && (
+                      <p
+                        style={{
+                          fontFamily: '"Inter", system-ui, sans-serif',
+                          fontSize: "0.8125rem",
+                          color: "oklch(48% 0.006 264)",
+                          marginTop: "0.375rem",
+                        }}
+                      >
+                        {"Use the code from the most recent email. Codes expire after 10 minutes, so send a fresh one if yours is older."}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {resendNotice && (
+                  <p
+                    role="status"
+                    style={{
+                      fontFamily: '"Inter", system-ui, sans-serif',
+                      fontSize: "0.8125rem",
+                      color: "oklch(45% 0.14 155)",
+                    }}
+                  >
+                    {resendNotice}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  aria-busy={submitting}
+                  className={submitting ? "cursor-wait" : "hover:brightness-105"}
+                  style={primaryBtnStyle}
+                >
+                  {submitting ? "Verifying..." : "Verify and sign in"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendSecondFactor}
+                  disabled={resendCooldown > 0 || resending}
+                  aria-busy={resending}
+                  className={
+                    resending
+                      ? "cursor-wait"
+                      : resendCooldown > 0
+                        ? "cursor-not-allowed"
+                        : "transition-opacity hover:opacity-75"
+                  }
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    // In-flight keeps the live colour: greying it out here would
+                    // read as unavailable at the moment it is working.
+                    color:
+                      !resending && resendCooldown > 0
+                        ? "oklch(62% 0.006 264)"
+                        : "oklch(42% 0.2 264)",
+                    background: "none",
+                    border: "none",
+                  }}
+                >
+                  {resending
+                    ? "Sending a new code..."
+                    : resendCooldown > 0
+                      ? `Resend code in ${resendCooldown}s`
+                      : "Send me a new code"}
+                </button>
+              </form>
+            ) : (
+              <>
             <div style={{ position: "relative" }}>
             <LastUsedBadge method="google" />
             <button
@@ -577,6 +805,8 @@ export default function SignInPage() {
                 {submitting ? "Signing in..." : "Sign in"}
               </button>
             </form>
+              </>
+            )}
 
             <div
               className="mt-6 text-center"
