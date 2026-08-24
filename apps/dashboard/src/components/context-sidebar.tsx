@@ -81,43 +81,24 @@ function SidebarNavRowSkeleton() {
   );
 }
 
-function BackLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={explicitHierarchyHref(href)}
-      className="flex items-center gap-1.5 text-[10px] text-gray-400 hover:text-gray-600 mb-2 transition"
-    >
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-      </svg>
-      {label}
-    </Link>
-  );
-}
-
-function SidebarSection({ topSlot, title, backHref, backLabel, children, footer }: {
+function SidebarSection({ topSlot, title, children, footer }: {
   // Beta chrome: the tenant switcher, rendered flush at the very top of the
   // sidebar so it sits level with the header row (the sidebar is a full-height
   // column to the LEFT of the header in the beta shell). It owns its own bottom
   // border at the header's height — do not wrap it in padding.
   topSlot?: React.ReactNode;
   title?: string;
-  backHref?: string;
-  backLabel?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
   return (
     <aside className="h-full w-56 max-w-[85vw] flex-shrink-0 flex-col border-r border-gray-200 bg-white flex">
       {topSlot}
-      {(title || backHref) && (
+      {title && (
         <div className="px-4 py-3 border-b border-gray-100">
-          {backHref && backLabel && <BackLink href={backHref} label={backLabel} />}
-          {title && (
-            <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-              {title}
-            </h3>
-          )}
+          <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+            {title}
+          </h3>
         </div>
       )}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
@@ -317,18 +298,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
     <SidebarSection topSlot={<TenantSwitcher />}>
       {isSettingsPath && (
         <>
-          {/* Back to the org's own landing, which the edge redirects to the
-              last-visited brand — no `?view=overview`, that would pin the
-              (now nav-less) org overview page instead. */}
-          <Link
-            href={`/orgs/${orgId}`}
-            className="mb-1 flex items-center gap-1.5 px-3 py-1 text-[10px] text-gray-400 transition hover:text-gray-600"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to dashboard
-          </Link>
           <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Organization</h4>
           <SidebarLink
             item={{ id: "billing", label: "Billing", href: `/orgs/${orgId}/billing`, icon: <BillingIcon /> }}
@@ -570,10 +539,6 @@ function CampaignLevelSidebar({ orgId, brandId, offerId, campaignId, pathname }:
   return (
     <SidebarSection
       topSlot={<TenantSwitcher />}
-      // The back-link is intra-BRAND (up to the campaigns list), so it stays —
-      // only the org back-link was made redundant by the switcher.
-      backHref={`${basePath}/campaigns`}
-      backLabel="Campaigns"
       // Brand Settings is a BRAND-level surface, so it belongs to the brand
       // sidebar the back-link leads to, not inside a campaign. What DOES belong
       // here is the campaign's own settings, anchored at the bottom exactly like
@@ -680,8 +645,6 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
   return (
     <SidebarSection
       topSlot={<TenantSwitcher />}
-      backHref={brandPath}
-      backLabel="Brand"
       footer={
         // Anchored to the bottom, outside the scrollable nav, exactly like the
         // brand sidebar's own Settings link: what the offer PROMISES and the
