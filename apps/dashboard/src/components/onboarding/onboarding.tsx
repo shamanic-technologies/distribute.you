@@ -95,6 +95,11 @@ import {
   parseListLeverInput,
 } from "./offer-levers";
 import { businessDomainFromEmail, extractDomain, subpageDestinationFromUrl } from "@/lib/extract-domain";
+import {
+  clearLandingUrlCookieString,
+  normalizeLandingUrl,
+  readLandingUrlCookie,
+} from "@/lib/landing-url-cookie";
 import { displaySetupError } from "@/lib/onboarding-setup-error";
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -1275,6 +1280,47 @@ export function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The website the visitor typed on the landing, recovered from the cookie
+  // `LandingUrlCapture` parked at sign-up, and rendered back as a full URL.
+  //
+  // Two jobs, both on the seed only, never on a keystroke:
+  //   1. RECOVER. `?url=` rides `redirectUrlComplete` through Clerk and can be
+  //      dropped by the OAuth round-trip or by the first-run edge gate bouncing
+  //      to a bare `/onboarding`. When that happens the field falls through to
+  //      the email guess below, which is a bare host BY CONSTRUCTION — so
+  //      "voozaa.app/us/" typed on the landing arrives as "voozaa.app" and the
+  //      page the visitor actually named is lost. The cookie survives both hops.
+  //   2. RENDER AS A URL. A bare host in a field labelled with a website reads
+  //      as a token someone half-remembered; "https://voozaa.app/us/" reads as
+  //      the page they gave us. `extractDomain` is untouched, so the brand
+  //      domain, the org name and the header still resolve exactly as before —
+  //      this is what the field SHOWS, not what the brand IS.
+  //
+  // Ordered ABOVE the email-guess effect on purpose: effects run in declaration
+  // order, so this fills first and the guess then sees a non-empty field and
+  // bails. Runs once, and only while the field still holds its seed, so it can
+  // never rewrite something the visitor has started typing.
+  const landingUrlSeedRef = useRef(false);
+  useEffect(() => {
+    if (landingUrlSeedRef.current) return;
+    landingUrlSeedRef.current = true;
+    if (noWebsiteMode) return;
+    let consumedCookie = false;
+    setUrl((current) => {
+      const normalizedCurrent = normalizeLandingUrl(current);
+      if (normalizedCurrent) return normalizedCurrent;
+      if (current.trim()) return current;
+      const fromCookie = readLandingUrlCookie(document.cookie);
+      if (!fromCookie) return current;
+      consumedCookie = true;
+      return fromCookie;
+    });
+    // Expire it only once it has actually landed in the field — the value now
+    // lives in state and in the persisted snapshot, and leaving it would prefill
+    // a later "add another brand" flow with the FIRST brand's website.
+    if (consumedCookie) document.cookie = clearLandingUrlCookieString();
+  }, [noWebsiteMode]);
+
   // A business signup email names the domain of the product being promoted
   // (kevin@acme.com -> acme.com), so the URL step opens prefilled and one click
   // from "Analyze my product". Google signup is covered by the same path: Clerk
@@ -1300,7 +1346,10 @@ export function Onboarding() {
     // to be a free provider, in which case the next run bails here again).
     if (!guessed) return;
     emailPrefillDoneRef.current = true;
-    setUrl((current) => (current.trim() ? current : guessed));
+    // Rendered as a URL for the same reason the landing carry is: the field asks
+    // for a website, so it should show one. Same value either way — the guess is
+    // a bare host, and `extractDomain` reduces it right back.
+    setUrl((current) => (current.trim() ? current : normalizeLandingUrl(guessed) ?? guessed));
   }, [signupEmail, noWebsiteMode]);
 
   function maybeAdvancePastLoading() {
@@ -2715,7 +2764,7 @@ export function Onboarding() {
       <StepShell
         maxWidth="sm:max-w-5xl"
         footer={
-          <button onClick={() => setStep("url")} className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-700">
+          <button onClick={() => setStep("url")} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-brand-700 sm:mt-8">
             Get started <ArrowRightIcon className="h-4 w-4" />
           </button>
         }
@@ -2726,13 +2775,16 @@ export function Onboarding() {
             different one. The three cards are not a feature tour (which NN/g's "skip
             onboarding when possible" says to cut) — they answer the objections that
             actually stand between this screen and the URL field. */}
-        <h1 className="font-display text-4xl font-bold leading-tight text-gray-950">
+        {/* Every size below steps down on mobile. The three cards alone were
+            528px of a 926px column on a 667px screen, which is what pushed the
+            CTA off. */}
+        <h1 className="font-display text-3xl font-bold leading-tight text-gray-950 sm:text-4xl">
           Sell like crazy, autonomously.
         </h1>
-        <p className="mt-3 text-base leading-7 text-gray-500">
+        <p className="mt-2.5 text-sm leading-6 text-gray-500 sm:mt-3 sm:text-base sm:leading-7">
           Drop your website. We find the buyers, reach out on your behalf, and forward the interested replies to your inbox. You handle the closing.
         </p>
-        <div className="mt-7 grid gap-4 sm:grid-cols-3">
+        <div className="mt-5 grid gap-2.5 sm:mt-7 sm:gap-4 sm:grid-cols-3">
           {[
             {
               title: "We send, not you",
@@ -2750,12 +2802,16 @@ export function Onboarding() {
               Icon: TrophyIcon,
             },
           ].map((f) => (
-            <div key={f.title} className="rounded-xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600">
-                <f.Icon className="h-5 w-5" />
+            // Icon beside the text on mobile (the stacked form spends a whole
+            // 40px row on a decorative tile), back to stacked from sm.
+            <div key={f.title} className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:block sm:p-6">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand-100 bg-white text-brand-600 sm:h-10 sm:w-10">
+                <f.Icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div className="mt-4 text-base font-semibold text-gray-950">{f.title}</div>
-              <div className="mt-1.5 text-sm leading-6 text-gray-500">{f.desc}</div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-950 sm:mt-4 sm:text-base">{f.title}</div>
+                <div className="mt-1 text-sm leading-5 text-gray-500 sm:mt-1.5 sm:leading-6">{f.desc}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -2807,7 +2863,7 @@ export function Onboarding() {
             <p className="mt-2 mb-6 text-gray-500">We read your product, find the leads, and run the outreach. Just drop the URL.</p>
             {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
             <input
-              type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. acme.com" autoFocus
+              type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. https://acme.com/pricing" autoFocus
               onKeyDown={(e) => { if (e.key === "Enter" && domain) startAnalyze(); }}
               className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
