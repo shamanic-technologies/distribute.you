@@ -50,6 +50,7 @@ import {
   suggestAudiences,
   setAudienceStatus,
   listAudiences,
+  listBrandOffers,
   suggestBrandIcp,
   type AudienceCandidate,
   getWorkflowProjection,
@@ -123,6 +124,7 @@ import {
   type DeclaredFunnelValues,
 } from "@/lib/sales-funnels";
 import { fundedLaunchFunnelKey } from "@/lib/launch-funnel";
+import { soleOfferId } from "@/lib/launch-offer";
 import {
   orderedForDetail,
   resolvePrimaryKey,
@@ -1892,6 +1894,29 @@ export function Onboarding() {
     }
     await configureAutoTopup(pending.topupAmountCents, pending.topupThresholdCents);
     setLaunchStep(1);
+    // The OFFER everything this launch creates is about. A campaign is
+    // (offer x funnel x channel) and billing keys its ceiling on the same triple,
+    // so a launch that names no offer produces a campaign no offer page can show
+    // and a ceiling that addresses the pair rather than the campaign it funds.
+    //
+    // Read, never created: brand-service gives a brand its first offer on the
+    // first brand-scoped write, and the funnels step made one several minutes ago.
+    // Best-effort BY DESIGN — the customer has already been charged, and both
+    // consumers adopt an unattributed row on their own cadence, so a brand whose
+    // offers cannot be read (or that holds several, where there is no single
+    // correct answer) launches unattributed rather than not at all.
+    let launchOfferId: string | null = null;
+    try {
+      const { offers } = await listBrandOffers(pending.brandId);
+      launchOfferId = soleOfferId(offers);
+    } catch (err) {
+      console.error("[dashboard] launch could not name the brand's offer", err);
+    }
+    if (!launchOfferId) {
+      console.error(
+        `[dashboard] launch could not name the brand's offer for brand ${pending.brandId} — campaign and ceiling ship unattributed`,
+      );
+    }
     // Fund each funnel it its own ceiling. billing then answers the brand's daily
     // budget as their SUM, so every consumer that reads the brand total — the launch
     // gate, the runway, the credit alerts, the Overview tile — is unchanged.
@@ -1900,7 +1925,11 @@ export function Onboarding() {
     // to the single brand-level write, which is exactly what it expected to happen.
     const funnelBudgetRows = Object.entries(pending.funnelBudgets ?? {})
       .filter(([, usd]) => usd > 0)
-      .map(([funnelKey, usd]) => ({ funnelKey, dailyBudgetCents: Math.round(usd * 100) }));
+      .map(([funnelKey, usd]) => ({
+        funnelKey,
+        dailyBudgetCents: Math.round(usd * 100),
+        ...(launchOfferId ? { offerId: launchOfferId } : {}),
+      }));
     if (funnelBudgetRows.length > 0) {
       await stateBrandFunnelBudgets(pending.brandId, funnelBudgetRows);
     } else {
@@ -1927,6 +1956,10 @@ export function Onboarding() {
     const featureInputs = pending.featureInputs ?? await buildFeatureInputsForLaunch(pending.brandId);
     const { campaign } = await createCampaignWithoutBrandEnrichment({
       funnelKey: launchFunnelKey,
+      // The proposition this campaign sells, resolved above from the brand's own
+      // offers. Omitted rather than nulled when there is no single correct answer:
+      // campaign-service adopts an offer-less campaign on its own tick.
+      ...(launchOfferId ? { offerId: launchOfferId } : {}),
       name: `${pending.hostname} — ${OUTCOMES.find((o) => o.key === pending.outcome)?.label ?? "Outreach"}`,
       workflowSlug: pending.workflowSlug,
       // A no-website brand carries no URL; it's already created by name, so the
