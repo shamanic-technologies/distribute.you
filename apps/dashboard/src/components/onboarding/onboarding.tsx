@@ -24,6 +24,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { OnboardingAccountWidget } from "@/components/onboarding/onboarding-account-widget";
+import { useOnboardingEscapeChrome } from "@/components/onboarding/onboarding-top-chrome";
 import posthog from "posthog-js";
 import {
   upsertBrand,
@@ -4373,13 +4375,55 @@ function StepShell({
   pad?: string;
   children: ReactNode;
 }) {
+  // The first-run account widget rides the step's OWN header row on mobile
+  // (beside the Brand card) instead of a dedicated bar above it — see the note in
+  // `onboarding-top-chrome.tsx`. When the escape chrome is showing (`?from=add`,
+  // `?new=1`, staff, an already-onboarded org) it already renders a widget in its
+  // sticky header, so this one stays off: two widgets on one screen is the same
+  // surface answering twice.
+  const escapeChrome = useOnboardingEscapeChrome();
+  const showWidget = !escapeChrome;
   return (
     <div className={`flex min-h-0 w-full min-w-0 flex-1 flex-col sm:mx-auto sm:min-h-0 sm:flex-none sm:gap-3 ${maxWidth}`}>
-      {header && <div className="shrink-0 px-3 pt-3 sm:px-0 sm:pt-0">{header}</div>}
+      {(header || showWidget) && (
+        // One row: the header takes the width, the widget sits at its right edge.
+        // With no header the row is the widget alone, which is what the welcome
+        // and url steps had anyway — and it is `sm:hidden` there so the `sm:gap-3`
+        // above never opens a gap for an empty row at desktop width.
+        <div
+          className={`flex shrink-0 items-center gap-2 px-3 pt-3 sm:px-0 sm:pt-0 ${header ? "" : "justify-end sm:hidden"}`}
+        >
+          {header && <div className="min-w-0 flex-1">{header}</div>}
+          {showWidget && (
+            <div className="shrink-0 sm:hidden">
+              <OnboardingAccountWidget />
+            </div>
+          )}
+        </div>
+      )}
+      {/* The desktop cap is stated in VIEWPORT units, not `max-h-full`. A
+          percentage max-height resolves against a parent whose own height is
+          indefinite here (`flex-none` inside an `items-center` row), so it applies
+          to nothing: measured at 1280x800 the card ran to its natural height,
+          overflowed the capped column in BOTH directions and its own header sat at
+          -179px, clipped. `100svh` minus the shell's chrome (the layout's
+          `sm:py-6`, the widget bar, the header row and its gap) is a definite
+          height, so the scroller below takes the overflow. Measured on a 14-row
+          step: CTA bottom 757 on an 800px viewport and 857 on a 900px one, against
+          1265 before, with no page scroll at either. A short step is untouched —
+          `sm:flex-none` keeps its natural height (310px measured) and centres it. */}
       <div
-        className={`flex min-h-0 flex-1 flex-col bg-white ${pad} sm:flex-none sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm`}
+        className={`flex min-h-0 flex-1 flex-col bg-white ${pad} sm:max-h-[calc(100svh-8rem)] sm:flex-none sm:rounded-2xl sm:border sm:border-gray-200 sm:shadow-sm`}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto sm:flex-none sm:overflow-visible">{children}</div>
+        {/* Scrolls at EVERY width, not just mobile. At sm+ the card used to run to
+            its natural height and let the page scroll, so a tall step (audiences,
+            the funnel screens, the offer levers) pushed its Continue button below
+            the fold — the CTA is the one control a step exists to reach. The card
+            is capped at the viewport by `sm:max-h-full` above, so this region takes
+            the overflow and the footer below stays pinned to the card's bottom
+            edge. A short step is unaffected: `sm:flex-none` keeps the card at its
+            natural height and there is nothing to scroll. */}
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         {footer && <div className="shrink-0">{footer}</div>}
       </div>
     </div>

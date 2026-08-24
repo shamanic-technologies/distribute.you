@@ -51,7 +51,14 @@ import { explicitHierarchyHref } from "@/lib/last-brand";
  * → trap stays (correct). Loading is trap-first (false until memberships resolve), so
  * there's no flash of the escape for a real first-run.
  */
-export function OnboardingTopChrome() {
+/**
+ * Does this session get the escape chrome (breadcrumb + logo + Cancel), or the
+ * focused first-run trap? Exported because `StepShell` needs the same answer: on
+ * mobile the first-run account widget is rendered INSIDE the step's header row
+ * (beside the Brand card) rather than on a row of its own, and it must not be
+ * rendered twice when the escape chrome is already showing one.
+ */
+export function useOnboardingEscapeChrome(): boolean {
   const params = useSearchParams();
   const { user } = useUser();
   const { userMemberships } = useOrganizationList({
@@ -63,20 +70,33 @@ export function OnboardingTopChrome() {
       (m.organization.publicMetadata as { onboardingComplete?: boolean } | undefined)
         ?.onboardingComplete === true,
   );
-  const isAddFlow =
+  return (
     params.get("from") === "add" ||
     params.get("new") === "1" ||
     isStaff ||
-    hasCompletedOrg;
+    hasCompletedOrg
+  );
+}
+
+export function OnboardingTopChrome() {
+  const isAddFlow = useOnboardingEscapeChrome();
 
   if (!isAddFlow) {
     // First-run signup: keep the account widget (sign out / switch account —
     // the only escape from a wrong account) but do NOT float it. A `fixed`
     // corner widget overlays the step content and reads as a stray orphan on
-    // mobile. Render a slim in-flow bar (shrink-0 in the layout column) that
-    // sits above the step, right-aligned, and scrolls with the page.
+    // mobile.
+    //
+    // On MOBILE this bar is gone entirely: a full row of vertical space above
+    // the Brand card, holding nothing but one avatar, is the most expensive
+    // pixel on a 667px screen. `StepShell` renders the same widget INSIDE the
+    // step's header row instead, on the same line as the Brand card, so the
+    // step body starts ~50px higher on every step that has a header. At `sm+`
+    // there is height to spare and the step is a centered floating card, so the
+    // widget belongs in the viewport corner, not beside the card — the bar
+    // stays, `sm:flex` only.
     return (
-      <header className="flex shrink-0 justify-end px-4 py-2.5">
+      <header className="hidden shrink-0 justify-end px-4 py-2.5 sm:flex">
         <OnboardingAccountWidget />
       </header>
     );

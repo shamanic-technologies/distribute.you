@@ -31,10 +31,16 @@ describe("the onboarding column has a definite height, so the CTA is pinned", ()
     expect(layout).toContain("min-h-[100svh]");
   });
 
-  it("releases the cap on the desktop floating card", () => {
-    // sm+ centres a card in the page; a hard cap there would clip a tall step.
-    expect(layout).toContain("sm:max-h-none");
-    expect(layout).toContain("sm:overflow-visible");
+  it("keeps the cap on the desktop floating card too", () => {
+    // The cap used to be released at sm+ (`sm:max-h-none` / `sm:overflow-visible`)
+    // on the theory that a hard cap would clip a tall step. What it actually did
+    // was let a tall step run past the viewport and scroll the PAGE, which put the
+    // Continue button below the fold on a desktop screen exactly the way it did on
+    // a phone. The card takes the overflow instead (`sm:max-h-full` + StepShell's
+    // internal scroller), so nothing clips and the CTA is always reachable.
+    expect(layout).not.toContain("sm:max-h-none");
+    expect(layout).not.toContain("sm:overflow-visible");
+    expect(layout).toContain("sm:max-h-full");
   });
 });
 
