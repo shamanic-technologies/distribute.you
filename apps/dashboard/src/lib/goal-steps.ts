@@ -83,6 +83,13 @@ export interface GoalStep {
     costField: SpendCostField | null;
     costLabel: string;
     /**
+     * SINGULAR human noun for this outcome, for copy that prices one of them
+     * ("Cost / sales meeting"). Lives on the step because the step is what a
+     * funnel-keyed surface has in hand — the retired goal cannot name it: one goal
+     * covers both meeting chains, and it is the CHAIN that decides what was bought.
+     */
+    noun: string;
+    /**
      * Realized-outcome Leads-page tab for this step (features-service#476 per-lead
      * attribution). When present, the Leads page prepends this tab — leftmost +
      * default — ONLY when the `/revenue` join actually serves `leadField` for the
@@ -125,6 +132,7 @@ const SIGNUPS_OUTCOME: GoalStep = {
   color: "#7c3aed",
   outcome: {
     countField: "signupsCount",
+    noun: "signup",
     costField: "cpsCents",
     costLabel: "CPS",
     tab: "signups",
@@ -138,6 +146,7 @@ const MEETINGS_OUTCOME: GoalStep = {
   color: "#7c3aed",
   outcome: {
     countField: "salesMeetingsCount",
+    noun: "sales meeting",
     costField: "cpsmCents",
     costLabel: "CPSM",
     tab: "meetings",
@@ -156,6 +165,7 @@ const FORM_OUTCOME: GoalStep = {
   chartKey: "formSubmissions",
   outcome: {
     countField: "formSubmissionsCount",
+    noun: "form submission",
     costField: "cpfsCents",
     costLabel: "CPFS",
     tab: "form-submissions",
@@ -174,6 +184,7 @@ const PURCHASE_OUTCOME: GoalStep = {
   color: "#7c3aed",
   outcome: {
     countField: "salesCount",
+    noun: "website purchase",
     costField: "cpSaleCents",
     costLabel: "Cost per purchase",
     tab: "sales",
@@ -190,6 +201,7 @@ const SALE_OUTCOME: GoalStep = {
   color: "#7c3aed",
   outcome: {
     countField: "salesCount",
+    noun: "sale",
     costField: "cpSaleCents",
     costLabel: "CP Sale",
     tab: "sales",

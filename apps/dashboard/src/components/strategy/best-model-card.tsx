@@ -3,8 +3,9 @@
 import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { WORKFLOW_GRAIN_LABEL } from "@/lib/strategy-model";
-import { outcomeNoun } from "@/lib/strategy-model";
-import type { BrandOptimizationGoal, WorkflowProjectionResolved, WorkflowProjectionRow } from "@/lib/api";
+import { stepsFor, type GoalStep } from "@/lib/goal-steps";
+import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import type { WorkflowProjectionResolved, WorkflowProjectionRow } from "@/lib/api";
 
 type Grain = WorkflowProjectionResolved["grain"];
 
@@ -109,7 +110,7 @@ export function BestModelStats({
   roiMultiple,
   floored,
   cppr,
-  goal,
+  funnelKey,
 }: {
   resolved: WorkflowProjectionResolved;
   bestName: string;
@@ -118,12 +119,37 @@ export function BestModelStats({
   roiMultiple: number | null;
   floored: boolean;
   cppr: number | null;
-  goal: BrandOptimizationGoal;
+  /** The SALES FUNNEL these numbers were priced on. Null states no chain. */
+  funnelKey: SalesFunnelKeyWire | null;
 }) {
-  const noun = outcomeNoun(goal);
-  const showReplyStat = goal === "sales_meetings" || goal === "sales";
-  const isWebsiteVisitsGoal = goal === "website_visits";
-  const isPositiveRepliesGoal = goal === "positive_replies";
+  // Every tile is gated on the FUNNEL's own chain, never on a goal. `sales_meetings`
+  // covers BOTH meeting funnels, so a goal-gated grid put "Cost per website visit"
+  // beside a reply→meeting chain that has no visit leg — a step the brand does not buy,
+  // on the card that prices what it does. A null funnel states no chain (`[Outreach]`),
+  // so only the funnel-independent tiles render rather than a borrowed set.
+  const steps = stepsFor(null, funnelKey);
+  const hasStep = (key: GoalStep["key"]) => steps.some((s) => s.key === key);
+  const showVisitStat = hasStep("website_visits");
+  const showReplyStat = hasStep("positive_replies");
+  // The chain's terminal step, and the only honest source for the outcome's name here.
+  const outcomeStep = steps.find((s) => s.outcome) ?? null;
+  // The step's own singular noun, not its label: a label is a column heading ("Sales
+  // Meetings") and this prices ONE of them.
+  const noun = outcomeStep?.outcome?.noun ?? null;
+  // A reply that is TERMINAL is the outcome itself, so it needs no second tile above it.
+  const showOutcomeStat = outcomeStep !== null;
+  // Whole class strings, never a column count interpolated into one: a class assembled
+  // at runtime is invisible to the Tailwind compiler, so it would silently not apply.
+  const tileCount =
+    (showVisitStat ? 1 : 0) + (showReplyStat ? 1 : 0) + (showOutcomeStat ? 1 : 0) + 3;
+  const gridCols =
+    tileCount >= 6
+      ? "lg:grid-cols-6"
+      : tileCount === 5
+        ? "lg:grid-cols-5"
+        : tileCount === 4
+          ? "lg:grid-cols-4"
+          : "lg:grid-cols-3";
 
   return (
     <>
@@ -163,8 +189,8 @@ export function BestModelStats({
       {/* Projected economics — all read VERBATIM from the resolved grain. Labelled by
           grain (hint) so a fleet-benchmark or per-audience number is never mislabelled
           "this brand". */}
-      <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${showReplyStat ? "lg:grid-cols-6" : isWebsiteVisitsGoal || isPositiveRepliesGoal ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>
-        {!isPositiveRepliesGoal && (
+      <div className={`grid grid-cols-2 gap-3 md:grid-cols-3 ${gridCols}`}>
+        {showVisitStat && (
           <Stat
             label="Cost per website visit"
             value={formatUsdCents(resolved.costPerClickUsd)}
@@ -180,7 +206,7 @@ export function BestModelStats({
             hint={grainHint(brandGrain)}
           />
         )}
-        {!isWebsiteVisitsGoal && (
+        {showOutcomeStat && noun && (
           <Stat
             label={`Cost / ${noun}`}
             value={formatUsdFloor(resolved.costPerOutcomeUsd, floored)}
