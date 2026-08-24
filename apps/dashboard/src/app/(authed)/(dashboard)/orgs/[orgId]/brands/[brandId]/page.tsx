@@ -378,8 +378,15 @@ export default function BrandOverviewPage() {
     );
   }
 
-  // What is running here, and what it may spend in a day — read-only, above
-  // everything, and the way into the modal that changes it. The rows it controls
+  // What is running here, and what it may spend in a day — read-only, and the way
+  // into the modal that changes it.
+  //
+  // It rides the section heading through `RevenueOverviewSection`'s `headerAction`
+  // slot, on the same row and to its right, rather than standing as a band of its
+  // own above it: a full-width line over the title reads as a second heading, and
+  // this is an attribute of what the heading names rather than a statement one
+  // level up from it. The empty-state branch has no heading to sit beside, so
+  // there and only there it stands alone. The rows it controls
   // are this scope's CAMPAIGNS whatever the grain, because a campaign is the only
   // thing billing and campaign-service actually fund.
   //
@@ -402,10 +409,12 @@ export default function BrandOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-        {ControlsLine}
-        {showFirstOutcomeReassurance && (
+          {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner subject="Your campaign" />
       )}
+        {/* No section header on this branch to sit beside, so the line stands
+            on its own here — everywhere else it rides the Outreach heading. */}
+        {ControlsLine}
         <RevenueEmptyState />
       </DashboardPage>
     );
@@ -413,13 +422,13 @@ export default function BrandOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
-      {ControlsLine}
       {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner subject="Your campaign" />
       )}
       {/* No `expectedOutcome`: it fed the Outcome line's dashed forecast, and this level
           charts the return instead. */}
       <RevenueOverviewSection
+        headerAction={ControlsLine}
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
