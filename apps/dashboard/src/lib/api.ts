@@ -4,6 +4,7 @@ import { keepLastGoodFields, keepLastGoodList } from "./keep-last-good";
 import type { RevenueOverview } from "./revenue-view";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { withAverageCampaignRelevanceScores } from "./outlet-relevance";
+import { measuredProjectionRows } from "./workflow-projection-measured";
 // `normalizeSalesFunnelKey` is a RUNTIME import; the rest is type-only. No cycle
 // survives the build: sales-funnels.ts reads this module's goal types with
 // `import type`, which is erased, so the edge only runs in this direction.
@@ -4618,6 +4619,11 @@ const WorkflowResolvedSchema = z.object({
   cacPct: z.number().nullable(),
 });
 
+// Every row reaching this schema is MEASURED — `measuredProjectionRows` drops the
+// unmeasured ones on the way in, so `measured` itself is deliberately NOT declared here
+// (it would parse as an always-true field nothing may branch on). That also means
+// `resolved.grain` / `resolved.costPerClickUsd` stay non-nullable: only an unmeasured row
+// nulls them, and one never gets this far.
 const WorkflowProjectionRowSchema = z.object({
   /** null = the brand-level row for this workflow (the "Your best model" headline);
    *  non-null = a per-audience row (one per active audience). */
@@ -4644,7 +4650,14 @@ const WorkflowProjectionLadderResponseSchema = z.object({
   funnelKey: z.string().nullable().optional(),
   objective: z.string().nullable().optional(),
   goal: z.string().nullable().optional(),
-  rows: z.array(WorkflowProjectionRowSchema),
+  /** MEASURED rows only. An UNMEASURED row (`measured: false`) is the backend's own
+   *  serving affordance — an explore allowance so an active workflow with no history is
+   *  reachable and can earn a first run — and it is the CHEAPEST row by construction,
+   *  with no grain and no return. Ranking it would hand the "Your best model" headline
+   *  to an unproven workflow. Dropped HERE, before the row schema, so every surface
+   *  reads evidence-backed rows and no consumer type has to model a null grain. See
+   *  lib/workflow-projection-measured.ts. */
+  rows: z.preprocess(measuredProjectionRows, z.array(WorkflowProjectionRowSchema)),
   recommendedWorkflowDynastySlug: z.string().nullable(),
   recommendedBudgetUsd: z.number().nullable(),
 });
