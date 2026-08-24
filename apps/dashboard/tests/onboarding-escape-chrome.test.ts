@@ -30,10 +30,20 @@ describe("Onboarding escape chrome", () => {
     // The widget is a slim IN-FLOW top bar (shrink-0, right-aligned), NOT a
     // floating `fixed` corner overlay — the overlay read as a stray orphan.
     expect(chrome).toContain("if (!isAddFlow)");
-    expect(chrome).toContain("flex shrink-0 justify-end");
+    expect(chrome).toContain("shrink-0 justify-end");
     expect(chrome).toContain("OnboardingAccountWidget");
     // No floating overlay on the first-run widget.
     expect(chrome).not.toContain("fixed top-4 right-4");
+  });
+
+  it("drops the first-run bar on mobile — StepShell carries the widget there", () => {
+    // A full row above the Brand card holding nothing but one avatar is the most
+    // expensive vertical space on a 667px screen. At sm+ there is height to spare
+    // and the step is a centered card, so the widget stays in the viewport corner.
+    expect(chrome).toContain('className="hidden shrink-0 justify-end px-4 py-2.5 sm:flex"');
+    // The answer is exported so StepShell can ask it rather than re-deriving the
+    // add/staff/completed-org test and drifting from it.
+    expect(chrome).toContain("export function useOnboardingEscapeChrome()");
   });
 
   it("staff and users with a completed org also escape bare /onboarding", () => {
@@ -60,6 +70,6 @@ describe("Onboarding escape chrome", () => {
     // The centered content shell (and its responsive classes asserted by
     // onboarding-responsive.test.ts) must stay in the layout, not move into chrome.
     expect(layout).toContain("min-h-[100svh]");
-    expect(layout).toContain("flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:flex-none");
+    expect(layout).toContain("flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:max-h-full sm:flex-none");
   });
 });

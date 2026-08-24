@@ -36,14 +36,20 @@ export default function OnboardingLayout({
             915px one — below the fold on every phone. Capping the column makes
             the height definite, so the body stops scrolling and the step's own
             `overflow-y-auto` region takes over, with the CTA always on screen.
-            Reverted at sm+ (`sm:max-h-none`), where the shell is a centered
-            floating card and a hard cap would clip a tall step. */}
-        <div className="flex max-h-[100svh] min-h-[100svh] flex-col overflow-hidden bg-gray-50 sm:max-h-none sm:overflow-visible">
+            The cap now holds at EVERY width, not just mobile. At desktop width
+            it used to be lifted, so a tall step ran past the viewport
+            and the page scrolled — which put the step's Continue button below
+            the fold on a desktop screen exactly the way it did on a phone. The
+            step's own card takes the overflow instead (`sm:max-h-full` +
+            an internal scroller in StepShell), so the CTA is on screen at every
+            width. A short step is unaffected: the card keeps its natural height
+            and stays centered. */}
+        <div className="flex max-h-[100svh] min-h-[100svh] flex-col overflow-hidden bg-gray-50">
           <OnboardingTopChrome />
           {/* Mobile: full-bleed, stretch — each step (StepShell) fills the area
               edge-to-edge with no card chrome. sm+: the centered floating-card frame. */}
           <div className="flex min-h-0 flex-1 items-stretch justify-center sm:items-center sm:px-4 sm:py-6">
-            <div className="flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:flex-none">
+            <div className="flex w-full min-w-0 max-w-5xl flex-1 flex-col sm:max-h-full sm:flex-none">
               <OnboardingCreditGate>{children}</OnboardingCreditGate>
             </div>
           </div>
