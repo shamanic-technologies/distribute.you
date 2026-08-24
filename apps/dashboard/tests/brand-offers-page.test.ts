@@ -75,6 +75,19 @@ describe("the Offers table fits a phone", () => {
     expect(table).toContain('w-[70%] md:w-auto');
   });
 
+  // The offer leads the row: it is what the line is about, and the numbers behind
+  // it qualify it. The mark is the SHARED component the top bar and the tenant
+  // switcher draw — a second icon definition is how two surfaces come to disagree
+  // about what an offer looks like.
+  it("leads with the offer, wearing the shared offer mark", () => {
+    const head = table.indexOf("<thead>");
+    expect(table.indexOf(">Offer</th>", head)).toBeLessThan(table.indexOf('label="ROI"', head));
+    expect(table).toContain('import { OfferMark } from "@/components/marks/offer-mark"');
+    expect(table).toContain('<OfferMark size="sm" />');
+    // truncate only bites inside a fixed-layout cell when the flex wrapper can shrink
+    expect(table).toContain("flex min-w-0 items-center");
+  });
+
   // ROI and the offer name stay; the three money columns behind them fold. Each
   // column carries the class on BOTH its header and its cell, or the header row
   // and the body rows disagree about how many columns there are.
