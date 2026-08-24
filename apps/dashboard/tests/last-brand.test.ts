@@ -190,8 +190,9 @@ describe("hierarchy links — breadcrumb, header, sidebar", () => {
     expect(breadcrumb).toContain("explicitHierarchyHref(`/orgs/${orgId}/brands/${brandId}`)");
   });
 
-  it("marks sidebar back links and overview rows as explicit hierarchy navigation", () => {
-    expect(contextSidebar).toContain("href={explicitHierarchyHref(href)}");
+  // The sidebar back links are gone (the tenant switcher owns every move up),
+  // so the overview row is the only hierarchy navigation left to mark.
+  it("marks sidebar overview rows as explicit hierarchy navigation", () => {
     expect(contextSidebar).toContain("explicitHierarchyHref(basePath)");
   });
 });
