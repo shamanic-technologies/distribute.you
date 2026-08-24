@@ -102,15 +102,24 @@ export function OffersTable({
     (groupsQ.data !== undefined || groupsQ.isError);
 
   return (
+    /* Below `md` the table narrows to the two things a reader can act on: what the
+       offer returns, and which offer it is. The three columns between them fold.
+
+       The floor is gated at the same breakpoint for a reason: unconditional, it
+       re-widens the row past a phone's viewport even with every other column
+       hidden, so the two that survived get pushed off to the right and read as
+       missing. `table-fixed` below `md` is what makes the truncation bite — in the
+       default auto layout a column grows to its content, so one long offer name
+       widens the whole row however many `truncate`s it carries. */
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full table-fixed text-sm md:table-auto md:min-w-[720px]">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <th className="px-4 py-3 text-right"><NumericHead label="ROI" tip={OFFER_COLUMN_INFO.roi} /></th>
-            <th className="px-4 py-3 text-right"><NumericHead label="% CAC" tip={OFFER_COLUMN_INFO.cacPct} /></th>
-            <th className="px-4 py-3 text-right"><NumericHead label="$ Revenue" tip={OFFER_COLUMN_INFO.revenue} /></th>
-            <th className="px-4 py-3 text-right"><NumericHead label="$ Invested" tip={OFFER_COLUMN_INFO.invested} /></th>
-            <th className="px-4 py-3">Offer</th>
+            <th className="px-4 py-3 text-right w-[30%] md:w-auto"><NumericHead label="ROI" tip={OFFER_COLUMN_INFO.roi} /></th>
+            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="% CAC" tip={OFFER_COLUMN_INFO.cacPct} /></th>
+            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Revenue" tip={OFFER_COLUMN_INFO.revenue} /></th>
+            <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Invested" tip={OFFER_COLUMN_INFO.invested} /></th>
+            <th className="px-4 py-3 w-[70%] md:w-auto">Offer</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
@@ -136,15 +145,15 @@ export function OffersTable({
                 className="cursor-pointer transition hover:bg-gray-50"
               >
                 <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.totalPipelineUsd)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group the ROI and % CAC beside it divide by, so a
                     row cannot contradict its own return. An offer with no group at
                     all reads "—" rather than $0 — "we have no figure" and "it cost
                     nothing" are different statements. */}
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700">{fmtUsd(revenue?.committedCostUsd)}</td>
-                <td className="px-4 py-3 font-medium text-gray-800">{offer.name}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.committedCostUsd)}</td>
+                <td className="px-4 py-3 font-medium text-gray-800 truncate">{offer.name}</td>
               </tr>
             ))
           )}
