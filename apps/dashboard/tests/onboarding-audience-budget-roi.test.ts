@@ -173,7 +173,9 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
       expect(body).not.toContain("saveBrandSalesEconomics");
       // A stale ROI must not sit beside freshly typed inputs.
       const drop = body.indexOf("setBestModelLadder(null)");
-      const refetch = body.indexOf("fetchBestModelLadder(id, outcome)");
+      // Refetched on the FUNNEL it just priced, never on a goal: `sales_meetings` covers
+      // both meeting chains, so a goal-keyed refetch reprices the website funnel.
+      const refetch = body.indexOf("fetchBestModelLadder(id, funnel.key)");
       expect(drop).toBeGreaterThan(-1);
       expect(refetch).toBeGreaterThan(drop);
       // An empty patch declares nothing rather than re-sending unchanged values.

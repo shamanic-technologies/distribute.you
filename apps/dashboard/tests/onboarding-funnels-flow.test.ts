@@ -272,3 +272,53 @@ describe("onboarding — the primary step promises nothing about orchestration",
     }
   });
 });
+
+describe("onboarding pricing step — one picked path reads as one path", () => {
+  // Measured against the real file: the pricing step runs from the `onePath` flag
+  // to the end of the component (`function OnboardingAudiences` starts at +6492).
+  // The not.toContain assertions below MUST NOT overrun that boundary.
+  const pricing = sliceFrom("const onePath = selectedFunnels.length === 1;", 6492);
+
+  it("derives the single-path branch from the picked funnels, not from a separate flag", () => {
+    expect(flow).toContain("const onePath = selectedFunnels.length === 1;");
+  });
+
+  it("states one budget rather than 'each path' when there is only one", () => {
+    expect(pricing).toContain("Set your daily budget.");
+    expect(pricing).toContain("We spend up to your ceiling, and never more than that in a day.");
+  });
+
+  it("keeps the plural copy byte-identical for a real multi-path selection", () => {
+    // The existing post-paid guard (onboarding-flow.test.ts) pins this sentence, and
+    // a brand selling through several paths genuinely funds each one separately.
+    expect(pricing).toContain("Fund each path.");
+    expect(pricing).toContain("Each path spends up to its own ceiling");
+  });
+
+  it("never invites leaving the only path at 0, which Continue then refuses", () => {
+    // Continue is gated on `underfunded.length === 0` plus a funded path, so on a
+    // single-path selection "leave it at 0" describes a state the button rejects.
+    // Both skip invitations are therefore multi-path only.
+    expect(pricing).toContain('{!onePath && " Leave it at 0 to skip it for now."}');
+    expect(pricing).toContain("{onePath ? \"From\" : \"Not funded. From\"}");
+  });
+
+  it("drops the total, which on one path restates the number typed above it", () => {
+    expect(pricing).toContain("{!onePath && displayBudget != null && (");
+    // The count belongs to the card, so hiding the sum loses nothing.
+    expect(pricing).toContain("across {fundedFunnelCount}");
+  });
+
+  it("counts nothing when there is one thing to count", () => {
+    // "Your paths · 1 of 1" reads as a step the flow lost rather than as the only
+    // path there is.
+    expect(flow).toContain('? "Your path"');
+    expect(flow).toContain("`Your paths · ${funnelIndex + 1} of ${detailFunnels.length}`");
+  });
+
+  it("ships no em-dash in the copy it rewrote", () => {
+    // User-facing onboarding copy: the repo bans U+2014 outright, and both lines
+    // touched here carried one.
+    expect(pricing).not.toContain("—");
+  });
+});

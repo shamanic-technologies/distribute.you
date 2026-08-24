@@ -25,6 +25,10 @@ export default function SignInPage() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  // Its own slot rather than the email form's `error`: the Google button sits at
+  // the top of the page and its form is a different form, so a failure has to
+  // speak where the click happened.
+  const [googleError, setGoogleError] = useState("");
   const redirectStartedRef = useRef(false);
 
   // Email/password state
@@ -71,6 +75,12 @@ export default function SignInPage() {
           authFailureProps(error, { provider: "google" })
         );
         console.error("Sign in error:", error);
+        // Say what happened, under the Google button rather than in the email
+        // form's error slot further down the page. Without this the button
+        // silently reverts to "Continue with Google" and the failure is
+        // indistinguishable from a click that never registered, so the same
+        // click just gets repeated.
+        setGoogleError(clerkErrorMessage(error));
         setLoading(false);
       }
     };
@@ -80,6 +90,7 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = () => {
     if (loading || isSignedIn) return;
+    setGoogleError("");
     setLoading(true);
   };
 
@@ -443,6 +454,19 @@ export default function SignInPage() {
               )}
               {loading ? "Connecting..." : "Continue with Google"}
             </button>
+            {googleError && (
+              <p
+                role="alert"
+                className="mt-2"
+                style={{
+                  fontFamily: '"Inter", system-ui, sans-serif',
+                  fontSize: "0.8125rem",
+                  color: "oklch(55% 0.2 25)",
+                }}
+              >
+                {googleError}
+              </p>
+            )}
             </div>
 
             {/* Divider */}
@@ -503,6 +527,7 @@ export default function SignInPage() {
               </div>
               {error && (
                 <p
+                  role="alert"
                   style={{
                     fontFamily: '"Inter", system-ui, sans-serif',
                     fontSize: "0.8125rem",
@@ -514,6 +539,7 @@ export default function SignInPage() {
               )}
               {emailNotFound && (
                 <div
+                  role="alert"
                   className="rounded-xl p-3"
                   style={{
                     fontFamily: '"Inter", system-ui, sans-serif',

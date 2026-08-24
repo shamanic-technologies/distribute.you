@@ -42,6 +42,10 @@ export default function SignUpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  // Its own slot rather than the email form's `error`: the Google button sits at
+  // the top of the page and its form is a different form, so a failure has to
+  // speak where the click happened.
+  const [googleError, setGoogleError] = useState("");
   const redirectStartedRef = useRef(false);
 
   // Email/password state
@@ -56,6 +60,7 @@ export default function SignUpPage() {
   const [codeRejected, setCodeRejected] = useState(false);
   const [resendNotice, setResendNotice] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -124,6 +129,12 @@ export default function SignUpPage() {
           authFailureProps(error, { provider: "google" })
         );
         console.error("Sign up error:", error);
+        // Say what happened, under the Google button rather than in the email
+        // form's error slot further down the page. Without this the button
+        // silently reverts to "Continue with Google" and the failure is
+        // indistinguishable from a click that never registered, so the same
+        // click just gets repeated.
+        setGoogleError(clerkErrorMessage(error));
         setLoading(false);
       }
     };
@@ -133,6 +144,7 @@ export default function SignUpPage() {
 
   const handleGoogleSignUp = () => {
     if (loading || isSignedIn) return;
+    setGoogleError("");
     setLoading(true);
   };
 
@@ -198,10 +210,14 @@ export default function SignUpPage() {
   };
 
   const handleResendCode = async () => {
-    if (!isLoaded || !signUp || resendCooldown > 0) return;
+    if (!isLoaded || !signUp || resendCooldown > 0 || resending) return;
     setError("");
     setCodeRejected(false);
     setResendNotice("");
+    // The only step on this page that used to have no in-flight state at all:
+    // the label stayed "Send me a new code" for the whole round-trip, so the
+    // control read as dead exactly when someone is already stuck.
+    setResending(true);
     try {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setCode("");
@@ -211,6 +227,8 @@ export default function SignUpPage() {
       posthog.capture("signup_email_failed", authFailureProps(err, { stage: "resend" }));
       console.error("Resend code error:", err);
       setError(clerkErrorMessage(err));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -471,7 +489,7 @@ export default function SignUpPage() {
                   required
                 />
                 {error && (
-                  <div>
+                  <div role="alert">
                     <p
                       style={{
                         fontFamily: '"Inter", system-ui, sans-serif',
@@ -497,6 +515,7 @@ export default function SignUpPage() {
                 )}
                 {resendNotice && (
                   <p
+                    role="status"
                     style={{
                       fontFamily: '"Inter", system-ui, sans-serif',
                       fontSize: "0.8125rem",
@@ -518,27 +537,34 @@ export default function SignUpPage() {
                 <button
                   type="button"
                   onClick={handleResendCode}
-                  disabled={resendCooldown > 0}
+                  disabled={resendCooldown > 0 || resending}
+                  aria-busy={resending}
                   className={
-                    resendCooldown > 0
-                      ? "cursor-not-allowed"
-                      : "transition-opacity hover:opacity-75"
+                    resending
+                      ? "cursor-wait"
+                      : resendCooldown > 0
+                        ? "cursor-not-allowed"
+                        : "transition-opacity hover:opacity-75"
                   }
                   style={{
                     fontFamily: '"Inter", system-ui, sans-serif',
                     fontSize: "0.8125rem",
                     fontWeight: 500,
+                    // In-flight keeps the live colour: greying it out here would
+                    // read as unavailable at the moment it is working.
                     color:
-                      resendCooldown > 0
+                      !resending && resendCooldown > 0
                         ? "oklch(62% 0.006 264)"
                         : "oklch(42% 0.2 264)",
                     background: "none",
                     border: "none",
                   }}
                 >
-                  {resendCooldown > 0
-                    ? `Resend code in ${resendCooldown}s`
-                    : "Send me a new code"}
+                  {resending
+                    ? "Sending a new code..."
+                    : resendCooldown > 0
+                      ? `Resend code in ${resendCooldown}s`
+                      : "Send me a new code"}
                 </button>
               </form>
             ) : (
@@ -608,6 +634,20 @@ export default function SignUpPage() {
                 </button>
                 </div>
 
+                {googleError && (
+                  <p
+                    role="alert"
+                    className="mt-2"
+                    style={{
+                      fontFamily: '"Inter", system-ui, sans-serif',
+                      fontSize: "0.8125rem",
+                      color: "oklch(55% 0.2 25)",
+                    }}
+                  >
+                    {googleError}
+                  </p>
+                )}
+
                 {/* Divider */}
                 <div className="flex items-center gap-3 my-5">
                   <span
@@ -642,6 +682,22 @@ export default function SignUpPage() {
                       required
                     />
                   </div>
+                  {/* The password rule below is stated permanently, so an
+                      unexplained greyed-out submit could only ever mean the
+                      email. Says so, and only once something has been typed --
+                      an empty field is not yet a mistake. */}
+                  {email.trim().length > 0 && !EMAIL_SHAPE.test(email.trim()) && (
+                    <p
+                      style={{
+                        fontFamily: '"Inter", system-ui, sans-serif',
+                        fontSize: "0.75rem",
+                        color: "oklch(58% 0.006 264)",
+                        marginTop: "-0.375rem",
+                      }}
+                    >
+                      {"Enter a full email address, like you@company.com"}
+                    </p>
+                  )}
                   <input
                     type="password"
                     autoComplete="new-password"
@@ -669,6 +725,7 @@ export default function SignUpPage() {
                   <div id="clerk-captcha" />
                   {error && (
                     <p
+                      role="alert"
                       style={{
                         fontFamily: '"Inter", system-ui, sans-serif',
                         fontSize: "0.8125rem",
