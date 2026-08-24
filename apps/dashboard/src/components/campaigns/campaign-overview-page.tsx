@@ -499,10 +499,14 @@ export function CampaignOverviewPage() {
   //
   // The surface is GA, so there is no maturity badge here nor on the nav entry.
   //
-  // What the page DOES state at its top right is this campaign's own daily
-  // ceiling and its own status. Neither duplicates the bar: the bar names WHICH
-  // campaign is open, this line says whether it is running and what it may spend
-  // while it does. The ceiling is billing's (offer x funnel x channel) row, which
+  // What the page DOES state, on the SAME ROW as the section heading and to its
+  // right, is this campaign's own daily ceiling and its own status. It rides the
+  // heading through `RevenueOverviewSection`'s `headerAction` slot rather than
+  // standing as a band of its own above it: a full-width line over the title
+  // reads as a second heading, and this is an attribute of what the heading names
+  // rather than a statement one level up from it. Neither duplicates the top bar:
+  // the bar names WHICH campaign is open, this says whether it is running and what
+  // it may spend while it does. The ceiling is billing's (offer x funnel x channel) row, which
   // is exactly what a campaign is, so it is this campaign's money rather than the
   // brand-wide sum the old run-status bar printed.
   //
@@ -531,13 +535,15 @@ export function CampaignOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
-        {CampaignStatusLine}
-        {showFirstOutcomeReassurance && (
+          {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"
           goal={optimizationGoal}
         />
       )}
+        {/* No section header on this branch to sit beside, so the line stands
+            on its own here — everywhere else it rides the Outreach heading. */}
+        {CampaignStatusLine}
         <RevenueEmptyState />
       </DashboardPage>
     );
@@ -545,7 +551,6 @@ export function CampaignOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
-      {CampaignStatusLine}
       {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"
@@ -553,6 +558,7 @@ export function CampaignOverviewPage() {
         />
       )}
       <RevenueOverviewSection
+        headerAction={CampaignStatusLine}
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}

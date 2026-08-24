@@ -41,6 +41,21 @@ describe("campaign controls — one modal, three grains", () => {
   it("mounts at campaign grain scoped to that one campaign", () => {
     expect(campaignPage).toContain("campaignId={campaign.id}");
   });
+
+  it("rides the section heading rather than standing above it", () => {
+    // A full-width line over the title reads as a second heading. This is an
+    // attribute of what the heading names, so it goes in the slot the section
+    // already has for exactly that, on the same row and to its right.
+    const section = read("components/revenue/revenue-overview-section.tsx");
+    expect(section).toContain("lg:justify-between");
+    expect(section).toContain("{headerAction}");
+    expect(brandPage).toContain("headerAction={ControlsLine}");
+    expect(campaignPage).toContain("headerAction={CampaignStatusLine}");
+    // ...and nowhere as a sibling of the section itself. The empty-state branch
+    // is the one exception, and it sits one level deeper in its own return.
+    expect(brandPage).not.toContain("\n      {ControlsLine}\n");
+    expect(campaignPage).not.toContain("\n      {CampaignStatusLine}\n");
+  });
 });
 
 describe("the trigger states money it READS", () => {
