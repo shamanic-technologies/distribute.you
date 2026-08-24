@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PartneroViaCapture } from "@/components/partnero-via-capture";
 import { InviteCapture } from "@/components/invite/invite-capture";
+import { LandingUrlCapture } from "@/components/landing-url-capture";
 import "./globals.css";
 
 const SITE_URL = "https://dashboard.distribute.you";
@@ -112,6 +113,7 @@ export default function RootLayout({
       <body className="antialiased">
         <PartneroViaCapture />
         <InviteCapture />
+        <LandingUrlCapture />
         {children}
       </body>
     </html>

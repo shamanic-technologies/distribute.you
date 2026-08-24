@@ -315,6 +315,7 @@ export default function ForgotPasswordPage() {
                 />
                 {error && (
                   <p
+                    role="alert"
                     style={{
                       fontFamily: '"Inter", system-ui, sans-serif',
                       fontSize: "0.8125rem",
@@ -358,6 +359,7 @@ export default function ForgotPasswordPage() {
                 />
                 {error && (
                   <p
+                    role="alert"
                     style={{
                       fontFamily: '"Inter", system-ui, sans-serif',
                       fontSize: "0.8125rem",
