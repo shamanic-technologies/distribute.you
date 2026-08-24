@@ -3108,8 +3108,12 @@ export function Onboarding() {
         <BackButton
           onClick={() => (funnelIndex > 0 ? setFunnelIndex((i) => i - 1) : setStep("phone"))}
         />
+        {/* A counter over ONE item states nothing: "1 of 1" reads as a step the flow
+            is missing rather than as the only path there is. */}
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-600">
-          Your paths · {funnelIndex + 1} of {detailFunnels.length}
+          {detailFunnels.length === 1
+            ? "Your path"
+            : `Your paths · ${funnelIndex + 1} of ${detailFunnels.length}`}
         </div>
         <div className="flex items-center gap-2">
           <h2 className="font-display text-2xl font-bold text-gray-900">{funnel.title}</h2>
@@ -3503,6 +3507,12 @@ export function Onboarding() {
   const displayCount = displayBudget != null ? countForBudget(displayBudget) : null;
   const fundedFunnelCount = selectedFunnels.filter((f) => funnelBudgetUsd(f.key) > 0).length;
   const underfunded = underfundedFunnels();
+  // A brand that picked ONE path reads every "each path" sentence as being about
+  // something it does not have, and two of them contradicted this screen's own
+  // button: Continue is gated on at least one funded path, so inviting the user to
+  // leave the only path at 0 promises a step it then refuses. The plural copy is
+  // kept byte-identical for a real multi-path selection.
+  const onePath = selectedFunnels.length === 1;
   return (
     <StepShell
       header={<BrandStepHeader domain={headerDomain} hostname={headerHostname} name={headerName} onEdit={() => setStep("url")} />}
@@ -3520,9 +3530,17 @@ export function Onboarding() {
       }
     >
       <BackButton onClick={() => setStep("consent")} />
-      <h2 className="font-display text-2xl font-bold text-gray-900">Fund each path.</h2>
+      <h2 className="font-display text-2xl font-bold text-gray-900">
+        {onePath ? "Set your daily budget." : "Fund each path."}
+      </h2>
       <p className="mt-2 mb-5 text-gray-500">
-        Set what each path may spend a day. You can leave one at <strong>0</strong> and start it later — fund at least one to continue.
+        {onePath ? (
+          <>Set what we may spend a day on this path. You can change it whenever you like.</>
+        ) : (
+          <>
+            Set what each path may spend a day. You can leave one at <strong>0</strong> and start it later. Fund at least one to continue.
+          </>
+        )}
       </p>
       {cancelNotice && <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{cancelNotice}</div>}
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -3530,7 +3548,9 @@ export function Onboarding() {
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4">
         <CreditCardIcon className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
         <p className="text-sm leading-6 text-brand-800">
-          Each path spends up to its own ceiling, and never more than that in a day.
+          {onePath
+            ? "We spend up to your ceiling, and never more than that in a day."
+            : "Each path spends up to its own ceiling, and never more than that in a day."}{" "}
           You pay as you go for what we actually spend. Cancel anytime.
         </p>
       </div>
@@ -3578,7 +3598,8 @@ export function Onboarding() {
               <div className="mt-2 flex items-center gap-1 pl-14 text-xs">
                 {under ? (
                   <span className="text-red-600">
-                    This path starts at {fmtUsd0(floor)} a day. Leave it at 0 to skip it for now.
+                    This path starts at {fmtUsd0(floor)} a day.
+                    {!onePath && " Leave it at 0 to skip it for now."}
                   </span>
                 ) : count != null ? (
                   <>
@@ -3586,7 +3607,9 @@ export function Onboarding() {
                     <InfoTooltip tip={ESTIMATE_TOOLTIP} placement="top" />
                   </>
                 ) : (
-                  <span className="text-gray-400">Not funded — from {fmtUsd0(floor)} a day.</span>
+                  <span className="text-gray-400">
+                    {onePath ? "From" : "Not funded. From"} {fmtUsd0(floor)} a day.
+                  </span>
                 )}
               </div>
             </div>
@@ -3594,7 +3617,10 @@ export function Onboarding() {
         })}
       </div>
 
-      {displayBudget != null && (
+      {/* The total is a SUM, so it only says something when there is more than one
+          thing to add. With one path it restates the figure typed an inch above,
+          under a second label, alongside a count that card already carries. */}
+      {!onePath && displayBudget != null && (
         <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
           Daily budget: <strong className="text-gray-900">{fmtUsd0(displayBudget)} / day</strong>
           <span className="text-gray-400"> across {fundedFunnelCount} {fundedFunnelCount === 1 ? "path" : "paths"}</span>
