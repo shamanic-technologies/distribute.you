@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { formatRoi } from "@/lib/format-roi";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import { channelSlugLabel } from "@/lib/campaign-title";
@@ -41,7 +42,7 @@ export function fmtUsd(usd: number | null | undefined): string {
   return usd == null ? "—" : formatUsdAdaptive(usd);
 }
 function fmtRoi(multiple: number | null | undefined): string {
-  return multiple == null ? "—" : `${multiple.toFixed(1)}×`;
+  return formatRoi(multiple);
 }
 export function fmtPct(pct: number | null | undefined): string {
   return pct == null ? "—" : `${Math.round(pct)}%`;

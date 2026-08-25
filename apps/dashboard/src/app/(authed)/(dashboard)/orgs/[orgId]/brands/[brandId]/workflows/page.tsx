@@ -21,6 +21,7 @@ import { formatStatValue, sortDirectionForType } from "@/lib/format-stat";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { Skeleton } from "@/components/skeleton";
 import { DashboardPage } from "@/components/dashboard-page";
+import { formatRoi } from "@/lib/format-roi";
 
 function SortHeader({
   label,
@@ -44,10 +45,6 @@ function SortHeader({
       {label} {active ? (currentDir === "desc" ? "↓" : "↑") : ""}
     </th>
   );
-}
-
-function formatRoi(roi: number | null | undefined): string {
-  return roi == null ? "—" : `${roi.toFixed(1)}×`;
 }
 
 export default function FeatureWorkflowsPage() {

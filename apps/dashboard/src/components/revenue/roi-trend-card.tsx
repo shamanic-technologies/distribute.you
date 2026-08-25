@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/skeleton";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { formatRoi } from "@/lib/format-roi";
 import type { RoiHistory } from "@/lib/revenue-view";
 
 /**
@@ -52,18 +53,17 @@ function formatDate(date: string): string {
 }
 
 /**
- * ONE decimal, always — byte-equal with the `ROI` stat card directly above this chart
- * and with the Campaigns table's ROI column.
+ * The fleet-wide ROI rule (`formatRoi`): one decimal under 10x, a whole number from 10x up.
+ * The headline, the axis ticks, the `ROI` stat card directly above this chart, the Campaigns
+ * table and the daily digest all read that ONE function, so the curve's last point and the
+ * card two inches above it can never print the same figure two ways.
  *
- * Coarsening above 10x was tried and is wrong: at a real prod value of 11.7 the headline
- * rounded to `12×` while the stat card two inches up read `11.7×`, which is one number
- * disagreeing with itself on one screen. The axis inherits it for the same reason — a
- * tick that reads `12×` on a curve terminating at a stated `11.7×` invites the reader to
- * reconcile two figures that are the same figure.
+ * Coarsening was tried once on this file ALONE and correctly reverted — at a real 11.7 the
+ * headline read `12×` under a stat card reading `11.7×`. The threshold was never the
+ * problem; applying it to one surface was. The axis inherits the same function for the same
+ * reason: a tick disagreeing with the value it terminates on invites the reader to reconcile
+ * two figures that are one figure.
  */
-function formatRoi(multiple: number): string {
-  return `${multiple.toFixed(1)}×`;
-}
 
 /**
  * A day whose cumulative spend is still zero carries `roiMultiple: null` — the brand had
@@ -192,7 +192,7 @@ export function RoiTrendCard({
                 axisLine={{ stroke: "#e2e8f0" }}
               />
               <YAxis
-                tickFormatter={formatRoi}
+                tickFormatter={(value: number) => formatRoi(value)}
                 tick={{ fontSize: 11, fill: "#94a3b8" }}
                 tickLine={false}
                 axisLine={false}

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseFeatureRevenue } from "./revenue-parse";
 import { SERVICE_IDENTITY } from "./service-identity";
+import { formatRoi as sharedFormatRoi } from "./format-roi";
 import type { ConversionLead, RevenueOverview } from "./revenue-view";
 
 export const OUTCOME_DIGEST_TEMPLATE = "daily-outcome-digest";
@@ -401,9 +402,13 @@ export function roiChangeOn(
   return { today: today.roiMultiple, previous: previous.roiMultiple };
 }
 
-/** Return per dollar, one decimal — byte-equal with every ROI the dashboard shows. */
+/**
+ * Return per dollar, through the ONE fleet-wide ROI rule so the figure this email states
+ * is byte-equal with what the reader sees on the Overview when they click through.
+ * Re-exported because the digest renders server-side and its template tokens are strings.
+ */
 export function formatRoi(multiple: number): string {
-  return `${multiple.toFixed(1)}\u00d7`;
+  return sharedFormatRoi(multiple);
 }
 
 export function renderOutcomeDigestHtml(summaries: DigestBrandSummary[]): string {
