@@ -23,7 +23,7 @@ import {
   type ControlRow,
 } from "@/lib/campaign-controls";
 import { funnelBudgetBelowMinimum, funnelBudgetTip } from "@/lib/sales-funnels";
-import { ChannelCell, FunnelCell } from "@/components/campaigns/campaigns-table";
+import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
 import { Skeleton } from "@/components/skeleton";
 
 /**
@@ -319,11 +319,15 @@ export function CampaignControlsModal({
                   return (
                     <li key={row.campaignId} className="py-3">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        {/* The SAME identity the Campaigns table's first column
+                            states, from the same component: this modal changes
+                            a campaign's money, so it must name the campaign the
+                            way the row you clicked to get here named it. */}
                         <div className="min-w-0 text-sm text-gray-800">
-                          <FunnelCell funnelKey={row.scope ? row.scope.def.key : null} />
-                          <div className="mt-1 text-xs text-gray-500">
-                            <ChannelCell featureSlug={row.scope?.featureSlug ?? null} />
-                          </div>
+                          <CampaignIdentity
+                            funnel={row.scope?.def ?? null}
+                            featureSlug={row.scope?.featureSlug ?? null}
+                          />
                         </div>
                         <div className="flex items-center gap-3">
                           <button

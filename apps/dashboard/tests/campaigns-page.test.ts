@@ -21,6 +21,8 @@ describe("Campaigns page (GA)", () => {
   // cells, ordering and status wording read the table; the ones about the page's own
   // header (tiles, heading, #1 channel) still read the page.
   const table = read("components/campaigns/campaigns-table.tsx");
+  const identity = read("components/campaigns/campaign-identity.tsx");
+  const modal = read("components/campaigns/campaign-controls-modal.tsx");
   const sidebar = read("components/context-sidebar.tsx");
   const overview = read("components/campaigns/campaign-overview-page.tsx");
   const api = read("lib/api.ts");
@@ -80,14 +82,21 @@ describe("Campaigns page (GA)", () => {
     // apart and never could.
     expect(table).toContain("acquisitionChannelForFeatureSlug");
     expect(table).not.toContain("acquisitionChannelForWorkflowSlug");
-    expect(table).toContain("<AcquisitionChannelMark");
-    expect(table).toContain("<SalesFunnelMark");
+    expect(identity).toContain("<AcquisitionChannelMark");
+    expect(identity).toContain("<SalesFunnelMark");
     // ONE cell states the pair: a campaign IS (offer x funnel x channel), so the
     // funnel and the channel were never two independent answers — only two
     // columns. The row reads them from the campaign it is given, once.
     expect(table).toContain("<CampaignCell campaign={campaign} />");
     expect(table).toContain("campaignFunnel(campaign.funnelKey)");
-    expect(table).toContain("acquisitionChannelForFeatureSlug(campaign.featureSlug)");
+    expect(identity).toContain("acquisitionChannelForFeatureSlug(featureSlug)");
+    // The layout lives in one module, because the budget modal states the same
+    // pair for the same campaigns and a second copy is how the row and the modal
+    // that funds it come to describe one campaign two ways.
+    expect(table).toContain("<CampaignIdentity");
+    expect(modal).toContain("<CampaignIdentity");
+    expect(modal).not.toContain("FunnelCell");
+    expect(modal).not.toContain("ChannelCell");
   });
 
   // The funnel column reads the campaign's OWN key and NOTHING else. The goal is
@@ -99,11 +108,12 @@ describe("Campaigns page (GA)", () => {
     // `\n}\n` and not `\n}`: the props are destructured with a type annotation,
     // so the first `\n}` in this component closes the parameter block, not the
     // function — slicing there cuts the body out entirely.
-    const cell = table.slice(table.indexOf("function FunnelCell("));
+    const cell = table.slice(table.indexOf("export function CampaignCell("));
     const body = cell.slice(0, cell.indexOf("\n}\n"));
-    expect(body).toContain("campaignFunnel(funnelKey)");
+    expect(body).toContain("campaignFunnel(campaign.funnelKey)");
     expect(body).not.toContain("primaryFunnelForGoal");
-    expect(body).toContain('def ? def.name : "—"');
+    // A funnel we cannot resolve is a real gap and reads as one.
+    expect(identity).toContain('funnel ? funnel.name : "—"');
     expect(api).toContain("funnelKey: SalesFunnelKeyWire | null;");
   });
 
@@ -350,9 +360,9 @@ describe("Campaigns page (GA)", () => {
     });
 
     it("states the funnel above the channel in one cell, pinned to the mark's height", () => {
-      const at = table.indexOf("export function CampaignCell(");
+      const at = identity.indexOf("export function CampaignIdentity(");
       expect(at).toBeGreaterThan(-1);
-      const cell = table.slice(at, table.indexOf("\n}\n", at));
+      const cell = identity.slice(at, identity.indexOf("\n}\n", at));
       const funnelAt = cell.indexOf("<SalesFunnelMark");
       const channelAt = cell.indexOf("<AcquisitionChannelMark");
       expect(funnelAt).toBeGreaterThan(-1);

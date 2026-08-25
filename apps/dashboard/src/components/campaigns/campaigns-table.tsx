@@ -18,9 +18,7 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
-import { channelSlugLabel } from "@/lib/campaign-title";
-import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
-import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
 
@@ -174,84 +172,19 @@ export function StatusPill({ status }: { status: string }) {
 }
 
 /**
- * The channel this campaign runs on, drawn as brand Settings draws it: the
- * platform's own logo (or our duotone mark) beside the catalogue name. A slug we
- * carry no channel for keeps the prettified text and no tile — a mark we cannot
- * source is worse than none.
+ * WHICH campaign this row is: the funnel it sells, with the channel it sells
+ * through under it.
  *
- * It reads the campaign's OWN feature slug, because a channel IS a feature slug.
- * The workflow slug used to stand in for it, which answered "cold email" for
- * every email workflow whatever its offer — with two cold-email channels that
- * guess cannot tell them apart.
- */
-export function ChannelCell({ featureSlug }: { featureSlug: string | null }) {
-  const def = acquisitionChannelForFeatureSlug(featureSlug);
-  return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      {def && <AcquisitionChannelMark def={def} size="sm" />}
-      <span className="truncate">{def ? def.name : channelSlugLabel(featureSlug)}</span>
-    </div>
-  );
-}
-
-/**
- * What this campaign is buying, drawn as the funnel brand Settings names.
- *
- * It reads the campaign's OWN funnel key and NOTHING else. There is deliberately
- * no fallback to the goal: the goal is the retired, lossier vocabulary (two
- * funnels answer to `meetingBooked`), so deriving a funnel from it prints a
- * chain the campaign never stated. campaign-service persists the funnel on every
- * campaign, so a missing one is a real gap and reads as one.
- */
-export function FunnelCell({ funnelKey }: { funnelKey: Campaign["funnelKey"] }) {
-  const def = campaignFunnel(funnelKey);
-  return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      {def && <SalesFunnelMark def={def} size="sm" />}
-      <span className="truncate">{def ? def.name : "—"}</span>
-    </div>
-  );
-}
-
-/**
- * WHICH campaign this row is, in one cell: the funnel it sells, and under it the
- * channel it sells through.
- *
- * A campaign IS (offer x funnel x channel), so naming one without the other names
- * half of it — which is why these were never two independent answers, only two
- * columns. One cell states the pair once, at every width, so there is no width at
- * which a reader sees half the identity and no width at which either value is on
- * screen twice.
- *
- * The funnel LEADS because it is what the campaign is buying; the channel is where
- * it goes to buy it, so it reads quieter and prefixed ("Via"). Same two components
- * and the same two bindings as before — a second reading of either value is how one
- * row comes to say two things.
- *
- * The text block is pinned to the funnel tile's own height (`h-8` = the `sm` mark's
- * 32px) and its two lines are given leadings that add to exactly that (14 + 18), so
- * the row's height is the icon's rather than whatever the two lines happen to need.
- * The channel mark is `xs` (18px), which is why line two carries the 18.
+ * The layout lives in `campaign-identity` because the budget modal states the
+ * same pair for the same campaigns — a second copy is how a campaign comes to
+ * read one way in this table and another way in the modal that funds it.
  */
 export function CampaignCell({ campaign }: { campaign: Campaign }) {
-  const funnel = campaignFunnel(campaign.funnelKey);
-  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug);
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      {funnel && <SalesFunnelMark def={funnel} size="sm" />}
-      <div className="flex h-8 min-w-0 flex-col justify-center">
-        <span className="truncate leading-[14px] text-gray-800">
-          {funnel ? funnel.name : "—"}
-        </span>
-        <span className="flex h-[18px] min-w-0 items-center gap-1 text-xs leading-[18px] text-gray-500">
-          <span className="shrink-0">Via</span>
-          {channel && <AcquisitionChannelMark def={channel} size="xs" />}
-          <span className="truncate">
-            {channel ? channel.name : channelSlugLabel(campaign.featureSlug)}
-          </span>
-        </span>
-      </div>
-    </div>
+    <CampaignIdentity
+      funnel={campaignFunnel(campaign.funnelKey)}
+      featureSlug={campaign.featureSlug}
+    />
   );
 }
 

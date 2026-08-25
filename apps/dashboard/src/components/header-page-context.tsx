@@ -156,11 +156,7 @@ export function HeaderPageContext() {
               channel it buys it on — by the same component the Campaigns table
               renders, marks included. */}
           {campaign ? (
-            <CampaignTitle
-              campaign={campaign}
-              size="xs"
-              className="font-medium text-gray-800"
-            />
+            <CampaignTitle campaign={campaign} className="font-medium text-gray-800" />
           ) : (
             <CrumbSkeleton width="w-28" />
           )}

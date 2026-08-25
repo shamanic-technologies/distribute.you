@@ -91,13 +91,18 @@ describe("the surfaces that name a campaign", () => {
   const overview = read("components/campaigns/campaign-overview-page.tsx");
   const context = read("components/header-page-context.tsx");
   const title = read("components/campaigns/campaign-title.tsx");
+  const identity = read("components/campaigns/campaign-identity.tsx");
   const table = read("components/campaigns/campaigns-page.tsx");
 
-  it("draws both marks, from the shared components brand Settings uses", () => {
-    expect(title).toContain("<SalesFunnelMark");
-    expect(title).toContain("<AcquisitionChannelMark");
-    // A second icon map is how two surfaces end up disagreeing about what a
-    // funnel or a channel looks like.
+  it("renders the shared identity rather than a second copy of it", () => {
+    // The bar states the SAME identity the Campaigns table and the budget modal
+    // state — same order, same words, same "Via". Only the stacking differs, so
+    // the layout lives in one module and this is a window onto it. A second copy
+    // is how a campaign comes to read one way in a row and another way in the
+    // bar above it.
+    expect(title).toContain("<CampaignIdentityInline");
+    expect(title).not.toContain("<SalesFunnelMark");
+    expect(title).not.toContain("<AcquisitionChannelMark");
     expect(title).not.toContain("FUNNEL_ICONS");
     expect(title).not.toContain("OWN_CHANNEL_ICONS");
   });
@@ -105,19 +110,38 @@ describe("the surfaces that name a campaign", () => {
   it("pairs each mark with its OWN name, never both marks then both names", () => {
     // Each half renders its mark immediately before its own label, so the funnel
     // tile and the channel logo are never bunched into one two-logo emblem.
-    const funnelHalf = title.indexOf("<SalesFunnelMark");
-    const funnelWord = title.indexOf("{funnelLabel}");
-    const channelHalf = title.indexOf("<AcquisitionChannelMark");
-    const channelWord = title.indexOf("{channelLabel}");
+    const inline = identity.slice(identity.indexOf("export function CampaignIdentityInline("));
+    const funnelHalf = inline.indexOf("<SalesFunnelMark");
+    const funnelWord = inline.indexOf("{funnel.name}");
+    const channelHalf = inline.indexOf("<AcquisitionChannelMark");
+    const channelWord = inline.indexOf("{channel.label}");
     expect(funnelHalf).toBeGreaterThan(-1);
     expect(channelHalf).toBeGreaterThan(-1);
     // funnel mark -> funnel name -> channel mark -> channel name.
     expect(funnelHalf).toBeLessThan(funnelWord);
     expect(funnelWord).toBeLessThan(channelHalf);
     expect(channelHalf).toBeLessThan(channelWord);
-    // The joined string is the LAST resort (neither half resolved), never the
+    // The stored name is the LAST resort (neither half resolved), never the
     // composed rendering — reading it beside the marks is what bunched them.
-    expect(title).toContain("!composed");
+    expect(inline).toContain("fallbackLabel");
+  });
+
+  it("says the same two halves in the same order at both layouts", () => {
+    // Stacked in a row, inline in the bar. What must NOT differ is the
+    // vocabulary: the funnel leads because it is what the campaign buys, the
+    // channel follows behind "Via" because it is where it buys it.
+    const stacked = identity.slice(
+      identity.indexOf("export function CampaignIdentity("),
+      identity.indexOf("export function CampaignIdentityInline("),
+    );
+    const inline = identity.slice(identity.indexOf("export function CampaignIdentityInline("));
+    for (const half of [stacked, inline]) {
+      expect(half.indexOf("<SalesFunnelMark")).toBeLessThan(half.indexOf("<AcquisitionChannelMark"));
+      expect(half).toContain(">Via<");
+    }
+    // The separator is gone: it made peers of two halves that are not peers.
+    expect(title).not.toContain("·");
+    expect(identity).not.toContain("·");
   });
 
   it("states the campaign name ONCE per screen, in the top bar and not on the page", () => {
