@@ -659,6 +659,14 @@ export interface Brand {
   // Optional on the wire so the dashboard ships ahead of the brand-service field
   // (additive rollout) — absent reads as undefined, present populates.
   clickDestinationUrl?: string | null;
+  // The brand's own colours, read off logo.dev by brand-service. Optional for
+  // the same additive-rollout reason: the dashboard renders the charter blue
+  // until the producer ships the field, and for every brand logo.dev has not
+  // indexed after it does. `BrandTint` decides whether any of them is a usable
+  // accent — a palette is often three neutrals, so having colours is NOT having
+  // a tint. Never read `colors[0]` as "the brand colour": the dominant colour
+  // of a logo is usually its background.
+  colors?: { hex: string }[] | null;
 }
 
 export type BrandDetail = Brand;
@@ -673,6 +681,7 @@ interface BrandWireOrgs {
   createdAt: string | null;
   updatedAt: string | null;
   logoUrl: string | null;
+  colors?: { hex: string }[] | null;
 }
 
 function normalizeBrandFromOrgs(raw: BrandWireOrgs): Brand {
