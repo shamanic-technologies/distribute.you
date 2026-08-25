@@ -57,8 +57,13 @@ describe("the top bar names where you are below the tenant", () => {
   // marks define as the same 18px `rounded` tile the offer wears.
   it("draws the offer and the campaign at one tile size", () => {
     expect(src).toContain('<OfferMark size="sm" />');
-    const call = src.slice(src.indexOf("<CampaignTitle"));
-    expect(call.slice(0, call.indexOf("/>"))).toContain('size="xs"');
+    // The campaign crumb no longer carries a size: it renders the shared inline
+    // identity, which pins both of its marks to `xs` itself — one place decides
+    // the tile, so the crumbs line up by construction rather than by a prop a
+    // call site can get wrong.
+    const identity = read("src/components/campaigns/campaign-identity.tsx");
+    const inline = identity.slice(identity.indexOf("export function CampaignIdentityInline("));
+    expect((inline.match(/size="xs"/g) ?? []).length).toBe(2);
 
     const offer = read("src/components/marks/offer-mark.tsx");
     expect(offer).toContain('size === "sm" ? "h-[18px] w-[18px]"');
