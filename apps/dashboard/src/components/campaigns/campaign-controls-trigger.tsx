@@ -30,7 +30,11 @@ import { Skeleton } from "@/components/skeleton";
  * reads); at offer grain there is no served figure, so the rows' own ceilings are
  * added up — the same shape as the funnels card's per-offer total, and for the
  * same reason: billing's per-funnel figure spans every offer selling it, so it
- * would name money a reader on one offer cannot see.
+ * would name money a reader on one offer cannot see. That sum is honest only
+ * because a ROW is a campaign IDENTITY (funnel x channel x offer) rather than a
+ * stored campaign row: billing keys one ceiling on that triple, campaign-service
+ * stores one campaign as many rows, and a list per row added the same ceiling up
+ * once per row.
  */
 export function CampaignControlsTrigger({
   brandId,

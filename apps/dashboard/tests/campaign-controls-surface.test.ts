@@ -70,6 +70,14 @@ describe("the trigger states money it READS", () => {
     expect(trigger).toContain("scopeTotalCents(rows)");
   });
 
+  it("counts one ceiling per campaign, because a row is an identity", () => {
+    // campaign-service stores one campaign as many rows; the sum is honest only
+    // because `buildControlRows` groups them onto the triple billing funds.
+    const lib = read("lib/campaign-controls.ts");
+    expect(lib).toContain("runningCampaignIds");
+    expect(lib).toContain("pickRepresentative");
+  });
+
   it("prints whole dollars through the one shared formatter", () => {
     expect(trigger).toContain("fmtDailyBudgetUsd");
     expect(trigger).not.toContain("toFixed");
@@ -172,6 +180,6 @@ describe("no aggregate is editable anywhere", () => {
     // A once-per-mount latch pins the form to the on-disk snapshot the
     // local-first cache paints first and ignores the fresher answer behind it.
     expect(modal).toContain("seededFrom");
-    expect(modal).toContain("touched.has(row.campaignId)");
+    expect(modal).toContain("touched.has(row.rowId)");
   });
 });
