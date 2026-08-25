@@ -212,6 +212,48 @@ export function FunnelCell({ funnelKey }: { funnelKey: Campaign["funnelKey"] }) 
   );
 }
 
+/**
+ * WHICH campaign this row is, in one cell: the funnel it sells, and under it the
+ * channel it sells through.
+ *
+ * A campaign IS (offer x funnel x channel), so naming one without the other names
+ * half of it — which is why these were never two independent answers, only two
+ * columns. One cell states the pair once, at every width, so there is no width at
+ * which a reader sees half the identity and no width at which either value is on
+ * screen twice.
+ *
+ * The funnel LEADS because it is what the campaign is buying; the channel is where
+ * it goes to buy it, so it reads quieter and prefixed ("Via"). Same two components
+ * and the same two bindings as before — a second reading of either value is how one
+ * row comes to say two things.
+ *
+ * The text block is pinned to the funnel tile's own height (`h-8` = the `sm` mark's
+ * 32px) and its two lines are given leadings that add to exactly that (14 + 18), so
+ * the row's height is the icon's rather than whatever the two lines happen to need.
+ * The channel mark is `xs` (18px), which is why line two carries the 18.
+ */
+export function CampaignCell({ campaign }: { campaign: Campaign }) {
+  const funnel = campaignFunnel(campaign.funnelKey);
+  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug);
+  return (
+    <div className="flex min-w-0 items-center gap-2.5">
+      {funnel && <SalesFunnelMark def={funnel} size="sm" />}
+      <div className="flex h-8 min-w-0 flex-col justify-center">
+        <span className="truncate leading-[14px] text-gray-800">
+          {funnel ? funnel.name : "—"}
+        </span>
+        <span className="flex h-[18px] min-w-0 items-center gap-1 text-xs leading-[18px] text-gray-500">
+          <span className="shrink-0">Via</span>
+          {channel && <AcquisitionChannelMark def={channel} size="xs" />}
+          <span className="truncate">
+            {channel ? channel.name : channelSlugLabel(campaign.featureSlug)}
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // One row = a campaign joined to its revenue group and to its own daily ceiling.
 interface CampaignRow {
   campaign: Campaign;
@@ -402,35 +444,32 @@ export function CampaignsTable({
 
   return (
     /* Below `md` the row narrows to the two things a reader can act on: what the
-       campaign returns, and which campaign it is. "Which" is the funnel AND the
-       channel — a campaign IS (offer x funnel x channel), so naming one without
-       the other names half of it — so the two stack in one cell there and their
-       own columns hide, each value on screen exactly once at every width.
+       campaign returns, and which campaign it is. Both are columns at EVERY width
+       now — `Campaign` states the funnel and the channel together, so the pair
+       needs no separate mobile stacking and no width can show half an identity.
 
-       The floor is gated at the same breakpoint for a reason: unconditional, it
-       re-widens the row past a phone's viewport even with seven columns hidden, so
-       the two that survived get pushed off to the right and read as missing.
-       `table-fixed` below `md` is what makes the truncation bite — in the default
-       auto layout a column grows to its content, so one long funnel name widens
-       the whole row however many `truncate`s it carries. */
+       The floor is gated at the breakpoint the money columns come back:
+       unconditional, it re-widens the row past a phone's viewport even with five
+       columns hidden, so the two that survived get pushed off to the right and
+       read as missing. `table-fixed` below `md` is what makes the truncation bite
+       — in the default auto layout a column grows to its content, so one long
+       funnel name widens the whole row however many `truncate`s it carries. */
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-      <table className="w-full table-fixed text-sm md:table-auto md:min-w-[900px]">
+      <table className="w-full table-fixed text-sm md:table-auto md:min-w-[760px]">
         <thead>
-          {/* Return first: the table is sorted by ROI, so it leads with the
-              column that decides the order.
+          {/* Identity first, then the return the table is sorted by.
               Header chrome byte-equal to the Leads table (`engaged-leads-page`),
               which is the dashboard's reference entity table: a heavier,
               differently-tracked header reads as a different product. */}
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            {/* Which campaign, first: the funnel it sells with the channel under
+                it. It is the row's identity, so it leads at every width — the two
+                columns it replaces stated one thing in two places. */}
+            <th className="px-4 py-3 w-[70%] md:w-auto">Campaign</th>
             <th className="px-4 py-3 text-right w-[30%] md:w-auto"><NumericHead label="ROI" tip={COLUMN_INFO.roi} /></th>
-            {/* The phone's identity column: the funnel and the channel stacked.
-                It speaks for the two columns beside it, which hide at this width. */}
-            <th className="px-4 py-3 w-[70%] md:hidden">Campaign</th>
             <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="% CAC" tip={COLUMN_INFO.cacPct} /></th>
             <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Revenue" tip={COLUMN_INFO.revenue} /></th>
             <th className="px-4 py-3 text-right hidden md:table-cell"><NumericHead label="$ Invested" tip={COLUMN_INFO.invested} /></th>
-            <th className="px-4 py-3 hidden md:table-cell">Sales funnel</th>
-            <th className="px-4 py-3 hidden md:table-cell">Channel</th>
             {/* The ceiling sits beside the status because the two answer one
                 question together — is this campaign running, and how hard. It is
                 deliberately NOT in the money block on the left: those are charges
@@ -443,14 +482,14 @@ export function CampaignsTable({
           {!settled ? (
             [0, 1, 2].map((i) => (
               <tr key={`sk-${i}`}>
-                <td className="px-4 py-3" colSpan={9}>
+                <td className="px-4 py-3" colSpan={7}>
                   <Skeleton className="h-5 w-full" />
                 </td>
               </tr>
             ))
           ) : rows.length === 0 ? (
             <tr>
-              <td className="px-4 py-8 text-center text-gray-500" colSpan={9}>
+              <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
                 {featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
               </td>
             </tr>
@@ -461,16 +500,8 @@ export function CampaignsTable({
                 onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
                 className="cursor-pointer transition hover:bg-gray-50"
               >
+                <td className="px-4 py-3 text-gray-800"><CampaignCell campaign={campaign} /></td>
                 <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
-                {/* The phone's identity cell. Same two components, same two
-                    bindings as the columns below — a second reading of either
-                    value is how one row comes to say two things. */}
-                <td className="px-4 py-3 md:hidden text-gray-800">
-                  <FunnelCell funnelKey={campaign.funnelKey} />
-                  <div className="mt-1 text-xs text-gray-500">
-                    <ChannelCell featureSlug={campaign.featureSlug} />
-                  </div>
-                </td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
@@ -479,12 +510,6 @@ export function CampaignsTable({
                     group at all reads `—` rather than $0 — "we have no figure" and "it
                     cost nothing" differ. */}
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.committedCostUsd)}</td>
-                <td className="px-4 py-3 text-gray-800 hidden md:table-cell">
-                  <FunnelCell funnelKey={campaign.funnelKey} />
-                </td>
-                <td className="px-4 py-3 text-gray-800 hidden md:table-cell">
-                  <ChannelCell featureSlug={campaign.featureSlug} />
-                </td>
                 {/* Whole dollars, always: a ceiling is a configured whole-dollar
                     value. `$0` is a real answer — the campaign is stopped — and a
                     dash means billing had none, which is a different statement. */}

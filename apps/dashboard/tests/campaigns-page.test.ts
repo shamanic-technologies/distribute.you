@@ -82,10 +82,12 @@ describe("Campaigns page (GA)", () => {
     expect(table).not.toContain("acquisitionChannelForWorkflowSlug");
     expect(table).toContain("<AcquisitionChannelMark");
     expect(table).toContain("<SalesFunnelMark");
-    expect(table).toContain("<ChannelCell featureSlug={campaign.featureSlug} />");
-    expect(table).toContain(
-      "<FunnelCell funnelKey={campaign.funnelKey} />",
-    );
+    // ONE cell states the pair: a campaign IS (offer x funnel x channel), so the
+    // funnel and the channel were never two independent answers — only two
+    // columns. The row reads them from the campaign it is given, once.
+    expect(table).toContain("<CampaignCell campaign={campaign} />");
+    expect(table).toContain("campaignFunnel(campaign.funnelKey)");
+    expect(table).toContain("acquisitionChannelForFeatureSlug(campaign.featureSlug)");
   });
 
   // The funnel column reads the campaign's OWN key and NOTHING else. The goal is
@@ -126,23 +128,22 @@ describe("Campaigns page (GA)", () => {
     expect(api).toContain("groupBy: \"campaignId\"");
   });
 
-  // Return leads, because that is what the table is sorted by. A table that
-  // displays one order and ranks by another reads as unordered.
+  // Identity leads: which campaign this is, stated once as the funnel it sells
+  // with the channel under it. The return follows, and the table is sorted by it.
   // `$ Invested` sits immediately right of `$ Revenue`: the money block reads
   // projection, projection, projection, then the one realized figure behind them.
   // `$ Budget` sits with the STATUS, not with the money block: those four are
   // charges and projections of charges, and a ceiling is neither. Beside the
   // pill it answers the other half of one question — is this campaign running,
   // and how hard.
-  it("orders the columns ROI, % CAC, $ Revenue, $ Invested, Sales funnel, Channel, $ Budget, Status", () => {
+  it("orders the columns Campaign, ROI, % CAC, $ Revenue, $ Invested, $ Budget, Status", () => {
     const head = table.slice(table.indexOf("<thead>"), table.indexOf("</thead>"));
     const order = [
+      "Campaign",
       "ROI",
       "% CAC",
       "$ Revenue",
       "$ Invested",
-      "Sales funnel",
-      "Channel",
       "$ Budget",
       "Status",
     ];
@@ -154,6 +155,10 @@ describe("Campaigns page (GA)", () => {
     }
     // The per-campaign $ CAC column is gone; the brand-level tile still heads
     // the page.
+    // The two columns this one replaces do not come back: printing the funnel and
+    // the channel apart is one identity stated in two places.
+    expect(head).not.toContain("Sales funnel");
+    expect(head).not.toContain(">Channel<");
     expect(head).not.toContain("$ CAC");
     expect(page).toContain("Cost per acquisition");
   });
@@ -312,9 +317,10 @@ describe("Campaigns page (GA)", () => {
   it("holds the table's own shape as the column count grows", () => {
     // A stale colSpan silently narrows the skeleton and the empty state, and a
     // stale min-w lets the last column fold.
-    expect(table).toContain("md:min-w-[900px]");
+    expect(table).toContain("md:min-w-[760px]");
     expect(table).not.toContain("colSpan={8}");
-    expect((table.match(/colSpan=\{9\}/g) ?? []).length).toBe(2);
+    expect(table).not.toContain("colSpan={9}");
+    expect((table.match(/colSpan=\{7\}/g) ?? []).length).toBe(2);
   });
 
   /**
@@ -324,50 +330,56 @@ describe("Campaigns page (GA)", () => {
    *
    * "Which campaign" is the funnel and the channel together — a campaign IS
    * (offer x funnel x channel), so naming one without the other names half of it.
-   * Below `md` they stack in ONE cell, and the two columns that carry them at
-   * desktop width hide. Strict complements: each value is on screen exactly once
-   * at every width, from the same component and the same binding.
+   * They are ONE column at every width, so there is no mobile-only copy to keep
+   * in step with a desktop one and no width that can show half an identity.
    */
   describe("fits a phone", () => {
     it("gates the width floor at the breakpoint the columns come back", () => {
-      // Unconditional, the floor re-widens the row past the viewport even with six
+      // Unconditional, the floor re-widens the row past the viewport even with five
       // columns hidden, pushing the survivors off to the right (the leads-table case).
-      expect(table).not.toMatch(/[^:]min-w-\[900px\]/);
+      expect(table).not.toMatch(/[^:]min-w-\[760px\]/);
       expect(table).toContain("table-fixed");
       expect(table).toContain("md:table-auto");
-      // ROI keeps its share only below `md` (it is a column at every width); the
-      // identity column has no desktop width to restore, it stops existing there.
+      // The two survivors split the phone's width and give it back at `md`, where
+      // the auto layout sizes every column to its content.
       expect(table).toContain('w-[30%] md:w-auto');
-      expect(table).toContain('w-[70%] md:hidden');
+      expect(table).toContain('w-[70%] md:w-auto');
+      // No mobile-only cell to drift from a desktop one: there is one identity
+      // column, rendered at every width.
+      expect(table).not.toContain("md:hidden");
     });
 
-    it("stacks the funnel above the channel in one mobile-only cell", () => {
-      const at = table.indexOf('<td className="px-4 py-3 md:hidden');
+    it("states the funnel above the channel in one cell, pinned to the mark's height", () => {
+      const at = table.indexOf("export function CampaignCell(");
       expect(at).toBeGreaterThan(-1);
-      const cell = table.slice(at, table.indexOf("</td>", at));
-      const funnelAt = cell.indexOf("<FunnelCell");
-      const channelAt = cell.indexOf("<ChannelCell");
+      const cell = table.slice(at, table.indexOf("\n}\n", at));
+      const funnelAt = cell.indexOf("<SalesFunnelMark");
+      const channelAt = cell.indexOf("<AcquisitionChannelMark");
       expect(funnelAt).toBeGreaterThan(-1);
       expect(channelAt).toBeGreaterThan(funnelAt);
+      // The channel line is the quiet one, and it says what it is.
+      expect(cell).toContain("text-xs");
+      expect(cell).toContain("text-gray-500");
+      expect(cell).toContain("Via");
+      // Two lines whose leadings add to the funnel tile's own 32px (`sm` = h-8),
+      // so the row is the height of the icon rather than of whatever the text
+      // needs. 18 on the second because the channel mark there is `xs` (18px).
+      expect(cell).toContain("h-8");
+      expect(cell).toContain("leading-[14px]");
+      expect(cell).toContain("leading-[18px]");
+      expect(cell).toContain('size="sm"');
+      expect(cell).toContain('size="xs"');
     });
 
-    it("hides every column the mobile cell speaks for, and the cell at md", () => {
-      // The Sales funnel and Channel columns are what folds INTO the mobile cell,
-      // so they must be the ones hidden below md — printing a value twice at one
-      // width is the same defect as printing it zero times.
-      for (const label of ["Sales funnel", "Channel"]) {
-        const at = table.indexOf(`>${label}<`);
-        expect(at).toBeGreaterThan(-1);
-        expect(table.slice(table.lastIndexOf("<th", at), at)).toContain("hidden md:table-cell");
-      }
+    it("hides every money column below md, and no more", () => {
       for (const label of ["% CAC", "$ Revenue", "$ Invested", "$ Budget"]) {
         const at = table.indexOf(`label="${label}"`);
         expect(at).toBeGreaterThan(-1);
         expect(table.slice(table.lastIndexOf("<th", at), at)).toContain("hidden md:table-cell");
       }
-      // Header + cell for each of the seven folded columns (the four money ones,
-      // the two the mobile cell speaks for, and Status).
-      expect((table.match(/hidden md:table-cell/g) ?? []).length).toBe(14);
+      // Header + cell for each of the five folded columns (the four money ones and
+      // Status). Campaign and ROI render at every width.
+      expect((table.match(/hidden md:table-cell/g) ?? []).length).toBe(10);
     });
   });
 
