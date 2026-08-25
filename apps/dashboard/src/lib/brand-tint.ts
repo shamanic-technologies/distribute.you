@@ -25,6 +25,14 @@
 const REFERENCE_CHROMA = 0.16;
 
 /**
+ * The hue the whole charter is written at (`globals.css`). Everything
+ * decorative rotates by `brandHue - CHARTER_HUE`, which is what lets a
+ * categorical palette move to a brand without its members collapsing onto
+ * each other.
+ */
+export const CHARTER_HUE = 258;
+
+/**
  * Below this OKLCH chroma a colour carries no hue anyone would recognise as
  * theirs — it is the logo's black, white or grey. Tinting the whole dashboard
  * off a near-neutral produces a muddy ramp that reads as a rendering bug rather
@@ -63,6 +71,12 @@ export interface BrandTint {
   hue: number;
   /** Multiplier applied to every step's chroma in the charter ramp. */
   chromaScale: number;
+  /**
+   * Degrees to add to any charter hue. Signed and unwrapped on purpose — CSS
+   * `calc()` and `oklch()` both take a hue angle outside 0..360 and normalise
+   * it, so clamping here would only lose the direction of the rotation.
+   */
+  hueDelta: number;
   /** The colour this tint was derived from, for display and debugging. */
   sourceHex: string;
 }
@@ -139,8 +153,10 @@ export function resolveBrandTint(colors: readonly BrandColor[] | null | undefine
     if (oklch.chroma <= bestChroma) continue;
 
     bestChroma = oklch.chroma;
+    const hue = Math.round(oklch.hue * 10) / 10;
     best = {
-      hue: Math.round(oklch.hue * 10) / 10,
+      hue,
+      hueDelta: Math.round((hue - CHARTER_HUE) * 10) / 10,
       chromaScale:
         Math.round(Math.min(1, Math.max(MIN_CHROMA_SCALE, oklch.chroma / REFERENCE_CHROMA)) * 1000) / 1000,
       sourceHex: hex,

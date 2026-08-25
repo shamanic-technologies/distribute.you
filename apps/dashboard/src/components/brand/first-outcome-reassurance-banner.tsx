@@ -47,10 +47,17 @@ export function FirstOutcomeReassuranceBanner({
   // declared, which is the retired-goal bug this whole line of work removed.
   const outcomes = goal ? outcomeNounPlural(goal) : "results";
   const outcome = goal ? outcomeNoun(goal) : null;
+  // Neutral surface, brand-accent icon. Two reasons the cyan it replaced was
+  // wrong: a reassurance callout carries no STATUS, so a hue on the whole panel
+  // competes with the colours that do mean something; and `cyan` is outside the
+  // closed set the `html.dark` remap covers, so this panel rendered its light
+  // near-white on the dark surface. Gray is remapped, and the icon reads
+  // `brand-*`, so the one coloured thing here follows the brand's own tint
+  // instead of sitting on a fixed blue.
   return (
-    <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
       <div className="flex gap-3">
-        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-cyan-700 ring-1 ring-cyan-200">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-brand-600 ring-1 ring-brand-200">
           <ClockIcon className="h-4 w-4" aria-hidden="true" />
         </div>
         <div className="min-w-0">

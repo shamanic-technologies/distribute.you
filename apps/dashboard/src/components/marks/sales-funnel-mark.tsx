@@ -45,7 +45,7 @@ export function SalesFunnelMark({
   const Glyph = FUNNEL_ICONS[def.key];
   return (
     <span
-      className={`flex shrink-0 items-center justify-center ${TILE[size]} ${def.tone.iconBg} ${
+      className={`tone-tile flex shrink-0 items-center justify-center ${TILE[size]} ${def.tone.iconBg} ${
         dimmed ? "opacity-60" : ""
       }`}
     >

@@ -438,3 +438,89 @@ html.dark[data-brand-tint] .dy-eyebrow {
   background: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.15);
   color: oklch(85% calc(0.13 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
 }
+
+/* ── Decorative hue rotation ───────────────────────────────────────────
+ * The mark tiles (sales funnels, acquisition channels, the offer tag) are a
+ * CATEGORICAL scale: purple / indigo / blue / orange exist to be told APART,
+ * not to carry meaning. Repainting them all in the brand hue would collapse
+ * four funnels into one colour, so the family is ROTATED instead — every hue
+ * moves by the same delta the brand applied to the charter, which preserves
+ * the spacing between them exactly. They stay as distinguishable from each
+ * other as they are today and read as belonging to the brand.
+ *
+ * The charter's own secondary sits ~44 degrees off its primary (purple 302
+ * against blue 258), so the offer tag lands the same distance from whatever
+ * hue the brand wears. That relationship is preserved by construction rather
+ * than restated as a second constant.
+ *
+ * Only the HUE moves. The L and C below are the values Tailwind actually
+ * computes for these tokens, read back with getComputedStyle rather than
+ * converted from the hex fallback — the fallback is gamut-mapped, and taking
+ * it as the source put orange 2 degrees off the others, which is exactly the
+ * kind of drift that pulls one member of a categorical set out of step.
+ *
+ * SCOPED to `.tone-tile` on purpose: `bg-blue-50` is also a status/callout
+ * background across the app, and rotating THAT would repaint an info panel
+ * into a colour that reads as something else. A mark tile is decoration; a
+ * status surface is meaning, and meaning never rotates. For the same reason
+ * semantic green and red are untouched everywhere.
+ */
+:root[data-brand-tint] .tone-tile.bg-purple-50 {
+  background-color: oklch(97.7% 0.014 calc(308.299 + var(--brand-hue-delta, 0)));
+}
+:root[data-brand-tint] .tone-tile.text-purple-600,
+:root[data-brand-tint] .tone-tile .text-purple-600 {
+  color: oklch(55.8% 0.288 calc(302.321 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile.bg-purple-50 {
+  background-color: oklch(62.7% 0.233 calc(303.9 + var(--brand-hue-delta, 0)) / 0.15);
+}
+html.dark:root[data-brand-tint] .tone-tile.text-purple-600,
+html.dark:root[data-brand-tint] .tone-tile .text-purple-600 {
+  color: oklch(62.7% 0.233 calc(303.9 + var(--brand-hue-delta, 0)));
+}
+
+:root[data-brand-tint] .tone-tile.bg-indigo-50 {
+  background-color: oklch(96.2% 0.018 calc(272.314 + var(--brand-hue-delta, 0)));
+}
+:root[data-brand-tint] .tone-tile.text-indigo-600,
+:root[data-brand-tint] .tone-tile .text-indigo-600 {
+  color: oklch(51.1% 0.262 calc(276.966 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile.bg-indigo-50 {
+  background-color: oklch(58.5% 0.204 calc(277.1 + var(--brand-hue-delta, 0)) / 0.15);
+}
+html.dark:root[data-brand-tint] .tone-tile.text-indigo-600,
+html.dark:root[data-brand-tint] .tone-tile .text-indigo-600 {
+  color: oklch(58.5% 0.204 calc(277.1 + var(--brand-hue-delta, 0)));
+}
+
+:root[data-brand-tint] .tone-tile.bg-blue-50 {
+  background-color: oklch(97.0% 0.014 calc(254.604 + var(--brand-hue-delta, 0)));
+}
+:root[data-brand-tint] .tone-tile.text-blue-600,
+:root[data-brand-tint] .tone-tile .text-blue-600 {
+  color: oklch(54.6% 0.245 calc(262.881 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile.bg-blue-50 {
+  background-color: oklch(62.3% 0.188 calc(259.8 + var(--brand-hue-delta, 0)) / 0.15);
+}
+html.dark:root[data-brand-tint] .tone-tile.text-blue-600,
+html.dark:root[data-brand-tint] .tone-tile .text-blue-600 {
+  color: oklch(62.3% 0.188 calc(259.8 + var(--brand-hue-delta, 0)));
+}
+
+:root[data-brand-tint] .tone-tile.bg-orange-50 {
+  background-color: oklch(98.0% 0.016 calc(73.684 + var(--brand-hue-delta, 0)));
+}
+:root[data-brand-tint] .tone-tile.text-orange-600,
+:root[data-brand-tint] .tone-tile .text-orange-600 {
+  color: oklch(64.6% 0.222 calc(41.116 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile.bg-orange-50 {
+  background-color: oklch(70.5% 0.187 calc(47.6 + var(--brand-hue-delta, 0)) / 0.15);
+}
+html.dark:root[data-brand-tint] .tone-tile.text-orange-600,
+html.dark:root[data-brand-tint] .tone-tile .text-orange-600 {
+  color: oklch(70.5% 0.187 calc(47.6 + var(--brand-hue-delta, 0)));
+}

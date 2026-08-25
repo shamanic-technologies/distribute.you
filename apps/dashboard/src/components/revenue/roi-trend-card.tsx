@@ -163,8 +163,12 @@ export function RoiTrendCard({
             <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="roi-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563eb" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                  {/* `currentColor` off a `text-brand-*` class, the same treatment the
+                      break-even line below already uses and for the same reason: an SVG
+                      attribute is not reached by the `html.dark` remap, and a hardcoded
+                      hex cannot follow a brand's tint. */}
+                  <stop offset="0%" stopColor="currentColor" stopOpacity={0.18} className="text-brand-600" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity={0} className="text-brand-600" />
                 </linearGradient>
               </defs>
               {/* No background grid: the one horizontal worth drawing is break-even, and
@@ -202,7 +206,8 @@ export function RoiTrendCard({
               <Area
                 type="monotone"
                 dataKey="roiMultiple"
-                stroke="#2563eb"
+                stroke="currentColor"
+                className="text-brand-600"
                 strokeWidth={2}
                 fill="url(#roi-fill)"
                 dot={false}

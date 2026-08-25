@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseHex, toOklchChromaHue, resolveBrandTint, colorHex } from "../src/lib/brand-tint";
+import {
+  parseHex,
+  toOklchChromaHue,
+  resolveBrandTint,
+  colorHex,
+  CHARTER_HUE,
+} from "../src/lib/brand-tint";
 
 // The three palettes below are the REAL bodies logo.dev's Brand endpoint
 // returned on 2026-08-25. They are the fixtures precisely because the feature
@@ -102,5 +108,26 @@ describe("colorHex", () => {
     expect(colorHex({ hex: 42 } as never)).toBeNull();
     expect(colorHex({} as never)).toBeNull();
     expect(colorHex(null as never)).toBeNull();
+  });
+});
+
+describe("hueDelta", () => {
+  it("is the signed rotation from the charter, so a categorical palette moves as one", () => {
+    const shockwave = resolveBrandTint(SHOCKWAVE)!;
+    expect(shockwave.hueDelta).toBeCloseTo(shockwave.hue - CHARTER_HUE, 1);
+    const stripe = resolveBrandTint(STRIPE)!;
+    expect(stripe.hueDelta).toBeCloseTo(stripe.hue - CHARTER_HUE, 1);
+  });
+
+  it("is left unwrapped, because css normalises the angle and the sign carries the direction", () => {
+    // Shockwave's red sits BELOW the charter blue, so the rotation is negative.
+    // Clamping it into 0..360 here would only lose which way the palette turned.
+    expect(resolveBrandTint(SHOCKWAVE)!.hueDelta).toBeLessThan(0);
+    expect(resolveBrandTint(STRIPE)!.hueDelta).toBeGreaterThan(0);
+  });
+
+  it("is zero for a brand sitting on the charter hue itself", () => {
+    const onCharter = resolveBrandTint(["#2563eb"])!;
+    expect(Math.abs(onCharter.hueDelta)).toBeLessThan(6);
   });
 });
