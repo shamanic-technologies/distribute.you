@@ -24,7 +24,7 @@ export interface TenantBrand {
   // disagree mid-switch. Absent on the cookie-seeded path by design: the seed
   // exists to paint the first frame and rides every request to the origin, so
   // it holds labels only. The tint arrives with the query, a moment later.
-  colors?: { hex: string }[] | null;
+  colors?: (string | { hex?: unknown })[] | null;
 }
 
 export interface TenantOrgOption {

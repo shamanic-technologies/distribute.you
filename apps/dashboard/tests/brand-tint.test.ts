@@ -1,12 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { parseHex, toOklchChromaHue, resolveBrandTint } from "../src/lib/brand-tint";
+import { parseHex, toOklchChromaHue, resolveBrandTint, colorHex } from "../src/lib/brand-tint";
 
 // The three palettes below are the REAL bodies logo.dev's Brand endpoint
 // returned on 2026-08-25. They are the fixtures precisely because the feature
 // lives or dies on what real brands look like, not on invented colours.
-const SHOCKWAVE = [{ hex: "#000103" }, { hex: "#ce2e36" }, { hex: "#003366" }];
-const STRIPE = [{ hex: "#000001" }, { hex: "#ffffff" }, { hex: "#533afd" }];
-const PRESSBEAT = [{ hex: "#161613" }, { hex: "#969693" }, { hex: "#e9e8e5" }];
+// brand-service normalises logo.dev's `[{r,g,b,hex}]` down to plain hex
+// strings, so THIS is the shape the wire carries. Verified in prod against
+// /internal/brands/:id and /orgs/brands, not assumed — reading the vendor's
+// object shape here is exactly what shipped a reader that tinted nothing.
+const SHOCKWAVE = ["#000103", "#ce2e36", "#003366"];
+const STRIPE = ["#000001", "#ffffff", "#533afd"];
+const PRESSBEAT = ["#161613", "#969693", "#e9e8e5"];
 
 describe("parseHex", () => {
   it("reads both the #-prefixed and bare forms, and the 3-digit shorthand", () => {
@@ -62,7 +66,14 @@ describe("resolveBrandTint", () => {
     expect(resolveBrandTint(null)).toBeNull();
     expect(resolveBrandTint(undefined)).toBeNull();
     expect(resolveBrandTint([])).toBeNull();
-    expect(resolveBrandTint([{ hex: "not-a-colour" }])).toBeNull();
+    expect(resolveBrandTint(["not-a-colour"])).toBeNull();
+    expect(resolveBrandTint([{ hex: 42 } as never])).toBeNull();
+  });
+
+  it("reads the vendor's object form too, so a producer forwarding it verbatim still tints", () => {
+    const asObjects = SHOCKWAVE.map((hex) => ({ hex }));
+    expect(resolveBrandTint(asObjects)!.sourceHex).toBe("#ce2e36");
+    expect(resolveBrandTint(asObjects)!.hue).toBe(resolveBrandTint(SHOCKWAVE)!.hue);
   });
 
   it("lands each accent on the hue a reader would name it", () => {
@@ -76,10 +87,20 @@ describe("resolveBrandTint", () => {
     // The invariant, asserted over every real palette rather than over one
     // hand-picked hex: a tint is never so muted the accent disappears into the
     // grey UI, and never more saturated than the charter ramp it replaces.
-    for (const palette of [SHOCKWAVE, STRIPE, [{ hex: "#003366" }]]) {
+    for (const palette of [SHOCKWAVE, STRIPE, ["#003366"]]) {
       const tint = resolveBrandTint(palette)!;
       expect(tint.chromaScale).toBeGreaterThanOrEqual(0.6);
       expect(tint.chromaScale).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("colorHex", () => {
+  it("reads both wire forms and refuses anything else", () => {
+    expect(colorHex("#ce2e36")).toBe("#ce2e36");
+    expect(colorHex({ hex: "#ce2e36" })).toBe("#ce2e36");
+    expect(colorHex({ hex: 42 } as never)).toBeNull();
+    expect(colorHex({} as never)).toBeNull();
+    expect(colorHex(null as never)).toBeNull();
   });
 });

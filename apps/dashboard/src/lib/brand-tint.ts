@@ -40,8 +40,22 @@ const NEUTRAL_CHROMA_CEILING = 0.04;
  */
 const MIN_CHROMA_SCALE = 0.6;
 
-export interface BrandColor {
-  hex: string;
+/**
+ * What brand-service actually puts on the wire.
+ *
+ * It normalises logo.dev's own `[{r, g, b, hex}]` down to a plain list of hex
+ * strings, so the producer's shape is `string[]` — verified against prod, not
+ * assumed. The object form is still accepted because it is the shape the vendor
+ * emits upstream, so a future producer that forwards it verbatim keeps working;
+ * anything else is skipped rather than guessed at.
+ */
+export type BrandColor = string | { hex?: unknown };
+
+/** The hex out of either wire form, or null for anything we can not read. */
+export function colorHex(color: BrandColor): string | null {
+  if (typeof color === "string") return color;
+  if (color && typeof color.hex === "string") return color.hex;
+  return null;
 }
 
 export interface BrandTint {
@@ -117,8 +131,9 @@ export function resolveBrandTint(colors: readonly BrandColor[] | null | undefine
   let bestChroma = 0;
 
   for (const color of colors) {
-    if (!color || typeof color.hex !== "string") continue;
-    const oklch = toOklchChromaHue(color.hex);
+    const hex = colorHex(color);
+    if (!hex) continue;
+    const oklch = toOklchChromaHue(hex);
     if (!oklch) continue;
     if (oklch.chroma <= NEUTRAL_CHROMA_CEILING) continue;
     if (oklch.chroma <= bestChroma) continue;
@@ -128,7 +143,7 @@ export function resolveBrandTint(colors: readonly BrandColor[] | null | undefine
       hue: Math.round(oklch.hue * 10) / 10,
       chromaScale:
         Math.round(Math.min(1, Math.max(MIN_CHROMA_SCALE, oklch.chroma / REFERENCE_CHROMA)) * 1000) / 1000,
-      sourceHex: color.hex,
+      sourceHex: hex,
     };
   }
 
