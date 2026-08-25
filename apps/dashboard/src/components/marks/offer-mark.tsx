@@ -27,7 +27,7 @@ export function OfferMark({ size = "md" }: { size?: "sm" | "md" }) {
 
   return (
     <span
-      className={`${tile} flex flex-shrink-0 items-center justify-center rounded bg-purple-50 text-purple-600`}
+      className={`tone-tile ${tile} flex flex-shrink-0 items-center justify-center rounded bg-purple-50 text-purple-600`}
     >
       <TagIcon weight="duotone" className={glyph} />
     </span>

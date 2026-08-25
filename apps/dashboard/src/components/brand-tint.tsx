@@ -8,6 +8,7 @@ import { resolveBrandTint } from "@/lib/brand-tint";
 const TINT_ATTR = "data-brand-tint";
 const HUE_VAR = "--brand-hue";
 const CHROMA_VAR = "--brand-chroma-scale";
+const DELTA_VAR = "--brand-hue-delta";
 
 /**
  * Repaint the dashboard's accent in the open brand's own colour.
@@ -32,29 +33,32 @@ export function BrandTint() {
   const tint = resolveBrandTint(displayBrand?.colors);
   const hue = tint?.hue ?? null;
   const chromaScale = tint?.chromaScale ?? null;
+  const hueDelta = tint?.hueDelta ?? null;
 
   useEffect(() => {
     const root = document.documentElement;
 
-    if (hue === null || chromaScale === null) {
+    const clear = () => {
       root.removeAttribute(TINT_ATTR);
       root.style.removeProperty(HUE_VAR);
       root.style.removeProperty(CHROMA_VAR);
+      root.style.removeProperty(DELTA_VAR);
+    };
+
+    if (hue === null || chromaScale === null || hueDelta === null) {
+      clear();
       return;
     }
 
     root.style.setProperty(HUE_VAR, String(hue));
     root.style.setProperty(CHROMA_VAR, String(chromaScale));
+    root.style.setProperty(DELTA_VAR, String(hueDelta));
     root.setAttribute(TINT_ATTR, "");
 
-    return () => {
-      root.removeAttribute(TINT_ATTR);
-      root.style.removeProperty(HUE_VAR);
-      root.style.removeProperty(CHROMA_VAR);
-    };
+    return clear;
     // Primitives, never the brand object: that object is rebuilt on every poll,
     // so depending on it would rewrite the same two values ~every 30 seconds.
-  }, [hue, chromaScale]);
+  }, [hue, chromaScale, hueDelta]);
 
   return null;
 }

@@ -75,7 +75,7 @@ export function AcquisitionChannelMark({
 
   return (
     <span
-      className={`flex shrink-0 items-center justify-center ${TILE[size]} ${def.mark.tone.iconBg} ${
+      className={`tone-tile flex shrink-0 items-center justify-center ${TILE[size]} ${def.mark.tone.iconBg} ${
         dimmed ? "opacity-60" : ""
       }`}
     >
