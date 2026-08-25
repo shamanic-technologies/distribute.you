@@ -666,7 +666,7 @@ export interface Brand {
   // accent — a palette is often three neutrals, so having colours is NOT having
   // a tint. Never read `colors[0]` as "the brand colour": the dominant colour
   // of a logo is usually its background.
-  colors?: { hex: string }[] | null;
+  colors?: (string | { hex?: unknown })[] | null;
 }
 
 export type BrandDetail = Brand;
@@ -681,7 +681,7 @@ interface BrandWireOrgs {
   createdAt: string | null;
   updatedAt: string | null;
   logoUrl: string | null;
-  colors?: { hex: string }[] | null;
+  colors?: (string | { hex?: unknown })[] | null;
 }
 
 function normalizeBrandFromOrgs(raw: BrandWireOrgs): Brand {
