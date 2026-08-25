@@ -232,7 +232,8 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   );
 
   const campaigns = useMemo(() => campaignsQ.data?.campaigns ?? [], [campaignsQ.data]);
-  // The table is the campaigns a brand RUNS on THIS feature — one line per live campaign.
+  // The table is the campaigns a brand HAS on THIS feature — one line per campaign,
+  // running or paused.
   //
   // Two filters, and both are load-bearing:
   //
@@ -243,11 +244,9 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // Sales funnel column they can never fill. A table listing one population and pricing
   // another is the incoherence, not merely the clutter.
   //
-  // Status. campaign-service enforces at most one `ongoing` campaign per identity —
-  // (org, brand, funnel, channel), migration 0044 — so filtering on its own status yields
-  // exactly one line per live campaign, and features-service totals each identity
-  // server-side (a campaign's stopped ancestors' runs ride on its live campaign's group).
-  // A stopped campaign is history, not a line.
+  // Status is NOT a filter — see `listedCampaigns` below. A campaign a customer
+  // paused is still one of their campaigns, and a list that drops it says they
+  // have none.
   //
   // Offer. A campaign is (offer x funnel x channel), so an offer-scoped surface
   // lists the campaigns that sell THAT proposition. campaign-service carries the
@@ -309,10 +308,40 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       refetchInterval: POLL_INTERVAL,
     })),
   });
-  const liveCampaigns = useMemo(
-    () => featureCampaigns.filter((c) => isActiveStatus(c.status)),
-    [featureCampaigns],
-  );
+  // ONE LINE PER IDENTITY, running or paused.
+  //
+  // A campaign IS (offer x funnel x channel) — the triple billing funds and the one
+  // features-service totals server-side, so every row's money already includes what
+  // that identity's earlier rows spent. campaign-service enforces at most one
+  // `ongoing` row per identity (migration 0044) but keeps every superseded one, so
+  // the STORED rows are many where the campaign is one: it used to mint a fresh row
+  // on each workflow switch. Measured on the brand that surfaced this — 1 ongoing,
+  // 1 manually paused, and 45 `stopped` ancestors of the ongoing one.
+  //
+  // So the old active-only filter was right about the 45 and wrong about the 1: it
+  // read as "one line per live campaign" and behaved as "hide the campaign the
+  // customer paused", which is the one they most want to see and turn back on.
+  // Collapsing on the identity keeps both halves — the ancestors ride on their live
+  // row exactly as before, and an identity with no live row states its latest,
+  // which is the paused campaign itself.
+  //
+  // Latest by `updatedAt`, compared as the ISO-8601 UTC strings the wire carries
+  // (lexicographic order IS chronological order there, so nothing is parsed).
+  const listedCampaigns = useMemo(() => {
+    const byIdentity = new Map<string, Campaign>();
+    for (const c of featureCampaigns) {
+      const key = `${c.offerId ?? ""}|${c.funnelKey ?? ""}|${c.featureSlug ?? ""}`;
+      const held = byIdentity.get(key);
+      if (!held) {
+        byIdentity.set(key, c);
+        continue;
+      }
+      // A live row wins its identity outright; between two dead ones, the latest.
+      if (isActiveStatus(held.status)) continue;
+      if (isActiveStatus(c.status) || c.updatedAt > held.updatedAt) byIdentity.set(key, c);
+    }
+    return [...byIdentity.values()];
+  }, [featureCampaigns]);
   // Every channel's groups in one lookup, keyed by campaign. A campaign appears in
   // exactly one channel's answer (it IS a channel), so this merge can never make two
   // sources disagree about one row.
@@ -327,10 +356,16 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupsQ.data, ...channelGroupData]);
 
-  // Ordered by ROI DESC. Every row is running by construction (the live filter above), so
-  // there is no status term — the order is the ROI column the table leads with, because a
-  // table that displays one order and sorts by another reads as unordered. A campaign with
-  // no ROI yet has nothing to rank on, so it sits last rather than at zero.
+  // Ordered STATUS, then ROI DESC, then last-updated DESC.
+  //
+  // Status leads because it is the first thing a reader asks of a list that now holds
+  // both: what is running goes above what is not, so a paused campaign never sits
+  // between two live ones on the strength of a return it is no longer earning.
+  // Within a status it is the ROI column the table leads with, because a table that
+  // displays one order and sorts by another reads as unordered. A campaign with no
+  // ROI yet has nothing to rank on, so it sits last of its group rather than at zero
+  // — and last-updated breaks that tie, so the campaigns with no figures are ordered
+  // by the only thing left that distinguishes them.
   //
   // Each row's ceiling is narrowed by the campaign's OWN `offerId`, not by the
   // surface's: billing's per-pair figure spans every offer selling that pair, so
@@ -339,13 +374,34 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // and the offer-scoped one state the same number for the same campaign.
   const budgets = budgetsQ.data;
   const rows = useMemo<CampaignRow[]>(() => {
-    const joined = liveCampaigns.map((c) => ({
+    const joined = listedCampaigns.map((c) => ({
       campaign: c,
       revenue: groupsById.get(c.id) ?? null,
       budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets),
     }));
-    return joined.sort((a, b) => (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1));
-  }, [liveCampaigns, groupsById, budgets]);
+    return joined.sort((a, b) => {
+      const byStatus =
+        Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status));
+      if (byStatus !== 0) return byStatus;
+      const byRoi = (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
+      if (byRoi !== 0) return byRoi;
+      return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
+    });
+  }, [listedCampaigns, groupsById, budgets]);
+
+  // The rows that are RUNNING, for the surfaces whose question is about live
+  // campaigns rather than about the brand's campaigns: the Campaigns page's "#1
+  // acquisition channel" tile, and the funnels the Leads tabs are built from. Both
+  // read this rather than `rows` — naming a channel or offering a funnel tab off a
+  // campaign that stopped months ago describes something the brand no longer sells.
+  //
+  // Derived from `rows`, not from a second filter over the campaigns: one identity
+  // collapse and one ordering, so the two lists can never disagree about which
+  // campaign is first.
+  const activeRows = useMemo(
+    () => rows.filter((r) => isActiveStatus(r.campaign.status)),
+    [rows],
+  );
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate
   // query (CLAUDE.md: reveal-on-settle). The per-channel fan-out is in the gate for
@@ -357,7 +413,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     (budgetsQ.data !== undefined || budgetsQ.isError) &&
     channelGroupQs.every((q) => q.data !== undefined || q.isError);
 
-  return { rows, settled, featureCampaigns };
+  return { rows, activeRows, settled };
 }
 
 export function CampaignsTable({
@@ -374,7 +430,7 @@ export function CampaignsTable({
   offerId?: string;
 }) {
   const router = useRouter();
-  const { rows, settled, featureCampaigns } = useCampaignRows(brandId, featureSlug, offerId);
+  const { rows, settled } = useCampaignRows(brandId, featureSlug, offerId);
 
   return (
     /* Below `md` the row narrows to the two things a reader can act on: what the
@@ -424,7 +480,13 @@ export function CampaignsTable({
           ) : rows.length === 0 ? (
             <tr>
               <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>
-                {featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."}
+                {/* One line, because there is now only one way to be empty: every
+                    campaign belongs to some identity and every identity states a
+                    row, so this is reached exactly when the brand has none on this
+                    feature. The second sentence this replaced named a nothing-is-
+                    running state the list can no longer be in — a paused campaign
+                    IS a row now. */}
+                No campaigns yet.
               </td>
             </tr>
           ) : (

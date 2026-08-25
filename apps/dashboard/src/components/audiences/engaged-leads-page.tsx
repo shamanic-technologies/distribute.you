@@ -947,16 +947,22 @@ export function EngagedLeadsPage({
   // server default, so it reads "website purchases" for a brand that stated nothing)
   // and it collapses the two meeting funnels onto one word, so a brand booking
   // meetings off replies was offered a Website Visits tab it never buys.
+  //
+  // At brand level that is `activeRows`, never `rows`: the table those rows feed also
+  // lists PAUSED campaigns, and a funnel nobody is running has no leads arriving —
+  // offering its tab describes something the brand no longer sells. Under a campaign
+  // it is that campaign's OWN row whatever its status, so a paused campaign's page
+  // still states the funnel it sold.
   const campaignRows = useCampaignRows(brandId, featureSlug);
   const activeFunnelKeys = useMemo(() => {
     const scoped = campaignId
       ? campaignRows.rows.filter((r) => r.campaign.id === campaignId)
-      : campaignRows.rows;
+      : campaignRows.activeRows;
     return scoped
       .map((r) => r.campaign.funnelKey)
       .filter((k): k is NonNullable<typeof k> => k != null)
       .map(normalizeSalesFunnelKey);
-  }, [campaignRows.rows, campaignId]);
+  }, [campaignRows.rows, campaignRows.activeRows, campaignId]);
   const funnelTabs = useMemo(() => leadTabsForFunnels(activeFunnelKeys), [activeFunnelKeys]);
 
   // Realized per-lead OUTCOMES (features-service#476 conversion-tracker attribution)
