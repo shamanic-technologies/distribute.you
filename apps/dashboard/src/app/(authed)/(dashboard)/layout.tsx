@@ -10,6 +10,7 @@ import { DistributeSaleTracker } from "@/components/distribute-sale-tracker";
 import { UserActivityTracker } from "@/components/user-activity-tracker";
 import { UserResolver } from "@/components/user-resolver";
 import { BrandFavicon } from "@/components/brand-favicon";
+import { BrandTint } from "@/components/brand-tint";
 import { CreditAlerts } from "@/components/billing/credit-alerts";
 import { NoAudienceBanner } from "@/components/onboarding/no-audience-banner";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
@@ -77,6 +78,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <UserActivityTracker />
       <UserResolver />
       <BrandFavicon />
+      <BrandTint />
 
       {/* Mobile sidebar overlay */}
       {isOpen && (

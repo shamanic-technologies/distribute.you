@@ -348,3 +348,93 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: var(--dy-muted); }
   color: #0f172a;
   font-weight: 600;
 }
+
+/* ── Per-brand accent tint ─────────────────────────────────────────────
+ * The brand ramp above is ten OKLCH steps sharing hue 258 and carrying a
+ * hand-tuned lightness/chroma curve. Re-tinting a customer's dashboard in
+ * their own colour therefore moves ONE thing — the hue — and leaves that
+ * curve alone: `brand-600` stays at 54% lightness whatever hue it wears, so
+ * a brand tint cannot break the contrast the charter already settled. A ramp
+ * generated from a brand hex instead of hue-rotated off this one would have
+ * to re-derive legibility per brand, and would get it wrong for the muted
+ * ones.
+ *
+ * Everything here is a strict override of a rule ABOVE that hardcodes `258`.
+ * When a new `oklch(... 258)` is added up there, it needs its twin down here
+ * or that one surface stays blue on a tinted dashboard, which reads as a
+ * rendering bug. `brand-tint-charter-hue.test.ts` fails when the two sets
+ * drift apart.
+ *
+ * `--brand-hue` / `--brand-chroma-scale` are set on <html> by BrandTint from
+ * the colours brand-service reads off logo.dev. NO attribute, or a palette
+ * with no real accent in it, means no tint: the brand keeps the charter blue,
+ * which is what every brand looks like today. The fallbacks below restate the
+ * charter so a half-set attribute can never produce an invalid colour. */
+:root[data-brand-tint] {
+  --color-brand-50: oklch(97% calc(0.02 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-100: oklch(94% calc(0.05 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-200: oklch(88% calc(0.09 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-300: oklch(80% calc(0.14 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-400: oklch(72% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-500: oklch(64% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-600: oklch(54% calc(0.16 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-700: oklch(47% calc(0.14 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-800: oklch(41% calc(0.115 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+  --color-brand-900: oklch(35% calc(0.09 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+}
+
+/* The hero-number gradient and the page glow read the accent directly rather
+ * than through the ramp, so they need their own override or a tinted page
+ * shows a blue halo behind red headings. */
+[data-brand-tint] .gradient-text {
+  background: linear-gradient(
+    135deg,
+    oklch(64% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258)) 0%,
+    oklch(54% calc(0.16 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+html.dark[data-brand-tint] body::before {
+  background:
+    radial-gradient(
+      ellipse 70% 55% at 50% -5%,
+      oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.14),
+      transparent 65%
+    ),
+    radial-gradient(ellipse 45% 40% at 85% 35%, oklch(64% 0.2 295 / 0.1), transparent 55%),
+    radial-gradient(ellipse 45% 45% at 10% 70%, oklch(64% 0.18 220 / 0.08), transparent 55%);
+}
+
+/* Dark-mode brand surfaces. These are utility remaps written as literal colours
+ * (they carry an alpha the ramp steps do not), so each one is restated. */
+html.dark[data-brand-tint] .bg-brand-50 {
+  background-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.15);
+}
+html.dark[data-brand-tint] .bg-brand-100 {
+  background-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.2);
+}
+html.dark[data-brand-tint] .border-brand-200 {
+  border-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.3);
+}
+html.dark[data-brand-tint] .border-brand-300 {
+  border-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.25);
+}
+html.dark[data-brand-tint] .text-brand-700 {
+  color: oklch(85% calc(0.13 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+}
+html.dark[data-brand-tint] .text-brand-800 {
+  color: oklch(89% calc(0.08 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+}
+html.dark[data-brand-tint] .focus\:ring-brand-500:focus {
+  --tw-ring-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+}
+html.dark[data-brand-tint] .focus\:border-brand-500:focus {
+  border-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+}
+html.dark[data-brand-tint] .dy-eyebrow {
+  border-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.3);
+  background: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.15);
+  color: oklch(85% calc(0.13 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+}
