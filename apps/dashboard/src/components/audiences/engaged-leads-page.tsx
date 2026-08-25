@@ -36,6 +36,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
 import { buildLeadsCsv } from "@/lib/leads-csv";
 import { CsvDownloadButton } from "@/components/report/csv-button";
+import { OfferMark } from "@/components/marks/offer-mark";
 import { EntitySearchBar } from "@/components/entity-search-bar";
 import { EmailSignature } from "@/components/email-signature";
 import { Skeleton } from "@/components/skeleton";
@@ -315,9 +316,15 @@ function OfferSection({ offer }: { offer: { id: string; name: string | null } })
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
       <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Offer</h3>
-      <p className="text-sm font-medium text-gray-800">
-        {offer.name ?? <span className="text-gray-500">Unnamed offer</span>}
-      </p>
+      {/* The mark leads the name here exactly as it does in the top bar, the tenant
+          switcher, the Offers table and the leads table's own Offer column — an offer
+          wears one mark on every surface that names one. */}
+      <div className="flex min-w-0 items-center gap-2">
+        <OfferMark size="sm" />
+        <p className="truncate text-sm font-medium text-gray-800">
+          {offer.name ?? <span className="text-gray-500">Unnamed offer</span>}
+        </p>
+      </div>
       <Link
         href={`/orgs/${orgId}/brands/${brandId}/offers/${offer.id}`}
         className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-700 hover:underline"
@@ -818,7 +825,7 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
           <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             <th className="px-4 py-3 w-[62%] md:w-auto">Company</th>
             <th className="px-4 py-3 hidden md:table-cell">Contact</th>
-            <th className="px-4 py-3 hidden lg:table-cell">Industry</th>
+            <th className="px-4 py-3 hidden lg:table-cell">Offer</th>
             <th className="px-4 py-3 hidden md:table-cell">Audience</th>
             <th className="px-4 py-3 w-[38%] md:w-auto">Status</th>
             <th className="px-4 py-3 hidden md:table-cell">Date</th>
@@ -881,7 +888,26 @@ function LeadsTable({ leads, tab, selectedLead, onSelectLead, statusOf, audience
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 hidden lg:table-cell"><span className="text-gray-600 truncate block max-w-[160px]" title={org?.industry ?? undefined}>{org?.industry || "-"}</span></td>
+                {/* The OFFER this lead was contacted to be sold, read straight off
+                    `lead.offer` — the same served field the right panel renders, never
+                    a client-side join (the dashboard holds neither the campaign-to-offer
+                    map nor the offer's name). The mark is the SHARED `OfferMark` the
+                    breadcrumb, the tenant switcher and the Offers table draw, so one
+                    thing wears one mark everywhere. No offer resolvable ⟹ a plain dash
+                    and NO mark: a column has to hold its cell shape, but a mark beside
+                    nothing would assert an attribution we do not have. */}
+                <td className="px-4 py-3 hidden lg:table-cell">
+                  {lead.offer ? (
+                    <div className="flex min-w-0 items-center gap-2">
+                      <OfferMark size="sm" />
+                      <span className="truncate text-gray-700 max-w-[160px]" title={lead.offer.name ?? undefined}>
+                        {lead.offer.name ?? <span className="text-gray-500">Unnamed offer</span>}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 hidden md:table-cell"><AudienceCell audience={audience} /></td>
                 <td className="px-4 py-3">
                   <StatusBadge status={status} />
