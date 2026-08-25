@@ -125,11 +125,31 @@ describe("Campaigns page (GA)", () => {
     expect(table).toContain("<StatusPill status={campaign.status} />");
     expect(page).not.toContain("superseded");
     expect(page).not.toContain("Superseded");
-    // The table is the campaigns a brand RUNS — one line per live campaign. A
-    // stopped campaign is history, not a line; its runs still count because
-    // features-service totals each identity (org, brand, funnel, channel)
-    // server-side, so the live campaign's figures include its stopped ancestors.
-    expect(table).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
+  });
+
+  // ONE LINE PER IDENTITY — (offer x funnel x channel) — running or paused.
+  //
+  // campaign-service keeps every superseded row (it used to mint a fresh one on each
+  // workflow switch), so the stored rows are many where the campaign is one: the
+  // brand that surfaced this carries 1 ongoing, 1 manually paused, and 45 `stopped`
+  // ancestors of the ongoing one. The old active-only filter was right about the 45
+  // and wrong about the 1 — it hid the campaign the customer paused, which is the one
+  // they most want to see and turn back on. Collapsing on the identity keeps both:
+  // the ancestors ride on their live row (features-service totals the identity
+  // server-side, so the money is already theirs), and an identity with no live row
+  // states its latest, which IS the paused campaign.
+  it("states one row per identity — the live campaign, else the latest paused one", () => {
+    expect(table).toContain("const listedCampaigns = useMemo(");
+    expect(table).toContain(
+      "const key = `${c.offerId ?? \"\"}|${c.funnelKey ?? \"\"}|${c.featureSlug ?? \"\"}`",
+    );
+    // A live row wins its identity outright; between two dead ones, the latest.
+    expect(table).toContain("if (isActiveStatus(held.status)) continue;");
+    expect(table).toContain(
+      "if (isActiveStatus(c.status) || c.updatedAt > held.updatedAt) byIdentity.set(key, c);",
+    );
+    // The status filter is GONE: a paused campaign is a row.
+    expect(table).not.toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
   });
 
   it("reads per-campaign stats from the features-service grouped reader", () => {
@@ -208,15 +228,44 @@ describe("Campaigns page (GA)", () => {
     expect(body).not.toMatch(/text-(base|lg|xl)/);
   });
 
-  // Every row is a live campaign by construction (the table filters to them
-  // before ranking), so ROI desc is the whole sort — the column the table leads
-  // with. The #1 tile reads that same ordering off `rows`, so it can never name a
-  // campaign other than the first row.
-  it("sorts live campaigns by ROI descending, and the #1 tile reads that same ranking", () => {
-    expect(table).toContain("featureCampaigns.filter((c) => isActiveStatus(c.status))");
-    expect(table).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
-    expect(table).not.toContain("if (byStatus !== 0) return byStatus;");
-    expect(page).toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
+  // STATUS, then ROI DESC, then last-updated DESC — in that order.
+  //
+  // Status leads now that the list holds both: what is running goes above what is
+  // not, so a paused campaign never sits between two live ones on the strength of a
+  // return it is no longer earning. Within a status it is the ROI column the table
+  // leads with, and last-updated breaks the tie between the rows with no figures at
+  // all — the only thing left that distinguishes them.
+  it("sorts by status, then ROI descending, then last updated", () => {
+    const sort = table.slice(table.indexOf("return joined.sort((a, b) => {"));
+    const body = sort.slice(0, sort.indexOf("\n  }, ["));
+    expect(body).toContain(
+      "Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status))",
+    );
+    expect(body).toContain("if (byStatus !== 0) return byStatus;");
+    expect(body).toContain("(b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1)");
+    expect(body).toContain("if (byRoi !== 0) return byRoi;");
+    expect(body).toContain("b.campaign.updatedAt.localeCompare(a.campaign.updatedAt)");
+    // Status is compared before ROI, and ROI before the date.
+    expect(body.indexOf("byStatus")).toBeLessThan(body.indexOf("byRoi"));
+    expect(body.indexOf("byRoi")).toBeLessThan(body.indexOf("updatedAt"));
+  });
+
+  // The surfaces whose question is about LIVE campaigns read `activeRows`, derived
+  // from the same ordered `rows` rather than from a second filter — one identity
+  // collapse and one ordering, so the two lists cannot disagree about which campaign
+  // is first. Naming a channel or offering a funnel tab off a campaign that stopped
+  // months ago describes something the brand no longer sells.
+  it("keeps the #1 tile and the brand-level Leads tabs on the RUNNING rows", () => {
+    expect(table).toContain("const activeRows = useMemo(");
+    expect(table).toContain("rows.filter((r) => isActiveStatus(r.campaign.status))");
+    expect(table).toContain("return { rows, activeRows, settled };");
+    expect(page).toContain("activeRows.find((r) => r.revenue?.roiMultiple != null)");
+    expect(page).not.toContain("rows.find((r) => r.revenue?.roiMultiple != null)");
+    // Leads: brand level reads the running rows; a campaign's own page reads its
+    // own row whatever its status, so a paused campaign still states its funnel.
+    const leads = read("components/audiences/engaged-leads-page.tsx");
+    expect(leads).toContain(": campaignRows.activeRows;");
+    expect(leads).toContain("campaignRows.rows.filter((r) => r.campaign.id === campaignId)");
   });
 
   // `listCampaignsByBrand` answers for the WHOLE brand, so it also returns the PR,
@@ -227,8 +276,11 @@ describe("Campaigns page (GA)", () => {
   // brand whose only campaigns belong to another feature would be told it has some.
   it("lists only the campaigns of the feature whose figures it renders", () => {
     expect(table).toContain("c.featureSlug === featureSlug");
-    expect(table).toContain('featureCampaigns.length === 0 ? "No campaigns yet." : "No active campaigns."');
-    expect(table).not.toContain('campaigns.length === 0 ? "No campaigns yet."');
+    // ONE empty sentence: every campaign belongs to an identity and every identity
+    // states a row, so the list is empty exactly when the brand has no campaign on
+    // this feature. "No active campaigns." named a state it can no longer be in.
+    expect(table).toContain("No campaigns yet.");
+    expect(table).not.toContain("No active campaigns.");
   });
 
   // The words that paint a pill green and the words that rank a row first are ONE

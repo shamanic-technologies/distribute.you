@@ -49,7 +49,7 @@ export function CampaignsPage() {
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
   // different campaigns. Both queries dedupe on their keys, so this costs no network.
-  const { rows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
+  const { activeRows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
 
   // The header's money is asked at the grain this page IS — the offer when one is
   // open, the brand otherwise — never of a single acquisition channel. Same reads,
@@ -79,12 +79,17 @@ export function CampaignsPage() {
   // brand Settings catalogue names it (display argmax over already-fetched rows, not a
   // hidden metric). It reads the SAME ordering the table is sorted by, so the tile names
   // a channel that is actually live rather than one that stopped months ago.
+  //
+  // `activeRows`, not `rows`: the table lists paused campaigns too (a campaign the
+  // customer paused is still one of theirs), and this tile answers a narrower
+  // question — which channel is winning RIGHT NOW. Reading `rows` would let a
+  // stopped campaign's old return name the brand's live #1.
   const topChannel = useMemo(() => {
-    const top = rows.find((r) => r.revenue?.roiMultiple != null);
+    const top = activeRows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
     const def = acquisitionChannelForFeatureSlug(top.campaign.featureSlug);
     return def ? def.name : channelSlugLabel(top.campaign.featureSlug);
-  }, [rows]);
+  }, [activeRows]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate
   // query (CLAUDE.md: reveal-on-settle).
