@@ -225,8 +225,8 @@ describe("daily outcome digest", () => {
       brandName: "Acme",
       metadata: {
         brandName: "Acme",
-        roiToday: "50.0×",
-        roiPrevious: "40.0×",
+        roiToday: "50×",
+        roiPrevious: "40×",
         newOutcomes: "3 positive replies",
         totalOutcomeOrganizations: "2",
       },

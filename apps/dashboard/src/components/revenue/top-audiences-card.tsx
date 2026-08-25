@@ -17,6 +17,7 @@ import type {
   FeatureAudienceStatsRow,
   AudienceWire,
 } from "@/lib/api";
+import { formatRoi } from "@/lib/format-roi";
 
 function formatCents(cents: number | null): string {
   if (cents == null) return "-";
@@ -89,8 +90,7 @@ const RETURN_INFO =
   "Dollars of customer lifetime revenue projected per dollar spent on this audience, using the conversion rates and lifetime revenue set in Brand Settings. Ranked highest first: this is where more budget is worth putting. It is a projection from what each audience has produced so far, not money already collected.";
 
 function formatReturn(multiple: number | null): string {
-  if (multiple == null) return "-";
-  return `${multiple.toFixed(multiple < 10 ? 1 : 0)}×`;
+  return formatRoi(multiple, "-");
 }
 
 function audienceInitials(name: string): string {

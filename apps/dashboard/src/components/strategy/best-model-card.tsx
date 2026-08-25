@@ -6,6 +6,7 @@ import { WORKFLOW_GRAIN_LABEL } from "@/lib/strategy-model";
 import { stepsFor, type GoalStep } from "@/lib/goal-steps";
 import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import type { WorkflowProjectionResolved, WorkflowProjectionRow } from "@/lib/api";
+import { formatRoi } from "@/lib/format-roi";
 
 type Grain = WorkflowProjectionResolved["grain"];
 
@@ -180,7 +181,7 @@ export function BestModelStats({
           </div>
           <p className="text-xs text-gray-500">
             {roiMultiple != null
-              ? `Projected ${roiMultiple.toLocaleString("en-US", { maximumFractionDigits: 1 })}× lifetime return on each dollar`
+              ? `Projected ${formatRoi(roiMultiple)} lifetime return on each dollar`
               : "Selected automatically on each run from live performance"}
           </p>
         </div>
@@ -224,7 +225,7 @@ export function BestModelStats({
           label="Lifetime revenue on each dollar spent"
           value={
             roiMultiple != null
-              ? `${roiMultiple.toLocaleString("en-US", { maximumFractionDigits: 1 })}×`
+              ? formatRoi(roiMultiple)
               : "-"
           }
           hint="Lifetime revenue of a paid client per dollar of outreach spend"

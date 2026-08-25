@@ -15,6 +15,7 @@ import { ProviderLogo } from "@/components/provider-logo";
 import { PROVIDER_DOMAINS } from "@/lib/api-registry";
 import { audienceFilterGroups } from "@/lib/audience-filter-groups";
 import { costSoFarFloorCents } from "@/lib/cost-so-far-floor";
+import { formatRoi } from "@/lib/format-roi";
 import { pollOptions } from "@/lib/query-options";
 import {
   fetchFeatureAudienceStats,
@@ -45,10 +46,11 @@ function formatCents(cents: number | null): string {
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
-/** Projected return per dollar. One decimal, byte-equal with every other ROI on the
- *  dashboard (the ROI stat card, the Return-on-spend chart, the Campaigns table). */
+/** Projected return per dollar, through the ONE fleet-wide ROI rule (`formatRoi`) so this
+ *  column, the ROI stat card, the Return-on-spend chart and the Campaigns table cannot
+ *  print one number two ways. The dash is this table's own word for an unmeasured row. */
 function formatReturn(multiple: number | null | undefined): string {
-  return multiple == null ? "-" : `${multiple.toFixed(1)}×`;
+  return formatRoi(multiple, "-");
 }
 
 /** Share of lifetime revenue, whole percent — the same rendering the Campaigns table

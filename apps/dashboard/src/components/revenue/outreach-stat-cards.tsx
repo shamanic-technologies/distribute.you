@@ -10,15 +10,12 @@ import { getBrandConversionToken } from "@/lib/api";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
 import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { formatRoi } from "@/lib/format-roi";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { CostEconomics, Spend } from "@/lib/revenue-view";
 
 function formatCount(n: number): string {
   return Number(n).toLocaleString("en-US");
-}
-
-function formatRoi(multiple: number | null | undefined): string {
-  return multiple == null ? "—" : `${multiple.toFixed(1)}×`;
 }
 
 function formatPct(pct: number | null | undefined): string {
