@@ -44,6 +44,12 @@ export interface ControlCampaign extends CampaignBudgetRow {
   id: string;
   status: string;
   offerId: string | null;
+  /**
+   * When campaign-service created this row. Read only to pick which row of a
+   * campaign a RESTART targets when none of them is running: the most recent one
+   * is the campaign as it last ran, and its ancestors are history.
+   */
+  createdAt: string;
 }
 
 /**
@@ -61,9 +67,34 @@ export function isRunningStatus(status: string): boolean {
   return ACTIVE_STATUSES.has(status.toLowerCase());
 }
 
-/** One campaign, as the controls modal shows and edits it. */
+/**
+ * One campaign, as the controls modal shows and edits it.
+ *
+ * A row is one campaign as a CUSTOMER knows it — (funnel x channel x offer) —
+ * not one campaign-service row. campaign-service mints a fresh row every time a
+ * campaign's workflow changes and keeps only the newest `ongoing`, so a campaign
+ * that has been running for months is stored as dozens of rows: one live and the
+ * rest its own history. That triple is also exactly what billing keys a ceiling
+ * on, so it is the only grouping under which a row has one ceiling and one
+ * answer to "is this running".
+ */
 export interface ControlRow {
+  /**
+   * This campaign's identity, and the key for its draft, its failure and its
+   * React node. Not a campaign-service id: several of those share one row.
+   */
+  rowId: string;
+  /**
+   * The campaign-service row a RESTART targets — the live one when there is one,
+   * else the most recent, which is the campaign as it last ran.
+   */
   campaignId: string;
+  /**
+   * Every row of this campaign campaign-service reports as running. Pausing
+   * stops each of them: migration 0044 keeps at most one, and stopping the one
+   * we happened to pick would silently leave a second live if that ever changed.
+   */
+  runningCampaignIds: string[];
   /** Is it running right now, per campaign-service's own word. */
   running: boolean;
   /**
@@ -83,7 +114,7 @@ export interface ControlRow {
  * Which campaigns a grain may control, in a stable order.
  *
  * The rows are the same at every grain and only the FILTER differs, because a
- * campaign is the only thing either write can address. Three rules, each
+ * campaign is the only thing either write can address. Four rules, each
  * load-bearing:
  *
  *   - STOPPED campaigns are included. The modal is where a customer restarts
@@ -94,10 +125,20 @@ export interface ControlRow {
  *   - The offer filter reads the campaign's OWN `offerId`. A campaign carrying
  *     none belongs to no offer and is left out rather than folded into whichever
  *     one the reader happens to be looking at.
+ *   - Rows are GROUPED by (funnel, channel, offer) — one line per campaign as a
+ *     customer knows it, not one per stored row. campaign-service mints a fresh
+ *     row on every workflow change, so one campaign is stored as many; a list
+ *     per row shows the same campaign dozens of times, each offering to edit the
+ *     ONE billing ceiling they all share, and a total that adds that ceiling up
+ *     once per row. Measured in prod: one offer held 46 rows of a single
+ *     campaign and read $2,310/day against a real $50.
  *
- * Order is running-first then by id, so the rows do not reshuffle under the
- * cursor as toggles are flipped — the sort key is the SAVED status, never the
- * draft.
+ * A campaign that predates the funnels names no triple, so it groups by its own
+ * id: it has no ceiling to share and nothing to double count.
+ *
+ * Order is running-first then by identity, so the rows do not reshuffle under
+ * the cursor as toggles are flipped — the sort key is the SAVED status, never
+ * the draft.
  */
 export function buildControlRows(
   campaigns: ControlCampaign[],
@@ -110,46 +151,87 @@ export function buildControlRows(
     if (filter.offerId) return c.offerId === filter.offerId;
     return true;
   });
-  return scoped
-    .map((c) => {
-      const scope = campaignBudgetScope(c);
+
+  const groups = new Map<string, ControlCampaign[]>();
+  for (const c of scoped) {
+    const scope = campaignBudgetScope(c);
+    const rowId = scope
+      ? `${scope.def.key}|${scope.featureSlug}|${c.offerId ?? ""}`
+      : `campaign:${c.id}`;
+    const bucket = groups.get(rowId);
+    if (bucket) bucket.push(c);
+    else groups.set(rowId, [c]);
+  }
+
+  return [...groups.entries()]
+    .map(([rowId, members]) => {
+      const runningCampaignIds = members.filter((c) => isRunningStatus(c.status)).map((c) => c.id);
+      const representative = pickRepresentative(members, runningCampaignIds);
+      const scope = campaignBudgetScope(representative);
       return {
-        campaignId: c.id,
-        running: isRunningStatus(c.status),
+        rowId,
+        campaignId: representative.id,
+        runningCampaignIds,
+        running: runningCampaignIds.length > 0,
         scope,
-        savedCents: scope ? campaignSavedCents(scope, c.offerId ?? undefined, budgets) : 0,
-        offerId: c.offerId,
+        savedCents: scope
+          ? campaignSavedCents(scope, representative.offerId ?? undefined, budgets)
+          : 0,
+        offerId: representative.offerId,
       };
     })
     .sort((a, b) => {
       if (a.running !== b.running) return a.running ? -1 : 1;
-      return a.campaignId.localeCompare(b.campaignId);
+      return a.rowId.localeCompare(b.rowId);
     });
+}
+
+/**
+ * The stored row a restart addresses: the live one, else the most recent.
+ *
+ * campaign-service keeps at most one `ongoing` per identity, so the live branch
+ * picks the only one there is. With none live, the newest row is the campaign as
+ * it last ran and its ancestors are history — restarting one of those would
+ * resume a workflow the customer replaced. Ties break on the id so the pick is
+ * deterministic and a retry addresses the same row.
+ */
+function pickRepresentative(
+  members: ControlCampaign[],
+  runningCampaignIds: string[],
+): ControlCampaign {
+  if (runningCampaignIds.length > 0) {
+    return members.find((c) => c.id === runningCampaignIds[0])!;
+  }
+  return [...members].sort((a, b) => {
+    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+    return a.id.localeCompare(b.id);
+  })[0];
 }
 
 /**
  * What a scope is doing, as ONE word.
  *
- * Ordered and exhaustive over the rows, which is the point: a scope where some
- * campaigns run and others do not is neither running nor stopped, and printing
- * either of those two words for it states something false about half of them.
- * `none` is its own answer as well — "there is nothing here" is not "everything
- * is stopped".
+ * A scope is RUNNING when at least one campaign in it is: the customer asked us
+ * to reach people and we are reaching them. There is deliberately no third word
+ * for a scope where some run and others do not — "partially paused" was one, and
+ * it read as a fault on a brand doing exactly what it meant to (one funnel live,
+ * an older one deliberately stopped). Which campaigns are running is what the
+ * rows themselves say, one toggle each; the pill answers the coarser question
+ * the reader asked by glancing at it.
+ *
+ * `none` stays its own answer: "there is nothing here" is not "everything is
+ * stopped".
  */
-export type ControlRollup = "none" | "paused" | "partially-paused" | "active";
+export type ControlRollup = "none" | "paused" | "active";
 
 export function rollupStatus(rows: ControlRow[]): ControlRollup {
   if (rows.length === 0) return "none";
-  const running = rows.filter((r) => r.running).length;
-  if (running === 0) return "paused";
-  if (running === rows.length) return "active";
-  return "partially-paused";
+  return rows.some((r) => r.running) ? "active" : "paused";
 }
 
 export const ROLLUP_LABEL: Record<ControlRollup, string> = {
   none: "No campaign",
   paused: "Paused",
-  "partially-paused": "Partially paused",
   active: "Active",
 };
 
@@ -161,7 +243,6 @@ export const ROLLUP_LABEL: Record<ControlRollup, string> = {
 export const ROLLUP_STYLE: Record<ControlRollup, string> = {
   none: "bg-gray-100 text-gray-600 border-gray-200",
   paused: "bg-gray-100 text-gray-500 border-gray-200",
-  "partially-paused": "bg-amber-50 text-amber-700 border-amber-200",
   active: "bg-green-50 text-green-700 border-green-200",
 };
 
@@ -173,6 +254,11 @@ export const ROLLUP_STYLE: Record<ControlRollup, string> = {
  * card's per-offer total and for the same reason: billing's per-pair figure
  * spans every offer selling that pair, so it names money a reader on one offer
  * cannot see.
+ *
+ * It is correct ONLY because a row is a campaign IDENTITY rather than a stored
+ * campaign row: billing keys one ceiling per (funnel, channel, offer), so a list
+ * per stored row would add the same ceiling up once per row. That is exactly
+ * what it did — 46 rows of one campaign read $2,310/day against a real $50.
  *
  * This is NOT how the BRAND's total is obtained. billing serves that figure
  * (`GET /brands/:id/daily-budget`) and the brand Overview reads it; recomposing
@@ -197,14 +283,21 @@ export interface ControlDraft {
   budget: string;
 }
 
-/** One write the Confirm will make. */
+/**
+ * One write the Confirm will make.
+ *
+ * Both carry `rowId` as well as what they address, because a failure is reported
+ * against the ROW the customer edited — and a pause fans out over every stored
+ * row of one campaign that is running, so several writes can belong to one line.
+ */
 export interface StatusWrite {
+  rowId: string;
   campaignId: string;
   activate: boolean;
 }
 
 export interface BudgetWrite {
-  campaignId: string;
+  rowId: string;
   funnelKey: string;
   featureSlug: string;
   offerId: string | null;
@@ -214,7 +307,7 @@ export interface BudgetWrite {
 export interface ControlsDiff {
   statusWrites: StatusWrite[];
   budgetWrites: BudgetWrite[];
-  /** A row whose typed budget is not a whole number of dollars. */
+  /** A row whose typed budget is not a whole number of dollars, by `rowId`. */
   invalidRows: string[];
 }
 
@@ -236,23 +329,31 @@ export function controlsDiff(
   const invalidRows: string[] = [];
 
   for (const row of rows) {
-    const draft = drafts[row.campaignId];
+    const draft = drafts[row.rowId];
     if (!draft) continue;
 
     if (draft.running !== row.running) {
-      statusWrites.push({ campaignId: row.campaignId, activate: draft.running });
+      if (draft.running) {
+        // One write: the row a restart addresses is the campaign as it last ran.
+        statusWrites.push({ rowId: row.rowId, campaignId: row.campaignId, activate: true });
+      } else {
+        // Every running row of this campaign, so a pause cannot leave one live.
+        for (const campaignId of row.runningCampaignIds) {
+          statusWrites.push({ rowId: row.rowId, campaignId, activate: false });
+        }
+      }
     }
 
     if (!row.scope) continue;
     const typed = parseDailyBudgetUsd(draft.budget);
     if (typed === null) {
-      invalidRows.push(row.campaignId);
+      invalidRows.push(row.rowId);
       continue;
     }
     const cents = typed * 100;
     if (cents !== row.savedCents) {
       budgetWrites.push({
-        campaignId: row.campaignId,
+        rowId: row.rowId,
         funnelKey: row.scope.def.key,
         featureSlug: row.scope.featureSlug,
         offerId: row.offerId,
@@ -298,7 +399,7 @@ export function projectedFunnelTotalsUsd(
       const siblings = Math.max(0, (savedFunnelCents[key] ?? 0) - inModal);
       out[key] = Math.round(siblings / 100);
     }
-    const typed = parseDailyBudgetUsd(drafts[row.campaignId]?.budget ?? "");
+    const typed = parseDailyBudgetUsd(drafts[row.rowId]?.budget ?? "");
     out[key] += typed !== null && typed > 0 ? typed : 0;
   }
   return out;
@@ -320,8 +421,14 @@ export function diffSummary(rows: ControlRow[], diff: ControlsDiff): string | nu
   if (!hasChanges(diff)) return null;
 
   const parts: string[] = [];
-  const activating = diff.statusWrites.filter((w) => w.activate).length;
-  const stopping = diff.statusWrites.length - activating;
+  // Counted by ROW, never by write: a pause fans out over every stored row of one
+  // campaign, and the sentence names campaigns as the customer knows them.
+  const activating = new Set(
+    diff.statusWrites.filter((w) => w.activate).map((w) => w.rowId),
+  ).size;
+  const stopping = new Set(
+    diff.statusWrites.filter((w) => !w.activate).map((w) => w.rowId),
+  ).size;
   if (activating > 0) parts.push(`${activating} ${plural(activating)} restarting`);
   if (stopping > 0) parts.push(`${stopping} ${plural(stopping)} pausing`);
 
@@ -344,9 +451,9 @@ function fmtWhole(cents: number): string {
 
 /** What the rows would sum to once this diff lands. Used only by the summary. */
 export function nextTotalCents(rows: ControlRow[], diff: ControlsDiff): number {
-  const byId = new Map(diff.budgetWrites.map((w) => [w.campaignId, w.cents]));
+  const byRow = new Map(diff.budgetWrites.map((w) => [w.rowId, w.cents]));
   return rows.reduce((sum, r) => {
-    const cents = byId.get(r.campaignId) ?? r.savedCents;
+    const cents = byRow.get(r.rowId) ?? r.savedCents;
     return sum + (cents > 0 ? cents : 0);
   }, 0);
 }

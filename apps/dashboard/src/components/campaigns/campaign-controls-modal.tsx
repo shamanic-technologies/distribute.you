@@ -35,6 +35,12 @@ import { Skeleton } from "@/components/skeleton";
  * A grain that edited an aggregate would have to split it back across the
  * campaigns, and no split the customer did not state is honest.
  *
+ * A row is a campaign as the CUSTOMER knows it — (funnel x channel x offer) —
+ * never one campaign-service row. campaign-service mints a fresh row on every
+ * workflow change and keeps only the newest `ongoing`, so one campaign is stored
+ * as many; listing them per row showed the same campaign dozens of times, each
+ * offering to edit the one billing ceiling they all share.
+ *
  * Each row carries the two answers a campaign has, and they stay INDEPENDENT:
  *
  *   - a toggle, which flips campaign-service's own status. It costs nothing to
@@ -105,8 +111,8 @@ export function CampaignControlsModal({
     setDrafts((prev) => {
       const next: Record<string, ControlDraft> = {};
       for (const row of rows) {
-        next[row.campaignId] = touched.has(row.campaignId)
-          ? (prev[row.campaignId] ?? draftFor(row))
+        next[row.rowId] = touched.has(row.rowId)
+          ? (prev[row.rowId] ?? draftFor(row))
           : draftFor(row);
       }
       return next;
@@ -142,7 +148,7 @@ export function CampaignControlsModal({
           const key = row.scope.def.key;
           return funnelBudgetBelowMinimum(key, projected[key] ?? 0, savedFunnelCents[key] ?? 0);
         })
-        .map((r) => r.campaignId),
+        .map((r) => r.rowId),
     [rows, projected, savedFunnelCents],
   );
 
@@ -151,21 +157,21 @@ export function CampaignControlsModal({
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (budgetsQ.data !== undefined || budgetsQ.isError);
 
-  function edit(campaignId: string, patch: Partial<ControlDraft>) {
-    setTouched((prev) => new Set(prev).add(campaignId));
+  function edit(rowId: string, patch: Partial<ControlDraft>) {
+    setTouched((prev) => new Set(prev).add(rowId));
     setDrafts((prev) => ({
       ...prev,
-      [campaignId]: { ...(prev[campaignId] ?? { running: false, budget: "" }), ...patch },
+      [rowId]: { ...(prev[rowId] ?? { running: false, budget: "" }), ...patch },
     }));
   }
 
   /** The bulk row: one decision for every campaign on screen. */
   function setAllRunning(running: boolean) {
-    setTouched(new Set(rows.map((r) => r.campaignId)));
+    setTouched(new Set(rows.map((r) => r.rowId)));
     setDrafts((prev) => {
       const next = { ...prev };
       for (const row of rows) {
-        next[row.campaignId] = { ...(next[row.campaignId] ?? draftFor(row)), running };
+        next[row.rowId] = { ...(next[row.rowId] ?? draftFor(row)), running };
       }
       return next;
     });
@@ -181,13 +187,13 @@ export function CampaignControlsModal({
     // brand row set and billing answers with the WHOLE set each time, so racing
     // them would leave whichever landed last in the cache regardless of order.
     for (const write of diff.statusWrites) {
-      const row = rows.find((r) => r.campaignId === write.campaignId);
+      const row = rows.find((r) => r.rowId === write.rowId);
       const featureSlug = row?.scope?.featureSlug;
       if (!featureSlug) {
         // campaign-service validates the workflow's tracking headers before it
         // flips the row, so an activate with no channel to name would 400. Say so
         // rather than sending a request we know is refused.
-        nextFailures[write.campaignId] = controlWriteErrorMessage(400, "status");
+        nextFailures[write.rowId] = controlWriteErrorMessage(400, "status");
         continue;
       }
       try {
@@ -197,7 +203,7 @@ export function CampaignControlsModal({
         });
       } catch (err) {
         console.error("[dashboard] setCampaignStatus failed", err);
-        nextFailures[write.campaignId] = controlWriteErrorMessage(
+        nextFailures[write.rowId] = controlWriteErrorMessage(
           err instanceof ApiError ? err.status : null,
           "status",
         );
@@ -215,7 +221,7 @@ export function CampaignControlsModal({
         );
       } catch (err) {
         console.error("[dashboard] saveBrandFunnelBudget failed", err);
-        nextFailures[write.campaignId] = controlWriteErrorMessage(
+        nextFailures[write.rowId] = controlWriteErrorMessage(
           err instanceof ApiError ? err.status : null,
           "budget",
         );
@@ -312,12 +318,12 @@ export function CampaignControlsModal({
 
               <ul className="divide-y divide-gray-100">
                 {rows.map((row) => {
-                  const draft = drafts[row.campaignId] ?? draftFor(row);
+                  const draft = drafts[row.rowId] ?? draftFor(row);
                   const key = row.scope?.def.key;
-                  const floorHit = belowFloor.includes(row.campaignId);
-                  const invalid = diff.invalidRows.includes(row.campaignId);
+                  const floorHit = belowFloor.includes(row.rowId);
+                  const invalid = diff.invalidRows.includes(row.rowId);
                   return (
-                    <li key={row.campaignId} className="py-3">
+                    <li key={row.rowId} className="py-3">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         {/* The SAME identity the Campaigns table's first column
                             states, from the same component: this modal changes
@@ -335,7 +341,7 @@ export function CampaignControlsModal({
                             role="switch"
                             aria-checked={draft.running}
                             aria-label={draft.running ? "Pause this campaign" : "Restart this campaign"}
-                            onClick={() => edit(row.campaignId, { running: !draft.running })}
+                            onClick={() => edit(row.rowId, { running: !draft.running })}
                             className={`relative h-6 w-11 shrink-0 rounded-full transition ${
                               draft.running ? "bg-green-500" : "bg-gray-300"
                             }`}
@@ -353,7 +359,7 @@ export function CampaignControlsModal({
                               inputMode="numeric"
                               value={draft.budget}
                               disabled={!row.scope}
-                              onChange={(e) => edit(row.campaignId, { budget: e.target.value })}
+                              onChange={(e) => edit(row.rowId, { budget: e.target.value })}
                               aria-label="Daily budget in dollars"
                               className="w-20 rounded-md border border-gray-200 px-2 py-1 text-right tabular-nums focus:ring-2 focus:ring-brand-300 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
                             />
@@ -377,8 +383,8 @@ export function CampaignControlsModal({
                           {funnelBudgetTip(key, savedFunnelCents[key] ?? 0)}
                         </p>
                       )}
-                      {failures[row.campaignId] && (
-                        <p className="mt-1.5 text-xs text-red-600">{failures[row.campaignId]}</p>
+                      {failures[row.rowId] && (
+                        <p className="mt-1.5 text-xs text-red-600">{failures[row.rowId]}</p>
                       )}
                     </li>
                   );
