@@ -1,15 +1,8 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
-export const metadata: Metadata = {
-  title: "Quick Start",
-  description: "Get started with distribute in 5 minutes. Install the MCP server and launch your first campaign from Claude Code or Cursor.",
-  openGraph: {
-    title: "Quick Start | distribute Docs",
-    description: "Get started with distribute in 5 minutes.",
-  },
-};
+export const metadata = docsMetadata("/quickstart");
 
 const LLM_INSTRUCTIONS = `# distribute Quick Start
 

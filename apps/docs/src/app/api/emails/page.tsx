@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Emails API",
-  description: "View AI-generated emails and full outreach sequences for any campaign, with content and send status, via the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/emails");
 
 const LLM_INSTRUCTIONS = `# Emails API
 

@@ -1,9 +1,6 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 
-export const metadata: Metadata = {
-  title: "ChatGPT Integration",
-  description: "Use distribute inside ChatGPT — connect through the MCP connector or call the REST API directly to automate your distribution.",
-};
+export const metadata = docsMetadata("/integrations/chatgpt");
 
 export default function ChatGPTIntegrationPage() {
   return (

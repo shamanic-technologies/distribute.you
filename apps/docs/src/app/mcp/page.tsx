@@ -1,16 +1,9 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
-export const metadata: Metadata = {
-  title: "MCP Server",
-  description: "Use distribute from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client. 35 tools for brands, campaigns, workflows, and more.",
-  openGraph: {
-    title: "MCP Server | distribute Docs",
-    description: "Complete guide to using distribute via MCP.",
-  },
-};
+export const metadata = docsMetadata("/mcp");
 
 const LLM_INSTRUCTIONS = `# distribute MCP Server
 
@@ -40,7 +33,7 @@ export default function McpOverviewPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">MCP Server</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">distribute.you MCP Server</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">

@@ -25,6 +25,7 @@ const NAV_ITEMS = [
     title: "API Reference",
     items: [
       { name: "Overview", href: "/api" },
+      { name: "OpenAPI Spec", href: "/openapi" },
       { name: "Brands", href: "/api/brands" },
       { name: "Features", href: "/api/features" },
       { name: "Campaigns", href: "/api/campaigns" },

@@ -1,13 +1,6 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 
-export const metadata: Metadata = {
-  title: "Webhooks",
-  description: "Receive real-time notifications for campaign events. Webhook events, payload structure, and signature verification.",
-  openGraph: {
-    title: "Webhooks | distribute Docs",
-    description: "Real-time webhook notifications for distribute.",
-  },
-};
+export const metadata = docsMetadata("/api/webhooks");
 
 export default function WebhooksApiPage() {
   return (
