@@ -12,7 +12,6 @@ import {
   getFeatureRevenue,
   fetchFeatureStats,
   getBrandSalesEconomics,
-  getBrandDailyBudget,
   getBrandPause,
   getBrandConversionToken,
   getFeaturePipelineActivity,
@@ -47,6 +46,7 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
+import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { campaignBudgetCents } from "@/lib/campaign-budget";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
@@ -268,11 +268,12 @@ export function CampaignOverviewPage() {
   // One shared mapping with the brand Overview + Audiences page — see goalForOptimizationGoal.
   const audienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
 
-  const { data: budgetData, isError: budgetIsError } = useAuthQuery(
-    ["brandDailyBudget", brandId],
-    () => getBrandDailyBudget(brandId),
-    { enabled, ...pollOptions },
-  );
+  // What the BRAND may spend today — its RUNNING campaigns' ceilings. billing's
+  // own served brand total answered this until now and it is status-BLIND
+  // (billing keys ceilings on the triple and stores no status), so a paused
+  // sibling campaign's money stayed in the month this page projects from.
+  const { cents: runningDailyBudgetCents, settled: budgetSettled } =
+    useRunningDailyBudgetCents(brandId, { enabled });
 
   const { data: pauseData } = useAuthQuery(
     ["brandPause", brandId],
@@ -292,8 +293,8 @@ export function CampaignOverviewPage() {
   // Same cost column the Audiences table leads with — never features-service's sortMetric.
   const audienceStatsMetric = audienceRankMetric(optimizationGoal, trackerSetUp);
   const monthlyBudgetUsd =
-    budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
-      ? (budgetData.dailyBudgetCents / 100) * 30
+    runningDailyBudgetCents != null && runningDailyBudgetCents > 0
+      ? (runningDailyBudgetCents / 100) * 30
       : null;
 
   const { data: outcomeProjection, isError: outcomeIsError } = useAuthQuery(
@@ -422,7 +423,7 @@ export function CampaignOverviewPage() {
     audiencesData !== undefined || audiencesIsError,
   ]);
   const outcomeRevealed = useCoordinatedReveal([
-    budgetData !== undefined || budgetIsError,
+    budgetSettled,
     economicsData !== undefined || economicsIsError,
     monthlyBudgetUsd == null || outcomeProjection !== undefined || outcomeIsError,
   ]);

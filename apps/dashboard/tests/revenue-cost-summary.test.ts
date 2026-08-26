@@ -42,9 +42,11 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
     // of its own. Borrowing the brand's would put a denominator of a wider scope
     // than the numerator beside it, and splitting it across the offers would invent
     // a share nobody configured.
-    expect(overview).toContain(
-      "dailyBudgetCents={offerId ? null : budgetData?.dailyBudgetCents ?? null}",
-    );
+    // ...and at brand scope it is what may be spent TODAY — the RUNNING campaigns'
+    // ceilings — never billing's served brand total, which is status-blind and
+    // therefore counted a paused campaign's money in the denominator.
+    expect(overview).toContain("dailyBudgetCents={offerId ? null : runningDailyBudgetCents}");
+    expect(overview).not.toContain("budgetData?.dailyBudgetCents");
     expect(overview).toContain("budgetNote={");
     const section = read("components/revenue/revenue-overview-section.tsx");
     // The cost summary lives in the right-of-chart column, replacing the old

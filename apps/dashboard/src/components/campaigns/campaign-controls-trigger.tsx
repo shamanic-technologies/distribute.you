@@ -25,12 +25,23 @@ import { Skeleton } from "@/components/skeleton";
  * regions and a nested button is invalid HTML: the parser closes the outer one
  * early and the surrounding card breaks.
  *
- * The MONEY is read, never recomposed. At brand grain the caller passes billing's
- * own served total (`GET /brands/:id/daily-budget`, which the Overview already
- * reads); at offer grain there is no served figure, so the rows' own ceilings are
- * added up — the same shape as the funnels card's per-offer total, and for the
- * same reason: billing's per-funnel figure spans every offer selling it, so it
- * would name money a reader on one offer cannot see. That sum is honest only
+ * The MONEY is what this scope may spend TODAY — `scopeTotalCents` over the rows,
+ * i.e. the ceilings of the campaigns that are RUNNING — at brand grain and offer
+ * grain alike.
+ *
+ * Brand grain used to pass billing's own served total (`GET
+ * /brands/:id/daily-budget`) instead, and that figure is status-BLIND: billing
+ * keys a ceiling on (funnel x channel x offer) and stores no status, so a paused
+ * campaign's money stayed in it — a brand running one campaign at $50 beside one
+ * paused at $10 read `$60 / day`. Neither producer can answer this alone, since
+ * campaign-service holds the status and no money, and the join costs nothing
+ * here: both query keys are already polled on the page. `totalCentsOverride`
+ * survives for the CAMPAIGN grain, which states its own configured ceiling —
+ * the number Campaign Settings edits, beside a pill already saying it is paused.
+ *
+ * The offer-grain sum is the same shape as the funnels card's per-offer total,
+ * and for the same reason: billing's per-funnel figure spans every offer selling
+ * it, so it would name money a reader on one offer cannot see. That sum is honest only
  * because a ROW is a campaign IDENTITY (funnel x channel x offer) rather than a
  * stored campaign row: billing keys one ceiling on that triple, campaign-service
  * stores one campaign as many rows, and a list per row added the same ceiling up
@@ -49,8 +60,10 @@ export function CampaignControlsTrigger({
   /** Scope to one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
   /**
-   * billing's own served figure for this scope, when one exists. Brand grain
-   * passes it; the others have none and the rows are added up instead.
+   * One campaign's own configured ceiling, at CAMPAIGN grain only. Brand and
+   * offer grain state what may be spent today instead, which is the rows' own
+   * running total — no served figure can answer that, because billing stores no
+   * status.
    */
   totalCentsOverride?: number | null;
   className?: string;

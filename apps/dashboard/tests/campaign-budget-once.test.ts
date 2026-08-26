@@ -48,11 +48,17 @@ describe("campaign Overview — one daily budget, its own, read-only", () => {
     expect(page).not.toContain("maxBudgetDailyUsd");
   });
 
-  it("keeps the brand-level read for the outcome forecast only", () => {
-    // billing answers it with the sum of the funnel ceilings, so the monthly
-    // forecast is the same number it always was.
+  it("forecasts a month from what may be spent TODAY, not from billing's total", () => {
+    // billing answers its own brand total with the sum of every funnel ceiling and
+    // stores no campaign status, so a paused sibling's money rode into the month
+    // this page projects. The running-only join is the only figure that answers
+    // "what will be spent", and it costs no network — both its query keys are
+    // already polled by the controls trigger on this page.
     expect(page).toContain("const monthlyBudgetUsd");
-    expect(page).toContain("budgetData?.dailyBudgetCents");
+    expect(page).toContain("useRunningDailyBudgetCents(brandId");
+    expect(page).toContain("runningDailyBudgetCents");
+    expect(page).not.toContain("getBrandDailyBudget");
+    expect(page).not.toContain("budgetData?.dailyBudgetCents");
   });
 
   it("never brings the brand-level run-status bar back", () => {

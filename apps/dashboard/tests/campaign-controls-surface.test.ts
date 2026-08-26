@@ -59,15 +59,20 @@ describe("campaign controls — one modal, three grains", () => {
 });
 
 describe("the trigger states money it READS", () => {
-  it("takes billing's own served brand total rather than recomposing one", () => {
-    // billing serves the brand's daily budget; summing the rows here is how two
-    // surfaces come to state one number two ways.
-    expect(brandPage).toContain("budgetData?.dailyBudgetCents");
-    expect(brandPage).toContain("totalCentsOverride={offerId ? undefined :");
+  it("states what may be spent TODAY at brand grain, not billing's status-blind total", () => {
+    // billing keys a ceiling on (funnel x channel x offer) and stores NO status, so
+    // its served brand total counts a paused campaign's money: one running at $50
+    // beside one paused at $10 read `$60 / day`. Neither producer can answer this
+    // alone, and the join is free — the trigger already holds both reads.
+    expect(brandPage).not.toContain("totalCentsOverride");
+    expect(brandPage).not.toContain("getBrandDailyBudget");
+    expect(brandPage).toContain("<CampaignControlsTrigger brandId={brandId} offerId={offerId} />");
   });
 
-  it("adds up only the OFFER's own campaign ceilings, where billing serves none", () => {
+  it("adds up only the RUNNING campaigns' ceilings, at every grain it sums", () => {
     expect(trigger).toContain("scopeTotalCents(rows)");
+    const lib = read("lib/campaign-controls.ts");
+    expect(lib).toContain("r.running && r.savedCents > 0");
   });
 
   it("counts one ceiling per campaign, because a row is an identity", () => {
