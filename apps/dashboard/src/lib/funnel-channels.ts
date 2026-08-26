@@ -112,12 +112,22 @@ export interface FunnelChannelBudget {
  * states which features it can provision, this reads that instead and the list
  * goes. Until then, adding a slug here without adding it there offers a dead
  * channel, and adding it there without adding it here hides a live one.
+ *
+ * GOOGLE ADS IS DELIBERATELY ABSENT, and the reason is one hop further out than
+ * this mirror can see. Everything a Google Ads campaign needs to be created now
+ * exists: google-service wraps the Ads API and declares the spend as the org's
+ * cost, features-service publishes the channel, billing states its floor, and
+ * campaign-service provisions and schedules the campaign. What does not exist is
+ * a WORKFLOW for it, and prod holds 553 for cold email against zero here. So a
+ * customer funding it would get a campaign that is provisioned, scheduled, and
+ * then produces nothing forever, which is the precise failure this whole gate
+ * exists to prevent: being able to provision a campaign is not being able to RUN
+ * one. Add the slug when a workflow answers for it, not before.
  */
 export const PROVISIONABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set([
   "sales-cold-email-outreach",
   "sales-crm-email-outreach",
   "feedback-request-cold-email-outreach",
-  "google-ads",
 ]);
 
 export function channelsForFunnel(

@@ -59,9 +59,7 @@ describe("what a customer may FUND", () => {
         salesFunnels: ["website_purchases"],
       },
     ];
-    expect(channelsForFunnel("visit_signup", published).map((c) => c.featureSlug)).toEqual([
-      "google-ads",
-    ]);
+    expect(channelsForFunnel("visit_signup", published)).toEqual([]);
   });
 
   // The narrowing is about FUNDING alone. A channel outside it still resolves,
@@ -85,10 +83,13 @@ describe("what a customer may FUND", () => {
   it("mirrors campaign-service's set and says so", () => {
     expect([...PROVISIONABLE_CHANNEL_SLUGS].sort()).toEqual([
       "feedback-request-cold-email-outreach",
-      "google-ads",
       "sales-cold-email-outreach",
       "sales-crm-email-outreach",
     ]);
+    // Provisioning a campaign is not RUNNING one. Every service a Google Ads
+    // campaign needs is in prod; the workflow that would execute it is not, so
+    // funding it would produce a campaign that is scheduled and does nothing.
+    expect(PROVISIONABLE_CHANNEL_SLUGS.has("google-ads")).toBe(false);
   });
 });
 
