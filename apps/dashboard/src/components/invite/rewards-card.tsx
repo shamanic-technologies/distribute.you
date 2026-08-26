@@ -14,7 +14,7 @@ import {
 } from "@/lib/api";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Toast } from "@/components/toast";
-import { formatBillingCents } from "@/lib/format-number";
+import { formatBillingCentsWhole } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
 import { promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
 
@@ -94,7 +94,7 @@ function NextPromise({
 }) {
   const width = promiseProgressWidth(promise.progressPct);
   const remaining = promise.remainingToUnlockCents
-    ? formatBillingCents(promise.remainingToUnlockCents)
+    ? formatBillingCentsWhole(promise.remainingToUnlockCents)
     : null;
 
   return (
@@ -104,7 +104,7 @@ function NextPromise({
     >
       <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 leading-snug">
         <span aria-hidden="true">🎁</span>
-        {formatBillingCents(headlineCents(totalCents, promise))} on the way
+        {formatBillingCentsWhole(headlineCents(totalCents, promise))} on the way
       </p>
       {width !== null && (
         <div className="h-1 w-full overflow-hidden rounded-full bg-white">
@@ -112,7 +112,7 @@ function NextPromise({
         </div>
       )}
       <p className="text-[11px] leading-snug text-gray-600">
-        {promiseUnlockLine(formatBillingCents(promise.amountCents), remaining)}
+        {promiseUnlockLine(formatBillingCentsWhole(promise.amountCents), remaining)}
       </p>
     </Link>
   );

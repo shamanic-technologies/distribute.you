@@ -114,6 +114,14 @@ describe("the rewards card", () => {
     expect(card).not.toContain("more in payments");
   });
 
+  it("states a promise in whole dollars, never a charge's cents", () => {
+    // A promise is a whole-dollar offer; cents on it are noise in a 224px rail.
+    // The charge formatter stays put on the Billing page, where an exact amount
+    // someone paid must never round.
+    expect(card).toContain("formatBillingCentsWhole(");
+    expect(card).not.toMatch(/[^e]formatBillingCents\(/);
+  });
+
   it("shares the Billing page's query key, so it costs no extra request", () => {
     expect(card).toContain('["freeCreditPromises"]');
   });

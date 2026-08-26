@@ -84,8 +84,11 @@ export function promiseUnlockLine(
   amountLabel: string,
   remainingLabel: string | null,
 ): string {
-  if (!remainingLabel) return `Unlock ${amountLabel} with your next payments.`;
-  return `Unlock ${amountLabel} after ${remainingLabel} more in payments.`;
+  // "free credits" is load-bearing, not decoration: without it the sentence puts
+  // two dollar figures side by side and the first one reads as something else the
+  // customer owes, rather than as the gift the second one buys.
+  if (!remainingLabel) return `Unlock ${amountLabel} free credits with your next payments.`;
+  return `Unlock ${amountLabel} free credits after ${remainingLabel} more in payments.`;
 }
 
 /**
