@@ -20,6 +20,7 @@ import type {
 import { formatRoi } from "@/lib/format-roi";
 import { LearningTag } from "@/components/learning-tag";
 import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
+import { audienceLearningFor } from "@/lib/use-audience-learning";
 
 function formatCents(cents: number | null): string {
   if (cents == null) return "-";
@@ -125,6 +126,8 @@ export function TopAudiencesCard({
   pending = false,
   metric,
   campaignScoped = false,
+  learningByAudienceId,
+  learningSettled = false,
 }: {
   data?: FeatureAudienceStatsResponse;
   audiences?: AudienceWire[];
@@ -140,6 +143,13 @@ export function TopAudiencesCard({
   metric?: AudienceRankMetric;
   /** Set on the campaign Overview, which sells exactly one funnel. */
   campaignScoped?: boolean;
+  /**
+   * Which of the scope's audiences its campaigns have priced. An audience absent from the
+   * map — the fan-out has not settled, or the scope runs no campaign — is "cannot tell"
+   * and states its return as before.
+   */
+  learningByAudienceId?: Map<string, boolean>;
+  learningSettled?: boolean;
 }) {
   // The card answers "where should the money go", so it leads with RETURN per dollar —
   // highest first — whenever features-service can project it. Cost per outcome is the
@@ -247,6 +257,12 @@ export function TopAudiencesCard({
           // a caveat. Only where there IS a metric to count (the campaign card) — at
           // brand level there is no single funnel whose outcomes to count.
           const rowLearning = isStats && !!metric && isLearning(outcomes);
+          // The scope's own rule, one audience at a time: its return reads `Learning`
+          // until one of the scope's campaigns has priced THIS audience. Same answer the
+          // Audiences table gives for the same row, from the same map.
+          const scopeLearning =
+            !campaignScoped &&
+            audienceLearningFor(learningByAudienceId ?? new Map(), key, learningSettled);
           // The second line carries whichever fact the headline value did NOT: leading
           // with return, the funnel cost it was ranked on before sits beside it; leading
           // with cost, the outcome count is what that cost divides by. Never both, never
@@ -274,7 +290,7 @@ export function TopAudiencesCard({
                   <span className="block truncate text-[11px] text-gray-400">{subtitle}</span>
                 )}
               </span>
-              {rowLearning ? (
+              {rowLearning || scopeLearning ? (
                 <LearningTag withInfo={false} />
               ) : (
                 <span className="text-sm font-medium text-gray-800 tabular-nums">

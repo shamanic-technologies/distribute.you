@@ -35,6 +35,7 @@ import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-mode
 import { goalForFunnelKey } from "@/lib/sales-funnels";
 import { stepsFor } from "@/lib/goal-steps";
 import { isLearning } from "@/lib/learning-threshold";
+import { audienceLearningFor, useAudienceLearning } from "@/lib/use-audience-learning";
 import { LearningTag } from "@/components/learning-tag";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
@@ -396,6 +397,16 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
    * it buys — and that page keeps every column it has today.
    */
   const brandLevelMoney = !campaignScoped;
+  // Which audiences the scope's campaigns have priced, and which are still learning. An
+  // audience clears the bar the moment ONE of those campaigns has produced enough
+  // outcomes FROM IT — the same rule the money above this table follows, one level down.
+  // Only read where the money columns render (brand and offer); a campaign-scoped table
+  // states its own funnel's per-outcome costs, which carry their own gate.
+  const { learningByAudienceId, settled: audienceLearningSettled } = useAudienceLearning(
+    brandId,
+    featureSlug,
+    offerId,
+  );
   const showSignupCols = optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney;
   // form_submissions goal → surface the real per-audience outcome: "Cost per form
   // submission" (CPFS) + "Form submissions" columns FIRST (before the website-visit
@@ -701,7 +712,17 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
         // OUTCOME COUNT the column divides by, descending: the closest to a real price
         // first, and that count is the column immediately beside it, so the order the
         // reader sees is the order the numbers on screen state.
+        const MONEY_COLS: SortCol[] = ["roi", "cacPct", "cacUsd"];
         const learningRank = (a: AudienceWire): number | null => {
+          // The scope's money columns: a row the campaigns have not priced has no rank
+          // under any of them, and nothing left to order it by, so they tie.
+          if (
+            brandLevelMoney &&
+            MONEY_COLS.includes(sortCol) &&
+            audienceLearningFor(learningByAudienceId, a.id, audienceLearningSettled)
+          ) {
+            return 0;
+          }
           const stats = statsByAudienceId.get(a.id);
           if (!costIsLearning(sortCol, stats)) return null;
           const read = COST_COL_OUTCOME[sortCol];
@@ -882,6 +903,13 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                 {sorted.map((audience) => {
                   const isSelected = selectedId === audience.id;
                   const stats = statsByAudienceId.get(audience.id);
+                  // The scope's money columns for THIS audience: hidden behind the tag
+                  // until one of the scope's campaigns has priced it. Absent from the map
+                  // (the fan-out has not settled, or the scope runs no campaign) is
+                  // "cannot tell" and gates nothing.
+                  const moneyLearning =
+                    brandLevelMoney &&
+                    audienceLearningFor(learningByAudienceId, audience.id, audienceLearningSettled);
                   return (
                     <tr
                       key={audience.id}
@@ -922,21 +950,25 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                       {brandLevelMoney && (
                         <>
                           <td className="px-4 py-3 text-right tabular-nums">
-                            <span
-                              className={`font-medium ${
-                                (stats?.projection?.returnPerDollar ?? 0) > 1
-                                  ? "text-green-600"
-                                  : "text-gray-700"
-                              }`}
-                            >
-                              {formatReturn(stats?.projection?.returnPerDollar)}
-                            </span>
+                            {moneyLearning ? (
+                              <LearningTag withInfo={false} />
+                            ) : (
+                              <span
+                                className={`font-medium ${
+                                  (stats?.projection?.returnPerDollar ?? 0) > 1
+                                    ? "text-green-600"
+                                    : "text-gray-700"
+                                }`}
+                              >
+                                {formatReturn(stats?.projection?.returnPerDollar)}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                            {formatPct(stats?.projection?.costOfAcquisitionPct)}
+                            {moneyLearning ? <LearningTag withInfo={false} /> : formatPct(stats?.projection?.costOfAcquisitionPct)}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
-                            {formatUsd(stats?.projection?.costPerPaidClientUsd)}
+                            {moneyLearning ? <LearningTag withInfo={false} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)}
                           </td>
                           {/* Realized spend, served ready-made — skeletoned like every
                               other stats-overlay cell so it never flashes "-" first. */}
