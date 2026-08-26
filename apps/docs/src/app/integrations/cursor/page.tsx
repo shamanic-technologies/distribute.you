@@ -1,9 +1,6 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 
-export const metadata: Metadata = {
-  title: "Cursor Integration",
-  description: "Connect distribute to the Cursor IDE — configure the MCP server and automate brand distribution without leaving your editor.",
-};
+export const metadata = docsMetadata("/integrations/cursor");
 
 export default function CursorIntegrationPage() {
   return (

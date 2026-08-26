@@ -1,9 +1,6 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 
-export const metadata: Metadata = {
-  title: "Zapier Integration",
-  description: "Connect distribute to 5,000+ apps with Zapier — trigger campaigns and react to outreach events using the REST API and webhooks.",
-};
+export const metadata = docsMetadata("/integrations/zapier");
 
 export default function ZapierIntegrationPage() {
   return (

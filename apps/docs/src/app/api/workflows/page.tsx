@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Workflows API",
-  description: "List workflows, inspect their DAGs, fetch run summaries, and check API-key status — all through the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/workflows");
 
 const LLM_INSTRUCTIONS = `# Workflows API
 

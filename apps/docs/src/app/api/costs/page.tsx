@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Costs API",
-  description: "Retrieve per-campaign cost breakdowns and email delivery statistics to track spend and performance through the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/costs");
 
 const LLM_INSTRUCTIONS = `# Costs API
 

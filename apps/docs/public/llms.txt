@@ -1,0 +1,56 @@
+# distribute.you Documentation
+
+> distribute.you is an AI cold email outreach service run for you. You give a URL and a daily budget; it finds the people, writes the email, sends it on your behalf, qualifies the replies and forwards the good ones. Everything it does is reachable from an MCP server, a REST API and a TypeScript client.
+
+Every page below is a static HTML document at a stable URL. Fetch any of them directly.
+
+## Machine-readable entry points
+
+- [OpenAPI document](https://api.distribute.you/openapi.json): every REST route under https://api.distribute.you/v1, in one file.
+- [Interactive API explorer](https://api.distribute.you/docs): the same document, rendered with a request builder.
+- [MCP server](https://mcp.distribute.you/mcp): the hosted server, Streamable HTTP, 35 tools.
+- [Local MCP server](https://docs.distribute.you/mcp/installation/): npx @distribute/mcp --api-key=dist_YOUR_KEY
+- [Sitemap](https://docs.distribute.you/sitemap.xml): every URL this site serves.
+
+Authentication is one header on every route: `X-API-Key: dist_YOUR_KEY`, issued at https://dashboard.distribute.you/api-keys.
+
+## Getting started
+
+- [distribute.you Documentation](https://docs.distribute.you/): Documentation for distribute.you: AI cold email outreach done for you, reachable from an MCP server, a REST API and a TypeScript client.
+- [Quick Start](https://docs.distribute.you/quickstart/): Get started with distribute.you in 5 minutes. Install the MCP server and launch your first campaign from Claude Code or Cursor.
+- [Authentication](https://docs.distribute.you/authentication/): Set up your distribute.you API key and authenticate every request across both the MCP server and the REST API.
+- [distribute.you OpenAPI Specification](https://docs.distribute.you/openapi/): The distribute.you OpenAPI document, the interactive API explorer and the hosted MCP endpoint, each at a fixed URL an agent can fetch.
+
+## MCP server
+
+- [distribute.you MCP Server](https://docs.distribute.you/mcp/): Use distribute.you from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client. 35 tools for brands, campaigns, workflows and more.
+- [MCP Installation](https://docs.distribute.you/mcp/installation/): Install the distribute.you MCP server for Claude Code, Claude Desktop, Cursor, and any other MCP-compatible client.
+- [MCP Tools Reference](https://docs.distribute.you/mcp/tools/): Reference for all 35 distribute.you MCP tools: brands, campaigns, workflows, leads, press kits, billing and more.
+
+## REST API reference
+
+- [distribute.you API Reference](https://docs.distribute.you/api/): REST API reference for distribute.you. Manage brands, campaigns, workflows, leads, press kits, billing and more.
+- [Brands API](https://docs.distribute.you/api/brands/): Create brands from a URL, fetch full brand details, and extract structured company data with AI through the distribute.you REST API.
+- [Features API](https://docs.distribute.you/api/features/): List automation features, pull live performance stats, and prefill campaign inputs through the distribute.you REST API.
+- [Campaigns API](https://docs.distribute.you/api/campaigns/): Create, launch, stop and monitor outreach campaigns, and track their status and results in real time, via the distribute.you REST API.
+- [Workflows API](https://docs.distribute.you/api/workflows/): List workflows, inspect their DAGs, fetch run summaries, and check API-key status through the distribute.you REST API.
+- [Leads API](https://docs.distribute.you/api/leads/): List qualified leads discovered for your campaigns and brands, with enrichment and source context, via the distribute.you REST API.
+- [Emails API](https://docs.distribute.you/api/emails/): View AI-generated emails and full outreach sequences for any campaign, with content and send status, via the distribute.you REST API.
+- [Outlets API](https://docs.distribute.you/api/outlets/): List media outlets and publications discovered for your brand, with domain authority and topic fit, via the distribute.you REST API.
+- [Journalists API](https://docs.distribute.you/api/journalists/): List journalists and reporters discovered for your PR outreach, with their beats, outlets and context, via the distribute.you REST API.
+- [Articles API](https://docs.distribute.you/api/articles/): List and retrieve articles that mention your brand, discovered across your distribute.you PR and outreach campaigns, via the REST API.
+- [Press Kits API](https://docs.distribute.you/api/press-kits/): Generate, list and manage AI-powered press kits, ready-to-send media assets for your brand, via the distribute.you REST API.
+- [Billing API](https://docs.distribute.you/api/billing/): Check your account balance, credit usage and billing settings programmatically through the distribute.you REST API and MCP server.
+- [Costs API](https://docs.distribute.you/api/costs/): Retrieve per-campaign cost breakdowns and email delivery statistics to track spend and performance through the distribute.you REST API.
+- [Webhooks](https://docs.distribute.you/api/webhooks/): Receive real-time notifications for distribute.you campaign events: webhook events, payload structure and signature verification.
+
+## Integrations
+
+- [distribute.you Integrations](https://docs.distribute.you/integrations/): Connect distribute.you to Claude Code, Claude Desktop, Cursor, ChatGPT, n8n, Zapier, Make.com, and any other MCP-compatible client.
+- [Claude Code Integration](https://docs.distribute.you/integrations/claude/): Use distribute.you from Claude Code. One command installs the MCP server and 35 tools for brands, campaigns, leads and more.
+- [Claude Desktop Integration](https://docs.distribute.you/integrations/claude-desktop/): Add the 35 distribute.you tools to Claude Desktop. Configure the MCP server once and automate brand distribution from chat.
+- [Cursor Integration](https://docs.distribute.you/integrations/cursor/): Connect distribute.you to the Cursor IDE. Configure the MCP server and automate brand distribution without leaving your editor.
+- [ChatGPT Integration](https://docs.distribute.you/integrations/chatgpt/): Use distribute.you inside ChatGPT. Connect through the MCP connector or call the REST API directly to automate your distribution.
+- [n8n Integration](https://docs.distribute.you/integrations/n8n/): Build automated, self-hosted workflows with distribute.you and n8n, wiring campaigns and outreach together using the REST API.
+- [Zapier Integration](https://docs.distribute.you/integrations/zapier/): Connect distribute.you to 5,000+ apps with Zapier. Trigger campaigns and react to outreach events using the REST API and webhooks.
+- [Make.com Integration](https://docs.distribute.you/integrations/make/): Build visual automation scenarios with distribute.you and Make.com, orchestrating campaigns, leads and outreach through the REST API.

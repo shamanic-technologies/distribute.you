@@ -1,9 +1,6 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 
-export const metadata: Metadata = {
-  title: "Make.com Integration",
-  description: "Build visual automation scenarios with distribute and Make.com — orchestrate campaigns, leads, and outreach using the REST API.",
-};
+export const metadata = docsMetadata("/integrations/make");
 
 export default function MakeIntegrationPage() {
   return (

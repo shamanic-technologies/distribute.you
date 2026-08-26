@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Leads API",
-  description: "List qualified leads discovered for your campaigns and brands, with enrichment and source context, via the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/leads");
 
 const LLM_INSTRUCTIONS = `# Leads API
 

@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Claude Code Integration",
-  description: "Use distribute from Claude Code — one command installs the MCP server and 35 tools for brands, campaigns, leads, and more.",
-};
+export const metadata = docsMetadata("/integrations/claude");
 
 const LLM_INSTRUCTIONS = `# distribute + Claude Code
 

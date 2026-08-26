@@ -1,14 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "MCP Tools Reference",
-  description: "Complete reference for all 35 distribute MCP tools — brands, campaigns, workflows, leads, press kits, billing, and more.",
-  openGraph: {
-    title: "MCP Tools Reference | distribute Docs",
-    description: "All 35 distribute MCP tools documented.",
-  },
-};
+export const metadata = docsMetadata("/mcp/tools");
 
 const TOOL_CATEGORIES = [
   {

@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Press Kits API",
-  description: "Generate, list, and manage AI-powered press kits — ready-to-send media assets for your brand — via the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/press-kits");
 
 const LLM_INSTRUCTIONS = `# Press Kits API
 

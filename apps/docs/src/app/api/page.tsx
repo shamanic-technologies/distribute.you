@@ -1,16 +1,9 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
-export const metadata: Metadata = {
-  title: "API Reference",
-  description: "Complete REST API reference for distribute. Manage brands, campaigns, workflows, leads, press kits, billing, and more.",
-  openGraph: {
-    title: "API Reference | distribute Docs",
-    description: "REST API documentation for distribute.",
-  },
-};
+export const metadata = docsMetadata("/api");
 
 const LLM_INSTRUCTIONS = `# distribute REST API
 
@@ -63,11 +56,13 @@ export default function ApiOverviewPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">API Reference</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">distribute.you API Reference</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-4">
-        Direct REST API access to distribute.
+        Direct REST API access to distribute.you. The machine-readable contract
+        for everything on this page is the{" "}
+        <a href="/openapi/" className="underline">OpenAPI document</a>.
       </p>
 
       <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mb-10 flex items-center justify-between">
