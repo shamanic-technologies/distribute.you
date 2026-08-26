@@ -93,13 +93,15 @@ describe("promiseUnlockLine", () => {
     // The sidebar heading states what is coming, so the line under the bar has to
     // say WHICH slice of it lands next, or a customer holding three promises
     // reads the bar as progress toward the whole.
-    expect(promiseUnlockLine("$347.00", "$376.00")).toBe(
-      "Unlock $347.00 after $376.00 more in payments.",
+    expect(promiseUnlockLine("$347", "$376")).toBe(
+      "Unlock $347 free credits after $376 more in payments.",
     );
   });
 
   it("degrades to the next payments rather than inventing a bar", () => {
-    expect(promiseUnlockLine("$500.00", null)).toBe("Unlock $500.00 with your next payments.");
+    expect(promiseUnlockLine("$500", null)).toBe(
+      "Unlock $500 free credits with your next payments.",
+    );
   });
 
   it("keeps the Billing row's own wording untouched", () => {
@@ -108,7 +110,13 @@ describe("promiseUnlockLine", () => {
     expect(promiseSubtitle("$376.00")).toBe("Unlocks after $376.00 more in payments.");
   });
 
+  it("says what the money IS, so two figures in one sentence cannot be confused", () => {
+    // Without "free credits" the first amount reads as something else the
+    // customer owes rather than as the gift the second one buys.
+    expect(promiseUnlockLine("$347", "$376")).toContain("free credits");
+  });
+
   it("uses no em-dash", () => {
-    expect(promiseUnlockLine("$1.00", "$2.00")).not.toContain("\u2014");
+    expect(promiseUnlockLine("$1", "$2")).not.toContain("\u2014");
   });
 });

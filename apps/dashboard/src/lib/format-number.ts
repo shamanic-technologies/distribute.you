@@ -107,6 +107,24 @@ export function formatBillingCents(cents: string | number): string {
   return formatUsd(usd, 2);
 }
 
+/**
+ * The same money as whole dollars, ceiling to the next one.
+ *
+ * For a free-credit PROMISE, not for a charge. Promise amounts are whole-dollar
+ * offers by construction ($5 welcome, $400 completion, $500 referral), so cents
+ * on them are noise on a 224px rail; the bar a customer still has to clear is
+ * genuinely fractional, and ceiling it is what keeps it honest — rounding down
+ * would state a lower bar than the one billing actually holds.
+ *
+ * Charges keep {@link formatBillingCents}: an exact amount someone paid must
+ * never round, which is why the billing page is exempt from the adaptive rule.
+ */
+export function formatBillingCentsWhole(cents: string | number): string {
+  const raw = typeof cents === "string" ? parseFloat(cents) : cents;
+  const usd = Math.ceil(raw / 100);
+  return `$${usd.toLocaleString("en-US")}`;
+}
+
 /** Format cents as USD, returning null for null/undefined/zero/NaN. */
 export function formatCentsAsUsdOrNull(cents: string | number | null | undefined): string | null {
   if (cents === null || cents === undefined) return null;
