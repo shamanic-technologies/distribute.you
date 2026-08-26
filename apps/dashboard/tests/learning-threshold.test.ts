@@ -39,17 +39,24 @@ describe("isLearning", () => {
 describe("LearningTag", () => {
   const src = read("components/learning-tag.tsx");
 
-  it("uses only tints the dark remap covers", () => {
-    // An accent outside the html.dark closed set paints a light block on the dark
-    // surface. The amber trio is remapped in globals.css.
-    for (const cls of ["bg-amber-50", "text-amber-700", "border-amber-200"]) {
+  it("wears the charter's SECONDARY, never a warning colour", () => {
+    // Amber/orange reads as a warning about something the customer did wrong; this
+    // is a waiting state. Purple is the charter's secondary (~44 degrees off the
+    // primary blue), and all three classes are remapped in globals.css.
+    for (const cls of ["bg-purple-50", "text-purple-700", "border-purple-200"]) {
       expect(src).toContain(cls);
     }
+    expect(src).not.toMatch(/(bg|text|border)-(amber|orange|yellow|red)-/);
     expect(src).not.toMatch(/bg-(violet|sky|teal|rose|lime)-/);
   });
 
+  it("does not rotate with a customer's brand hue", () => {
+    // `.tone-tile` is the decorative categorical scale. This carries meaning.
+    expect(src).not.toContain("tone-tile");
+  });
+
   it("carries a full-perimeter border, never a side accent", () => {
-    expect(src).toContain("border border-amber-200");
+    expect(src).toContain("border border-purple-200");
     expect(src).not.toMatch(/border-(left|right|top)|border-l-|border-r-|border-t-/);
   });
 
