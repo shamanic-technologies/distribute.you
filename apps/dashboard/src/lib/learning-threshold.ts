@@ -45,3 +45,21 @@ export function scopeIsLearning(rows: readonly { learning: boolean }[]): boolean
   if (rows.length === 0) return false;
   return rows.every((row) => row.learning);
 }
+
+/**
+ * Whether an AUDIENCE is still learning across the campaigns that worked it.
+ *
+ * Same shape as the scope rule one level up, applied to one audience: it clears the
+ * moment ONE campaign has produced enough outcomes FROM THAT AUDIENCE to price it, and
+ * stays until then. Counts from different campaigns are deliberately NOT added — an
+ * audience at five replies in each of two campaigns has two unreliable prices, and the
+ * table states a price per audience, not a pooled one.
+ *
+ * An audience NO campaign reports on has nothing to clear the bar with, so it is
+ * learning. That is the opposite default from `scopeIsLearning` and deliberately so:
+ * there, an empty list means the surface has no campaigns at all and nothing to say;
+ * here, the campaigns exist and simply have no outcomes from this audience.
+ */
+export function audienceIsLearning(counts: readonly (number | null | undefined)[]): boolean {
+  return counts.every((count) => isLearning(count));
+}

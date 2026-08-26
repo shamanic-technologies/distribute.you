@@ -6,6 +6,7 @@ import {
   LEARNING_NOTE,
   isLearning,
   scopeIsLearning,
+  audienceIsLearning,
 } from "../src/lib/learning-threshold";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
@@ -248,6 +249,12 @@ describe("the scope surfaces (offer and brand)", () => {
   it("states why instead of drawing a return over almost no outcomes", () => {
     expect(trend).toContain("learning = false,");
     expect(trend).toContain("Too few outcomes so far to draw a return you could act on");
+    // And it is actually THREADED. The card's own branch was right for a day while the
+    // page never passed the prop, so the graph kept drawing — assert the wiring, not
+    // just the component that would honour it.
+    expect(overview).toContain("<RevenueOverviewSection");
+    const section = overview.slice(overview.indexOf("<RevenueOverviewSection"), overview.indexOf("<RevenueOverviewSection") + 400);
+    expect(section).toContain("economicsLearning={economicsLearning}");
   });
 
   it("gates the price and the ranking-by-price on the Campaigns header, not the total", () => {
@@ -259,6 +266,51 @@ describe("the scope surfaces (offer and brand)", () => {
       campaignsPage.indexOf('label="Cost per acquisition"'),
     );
     expect(pipelineTile).not.toContain("scopeLearning");
+  });
+});
+
+describe("audienceIsLearning + the per-audience gate", () => {
+  const hook = read("lib/use-audience-learning.ts");
+  const table = read("components/audiences/customer-audiences-page.tsx");
+
+  it("clears an audience the moment ONE campaign has priced it", () => {
+    expect(audienceIsLearning([12, 1])).toBe(false);
+    expect(audienceIsLearning([1, 2, 3])).toBe(true);
+  });
+
+  it("does not pool counts across campaigns", () => {
+    // Five replies in each of two campaigns is two unreliable prices; the table states a
+    // price per audience, and adding them would invent a reliability neither has.
+    expect(audienceIsLearning([5, 5])).toBe(true);
+  });
+
+  it("reads per CAMPAIGN, on the key that campaign's own Audiences page already polls", () => {
+    expect(hook).toContain('"featureAudienceStats"');
+    expect(hook).toContain("campaignId: campaign.id");
+    expect(hook).toContain("useCampaignRows(brandId, featureSlug, offerId)");
+  });
+
+  it("counts the campaign's first MEASURED step, never its terminal outcome", () => {
+    expect(hook).toContain('if (has("positive_replies")) return row.evidence.positiveReplies;');
+    expect(hook).toContain('if (has("website_visits")) return row.evidence.websiteClicks;');
+  });
+
+  it("gates nothing until it can tell", () => {
+    // Not settled, or a scope with no campaigns at all — the row reads as it does today.
+    expect(hook).toContain("if (!settled || map.size === 0 || !audienceId) return false;");
+    // But an audience the campaigns DO report on and that clears nothing is learning.
+    expect(hook).toContain("return map.get(audienceId) ?? true;");
+  });
+
+  it("hides the three money columns for that row, and leaves $ Invested", () => {
+    expect(table).toContain("const moneyLearning =");
+    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} /> : formatPct(stats?.projection?.costOfAcquisitionPct)");
+    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)");
+    expect(table).toContain("formatCents(stats.evidence.totalCostInUsdCents)");
+  });
+
+  it("does not rank a row by money it is not showing", () => {
+    expect(table).toContain('const MONEY_COLS: SortCol[] = ["roi", "cacPct", "cacUsd"];');
   });
 });
 
@@ -274,8 +326,17 @@ describe("the Top-3 audiences card", () => {
   });
 
   it("puts the tag in the value slot instead of the return", () => {
-    expect(src).toContain("{rowLearning ? (");
+    // Two ways in: the campaign card's own thin-outcome rule, and the scope's rule for
+    // this audience. Either one replaces the value.
+    expect(src).toContain("{rowLearning || scopeLearning ? (");
     expect(src).toContain("<LearningTag withInfo={false} />");
+  });
+
+  it("asks the SAME map the Audiences table asks about a row", () => {
+    // Two surfaces answering "has this audience been priced" from one source, so the
+    // card and the table can never disagree about the same row.
+    expect(src).toContain("audienceLearningFor(learningByAudienceId ?? new Map(), key, learningSettled)");
+    expect(src).toContain("!campaignScoped &&");
   });
 
   it("explains the tag from the header (i), never from inside the row's Link", () => {

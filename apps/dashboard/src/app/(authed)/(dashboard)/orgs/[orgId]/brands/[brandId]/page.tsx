@@ -36,6 +36,7 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
+import { useAudienceLearning } from "@/lib/use-audience-learning";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -105,6 +106,14 @@ export default function BrandOverviewPage() {
   // is a total and keeps its figure.
   const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
   const economicsLearning = scopeIsLearning(campaignRows);
+  // ...and the same question one audience at a time, for the Top-3 card: an audience
+  // states its return once one of the scope's campaigns has priced IT. Same map the
+  // Audiences table reads, so the card and the table cannot disagree about a row.
+  const { learningByAudienceId, settled: audienceLearningSettled } = useAudienceLearning(
+    brandId,
+    featureSlug,
+    offerId,
+  );
   const timezone = useMemo(() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -439,6 +448,7 @@ export default function BrandOverviewPage() {
           charts the return instead. */}
       <RevenueOverviewSection
         headerAction={ControlsLine}
+        economicsLearning={economicsLearning}
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
@@ -477,6 +487,8 @@ export default function BrandOverviewPage() {
         costBottomCard={
           offerId ? (
             <TopAudiencesCard
+            learningByAudienceId={learningByAudienceId}
+            learningSettled={audienceLearningSettled}
               data={audienceStatsRevealed ? audienceStatsData : undefined}
               audiences={audienceStatsRevealed ? activeAudiences : undefined}
               pending={!audienceStatsRevealed}
