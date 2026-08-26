@@ -76,6 +76,13 @@ export function SupportButton({ raised = false }: { raised?: boolean }) {
     });
   }
 
+  // `bg-brand-600` rather than the charter hex: the ramp step is what
+  // `:root[data-brand-tint]` re-declares at the open brand's own hue, so
+  // the FAB wears their primary the way every other accent on the page
+  // does. A literal would have stayed blue on a tinted dashboard, which
+  // reads as one control that did not get the memo. The white glyph is
+  // safe at any hue — brand-600 is pinned at 54% lightness by the ramp,
+  // which is why the tint moves the hue alone.
   return (
     <a
       href={href}
@@ -83,7 +90,7 @@ export function SupportButton({ raised = false }: { raised?: boolean }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className={`fixed right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-[#2563eb] shadow-lg transition hover:scale-105 hover:shadow-xl sm:h-14 sm:w-14 ${
+      className={`fixed right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 shadow-lg transition hover:scale-105 hover:shadow-xl sm:h-14 sm:w-14 ${
         raised ? "bottom-24 sm:bottom-4" : "bottom-4"
       }`}
     >
