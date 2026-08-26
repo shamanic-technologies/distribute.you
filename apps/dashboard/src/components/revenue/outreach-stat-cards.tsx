@@ -105,6 +105,7 @@ export function OutreachStatCards({
   economics,
   totalPipelineUsd,
   showEconomics = false,
+  economicsLearning = false,
   showFunnelMetrics = true,
 }: {
   stats: Record<string, number>;
@@ -158,6 +159,16 @@ export function OutreachStatCards({
   totalPipelineUsd?: number | null;
   /** Render the four money cards (Pipeline revenue / ROI / $ CAC / % CAC). */
   showEconomics?: boolean;
+  /**
+   * Whether this scope's RATIOS rest on too little evidence to state — every campaign
+   * selling it is still learning.
+   *
+   * It gates ROI, $ CAC and % CAC and NOT Pipeline revenue: the first three divide by the
+   * outcome count, so at a low count they are decided by whichever outcome landed, while a
+   * total simply GROWS with each one — a thin scope has a small pipeline, not an unreliable
+   * one.
+   */
+  economicsLearning?: boolean;
   /**
    * Whether to render the FUNNEL-specific pairs (Website Visits + cost per visit,
    * and the goal's outcome pair). A brand runs several sales funnels at once, so
@@ -354,27 +365,33 @@ export function OutreachStatCards({
               pending={pending}
             />
           </Cell>
+          {/* The three RATIOS. They divide by the outcome count, so they move together
+              and they state `Learning` together — Pipeline revenue above does not, being
+              a total that grows with each outcome rather than a price decided by it. */}
           <Cell>
             <ScoreCard
               label="ROI"
-              tooltip={ECONOMICS_INFO.roi}
+              tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.roi}
               value={formatRoi(economics?.roiMultiple)}
+              action={economicsLearning ? <LearningTag withInfo={false} /> : undefined}
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
               label="$ CAC"
-              tooltip={ECONOMICS_INFO.cacUsd}
+              tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.cacUsd}
               value={formatUsd(economics?.costPerAcquisitionUsd)}
+              action={economicsLearning ? <LearningTag withInfo={false} /> : undefined}
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
               label="% CAC"
-              tooltip={ECONOMICS_INFO.cacPct}
+              tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.cacPct}
               value={formatPct(economics?.costOfAcquisitionPct)}
+              action={economicsLearning ? <LearningTag withInfo={false} /> : undefined}
               pending={pending}
             />
           </Cell>

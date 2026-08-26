@@ -46,6 +46,7 @@ export function RevenueOverviewSection({
   trackerSetUp = false,
   showActivityChart = true,
   showRoiTrend = false,
+  economicsLearning = false,
 }: {
   data?: RevenueOverview;
   pipelineActivity?: PipelineActivityResponse;
@@ -130,6 +131,9 @@ export function RevenueOverviewSection({
    * funnel, so its own signal IS what that campaign is buying.
    */
   showRoiTrend?: boolean;
+  /** Every campaign selling this scope is still learning — the return line then states
+   *  why rather than drawing a ratio over almost no outcomes. */
+  economicsLearning?: boolean;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
@@ -208,7 +212,7 @@ export function RevenueOverviewSection({
             forward projection is the only part sourced from pipeline-activity and
             degrades to no dashed segment. */}
         {showRoiTrend ? (
-          <RoiTrendCard history={data?.roiHistory} pending={revenueLoading} />
+          <RoiTrendCard history={data?.roiHistory} pending={revenueLoading} learning={economicsLearning} />
         ) : (
           <OutcomeTrendCard
             series={outcomeSeries}

@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -13,6 +15,8 @@ import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
+import { scopeIsLearning } from "@/lib/learning-threshold";
+import { LearningTag } from "@/components/learning-tag";
 
 // The table, its columns and the vocabulary behind them live in `campaigns-table.tsx`
 // — the brand Overview renders the same one under its chart, and two copies is how a
@@ -20,7 +24,19 @@ import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/
 // is the header the table does not answer: the brand's blended pipeline and $ CAC, and
 // which channel is currently winning.
 
-function StatTile({ label, value, pending }: { label: string; value: string; pending: boolean }) {
+function StatTile({
+  label,
+  value,
+  pending,
+  action,
+}: {
+  label: string;
+  value: string;
+  pending: boolean;
+  /** Rendered in the VALUE's place (a `Learning` tag), never beside it: a figure printed
+   *  next to a caveat reads as a figure with a footnote. */
+  action?: ReactNode;
+}) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       {/* Card label in the dashboard's own eyebrow: `text-xs font-medium
@@ -29,6 +45,8 @@ function StatTile({ label, value, pending }: { label: string; value: string; pen
       <div className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</div>
       {pending ? (
         <Skeleton className="mt-2 h-7 w-24" />
+      ) : action ? (
+        <div className="mt-2">{action}</div>
       ) : (
         <div className="mt-1 text-2xl font-bold text-gray-900">{value}</div>
       )}
@@ -49,7 +67,12 @@ export function CampaignsPage() {
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
   // different campaigns. Both queries dedupe on their keys, so this costs no network.
-  const { activeRows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
+  const { rows, activeRows, settled: tableSettled } = useCampaignRows(brandId, featureSlug, offerId);
+  // This header answers for the whole scope, and the scope's money is its campaigns'
+  // money combined — so it is readable exactly when ONE of them has produced enough
+  // outcomes to price. Read off the SAME rows the table renders, so a header cannot
+  // state a figure the rows beneath it are all declining to state.
+  const scopeLearning = scopeIsLearning(rows);
 
   // The header's money is asked at the grain this page IS — the offer when one is
   // open, the brand otherwise — never of a single acquisition channel. Same reads,
@@ -116,8 +139,20 @@ export function CampaignsPage() {
         {/* Global stats header */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <StatTile label="Pipeline generated" value={fmtUsd(globalPipeline)} pending={!headerSettled} />
-          <StatTile label="Cost per acquisition" value={fmtUsd(globalCac)} pending={!headerSettled} />
-          <StatTile label="#1 acquisition channel" value={topChannel} pending={!tableSettled} />
+          {/* A price and a ranking BY that price. Pipeline generated above is a total,
+              so it stays: it grows with each outcome rather than being decided by one. */}
+          <StatTile
+            label="Cost per acquisition"
+            value={fmtUsd(globalCac)}
+            pending={!headerSettled}
+            action={scopeLearning ? <LearningTag withInfo={false} /> : undefined}
+          />
+          <StatTile
+            label="#1 acquisition channel"
+            value={topChannel}
+            pending={!tableSettled}
+            action={scopeLearning ? <LearningTag withInfo={false} /> : undefined}
+          />
         </div>
 
         <CampaignsTable brandId={brandId} featureSlug={featureSlug} basePath={basePath} offerId={offerId} />

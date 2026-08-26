@@ -15,6 +15,8 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { scopeIsLearning } from "@/lib/learning-threshold";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
 /**
@@ -111,6 +113,14 @@ export function OutreachStatCardsAuto({
     },
   );
 
+  // Whether the SCOPE this row answers for is still learning — every campaign selling it
+  // is. Only the ratios below are gated by it, and only where they render (a campaign-
+  // scoped row shows funnel steps instead). Read through the same hook the Campaigns
+  // table uses, on the same query keys, so it costs no network and a page cannot state a
+  // return the campaigns beneath it are all declining to state.
+  const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
+  const economicsLearning = scopeIsLearning(campaignRows);
+
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
   if (!enabled) return null;
@@ -133,6 +143,7 @@ export function OutreachStatCardsAuto({
       // funnel steps — the same split the brand Overview takes. A campaign sells one,
       // so its own steps are what it buys.
       showEconomics={!campaignId}
+      economicsLearning={economicsLearning}
       showFunnelMetrics={!!campaignId}
       outreachOverride={outreachOverride}
       outreachLabel={outreachLabel}
