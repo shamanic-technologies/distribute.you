@@ -27,6 +27,21 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Next owns the `Vary` header on every app-router response (it sets its own
+  // RSC router vary list and overwrites whatever a route handler returned), so
+  // the negotiated pages cannot state `Vary: Accept` from their own Response.
+  // A config header is applied by the routing layer on top of that, which is the
+  // only place the value survives. Without it a shared cache keyed on the URL
+  // alone could hand the HTML variant to an agent that asked for markdown.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "Vary", value: "Accept" }],
+      },
+    ];
+  },
+
   async redirects() {
     return [
       // Old multi-feature performance sub-views collapsed into one page.

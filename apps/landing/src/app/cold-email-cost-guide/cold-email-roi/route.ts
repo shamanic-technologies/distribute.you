@@ -2,6 +2,6 @@ import { staticResponse } from "@/lib/static-html";
 
 export const revalidate = 86400;
 
-export function GET() {
-  return staticResponse("cold-email-cost-guide/cold-email-roi.html");
+export function GET(request: Request) {
+  return staticResponse("cold-email-cost-guide/cold-email-roi.html", request);
 }

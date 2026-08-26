@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PROD_URLS } from "@/lib/env-urls";
+import { organizationJsonLd as sharedOrganizationJsonLd } from "@/lib/seo";
 import { INVITE_FORWARD_SCRIPT } from "@/lib/static-html";
 import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
@@ -110,22 +111,14 @@ const jsonLd = {
   },
 };
 
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "distribute",
-  url: SITE_URL,
-  description: "Sales cold email outreach done for you",
-  sameAs: [
-    PROD_URLS.github,
-    PROD_URLS.twitter,
-  ],
-  contactPoint: {
-    "@type": "ContactPoint",
-    email: "support@distribute.you",
-    contactType: "customer service",
-  },
-};
+// The company is stated in ONE place (`lib/seo.ts`), which the statically-served
+// pages also inject. A second literal here is how the two surfaces came to
+// describe the company differently: this copy carried no logo, no legalName and
+// no address, so a crawler read a different Organization depending on which
+// half of the site it landed on.
+const organizationJsonLd = sharedOrganizationJsonLd(
+  "Sales cold email outreach done for you",
+);
 
 const websiteJsonLd = {
   "@context": "https://schema.org",
