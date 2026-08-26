@@ -19,7 +19,7 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
  */
 export function LearningTag({ withInfo = true }: { withInfo?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 whitespace-nowrap">
+    <span className="tone-tile inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-600 whitespace-nowrap">
       Learning
       {withInfo && <InfoTooltip tip={LEARNING_NOTE} placement="top" />}
     </span>

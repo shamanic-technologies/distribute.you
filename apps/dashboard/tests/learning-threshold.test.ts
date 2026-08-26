@@ -39,20 +39,31 @@ describe("isLearning", () => {
 describe("LearningTag", () => {
   const src = read("components/learning-tag.tsx");
 
-  it("wears the charter's SECONDARY, never a warning colour", () => {
+  it("wears the SECONDARY, never a warning colour", () => {
     // Amber/orange reads as a warning about something the customer did wrong; this
     // is a waiting state. Purple is the charter's secondary (~44 degrees off the
     // primary blue), and all three classes are remapped in globals.css.
-    for (const cls of ["bg-purple-50", "text-purple-700", "border-purple-200"]) {
+    for (const cls of ["bg-purple-50", "text-purple-600", "border-purple-200"]) {
       expect(src).toContain(cls);
     }
     expect(src).not.toMatch(/(bg|text|border)-(amber|orange|yellow|red)-/);
     expect(src).not.toMatch(/bg-(violet|sky|teal|rose|lime)-/);
   });
 
-  it("does not rotate with a customer's brand hue", () => {
-    // `.tone-tile` is the decorative categorical scale. This carries meaning.
-    expect(src).not.toContain("tone-tile");
+  it("rotates to the BRAND's secondary, so all three layers move together", () => {
+    // Owner-decided: a customer's dashboard says "learning" in THEIR secondary, not
+    // ours. `tone-tile` is the opt-in, and the fill, the text and the border each
+    // need a rotation rule or the pill renders two hues at once.
+    expect(src).toContain("tone-tile");
+    const css = read("app/globals.css");
+    for (const sel of [
+      ".tone-tile.bg-purple-50",
+      ".tone-tile.text-purple-600",
+      ".tone-tile.border-purple-200",
+    ]) {
+      expect(css).toContain(`:root[data-brand-tint] ${sel}`);
+      expect(css).toContain(`html.dark:root[data-brand-tint] ${sel}`);
+    }
   });
 
   it("carries a full-perimeter border, never a side accent", () => {
