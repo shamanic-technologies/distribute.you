@@ -67,6 +67,28 @@ export function promiseSubtitle(remainingLabel: string | null): string {
 }
 
 /**
+ * The same sentence, naming the AMOUNT it unlocks.
+ *
+ * The sidebar states the total an org is owed as its heading, so the line under
+ * the bar has to say which slice of that total the next payments actually open,
+ * or a customer holding three promises reads the bar as progress toward the
+ * whole. Billing needs no such disambiguation: its rows carry their own amount
+ * on the right, so `promiseSubtitle` stays as it is and the two surfaces keep
+ * one vocabulary.
+ *
+ * Both labels are formatted by the caller from served figures. With no remaining
+ * amount it degrades to the same "with your next payments" wording rather than
+ * inventing a bar.
+ */
+export function promiseUnlockLine(
+  amountLabel: string,
+  remainingLabel: string | null,
+): string {
+  if (!remainingLabel) return `Unlock ${amountLabel} with your next payments.`;
+  return `Unlock ${amountLabel} after ${remainingLabel} more in payments.`;
+}
+
+/**
  * Progress bar width, clamped to 0-100.
  *
  * The clamp guards the BAR, not the number: a served value outside the range

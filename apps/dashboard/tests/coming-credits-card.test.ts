@@ -56,6 +56,13 @@ describe("the promises reader", () => {
     expect(api).toContain("referred_org_domain: z.string().nullable().optional()");
   });
 
+  it("declares the outstanding total OPTIONAL, so it needs no rollout gate", () => {
+    // Additive, and it shipped after the rows did. A body from the deploy that
+    // predates it must still parse, and an absent total is not a zero.
+    expect(api).toContain("outstanding_total_cents: z.string().optional()");
+    expect(api).toContain("parsed.data.outstanding_total_cents ?? null");
+  });
+
   it("requires the money fields, which are live today", () => {
     expect(api).toContain("amount_cents: z.string()");
     expect(api).toContain("paid_trigger_cents: z.string()");

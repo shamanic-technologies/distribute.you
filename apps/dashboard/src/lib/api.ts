@@ -5101,13 +5101,23 @@ const FreeCreditPromiseSchema = z
 const FreeCreditPromisesResponseSchema = z.object({
   org_id: z.string(),
   paid_topups_cents: z.string(),
+  // The TOTAL still outstanding across the promises below, summed by billing on
+  // the same basis and in the same units as the rows it ships with, so a heading
+  // reading this can never disagree with the list under it. Optional because it
+  // is additive and shipped after the rows did; absent simply means the deploy
+  // serving this body predates it. Never summed here.
+  outstanding_total_cents: z.string().optional(),
   promises: z.array(FreeCreditPromiseSchema),
 });
 
 /** GET /billing/free-credit-promises — the free credits this org is still waiting on. */
 export async function getFreeCreditPromises(
   token?: string,
-): Promise<{ paidTopupsCents: string; promises: FreeCreditPromise[] }> {
+): Promise<{
+  paidTopupsCents: string;
+  outstandingTotalCents: string | null;
+  promises: FreeCreditPromise[];
+}> {
   const raw = await apiCall<unknown>("/billing/free-credit-promises", { token });
   const parsed = FreeCreditPromisesResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -5119,6 +5129,7 @@ export async function getFreeCreditPromises(
   }
   return {
     paidTopupsCents: parsed.data.paid_topups_cents,
+    outstandingTotalCents: parsed.data.outstanding_total_cents ?? null,
     promises: parsed.data.promises.map((p) => ({
       id: p.id,
       kind: p.kind,

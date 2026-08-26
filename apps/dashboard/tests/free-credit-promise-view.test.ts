@@ -5,6 +5,7 @@ import {
   promiseTitle,
   promiseSubtitle,
   promiseProgressWidth,
+  promiseUnlockLine,
 } from "../src/lib/free-credit-promise-view";
 
 // Alias-free module, so these are real unit tests. Keep it that way.
@@ -84,5 +85,30 @@ describe("promiseProgressWidth", () => {
     expect(promiseProgressWidth(null)).toBeNull();
     expect(promiseProgressWidth(undefined)).toBeNull();
     expect(promiseProgressWidth(Number.NaN)).toBeNull();
+  });
+});
+
+describe("promiseUnlockLine", () => {
+  it("names the amount the next payments open, not just the bar", () => {
+    // The sidebar heading states what is coming, so the line under the bar has to
+    // say WHICH slice of it lands next, or a customer holding three promises
+    // reads the bar as progress toward the whole.
+    expect(promiseUnlockLine("$347.00", "$376.00")).toBe(
+      "Unlock $347.00 after $376.00 more in payments.",
+    );
+  });
+
+  it("degrades to the next payments rather than inventing a bar", () => {
+    expect(promiseUnlockLine("$500.00", null)).toBe("Unlock $500.00 with your next payments.");
+  });
+
+  it("keeps the Billing row's own wording untouched", () => {
+    // Billing rows carry their amount on the right, so they need no second copy
+    // of it in the sentence. One vocabulary, two sentences, both here.
+    expect(promiseSubtitle("$376.00")).toBe("Unlocks after $376.00 more in payments.");
+  });
+
+  it("uses no em-dash", () => {
+    expect(promiseUnlockLine("$1.00", "$2.00")).not.toContain("\u2014");
   });
 });
