@@ -62,6 +62,36 @@ describe("Brand favicon", () => {
     expect(src).toContain('link.rel = ""');
   });
 
+  it("keeps re-parking, because React owns the app's own icon links", () => {
+    // `metadata.icons` renders those links inside the React tree, so a client
+    // navigation re-renders them and the blanked `rel` comes back — two live
+    // icon links, and the browser is free to take the distribute one. The brand
+    // domain has not changed, so the effect never re-runs on its own.
+    expect(src).toContain("new MutationObserver");
+    expect(src).toContain("observer.observe(document.head");
+    expect(src).toContain("observer?.disconnect()");
+    // Re-entry guard: an apply mutates the head, which is what the observer
+    // watches, so without the hold check it would re-apply forever.
+    const callback = sliceFrom(src, "observer = new MutationObserver", 200);
+    expect(callback).toContain("brandFaviconHolds(src)");
+  });
+
+  it("holds only when the brand mark is the SINGLE live icon link", () => {
+    // A live sibling is the bug: which of several `<link rel="icon">` a browser
+    // picks is unspecified. 220 chars measured to the closing brace.
+    const holds = sliceFrom(src, "function brandFaviconHolds", 320);
+    expect(holds).toContain("live.length === 1");
+    expect(holds).toContain("MANAGED_ATTR");
+  });
+
+  it("wears the brand-kit mark, byte-equal with the one the landing ships", () => {
+    // Both dashboard marks drifted to an older square-and-dot design while the
+    // kit moved on, which is what read as "a weird distribute favicon".
+    const kit = read("../landing/public/brand/favicon.svg");
+    expect(read("public/logo-distribute.svg")).toBe(kit);
+    expect(read("src/app/icon.svg")).toBe(kit);
+  });
+
   it("is mounted once in the dashboard layout", () => {
     expect(layout).toContain('import { BrandFavicon } from "@/components/brand-favicon"');
     expect(layout).toContain("<BrandFavicon />");
