@@ -267,6 +267,11 @@ html.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.15); }
 html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.15); }
 html.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.15); }
 html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15); }
+/* The purple text/border pair the charter's SECONDARY reads through (the Learning
+   tag, the audience-filter group chips, outlet status). Without these two the
+   accompanying bg-purple-50 tint carried near-black text on the dark surface. */
+html.dark .text-purple-700 { color: #c084fc; }
+html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
 html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15); }
 
