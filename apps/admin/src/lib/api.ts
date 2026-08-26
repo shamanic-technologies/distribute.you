@@ -2125,15 +2125,32 @@ export async function listWorkflowExamples(
 // Manual reply qualifications (api-service proxy → email-gateway → instantly-service).
 // Wire shape is snake_case (request) + camelCase (response) per the upstream contract;
 // helpers below translate camelCase request inputs to snake_case query / body.
+/**
+ * What a person states about a reply, as instantly-service accepts it on the write.
+ *
+ * The nine REPLY KINDS, plus the two retired deal-progress spellings it still accepts
+ * while the consoles migrate their pickers. This app writes only reply kinds; the two
+ * retired values are here so a historical row still types, and they resolve to a reply
+ * kind upstream at WRITE time, never on read.
+ *
+ * `lead_meeting_booked` and `lead_closed` are facts about the DEAL, not the reply, and
+ * they are stated on the funnel stages instead (see `lead-funnel-stages.ts`). They used
+ * to share this one statement per lead, where only the latest survived — so booking a
+ * meeting erased the reply sentiment that led to it.
+ */
 export type ManualQualificationStatus =
   | "lead_interested"
-  | "lead_meeting_booked"
-  | "lead_closed"
+  | "lead_referral"
+  | "lead_info_requested"
+  | "lead_meeting_requested"
   | "lead_not_interested"
   | "lead_wrong_person"
   | "lead_neutral"
   | "lead_out_of_office"
-  | "auto_reply_received";
+  | "auto_reply_received"
+  // Retired, accepted upstream during the migration. Do NOT write these.
+  | "lead_meeting_booked"
+  | "lead_closed";
 
 export type ManualQualificationClassification = "positive" | "negative" | "neutral";
 
@@ -2143,7 +2160,17 @@ export interface ManualQualification {
   campaignId: string;
   instantlyCampaignId: string;
   email: string;
+  /** The RAW statement a person made. Kept as provenance; not what to render. */
   status: ManualQualificationStatus;
+  /**
+   * What kind of reply that statement resolves to (instantly-service v0.74.0). This is
+   * the value to render: the two retired deal-progress spellings still accepted on the
+   * write path are resolved to a reply kind HERE, at write, so a reader never has to
+   * translate one. Distinct from `status` rather than a rename of it — both are served,
+   * they mean different things, and coalescing them would render one under the other's
+   * name. Optional only because an older row predates the column.
+   */
+  replyKind?: string;
   qualifiedBy: string;
   notes: string | null;
   qualifiedAt: string;
@@ -6851,5 +6878,117 @@ export async function uploadStaffImage(
     token,
     method: "POST",
     body: input,
+  });
+}
+
+// ── Per-lead funnel step statements (lead-service v0.57.0 via the api-service proxy) ──
+//
+// What happened to ONE lead at each step of its campaign's sales funnel, stated by a
+// person rather than measured. lead-service writes an `outcome` into the SAME conversion
+// ledger every consumer already counts, so a statement moves the brand's outcome counts
+// on the next read with nothing to change downstream; a `never` goes to a store no count
+// reads, so it can never move a number.
+//
+// `id` here is the leads_campaigns ROW id — the `id` a leads-table row already carries,
+// NOT `lead.leadId` (the person). The row is what carries the campaign, which is how a
+// statement made on a campaign screen is attributable to that campaign.
+
+/** The steps lead-service accepts a statement on. Its spelling, not ours. */
+export type LeadStepName = "signup" | "meeting_booked" | "meeting_attended" | "form_submission" | "sale";
+
+export type LeadStepState = "outcome" | "never" | "pending";
+
+const LeadStepEntrySchema = z.object({
+  step: z.string(),
+  state: z.enum(["outcome", "never", "pending"]),
+  /**
+   * Whether a PERSON stated this step or the CHAIN implies it (lead-service v0.60.0).
+   * An implied step carries no author, no note and no date, and it moves on its own when
+   * the statement behind it is retracted — so it must not be offered as a control, and
+   * must not read as something somebody said.
+   *
+   * `.optional()` only to decouple the rollout; it is required on the producer.
+   */
+  origin: z.enum(["stated", "implied"]).nullable().optional(),
+  /** The STATED step an implied one follows from. */
+  impliedBy: z.string().nullable().optional(),
+  /**
+   * What a person actually stated about THIS step, whatever the chain concluded — so a
+   * real statement is never lost to satisfy the chain. A `never` later contradicted by
+   * an outcome reads state=outcome, origin=implied, statedState=never.
+   */
+  statedState: z.enum(["outcome", "never"]).nullable().optional(),
+  /** Whether the step is on this lead's chain at all. Off-chain, no rule reaches it. */
+  inChain: z.boolean().optional(),
+  source: z.enum(["tracker", "manual"]).nullable(),
+  valueCents: z.number().nullable(),
+  note: z.string().nullable(),
+  statedByUserId: z.string().nullable(),
+  at: z.string().nullable(),
+});
+
+// `.passthrough()` on the envelope, not a narrowed object: lead-service owns this shape
+// and a field it adds later must reach a consumer rather than being stripped at the
+// parse boundary. `step` is a bare string on purpose — the producer serves a legacy
+// "purchase" spelling alongside "sale", and an enum here would throw the whole read
+// away over a value we simply do not render.
+const LeadStepStatementsSchema = z
+  .object({
+    leadCampaignId: z.string(),
+    leadId: z.string(),
+    campaignId: z.string(),
+    brandId: z.string(),
+    steps: z.array(LeadStepEntrySchema),
+    /**
+     * The funnel this lead's CAMPAIGN sells through, and its steps IN ORDER, both read
+     * from campaign-service by the producer and never guessed. `.optional()` only to
+     * decouple the rollout.
+     */
+    funnelKey: z.string().optional(),
+    chain: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+export type LeadStepStatements = z.infer<typeof LeadStepStatementsSchema>;
+
+export async function getLeadStepStatements(
+  leadRowId: string,
+  token?: string,
+): Promise<LeadStepStatements> {
+  const raw = await apiCall<unknown>(`/leads/${leadRowId}/step-statements`, { token });
+  const parsed = LeadStepStatementsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getLeadStepStatements: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[admin] getLeadStepStatements: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * State what happened at one step, or that it never will.
+ *
+ * Deliberately NOT retractable: there is no write back to `pending`. A statement is
+ * corrected by making the other one — an outcome supersedes an earlier `never`, while
+ * a `never` on a step that already happened is refused, and the caller renders that
+ * refusal rather than pre-empting it.
+ */
+export async function setLeadStepStatement(
+  leadRowId: string,
+  body: {
+    step: LeadStepName;
+    kind: "outcome" | "never";
+    valueCents?: number;
+    note?: string;
+    occurredAt?: string;
+  },
+  token?: string,
+): Promise<unknown> {
+  return apiCall<unknown>(`/leads/${leadRowId}/step-statements`, {
+    token,
+    method: "POST",
+    body,
   });
 }

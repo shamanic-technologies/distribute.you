@@ -39,6 +39,7 @@ import {
 } from "@/lib/lead-funnel-stages";
 import { salesFunnelByKey } from "@/lib/sales-funnels";
 import {
+  impliedStages,
   stageStatesFrom,
   stageValuesFrom,
   useLeadStepStatements,
@@ -1301,6 +1302,9 @@ export function EngagedLeadsPage({
   // What a stated outcome was worth, so the amount somebody typed reads back where they
   // typed it. Absent when nobody said — never a zero standing in for an unpriced deal.
   const panelValues = useMemo(() => stageValuesFrom(stepStatements), [stepStatements]);
+  // Stages the CHAIN concluded rather than anybody stating — they render as the answer
+  // they are and offer no control.
+  const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
   // What we already measured, off the /revenue join the stat cards above already poll —
   // so a tracker-reported outcome and a hand-stated one both show, with no second read.
   const panelTracked = useMemo(() => {
@@ -1515,6 +1519,7 @@ export function EngagedLeadsPage({
                 stages={panelStages}
                 states={panelStates}
                 tracked={panelTracked}
+                implied={panelImplied}
                 values={panelValues}
                 pending={panelPending}
                 error={panelError}
