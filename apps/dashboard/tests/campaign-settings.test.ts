@@ -104,7 +104,7 @@ describe("Campaign Settings — the daily budget, and only that", () => {
     const budget = read("lib/campaign-budget.ts");
     expect(budget).toContain("export function campaignBudgetScope");
     expect(budget).toContain("if (!campaign.funnelKey || !campaign.featureSlug) return null;");
-    expect(card).toContain("campaignBudgetScope(campaign)");
+    expect(card).toContain("campaignBudgetScope(campaign, channels)");
     expect(card).toContain("predates the sales funnels");
   });
 

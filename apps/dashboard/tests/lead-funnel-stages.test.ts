@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   isWritableStage,
+  saleValueCentsFrom,
+  stageRequiresValue,
   LEAD_STAGE_KEYS,
   leadFunnelStages,
   trackedStages,
@@ -142,5 +144,37 @@ describe("writable stages", () => {
   it("every writable key is a stage some funnel actually renders", () => {
     const rendered = new Set(SALES_FUNNELS.flatMap((d) => leadFunnelStages(d.key).map((s) => s.key)));
     for (const key of WRITABLE_STAGE_KEYS) expect(rendered.has(key)).toBe(true);
+  });
+});
+
+describe("the amount a won deal was worth", () => {
+  it("asks for a value on the sale and on nothing else", () => {
+    // A won deal is the one place estimating has no excuse: with no amount every money
+    // figure downstream prices it at the brand's average customer. Everywhere else the
+    // amount stays optional, so stating a large lead early costs one click.
+    expect(stageRequiresValue("sale")).toBe(true);
+    for (const key of ["signup", "meeting_booked", "meeting_attended", "form_submission"] as const) {
+      expect(stageRequiresValue(key)).toBe(false);
+    }
+  });
+
+  it("reads a typed amount as the cents the producer takes", () => {
+    expect(saleValueCentsFrom("4900")).toBe(490000);
+    expect(saleValueCentsFrom("4900.50")).toBe(490050);
+    expect(saleValueCentsFrom("0.99")).toBe(99);
+  });
+
+  it("accepts the currency decoration a person pastes in", () => {
+    // Rejecting "$4,900" for its punctuation teaches nobody anything.
+    expect(saleValueCentsFrom("$4,900")).toBe(490000);
+    expect(saleValueCentsFrom("  4 900 ")).toBe(490000);
+  });
+
+  it("refuses everything that is not an amount, and NEVER substitutes a zero", () => {
+    // A deal worth nothing and a deal nobody priced are exactly the two things this
+    // change exists to keep apart, so nothing here resolves to 0.
+    for (const bad of ["", "   ", "abc", "-5", "0", "0.001"]) {
+      expect(saleValueCentsFrom(bad)).toBeNull();
+    }
   });
 });

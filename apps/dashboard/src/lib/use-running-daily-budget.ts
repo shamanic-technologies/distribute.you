@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { getBrandFunnelBudgets, listCampaignsByBrand } from "@/lib/api";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { buildControlRows, scopeTotalCents } from "@/lib/campaign-controls";
 
@@ -39,11 +40,12 @@ export function useRunningDailyBudgetCents(
     { enabled },
   );
 
+  const channels = useAcquisitionChannels();
   const cents = useMemo(() => {
     if (campaignsQ.data === undefined || budgetsQ.data === undefined) return null;
-    const rows = buildControlRows(campaignsQ.data.campaigns, budgetsQ.data, { offerId });
+    const rows = buildControlRows(campaignsQ.data.campaigns, budgetsQ.data, channels, { offerId });
     return scopeTotalCents(rows);
-  }, [campaignsQ.data, budgetsQ.data, offerId]);
+  }, [campaignsQ.data, budgetsQ.data, channels, offerId]);
 
   const settled =
     (campaignsQ.data !== undefined || campaignsQ.isError) &&

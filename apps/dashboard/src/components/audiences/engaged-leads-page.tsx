@@ -40,6 +40,7 @@ import {
 import { salesFunnelByKey } from "@/lib/sales-funnels";
 import {
   stageStatesFrom,
+  stageValuesFrom,
   useLeadStepStatements,
   useSetLeadStepStatement,
 } from "@/lib/use-lead-step-statements";
@@ -1297,6 +1298,9 @@ export function EngagedLeadsPage({
   const [panelPending, setPanelPending] = useState<{ key: WritableStageKey; next: "outcome" | "never" } | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
   const panelStates = useMemo(() => stageStatesFrom(stepStatements), [stepStatements]);
+  // What a stated outcome was worth, so the amount somebody typed reads back where they
+  // typed it. Absent when nobody said — never a zero standing in for an unpriced deal.
+  const panelValues = useMemo(() => stageValuesFrom(stepStatements), [stepStatements]);
   // What we already measured, off the /revenue join the stat cards above already poll —
   // so a tracker-reported outcome and a hand-stated one both show, with no second read.
   const panelTracked = useMemo(() => {
@@ -1343,11 +1347,14 @@ export function EngagedLeadsPage({
     });
   };
 
-  const onSetStage = (key: WritableStageKey, next: "outcome" | "never") => {
+  const onSetStage = (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => {
     setPanelError(null);
     setPanelPending({ key, next });
     setStage.mutate(
-      { step: key, kind: next },
+      // The amount rides along only when the control asked for one. lead-service refuses
+      // a value on a `never`, and refuses a `sale` outcome WITHOUT one, so the key is
+      // omitted rather than sent as undefined-shaped noise.
+      valueCents === undefined ? { step: key, kind: next } : { step: key, kind: next, valueCents },
       {
         // lead-service writes the refusal as a sentence for a person to read (a `never`
         // on a step that already happened, a value on a `never`). Surface ITS reason
@@ -1508,6 +1515,7 @@ export function EngagedLeadsPage({
                 stages={panelStages}
                 states={panelStates}
                 tracked={panelTracked}
+                values={panelValues}
                 pending={panelPending}
                 error={panelError}
                 onSet={onSetStage}

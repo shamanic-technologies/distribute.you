@@ -129,3 +129,34 @@ describe("the reply row", () => {
     expect(CONTROL).toContain("if (o.kind !== kind) onSet(o.kind)");
   });
 });
+
+describe("stating what a won deal was worth", () => {
+  it("asks for the amount instead of sending a sale the producer will refuse", () => {
+    // lead-service 400s a sale with no value. Predicting a refusal and asking the
+    // question is the honest surface; submitting anyway is not.
+    expect(SECTION).toContain("stageRequiresValue(stage.key)");
+    expect(SECTION).toContain("setAskingValueFor(stage.key as WritableStageKey)");
+  });
+
+  it("cannot submit the amount form until what was typed IS an amount", () => {
+    expect(SECTION).toContain("saleValueCentsFrom(raw)");
+    expect(SECTION).toContain("disabled={valueCents == null || busy}");
+  });
+
+  it("reads the recorded amount back where it was typed", () => {
+    expect(SECTION).toContain('data-testid="lead-funnel-stage-value"');
+    expect(PAGE).toContain("stageValuesFrom(stepStatements)");
+    expect(PAGE).toContain("values={panelValues}");
+  });
+
+  it("sends the amount only when the control asked for one", () => {
+    // A `never` carries no value and the producer refuses one, so the key is omitted
+    // rather than sent empty.
+    expect(PAGE).toContain("valueCents === undefined ? { step: key, kind: next }");
+  });
+
+  it("leaves every other stage a single click, with no amount in the request", () => {
+    expect(SECTION).toContain(': onSet(stage.key as WritableStageKey, "outcome")');
+    expect(SECTION).toContain('onClick={() => onSet(stage.key as WritableStageKey, "never")}');
+  });
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import { campaignTitleParts, type CampaignTitleRow } from "@/lib/campaign-title";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { CampaignIdentityInline } from "@/components/campaigns/campaign-identity";
 
 // A campaign named as what it IS: the sales funnel it buys, then the acquisition
@@ -21,7 +22,8 @@ export function CampaignTitle({
   campaign: CampaignTitleRow;
   className?: string;
 }) {
-  const { funnel, label } = campaignTitleParts(campaign);
+  const channels = useAcquisitionChannels();
+  const { funnel, label } = campaignTitleParts(campaign, channels);
 
   return (
     <span className={`flex min-w-0 items-center gap-2 ${className}`}>

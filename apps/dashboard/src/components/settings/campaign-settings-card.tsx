@@ -10,6 +10,7 @@ import {
   type BrandFunnelBudgets,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { campaignBudgetScope, campaignSavedCents } from "@/lib/campaign-budget";
 import {
   FUNNEL_MIN_DAILY_BUDGET_USD,
@@ -126,7 +127,8 @@ export function CampaignSettingsCard({
     isError: budgetError,
   } = useAuthQuery(["brandFunnelBudgets", brandId], () => getBrandFunnelBudgets(brandId));
 
-  const scope = campaign ? campaignBudgetScope(campaign) : null;
+  const channels = useAcquisitionChannels();
+  const scope = campaign ? campaignBudgetScope(campaign, channels) : null;
   const savedCents = scope ? campaignSavedCents(scope, offerId, budgetData) : 0;
   const savedFunnelCents = scope
     ? (budgetData?.funnels.find((f) => f.funnelKey === scope.def.key)?.dailyBudgetCents ?? 0)

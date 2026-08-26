@@ -45,13 +45,16 @@ export function AcquisitionChannelMark({
   size = "md",
   dimmed = false,
 }: {
-  // Structural on purpose: a channel we run and one that is coming carry
-  // different identities (a feature slug vs a local display id) and the same
-  // mark, so this renders either without knowing which it was handed.
-  def: { mark: ChannelMark };
+  // Structural on purpose: this renders whatever carries a mark without knowing
+  // what it was handed. A NULL mark is a channel this app has not drawn yet, not
+  // an error: features-service publishes the channels and only the tile is ours,
+  // so a newly published one arrives markless and must still render its row.
+  def: { mark: ChannelMark | null };
   size?: MarkSize;
   dimmed?: boolean;
 }) {
+  if (!def.mark) return null;
+
   if (def.mark.kind === "vendor") {
     // A real provider logo is never tinted: the tile stays white so the mark
     // reads as the vendor's own.

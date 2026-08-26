@@ -15,8 +15,9 @@
 // unit-testable (vitest does not resolve the "@" alias).
 
 import {
-  ACQUISITION_CHANNELS,
+  acquisitionChannelsFromFeatures,
   type AcquisitionChannelDef,
+  type ChannelSource,
 } from "./acquisition-channels";
 import {
   SALES_FUNNELS,
@@ -43,11 +44,15 @@ function namesFunnel(key: string, funnelKey: SalesFunnelKey): boolean {
   return key === def.key || key === canonicalSalesFunnelKey(def.key);
 }
 
-/** The fields this module reads off a features-service feature. */
-export interface ChannelFeatureRow {
-  slug: string;
-  salesFunnels?: string[];
-}
+/**
+ * The fields this module reads off a features-service feature.
+ *
+ * The same shape the channel catalogue builds a channel from, because they read
+ * the same rows: WHICH channels exist and WHICH funnels each sells are one
+ * statement by the producer, and splitting it into two shapes here is how the
+ * two readings would drift.
+ */
+export type ChannelFeatureRow = ChannelSource;
 
 /**
  * One (funnel, channel, offer) ceiling off billing — the finest grain it serves,
@@ -84,15 +89,57 @@ export interface FunnelChannelBudget {
  * An EMPTY statement is the opposite: the feature said it sells through none, so
  * it is offered nowhere. The two cases are read apart deliberately.
  */
+/**
+ * The channels a customer may FUND today.
+ *
+ * A MIRROR of the set campaign-service will provision a campaign for, and it is
+ * deliberately narrower than the catalogue. features-service publishes 33
+ * channels and marks every one of them bookable, which is a statement about what
+ * the agency SELLS; campaign-service provisions a campaign for a closed set of
+ * them, which is a statement about what currently RUNS. Offering to fund one
+ * outside that set takes a customer's ceiling and produces no campaign at all:
+ * nothing errors, nothing is charged, and the channel simply never does
+ * anything, which is worse than not offering it.
+ *
+ * This is NOT the hand-written catalogue this module used to filter. That one
+ * decided which channels EXIST, so it went stale the moment the producer
+ * published a new one and hid it from every surface. This decides only which are
+ * FUNDABLE: a channel outside it still resolves, still carries its name and its
+ * mark, and still names a campaign that already runs on it. The two questions
+ * were conflated before, which is why one stale list could do so much damage.
+ *
+ * It is a mirror, so it is temporary by construction: the day campaign-service
+ * states which features it can provision, this reads that instead and the list
+ * goes. Until then, adding a slug here without adding it there offers a dead
+ * channel, and adding it there without adding it here hides a live one.
+ *
+ * GOOGLE ADS IS DELIBERATELY ABSENT, and the reason is one hop further out than
+ * this mirror can see. Everything a Google Ads campaign needs to be created now
+ * exists: google-service wraps the Ads API and declares the spend as the org's
+ * cost, features-service publishes the channel, billing states its floor, and
+ * campaign-service provisions and schedules the campaign. What does not exist is
+ * a WORKFLOW for it, and prod holds 553 for cold email against zero here. So a
+ * customer funding it would get a campaign that is provisioned, scheduled, and
+ * then produces nothing forever, which is the precise failure this whole gate
+ * exists to prevent: being able to provision a campaign is not being able to RUN
+ * one. Add the slug when a workflow answers for it, not before.
+ */
+export const PROVISIONABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set([
+  "sales-cold-email-outreach",
+  "sales-crm-email-outreach",
+  "feedback-request-cold-email-outreach",
+]);
+
 export function channelsForFunnel(
   funnelKey: SalesFunnelKey,
   features: ChannelFeatureRow[],
-  channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
 ): AcquisitionChannelDef[] {
-  return channels.filter((channel) => {
+  return acquisitionChannelsFromFeatures(features).filter((channel) => {
+    // Funding one nothing provisions states a ceiling and produces no campaign.
+    if (!PROVISIONABLE_CHANNEL_SLUGS.has(channel.featureSlug)) return false;
     const feature = features.find((f) => f.slug === channel.featureSlug);
-    // A channel whose feature this environment does not serve at all is not
-    // offerable: funding it would create a campaign nothing can run.
+    // Unreachable by construction, since every channel here was built from one
+    // of these rows. Kept so the read below narrows without an assertion.
     if (!feature) return false;
     if (feature.salesFunnels === undefined) return true;
     return feature.salesFunnels.some((key) => namesFunnel(key, funnelKey));

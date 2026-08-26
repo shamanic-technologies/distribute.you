@@ -78,9 +78,12 @@ export interface CampaignTitleParts {
  * every campaign, so a campaign that states none leaves the half unstated rather
  * than guessed.
  */
-export function campaignTitleParts(campaign: CampaignTitleRow): CampaignTitleParts {
+export function campaignTitleParts(
+  campaign: CampaignTitleRow,
+  channels: AcquisitionChannelDef[],
+): CampaignTitleParts {
   const funnel = campaignFunnel(campaign.funnelKey);
-  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug);
+  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug, channels);
 
   const funnelLabel = funnel ? funnel.name : null;
   const channelLabel = campaign.featureSlug
