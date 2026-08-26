@@ -550,15 +550,21 @@ export function CampaignsTable({
                 className="cursor-pointer transition hover:bg-gray-50"
               >
                 <td className="px-4 py-3 text-gray-800"><CampaignCell campaign={campaign} /></td>
-                {/* The three projections state `Learning` together or not at all: they are
-                    one statement in three units (a return, its reciprocal, and what it
-                    values the pipeline at), so showing one of them beside two tags would
-                    let a reader trust the number we just said we could not stand behind. */}
+                {/* The two RATIOS state `Learning` together or not at all — they are one
+                    statement in two units, a return and its reciprocal, so showing one of
+                    them beside a tag would let a reader trust the number we just said we
+                    could not stand behind.
+
+                    `$ Revenue` is NOT one of them. It is a TOTAL, not a price: it grows
+                    with each outcome instead of being decided by whichever one landed, so
+                    a campaign with two outcomes has a small pipeline rather than an
+                    unreliable one. Withholding it would hide a real figure behind a word
+                    about precision it does not have a precision problem with. */}
                 <td className="px-4 py-3 text-right">
                   {learning ? <LearningTag withInfo={false} /> : <RoiCell multiple={revenue?.roiMultiple} />}
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} /> : fmtUsd(revenue?.totalPipelineUsd)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group — the exact number the ROI and %CAC beside it
                     divide by, so a row cannot contradict its own return. A row with no

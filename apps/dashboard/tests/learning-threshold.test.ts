@@ -178,15 +178,18 @@ describe("the Campaigns table rows", () => {
     expect(src).toContain("signal === undefined ? false : isLearning(signal)");
   });
 
-  it("gates the three projections together and leaves the realized figures alone", () => {
-    // One statement in three units — showing one of them beside two tags would let a
-    // reader trust the number we just said we could not stand behind.
+  it("gates the two RATIOS, and nothing else on the row", () => {
+    // A return and its reciprocal are one statement in two units, so they move together.
     expect(src).toContain("learning ? <LearningTag withInfo={false} /> : <RoiCell");
     expect(src).toContain("learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)");
-    expect(src).toContain("learning ? <LearningTag withInfo={false} /> : fmtUsd(revenue?.totalPipelineUsd)");
-    // $ Invested and $ Budget are money already spent and a ceiling the customer set.
+    // `$ Revenue` is a TOTAL, not a price: it grows with each outcome instead of being
+    // decided by whichever one landed, so a thin campaign has a SMALL pipeline rather
+    // than an unreliable one. `$ Invested` is money already spent, `$ Budget` a ceiling
+    // the customer set. None of the three divides by an outcome count.
+    expect(src).toContain("{fmtUsd(revenue?.totalPipelineUsd)}");
     expect(src).toContain("{fmtUsd(revenue?.committedCostUsd)}");
     expect(src).toContain("{fmtDailyBudgetUsd(budgetCents)}");
+    expect(src).not.toContain("LearningTag withInfo={false} /> : fmtUsd(revenue?.totalPipelineUsd)");
   });
 
   it("does not rank a row by a return it is not showing", () => {
