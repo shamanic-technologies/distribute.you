@@ -70,10 +70,14 @@ describe("Tenant switcher", () => {
     expect(chip).toContain("overflow-y-auto");
   });
 
-  it("the panel carries org, brand and org-scoped Billing", () => {
+  it("the panel carries org, brand and org-scoped settings", () => {
     expect(switcher).toContain("New organization");
     expect(switcher).toContain("New brand");
-    expect(switcher).toContain("Billing");
+    // The entry names the whole org group it opens (Billing AND API Key), not
+    // just Billing — a label narrower than its destination reads as a gap.
+    expect(switcher).toContain("<span>Organization Settings</span>");
+    expect(switcher).not.toContain("<span>Billing</span>");
+    // The href is unchanged: every deep link in the app points at /billing.
     expect(switcher).toContain("`/orgs/${t.orgId}/billing`");
     // Create entries route into the real onboarding flow, never a stripped modal.
     expect(switcher).toContain('"/onboarding?new=1&from=add"');
