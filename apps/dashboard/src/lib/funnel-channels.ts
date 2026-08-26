@@ -89,11 +89,44 @@ export interface FunnelChannelBudget {
  * An EMPTY statement is the opposite: the feature said it sells through none, so
  * it is offered nowhere. The two cases are read apart deliberately.
  */
+/**
+ * The channels a customer may FUND today.
+ *
+ * A MIRROR of the set campaign-service will provision a campaign for, and it is
+ * deliberately narrower than the catalogue. features-service publishes 33
+ * channels and marks every one of them bookable, which is a statement about what
+ * the agency SELLS; campaign-service provisions a campaign for a closed set of
+ * them, which is a statement about what currently RUNS. Offering to fund one
+ * outside that set takes a customer's ceiling and produces no campaign at all:
+ * nothing errors, nothing is charged, and the channel simply never does
+ * anything, which is worse than not offering it.
+ *
+ * This is NOT the hand-written catalogue this module used to filter. That one
+ * decided which channels EXIST, so it went stale the moment the producer
+ * published a new one and hid it from every surface. This decides only which are
+ * FUNDABLE: a channel outside it still resolves, still carries its name and its
+ * mark, and still names a campaign that already runs on it. The two questions
+ * were conflated before, which is why one stale list could do so much damage.
+ *
+ * It is a mirror, so it is temporary by construction: the day campaign-service
+ * states which features it can provision, this reads that instead and the list
+ * goes. Until then, adding a slug here without adding it there offers a dead
+ * channel, and adding it there without adding it here hides a live one.
+ */
+export const PROVISIONABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set([
+  "sales-cold-email-outreach",
+  "sales-crm-email-outreach",
+  "feedback-request-cold-email-outreach",
+  "google-ads",
+]);
+
 export function channelsForFunnel(
   funnelKey: SalesFunnelKey,
   features: ChannelFeatureRow[],
 ): AcquisitionChannelDef[] {
   return acquisitionChannelsFromFeatures(features).filter((channel) => {
+    // Funding one nothing provisions states a ceiling and produces no campaign.
+    if (!PROVISIONABLE_CHANNEL_SLUGS.has(channel.featureSlug)) return false;
     const feature = features.find((f) => f.slug === channel.featureSlug);
     // Unreachable by construction, since every channel here was built from one
     // of these rows. Kept so the read below narrows without an assertion.

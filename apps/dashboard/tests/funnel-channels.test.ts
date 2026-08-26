@@ -4,6 +4,7 @@ import {
   funnelChannelBudgets,
   offerFunnelTotalCents,
   offerScopedCents,
+  PROVISIONABLE_CHANNEL_SLUGS,
   typedFunnelTotalUsd,
   type ChannelFeatureRow,
 } from "../src/lib/funnel-channels";
@@ -34,6 +35,62 @@ const FEATURES: ChannelFeatureRow[] = [
     salesFunnels: ["sales_meetings_from_conversation"],
   },
 ];
+
+describe("what a customer may FUND", () => {
+  // features-service marks all 33 published channels bookable, which is what the
+  // agency SELLS. campaign-service provisions a campaign for a closed set, which
+  // is what currently RUNS. Funding one outside that set states a ceiling and
+  // produces no campaign: nothing errors, nothing is charged, and the channel
+  // never does anything.
+  it("offers only the channels something can provision", () => {
+    const published: ChannelFeatureRow[] = [
+      {
+        slug: "google-ads",
+        name: "Google Ads",
+        description: "Buy the searches your buyers already run.",
+        displayOrder: 20,
+        salesFunnels: ["website_purchases"],
+      },
+      {
+        slug: "podcast-sponsorships",
+        name: "Podcast Sponsorships",
+        description: "Buy a read on the shows your buyers listen to.",
+        displayOrder: 30,
+        salesFunnels: ["website_purchases"],
+      },
+    ];
+    expect(channelsForFunnel("visit_signup", published).map((c) => c.featureSlug)).toEqual([
+      "google-ads",
+    ]);
+  });
+
+  // The narrowing is about FUNDING alone. A channel outside it still resolves,
+  // still carries its name and its mark, and still names a campaign already
+  // running on it. Conflating the two questions is what let one stale list hide
+  // live channels from every surface at once.
+  it("still names a channel it does not offer", () => {
+    const podcast = acquisitionChannelsFromFeatures([
+      {
+        slug: "podcast-sponsorships",
+        name: "Podcast Sponsorships",
+        description: "Buy a read on the shows your buyers listen to.",
+        salesFunnels: ["website_purchases"],
+      },
+    ]);
+    expect(podcast[0].name).toBe("Podcast Sponsorships");
+  });
+
+  // A mirror is only safe while it is a mirror: a slug here that campaign-service
+  // cannot provision offers a dead channel.
+  it("mirrors campaign-service's set and says so", () => {
+    expect([...PROVISIONABLE_CHANNEL_SLUGS].sort()).toEqual([
+      "feedback-request-cold-email-outreach",
+      "google-ads",
+      "sales-cold-email-outreach",
+      "sales-crm-email-outreach",
+    ]);
+  });
+});
 
 describe("channelsForFunnel", () => {
   // The feedback-request offer buys a CONVERSATION. The other three chains start
