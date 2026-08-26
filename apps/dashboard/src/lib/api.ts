@@ -3238,6 +3238,21 @@ const CampaignRevenueCostEconomicsSchema = z.object({
   expectedConversions: z.number().nullish(),
   costPerConversionUsd: z.number().nullish(),
 });
+/**
+ * The VOLUME half of a campaign group: how much real outcome evidence its money rests on.
+ *
+ * features-service serves it under its own names (the same block it already serves on
+ * `?groupBy=workflow`), so those names are read verbatim rather than renamed here. Only
+ * the two counts a consumer gates on are declared — the block carries its own cost
+ * figures too, and this repo renders those from `costEconomics` instead, on one basis.
+ *
+ * Optional so a producer that predates it parses: absent → the row states its figures
+ * exactly as it did before, which is "we cannot tell how thin this is", never "it is fine".
+ */
+const CampaignRevenueOutcomesSchema = z.object({
+  recipientsRepliesPositive: z.number().nullish(),
+  recipientsClicked: z.number().nullish(),
+});
 const FeatureRevenueByCampaignSchema = z.object({
   groupBy: z.string(),
   groups: z.array(
@@ -3245,6 +3260,7 @@ const FeatureRevenueByCampaignSchema = z.object({
       campaignId: z.string(),
       headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: CampaignRevenueCostEconomicsSchema,
+      outcomes: CampaignRevenueOutcomesSchema.optional(),
     }),
   ),
 });
@@ -3259,6 +3275,11 @@ export interface CampaignRevenueGroup {
   roiMultiple: number | null;
   expectedConversions: number | null;
   costPerConversionUsd: number | null;
+  /** Positive replies attributed to this campaign identity. Undefined = the producer did
+   *  not answer the volume half, which is not the same as zero. */
+  positiveReplies?: number | null;
+  /** Website visits attributed to it, same rule. */
+  websiteClicks?: number | null;
 }
 
 /** GET /features/:slug/revenue?groupBy=campaignId — one lean revenue group per campaign. */
@@ -3287,6 +3308,8 @@ export async function getFeatureRevenueByCampaign(
     roiMultiple: g.costEconomics.roiMultiple,
     expectedConversions: g.costEconomics.expectedConversions ?? null,
     costPerConversionUsd: g.costEconomics.costPerConversionUsd ?? null,
+    positiveReplies: g.outcomes?.recipientsRepliesPositive,
+    websiteClicks: g.outcomes?.recipientsClicked,
   }));
 }
 
