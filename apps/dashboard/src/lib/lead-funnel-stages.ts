@@ -58,6 +58,39 @@ export function isWritableStage(key: LeadStageKey): key is WritableStageKey {
 }
 
 /**
+ * The stages lead-service REFUSES a statement on unless it says what the outcome was
+ * worth. Exactly one: the sale.
+ *
+ * A won deal is the one place in the whole chain where estimating has no excuse. With
+ * no amount, every money figure downstream — pipeline, return, cost of acquisition —
+ * silently prices the deal at the brand's AVERAGE lifetime revenue, a number that
+ * describes no real customer. Every other stage keeps the amount optional, because an
+ * unusually large lead is worth flagging long before it closes.
+ */
+export function stageRequiresValue(key: LeadStageKey): boolean {
+  return key === "sale";
+}
+
+/**
+ * What the person typed, as the cents lead-service takes — or null when it is not an
+ * amount at all.
+ *
+ * Null is a REFUSAL to submit, never a zero: a deal worth nothing and a deal nobody
+ * priced are exactly the two things this change exists to keep apart. A blank field, a
+ * negative, a word and a number that rounds to no cents all return null. Currency
+ * decoration the person pastes in ($, thousands separators, surrounding spaces) is
+ * accepted, because rejecting "$4,900" for its punctuation teaches nothing.
+ */
+export function saleValueCentsFrom(input: string): number | null {
+  const cleaned = input.replace(/[$,\s]/g, "");
+  if (cleaned.length === 0) return null;
+  const amount = Number(cleaned);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const cents = Math.round(amount * 100);
+  return cents > 0 ? cents : null;
+}
+
+/**
  * What is known about one stage. Spelled exactly as lead-service spells it, so nothing
  * translates at the boundary — a second vocabulary for one concept is a second place
  * for the two to drift.
