@@ -36,7 +36,15 @@ export function useLeadStepStatements(leadRowId: string | null) {
 export function useSetLeadStepStatement(leadRowId: string | null) {
   const queryClient = useQueryClient();
 
-  return useMutation<unknown, Error, { step: LeadStepName; kind: "outcome" | "never" }>({
+  return useMutation<
+    unknown,
+    Error,
+    // `valueCents` is what the outcome was worth. Optional on the wire because most
+    // stages carry no amount — but lead-service REFUSES a sale without one, so the
+    // control that states a sale always sends it rather than letting the person meet
+    // a refusal it could have asked about.
+    { step: LeadStepName; kind: "outcome" | "never"; valueCents?: number }
+  >({
     mutationFn: (input) => setLeadStepStatement(leadRowId as string, input),
     onSuccess: () => {
       // Re-read rather than patch the cache by hand. lead-service decides more than the
@@ -61,6 +69,25 @@ export function useSetLeadStepStatement(leadRowId: string | null) {
  * are dropped for the same reason: an explicit pending and an absent one mean the same
  * thing, and carrying both invites a caller to tell them apart.
  */
+/**
+ * What each stated outcome was WORTH, in cents, as the panel's map.
+ *
+ * Absent when nobody said, and absent is not zero: a deal worth nothing and a deal
+ * nobody priced are the two things the producer's new refusal exists to keep apart, so
+ * nothing is filled in here either.
+ */
+export function stageValuesFrom(
+  data: LeadStepStatements | undefined,
+): Partial<Record<LeadStageKey, number | null>> {
+  const out: Partial<Record<LeadStageKey, number | null>> = {};
+  for (const entry of data?.steps ?? []) {
+    if (entry.state !== "outcome" || typeof entry.valueCents !== "number") continue;
+    const key = (entry.step === "purchase" ? "sale" : entry.step) as LeadStageKey;
+    out[key] = entry.valueCents;
+  }
+  return out;
+}
+
 export function stageStatesFrom(
   data: LeadStepStatements | undefined,
 ): Partial<Record<LeadStageKey, LeadStageState>> {
