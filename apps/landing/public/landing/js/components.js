@@ -73,6 +73,8 @@ const FOOTER_HTML = `
       <div class="ft-col">
         <h4>Company</h4>
         <ul>
+          <li><a href="/about">About</a></li>
+          <li><a href="/contact">Contact</a></li>
           <li><a href="https://x.com/distribute_you">Twitter / X</a></li>
           <li><a href="https://dashboard.distribute.you/sign-in">Sign in</a></li>
           <li><a href="https://dashboard.distribute.you/sign-up">Sign up</a></li>

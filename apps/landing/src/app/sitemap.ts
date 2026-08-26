@@ -62,6 +62,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const STATIC_SEO_PATHS: { path: string; priority: number }[] = [
     { path: "/brand", priority: 0.5 },
     { path: "/use-cases", priority: 0.8 },
+    { path: "/about", priority: 0.6 },
+    { path: "/contact", priority: 0.5 },
     { path: "/privacy", priority: 0.3 },
     // NOTE: /performance/brands + /performance/models are 308-redirected to
     // /performance (next.config.ts). Redirecting URLs must NOT be in the sitemap

@@ -6,8 +6,8 @@ import { staticResponse } from "@/lib/static-html";
 // despite the shared assets since being reskinned to the green charter (#2611).
 export const revalidate = 86400;
 
-export async function GET() {
-  const res = await staticResponse("archive-blue.html");
+export async function GET(request: Request) {
+  const res = await staticResponse("archive-blue.html", request);
   const headers = new Headers(res.headers);
   headers.set("X-Robots-Tag", "noindex, nofollow");
   return new Response(res.body, { status: res.status, headers });

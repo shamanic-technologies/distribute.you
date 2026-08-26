@@ -1,6 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { URLS } from "@distribute/content";
+import {
+  HTML_CONTENT_TYPE,
+  MARKDOWN_CONTENT_TYPE,
+  VARY_HEADER,
+  negotiateContentType,
+  notAcceptableBody,
+} from "@/lib/content-negotiation";
+import { htmlToMarkdown } from "@/lib/html-to-markdown";
+import { SITE_URL, organizationJsonLd } from "@/lib/seo";
 
 interface BestPublicMetric {
   workflowSlug: string;
@@ -301,7 +310,64 @@ export function staticHtml(fileName: string) {
     '<link rel="icon" href="/icon.svg" type="image/svg+xml">' +
     '<link rel="apple-touch-icon" href="/apple-icon.png">';
 
-  return rewritten.replace("</head>", `${faviconHead}${analyticsHead()}</head>`);
+  const withHead = rewritten.replace(
+    "</head>",
+    `${faviconHead}${analyticsHead()}</head>`,
+  );
+
+  return withCanonicalOrganization(withHead);
+}
+
+const LD_JSON_BLOCK = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+
+/**
+ * Every statically-served page states the same company, from the one helper the
+ * React tree already renders (`organizationJsonLd`). Several of these documents
+ * carried a hand-written Organization node inside their own `@graph`, which is
+ * how the static and React surfaces came to describe the company differently
+ * (the hand-written copies carry no address and no description, and the
+ * homepage carried none at all). Those nodes are removed and replaced with the
+ * shared one, so there is exactly one Organization per page and one source for
+ * what it says.
+ *
+ * A block that does not parse is left ALONE rather than dropped: an unparseable
+ * script is a bug to fix at its source, and deleting structured data because we
+ * could not read it is strictly worse than leaving it.
+ */
+function withCanonicalOrganization(html: string): string {
+  const stripped = html.replace(LD_JSON_BLOCK, (match, json: string) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json);
+    } catch (err) {
+      console.error("[landing] unparseable ld+json block left untouched", err);
+      return match;
+    }
+
+    const node = parsed as Record<string, unknown>;
+    const graph = node["@graph"];
+    if (Array.isArray(graph)) {
+      const kept = graph.filter(
+        (entry) => (entry as Record<string, unknown>)?.["@type"] !== "Organization",
+      );
+      if (kept.length === graph.length) return match;
+      if (kept.length === 0) return "";
+      return `<script type="application/ld+json">${JSON.stringify({
+        ...node,
+        "@graph": kept,
+      })}</script>`;
+    }
+
+    if (node["@type"] === "Organization") return "";
+    return match;
+  });
+
+  return stripped.replace(
+    "</head>",
+    `<script type="application/ld+json">${JSON.stringify(
+      organizationJsonLd(),
+    )}</script></head>`,
+  );
 }
 
 async function withLivePerformanceMetrics(html: string) {
@@ -1009,29 +1075,93 @@ async function withCacBoot(html: string) {
     );
 }
 
-export async function staticResponse(fileName: string) {
+function canonicalUrlFrom(html: string, fallbackPath?: string): string | undefined {
+  const match = html.match(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']/i);
+  if (match) return match[1];
+  return fallbackPath ? `${SITE_URL}${fallbackPath}` : undefined;
+}
+
+export interface StaticResponseOptions {
+  /** HTTP status. Only the catch-all 404 handler passes anything but 200. */
+  status?: number;
+  /** Canonical path, used for the markdown header when the page states none. */
+  canonicalPath?: string;
+}
+
+/**
+ * Serve one of the hand-authored landing documents, negotiated on `Accept`.
+ *
+ * A browser (and anything sending no `Accept` at all) gets exactly the bytes it
+ * got before negotiation existed. An agent asking for `text/markdown` gets the
+ * same page as markdown. Anything asking for neither gets a 406 rather than a
+ * document it said it could not read.
+ *
+ * `Vary: Accept` is on EVERY branch, including the 406, or a shared cache keyed
+ * on the URL alone would hand one variant to the other kind of client.
+ */
+export async function staticResponse(
+  fileName: string,
+  request?: Request,
+  options: StaticResponseOptions = {},
+) {
+  const status = options.status ?? 200;
+  const negotiated = negotiateContentType(request?.headers.get("accept"));
+
+  if (negotiated === "unsupported") {
+    return new Response(notAcceptableBody(), {
+      status: 406,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        vary: VARY_HEADER,
+        "cache-control": "no-store",
+      },
+    });
+  }
+
   const html = await withCacBoot(
     await withTickerMetrics(
       await withLivePerformanceMetrics(staticHtml(fileName)),
     ),
   );
 
+  if (negotiated === "markdown") {
+    const markdown = htmlToMarkdown(html, {
+      baseUrl: SITE_URL,
+      canonicalUrl: canonicalUrlFrom(html, options.canonicalPath),
+    });
+    return new Response(markdown, {
+      status,
+      headers: {
+        "content-type": MARKDOWN_CONTENT_TYPE,
+        vary: VARY_HEADER,
+        // Deliberately not shared-cacheable. Cloudflare honours `Vary` only for
+        // `Accept-Encoding`, so a cacheable markdown body could be handed to a
+        // browser asking the same URL for HTML. Agent traffic is low volume and
+        // the upstream figures this page interpolates are already behind the
+        // Next data cache, so the origin work here is a string rewrite.
+        "cache-control": "no-store",
+      },
+    });
+  }
+
   return new Response(html, {
+    status,
     headers: {
-      "content-type": "text/html; charset=utf-8",
+      "content-type": HTML_CONTENT_TYPE,
+      vary: VARY_HEADER,
       // This header, not the route's `revalidate` export, is what decides how
-      // often the edge comes back to the function for these 21 pages. `revalidate`
+      // often the edge comes back to the function for these pages. `revalidate`
       // governs Next's own data cache; an explicit `cache-control` on the Response
       // is what the CDN obeys. At `s-maxage=300` every SEO page re-rendered a
       // ~127KB document and pushed it origin -> edge every 5 minutes around the
       // clock, which is what Fast Origin Transfer bills for ($15/month, 459K ISR
-      // writes over 3 months) — crawlers keep every page warm enough to hit that
+      // writes over 3 months) - crawlers keep every page warm enough to hit that
       // window continuously, so the traffic-driven cost was effectively a timer.
       //
       // A day matches the routes' `revalidate` and the figures these pages carry:
       // `__CAC_PRICE__` and the fleet cost per outcome move over weeks. The long
       // `stale-while-revalidate` is unchanged and is what keeps the swap invisible
-      // — a reader is always served instantly from the edge, never waiting on a
+      // - a reader is always served instantly from the edge, never waiting on a
       // revalidation. Raising this without raising `revalidate` (or vice versa)
       // fixes nothing: both have to move together.
       "cache-control": "s-maxage=86400, stale-while-revalidate=31536000",

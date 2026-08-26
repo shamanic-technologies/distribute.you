@@ -35,5 +35,14 @@ export function organizationJsonLd(description = SITE_DESCRIPTION) {
       email: "support@distribute.you",
       contactType: "customer service",
     },
+    // Registered address of the operating company, taken from the company bank
+    // record. Structured-data consumers read a PostalAddress, not a string.
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "285 rue de l'\u00c9glise",
+      postalCode: "46140",
+      addressLocality: "Douelle",
+      addressCountry: "FR",
+    },
   };
 }
