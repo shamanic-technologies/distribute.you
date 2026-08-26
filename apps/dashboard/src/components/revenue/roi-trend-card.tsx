@@ -145,7 +145,9 @@ export function RoiTrendCard({
           {pending ? (
             <Skeleton className="h-8 w-20" />
           ) : learning ? (
-            <LearningTag withInfo={false} />
+            // The tag KEEPS its (i) here, unlike everywhere else: the sentence that used
+            // to explain the muted curve is gone, so this is the only place left that can.
+            <LearningTag />
           ) : (
             <p
               className={`text-2xl font-bold leading-none ${good ? "text-green-600" : "text-gray-900"}`}
@@ -159,11 +161,6 @@ export function RoiTrendCard({
 
       {pending ? (
         <Skeleton className="flex-1 min-h-[180px] w-full rounded" />
-      ) : learning ? (
-        <div className="flex flex-1 min-h-[180px] items-center justify-center px-6 text-center text-sm text-gray-500">
-          Too few outcomes so far to draw a return you could act on. Every point would
-          move by whole multiples on the next one.
-        </div>
       ) : history == null ? (
         <div className="flex flex-1 min-h-[180px] items-center justify-center px-6 text-center text-sm text-gray-500">
           We could not measure your return right now. It will reappear on its own.
@@ -218,14 +215,31 @@ export function RoiTrendCard({
                 width={44}
               />
               <Tooltip content={<RoiTooltip />} cursor={{ stroke: "#cbd5e1", strokeWidth: 1 }} />
+              {/* While learning, the SAME curve is drawn provisional rather than
+                  withheld: a dotted grey line with its points marked, and no fill under
+                  it. A reader can see the shape their money has traced without reading it
+                  as a trend to act on — the prose this replaced said the same thing and
+                  made people read a paragraph to find out there was nothing to see.
+
+                  Grey through `currentColor` off a `text-gray-*` class, like the
+                  break-even line: an SVG stroke attribute is not reached by the
+                  `html.dark` remap, and a hardcoded hex is invisible on one theme. */}
               <Area
                 type="monotone"
                 dataKey="roiMultiple"
                 stroke="currentColor"
-                className="text-brand-600"
-                strokeWidth={2}
-                fill="url(#roi-fill)"
-                dot={false}
+                className={learning ? "text-gray-400" : "text-brand-600"}
+                strokeWidth={learning ? 1.5 : 2}
+                strokeDasharray={learning ? "2 4" : undefined}
+                fill={learning ? "none" : "url(#roi-fill)"}
+                dot={
+                  learning
+                    ? // The dot needs its OWN colour class: recharts renders it outside the
+                      // Area's element, so `currentColor` there resolves against the root and
+                      // came back BLACK against the grey line (measured, not assumed).
+                      { r: 2, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }
+                    : false
+                }
                 activeDot={{ r: 4 }}
                 isAnimationActive={false}
               />

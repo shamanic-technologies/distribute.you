@@ -246,9 +246,19 @@ describe("the scope surfaces (offer and brand)", () => {
     expect(pipelineCard).not.toContain("economicsLearning");
   });
 
-  it("states why instead of drawing a return over almost no outcomes", () => {
+  it("draws the curve PROVISIONAL rather than withholding it", () => {
+    // A dotted grey line with its points marked and no fill: the reader sees the shape
+    // their money has traced without reading it as a trend to act on. The paragraph this
+    // replaced made people read a sentence to find out there was nothing to see.
     expect(trend).toContain("learning = false,");
-    expect(trend).toContain("Too few outcomes so far to draw a return you could act on");
+    expect(trend).toContain('className={learning ? "text-gray-400" : "text-brand-600"}');
+    expect(trend).toContain('strokeDasharray={learning ? "2 4" : undefined}');
+    expect(trend).toContain('fill={learning ? "none" : "url(#roi-fill)"}');
+    expect(trend).toContain('{ r: 2, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }');
+    expect(trend).not.toContain("Too few outcomes so far to draw a return");
+    // Grey via currentColor, never a hex: an SVG stroke is not reached by the html.dark
+    // remap, so a literal colour is invisible on one of the two themes.
+    expect(trend).not.toMatch(/stroke="#[0-9a-f]{3,6}"/i);
     // And it is actually THREADED. The card's own branch was right for a day while the
     // page never passed the prop, so the graph kept drawing — assert the wiring, not
     // just the component that would honour it.
