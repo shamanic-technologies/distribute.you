@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import {
   Area,
   AreaChart,
+  LabelList,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -31,6 +32,9 @@ import { LearningTag } from "@/components/learning-tag";
  */
 
 const BREAK_EVEN = 1;
+
+/** Past this many points the per-point labels collide, and the tooltip carries the values. */
+const LABELLED_POINTS_MAX = 10;
 
 type RoiChartPoint = {
   date: string;
@@ -207,9 +211,16 @@ export function RoiTrendCard({
                 tickLine={false}
                 axisLine={{ stroke: "#e2e8f0" }}
               />
+              {/* `interval={0}` + an explicit `tickCount`: recharts otherwise drops ticks it
+                  thinks will not fit, and on a short card that collapses the scale to its
+                  two ends — 0.0x and 8.0x with nothing between them, which reads as an axis
+                  with no values. Five is what the default aims for; stating it makes it a
+                  promise rather than a preference. */}
               <YAxis
                 tickFormatter={(value: number) => formatRoi(value)}
                 tick={{ fontSize: 11, fill: "#94a3b8" }}
+                tickCount={5}
+                interval={0}
                 tickLine={false}
                 axisLine={false}
                 width={44}
@@ -237,12 +248,34 @@ export function RoiTrendCard({
                     ? // The dot needs its OWN colour class: recharts renders it outside the
                       // Area's element, so `currentColor` there resolves against the root and
                       // came back BLACK against the grey line (measured, not assumed).
-                      { r: 2, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }
+                      { r: 2.5, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }
                     : false
                 }
-                activeDot={{ r: 4 }}
+                activeDot={
+                  // Same trap as the dot above: rendered outside the Area's element, so it
+                  // needs its own colour or the hovered point is a BLACK blob on a grey line.
+                  learning ? { r: 4, strokeWidth: 0, fill: "currentColor", className: "text-gray-500" } : { r: 4 }
+                }
                 isAnimationActive={false}
-              />
+              >
+                {/* A placeholder curve is read at a glance, not interrogated — so while
+                    learning each point states its own value instead of making the reader
+                    hover to find one. Only while the series is short enough for the labels
+                    not to collide; past that the hover tooltip is the only readable way and
+                    stays the only one. */}
+                {learning && data.length <= LABELLED_POINTS_MAX && (
+                  <LabelList
+                    dataKey="roiMultiple"
+                    position="top"
+                    offset={8}
+                    formatter={(value: unknown) =>
+                      typeof value === "number" ? formatRoi(value) : ""
+                    }
+                    className="fill-gray-400"
+                    fontSize={10}
+                  />
+                )}
+              </Area>
             </AreaChart>
           </ResponsiveContainer>
         </div>

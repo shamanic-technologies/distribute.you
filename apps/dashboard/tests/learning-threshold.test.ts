@@ -254,7 +254,18 @@ describe("the scope surfaces (offer and brand)", () => {
     expect(trend).toContain('className={learning ? "text-gray-400" : "text-brand-600"}');
     expect(trend).toContain('strokeDasharray={learning ? "2 4" : undefined}');
     expect(trend).toContain('fill={learning ? "none" : "url(#roi-fill)"}');
-    expect(trend).toContain('{ r: 2, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }');
+    expect(trend).toContain('{ r: 2.5, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }');
+    // The hovered point is rendered outside the Area too, so it needs the same treatment
+    // or it is a black blob on a grey line.
+    expect(trend).toContain('learning ? { r: 4, strokeWidth: 0, fill: "currentColor", className: "text-gray-500" } : { r: 4 }');
+    // Each point states its own value while learning — a placeholder is read at a glance,
+    // not interrogated — up to the count past which the labels would collide.
+    expect(trend).toContain("<LabelList");
+    expect(trend).toContain("learning && data.length <= LABELLED_POINTS_MAX");
+    // And the scale keeps its middle: recharts drops ticks it thinks will not fit, which
+    // on a short card leaves the two ends and nothing between them.
+    expect(trend).toContain("tickCount={5}");
+    expect(trend).toContain("interval={0}");
     expect(trend).not.toContain("Too few outcomes so far to draw a return");
     // Grey via currentColor, never a hex: an SVG stroke is not reached by the html.dark
     // remap, so a literal colour is invisible on one of the two themes.
