@@ -10,7 +10,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
 import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { TenantSwitcher } from "@/components/tenant-switcher";
-import { ReferralCard } from "@/components/invite/referral-card";
+import { RewardsCard } from "@/components/invite/rewards-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -419,7 +419,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
       topSlot={<TenantSwitcher />}
       footer={
         // Anchored to the bottom (outside the scrollable nav): Brand Settings,
-        // then the referral card.
+        // then the rewards card.
         <div className="border-t border-gray-100">
           <div className="p-2 space-y-0.5">
             <SidebarLink
@@ -456,7 +456,7 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               />
             )}
           </div>
-          <ReferralCard />
+          <RewardsCard />
         </div>
       }
     >
@@ -557,7 +557,7 @@ function CampaignLevelSidebar({ orgId, brandId, offerId, campaignId, pathname }:
               isActive={pathname === `${campaignBase}/settings`}
             />
           </div>
-          <ReferralCard />
+          <RewardsCard />
         </div>
       }
     >
@@ -661,7 +661,7 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
               isActive={pathname === `${basePath}/settings`}
             />
           </div>
-          <ReferralCard />
+          <RewardsCard />
         </div>
       }
     >
