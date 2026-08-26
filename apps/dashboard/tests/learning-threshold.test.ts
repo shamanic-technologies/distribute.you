@@ -149,27 +149,33 @@ describe("the Audiences table", () => {
 
 describe("the Campaigns table rows", () => {
   const src = read("components/campaigns/campaigns-table.tsx");
+  const api = read("lib/api.ts");
 
-  it("reads the evidence off the campaign's OWN revenue payload, on the key the campaign page already polls", () => {
-    // The grouped read answers with money and no volume, so the count comes from the
-    // un-grouped per-campaign read — byte-equal key, so opening a campaign costs no
-    // second request and the two surfaces cannot disagree about its evidence.
-    expect(src).toContain('["featureRevenue", brandId, c.featureSlug, "campaign", c.id] as const');
-    expect(src).toContain("getFeatureRevenue(c.featureSlug as string, brandId, { campaignId: c.id })");
+  it("reads the volume off the group the producer serves, with no per-row fan-out", () => {
+    // features-service answers the volume half on `?groupBy=campaignId` (v0.143.0), the
+    // same block it already served per workflow — so the row's evidence rides the read
+    // the table already makes. A per-row read of the un-grouped endpoint was the stopgap
+    // before that landed and must not come back.
+    expect(api).toContain("recipientsRepliesPositive: z.number().nullish()");
+    expect(api).toContain("recipientsClicked: z.number().nullish()");
+    expect(api).toContain("positiveReplies: g.outcomes?.recipientsRepliesPositive");
+    expect(src).not.toContain("getFeatureRevenue(c.featureSlug");
+    expect(src).not.toContain("evidenceQs");
   });
 
   it("counts the funnel's first MEASURED step, never its terminal outcome", () => {
     // A booked meeting or a signup needs the brand's conversion tracker live and is
     // legitimately 0 for most campaigns; gating on it would print Learning forever on a
     // campaign that is measurably working.
-    expect(src).toContain('if (has("positive_replies"))');
-    expect(src).toContain('if (has("website_visits")) return revenue.clicked?.total;');
-    expect(src).toContain("revenue.spend?.positiveRepliesCount ?? revenue.repliedPositive?.total");
+    expect(src).toContain('if (has("positive_replies")) return group.positiveReplies;');
+    expect(src).toContain('if (has("website_visits")) return group.websiteClicks;');
   });
 
-  it("treats an absent payload as 'cannot tell', never as zero", () => {
-    expect(src).toContain("if (!revenue) return undefined;");
-    expect(src).toContain("if (count === undefined) return;");
+  it("treats an unanswered count as 'cannot tell', never as zero", () => {
+    // The producer's block is `.optional()`, so an older payload parses — and a row it
+    // says nothing about keeps stating its figures rather than being called thin.
+    expect(src).toContain("if (!group) return undefined;");
+    expect(src).toContain("signal === undefined ? false : isLearning(signal)");
   });
 
   it("gates the three projections together and leaves the realized figures alone", () => {

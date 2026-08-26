@@ -9,13 +9,10 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
   getBrandFunnelBudgets,
-  getFeatureRevenue,
   getFeatureRevenueByCampaign,
-  keepLastGoodFeatureRevenue,
   type Campaign,
   type CampaignRevenueGroup,
 } from "@/lib/api";
-import type { RevenueOverview } from "@/lib/revenue-view";
 import { stepsFor } from "@/lib/goal-steps";
 import { isLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
@@ -223,24 +220,22 @@ interface CampaignRow {
  * conversion tracker to be live and are legitimately 0 for most campaigns, so gating on
  * them would print `Learning` forever on a campaign that is measurably working.
  *
- * Read verbatim off the campaign's own `/revenue` payload — the browser counts nothing.
- * `undefined` (payload absent) is NOT zero: the caller treats it as "cannot tell" and
- * leaves the row exactly as it reads today.
+ * Read verbatim off the group features-service already serves — the browser counts
+ * nothing. `undefined` (the producer did not answer the volume half, or this row has no
+ * group) is NOT zero: the caller treats it as "cannot tell" and leaves the row exactly as
+ * it reads today.
  */
 function campaignSignalCount(
   campaign: Campaign,
-  revenue: RevenueOverview | undefined,
+  group: CampaignRevenueGroup | null,
 ): number | null | undefined {
-  if (!revenue) return undefined;
+  if (!group) return undefined;
   const steps = stepsFor(null, campaign.funnelKey);
   const has = (key: string) => steps.some((step) => step.key === key);
-  if (has("positive_replies")) {
-    return revenue.spend?.positiveRepliesCount ?? revenue.repliedPositive?.total;
-  }
-  if (has("website_visits")) return revenue.clicked?.total;
+  if (has("positive_replies")) return group.positiveReplies;
+  if (has("website_visits")) return group.websiteClicks;
   return undefined;
 }
-
 
 /**
  * The rows both surfaces read, and the ordering they share.
@@ -387,38 +382,6 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     }
     return [...byIdentity.values()];
   }, [featureCampaigns]);
-  // How much outcome evidence each row's projections rest on.
-  //
-  // The grouped read answers with money and no volume, so the count comes from each
-  // campaign's own un-grouped `/revenue` — the SAME key (and the same keep-last-good)
-  // the campaign Overview and the stat-card row already poll, so opening a campaign
-  // costs no second request and the two surfaces can never disagree about its evidence.
-  // One read per LISTED row, which is one line per identity: 31 of the fleet's 38 brands
-  // list a single row and the largest lists twelve.
-  const evidenceQs = useQueries({
-    queries: listedCampaigns.map((c) => ({
-      queryKey: ["featureRevenue", brandId, c.featureSlug, "campaign", c.id] as const,
-      queryFn: () => getFeatureRevenue(c.featureSlug as string, brandId, { campaignId: c.id }),
-      enabled: orgConsistent && !!c.featureSlug,
-      refetchInterval: POLL_INTERVAL,
-      structuralSharing: (prev: unknown, next: unknown) =>
-        keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
-    })),
-  });
-  const evidenceData = evidenceQs.map((q) => q.data as RevenueOverview | undefined);
-  const learningById = useMemo(() => {
-    const m = new Map<string, boolean>();
-    listedCampaigns.forEach((c, i) => {
-      const count = campaignSignalCount(c, evidenceData[i]);
-      // A funnel whose signal this payload does not carry, or a payload that has not
-      // arrived, cannot say the row is thin — it reads exactly as it does today.
-      if (count === undefined) return;
-      m.set(c.id, isLearning(count));
-    });
-    return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listedCampaigns, ...evidenceData]);
-
   // Every channel's groups in one lookup, keyed by campaign. A campaign appears in
   // exactly one channel's answer (it IS a channel), so this merge can never make two
   // sources disagree about one row.
@@ -451,12 +414,17 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   // and the offer-scoped one state the same number for the same campaign.
   const budgets = budgetsQ.data;
   const rows = useMemo<CampaignRow[]>(() => {
-    const joined = listedCampaigns.map((c) => ({
-      campaign: c,
-      revenue: groupsById.get(c.id) ?? null,
-      budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets),
-      learning: learningById.get(c.id) ?? false,
-    }));
+    const joined = listedCampaigns.map((c) => {
+      const revenue = groupsById.get(c.id) ?? null;
+      const signal = campaignSignalCount(c, revenue);
+      return {
+        campaign: c,
+        revenue,
+        budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets),
+        // A count the producer did not answer cannot say the row is thin.
+        learning: signal === undefined ? false : isLearning(signal),
+      };
+    });
     return joined.sort((a, b) => {
       const byStatus =
         Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status));
@@ -472,7 +440,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });
-  }, [listedCampaigns, groupsById, budgets, learningById]);
+  }, [listedCampaigns, groupsById, budgets]);
 
   // The rows that are RUNNING, for the surfaces whose question is about live
   // campaigns rather than about the brand's campaigns: the Campaigns page's "#1
@@ -496,11 +464,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (groupsQ.data !== undefined || groupsQ.isError) &&
     (budgetsQ.data !== undefined || budgetsQ.isError) &&
-    channelGroupQs.every((q) => q.data !== undefined || q.isError) &&
-    // The evidence reads are in the gate so a row never paints a price and then swaps it
-    // for `Learning` a moment later. Reveal on SETTLE, so one failed read cannot hold the
-    // table: an errored row simply keeps stating its figures.
-    evidenceQs.every((q) => q.data !== undefined || q.isError);
+    channelGroupQs.every((q) => q.data !== undefined || q.isError);
 
   return { rows, activeRows, settled };
 }
