@@ -9,6 +9,9 @@ const SITE_DESCRIPTION = "Complete documentation for distribute.you - AI-powered
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  // Every page owns its own canonical (see src/lib/docs-metadata.ts). Declaring
+  // one here would be inherited by all 28 pages, telling search engines that
+  // the home page is the real document and every other page a duplicate of it.
   title: {
     default: "distribute.you Documentation",
     template: "%s | distribute.you Docs",
@@ -76,9 +79,6 @@ export const metadata: Metadata = {
     icon: "/favicon.jpg",
     shortcut: "/favicon.jpg",
     apple: "/favicon.jpg",
-  },
-  alternates: {
-    canonical: SITE_URL,
   },
 };
 

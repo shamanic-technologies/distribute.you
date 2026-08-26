@@ -4,6 +4,9 @@ import type { ManualQualification, ManualQualificationClassification, ManualQual
 // Keep in sync with the 8-value enum on api-service `/v1/emails/manual-qualifications`.
 const STATUS_CLASSIFICATION: Record<ManualQualificationStatus, ManualQualificationClassification> = {
   lead_interested: "positive",
+  lead_referral: "positive",
+  lead_info_requested: "positive",
+  lead_meeting_requested: "positive",
   lead_meeting_booked: "positive",
   lead_closed: "positive",
   lead_not_interested: "negative",
@@ -15,6 +18,9 @@ const STATUS_CLASSIFICATION: Record<ManualQualificationStatus, ManualQualificati
 
 const STATUS_LABEL: Record<ManualQualificationStatus, string> = {
   lead_interested: "Interested",
+  lead_referral: "Not them, but points us on",
+  lead_info_requested: "Wants to know more",
+  lead_meeting_requested: "Wants to book",
   lead_meeting_booked: "Meeting booked",
   lead_closed: "Closed (won)",
   lead_not_interested: "Not interested",
@@ -30,10 +36,20 @@ const CLASSIFICATION_PILL: Record<ManualQualificationClassification, string> = {
   neutral: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
+/**
+ * What a person may STATE about a reply, in the order they triage.
+ *
+ * Narrower than the type on purpose. `lead_meeting_booked` and `lead_closed` are still
+ * typed, because historical rows carry them and must render — but they are facts about
+ * the DEAL, now stated on the funnel stages in the same panel. Offering them here too
+ * would let one fact be recorded in two stores, which is exactly what let a booked
+ * meeting erase the reply sentiment that led to it.
+ */
 export const MANUAL_QUALIFICATION_STATUSES: readonly ManualQualificationStatus[] = [
   "lead_interested",
-  "lead_meeting_booked",
-  "lead_closed",
+  "lead_info_requested",
+  "lead_meeting_requested",
+  "lead_referral",
   "lead_not_interested",
   "lead_wrong_person",
   "lead_neutral",

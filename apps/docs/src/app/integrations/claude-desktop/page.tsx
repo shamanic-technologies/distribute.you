@@ -1,9 +1,6 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 
-export const metadata: Metadata = {
-  title: "Claude Desktop Integration",
-  description: "Add distribute's 35 tools to Claude Desktop — configure the MCP server once and start automating brand distribution from chat.",
-};
+export const metadata = docsMetadata("/integrations/claude-desktop");
 
 export default function ClaudeDesktopIntegrationPage() {
   return (

@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Outlets API",
-  description: "List media outlets and publications discovered for your brand, with domain authority and topic fit, via the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/outlets");
 
 const LLM_INSTRUCTIONS = `# Outlets API
 

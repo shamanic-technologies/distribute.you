@@ -1,3 +1,4 @@
+import { docsMetadata } from "@/lib/docs-metadata";
 import Link from "next/link";
 import { URLS, DISTRIBUTION_FEATURES } from "@distribute/content";
 import { CopyForLLM } from "@/components/copy-for-llm";
@@ -37,6 +38,8 @@ ${channelList}
 - REST API: api.distribute.you/v1
 - TypeScript Client: @distribute/api-client
 - MCP Server: npx @distribute/mcp`;
+
+export const metadata = docsMetadata("/");
 
 export default function DocsHome() {
   return (

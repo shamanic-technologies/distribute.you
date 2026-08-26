@@ -1,9 +1,6 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 
-export const metadata: Metadata = {
-  title: "n8n Integration",
-  description: "Build automated, self-hosted workflows with distribute and n8n — wire campaigns and outreach together using the REST API.",
-};
+export const metadata = docsMetadata("/integrations/n8n");
 
 export default function N8nIntegrationPage() {
   return (

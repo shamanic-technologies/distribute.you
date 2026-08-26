@@ -3,3 +3,6 @@ User-agent: *
 Allow: /
 
 Sitemap: https://docs.distribute.you/sitemap.xml
+
+# Page index for agents, one line per page:
+# https://docs.distribute.you/llms.txt

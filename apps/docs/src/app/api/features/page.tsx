@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Features API",
-  description: "List automation features, pull live performance stats, and prefill campaign inputs — all through the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/features");
 
 const LLM_INSTRUCTIONS = `# Features API
 

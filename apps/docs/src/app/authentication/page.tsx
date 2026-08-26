@@ -1,15 +1,8 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
-export const metadata: Metadata = {
-  title: "Authentication",
-  description: "Set up your distribute API key and authenticate every request across both the MCP server and the REST API in just a few steps.",
-  openGraph: {
-    title: "Authentication | distribute Docs",
-    description: "Configure API keys and credentials.",
-  },
-};
+export const metadata = docsMetadata("/authentication");
 
 const LLM_INSTRUCTIONS = `# distribute Authentication
 

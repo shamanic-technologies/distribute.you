@@ -1,10 +1,7 @@
-import { Metadata } from "next";
+import { docsMetadata } from "@/lib/docs-metadata";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
-export const metadata: Metadata = {
-  title: "Brands API",
-  description: "Create brands from a URL, fetch full brand details, and extract structured company data with AI — all through the distribute REST API.",
-};
+export const metadata = docsMetadata("/api/brands");
 
 const LLM_INSTRUCTIONS = `# Brands API
 
