@@ -363,6 +363,12 @@ describe("Campaigns page (GA)", () => {
     // brand-scoped list and the offer-scoped one agree about one campaign.
     expect(table).toContain("campaignBudgetCents(c, c.offerId ?? undefined, budgets)");
     expect(table).toContain("fmtDailyBudgetUsd(budgetCents)");
+    // Stated as a RATE, in the campaign header's own words and style: a bare
+    // figure reads as a total beside the two money columns to its left, which
+    // really are totals. Withheld on the dash — "we have no figure" is not a
+    // figure per day.
+    expect(table).toContain('<span className="text-gray-400"> / day</span>');
+    expect(table).toContain("budgetCents == null ? (");
     // The shared narrowing, so the table, the campaign Overview and Campaign
     // Settings cannot disagree about one campaign's money.
     expect(table).toContain('from "@/lib/campaign-budget"');

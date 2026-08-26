@@ -573,9 +573,21 @@ export function CampaignsTable({
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.committedCostUsd)}</td>
                 {/* Whole dollars, always: a ceiling is a configured whole-dollar
                     value. `$0` is a real answer — the campaign is stopped — and a
-                    dash means billing had none, which is a different statement. */}
+                    dash means billing had none, which is a different statement.
+                    The `/ day` rider is the same one the campaign's own header
+                    states beside its status pill: a ceiling is a RATE, and the
+                    bare figure reads as a total beside the two money columns to
+                    its left, which really are totals. Withheld on the dash —
+                    "we have no figure" is not a figure per day. */}
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
-                  {fmtDailyBudgetUsd(budgetCents)}
+                  {budgetCents == null ? (
+                    fmtDailyBudgetUsd(null)
+                  ) : (
+                    <>
+                      {fmtDailyBudgetUsd(budgetCents)}
+                      <span className="text-gray-400"> / day</span>
+                    </>
+                  )}
                 </td>
                 <td className="px-4 py-3 hidden md:table-cell">
                   <StatusPill status={campaign.status} />
