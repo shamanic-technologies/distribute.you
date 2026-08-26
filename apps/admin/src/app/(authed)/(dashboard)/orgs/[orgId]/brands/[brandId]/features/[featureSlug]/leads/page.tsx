@@ -3,6 +3,22 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { listCampaignsByBrand } from "@/lib/api";
+import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
+import {
+  funnelDisplayName,
+  leadFunnelStages,
+  leadStepErrorMessage,
+  trackedStages,
+  type SalesFunnelKeyWire,
+  type WritableStageKey,
+} from "@/lib/lead-funnel-stages";
+import {
+  stageStatesFrom,
+  stageValuesFrom,
+  useLeadStepStatements,
+  useSetLeadStepStatement,
+} from "@/lib/use-lead-step-statements";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { listBrandLeads, listWorkflows, getLeadConsolidatedStatus, type Lead, type LeadConsolidatedStatus, type ManualQualificationStatus } from "@/lib/api";
@@ -306,6 +322,59 @@ export default function FeatureLeadsPage() {
 
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
+  // ── Funnel stages for the open lead ──────────────────────────────────────────
+  // This page lists a whole FEATURE's leads, so the chain is the funnel of each lead's
+  // OWN campaign — not one funnel for the page. campaign-service persists it on the
+  // campaign row; a campaign that states none has no chain to walk and the section
+  // renders nothing rather than showing steps it never sold.
+  const { data: campaignsData } = useAuthQuery(
+    ["campaigns", brandId],
+    () => listCampaignsByBrand(brandId),
+  );
+  const funnelByCampaignId = useMemo(() => {
+    const m = new Map<string, SalesFunnelKeyWire>();
+    for (const c of campaignsData?.campaigns ?? []) {
+      if (c.funnelKey) m.set(c.id, c.funnelKey as SalesFunnelKeyWire);
+    }
+    return m;
+  }, [campaignsData]);
+  const panelFunnelKey = selectedLead ? funnelByCampaignId.get(selectedLead.campaignId) ?? null : null;
+  const panelStages = useMemo(() => leadFunnelStages(panelFunnelKey), [panelFunnelKey]);
+  const { data: stepStatements } = useLeadStepStatements(selectedLead?.id ?? null);
+  const setStage = useSetLeadStepStatement(selectedLead?.id ?? null);
+  const [panelPending, setPanelPending] = useState<{ key: WritableStageKey; next: "outcome" | "never" } | null>(null);
+  const [panelError, setPanelError] = useState<string | null>(null);
+  const panelStates = useMemo(() => stageStatesFrom(stepStatements), [stepStatements]);
+  const panelValues = useMemo(() => stageValuesFrom(stepStatements), [stepStatements]);
+  // What was already measured, off the lead row this page already holds.
+  const panelTracked = useMemo(
+    () =>
+      trackedStages(
+        selectedLead
+          ? { repliedPositive: selectedLead.replied ?? undefined, clicked: selectedLead.clicked ?? undefined }
+          : null,
+      ),
+    [selectedLead],
+  );
+
+  const onSetStage = (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => {
+    setPanelError(null);
+    setPanelPending({ key, next });
+    setStage.mutate(
+      valueCents === undefined ? { step: key, kind: next } : { step: key, kind: next, valueCents },
+      {
+        // lead-service writes its refusal as a sentence for a person to read. Surface
+        // ITS reason through the helper, never the thrown Error's own message field,
+        // which apiCall sets to the whole downstream body verbatim.
+        onError: (err) => {
+          console.error("[admin] setLeadStepStatement failed", err);
+          setPanelError(leadStepErrorMessage(err));
+        },
+        onSettled: () => setPanelPending(null),
+      },
+    );
+  };
+
   const selectedManualStatus: ManualQualificationStatus | null = selectedLead
     ? qualificationByKey.get(qualificationKey(selectedLead.campaignId, selectedLead.email))?.status ?? null
     : null;
@@ -407,6 +476,18 @@ export default function FeatureLeadsPage() {
                   <div><span className="text-gray-500">Size:</span><p className="font-medium">{selectedOrg.estimatedNumEmployees != null ? `${selectedOrg.estimatedNumEmployees} employees` : "-"}</p></div>
                 </div>
               </div>
+            )}
+            {panelFunnelKey && (
+              <LeadFunnelStageSection
+                funnelName={funnelDisplayName(panelFunnelKey)}
+                stages={panelStages}
+                states={panelStates}
+                tracked={panelTracked}
+                values={panelValues}
+                pending={panelPending}
+                error={panelError}
+                onSet={onSetStage}
+              />
             )}
             {selectedLead.servedAt && (
               <div className="mt-4 text-xs text-gray-400">Served: {new Date(selectedLead.servedAt).toLocaleString()}</div>
