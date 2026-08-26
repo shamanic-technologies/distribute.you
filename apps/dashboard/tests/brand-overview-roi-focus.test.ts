@@ -158,12 +158,14 @@ describe("brand surfaces list campaigns and state money", () => {
   it("states ROI and $ CAC on the brand Audiences table, and no funnel step columns", () => {
     expect(audiences).toContain("const brandLevelMoney = !campaignScoped;");
     // Every funnel-scoped pair is off at brand level; the campaign route keeps them all.
-    expect(audiences).toContain("showReplyColsForGoal && !brandLevelMoney");
     expect(audiences).toContain('optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney');
-    // The website-visit pair is funnel-scoped like the rest — it was the one pair the
-    // first sweep missed, so it is pinned by name here rather than left to the goal.
-    expect(audiences).toContain("const showVisitCols = !isPositiveReplies && !brandLevelMoney;");
-    expect(audiences).not.toContain("{!isPositiveReplies && (");
+    // The two signal pairs are keyed on the CAMPAIGN's own funnel steps, never on the
+    // retired goal — a goal cannot separate the two meeting chains, so it printed the
+    // visit pair on a campaign whose chain starts at a positive reply. `!brandLevelMoney`
+    // is still what turns both off at brand level.
+    expect(audiences).toContain('const showVisitCols = hasStep("website_visits") && !brandLevelMoney;');
+    expect(audiences).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
+    expect(audiences).toContain("const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);");
     expect(audiences).toContain('label="ROI"');
     expect(audiences).toContain('label="% CAC"');
     expect(audiences).toContain('label="$ CAC"');

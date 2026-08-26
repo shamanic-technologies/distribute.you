@@ -33,6 +33,9 @@ import {
 } from "@/lib/api";
 import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
 import { goalForFunnelKey } from "@/lib/sales-funnels";
+import { stepsFor } from "@/lib/goal-steps";
+import { isLearning } from "@/lib/learning-threshold";
+import { LearningTag } from "@/components/learning-tag";
 
 const VISIBLE_AUDIENCE_STATUSES = ["active", "paused", "archived"] as const;
 
@@ -64,6 +67,31 @@ function formatUsd(usd: number | null | undefined): string {
   if (usd == null) return "-";
   const decimals = Math.abs(usd) < 10 ? 2 : 0;
   return `$${usd.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+}
+
+/**
+ * The outcome a cost column divides by, for the columns that HAVE one.
+ *
+ * A cost per outcome with almost no outcomes behind it is decided by whichever one
+ * happened to land, so those columns state `Learning` until ten have (the same bar
+ * the stat cards use — `lib/learning-threshold.ts` holds it once). This map is what
+ * says which count each column is keyed on; a column absent from it is not a per-
+ * outcome price and is never gated.
+ */
+const COST_COL_OUTCOME: Partial<Record<SortCol, (stats: FeatureAudienceStatsRow) => number | null | undefined>> = {
+  cppr: (s) => s.evidence.positiveReplies,
+  cpc: (s) => s.evidence.websiteClicks,
+  cps: (s) => s.evidence.signups,
+  cpfs: (s) => s.evidence.formSubmissions,
+  cpsale: (s) => s.evidence.sales,
+};
+
+/** Whether this row's price under this column is still learning. No stats row at all is
+ *  NOT learning — it is the absent-row case the table already prints as "-". */
+function costIsLearning(col: SortCol, stats: FeatureAudienceStatsRow | undefined): boolean {
+  const read = COST_COL_OUTCOME[col];
+  if (!read || !stats) return false;
+  return isLearning(read(stats));
 }
 
 type SortCol = "audience" | "roi" | "cacPct" | "cacUsd" | "invested" | "replies" | "cppr" | "cpc" | "clicks" | "signups" | "cps" | "formSubmissions" | "cpfs" | "sales" | "cpsale" | "outreach" | "remaining" | "size";
@@ -342,11 +370,16 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // (left of Cost per click), and default the sort to CPPR asc. BOTH reply goals qualify:
   // positive_replies is the goal whose outcome IS the reply, so gating on meetingBooked alone
   // would hide the reply columns on the very brand that optimises for replies.
+  // WHICH steps this table's columns describe: the CAMPAIGN's own funnel when it states
+  // one, the goal otherwise. Keyed on the funnel because the goal cannot separate the two
+  // meeting chains — `reply_meeting` and `visit_meeting` both answer to `sales_meetings`,
+  // so a goal-keyed table printed "Website Visits / Cost per website visit" on a campaign
+  // whose chain starts at a positive reply, and hid the reply pair on one that starts at a
+  // click. Same single source the stat cards read (`stepsFor`), so a campaign's columns and
+  // its cards cannot describe two different funnels.
+  const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);
+  const hasStep = (key: string) => funnelStepsHere.some((step) => step.key === key);
   const showMeetingCols = audienceStatsGoal === "meetingBooked" || audienceStatsGoal === "positiveReply";
-  // positive_replies is single-step (reply → paid) — clicks/website visits aren't in the
-  // funnel, so hide the "Cost per website visit" (CPC) + "Website Visits" columns. The CPPR +
-  // Positive replies columns (showMeetingCols) stay, and the sort default is already CPPR-asc.
-  const isPositiveReplies = optimizationGoal === "positive_replies";
   // signups goal → surface the REAL per-audience signup outcome: "Cost per signup"
   // (CPS) + "Signups" columns FIRST (after Audience, before the website-visit funnel),
   // default sort CPS asc. Gated on the conversion tracker being set up — with no tracker
@@ -381,13 +414,20 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // reply→paid path, so its ranking surfaces BOTH funnels: the reply funnel (Positive
   // replies + CPPR) ALONGSIDE the website-visit funnel + the Sale outcome — mirroring the
   // sales-meetings reply columns. website_purchase stays visit-only (single close path).
-  const showReplyColsForGoal = showMeetingCols || optimizationGoal === "sales";
-  const showReplyCols = showReplyColsForGoal && !brandLevelMoney;
+  // A reply pair renders when a positive reply is ON the chain — the reply→meeting funnel,
+  // the reply-terminal goal, and the combined `sales` goal (which wins a client through
+  // either path, so it surfaces both signals).
+  const showReplyCols = (hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney;
   // The website-visit pair is funnel-scoped like every pair above it: it names the
   // first step of the visit-led chains while the rows beside it are attributed across
   // every funnel the brand sells through. Off at brand level for that reason, and off
   // for positive_replies because a click is not in the reply→paid funnel at all.
-  const showVisitCols = !isPositiveReplies && !brandLevelMoney;
+  // ...and the visit pair only when a click onto the site is on the chain. It used to read
+  // `!isPositiveReplies`, which is the retired GOAL's answer: true for every campaign whose
+  // goal is not the reply-terminal one, including the reply→meeting funnel that buys no
+  // visit at all. That is the sibling-condition trap — a pair already gated on something
+  // else reads as done and survives the sweep that turns its siblings off.
+  const showVisitCols = hasStep("website_visits") && !brandLevelMoney;
   // Seed the initial sort column from the brand goal once it resolves — cheapest
   // outcome first: CPPR (meetings), CPS (signups), CPFS (form submissions), CP Sale
   // (sales / website purchases), else CPC (website visits) — until the user picks a
@@ -654,7 +694,26 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
         }
         // Sort the visible rows by the active column. Nulls (missing stat) always
         // last, both directions, so a no-data row never sorts as the cheapest $0.
+        //
+        // A row whose price reads `Learning` has no rank under that column — ordering the
+        // table by a number it is deliberately not showing reads as unordered. Those rows
+        // therefore sink below every measured one and are ordered among themselves by the
+        // OUTCOME COUNT the column divides by, descending: the closest to a real price
+        // first, and that count is the column immediately beside it, so the order the
+        // reader sees is the order the numbers on screen state.
+        const learningRank = (a: AudienceWire): number | null => {
+          const stats = statsByAudienceId.get(a.id);
+          if (!costIsLearning(sortCol, stats)) return null;
+          const read = COST_COL_OUTCOME[sortCol];
+          return (stats && read ? read(stats) : null) ?? 0;
+        };
         const sorted = [...visible].sort((a, b) => {
+          const al = learningRank(a);
+          const bl = learningRank(b);
+          if (al != null || bl != null) {
+            if (al != null && bl != null) return bl - al;
+            return al != null ? 1 : -1;
+          }
           const av = sortValue(sortCol, a, statsByAudienceId.get(a.id));
           const bv = sortValue(sortCol, b, statsByAudienceId.get(b.id));
           if (av != null && bv != null) {
@@ -683,7 +742,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
           <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
             {/* Campaign widths carry the extra `$ Invested` column the brand table
                 already counts inside its own money block. */}
-            <table className={`${brandLevelMoney ? "min-w-[820px]" : isPositiveReplies ? "min-w-[940px]" : showReplyCols && showSaleCols ? "min-w-[1440px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1220px]" : "min-w-[1020px]"} w-full text-sm`}>
+            <table className={`${brandLevelMoney ? "min-w-[820px]" : !showVisitCols ? "min-w-[940px]" : showReplyCols && showSaleCols ? "min-w-[1440px]" : showMeetingCols || showFormSubmissionCols || showSignupCols || showSaleCols ? "min-w-[1220px]" : "min-w-[1020px]"} w-full text-sm`}>
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <SortHeader label="Audience" col="audience" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
@@ -900,6 +959,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
+                            ) : costIsLearning("cpsale", stats) ? (
+                              <LearningTag withInfo={false} />
                             ) : stats?.metrics.cpsaleCents != null ? (
                               formatCents(stats.metrics.cpsaleCents)
                             ) : (
@@ -931,6 +992,11 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
+                            ) : costIsLearning("cppr", stats) ? (
+                              // Too few replies behind the ratio to state it as a price. The
+                              // count sits in the column immediately left, so the reader sees
+                              // exactly how much evidence there is.
+                              <LearningTag withInfo={false} />
                             ) : stats ? (
                               // Accounting "so far": 0 replies + real spend → floor to this
                               // audience's net committed spend (same net figure as billing),
@@ -955,6 +1021,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
+                            ) : costIsLearning("cps", stats) ? (
+                              <LearningTag withInfo={false} />
                             ) : stats?.metrics.cpsCents != null ? (
                               formatCents(stats.metrics.cpsCents)
                             ) : (
@@ -978,6 +1046,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
+                            ) : costIsLearning("cpfs", stats) ? (
+                              <LearningTag withInfo={false} />
                             ) : stats?.metrics.cpfsCents != null ? (
                               formatCents(stats.metrics.cpfsCents)
                             ) : (
@@ -1000,6 +1070,8 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                           <td className="px-4 py-3 text-right font-medium text-gray-500 tabular-nums">
                             {statsLoading ? (
                               <Skeleton className="ml-auto h-4 w-12" />
+                            ) : costIsLearning("cpc", stats) ? (
+                              <LearningTag withInfo={false} />
                             ) : stats ? (
                               formatCents(stats.metrics.cpcCents)
                             ) : (
