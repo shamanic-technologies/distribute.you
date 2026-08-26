@@ -28,3 +28,20 @@ export function isLearning(count: number | null | undefined): boolean {
 
 /** What the tag says when a reader asks why there is no figure. */
 export const LEARNING_NOTE = `Still learning: fewer than ${LEARNING_MIN_OUTCOMES} of these have landed, so any cost we printed would swing on the next one. The figure appears once there is enough to stand on.`;
+
+/**
+ * Whether a SCOPE that is sold by campaigns — an offer, or a brand — is still learning.
+ *
+ * A scope's money is its campaigns' money combined, so what makes it readable is whether
+ * ANY ONE of them has produced enough outcomes to price. One measured campaign is enough:
+ * the scope then rests on a real figure, however thin its siblings are. This is
+ * deliberately not "does the scope's TOTAL clear the bar" — three campaigns at five
+ * outcomes each are three unreliable prices, and adding them does not make one reliable.
+ *
+ * A scope with NO campaigns is not learning, it is unmeasured: there is nothing to have
+ * an opinion about, so the surface reads exactly as it does today.
+ */
+export function scopeIsLearning(rows: readonly { learning: boolean }[]): boolean {
+  if (rows.length === 0) return false;
+  return rows.every((row) => row.learning);
+}

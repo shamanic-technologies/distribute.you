@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/skeleton";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import type { RoiHistory } from "@/lib/revenue-view";
+import { LearningTag } from "@/components/learning-tag";
 
 /**
  * "Return on spend" — the brand's ROI across its whole life, one line.
@@ -108,11 +109,18 @@ function RoiTooltip({
 export function RoiTrendCard({
   history,
   pending = false,
+  learning = false,
 }: {
   /** `/revenue` `roiHistory`. Null when features-service could not build it — it is
    *  fail-soft there so a curve never 502s an Overview whose other numbers are fine. */
   history?: RoiHistory | null;
   pending?: boolean;
+  /**
+   * Every campaign selling this scope is still learning, so the curve is a ratio drawn
+   * over almost no outcomes: each point moves by whole multiples on the next one, and a
+   * line makes that read as a trend. The card states why instead of drawing it.
+   */
+  learning?: boolean;
 }) {
   const data = useMemo(() => buildPoints(history), [history]);
   const latest = data.length > 0 ? data[data.length - 1] : null;
@@ -136,6 +144,8 @@ export function RoiTrendCard({
         <div className="text-right">
           {pending ? (
             <Skeleton className="h-8 w-20" />
+          ) : learning ? (
+            <LearningTag withInfo={false} />
           ) : (
             <p
               className={`text-2xl font-bold leading-none ${good ? "text-green-600" : "text-gray-900"}`}
@@ -149,6 +159,11 @@ export function RoiTrendCard({
 
       {pending ? (
         <Skeleton className="flex-1 min-h-[180px] w-full rounded" />
+      ) : learning ? (
+        <div className="flex flex-1 min-h-[180px] items-center justify-center px-6 text-center text-sm text-gray-500">
+          Too few outcomes so far to draw a return you could act on. Every point would
+          move by whole multiples on the next one.
+        </div>
       ) : history == null ? (
         <div className="flex flex-1 min-h-[180px] items-center justify-center px-6 text-center text-sm text-gray-500">
           We could not measure your return right now. It will reappear on its own.

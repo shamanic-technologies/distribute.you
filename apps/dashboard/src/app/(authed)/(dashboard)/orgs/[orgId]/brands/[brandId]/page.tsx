@@ -34,6 +34,8 @@ import { CampaignControlsTrigger } from "@/components/campaigns/campaign-control
 import { OffersTable } from "@/components/offers/offers-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { scopeIsLearning } from "@/lib/learning-threshold";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { DashboardPage } from "@/components/dashboard-page";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -95,6 +97,14 @@ export default function BrandOverviewPage() {
   const offerId = params.offerId as string | undefined;
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
+  // Whether this scope's RATIOS rest on enough evidence to state: a scope's money is its
+  // campaigns' money combined, so one measured campaign is enough and none is not. Read
+  // through the same hook the Campaigns table below uses, on the same keys, so it costs
+  // no network — and the cards above cannot state a return every row beneath them is
+  // declining to state. Gates ROI / $ CAC / % CAC and the return line; Pipeline revenue
+  // is a total and keeps its figure.
+  const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
+  const economicsLearning = scopeIsLearning(campaignRows);
   const timezone = useMemo(() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -488,6 +498,7 @@ export default function BrandOverviewPage() {
             economics={revenueRevealed ? data?.costEconomics : null}
             totalPipelineUsd={revenueRevealed ? data?.totalPipelineUsd : null}
             showEconomics
+            economicsLearning={economicsLearning}
             showFunnelMetrics={false}
           />
         }

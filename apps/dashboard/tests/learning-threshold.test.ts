@@ -5,6 +5,7 @@ import {
   LEARNING_MIN_OUTCOMES,
   LEARNING_NOTE,
   isLearning,
+  scopeIsLearning,
 } from "../src/lib/learning-threshold";
 
 const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
@@ -33,6 +34,29 @@ describe("isLearning", () => {
     expect(LEARNING_NOTE).not.toContain("$");
     // No em-dash in user-facing copy.
     expect(LEARNING_NOTE).not.toContain("—");
+  });
+});
+
+describe("scopeIsLearning", () => {
+  const row = (learning: boolean) => ({ learning });
+
+  it("clears the moment ONE campaign is measured, however thin its siblings", () => {
+    expect(scopeIsLearning([row(true), row(false), row(true)])).toBe(false);
+  });
+
+  it("is learning only while every campaign is", () => {
+    expect(scopeIsLearning([row(true), row(true)])).toBe(true);
+  });
+
+  it("does not sum: three thin campaigns are three unreliable prices, not one reliable one", () => {
+    // The rule is deliberately per-campaign rather than "does the scope's TOTAL clear
+    // the bar" — adding unreliable prices does not make a reliable one.
+    expect(scopeIsLearning([row(true), row(true), row(true)])).toBe(true);
+  });
+
+  it("treats a scope with NO campaigns as unmeasured, not learning", () => {
+    // Nothing to have an opinion about — the surface reads exactly as it does today.
+    expect(scopeIsLearning([])).toBe(false);
   });
 });
 
@@ -194,6 +218,47 @@ describe("the Campaigns table rows", () => {
 
   it("does not rank a row by a return it is not showing", () => {
     expect(src).toContain("const byLearning = Number(a.learning) - Number(b.learning);");
+  });
+});
+
+describe("the scope surfaces (offer and brand)", () => {
+  const overview = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
+  const cards = read("components/revenue/outreach-stat-cards.tsx");
+  const auto = read("components/revenue/outreach-stat-cards-auto.tsx");
+  const campaignsPage = read("components/campaigns/campaigns-page.tsx");
+  const trend = read("components/revenue/roi-trend-card.tsx");
+
+  it("derives the scope's state from the rows the Campaigns table renders", () => {
+    // Same hook, same query keys — so it costs no network, and a header cannot state a
+    // return every row beneath it is declining to state.
+    for (const src of [overview, auto, campaignsPage]) {
+      expect(src).toContain("scopeIsLearning(");
+      expect(src).toContain("useCampaignRows(");
+    }
+  });
+
+  it("gates the three RATIOS on the stat row and leaves Pipeline revenue alone", () => {
+    expect(cards).toContain("economicsLearning ? <LearningTag withInfo={false} /> : undefined");
+    // Pipeline revenue is a TOTAL: it grows with each outcome rather than being decided
+    // by whichever one landed, so a thin scope has a small pipeline, not a wrong one.
+    const pipelineCard = cards.slice(cards.indexOf('label="Pipeline revenue"'), cards.indexOf('label="ROI"'));
+    expect(pipelineCard).not.toContain("economicsLearning");
+  });
+
+  it("states why instead of drawing a return over almost no outcomes", () => {
+    expect(trend).toContain("learning = false,");
+    expect(trend).toContain("Too few outcomes so far to draw a return you could act on");
+  });
+
+  it("gates the price and the ranking-by-price on the Campaigns header, not the total", () => {
+    const tiles = campaignsPage.slice(campaignsPage.indexOf('label="Pipeline generated"'));
+    expect(tiles).toContain('label="Cost per acquisition"');
+    expect(tiles).toContain('label="#1 acquisition channel"');
+    const pipelineTile = campaignsPage.slice(
+      campaignsPage.indexOf('label="Pipeline generated"'),
+      campaignsPage.indexOf('label="Cost per acquisition"'),
+    );
+    expect(pipelineTile).not.toContain("scopeLearning");
   });
 });
 
