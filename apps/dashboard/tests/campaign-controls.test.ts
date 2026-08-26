@@ -344,9 +344,41 @@ describe("scopeTotalCents", () => {
       { offerId: OFFER_A },
     );
     expect(rows).toHaveLength(2);
-    expect(scopeTotalCents(rows)).toBe(6000);
+    // $50, not $60: the feedback-request campaign is STOPPED, so its $10 ceiling
+    // still exists and nothing will draw on it today. The Overview read `$60 / day`
+    // for exactly this brand.
+    expect(scopeTotalCents(rows)).toBe(5000);
     // ...and one running campaign makes the offer active, not partially paused.
     expect(rollupStatus(rows)).toBe("active");
+  });
+
+  it("leaves a PAUSED campaign's ceiling out — it is money that will not be spent", () => {
+    // Pausing is a status, not a zeroed amount, precisely so the figure survives a
+    // restart. That is also why it cannot be in a total answering "per day".
+    const set = budgets([
+      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
+      { funnelKey: "visit_signup", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 1000 },
+    ]);
+    const rows = buildControlRows(
+      [
+        campaign({ id: "live" }),
+        campaign({ id: "paused", status: "stopped", funnelKey: "visit_signup" }),
+      ],
+      set,
+      { offerId: OFFER_A },
+    );
+    expect(rows).toHaveLength(2);
+    expect(scopeTotalCents(rows)).toBe(5000);
+  });
+
+  it("is zero when every campaign is paused, and that is a real answer", () => {
+    const set = budgets([
+      { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
+    ]);
+    const rows = buildControlRows([campaign({ id: "a", status: "stopped" })], set, {
+      offerId: OFFER_A,
+    });
+    expect(scopeTotalCents(rows)).toBe(0);
   });
 });
 
@@ -462,7 +494,38 @@ describe("diffSummary — what Confirm is about to do", () => {
     );
     const summary = diffSummary(rows, diff)!;
     expect(summary).toContain("1 campaign pausing");
-    expect(summary).toContain("$34 to $44");
+    // $34 to $20: b's ceiling rises 10 -> 20, and a's $24 leaves the daily total
+    // because it is being PAUSED, though its ceiling is untouched and comes back
+    // with it. The line reports what will be spent, not what is configured.
+    expect(summary).toContain("$34 to $20");
+  });
+
+  it("reports the money moving on a PAUSE alone, with no budget write at all", () => {
+    const diff = controlsDiff(
+      rows,
+      draftsBy(rows, { a: { running: false, budget: "24" }, b: { running: true, budget: "10" } }),
+    );
+    expect(diff.budgetWrites).toHaveLength(0);
+    const summary = diffSummary(rows, diff)!;
+    expect(summary).toContain("$34 to $10");
+  });
+
+  it("says nothing about money when the edit cannot change what is spent today", () => {
+    // Editing a PAUSED campaign's ceiling is a real write and moves nothing today,
+    // so the line would otherwise read "$24 to $24".
+    const mixed = buildControlRows(
+      [
+        campaign({ id: "a" }),
+        campaign({ id: "b", status: "stopped", funnelKey: "visit_signup" }),
+      ],
+      set,
+    );
+    const diff = controlsDiff(
+      mixed,
+      draftsBy(mixed, { a: { running: true, budget: "24" }, b: { running: false, budget: "99" } }),
+    );
+    expect(diff.budgetWrites).toHaveLength(1);
+    expect(diffSummary(mixed, diff)).not.toContain("daily budget");
   });
 
   it("counts restarts and pauses separately", () => {

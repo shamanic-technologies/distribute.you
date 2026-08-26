@@ -9,7 +9,6 @@ import {
   getOfferRevenue,
   getBrandRevenue,
   fetchFeatureStats,
-  getBrandDailyBudget,
   getBrandPause,
   getBrandConversionToken,
   getFeaturePipelineActivity,
@@ -31,6 +30,7 @@ import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { CampaignsTable } from "@/components/campaigns/campaigns-table";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
+import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { OffersTable } from "@/components/offers/offers-table";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -255,11 +255,14 @@ export default function BrandOverviewPage() {
   // server-defaulted column — plus the two conversion rates the Outreach-activity
   // chart labels its bars with, and this level renders neither.
 
-  const { data: budgetData, isError: budgetIsError } = useAuthQuery(
-    ["brandDailyBudget", brandId],
-    () => getBrandDailyBudget(brandId),
-    { enabled, ...pollOptions },
-  );
+  // What this brand may spend TODAY — its RUNNING campaigns' ceilings, joined
+  // from the two keys the page's controls trigger already polls. billing's own
+  // `GET /brands/:id/daily-budget` used to answer this and it is status-BLIND:
+  // billing keys ceilings on (funnel x channel x offer) and stores no status, so
+  // a brand running one campaign at $50 beside one paused at $10 answered $60,
+  // and both the cost card's denominator and the monthly projection below
+  // inherited the overstatement.
+  const { cents: runningDailyBudgetCents } = useRunningDailyBudgetCents(brandId, { enabled });
 
   // Pause state — shares the campaign overview's pause query key so both surfaces
   // hit one cache entry. A paused brand holds (doesn't run) its campaigns, so the
@@ -286,9 +289,13 @@ export default function BrandOverviewPage() {
     conversionTokenData?.status === "live_waiting";
   // The Top-3-audiences card's cost column — the SAME choice the Audiences table leads
   // with, so the two pages cannot state different economics for one brand at one moment.
+  //
+  // It is a month of what may be spent TODAY, so it rides the running-only total
+  // rather than billing's status-blind one: projecting a month from a figure that
+  // counts paused campaigns promises outcomes the money will not buy.
   const monthlyBudgetUsd =
-    budgetData?.dailyBudgetCents != null && budgetData.dailyBudgetCents > 0
-      ? (budgetData.dailyBudgetCents / 100) * 30
+    runningDailyBudgetCents != null && runningDailyBudgetCents > 0
+      ? (runningDailyBudgetCents / 100) * 30
       : null;
 
   // NO workflow-projection here any more. It resolved a WORKFLOW for the brand's goal,
@@ -409,20 +416,12 @@ export default function BrandOverviewPage() {
   // are this scope's CAMPAIGNS whatever the grain, because a campaign is the only
   // thing billing and campaign-service actually fund.
   //
-  // The money is the one figure the two grains take from different places, and
-  // deliberately so. At BRAND level billing serves its own total, so it is read
-  // (`budgetData.dailyBudgetCents`, already fetched a few lines up for the cost
-  // card) rather than recomposed from the rows — recomposing it is how two
-  // surfaces come to state one number two ways. At OFFER level there is no served
-  // figure, so the trigger adds up the offer's own campaign ceilings, the same
-  // shape the funnels card uses for its per-offer total.
-  const ControlsLine = (
-    <CampaignControlsTrigger
-      brandId={brandId}
-      offerId={offerId}
-      totalCentsOverride={offerId ? undefined : (budgetData?.dailyBudgetCents ?? null)}
-    />
-  );
+  // The money is the same question at both grains — what may be spent TODAY —
+  // so both read the trigger's own rows and no override is passed. billing's
+  // served brand total used to fill the brand grain and it is status-BLIND:
+  // billing keys a ceiling on the triple and stores no status, so a brand
+  // running one campaign at $50 beside one paused at $10 read `$60 / day`.
+  const ControlsLine = <CampaignControlsTrigger brandId={brandId} offerId={offerId} />;
 
   // Only once revenue resolves do we know the brand has no pipeline yet.
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
@@ -463,7 +462,7 @@ export default function BrandOverviewPage() {
         // numerator, and dividing it across the offers would invent a share
         // nobody configured. The card then states what was spent and claims no
         // ceiling, and the tip below says why.
-        dailyBudgetCents={offerId ? null : budgetData?.dailyBudgetCents ?? null}
+        dailyBudgetCents={offerId ? null : runningDailyBudgetCents}
         budgetNote={
           offerId
             ? "There is no daily budget for a single offer: the budget is funded for the whole brand, so this figure is what this offer spent today, with no ceiling of its own to compare it against."

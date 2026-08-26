@@ -247,9 +247,16 @@ export const ROLLUP_STYLE: Record<ControlRollup, string> = {
 };
 
 /**
- * What this SCOPE funds per day, in cents, across the campaigns it controls.
+ * What this SCOPE may spend TODAY, in cents — its RUNNING campaigns' ceilings.
  *
- * Adds up the rows' OWN ceilings — the ones `campaignSavedCents` already
+ * A PAUSED campaign is deliberately not in it. Its ceiling still exists (that is
+ * the whole point of pausing by status rather than by zeroing the amount — see
+ * the note at the top of this file), but nothing will draw on it today, so
+ * adding it states money the brand cannot spend. Measured on the brand that
+ * surfaced this: one campaign running at $50 and one paused at $10 read
+ * `$60 / day` on its Overview.
+ *
+ * It adds up the rows' OWN ceilings — the ones `campaignSavedCents` already
  * narrowed to each campaign's offer — which is the same shape as the funnels
  * card's per-offer total and for the same reason: billing's per-pair figure
  * spans every offer selling that pair, so it names money a reader on one offer
@@ -260,12 +267,20 @@ export const ROLLUP_STYLE: Record<ControlRollup, string> = {
  * per stored row would add the same ceiling up once per row. That is exactly
  * what it did — 46 rows of one campaign read $2,310/day against a real $50.
  *
- * This is NOT how the BRAND's total is obtained. billing serves that figure
- * (`GET /brands/:id/daily-budget`) and the brand Overview reads it; recomposing
- * it here is how two surfaces come to state one number two ways.
+ * ⚠️ This is ALSO how the BRAND's figure is obtained now, and that is a reversal.
+ * billing serves a brand total (`GET /brands/:id/daily-budget`) and the Overview
+ * used to read it — but billing keys ceilings on the triple and stores NO status,
+ * while campaign-service stores the status and no money, so NEITHER producer can
+ * answer "what may be spent today" on its own. This join is the only place both
+ * halves are in hand, and it is free: the rows come off the two query keys the
+ * page already polls. Every grain therefore reads THIS function, so brand, offer
+ * and campaign cannot state one number two ways.
  */
 export function scopeTotalCents(rows: ControlRow[]): number {
-  return rows.reduce((sum, r) => sum + (r.savedCents > 0 ? r.savedCents : 0), 0);
+  return rows.reduce(
+    (sum, r) => sum + (r.running && r.savedCents > 0 ? r.savedCents : 0),
+    0,
+  );
 }
 
 /** A budget field holds whole dollars, or nothing. Blank is zero — the stop. */
@@ -432,9 +447,14 @@ export function diffSummary(rows: ControlRow[], diff: ControlsDiff): string | nu
   if (activating > 0) parts.push(`${activating} ${plural(activating)} restarting`);
   if (stopping > 0) parts.push(`${stopping} ${plural(stopping)} pausing`);
 
-  if (diff.budgetWrites.length > 0) {
-    const before = scopeTotalCents(rows);
-    const after = nextTotalCents(rows, diff);
+  // Gated on the money actually MOVING, not on a budget write existing. Pausing
+  // takes a campaign's ceiling out of the daily total without touching it, so a
+  // write-gated line stayed silent on the one action that changes what gets
+  // spent tomorrow; and editing a PAUSED campaign's ceiling moves no money
+  // today, so it would otherwise print "$50 to $50".
+  const before = scopeTotalCents(rows);
+  const after = nextTotalCents(rows, diff);
+  if (before !== after) {
     parts.push(`daily budget ${fmtWhole(before)} to ${fmtWhole(after)}`);
   }
 
@@ -449,10 +469,23 @@ function fmtWhole(cents: number): string {
   return `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 }
 
-/** What the rows would sum to once this diff lands. Used only by the summary. */
+/**
+ * What this scope would spend per day once this diff lands. Used only by the
+ * summary.
+ *
+ * It reads the diff's STATUS writes as well as its budget ones, so it answers
+ * on the same basis `scopeTotalCents` does — only what will be RUNNING counts.
+ * A pause therefore reports the money leaving the daily total even though its
+ * ceiling is untouched, and a restart reports it coming back; reading only the
+ * budget writes would report "no change" for the one action that changes what
+ * gets spent tomorrow.
+ */
 export function nextTotalCents(rows: ControlRow[], diff: ControlsDiff): number {
   const byRow = new Map(diff.budgetWrites.map((w) => [w.rowId, w.cents]));
+  const runningByRow = new Map(diff.statusWrites.map((w) => [w.rowId, w.activate]));
   return rows.reduce((sum, r) => {
+    const running = runningByRow.get(r.rowId) ?? r.running;
+    if (!running) return sum;
     const cents = byRow.get(r.rowId) ?? r.savedCents;
     return sum + (cents > 0 ? cents : 0);
   }, 0);
