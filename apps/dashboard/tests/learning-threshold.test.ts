@@ -136,6 +136,47 @@ describe("the Audiences table", () => {
   });
 });
 
+describe("the Campaigns table rows", () => {
+  const src = read("components/campaigns/campaigns-table.tsx");
+
+  it("reads the evidence off the campaign's OWN revenue payload, on the key the campaign page already polls", () => {
+    // The grouped read answers with money and no volume, so the count comes from the
+    // un-grouped per-campaign read — byte-equal key, so opening a campaign costs no
+    // second request and the two surfaces cannot disagree about its evidence.
+    expect(src).toContain('["featureRevenue", brandId, c.featureSlug, "campaign", c.id] as const');
+    expect(src).toContain("getFeatureRevenue(c.featureSlug as string, brandId, { campaignId: c.id })");
+  });
+
+  it("counts the funnel's first MEASURED step, never its terminal outcome", () => {
+    // A booked meeting or a signup needs the brand's conversion tracker live and is
+    // legitimately 0 for most campaigns; gating on it would print Learning forever on a
+    // campaign that is measurably working.
+    expect(src).toContain('if (has("positive_replies"))');
+    expect(src).toContain('if (has("website_visits")) return revenue.clicked?.total;');
+    expect(src).toContain("revenue.spend?.positiveRepliesCount ?? revenue.repliedPositive?.total");
+  });
+
+  it("treats an absent payload as 'cannot tell', never as zero", () => {
+    expect(src).toContain("if (!revenue) return undefined;");
+    expect(src).toContain("if (count === undefined) return;");
+  });
+
+  it("gates the three projections together and leaves the realized figures alone", () => {
+    // One statement in three units — showing one of them beside two tags would let a
+    // reader trust the number we just said we could not stand behind.
+    expect(src).toContain("learning ? <LearningTag withInfo={false} /> : <RoiCell");
+    expect(src).toContain("learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)");
+    expect(src).toContain("learning ? <LearningTag withInfo={false} /> : fmtUsd(revenue?.totalPipelineUsd)");
+    // $ Invested and $ Budget are money already spent and a ceiling the customer set.
+    expect(src).toContain("{fmtUsd(revenue?.committedCostUsd)}");
+    expect(src).toContain("{fmtDailyBudgetUsd(budgetCents)}");
+  });
+
+  it("does not rank a row by a return it is not showing", () => {
+    expect(src).toContain("const byLearning = Number(a.learning) - Number(b.learning);");
+  });
+});
+
 describe("the Top-3 audiences card", () => {
   const src = read("components/revenue/top-audiences-card.tsx");
 

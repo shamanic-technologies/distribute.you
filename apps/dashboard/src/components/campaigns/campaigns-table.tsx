@@ -9,10 +9,16 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
   listCampaignsByBrand,
   getBrandFunnelBudgets,
+  getFeatureRevenue,
   getFeatureRevenueByCampaign,
+  keepLastGoodFeatureRevenue,
   type Campaign,
   type CampaignRevenueGroup,
 } from "@/lib/api";
+import type { RevenueOverview } from "@/lib/revenue-view";
+import { stepsFor } from "@/lib/goal-steps";
+import { isLearning } from "@/lib/learning-threshold";
+import { LearningTag } from "@/components/learning-tag";
 import { campaignBudgetCents, fmtDailyBudgetUsd } from "@/lib/campaign-budget";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
@@ -194,6 +200,45 @@ interface CampaignRow {
   revenue: CampaignRevenueGroup | null;
   /** billing's ceiling for THIS campaign, in cents. Null = billing had no answer. */
   budgetCents: number | null;
+  /**
+   * Whether this row's three PROJECTIONS rest on too little evidence to state.
+   *
+   * ROI, % CAC and the expected revenue are all derived from the outcomes the campaign
+   * has produced so far, so under ten of them they are decided by whichever one landed
+   * and swing by whole multiples on the next. Same bar as every other per-outcome figure
+   * in the dashboard (`lib/learning-threshold.ts`).
+   *
+   * `$ Invested` and `$ Budget` are NEVER gated by it: one is money already spent and the
+   * other a ceiling the customer set, and neither is derived from an outcome count.
+   */
+  learning: boolean;
+}
+
+/**
+ * The outcome a campaign's projections rest on: the first step of its funnel that is
+ * actually MEASURED — a positive reply on the reply-led chains, a website visit on the
+ * visit-led ones.
+ *
+ * Not the funnel's terminal outcome (a booked meeting, a signup): those need the brand's
+ * conversion tracker to be live and are legitimately 0 for most campaigns, so gating on
+ * them would print `Learning` forever on a campaign that is measurably working.
+ *
+ * Read verbatim off the campaign's own `/revenue` payload — the browser counts nothing.
+ * `undefined` (payload absent) is NOT zero: the caller treats it as "cannot tell" and
+ * leaves the row exactly as it reads today.
+ */
+function campaignSignalCount(
+  campaign: Campaign,
+  revenue: RevenueOverview | undefined,
+): number | null | undefined {
+  if (!revenue) return undefined;
+  const steps = stepsFor(null, campaign.funnelKey);
+  const has = (key: string) => steps.some((step) => step.key === key);
+  if (has("positive_replies")) {
+    return revenue.spend?.positiveRepliesCount ?? revenue.repliedPositive?.total;
+  }
+  if (has("website_visits")) return revenue.clicked?.total;
+  return undefined;
 }
 
 
@@ -342,6 +387,38 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     }
     return [...byIdentity.values()];
   }, [featureCampaigns]);
+  // How much outcome evidence each row's projections rest on.
+  //
+  // The grouped read answers with money and no volume, so the count comes from each
+  // campaign's own un-grouped `/revenue` — the SAME key (and the same keep-last-good)
+  // the campaign Overview and the stat-card row already poll, so opening a campaign
+  // costs no second request and the two surfaces can never disagree about its evidence.
+  // One read per LISTED row, which is one line per identity: 31 of the fleet's 38 brands
+  // list a single row and the largest lists twelve.
+  const evidenceQs = useQueries({
+    queries: listedCampaigns.map((c) => ({
+      queryKey: ["featureRevenue", brandId, c.featureSlug, "campaign", c.id] as const,
+      queryFn: () => getFeatureRevenue(c.featureSlug as string, brandId, { campaignId: c.id }),
+      enabled: orgConsistent && !!c.featureSlug,
+      refetchInterval: POLL_INTERVAL,
+      structuralSharing: (prev: unknown, next: unknown) =>
+        keepLastGoodFeatureRevenue(prev as RevenueOverview | undefined, next as RevenueOverview),
+    })),
+  });
+  const evidenceData = evidenceQs.map((q) => q.data as RevenueOverview | undefined);
+  const learningById = useMemo(() => {
+    const m = new Map<string, boolean>();
+    listedCampaigns.forEach((c, i) => {
+      const count = campaignSignalCount(c, evidenceData[i]);
+      // A funnel whose signal this payload does not carry, or a payload that has not
+      // arrived, cannot say the row is thin — it reads exactly as it does today.
+      if (count === undefined) return;
+      m.set(c.id, isLearning(count));
+    });
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listedCampaigns, ...evidenceData]);
+
   // Every channel's groups in one lookup, keyed by campaign. A campaign appears in
   // exactly one channel's answer (it IS a channel), so this merge can never make two
   // sources disagree about one row.
@@ -378,16 +455,24 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       campaign: c,
       revenue: groupsById.get(c.id) ?? null,
       budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets),
+      learning: learningById.get(c.id) ?? false,
     }));
     return joined.sort((a, b) => {
       const byStatus =
         Number(isActiveStatus(b.campaign.status)) - Number(isActiveStatus(a.campaign.status));
       if (byStatus !== 0) return byStatus;
-      const byRoi = (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
+      // A row that is not stating its return has no rank under it — ordering the table
+      // by a number it is deliberately not showing reads as unordered. Learning rows sit
+      // below the measured ones of their status and fall through to last-updated.
+      const byLearning = Number(a.learning) - Number(b.learning);
+      if (byLearning !== 0) return byLearning;
+      const byRoi = a.learning
+        ? 0
+        : (b.revenue?.roiMultiple ?? -1) - (a.revenue?.roiMultiple ?? -1);
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });
-  }, [listedCampaigns, groupsById, budgets]);
+  }, [listedCampaigns, groupsById, budgets, learningById]);
 
   // The rows that are RUNNING, for the surfaces whose question is about live
   // campaigns rather than about the brand's campaigns: the Campaigns page's "#1
@@ -411,7 +496,11 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     (campaignsQ.data !== undefined || campaignsQ.isError) &&
     (groupsQ.data !== undefined || groupsQ.isError) &&
     (budgetsQ.data !== undefined || budgetsQ.isError) &&
-    channelGroupQs.every((q) => q.data !== undefined || q.isError);
+    channelGroupQs.every((q) => q.data !== undefined || q.isError) &&
+    // The evidence reads are in the gate so a row never paints a price and then swaps it
+    // for `Learning` a moment later. Reveal on SETTLE, so one failed read cannot hold the
+    // table: an errored row simply keeps stating its figures.
+    evidenceQs.every((q) => q.data !== undefined || q.isError);
 
   return { rows, activeRows, settled };
 }
@@ -490,16 +579,22 @@ export function CampaignsTable({
               </td>
             </tr>
           ) : (
-            rows.map(({ campaign, revenue, budgetCents }) => (
+            rows.map(({ campaign, revenue, budgetCents, learning }) => (
               <tr
                 key={campaign.id}
                 onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
                 className="cursor-pointer transition hover:bg-gray-50"
               >
                 <td className="px-4 py-3 text-gray-800"><CampaignCell campaign={campaign} /></td>
-                <td className="px-4 py-3 text-right"><RoiCell multiple={revenue?.roiMultiple} /></td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtPct(revenue?.costOfAcquisitionPct)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
+                {/* The three projections state `Learning` together or not at all: they are
+                    one statement in three units (a return, its reciprocal, and what it
+                    values the pipeline at), so showing one of them beside two tags would
+                    let a reader trust the number we just said we could not stand behind. */}
+                <td className="px-4 py-3 text-right">
+                  {learning ? <LearningTag withInfo={false} /> : <RoiCell multiple={revenue?.roiMultiple} />}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} /> : fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group — the exact number the ROI and %CAC beside it
                     divide by, so a row cannot contradict its own return. A row with no
