@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -13,84 +13,83 @@ import {
   type InviteStatus,
 } from "@/lib/api";
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { Toast } from "@/components/toast";
 import { formatBillingCents } from "@/lib/format-number";
 import { REFERRAL_CREDIT_USD, inviteLinkForCode } from "@/lib/invite-link";
-import { promiseProgressWidth, promiseSubtitle } from "@/lib/free-credit-promise-view";
+import { promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promise-view";
 
 /**
- * The rewards card, anchored at the bottom of every brand-level sidebar.
+ * The two rewards at the bottom of every brand-level sidebar, as two cards.
  *
- * Two halves of one offer, in the order a customer meets them: the free credits
- * already earned and now unlocking as they spend, then the link that earns more.
- * They were two adjacent cards for a while and read as two products; a reader
- * comparing them had to hold "money already committed to me" and "money I could
- * earn" as separate ideas when they are the same reward ladder.
+ * They are separate on purpose. The invite line is a THING TO DO: one row, one
+ * click. The card under it is a STATE: money already committed to this org, and
+ * how close it is to landing. Folding them into one box made the doing read as a
+ * footnote of the watching.
  *
- * ## What the top half is
+ * ## The invite row
+ *
+ * One line, no button. A button inside a 224px rail spends a second line on a
+ * control whose whole content is "click me", and the row already is the control.
+ * The confirmation moved to a toast because a one-line row has nowhere to put a
+ * "Copied" label. It is a `role="button"` div rather than a `<button>` so the
+ * tooltip beside it stays legal markup: the repo's tooltip is itself a
+ * `role="button"` span, and a real button would nest one interactive element
+ * inside another.
+ *
+ * The link carries this org's real invite code, so a signup through it is
+ * actually attributed. An earlier version copied a bare landing URL with a UTM
+ * parameter and no backend at all, which credited nobody while promising credits
+ * on screen. No code, no row.
+ *
+ * ## The promise card
  *
  * A PROMISE is money billing has committed to but not granted: it unlocks once
  * cumulative payments reach a bar billing froze when the promise was created. It
  * is deliberately NOT in `balance` or `credited`, so nothing here double-counts
  * against the figures on Billing.
  *
- * Only the NEAREST promise is shown. billing returns them cheapest-bar-first, so
- * the first row is the next one to land; the rest are counted, not listed. That
- * is the goal-gradient reading (Kivetz/Nunes, and every loyalty counter that
- * says "16 stars until your next reward"): one goal in view, stated as what is
- * LEFT rather than as a total, over a bar that is already partly filled. A list
- * of four promises in a 224px column is a ledger, and the ledger is on Billing,
- * which this half links to.
+ * The heading states what is coming; the bar and the line under it describe the
+ * NEAREST promise, because that is the one the customer's next payment moves.
+ * billing returns them cheapest-bar-first, so the first row is that one. The rest
+ * are not listed: a list of four promises in a 224px rail is a ledger, and the
+ * ledger is the Billing page this card links to.
  *
- * Every number is served (amount, remaining, progress) and the words come from
- * `lib/free-credit-promise-view`, the same module the Billing rows read, so a
- * promise cannot say one thing here and another there.
+ * That split is the goal-gradient reading (Hull; Kivetz and Nunes on endowed
+ * progress, and every loyalty counter that says "16 stars until your next
+ * reward"): one goal in view, stated as what is LEFT rather than as a total, over
+ * a bar that is already partly filled, with the prize named above it so the
+ * effort has a size.
  *
- * ## What the bottom half is
- *
- * The link carries this org's real invite code, so a signup through it is
- * actually attributed. An earlier version copied a bare landing URL with a UTM
- * parameter and no backend at all, which credited nobody while promising credits
- * on screen. If the code cannot be read, that half renders nothing rather than
- * offering a link that leads to no reward.
- *
- * The tooltip states the mechanism truthfully: neither side is given anything at
- * signup. The invitee's credits unlock as their own payments reach the amount,
- * and the inviter's open only once the invitee has actually earned theirs.
+ * Every number is served and the words come from `lib/free-credit-promise-view`,
+ * the same module the Billing rows read, so a promise cannot say one thing here
+ * and another there.
  */
-
-const CopyIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={1.5}
-      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-    />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3.5 h-3.5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-  </svg>
-);
 
 /**
- * The nearest promise, as one line, a bar and a sentence.
+ * The heading's amount.
  *
- * The heading leads with the AMOUNT because that is the reward; the sentence
- * under the bar states what is left to unlock it, which is the number that moves
- * when the customer spends. The bar renders only when the producer measured a
- * progress: a zeroed bar for an unmeasurable promise reads as "you have paid
- * nothing", which is a claim we would be inventing.
+ * billing serves the total still outstanding across every promise, summed on the
+ * same basis and in the same units as the rows it ships alongside, so the heading
+ * and the list cannot state different figures. Summing them here instead would be
+ * the compute-a-stat-in-the-browser bug, and it is what would let this heading
+ * disagree with Billing.
+ *
+ * A body that predates that field falls back to the NEAREST promise, which is
+ * true, is what shipped before, and understates rather than invents. `null` is
+ * never rendered as a total: an absent total is not a zero.
  */
+function headlineCents(totalCents: string | null, next: FreeCreditPromise): string {
+  return totalCents ?? next.amountCents;
+}
+
+/** The nearest promise: what is coming, how close, and what the next payments open. */
 function NextPromise({
   promise,
-  othersCount,
+  totalCents,
   billingHref,
 }: {
   promise: FreeCreditPromise;
-  othersCount: number;
+  totalCents: string | null;
   billingHref: string;
 }) {
   const width = promiseProgressWidth(promise.progressPct);
@@ -99,30 +98,39 @@ function NextPromise({
     : null;
 
   return (
-    <Link href={billingHref} className="block space-y-1.5 rounded-md -m-1 p-1 transition hover:bg-brand-100">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs font-semibold text-gray-700 leading-snug">
-          {formatBillingCents(promise.amountCents)} on the way
-        </p>
-        {othersCount > 0 && (
-          <span className="shrink-0 text-[10px] font-medium text-gray-500">
-            +{othersCount} more
-          </span>
-        )}
-      </div>
+    <Link
+      href={billingHref}
+      className="block space-y-1.5 rounded-lg border border-brand-200 bg-brand-50 p-3 transition hover:bg-brand-100"
+    >
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 leading-snug">
+        <span aria-hidden="true">🎁</span>
+        {formatBillingCents(headlineCents(totalCents, promise))} on the way
+      </p>
       {width !== null && (
         <div className="h-1 w-full overflow-hidden rounded-full bg-white">
           <div className="h-full rounded-full bg-brand-500" style={{ width: `${width}%` }} />
         </div>
       )}
-      <p className="text-[11px] leading-snug text-gray-600">{promiseSubtitle(remaining)}</p>
+      <p className="text-[11px] leading-snug text-gray-600">
+        {promiseUnlockLine(formatBillingCents(promise.amountCents), remaining)}
+      </p>
     </Link>
   );
 }
 
 export function RewardsCard() {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pathname = usePathname();
+
+  // The toast outlives the click, so its timer is cleared on unmount: navigating
+  // away mid-toast would otherwise set state on a component that is gone.
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   // The invite routes key on the INTERNAL org UUID, not the Clerk org id in the
   // URL. Both queries are already fetched elsewhere on the shell, so they dedupe.
@@ -141,11 +149,11 @@ export function RewardsCard() {
   // card paints from disk on the first frame.
   const { data: promiseData } = useAuthQuery<{
     paidTopupsCents: string;
+    outstandingTotalCents: string | null;
     promises: FreeCreditPromise[];
   }>(["freeCreditPromises"], () => getFreeCreditPromises());
 
-  const promises = promiseData?.promises ?? [];
-  const next = promises[0] ?? null;
+  const next = promiseData?.promises?.[0] ?? null;
 
   // The Billing link reads the org from the URL, which is the per-tab source of
   // truth for the whole dashboard (a Clerk active org flips across tabs). Same
@@ -161,44 +169,50 @@ export function RewardsCard() {
     if (!link) return;
     await navigator.clipboard.writeText(link);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <div className="p-2">
-      <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 space-y-2.5">
-        {next && (
-          <NextPromise
-            promise={next}
-            othersCount={promises.length - 1}
-            billingHref={billingHref}
-          />
-        )}
-        {next && link && <div className="border-t border-brand-200" />}
-        {link && (
-          <div className="space-y-2">
-            <div className="flex items-start gap-1">
-              <p className="text-xs font-semibold text-gray-700 leading-snug">
-                Give and get ${REFERRAL_CREDIT_USD} credits
-              </p>
-              <span className="shrink-0 mt-0.5">
-                <InfoTooltip
-                  tip={`Share your link. Whoever signs up through it gets $${REFERRAL_CREDIT_USD} in free credits, which unlock as their payments reach that amount. The moment theirs unlock, $${REFERRAL_CREDIT_USD} opens for you too, on the same terms. There is no limit: every person you refer who converts earns you another $${REFERRAL_CREDIT_USD}.`}
-                  placement="bottom"
-                />
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={copy}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-white border border-brand-200 px-2.5 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-100 transition"
-            >
-              {copied ? <CheckIcon /> : <CopyIcon />}
-              {copied ? "Copied" : "Copy invite link"}
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="space-y-2 p-2">
+      {link && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={copy}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              void copy();
+            }
+          }}
+          // Sized to hold its sentence on ONE line inside a 224px rail, which is
+          // the whole point of dropping the button: measured, not guessed (the
+          // label needs 138px of the 152px the row leaves it).
+          className="flex cursor-pointer items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-2 transition hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+        >
+          <span aria-hidden="true" className="text-[13px] leading-none">
+            🎁
+          </span>
+          <span className="min-w-0 truncate text-[11px] font-semibold text-gray-700">
+            Give and get ${REFERRAL_CREDIT_USD} credits
+          </span>
+          <span className="ml-auto shrink-0">
+            <InfoTooltip
+              tip={`Click the row to copy your invite link. Whoever signs up through it gets $${REFERRAL_CREDIT_USD} in free credits, which unlock as their payments reach that amount. The moment theirs unlock, $${REFERRAL_CREDIT_USD} opens for you too, on the same terms. There is no limit: every person you refer who converts earns you another $${REFERRAL_CREDIT_USD}.`}
+              placement="bottom"
+            />
+          </span>
+        </div>
+      )}
+      {next && (
+        <NextPromise
+          promise={next}
+          totalCents={promiseData?.outstandingTotalCents ?? null}
+          billingHref={billingHref}
+        />
+      )}
+      {copied && <Toast message="Referral link copied" />}
     </div>
   );
 }
