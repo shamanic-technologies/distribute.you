@@ -270,6 +270,7 @@ html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15); }
 /* The purple text/border pair the charter's SECONDARY reads through (the Learning
    tag, the audience-filter group chips, outlet status). Without these two the
    accompanying bg-purple-50 tint carried near-black text on the dark surface. */
+html.dark .text-purple-600 { color: #c084fc; }
 html.dark .text-purple-700 { color: #c084fc; }
 html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
@@ -466,9 +467,11 @@ html.dark[data-brand-tint] .dy-eyebrow {
  *
  * SCOPED to `.tone-tile` on purpose: `bg-blue-50` is also a status/callout
  * background across the app, and rotating THAT would repaint an info panel
- * into a colour that reads as something else. A mark tile is decoration; a
- * status surface is meaning, and meaning never rotates. For the same reason
- * semantic green and red are untouched everywhere.
+ * into a colour that reads as something else. So the class is what opts a
+ * surface IN, and a surface wearing a brand-owned accent asks for it: the
+ * Learning tag carries the class deliberately, because the charter's secondary
+ * on a customer's dashboard means THEIR secondary. Semantic green and red stay
+ * untouched everywhere — those two are not accents, they are verdicts.
  */
 :root[data-brand-tint] .tone-tile.bg-purple-50 {
   background-color: oklch(97.7% 0.014 calc(308.299 + var(--brand-hue-delta, 0)));
@@ -483,6 +486,15 @@ html.dark:root[data-brand-tint] .tone-tile.bg-purple-50 {
 html.dark:root[data-brand-tint] .tone-tile.text-purple-600,
 html.dark:root[data-brand-tint] .tone-tile .text-purple-600 {
   color: oklch(62.7% 0.233 calc(303.9 + var(--brand-hue-delta, 0)));
+}
+/* The Learning tag is a purple tile that carries a 1px border, so the border rotates
+   with the fill or the pill reads as two different hues at once. Measured L/C off the
+   computed `border-purple-200`, same discipline as the fill above. */
+:root[data-brand-tint] .tone-tile.border-purple-200 {
+  border-color: oklch(90.2% 0.063 calc(306.703 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile.border-purple-200 {
+  border-color: oklch(62.7% 0.233 calc(303.9 + var(--brand-hue-delta, 0)) / 0.3);
 }
 
 :root[data-brand-tint] .tone-tile.bg-indigo-50 {
