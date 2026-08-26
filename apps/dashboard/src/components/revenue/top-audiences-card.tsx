@@ -18,6 +18,8 @@ import type {
   AudienceWire,
 } from "@/lib/api";
 import { formatRoi } from "@/lib/format-roi";
+import { LearningTag } from "@/components/learning-tag";
+import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
 
 function formatCents(cents: number | null): string {
   if (cents == null) return "-";
@@ -193,7 +195,14 @@ export function TopAudiencesCard({
     ...fallbackRows.map((audience) => ({ kind: "audience" as const, audience })),
   ];
   const label = ranksByReturn || !metric ? "Return" : AUDIENCE_RANK_METRIC_LABEL[metric];
-  const tip = ranksByReturn || !metric ? RETURN_INFO : AUDIENCE_RANK_METRIC_INFO[metric];
+  const baseTip = ranksByReturn || !metric ? RETURN_INFO : AUDIENCE_RANK_METRIC_INFO[metric];
+  // A row's own tag carries no (i): it sits inside the row's Link, and nesting an
+  // interactive tooltip trigger there is both invalid-feeling and one more thing to
+  // mis-tap. The header's existing (i) explains it instead, and only when a listed row
+  // is actually learning.
+  const anyLearning =
+    !!metric && statsRows.some((row) => isLearning(metricCount(metric, row)));
+  const tip = anyLearning ? `${baseTip} ${LEARNING_NOTE}` : baseTip;
 
   const params = useParams();
   const orgId = params.orgId as string;
@@ -231,12 +240,19 @@ export function TopAudiencesCard({
           const costCents = isStats && metric ? metricCents(metric, item.row) : null;
           const rowReturn = isStats ? returnPerDollar(item.row) : null;
           const outcomes = isStats && metric ? metricCount(metric, item.row) : null;
+          // Too few outcomes behind this row's money to state either number: the return
+          // and the cost are both that outcome count divided into things, so at one or
+          // two replies they swing on the next one. The row says `Learning` in the value
+          // slot and drops its cost subtitle entirely rather than printing a price with
+          // a caveat. Only where there IS a metric to count (the campaign card) — at
+          // brand level there is no single funnel whose outcomes to count.
+          const rowLearning = isStats && !!metric && isLearning(outcomes);
           // The second line carries whichever fact the headline value did NOT: leading
           // with return, the funnel cost it was ranked on before sits beside it; leading
           // with cost, the outcome count is what that cost divides by. Never both, never
           // a value the row does not have — and never at BRAND level, where both are one
           // funnel's vocabulary on a surface that sums several.
-          const subtitle = brandLevelMoney || !metric
+          const subtitle = brandLevelMoney || !metric || rowLearning
             ? null
             : ranksByReturn
               ? costCents == null
@@ -258,9 +274,13 @@ export function TopAudiencesCard({
                   <span className="block truncate text-[11px] text-gray-400">{subtitle}</span>
                 )}
               </span>
-              <span className="text-sm font-medium text-gray-800 tabular-nums">
-                {ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)}
-              </span>
+              {rowLearning ? (
+                <LearningTag withInfo={false} />
+              ) : (
+                <span className="text-sm font-medium text-gray-800 tabular-nums">
+                  {ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)}
+                </span>
+              )}
             </Link>
           );
         })

@@ -26,10 +26,14 @@ describe("conversion tracker setup CTA + live status", () => {
     expect(cards).toContain(
       "action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}",
     );
+    // Once on the COUNT card. The COST card carries the same gate in a wider
+    // expression, because a cost too thin to state falls back to the `Learning` tag
+    // when there is no tracker left to set up — the CTA still wins where it exists.
     expect(
       cards.match(/action=\{outcomeCard\.showAction \? \(trackerButton \?\? undefined\) : undefined\}/g)
         ?.length,
-    ).toBe(2);
+    ).toBe(1);
+    expect(cards).toContain("(outcomeCard.showAction ? trackerButton : null) ??");
     // Built only when the brand-scoped href resolves AND the tracker is not yet
     // live — once lead-service reports live/live_waiting the CTA must stop, so the
     // stat cards never nag "set up" while Brand Settings shows "Tracker live".

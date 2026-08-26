@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { ScoreCard } from "@/components/visibility/score-card";
 import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker-button";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { LearningTag } from "@/components/learning-tag";
+import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrandConversionToken } from "@/lib/api";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
@@ -240,6 +242,9 @@ export function OutreachStatCards({
     // either way — no client division, including the zero-click case where the server
     // floors it to the expected cost per visit rather than returning null.
     costValue: formatCostCents(spend?.totalCpcCents ?? spend?.cpcCents),
+    // Too few visits behind the ratio to state it as a price — the count card beside
+    // this one still shows the real number, so nothing is hidden.
+    costLearning: isLearning(clicks),
   };
 
   const outcome = outcomeStep?.outcome ?? null;
@@ -276,6 +281,8 @@ export function OutreachStatCards({
     costLabel: string;
     costTooltip: string;
     costValue: string;
+    /** Fewer than the bar's worth of this outcome → the cost reads `Learning`. */
+    costLearning: boolean;
     badge: ReactNode | undefined;
     showAction: boolean;
   } | null = isPositiveReplies
@@ -300,6 +307,7 @@ export function OutreachStatCards({
         // number we happen to hold. Re-adding a spend fallback here reintroduces the bug
         // one layer down, on exactly the branch no fixture covers.
         costValue: formatCostCents(spend?.cpprCents),
+        costLearning: isLearning(spend?.positiveRepliesCount),
         badge: undefined,
         showAction: false,
       }
@@ -310,6 +318,7 @@ export function OutreachStatCards({
           costLabel: outcome.costLabel,
           costTooltip: `Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded. ${EXPECTED_COST_NOTE}`,
           costValue: formatCostCents(outcomeCost),
+          costLearning: isLearning(outcomeCount),
           badge: goalIsBeta ? beta : undefined,
           showAction: true,
         }
@@ -388,8 +397,9 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label={clickMetric.costLabel}
-              tooltip={clickMetric.costTooltip}
+              tooltip={clickMetric.costLearning ? LEARNING_NOTE : clickMetric.costTooltip}
               value={clickMetric.costValue}
+              action={clickMetric.costLearning ? <LearningTag withInfo={false} /> : undefined}
               pending={pending}
             />
           </Cell>
@@ -416,8 +426,17 @@ export function OutreachStatCards({
           <Cell>
             <ScoreCard
               label="Cost per positive reply"
-              tooltip={`Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`}
+              tooltip={
+                isLearning(spend?.positiveRepliesCount)
+                  ? LEARNING_NOTE
+                  : `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`
+              }
               value={formatCostCents(spend?.cpprCents)}
+              action={
+                isLearning(spend?.positiveRepliesCount) ? (
+                  <LearningTag withInfo={false} />
+                ) : undefined
+              }
               pending={pending}
             />
           </Cell>
@@ -442,9 +461,15 @@ export function OutreachStatCards({
             <ScoreCard
               label={outcomeCard.costLabel}
               badge={outcomeCard.badge}
-              tooltip={outcomeCard.costTooltip}
+              tooltip={outcomeCard.costLearning ? LEARNING_NOTE : outcomeCard.costTooltip}
               value={outcomeCard.costValue}
-              action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}
+              action={
+                // A tracker that is not live yet outranks the tag: "set this up" is the
+                // actionable answer, and the count it would unblock is the reason the
+                // cost is thin in the first place.
+                (outcomeCard.showAction ? trackerButton : null) ??
+                (outcomeCard.costLearning ? <LearningTag withInfo={false} /> : undefined)
+              }
               pending={pending}
             />
           </Cell>
