@@ -78,6 +78,58 @@ describe("lead funnel stage panel", () => {
   });
 });
 
+describe("the reply row", () => {
+  const CONTROL = read("src/components/leads/reply-kind-control.tsx");
+
+  it("gives the reply row a control, not a dead reading", () => {
+    // On a reply-led funnel the reply is the FIRST step. Leaving it the only
+    // unactionable row above three actionable ones reads as broken, not as a boundary.
+    expect(SECTION).toContain('stage.key === "positive_reply" && reply');
+    expect(SECTION).toContain("<ReplyKindControl");
+  });
+
+  it("is a PICKER, because a reply is not a yes/no", () => {
+    // Nine kinds in four groups. The positive case splits four ways precisely because
+    // "positive" cannot separate "not the buyer" from "wants to book".
+    expect(CONTROL).toContain("REPLY_TONE_ORDER.map");
+    expect(CONTROL).toContain("replyKindsByTone(tone)");
+    expect(CONTROL).not.toContain("StageButton");
+  });
+
+  it("distinguishes never-seen, seen-but-unstated, and stated-but-unknown", () => {
+    // Three different statements. Collapsing them invites someone to overwrite a real
+    // statement they simply cannot see.
+    expect(CONTROL).toContain("Not seen");
+    expect(CONTROL).toContain("Replied, kind not stated");
+    expect(CONTROL).toContain("Stated, not shown here yet");
+  });
+
+  it("renders the resolved kind, never the raw thing a person clicked", () => {
+    // `status` is provenance and still carries two retired deal-progress spellings;
+    // `replyKind` is what those resolve to upstream at write time.
+    const slice = PAGE.slice(PAGE.indexOf("const replyKind ="), PAGE.indexOf("const replyKind =") + 200);
+    expect(slice).toContain(".replyKind");
+    expect(slice).not.toContain(".status");
+  });
+
+  it("reads only THIS lead's row, not the org-wide list", () => {
+    const slice = PAGE.slice(PAGE.indexOf('["leadReplyKind"'), PAGE.indexOf("const replyKind ="));
+    expect(slice).toContain("email: replyEmail");
+    expect(slice).toContain("limit: 1");
+  });
+
+  it("writes no retired deal-progress value", () => {
+    // Those are facts about the deal and are stated on the funnel stages instead.
+    expect(CONTROL).not.toContain("lead_meeting_booked");
+    expect(CONTROL).not.toContain("lead_closed");
+  });
+
+  it("re-stating the current kind is a no-op", () => {
+    // Otherwise the record of who said what grows a second identical row.
+    expect(CONTROL).toContain("if (o.kind !== kind) onSet(o.kind)");
+  });
+});
+
 describe("stating what a won deal was worth", () => {
   it("asks for the amount instead of sending a sale the producer will refuse", () => {
     // lead-service 400s a sale with no value. Predicting a refusal and asking the

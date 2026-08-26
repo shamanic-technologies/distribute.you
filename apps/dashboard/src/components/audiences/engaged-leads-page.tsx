@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -44,6 +44,9 @@ import {
   useLeadStepStatements,
   useSetLeadStepStatement,
 } from "@/lib/use-lead-step-statements";
+import { listManualQualifications, setManualQualification } from "@/lib/api";
+import type { ReplyKind } from "@/lib/reply-kind";
+import { useMutation } from "@tanstack/react-query";
 import { normalizeSalesFunnelKey } from "@/lib/sales-funnels";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -1305,6 +1308,45 @@ export function EngagedLeadsPage({
     return trackedStages(cl);
   }, [selectedLead, outcomeByLeadId]);
 
+  // ── The reply row's own statement ────────────────────────────────────────────
+  // Scoped to THIS (campaign, lead) rather than the org-wide list: one lead's reply is
+  // one row, and pulling 500 of somebody else's to find it is a page's worth of network
+  // for a single pill.
+  const replyEmail = selectedLead?.email ?? null;
+  const { data: replyData } = useAuthQuery(
+    ["leadReplyKind", campaignId ?? "none", replyEmail ?? "none"],
+    () => listManualQualifications({ campaignId, email: replyEmail as string, limit: 1 }),
+    { enabled: Boolean(campaignId && replyEmail) },
+  );
+  // Rows come back newest-first, so the first is the statement that stands. `replyKind`
+  // is the resolved vocabulary; `status` is the raw thing a person clicked and is
+  // deliberately not rendered.
+  const replyKind = replyData?.qualifications[0]?.replyKind ?? null;
+  const [replyPending, setReplyPending] = useState(false);
+  const queryClient = useQueryClient();
+  const setReply = useMutation({
+    mutationFn: (kind: ReplyKind) =>
+      setManualQualification({ campaignId: campaignId as string, email: replyEmail as string, status: kind }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leadReplyKind", campaignId ?? "none", replyEmail ?? "none"] });
+      // A reply kind decides whether the sequence keeps sending, so the lead rows the
+      // table renders can change with it.
+      queryClient.invalidateQueries({ queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId] });
+    },
+  });
+
+  const onSetReply = (kind: ReplyKind) => {
+    setPanelError(null);
+    setReplyPending(true);
+    setReply.mutate(kind, {
+      onError: (err) => {
+        console.error("[dashboard] setManualQualification failed", err);
+        setPanelError(leadStepErrorMessage(err));
+      },
+      onSettled: () => setReplyPending(false),
+    });
+  };
+
   const onSetStage = (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => {
     setPanelError(null);
     setPanelPending({ key, next });
@@ -1477,6 +1519,7 @@ export function EngagedLeadsPage({
                 pending={panelPending}
                 error={panelError}
                 onSet={onSetStage}
+                reply={{ kind: replyKind, pending: replyPending, onSet: onSetReply }}
               />
             )}
             {/* No `Served:` footer. It printed an internal pipeline instant, in a

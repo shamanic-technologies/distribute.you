@@ -4156,15 +4156,32 @@ export async function getLeadEmail(leadId: string, brandId?: string, token?: str
 // Manual reply qualifications (api-service proxy → email-gateway → instantly-service).
 // Wire shape is snake_case (request) + camelCase (response) per the upstream contract;
 // helpers below translate camelCase request inputs to snake_case query / body.
+/**
+ * What a person states about a reply, as instantly-service accepts it on the write.
+ *
+ * The nine REPLY KINDS, plus the two retired deal-progress spellings it still accepts
+ * while the consoles migrate their pickers. This app writes only reply kinds; the two
+ * retired values are here so a historical row still types, and they resolve to a reply
+ * kind upstream at WRITE time, never on read.
+ *
+ * `lead_meeting_booked` and `lead_closed` are facts about the DEAL, not the reply, and
+ * they are stated on the funnel stages instead (see `lead-funnel-stages.ts`). They used
+ * to share this one statement per lead, where only the latest survived — so booking a
+ * meeting erased the reply sentiment that led to it.
+ */
 export type ManualQualificationStatus =
   | "lead_interested"
-  | "lead_meeting_booked"
-  | "lead_closed"
+  | "lead_referral"
+  | "lead_info_requested"
+  | "lead_meeting_requested"
   | "lead_not_interested"
   | "lead_wrong_person"
   | "lead_neutral"
   | "lead_out_of_office"
-  | "auto_reply_received";
+  | "auto_reply_received"
+  // Retired, accepted upstream during the migration. Do NOT write these.
+  | "lead_meeting_booked"
+  | "lead_closed";
 
 export type ManualQualificationClassification = "positive" | "negative" | "neutral";
 
@@ -4174,7 +4191,17 @@ export interface ManualQualification {
   campaignId: string;
   instantlyCampaignId: string;
   email: string;
+  /** The RAW statement a person made. Kept as provenance; not what to render. */
   status: ManualQualificationStatus;
+  /**
+   * What kind of reply that statement resolves to (instantly-service v0.74.0). This is
+   * the value to render: the two retired deal-progress spellings still accepted on the
+   * write path are resolved to a reply kind HERE, at write, so a reader never has to
+   * translate one. Distinct from `status` rather than a rename of it — both are served,
+   * they mean different things, and coalescing them would render one under the other's
+   * name. Optional only because an older row predates the column.
+   */
+  replyKind?: string;
   qualifiedBy: string;
   notes: string | null;
   qualifiedAt: string;

@@ -15,6 +15,8 @@
 import { useState } from "react";
 
 import { InfoTooltip } from "@/components/visibility/metric-info";
+import { ReplyKindControl } from "@/components/leads/reply-kind-control";
+import type { ReplyKind } from "@/lib/reply-kind";
 import {
   isWritableStage,
   saleValueCentsFrom,
@@ -164,6 +166,7 @@ export function LeadFunnelStageSection({
   pending,
   error,
   onSet,
+  reply,
   disabled = false,
 }: {
   /** The campaign's funnel, named so the reader knows which chain these stages are. */
@@ -184,6 +187,16 @@ export function LeadFunnelStageSection({
   /** A refusal from the producer, already turned into a sentence by the caller. */
   error?: string | null;
   onSet: (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => void;
+  /**
+   * The reply row's own control, when the funnel has one. A reply is not a yes/no —
+   * nine kinds in four groups — so it gets a picker rather than the two buttons every
+   * other row carries. Absent (an ads-led funnel, say) and the row reads as before.
+   */
+  reply?: {
+    kind: string | null;
+    pending: boolean;
+    onSet: (kind: ReplyKind) => void;
+  } | null;
   disabled?: boolean;
 }) {
   // The stage whose amount is being asked for. Local because it is a question this
@@ -278,6 +291,14 @@ export function LeadFunnelStageSection({
                       onClick={() => onSet(stage.key as WritableStageKey, "never")}
                     />
                   </>
+                ) : stage.key === "positive_reply" && reply ? (
+                  <ReplyKindControl
+                    kind={reply.kind}
+                    tracked={isTracked}
+                    pending={reply.pending}
+                    disabled={disabled}
+                    onSet={reply.onSet}
+                  />
                 ) : (
                   <span className="text-xs text-gray-400">{isTracked ? "Seen" : "Not seen"}</span>
                 )}
