@@ -10,6 +10,7 @@ import {
   type BrandFunnelBudgets,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import {
   ROLLUP_LABEL,
   buildControlRows,
@@ -81,10 +82,14 @@ export function CampaignControlsModal({
     getBrandFunnelBudgets(brandId),
   );
 
+  const channels = useAcquisitionChannels();
   const rows = useMemo(
     () =>
-      buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, { offerId, campaignId }),
-    [campaignsQ.data, budgetsQ.data, offerId, campaignId],
+      buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
+        offerId,
+        campaignId,
+      }),
+    [campaignsQ.data, budgetsQ.data, channels, offerId, campaignId],
   );
 
   // SEEDED from the queries and RE-SEEDED whenever either payload is a different

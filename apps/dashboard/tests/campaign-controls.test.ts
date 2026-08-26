@@ -17,6 +17,33 @@ import {
   type ControlCampaign,
   type ControlDraft,
 } from "../src/lib/campaign-controls";
+import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
+
+/** The channels the environment publishes, as the catalogue builds them. */
+const CHANNELS = acquisitionChannelsFromFeatures([
+  {
+    slug: "sales-cold-email-outreach",
+    name: "Sales Cold Email Outreach",
+    description: "We email your buyers from our own domains, on your behalf.",
+    displayOrder: 1,
+    salesFunnels: ["sales_meetings_from_conversation", "website_purchases"],
+  },
+  {
+    slug: "feedback-request-cold-email-outreach",
+    name: "Feedback Request Cold Email Outreach",
+    description: "We ask your buyers about the problem you solve.",
+    displayOrder: 2,
+    salesFunnels: ["sales_meetings_from_conversation"],
+  },
+  {
+    slug: "google-ads",
+    name: "Google Ads",
+    description: "Buy the searches your buyers already run.",
+    displayOrder: 20,
+    salesFunnels: ["sales_meetings_from_website", "website_purchases", "form_magnet"],
+  },
+]);
+
 
 const SRC = join(__dirname, "..", "src");
 const read = (p: string) => readFileSync(join(SRC, p), "utf8");
@@ -61,7 +88,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
         campaign({ id: "a" }),
         campaign({ id: "b", status: "stopped", funnelKey: "visit_signup" }),
       ],
-      undefined,
+      undefined, CHANNELS,
     );
     expect(rows.map((r) => r.campaignId).sort()).toEqual(["a", "b"]);
     // A stopped campaign has to be in the list, or stopping one from here would
@@ -80,7 +107,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
         campaign({ id: `old-${i}`, status: "stopped" }),
       ),
     ];
-    const rows = buildControlRows(members, undefined, { offerId: OFFER_A });
+    const rows = buildControlRows(members, undefined, CHANNELS, { offerId: OFFER_A });
     expect(rows).toHaveLength(1);
     expect(rows[0].running).toBe(true);
   });
@@ -88,7 +115,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
   it("a restart addresses the LIVE row when there is one", () => {
     const rows = buildControlRows(
       [campaign({ id: "old", status: "stopped" }), campaign({ id: "live" })],
-      undefined,
+      undefined, CHANNELS,
     );
     expect(rows[0].campaignId).toBe("live");
     expect(rows[0].runningCampaignIds).toEqual(["live"]);
@@ -103,7 +130,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
         campaign({ id: "newest", status: "stopped", createdAt: "2026-06-12T00:00:00.000Z" }),
         campaign({ id: "middle", status: "stopped", createdAt: "2026-05-09T00:00:00.000Z" }),
       ],
-      undefined,
+      undefined, CHANNELS,
     );
     expect(rows[0].campaignId).toBe("newest");
     expect(rows[0].runningCampaignIds).toEqual([]);
@@ -117,7 +144,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
         campaign({ id: "a2", status: "stopped" }),
         campaign({ id: "b1", funnelKey: "visit_signup" }),
       ],
-      undefined,
+      undefined, CHANNELS,
       { offerId: OFFER_A },
     );
     expect(rows).toHaveLength(2);
@@ -128,7 +155,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
     // of them together would hide one campaign behind the other.
     const rows = buildControlRows(
       [campaign({ id: "old1", funnelKey: null }), campaign({ id: "old2", funnelKey: null })],
-      undefined,
+      undefined, CHANNELS,
     );
     expect(rows).toHaveLength(2);
   });
@@ -136,7 +163,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
   it("excludes a campaign whose feature is not an acquisition channel", () => {
     const rows = buildControlRows(
       [campaign({ id: "a" }), campaign({ id: "pr", featureSlug: "pr-expert-quote" })],
-      undefined,
+      undefined, CHANNELS,
     );
     expect(rows.map((r) => r.campaignId)).toEqual(["a"]);
   });
@@ -148,7 +175,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
         campaign({ id: "sibling", offerId: OFFER_B }),
         campaign({ id: "orphan", offerId: null }),
       ],
-      undefined,
+      undefined, CHANNELS,
       { offerId: OFFER_A },
     );
     expect(rows.map((r) => r.campaignId)).toEqual(["mine"]);
@@ -157,7 +184,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
   it("campaign grain yields exactly one row", () => {
     const rows = buildControlRows(
       [campaign({ id: "a", status: "stopped" }), campaign({ id: "b" })],
-      undefined,
+      undefined, CHANNELS,
       { campaignId: "b" },
     );
     expect(rows.map((r) => r.campaignId)).toEqual(["b"]);
@@ -173,7 +200,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
         campaign({ id: "a" }),
         campaign({ id: "b", offerId: OFFER_B, funnelKey: "visit_signup" }),
       ],
-      set,
+      set, CHANNELS,
     );
     const byId = Object.fromEntries(rows.map((r) => [r.campaignId, r.savedCents]));
     expect(byId.a).toBe(2400);
@@ -181,7 +208,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
   });
 
   it("a campaign that predates the funnels has no scope and no ceiling", () => {
-    const rows = buildControlRows([campaign({ id: "old", funnelKey: null })], undefined);
+    const rows = buildControlRows([campaign({ id: "old", funnelKey: null })], undefined, CHANNELS);
     expect(rows[0].scope).toBeNull();
     expect(rows[0].savedCents).toBe(0);
   });
@@ -192,7 +219,7 @@ describe("buildControlRows — which campaigns a grain controls", () => {
         campaign({ id: "z", funnelKey: "visit_signup" }),
         campaign({ id: "a", status: "stopped" }),
       ],
-      undefined,
+      undefined, CHANNELS,
     );
     expect(rows.map((r) => r.campaignId)).toEqual(["z", "a"]);
   });
@@ -202,7 +229,7 @@ describe("rollupStatus — one word for a scope, exhaustive", () => {
   const row = (running: boolean, id: string) =>
     buildControlRows(
       [campaign({ id, status: running ? "ongoing" : "stopped" })],
-      undefined,
+      undefined, CHANNELS,
       { campaignId: id },
     )[0];
 
@@ -289,7 +316,7 @@ describe("scopeTotalCents", () => {
     ]);
     const rows = buildControlRows(
       [campaign({ id: "a" }), campaign({ id: "old", funnelKey: null })],
-      set,
+      set, CHANNELS,
     );
     // The unscoped row contributes nothing: it has no ceiling to add.
     expect(scopeTotalCents(rows)).toBe(2400);
@@ -309,7 +336,7 @@ describe("scopeTotalCents", () => {
           campaign({ id: `old-${i}`, status: "stopped" }),
         ),
       ],
-      set,
+      set, CHANNELS,
       { offerId: OFFER_A },
     );
     expect(scopeTotalCents(rows)).toBe(5000);
@@ -340,7 +367,7 @@ describe("scopeTotalCents", () => {
           featureSlug: "feedback-request-cold-email-outreach",
         }),
       ],
-      set,
+      set, CHANNELS,
       { offerId: OFFER_A },
     );
     expect(rows).toHaveLength(2);
@@ -364,7 +391,7 @@ describe("scopeTotalCents", () => {
         campaign({ id: "live" }),
         campaign({ id: "paused", status: "stopped", funnelKey: "visit_signup" }),
       ],
-      set,
+      set, CHANNELS,
       { offerId: OFFER_A },
     );
     expect(rows).toHaveLength(2);
@@ -375,7 +402,7 @@ describe("scopeTotalCents", () => {
     const set = budgets([
       { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 5000 },
     ]);
-    const rows = buildControlRows([campaign({ id: "a", status: "stopped" })], set, {
+    const rows = buildControlRows([campaign({ id: "a", status: "stopped" })], set, CHANNELS, {
       offerId: OFFER_A,
     });
     expect(scopeTotalCents(rows)).toBe(0);
@@ -394,7 +421,7 @@ describe("controlsDiff — only what changed", () => {
   const set = budgets([
     { funnelKey: "reply_meeting", featureSlug: COLD_EMAIL, offerId: OFFER_A, cents: 2400 },
   ]);
-  const rows = buildControlRows([campaign({ id: "a" })], set);
+  const rows = buildControlRows([campaign({ id: "a" })], set, CHANNELS);
   const unchanged = draftsBy(rows, { a: { running: true, budget: "24" } });
 
   it("an untouched row writes nothing", () => {
@@ -436,7 +463,7 @@ describe("controlsDiff — only what changed", () => {
   });
 
   it("a row with no scope never produces a budget write", () => {
-    const old = buildControlRows([campaign({ id: "old", funnelKey: null })], set);
+    const old = buildControlRows([campaign({ id: "old", funnelKey: null })], set, CHANNELS);
     const diff = controlsDiff(old, draftsBy(old, { old: { running: false, budget: "99" } }));
     expect(diff.budgetWrites).toEqual([]);
     expect(diff.statusWrites.map((w) => [w.campaignId, w.activate])).toEqual([["old", false]]);
@@ -448,7 +475,7 @@ describe("controlsDiff — only what changed", () => {
     // silently leave a second live if that ever changed.
     const many = buildControlRows(
       [campaign({ id: "live-a" }), campaign({ id: "live-b" }), campaign({ id: "old", status: "stopped" })],
-      set,
+      set, CHANNELS,
     );
     expect(many).toHaveLength(1);
     const diff = controlsDiff(many, { [many[0].rowId]: { running: false, budget: "24" } });
@@ -462,7 +489,7 @@ describe("controlsDiff — only what changed", () => {
         campaign({ id: "newest", status: "stopped", createdAt: "2026-06-12T00:00:00.000Z" }),
         campaign({ id: "older", status: "stopped", createdAt: "2026-05-01T00:00:00.000Z" }),
       ],
-      set,
+      set, CHANNELS,
     );
     const diff = controlsDiff(stopped, { [stopped[0].rowId]: { running: true, budget: "24" } });
     expect(diff.statusWrites.map((w) => [w.campaignId, w.activate])).toEqual([["newest", true]]);
@@ -476,7 +503,7 @@ describe("diffSummary — what Confirm is about to do", () => {
   ]);
   const rows = buildControlRows(
     [campaign({ id: "a" }), campaign({ id: "b", funnelKey: "visit_signup" })],
-    set,
+    set, CHANNELS,
   );
 
   it("nothing changed means no sentence", () => {
@@ -518,7 +545,7 @@ describe("diffSummary — what Confirm is about to do", () => {
         campaign({ id: "a" }),
         campaign({ id: "b", status: "stopped", funnelKey: "visit_signup" }),
       ],
-      set,
+      set, CHANNELS,
     );
     const diff = controlsDiff(
       mixed,
@@ -531,7 +558,7 @@ describe("diffSummary — what Confirm is about to do", () => {
   it("counts restarts and pauses separately", () => {
     const stopped = buildControlRows(
       [campaign({ id: "a", status: "stopped" }), campaign({ id: "b", funnelKey: "visit_signup" })],
-      set,
+      set, CHANNELS,
     );
     const diff = controlsDiff(
       stopped,

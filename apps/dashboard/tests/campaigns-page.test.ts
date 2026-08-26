@@ -89,7 +89,7 @@ describe("Campaigns page (GA)", () => {
     // columns. The row reads them from the campaign it is given, once.
     expect(table).toContain("<CampaignCell campaign={campaign} />");
     expect(table).toContain("campaignFunnel(campaign.funnelKey)");
-    expect(identity).toContain("acquisitionChannelForFeatureSlug(featureSlug)");
+    expect(identity).toContain("acquisitionChannelForFeatureSlug(featureSlug, channels)");
     // The layout lives in one module, because the budget modal states the same
     // pair for the same campaigns and a second copy is how the row and the modal
     // that funds it come to describe one campaign two ways.
@@ -361,7 +361,7 @@ describe("Campaigns page (GA)", () => {
     // that borrowed the pair total would print a sibling offer's money under
     // this campaign's name. Reading the row's own offer is what makes the
     // brand-scoped list and the offer-scoped one agree about one campaign.
-    expect(table).toContain("campaignBudgetCents(c, c.offerId ?? undefined, budgets)");
+    expect(table).toContain("campaignBudgetCents(c, c.offerId ?? undefined, budgets, channels)");
     expect(table).toContain("fmtDailyBudgetUsd(budgetCents)");
     // Stated as a RATE, in the campaign header's own words and style: a bare
     // figure reads as a total beside the two money columns to its left, which
@@ -500,7 +500,9 @@ describe("Campaigns page (GA)", () => {
     // AI-visibility and VC campaigns, which run no sales funnel and can never fill
     // these columns. So the offer-scoped test asks that question directly, off the
     // channel catalogue, which means a THIRD channel needs no edit here.
-    expect(table).toContain("acquisitionChannelForFeatureSlug(c.featureSlug) !== null");
+    expect(table).toContain(
+      "acquisitionChannelForFeatureSlug(c.featureSlug, channels) !== null",
+    );
     // The brand-scoped list (no offer) stays pinned to its one feature: with no offer
     // to bound it, spanning channels would mix propositions.
     expect(table).toContain("c.featureSlug === featureSlug");

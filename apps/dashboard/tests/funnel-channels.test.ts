@@ -7,7 +7,7 @@ import {
   typedFunnelTotalUsd,
   type ChannelFeatureRow,
 } from "../src/lib/funnel-channels";
-import { ACQUISITION_CHANNELS } from "../src/lib/acquisition-channels";
+import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
 
 const SALES = "sales-cold-email-outreach";
 const FEEDBACK = "feedback-request-cold-email-outreach";
@@ -16,6 +16,9 @@ const FEEDBACK = "feedback-request-cold-email-outreach";
 const FEATURES: ChannelFeatureRow[] = [
   {
     slug: SALES,
+    name: "Sales Cold Email Outreach",
+    description: "We email your buyers from our own domains, on your behalf.",
+    displayOrder: 1,
     salesFunnels: [
       "sales_meetings_from_conversation",
       "sales_meetings_from_website",
@@ -23,7 +26,13 @@ const FEATURES: ChannelFeatureRow[] = [
       "form_magnet",
     ],
   },
-  { slug: FEEDBACK, salesFunnels: ["sales_meetings_from_conversation"] },
+  {
+    slug: FEEDBACK,
+    name: "Feedback Request Cold Email Outreach",
+    description: "We ask your buyers about the problem you solve.",
+    displayOrder: 2,
+    salesFunnels: ["sales_meetings_from_conversation"],
+  },
 ];
 
 describe("channelsForFunnel", () => {
@@ -40,8 +49,10 @@ describe("channelsForFunnel", () => {
     }
   });
 
-  it("keeps the catalogue's own order", () => {
-    const order = ACQUISITION_CHANNELS.map((c) => c.featureSlug);
+  // The producer's own display order, not one restated here. That is what lets a
+  // channel published upstream slot into the right place with no edit.
+  it("keeps the producer's own order", () => {
+    const order = acquisitionChannelsFromFeatures(FEATURES).map((c) => c.featureSlug);
     const got = channelsForFunnel("reply_meeting", FEATURES).map((c) => c.featureSlug);
     expect(got).toEqual(order.filter((slug) => got.includes(slug)));
   });
@@ -49,7 +60,7 @@ describe("channelsForFunnel", () => {
   // Both spellings must match: the producers are mid-rename, so a stored key
   // arrives in the old vocabulary or the new one.
   it("reads a funnel key under either spelling", () => {
-    const legacy: ChannelFeatureRow[] = [{ slug: SALES, salesFunnels: ["reply_meeting"] }];
+    const legacy: ChannelFeatureRow[] = [{ slug: SALES, name: "n", description: "d", salesFunnels: ["reply_meeting"] }];
     expect(channelsForFunnel("reply_meeting", legacy).map((c) => c.featureSlug)).toEqual([SALES]);
     expect(channelsForFunnel("visit_signup", legacy)).toEqual([]);
   });
@@ -58,7 +69,7 @@ describe("channelsForFunnel", () => {
   // reading them the same way would either hide a channel or offer a nonsense
   // pair. An EMPTY list is the feature's own answer.
   it("offers nothing for a feature that states no funnel", () => {
-    expect(channelsForFunnel("reply_meeting", [{ slug: SALES, salesFunnels: [] }])).toEqual([]);
+    expect(channelsForFunnel("reply_meeting", [{ slug: SALES, name: "n", description: "d", salesFunnels: [] }])).toEqual([]);
   });
 
   // ABSENT is the producer not having shipped the field to this environment.
@@ -66,7 +77,7 @@ describe("channelsForFunnel", () => {
   // behaviour that came before the field, never an empty list that would make a
   // brand's own funded funnel unfundable.
   it("falls back to every funnel when the feature has not stated any", () => {
-    const unstated: ChannelFeatureRow[] = [{ slug: SALES }];
+    const unstated: ChannelFeatureRow[] = [{ slug: SALES, name: "n", description: "d" }];
     expect(channelsForFunnel("visit_form", unstated).map((c) => c.featureSlug)).toEqual([SALES]);
   });
 
@@ -79,7 +90,7 @@ describe("channelsForFunnel", () => {
   // An unknown spelling is simply not this funnel. It must not throw: the write
   // path is exhaustive on purpose, a settings page read is not.
   it("survives a funnel key it has never seen", () => {
-    const odd: ChannelFeatureRow[] = [{ slug: SALES, salesFunnels: ["something_new"] }];
+    const odd: ChannelFeatureRow[] = [{ slug: SALES, name: "n", description: "d", salesFunnels: ["something_new"] }];
     expect(() => channelsForFunnel("reply_meeting", odd)).not.toThrow();
     expect(channelsForFunnel("reply_meeting", odd)).toEqual([]);
   });

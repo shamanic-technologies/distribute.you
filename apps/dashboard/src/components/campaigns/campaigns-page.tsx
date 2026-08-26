@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { tenantBasePath } from "@/lib/offer-path";
@@ -107,12 +108,13 @@ export function CampaignsPage() {
   // customer paused is still one of theirs), and this tile answers a narrower
   // question — which channel is winning RIGHT NOW. Reading `rows` would let a
   // stopped campaign's old return name the brand's live #1.
+  const channels = useAcquisitionChannels();
   const topChannel = useMemo(() => {
     const top = activeRows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
-    const def = acquisitionChannelForFeatureSlug(top.campaign.featureSlug);
+    const def = acquisitionChannelForFeatureSlug(top.campaign.featureSlug, channels);
     return def ? def.name : channelSlugLabel(top.campaign.featureSlug);
-  }, [activeRows]);
+  }, [activeRows, channels]);
 
   // Reveal on SETTLE (resolved OR errored) — never eternal-skeleton on a failed gate
   // query (CLAUDE.md: reveal-on-settle).

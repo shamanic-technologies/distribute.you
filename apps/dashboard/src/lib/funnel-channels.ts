@@ -15,8 +15,9 @@
 // unit-testable (vitest does not resolve the "@" alias).
 
 import {
-  ACQUISITION_CHANNELS,
+  acquisitionChannelsFromFeatures,
   type AcquisitionChannelDef,
+  type ChannelSource,
 } from "./acquisition-channels";
 import {
   SALES_FUNNELS,
@@ -43,11 +44,15 @@ function namesFunnel(key: string, funnelKey: SalesFunnelKey): boolean {
   return key === def.key || key === canonicalSalesFunnelKey(def.key);
 }
 
-/** The fields this module reads off a features-service feature. */
-export interface ChannelFeatureRow {
-  slug: string;
-  salesFunnels?: string[];
-}
+/**
+ * The fields this module reads off a features-service feature.
+ *
+ * The same shape the channel catalogue builds a channel from, because they read
+ * the same rows: WHICH channels exist and WHICH funnels each sells are one
+ * statement by the producer, and splitting it into two shapes here is how the
+ * two readings would drift.
+ */
+export type ChannelFeatureRow = ChannelSource;
 
 /**
  * One (funnel, channel, offer) ceiling off billing — the finest grain it serves,
@@ -87,12 +92,11 @@ export interface FunnelChannelBudget {
 export function channelsForFunnel(
   funnelKey: SalesFunnelKey,
   features: ChannelFeatureRow[],
-  channels: AcquisitionChannelDef[] = ACQUISITION_CHANNELS,
 ): AcquisitionChannelDef[] {
-  return channels.filter((channel) => {
+  return acquisitionChannelsFromFeatures(features).filter((channel) => {
     const feature = features.find((f) => f.slug === channel.featureSlug);
-    // A channel whose feature this environment does not serve at all is not
-    // offerable: funding it would create a campaign nothing can run.
+    // Unreachable by construction, since every channel here was built from one
+    // of these rows. Kept so the read below narrows without an assertion.
     if (!feature) return false;
     if (feature.salesFunnels === undefined) return true;
     return feature.salesFunnels.some((key) => namesFunnel(key, funnelKey));

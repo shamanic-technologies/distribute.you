@@ -6,6 +6,33 @@ import {
   channelSlugLabel,
   type CampaignTitleRow,
 } from "../src/lib/campaign-title";
+import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
+
+/** The channels the environment publishes, as the catalogue builds them. */
+const CHANNELS = acquisitionChannelsFromFeatures([
+  {
+    slug: "sales-cold-email-outreach",
+    name: "Sales Cold Email Outreach",
+    description: "We email your buyers from our own domains, on your behalf.",
+    displayOrder: 1,
+    salesFunnels: ["sales_meetings_from_conversation", "website_purchases"],
+  },
+  {
+    slug: "feedback-request-cold-email-outreach",
+    name: "Feedback Request Cold Email Outreach",
+    description: "We ask your buyers about the problem you solve.",
+    displayOrder: 2,
+    salesFunnels: ["sales_meetings_from_conversation"],
+  },
+  {
+    slug: "google-ads",
+    name: "Google Ads",
+    description: "Buy the searches your buyers already run.",
+    displayOrder: 20,
+    salesFunnels: ["sales_meetings_from_website", "website_purchases", "form_magnet"],
+  },
+]);
+
 
 const read = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
 
@@ -26,7 +53,7 @@ const row = (over: Partial<CampaignTitleRow> = {}): CampaignTitleRow => ({
 
 describe("campaignTitleParts", () => {
   it("names the funnel it runs and the channel it runs on", () => {
-    const parts = campaignTitleParts(row());
+    const parts = campaignTitleParts(row(), CHANNELS);
     expect(parts.funnel?.key).toBe("reply_meeting");
     expect(parts.channel?.featureSlug).toBe("sales-cold-email-outreach");
     expect(parts.label).toBe("Sales Meeting from Conversation · Sales Cold Email Outreach");
@@ -35,17 +62,17 @@ describe("campaignTitleParts", () => {
   it("reads the funnel catalogue's own words, both spellings of the key", () => {
     // `normalizeSalesFunnelKey` accepts the old and the new vocabulary ahead of
     // brand-service emitting only the new one, so both must title the same.
-    const legacy = campaignTitleParts(row({ funnelKey: "reply_meeting" }));
-    expect(legacy.label).toBe(campaignTitleParts(row()).label);
+    const legacy = campaignTitleParts(row({ funnelKey: "reply_meeting" }), CHANNELS);
+    expect(legacy.label).toBe(campaignTitleParts(row(), CHANNELS).label);
   });
 
   it("never reads the stored name while either half resolves", () => {
     // Funnel only: a campaign stating no channel still says what it buys.
-    expect(campaignTitleParts(row({ featureSlug: null })).label).toBe(
+    expect(campaignTitleParts(row({ featureSlug: null }), CHANNELS).label).toBe(
       "Sales Meeting from Conversation",
     );
     // Channel only: a pre-funnel campaign with no goal in hand still says how.
-    expect(campaignTitleParts(row({ funnelKey: null })).label).toBe(
+    expect(campaignTitleParts(row({ funnelKey: null }), CHANNELS).label).toBe(
       "Sales Cold Email Outreach",
     );
   });
@@ -53,7 +80,7 @@ describe("campaignTitleParts", () => {
   it("keeps the stored name when NEITHER half resolves", () => {
     // Nothing composed can be said, so the campaign keeps the name it was given
     // rather than rendering an em-dash where its identity should be.
-    const parts = campaignTitleParts(row({ funnelKey: null, featureSlug: null }));
+    const parts = campaignTitleParts(row({ funnelKey: null, featureSlug: null }), CHANNELS);
     expect(parts.label).toBe("Stored name from provisioning");
     expect(parts.funnel).toBeNull();
     expect(parts.channel).toBeNull();
@@ -63,7 +90,7 @@ describe("campaignTitleParts", () => {
   // `meetingBooked` — so a chain derived from it is one the campaign never
   // stated. campaign-service persists the funnel on every campaign.
   it("never derives a funnel from a goal", () => {
-    const parts = campaignTitleParts(row({ funnelKey: null }));
+    const parts = campaignTitleParts(row({ funnelKey: null }), CHANNELS);
     expect(parts.funnel).toBeNull();
     expect(parts.funnelLabel).toBeNull();
     // The half simply goes unstated; the channel still names the campaign.
@@ -71,7 +98,7 @@ describe("campaignTitleParts", () => {
   });
 
   it("prettifies a feature slug the channel catalogue does not carry", () => {
-    const parts = campaignTitleParts(row({ featureSlug: "some-future-channel" }));
+    const parts = campaignTitleParts(row({ featureSlug: "some-future-channel" }), CHANNELS);
     expect(parts.channel).toBeNull();
     expect(parts.channelLabel).toBe("Some Future Channel");
     expect(parts.label).toBe("Sales Meeting from Conversation · Some Future Channel");

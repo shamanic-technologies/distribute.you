@@ -14,7 +14,10 @@
 // Only relative value imports live here, so this module stays directly
 // unit-testable (vitest does not resolve the "@" alias).
 
-import { acquisitionChannelForFeatureSlug } from "./acquisition-channels";
+import {
+  acquisitionChannelForFeatureSlug,
+  type AcquisitionChannelDef,
+} from "./acquisition-channels";
 import { offerScopedCents, type FunnelOfferBudgetRow } from "./funnel-channels";
 import {
   SALES_FUNNELS,
@@ -51,7 +54,10 @@ export interface CampaignBudgetScope {
  * model — has no ceiling to point at, and guessing one would offer to spend money
  * against a row billing would refuse. So the callers say so instead.
  */
-export function campaignBudgetScope(campaign: CampaignBudgetRow): CampaignBudgetScope | null {
+export function campaignBudgetScope(
+  campaign: CampaignBudgetRow,
+  channels: AcquisitionChannelDef[],
+): CampaignBudgetScope | null {
   if (!campaign.funnelKey || !campaign.featureSlug) return null;
   let key: SalesFunnelKey;
   try {
@@ -63,7 +69,7 @@ export function campaignBudgetScope(campaign: CampaignBudgetRow): CampaignBudget
   }
   const def = SALES_FUNNELS.find((f) => f.key === key);
   if (!def) return null;
-  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug);
+  const channel = acquisitionChannelForFeatureSlug(campaign.featureSlug, channels);
   return {
     def,
     featureSlug: campaign.featureSlug,
@@ -111,9 +117,10 @@ export function campaignBudgetCents(
   campaign: CampaignBudgetRow,
   offerId: string | undefined,
   budgets: BrandFunnelBudgetSet | undefined,
+  channels: AcquisitionChannelDef[],
 ): number | null {
   if (!budgets) return null;
-  const scope = campaignBudgetScope(campaign);
+  const scope = campaignBudgetScope(campaign, channels);
   if (!scope) return null;
   return campaignSavedCents(scope, offerId, budgets);
 }
