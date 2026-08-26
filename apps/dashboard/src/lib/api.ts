@@ -1892,6 +1892,25 @@ export type LeadStepState = "outcome" | "never" | "pending";
 const LeadStepEntrySchema = z.object({
   step: z.string(),
   state: z.enum(["outcome", "never", "pending"]),
+  /**
+   * Whether a PERSON stated this step or the CHAIN implies it (lead-service v0.60.0).
+   * An implied step carries no author, no note and no date, and it moves on its own when
+   * the statement behind it is retracted — so it must not be offered as a control, and
+   * must not read as something somebody said.
+   *
+   * `.optional()` only to decouple the rollout; it is required on the producer.
+   */
+  origin: z.enum(["stated", "implied"]).nullable().optional(),
+  /** The STATED step an implied one follows from. */
+  impliedBy: z.string().nullable().optional(),
+  /**
+   * What a person actually stated about THIS step, whatever the chain concluded — so a
+   * real statement is never lost to satisfy the chain. A `never` later contradicted by
+   * an outcome reads state=outcome, origin=implied, statedState=never.
+   */
+  statedState: z.enum(["outcome", "never"]).nullable().optional(),
+  /** Whether the step is on this lead's chain at all. Off-chain, no rule reaches it. */
+  inChain: z.boolean().optional(),
   source: z.enum(["tracker", "manual"]).nullable(),
   valueCents: z.number().nullable(),
   note: z.string().nullable(),
@@ -1911,6 +1930,13 @@ const LeadStepStatementsSchema = z
     campaignId: z.string(),
     brandId: z.string(),
     steps: z.array(LeadStepEntrySchema),
+    /**
+     * The funnel this lead's CAMPAIGN sells through, and its steps IN ORDER, both read
+     * from campaign-service by the producer and never guessed. `.optional()` only to
+     * decouple the rollout.
+     */
+    funnelKey: z.string().optional(),
+    chain: z.array(z.string()).optional(),
   })
   .passthrough();
 

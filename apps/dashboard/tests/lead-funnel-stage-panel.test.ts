@@ -160,3 +160,36 @@ describe("stating what a won deal was worth", () => {
     expect(SECTION).toContain('onClick={() => onSet(stage.key as WritableStageKey, "never")}');
   });
 });
+
+describe("the chain constrains its neighbours", () => {
+  const HOOK2 = read("src/lib/use-lead-step-statements.ts");
+
+  it("renders a step the CHAIN concluded as an answer, with no control", () => {
+    // A funnel is a chain: a never ends every later step, an outcome reaches every
+    // earlier one. Nobody stated those, so offering a button would invite somebody to
+    // state a thing already concluded, which would move on its own the moment the
+    // statement behind it changed.
+    expect(SECTION).toContain("const isImplied = implied?.[stage.key] === true;");
+    expect(SECTION).toContain("{isImplied ? (");
+  });
+
+  it("says what ending a step also ends, BEFORE it is clicked", () => {
+    // One click mid-chain ends every step after it. A control that does more than it
+    // says is a surprise, not a decision.
+    expect(SECTION).toContain("Also ends:");
+    expect(SECTION).toContain("title={neverTitle}");
+  });
+
+  it("reads implied from the producer's own origin, never re-deriving the chain here", () => {
+    // lead-service takes the funnel from campaign-service and refuses a campaign that
+    // states none. Re-deriving the order in the browser is a second source that can
+    // disagree with what the campaign actually sells.
+    expect(HOOK2).toContain('entry.origin !== "implied"');
+    expect(HOOK2).not.toContain("chainIndex <");
+  });
+
+  it("treats a producer without origin as nothing implied", () => {
+    // Exactly how this read behaved before the chain existed — no fabricated cascade.
+    expect(HOOK2).toContain("Partial<Record<LeadStageKey, boolean>>");
+  });
+});

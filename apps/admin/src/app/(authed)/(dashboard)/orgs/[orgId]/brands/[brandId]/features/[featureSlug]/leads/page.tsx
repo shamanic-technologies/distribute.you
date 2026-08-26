@@ -14,6 +14,7 @@ import {
   type WritableStageKey,
 } from "@/lib/lead-funnel-stages";
 import {
+  impliedStages,
   stageStatesFrom,
   stageValuesFrom,
   useLeadStepStatements,
@@ -346,6 +347,7 @@ export default function FeatureLeadsPage() {
   const [panelError, setPanelError] = useState<string | null>(null);
   const panelStates = useMemo(() => stageStatesFrom(stepStatements), [stepStatements]);
   const panelValues = useMemo(() => stageValuesFrom(stepStatements), [stepStatements]);
+  const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
   // What was already measured, off the lead row this page already holds.
   const panelTracked = useMemo(
     () =>
@@ -483,6 +485,7 @@ export default function FeatureLeadsPage() {
                 stages={panelStages}
                 states={panelStates}
                 tracked={panelTracked}
+                implied={panelImplied}
                 values={panelValues}
                 pending={panelPending}
                 error={panelError}

@@ -38,7 +38,7 @@ const HEADING_CLASS = "text-xs font-medium text-gray-500 uppercase tracking-wide
  * reason a cost per acquisition means anything before a campaign has finished.
  */
 const NEVER_TIP =
-  "Marks the lead as done at this stage. It counts as no outcome and moves no number, it just separates the leads that are finished from the ones still on their way.";
+  "Marks the lead as done at this stage. It counts as no outcome and moves no number, it just separates the leads that are finished from the ones still on their way. A funnel is a chain, so it also ends every step after it, and stating a later step reaches every step before it.";
 
 const VALUE_TIP =
   "What the deal is worth. We record the amount you state instead of pricing it at your average customer, which is what every return and cost-per-customer figure is built on.";
@@ -164,6 +164,7 @@ export function LeadFunnelStageSection({
   stages,
   states,
   tracked,
+  implied,
   values,
   pending,
   error,
@@ -177,6 +178,14 @@ export function LeadFunnelStageSection({
   states: Partial<Record<LeadStageKey, LeadStageState>>;
   /** Stages we ALSO measured automatically, so the row can say so. */
   tracked: Partial<Record<LeadStageKey, boolean>>;
+  /**
+   * Stages the CHAIN concluded rather than a person stating. A funnel is a chain, so a
+   * "never" ends every later step and an outcome reaches every earlier one. These are
+   * real answers with no author: they render as the conclusion they are and offer no
+   * control, because there is nothing left to state and it would move on its own the
+   * moment the statement behind it changed.
+   */
+  implied?: Partial<Record<LeadStageKey, boolean>>;
   /** What a stated outcome was worth, in cents, for the stages that carry an amount. */
   values?: Partial<Record<LeadStageKey, number | null>>;
   /**
@@ -209,7 +218,7 @@ export function LeadFunnelStageSection({
       <p className="text-xs text-gray-500 mb-3">{funnelName}</p>
 
       <ul className="divide-y divide-gray-100">
-        {stages.map((stage) => {
+        {stages.map((stage, stageIndex) => {
           const state = states[stage.key] ?? "pending";
           // Only the stage being written stays unlocked; every other row waits, because
           // two statements in flight at once is how a panel ends up showing a result
@@ -217,6 +226,16 @@ export function LeadFunnelStageSection({
           const busyHere = pending?.key === stage.key;
           const locked = disabled || (pending != null && !busyHere);
           const isTracked = tracked[stage.key] === true;
+          const isImplied = implied?.[stage.key] === true;
+          // What ending this step also ends. A funnel is a chain, so one click here
+          // ends every later step too — the control says so before it is pressed
+          // rather than after, which is the difference between a decision and a
+          // surprise.
+          const alsoEnded = stages.slice(stageIndex + 1).map((s) => s.label);
+          const neverTitle =
+            alsoEnded.length > 0
+              ? `${stage.wontLabel}. Also ends: ${alsoEnded.join(", ")}.`
+              : stage.wontLabel;
           // A stage lead-service does not accept a statement on renders as a READING,
           // never as a dead control. Two of the human chain's stages are like this: a
           // reply is a fact about a message, and a visit is a click the delivery layer
@@ -231,7 +250,22 @@ export function LeadFunnelStageSection({
                 {isTracked && <InfoTooltip tip={TRACKED_TIP} />}
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
-                {writable && askingValueFor === stage.key ? (
+                {isImplied ? (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full border ${
+                      state === "outcome"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-gray-100 text-gray-600 border-gray-200"
+                    }`}
+                    title={
+                      state === "outcome"
+                        ? "Follows from a later step you stated."
+                        : "Follows from an earlier step you ended."
+                    }
+                  >
+                    {state === "outcome" ? "Happened" : "Never"}
+                  </span>
+                ) : writable && askingValueFor === stage.key ? (
                   <StageValueForm
                     label={stage.label}
                     busy={busyHere}
@@ -277,7 +311,7 @@ export function LeadFunnelStageSection({
                       disabled={locked || state === "never" || state === "outcome"}
                       busy={spinningOn("never")}
                       label="Never"
-                      title={stage.wontLabel}
+                      title={neverTitle}
                       tone="never"
                       onClick={() => onSet(stage.key as WritableStageKey, "never")}
                     />
@@ -292,7 +326,7 @@ export function LeadFunnelStageSection({
       </ul>
 
       <p className="text-xs text-gray-500 mt-3 flex items-center gap-1.5">
-        <span>Never counts as no outcome.</span>
+        <span>Never counts as no outcome, and ends the steps after it.</span>
         <InfoTooltip tip={NEVER_TIP} />
       </p>
 
