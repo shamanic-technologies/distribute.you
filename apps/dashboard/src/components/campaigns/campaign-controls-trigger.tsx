@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { getBrandFunnelBudgets, listCampaignsByBrand } from "@/lib/api";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   ROLLUP_LABEL,
@@ -75,10 +76,14 @@ export function CampaignControlsTrigger({
     getBrandFunnelBudgets(brandId),
   );
 
+  const channels = useAcquisitionChannels();
   const rows = useMemo(
     () =>
-      buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, { offerId, campaignId }),
-    [campaignsQ.data, budgetsQ.data, offerId, campaignId],
+      buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
+        offerId,
+        campaignId,
+      }),
+    [campaignsQ.data, budgetsQ.data, channels, offerId, campaignId],
   );
 
   // Reveal on SETTLE (resolved OR errored) — a failed read shows the honest

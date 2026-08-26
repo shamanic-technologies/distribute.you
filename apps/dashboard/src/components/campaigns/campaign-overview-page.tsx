@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { goalForFunnelKey } from "@/lib/sales-funnels";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   getBrand,
@@ -131,8 +132,9 @@ export function CampaignOverviewPage() {
     () => getBrandFunnelBudgets(brandId),
     { ...pollOptions },
   );
+  const channels = useAcquisitionChannels();
   const campaignBudgetCentsValue = campaign
-    ? campaignBudgetCents(campaign, campaign.offerId ?? undefined, funnelBudgets)
+    ? campaignBudgetCents(campaign, campaign.offerId ?? undefined, funnelBudgets, channels)
     : null;
 
   // The channel THIS campaign runs on — read off the campaign, never resolved from
@@ -154,7 +156,7 @@ export function CampaignOverviewPage() {
   // page is scoped to one campaign. A campaign sells a funnel through a channel, so
   // it has money to show whichever channel it is — and gating on the brand's GA
   // feature is what would blank this page for a campaign on any other one.
-  const isChannelCampaign = acquisitionChannelForFeatureSlug(featureSlug) !== null;
+  const isChannelCampaign = acquisitionChannelForFeatureSlug(featureSlug, channels) !== null;
   // Never fire under a GUESSED slug: until the campaign resolves we do not know its
   // channel, and a read fired on the wrong one lands in that channel's cache entry.
   const enabled = featureSlug !== null && isChannelCampaign;

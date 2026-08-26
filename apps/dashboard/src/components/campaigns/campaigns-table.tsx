@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import {
@@ -307,14 +308,16 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   //
   // The brand-scoped list (no offer) is untouched and stays pinned to its one
   // feature: with no offer to bound it, spanning channels would mix propositions.
+  const channels = useAcquisitionChannels();
   const featureCampaigns = useMemo(
     () =>
       campaigns.filter((c) =>
         offerId
-          ? c.offerId === offerId && acquisitionChannelForFeatureSlug(c.featureSlug) !== null
+          ? c.offerId === offerId &&
+            acquisitionChannelForFeatureSlug(c.featureSlug, channels) !== null
           : c.featureSlug === featureSlug,
       ),
-    [campaigns, featureSlug, offerId],
+    [campaigns, featureSlug, offerId, channels],
   );
 
   // One revenue read PER CHANNEL present in the list, because that endpoint prices
@@ -344,7 +347,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
     queries: channelSlugs.map((slug) => ({
       queryKey: ["featureRevenueByCampaign", brandId, slug] as const,
       queryFn: () => getFeatureRevenueByCampaign(slug, brandId),
-      enabled: orgConsistent && acquisitionChannelForFeatureSlug(slug) !== null,
+      enabled: orgConsistent && acquisitionChannelForFeatureSlug(slug, channels) !== null,
       refetchInterval: POLL_INTERVAL,
     })),
   });
@@ -420,7 +423,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       return {
         campaign: c,
         revenue,
-        budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets),
+        budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets, channels),
         // A count the producer did not answer cannot say the row is thin.
         learning: signal === undefined ? false : isLearning(signal),
       };
@@ -440,7 +443,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
       if (byRoi !== 0) return byRoi;
       return b.campaign.updatedAt.localeCompare(a.campaign.updatedAt);
     });
-  }, [listedCampaigns, groupsById, budgets]);
+  }, [listedCampaigns, groupsById, budgets, channels]);
 
   // The rows that are RUNNING, for the surfaces whose question is about live
   // campaigns rather than about the brand's campaigns: the Campaigns page's "#1

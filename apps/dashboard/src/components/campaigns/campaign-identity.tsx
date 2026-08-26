@@ -2,6 +2,7 @@
 
 import type { SalesFunnelDef } from "@/lib/sales-funnels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
@@ -38,8 +39,22 @@ export interface CampaignIdentityParts {
   featureSlug: string | null;
 }
 
-function channelParts(featureSlug: string | null) {
-  const def = acquisitionChannelForFeatureSlug(featureSlug);
+/**
+ * The channel half, resolved against the catalogue the environment publishes.
+ *
+ * A HOOK rather than a plain function because the catalogue is now read off the
+ * features the app already fetches, and because one caller used to resolve it
+ * conditionally: a hook cannot be, so it takes a null slug and answers null
+ * rather than being called behind a ternary.
+ *
+ * A slug the catalogue misses keeps its own words through `channelSlugLabel`,
+ * which is the channel's name in every case that matters and is never a guess at
+ * a DIFFERENT channel's name.
+ */
+function useChannelParts(featureSlug: string | null) {
+  const channels = useAcquisitionChannels();
+  if (!featureSlug) return null;
+  const def = acquisitionChannelForFeatureSlug(featureSlug, channels);
   return { def, label: def ? def.name : channelSlugLabel(featureSlug) };
 }
 
@@ -56,7 +71,7 @@ function channelParts(featureSlug: string | null) {
  * first column, and each row of the budget modal.
  */
 export function CampaignIdentity({ funnel, featureSlug }: CampaignIdentityParts) {
-  const channel = channelParts(featureSlug);
+  const channel = useChannelParts(featureSlug);
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {funnel && <SalesFunnelMark def={funnel} size="sm" />}
@@ -66,8 +81,8 @@ export function CampaignIdentity({ funnel, featureSlug }: CampaignIdentityParts)
         </span>
         <span className="flex h-[18px] min-w-0 items-center gap-1 text-xs leading-[18px] text-gray-500">
           <span className="shrink-0">Via</span>
-          {channel.def && <AcquisitionChannelMark def={channel.def} size="xs" />}
-          <span className="truncate">{channel.label}</span>
+          {channel?.def && <AcquisitionChannelMark def={channel.def} size="xs" />}
+          <span className="truncate">{channel ? channel.label : "\u2014"}</span>
         </span>
       </div>
     </div>
@@ -98,7 +113,7 @@ export function CampaignIdentityInline({
    *  rather than rendering an em-dash where its identity should be. */
   fallbackLabel: string;
 }) {
-  const channel = featureSlug ? channelParts(featureSlug) : null;
+  const channel = useChannelParts(featureSlug);
   if (!funnel && !channel) return <span className="truncate">{fallbackLabel}</span>;
 
   return (

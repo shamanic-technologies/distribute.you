@@ -24,7 +24,10 @@
 // Only relative value imports live here, so this module stays directly
 // unit-testable (vitest does not resolve the "@" alias).
 
-import { acquisitionChannelForFeatureSlug } from "./acquisition-channels";
+import {
+  acquisitionChannelForFeatureSlug,
+  type AcquisitionChannelDef,
+} from "./acquisition-channels";
 import {
   campaignBudgetScope,
   campaignSavedCents,
@@ -143,18 +146,19 @@ export interface ControlRow {
 export function buildControlRows(
   campaigns: ControlCampaign[],
   budgets: BrandFunnelBudgetSet | undefined,
+  channels: AcquisitionChannelDef[],
   filter: { offerId?: string; campaignId?: string } = {},
 ): ControlRow[] {
   const scoped = campaigns.filter((c) => {
     if (filter.campaignId) return c.id === filter.campaignId;
-    if (acquisitionChannelForFeatureSlug(c.featureSlug) === null) return false;
+    if (acquisitionChannelForFeatureSlug(c.featureSlug, channels) === null) return false;
     if (filter.offerId) return c.offerId === filter.offerId;
     return true;
   });
 
   const groups = new Map<string, ControlCampaign[]>();
   for (const c of scoped) {
-    const scope = campaignBudgetScope(c);
+    const scope = campaignBudgetScope(c, channels);
     const rowId = scope
       ? `${scope.def.key}|${scope.featureSlug}|${c.offerId ?? ""}`
       : `campaign:${c.id}`;
@@ -167,7 +171,7 @@ export function buildControlRows(
     .map(([rowId, members]) => {
       const runningCampaignIds = members.filter((c) => isRunningStatus(c.status)).map((c) => c.id);
       const representative = pickRepresentative(members, runningCampaignIds);
-      const scope = campaignBudgetScope(representative);
+      const scope = campaignBudgetScope(representative, channels);
       return {
         rowId,
         campaignId: representative.id,
