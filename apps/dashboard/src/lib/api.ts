@@ -1872,6 +1872,92 @@ export async function getBrandPause(
   return parsed.data;
 }
 
+// ── Per-lead funnel step statements (lead-service v0.57.0 via the api-service proxy) ──
+//
+// What happened to ONE lead at each step of its campaign's sales funnel, stated by a
+// person rather than measured. lead-service writes an `outcome` into the SAME conversion
+// ledger every consumer already counts, so a statement moves the brand's outcome counts
+// on the next read with nothing to change downstream; a `never` goes to a store no count
+// reads, so it can never move a number.
+//
+// `id` here is the leads_campaigns ROW id — the `id` a leads-table row already carries,
+// NOT `lead.leadId` (the person). The row is what carries the campaign, which is how a
+// statement made on a campaign screen is attributable to that campaign.
+
+/** The steps lead-service accepts a statement on. Its spelling, not ours. */
+export type LeadStepName = "signup" | "meeting_booked" | "meeting_attended" | "form_submission" | "sale";
+
+export type LeadStepState = "outcome" | "never" | "pending";
+
+const LeadStepEntrySchema = z.object({
+  step: z.string(),
+  state: z.enum(["outcome", "never", "pending"]),
+  source: z.enum(["tracker", "manual"]).nullable(),
+  valueCents: z.number().nullable(),
+  note: z.string().nullable(),
+  statedByUserId: z.string().nullable(),
+  at: z.string().nullable(),
+});
+
+// `.passthrough()` on the envelope, not a narrowed object: lead-service owns this shape
+// and a field it adds later must reach a consumer rather than being stripped at the
+// parse boundary. `step` is a bare string on purpose — the producer serves a legacy
+// "purchase" spelling alongside "sale", and an enum here would throw the whole read
+// away over a value we simply do not render.
+const LeadStepStatementsSchema = z
+  .object({
+    leadCampaignId: z.string(),
+    leadId: z.string(),
+    campaignId: z.string(),
+    brandId: z.string(),
+    steps: z.array(LeadStepEntrySchema),
+  })
+  .passthrough();
+
+export type LeadStepStatements = z.infer<typeof LeadStepStatementsSchema>;
+
+export async function getLeadStepStatements(
+  leadRowId: string,
+  token?: string,
+): Promise<LeadStepStatements> {
+  const raw = await apiCall<unknown>(`/leads/${leadRowId}/step-statements`, { token });
+  const parsed = LeadStepStatementsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getLeadStepStatements: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getLeadStepStatements: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
+ * State what happened at one step, or that it never will.
+ *
+ * Deliberately NOT retractable: there is no write back to `pending`. A statement is
+ * corrected by making the other one — an outcome supersedes an earlier `never`, while
+ * a `never` on a step that already happened is refused, and the caller renders that
+ * refusal rather than pre-empting it.
+ */
+export async function setLeadStepStatement(
+  leadRowId: string,
+  body: {
+    step: LeadStepName;
+    kind: "outcome" | "never";
+    valueCents?: number;
+    note?: string;
+    occurredAt?: string;
+  },
+  token?: string,
+): Promise<unknown> {
+  return apiCall<unknown>(`/leads/${leadRowId}/step-statements`, {
+    token,
+    method: "POST",
+    body,
+  });
+}
+
 // The welcome signup gift is NOT front-end editable. Its grant amount is
 // code-owned and pinned at boot by instrumentation.ts (WELCOME_GIFT_CENTS →
 // PATCH /v1/promo-codes/welcome). No dashboard read/write helper exists by design.

@@ -30,6 +30,19 @@ import {
 } from "@/lib/goal-steps";
 import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
+import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
+import {
+  leadFunnelStages,
+  leadStepErrorMessage,
+  trackedStages,
+  type WritableStageKey,
+} from "@/lib/lead-funnel-stages";
+import { salesFunnelByKey } from "@/lib/sales-funnels";
+import {
+  stageStatesFrom,
+  useLeadStepStatements,
+  useSetLeadStepStatement,
+} from "@/lib/use-lead-step-statements";
 import { normalizeSalesFunnelKey } from "@/lib/sales-funnels";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
@@ -1261,6 +1274,52 @@ export function EngagedLeadsPage({
       ? audiencesData?.audiences.find((a) => a.id === selectedAudienceInline.id) ?? null
       : null;
 
+
+  // ── Funnel-stage statements for the open lead ────────────────────────────────
+  // Campaign scope only: the panel walks ONE chain, and a brand runs several funnels
+  // at once. `activeFunnelKeys` is already narrowed to this campaign's own row above,
+  // so there is nothing extra to fetch and no goal to fall back to.
+  const panelFunnel = campaignId && activeFunnelKeys[0] ? salesFunnelByKey(activeFunnelKeys[0]) : null;
+  const panelStages = useMemo(
+    () => (panelFunnel ? leadFunnelStages(panelFunnel.key) : []),
+    [panelFunnel],
+  );
+  const { data: stepStatements } = useLeadStepStatements(
+    campaignId && selectedLead ? selectedLead.id : null,
+  );
+  const setStage = useSetLeadStepStatement(selectedLead?.id ?? null);
+  // The target of the statement in flight. Held here rather than derived from the
+  // mutation, because the spinner belongs on the button the person pressed and
+  // `isPending` alone cannot say which of the two that was.
+  const [panelPending, setPanelPending] = useState<{ key: WritableStageKey; next: "outcome" | "never" } | null>(null);
+  const [panelError, setPanelError] = useState<string | null>(null);
+  const panelStates = useMemo(() => stageStatesFrom(stepStatements), [stepStatements]);
+  // What we already measured, off the /revenue join the stat cards above already poll —
+  // so a tracker-reported outcome and a hand-stated one both show, with no second read.
+  const panelTracked = useMemo(() => {
+    const cl = selectedLead?.leadId ? outcomeByLeadId.get(selectedLead.leadId) : undefined;
+    return trackedStages(cl);
+  }, [selectedLead, outcomeByLeadId]);
+
+  const onSetStage = (key: WritableStageKey, next: "outcome" | "never") => {
+    setPanelError(null);
+    setPanelPending({ key, next });
+    setStage.mutate(
+      { step: key, kind: next },
+      {
+        // lead-service writes the refusal as a sentence for a person to read (a `never`
+        // on a step that already happened, a value on a `never`). Surface ITS reason
+        // through the helper, never the thrown Error's own message field, which apiCall
+        // sets to the whole downstream body verbatim.
+        onError: (err) => {
+          console.error("[dashboard] setLeadStepStatement failed", err);
+          setPanelError(leadStepErrorMessage(err));
+        },
+        onSettled: () => setPanelPending(null),
+      },
+    );
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-full relative">
       <div className={`${selectedLead ? 'hidden md:block md:w-1/2' : 'w-full'} p-4 md:p-8 pb-24 overflow-y-auto transition-all`}>
@@ -1398,6 +1457,19 @@ export function EngagedLeadsPage({
             {selectedLead.offer && <OfferSection offer={selectedLead.offer} />}
             {selectedAudienceInline && (
               <AudienceSection inline={selectedAudienceInline} full={selectedAudienceFull} />
+            )}
+            {/* Campaign scope only. A brand runs several funnels at once, so there is no
+                single chain to walk this lead through and the section states nothing. */}
+            {campaignId && panelFunnel && (
+              <LeadFunnelStageSection
+                funnelName={panelFunnel.name}
+                stages={panelStages}
+                states={panelStates}
+                tracked={panelTracked}
+                pending={panelPending}
+                error={panelError}
+                onSet={onSetStage}
+              />
             )}
             {/* No `Served:` footer. It printed an internal pipeline instant, in a
                 different date format than every row above it, for a step the customer
