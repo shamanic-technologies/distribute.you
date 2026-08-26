@@ -100,6 +100,42 @@ describe("the cost cards state Learning instead of a thin price", () => {
   });
 });
 
+describe("the Audiences table", () => {
+  const src = read("components/audiences/customer-audiences-page.tsx");
+
+  it("keys each gated cost on the outcome its own column divides by", () => {
+    for (const pair of [
+      "cppr: (s) => s.evidence.positiveReplies",
+      "cpc: (s) => s.evidence.websiteClicks",
+      "cps: (s) => s.evidence.signups",
+      "cpfs: (s) => s.evidence.formSubmissions",
+      "cpsale: (s) => s.evidence.sales",
+    ]) {
+      expect(src).toContain(pair);
+    }
+  });
+
+  it("states the tag in every one of those cells, not just the reported one", () => {
+    for (const col of ["cppr", "cpc", "cps", "cpfs", "cpsale"]) {
+      expect(src).toContain(`costIsLearning("${col}", stats)`);
+    }
+  });
+
+  it("treats an absent stats row as absent, never as learning", () => {
+    // The table already prints "-" for a row features-service returned nothing for.
+    // Calling that learning would replace one honest answer with a different one.
+    expect(src).toContain("if (!read || !stats) return false;");
+  });
+
+  it("does not rank a row by a price it is not showing", () => {
+    // Learning rows sink below every measured one and order among themselves by the
+    // outcome count the column divides by — which is the column beside it, so the order
+    // the reader sees is the order the numbers on screen state.
+    expect(src).toContain("const learningRank = (a: AudienceWire): number | null =>");
+    expect(src).toContain("if (al != null && bl != null) return bl - al;");
+  });
+});
+
 describe("the Top-3 audiences card", () => {
   const src = read("components/revenue/top-audiences-card.tsx");
 

@@ -77,15 +77,19 @@ describe("Audiences page", () => {
     expect(src).toContain('optimizationGoal === "form_submissions" && trackerSetUp');
   });
 
-  it("hides the CPC + Website Visits columns for the positive_replies goal", () => {
-    // Single-step reply→paid goal: clicks aren't in the funnel, so both the header and
-    // body cells for CPC + Website Visits are gated off (CPPR columns stay). The same
-    // flag also drops them at brand level, where a visit names one funnel's first step
-    // while the rows beside it are attributed across every funnel the brand sells.
-    expect(src).toContain('"positive_replies"');
-    expect(src).toContain("const isPositiveReplies");
-    expect(src).toContain("const showVisitCols = !isPositiveReplies && !brandLevelMoney;");
+  it("shows a signal pair only when that step is on the campaign's own funnel", () => {
+    // The gate is the FUNNEL's steps, not the retired goal: `reply_meeting` and
+    // `visit_meeting` both answer to `sales_meetings`, so a goal-keyed table printed
+    // "Website Visits / Cost per website visit" on a campaign whose chain starts at a
+    // positive reply. `!brandLevelMoney` still drops both at brand level, where a visit
+    // names one funnel's first step while the rows are attributed across every funnel.
+    expect(src).toContain("const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);");
+    expect(src).toContain('const showVisitCols = hasStep("website_visits") && !brandLevelMoney;');
+    expect(src).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
     expect(src).toContain("{showVisitCols && (");
+    // The retired goal no longer decides either pair.
+    expect(src).not.toContain("const isPositiveReplies");
+    expect(src).not.toContain("showReplyColsForGoal");
   });
 
   it("joins per-audience evidence from features-service audience-stats by audienceId", () => {
