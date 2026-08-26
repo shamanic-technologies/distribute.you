@@ -1,0 +1,69 @@
+name: Publish CLI
+
+# The CLI is published by hand, not on every merge to main: an npm version is
+# permanent, so cutting one is a decision rather than a side effect of landing a
+# commit.
+#
+# One thing is missing before this can run: an NPM_TOKEN repository secret with
+# publish rights on the @distribute scope. Without it the job stops at the first
+# step and says so, rather than failing halfway through with an auth error from
+# npm.
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Pack and check the tarball without publishing"
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/cli
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the npm credential exists
+        if: ${{ inputs.dry-run == false }}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::error::No NPM_TOKEN secret. Add one with publish rights on the @distribute scope, then run this again."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        working-directory: .
+        run: pnpm install
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Check the tarball carries the binary
+        run: |
+          npm pack --dry-run
+          test -x dist/index.js || chmod +x dist/index.js
+          head -1 dist/index.js | grep -q '^#!/usr/bin/env node'
+
+      - name: Publish
+        if: ${{ inputs.dry-run == false }}
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

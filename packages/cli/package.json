@@ -1,0 +1,46 @@
+{
+  "name": "@distribute/cli",
+  "version": "0.1.0",
+  "description": "Command line interface for the distribute API",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "distribute": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shamanic-technologies/distribute.you.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "distribute",
+    "cli",
+    "cold-email",
+    "outreach",
+    "api"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.0.0"
+  }
+}
