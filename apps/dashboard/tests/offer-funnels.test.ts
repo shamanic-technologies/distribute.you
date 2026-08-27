@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  chainViews,
+  funnelViews,
   costCoverageNote,
-  summariseChains,
-  unpricedChainReasonLabel,
+  summariseFunnels,
+  unpricedFunnelReasonLabel,
   coverageIsPartial,
-} from "../src/lib/offer-chains";
-import type { OfferChainRow } from "@/lib/api";
+} from "../src/lib/offer-funnels";
+import type { OfferFunnelRow } from "@/lib/api";
 
-function row(over: Partial<OfferChainRow> & { funnelKey: string; name: string }): OfferChainRow {
+function row(over: Partial<OfferFunnelRow> & { funnelKey: string; name: string }): OfferFunnelRow {
   return {
     steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
     campaignIds: ["c1"],
@@ -35,12 +35,12 @@ function row(over: Partial<OfferChainRow> & { funnelKey: string; name: string })
       costPerAcquisitionUsd: 953,
     },
     ...over,
-  } as OfferChainRow;
+  } as OfferFunnelRow;
 }
 
-describe("chainViews", () => {
+describe("funnelViews", () => {
   it("carries every served figure through without deriving one", () => {
-    const [view] = chainViews([row({ funnelKey: "sales_meetings_from_conversation", name: "Sales Meeting from Conversation" })]);
+    const [view] = funnelViews([row({ funnelKey: "sales_meetings_from_conversation", name: "Sales Meeting from Conversation" })]);
     expect(view.roiMultiple).toBe(2.62);
     expect(view.pipelineUsd).toBe(7000);
     expect(view.investedUsd).toBe(2670);
@@ -51,9 +51,9 @@ describe("chainViews", () => {
   });
 
   it("keeps the producer's order rather than ranking by return", () => {
-    // A chain's place is a fact about the catalogue. Ordering by return would put an
-    // unpriced chain somewhere arbitrary.
-    const views = chainViews([
+    // A funnel's place is a fact about the catalogue. Ordering by return would put an
+    // unpriced funnel somewhere arbitrary.
+    const views = funnelViews([
       row({ funnelKey: "a", name: "A", costEconomics: { roiMultiple: 0.5, costOfAcquisitionPct: null, costPerAcquisitionUsd: null } } as never),
       row({ funnelKey: "b", name: "B" }),
     ]);
@@ -61,14 +61,14 @@ describe("chainViews", () => {
   });
 
   it("falls back to the channel slug only when the producer named none", () => {
-    const [view] = chainViews([
+    const [view] = funnelViews([
       row({ funnelKey: "a", name: "A", channels: [{ slug: "founder-led-closing", name: null }] } as never),
     ]);
     expect(view.channelNames).toEqual(["founder-led-closing"]);
   });
 
-  it("leaves an unpriced chain's money null, never zero", () => {
-    const [view] = chainViews([
+  it("leaves an unpriced funnel's money null, never zero", () => {
+    const [view] = funnelViews([
       row({
         funnelKey: "a",
         name: "A",
@@ -94,7 +94,7 @@ describe("chainViews", () => {
   });
 
   it("reads an absent committed cost as null rather than zero", () => {
-    const [view] = chainViews([
+    const [view] = funnelViews([
       row({
         funnelKey: "a",
         name: "A",
@@ -106,18 +106,24 @@ describe("chainViews", () => {
   });
 });
 
-describe("unpricedChainReasonLabel", () => {
+describe("unpricedFunnelReasonLabel", () => {
   it("says each reason the producer can send, in words a customer reads", () => {
-    for (const reason of ["no_channel_funnel", "no_economics_declared", "chain_not_declared"]) {
-      const label = unpricedChainReasonLabel(reason);
+    for (const reason of [
+      "no_channel_funnel",
+      "no_economics_declared",
+      "funnel_not_declared",
+      // Transitional: the producer's previous spelling of the same reason.
+      "chain_not_declared",
+    ]) {
+      const label = unpricedFunnelReasonLabel(reason);
       expect(label).not.toBe(reason);
       expect(label.length).toBeGreaterThan(15);
     }
   });
 
   it("renders a reason we have not met verbatim rather than blank", () => {
-    expect(unpricedChainReasonLabel("brand_new")).toBe("brand_new");
-    expect(unpricedChainReasonLabel(null)).toBe("Not priced");
+    expect(unpricedFunnelReasonLabel("brand_new")).toBe("brand_new");
+    expect(unpricedFunnelReasonLabel(null)).toBe("Not priced");
   });
 });
 
@@ -156,7 +162,7 @@ describe("the combined basis is what a customer's own return divides by", () => 
   it("reads the ratios off the combined block, not the charged one", () => {
     // What we charged is not the customer's answer to "what did this funnel cost me":
     // a funnel whose last legs they run themselves would read far cheaper than it is.
-    const [view] = chainViews([
+    const [view] = funnelViews([
       row({
         funnelKey: "a",
         name: "A",
@@ -182,7 +188,7 @@ describe("the combined basis is what a customer's own return divides by", () => 
     // Not a fallback that MIXES the two: with nothing declared the producer makes them
     // identical by construction, so this is the same figure and simply keeps working
     // against a body that predates the block.
-    const [view] = chainViews([
+    const [view] = funnelViews([
       row({ funnelKey: "a", name: "A", combinedCostEconomics: null, costCoverage: null } as never),
     ]);
     expect(view.investedUsd).toBe(2670);
@@ -191,7 +197,7 @@ describe("the combined basis is what a customer's own return divides by", () => 
   });
 
   it("carries the row's own coverage, so a table can mark a floor", () => {
-    const [view] = chainViews([
+    const [view] = funnelViews([
       row({ funnelKey: "a", name: "A", costCoverage: "platform_and_partial_customer_spend" } as never),
     ]);
     expect(view.coverage).toBe("platform_and_partial_customer_spend");
@@ -199,25 +205,46 @@ describe("the combined basis is what a customer's own return divides by", () => 
   });
 });
 
-describe("summariseChains", () => {
+describe("summariseFunnels", () => {
   it("counts the rows on screen, deriving no metric", () => {
-    const views = chainViews([
+    const views = funnelViews([
       row({ funnelKey: "a", name: "A" }),
       row({ funnelKey: "b", name: "B", priced: false, unpricedReason: "no_channel_funnel" } as never),
     ]);
-    expect(summariseChains(views)).toEqual({ total: 2, priced: 1 });
+    expect(summariseFunnels(views)).toEqual({ total: 2, priced: 1 });
   });
 });
 
 describe("the page renders served fields and states the gap", () => {
   const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
-  const PAGE = read("src/components/chains/offer-chains-page.tsx");
+  const PAGE = read("src/components/funnels/offer-funnels-page.tsx");
   const API = read("src/lib/api.ts");
   const SIDEBAR = read("src/components/context-sidebar.tsx");
 
-  it("reads the offer-chains endpoint at the byte-equal gateway path", () => {
-    expect(API).toContain("`/offers/${offerId}/chains?${query.toString()}`");
+  it("reads whichever of the two gateway paths is live, new one first", () => {
+    // features-service is renaming this grain and there is no alias on either side,
+    // so for the length of that rollout the reader asks for the new path and takes
+    // the old one on a 404 — and ONLY on a 404, so a live error is never swallowed.
+    expect(API).toContain('const OFFER_FUNNELS_PATHS = ["funnels", "chains"] as const;');
+    expect(API).toContain("`/offers/${offerId}/${segment}?${query.toString()}`");
+    expect(API).toContain("err.status !== 404) throw err");
     expect(API).toContain('query.set("pricing", "net")');
+  });
+
+  it("takes the rows under whichever key the wire spelled them", () => {
+    // Same array, two spellings, for one rollout window. Delete `chains` once the
+    // producer's rename is live in prod.
+    expect(API).toContain("funnels: z.array(OfferFunnelRowSchema).optional()");
+    expect(API).toContain("chains: z.array(OfferFunnelRowSchema).optional()");
+    expect(API).toContain("const rows = funnels ?? chains;");
+  });
+
+  it("names nothing on this grain a chain any more", () => {
+    // One concept, one word. The step SEQUENCE is still a chain in ordinary English;
+    // the sales funnel is not.
+    const surface = PAGE + read("src/lib/offer-funnels.ts");
+    expect(surface).not.toMatch(/OfferChain|chainViews|summariseChains|unpricedChainReasonLabel/);
+    expect(SIDEBAR).not.toContain('id: "offer-chains"');
   });
 
   it("renders money through the shared formatters and divides nothing", () => {
@@ -227,13 +254,13 @@ describe("the page renders served fields and states the gap", () => {
   });
 
   it("reveals on SETTLE so a failed read cannot skeleton it forever", () => {
-    expect(PAGE).toContain("chains.isPending && !chains.isError");
+    expect(PAGE).toContain("funnels.isPending && !funnels.isError");
   });
 
   it("states the cost coverage rather than hiding it", () => {
     // The return here counts only platform spend. A page that showed it without saying
     // so would present an optimistic figure as the whole answer.
-    expect(PAGE).toContain("costCoverageNote(chains.data?.costCoverage)");
+    expect(PAGE).toContain("costCoverageNote(funnels.data?.costCoverage)");
     expect(PAGE).toContain("{coverage && ");
   });
 
@@ -247,7 +274,7 @@ describe("the page renders served fields and states the gap", () => {
     expect(PAGE).toContain("do not add up to the offer");
   });
 
-  it("walks DOWN to the campaigns carrying a chain, as a narrowing not a route", () => {
+  it("walks DOWN to the campaigns carrying a funnel, as a narrowing not a route", () => {
     // Campaigns live under the OFFER. Re-homing them under a funnel segment would
     // break every link that already points at one, so the walk down is a query.
     expect(PAGE).toContain("`${basePath}/campaigns?funnel=${encodeURIComponent(row.funnelKey)}`");
@@ -255,11 +282,11 @@ describe("the page renders served fields and states the gap", () => {
 
   it("is reachable from the offer sidebar", () => {
     expect(SIDEBAR).toContain('label: "Sales funnels"');
-    expect(SIDEBAR).toContain("`${basePath}/chains`");
+    expect(SIDEBAR).toContain("`${basePath}/funnels`");
   });
 });
 
-describe("the campaigns list narrows to one chain when it was walked into", () => {
+describe("the campaigns list narrows to one funnel when it was walked into", () => {
   const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
   const CAMPAIGNS_PAGE = read("src/components/campaigns/campaigns-page.tsx");
   const TABLE = read("src/components/campaigns/campaigns-table.tsx");
@@ -277,14 +304,14 @@ describe("the campaigns list narrows to one chain when it was walked into", () =
     expect(TABLE).toContain("normalizeSalesFunnelKey(r.campaign.funnelKey)");
   });
 
-  it("says which chain it narrowed to, and offers the way back", () => {
+  it("says which funnel it narrowed to, and offers the way back", () => {
     // A list silently showing a third of itself reads as an offer with fewer
     // campaigns than it has.
     expect(CAMPAIGNS_PAGE).toContain("Showing the campaigns carrying");
     expect(CAMPAIGNS_PAGE).toContain("Show every campaign");
   });
 
-  it("lists every campaign when no chain was named", () => {
+  it("lists every campaign when no funnel was named", () => {
     expect(TABLE).toContain("const rows = narrowed");
     expect(TABLE).toContain(": allRows;");
   });

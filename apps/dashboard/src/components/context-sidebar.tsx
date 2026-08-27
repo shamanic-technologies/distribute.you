@@ -622,9 +622,9 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
     ...(revenueOk
       ? [
           {
-            id: "offer-chains",
+            id: "offer-funnels",
             label: "Sales funnels",
-            href: `${basePath}/chains`,
+            href: `${basePath}/funnels`,
             icon: <FunnelsIcon />,
           } satisfies SidebarItem,
         ]

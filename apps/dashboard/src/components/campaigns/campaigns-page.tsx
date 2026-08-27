@@ -66,9 +66,9 @@ export function CampaignsPage() {
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const basePath = tenantBasePath(orgId, brandId, offerId);
-  // Arrived from a sales funnel? Narrow to the campaigns carrying that chain. A
+  // Arrived from a sales funnel? Narrow to the campaigns carrying that funnel. A
   // display filter over rows the hook already fetched, so the walk down costs no
-  // request; the header says which chain, because a list silently showing a third
+  // request; the header says which funnel, because a list silently showing a third
   // of itself reads as an offer with fewer campaigns than it has.
   const searchParams = useSearchParams();
   const funnelKey = searchParams?.get("funnel") ?? null;

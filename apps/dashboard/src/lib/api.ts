@@ -3325,27 +3325,27 @@ export async function getFeatureRevenue(
 }
 
 /**
- * An offer's money, ONE ROW PER SALES CHAIN.
+ * An offer's money, ONE ROW PER SALES FUNNEL.
  *
- * The grain under the offer, and the reason it exists: the product sells a chain one
+ * The grain under the offer, and the reason it exists: the product sells a funnel one
  * LEG at a time, so a campaign buys a single link and has no return of its own — the
- * lifetime revenue sits at the END of the chain. The chain is the finest scope whose
- * money divides into a return at all.
+ * lifetime revenue sits at the END of the chain of steps. The funnel is the finest
+ * scope whose money divides into a return at all.
  *
  * ROWS DO NOT SUM TO THE OFFER, deliberately. Money adds (a run belongs to exactly one
- * chain) but people do not (a lead worked through two chains is ONE lead to the offer
+ * funnel) but people do not (a lead worked through two funnels is ONE lead to the offer
  * and sits in both rows) and no ratio does. The offer's own read stays the number to
  * trust for "what did this offer do", and `unattributedCampaignIds` names the campaigns
  * whose spend is in the offer and in no row.
  *
  * ⚠️ `costCoverage` states which dollars the cost is made of. It reads
- * `platform_spend_only` today: a chain whose last legs are worked by the customer's own
+ * `platform_spend_only` today: a funnel whose last legs are worked by the customer's own
  * team reads CHEAPER here than it truly is, because what those legs cost THEM is
  * declared per lead against lead-service and this read does not yet fold it in. The
  * field is on the wire precisely so a consumer states the gap rather than presenting an
  * optimistic return as the whole answer.
  */
-const OfferChainChannelSchema = z.object({
+const OfferFunnelChannelSchema = z.object({
   slug: z.string(),
   name: z.string().nullish(),
 });
@@ -3363,12 +3363,12 @@ const CustomerDeclaredCostSchema = z.object({
   /** How many did not, because nobody was ever asked. Above 0 = cannot be fully costed. */
   unstatedCount: z.number(),
 });
-const OfferChainRowSchema = z.object({
+const OfferFunnelRowSchema = z.object({
   funnelKey: z.string(),
   name: z.string(),
   steps: z.array(z.string()),
   campaignIds: z.array(z.string()),
-  channels: z.array(OfferChainChannelSchema),
+  channels: z.array(OfferFunnelChannelSchema),
   /** False leaves every money-derived figure null and names the missing ingredient. */
   priced: z.boolean(),
   unpricedReason: z.string().nullable(),
@@ -3384,7 +3384,7 @@ const OfferChainRowSchema = z.object({
   /** Which dollars THIS ROW's figures are made of. */
   costCoverage: z.string().nullish(),
   /**
-   * The chain's cost of acquisition WITH the customer's own legs in it, and the return
+   * The funnel's cost of acquisition WITH the customer's own legs in it, and the return
    * that divides by it. The byte-same three ratios off the summed basis, so with nothing
    * declared this block is identical to the charged one and the whole ladder moves
    * together the day a cost is stated.
@@ -3402,35 +3402,87 @@ const OfferChainRowSchema = z.object({
     })
     .nullish(),
 });
-const OfferChainsResponseSchema = z.object({
+/**
+ * ⚠️ TRANSITIONAL, and it must not become permanent.
+ *
+ * features-service is renaming this grain from "chain" to "funnel" — the product has
+ * exactly one word for it and this is the one. There is no alias on either side, so for
+ * the length of that rollout the wire may answer under EITHER key with a byte-identical
+ * array. Both are declared optional and the reader takes whichever is present; that is
+ * the sanctioned `new ?? old` RENAME shape (one concept, two spellings), never a
+ * fallback between two different things.
+ *
+ * Delete `chains` — here, in `getOfferFunnels`'s path tolerance, and in the
+ * `chain_not_declared` label — once features-service's rename is live in PROD. Tracked
+ * as the follow-up on the rename issue.
+ */
+const OfferFunnelsResponseSchema = z.object({
   offerId: z.string(),
   brandId: z.string(),
   costBasis: z.string(),
   /** Which dollars the cost is made of. Rendered, never hidden. */
   costCoverage: z.string(),
-  chains: z.array(OfferChainRowSchema),
+  funnels: z.array(OfferFunnelRowSchema).optional(),
+  chains: z.array(OfferFunnelRowSchema).optional(),
   unattributedCampaignIds: z.array(z.string()),
 });
-export type OfferChainRow = z.infer<typeof OfferChainRowSchema>;
-export type OfferChains = z.infer<typeof OfferChainsResponseSchema>;
+export type OfferFunnelRow = z.infer<typeof OfferFunnelRowSchema>;
+/**
+ * What a caller reads. `funnels` is REQUIRED here whatever the wire spelled it, so no
+ * consumer ever learns the transition happened.
+ */
+export type OfferFunnels = Omit<
+  z.infer<typeof OfferFunnelsResponseSchema>,
+  "funnels" | "chains"
+> & { funnels: OfferFunnelRow[] };
 
-export async function getOfferChains(
+/** The path features-service is renaming TO, and the one it is renaming FROM. */
+const OFFER_FUNNELS_PATHS = ["funnels", "chains"] as const;
+
+export async function getOfferFunnels(
   offerId: string,
   brandId: string,
   token?: string,
-): Promise<OfferChains> {
+): Promise<OfferFunnels> {
   const query = new URLSearchParams({ brandId });
   // Same NET basis as every other money read on this app. Never a per-caller toggle.
   query.set("pricing", "net");
-  const raw = await apiCall<unknown>(`/offers/${offerId}/chains?${query.toString()}`, { token });
-  const parsed = OfferChainsResponseSchema.safeParse(raw);
+
+  // Ask for the new path first; a gateway that has not shipped it yet answers 404 and
+  // we ask the old one. Only a 404 is retried — any other failure is the real answer
+  // and is thrown, so this can never swallow a live error. Transitional, same window
+  // as the dual response key above.
+  let raw: unknown;
+  for (const [i, segment] of OFFER_FUNNELS_PATHS.entries()) {
+    try {
+      raw = await apiCall<unknown>(
+        `/offers/${offerId}/${segment}?${query.toString()}`,
+        { token },
+      );
+      break;
+    } catch (err) {
+      const last = i === OFFER_FUNNELS_PATHS.length - 1;
+      if (last || !(err instanceof ApiError) || err.status !== 404) throw err;
+      console.info(
+        `[dashboard] getOfferFunnels: /${segment} not served yet, falling back to the previous path`,
+      );
+    }
+  }
+
+  const parsed = OfferFunnelsResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    console.error("[dashboard] getOfferChains: response shape mismatch", {
+    console.error("[dashboard] getOfferFunnels: response shape mismatch", {
       issues: parsed.error.issues,
     });
-    throw new Error("[dashboard] getOfferChains: invalid response shape");
+    throw new Error("[dashboard] getOfferFunnels: invalid response shape");
   }
-  return parsed.data;
+  const { funnels, chains, ...rest } = parsed.data;
+  const rows = funnels ?? chains;
+  if (!rows) {
+    console.error("[dashboard] getOfferFunnels: body carried neither `funnels` nor `chains`");
+    throw new Error("[dashboard] getOfferFunnels: invalid response shape");
+  }
+  return { ...rest, funnels: rows };
 }
 
 /**
