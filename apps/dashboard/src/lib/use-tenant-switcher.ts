@@ -14,6 +14,7 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listBrands, listBrandOffers, getBrandOffer, type Offer } from "@/lib/api";
 import { useTenantIdentity } from "@/components/tenant-identity-provider";
 import { withTimeout, isTimeoutError } from "@/lib/with-timeout";
+import { orgSwitchErrorMessage } from "@/lib/org-switch-error";
 
 /**
  * How long any single leg of an org switch may take before the switcher gives up
@@ -371,12 +372,15 @@ export function useTenantSwitcher() {
     } catch (err) {
       console.error("[dashboard] org switch failed:", err);
       setSwitchingOrg(null);
+      // `navigator.onLine === false` is decisive (no network interface at all)
+      // and `true` says nothing, so it is read ONLY to sharpen the offline case.
+      // Reported from a console where every request on the page had failed
+      // ERR_INTERNET_DISCONNECTED while the message blamed the auth service.
       setSwitchError(
-        isTimeoutError(err)
-          ? "Couldn't reach the auth service. Check your connection and try again."
-          : err instanceof Error
-            ? err.message
-            : "Could not switch organization.",
+        orgSwitchErrorMessage(
+          err,
+          typeof navigator === "undefined" ? true : navigator.onLine !== false,
+        ),
       );
     }
   }, [isStaff, setActive, session, router]);
