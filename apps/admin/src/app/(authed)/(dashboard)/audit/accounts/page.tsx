@@ -71,20 +71,31 @@ function orgLabel(row: AuditAccountRow, names: Record<string, string>): string {
 }
 
 function StatusCell({ row }: { row: AuditAccountRow }) {
-  if (row.status === "active" && row.dailyBudgetUsd != null) {
+  if (row.status === "active") {
+    // The running figure is what this account can spend today. When the customer has posted more
+    // than that — a second funnel whose campaign is stopped — the difference is stated rather than
+    // averaged away: the two numbers answer different questions and only one is money in play.
+    const posted = row.configuredDailyBudgetUsd > row.runningDailyBudgetUsd;
     return (
-      <span className="inline-block rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-700">
-        {usd2(row.dailyBudgetUsd)}/day
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-emerald-700">
+        {usd2(row.runningDailyBudgetUsd)}/day
+        {posted && (
+          <span className="font-medium text-emerald-600">
+            · {usd2(row.configuredDailyBudgetUsd)} posted
+          </span>
+        )}
       </span>
     );
   }
   if (row.status === "paused") {
-    // Paused keeps a budget but isn't spending — show the held amount for context.
+    // Paused keeps its ceiling and runs nothing — show the held amount for context.
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
         Paused
-        {row.dailyBudgetUsd != null && row.dailyBudgetUsd > 0 && (
-          <span className="font-medium tabular-nums text-amber-600">· {usd2(row.dailyBudgetUsd)}/day</span>
+        {row.configuredDailyBudgetUsd > 0 && (
+          <span className="font-medium tabular-nums text-amber-600">
+            · {usd2(row.configuredDailyBudgetUsd)}/day posted
+          </span>
         )}
       </span>
     );
@@ -105,15 +116,19 @@ export default function AuditAccountsPage() {
 
   const names = useOrgNames(data?.rows);
 
-  // Rank active → paused → inactive; within a bucket by daily budget desc — the
-  // money-carrying accounts lead, paused (held budget) next, inactive last.
+  // Rank active → paused → inactive; within a bucket by RUNNING budget desc, then by what was
+  // posted — the money actually in play leads, held ceilings next, inactive last. A paused row runs
+  // nothing, so its posted amount is what ranks it.
   const rows = useMemo(() => {
     const rank = (s: AuditAccountRow["status"]) => (s === "active" ? 0 : s === "paused" ? 1 : 2);
     const list = [...(data?.rows ?? [])];
     list.sort((a, b) => {
       const r = rank(a.status) - rank(b.status);
       if (r !== 0) return r;
-      return (b.dailyBudgetUsd ?? 0) - (a.dailyBudgetUsd ?? 0);
+      if (b.runningDailyBudgetUsd !== a.runningDailyBudgetUsd) {
+        return b.runningDailyBudgetUsd - a.runningDailyBudgetUsd;
+      }
+      return b.configuredDailyBudgetUsd - a.configuredDailyBudgetUsd;
     });
     return list;
   }, [data]);
@@ -125,11 +140,12 @@ export default function AuditAccountsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Accounts</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Every customer account across the fleet, cross-org. Active means the brand isn&apos;t
-          paused, has a daily budget, and the org holds enough credit to fund at least one more
-          day. Paused is a brand explicitly held (keeps its budget, not spending). Unbudgeted or
-          short on credit shows as inactive. Total daily budget, MRR, and ARR count active
-          accounts only.
+          Every customer account across the fleet, cross-org. Active means money is actually
+          running — a ceiling standing behind a campaign that is ongoing — and the org holds enough
+          credit to fund at least one more day of it. Paused means the customer has posted money
+          with nothing running against it: campaigns stopped, or none created for the funnel they
+          funded. Anything else is inactive. Running budget, MRR and ARR count active accounts
+          only, and read what can be spent today rather than what was configured.
         </p>
       </div>
 
@@ -142,21 +158,25 @@ export default function AuditAccountsPage() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatCard
-              label="Total daily budget"
-              value={s ? usd0(s.totalDailyBudgetUsd) : "—"}
-              sub="active accounts"
+              label="Running daily budget"
+              value={s ? usd0(s.totalRunningDailyBudgetUsd) : "—"}
+              sub={
+                s && s.totalConfiguredDailyBudgetUsd > s.totalRunningDailyBudgetUsd
+                  ? `active accounts · ${usd0(s.totalConfiguredDailyBudgetUsd)} posted`
+                  : "active accounts"
+              }
               pending={isPending}
             />
             <StatCard
               label="MRR"
               value={s ? usd0(s.mrrUsd) : "—"}
-              sub="daily budget × 30"
+              sub="running budget × 30"
               pending={isPending}
             />
             <StatCard
               label="ARR"
               value={s ? usd0(s.arrUsd) : "—"}
-              sub="daily budget × 365"
+              sub="running budget × 365"
               pending={isPending}
             />
             <StatCard

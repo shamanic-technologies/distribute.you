@@ -393,7 +393,8 @@ function RightPanel({ row, names, onClose }: { row: CustomerRow; names: Record<s
 
       <PanelSection title="Budget and balance">
         <PanelRow label="Status" value={row.status} />
-        <PanelRow label="Daily budget" value={usd(row.dailyBudgetUsd)} />
+        <PanelRow label="Daily budget (running)" value={usd(row.runningDailyBudgetUsd)} />
+        <PanelRow label="Daily budget (posted)" value={usd(row.configuredDailyBudgetUsd)} />
         <PanelRow label="Org balance (spendable)" value={usd(row.orgBalanceUsd)} />
         <PanelRow label="Org balance (actual)" value={usd(row.orgActualBalanceUsd)} />
         <PanelRow label="Auto-topup" value={row.autoTopupEnabled ? "On" : "Off"} />

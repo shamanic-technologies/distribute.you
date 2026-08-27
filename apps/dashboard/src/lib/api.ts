@@ -1773,6 +1773,82 @@ export async function getBrandFunnelBudgets(
   return parsed.data;
 }
 
+// ---------------------------------------------------------------------------
+// What a brand may actually spend TODAY — campaign-service, through the gateway.
+//
+// The question is a JOIN and neither producer can answer it alone: billing keys a
+// ceiling on (funnel x channel x offer) and stores no campaign status, while
+// campaign-service stores the status and no money. billing's brand total is
+// therefore status-BLIND — a brand running one campaign at $50 beside one paused
+// at $10 answers $60 — so every surface that divided by it, or projected a month
+// from it, counted ceilings nobody can spend against.
+//
+// The dashboard used to make that join itself, in the browser, from the campaign
+// list and the funnel budgets. campaign-service serves it now, decomposed by
+// offer / campaign / ceiling so no consumer sums anything.
+// ---------------------------------------------------------------------------
+
+/** ONE campaign inside the answer: whether it is running, and what it may spend. */
+const SpendableCampaignSchema = z.object({
+  campaignId: z.string(),
+  status: z.string(),
+  running: z.boolean(),
+  funnelKey: z.string().nullable(),
+  featureSlug: z.string().nullable(),
+  offerId: z.string().nullable(),
+  configuredDailyBudgetCents: z.coerce.number(),
+  runningDailyBudgetCents: z.coerce.number(),
+});
+
+/** ONE offer's own totals, plus the campaigns that produced them. */
+const SpendableOfferSchema = z.object({
+  offerId: z.string().nullable(),
+  configuredDailyBudgetCents: z.coerce.number(),
+  runningDailyBudgetCents: z.coerce.number(),
+  campaignIds: z.array(z.string()),
+});
+
+const BrandSpendableBudgetResponseSchema = z.object({
+  brandId: z.string(),
+  // Which billing width the figures were computed at. Read only to explain a
+  // figure; exactly one width is ever counted, since the coarser ones are
+  // billing's own sums of the finer.
+  grain: z.string(),
+  // What the customer SET. A paused campaign's settings screen must still be able
+  // to state this, which is why the producer serves both rather than one.
+  configuredDailyBudgetCents: z.coerce.number(),
+  // The part of it standing behind a campaign that is ONGOING right now.
+  runningDailyBudgetCents: z.coerce.number(),
+  offers: z.array(SpendableOfferSchema),
+  campaigns: z.array(SpendableCampaignSchema),
+});
+
+export type BrandSpendableBudget = z.infer<typeof BrandSpendableBudgetResponseSchema>;
+
+/**
+ * GET /brands/:brandId/spendable-budget — both daily-budget figures for a brand,
+ * with the per-offer and per-campaign decompositions.
+ *
+ * Fail loud on a shape mismatch, like every other reader here: a money figure that
+ * silently parsed to nothing would render as "this brand spends nothing", which is
+ * a different statement from "we could not read it".
+ */
+export async function getBrandSpendableBudget(
+  brandId: string,
+  token?: string,
+): Promise<BrandSpendableBudget> {
+  const raw = await apiCall<unknown>(`/brands/${brandId}/spendable-budget`, { token });
+  const parsed = BrandSpendableBudgetResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getBrandSpendableBudget: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] getBrandSpendableBudget: invalid response shape");
+  }
+  return parsed.data;
+}
+
 /**
  * PUT /brands/:brandId/funnel-budgets — state the WHOLE set at once, atomically.
  * What signup checkout uses: the customer funds several funnels in one decision

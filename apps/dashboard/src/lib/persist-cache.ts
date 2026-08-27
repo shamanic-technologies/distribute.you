@@ -117,6 +117,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandExtractedFields",
   "brandSalesEconomics",
   "brandFunnelBudgets",
+  // What the brand may actually spend today (campaign status joined to its ceilings,
+  // served by campaign-service). An unlisted root is default-OFF, so the header's
+  // money cold-skeletons on every visit without this line.
+  "brandSpendableBudget",
   "brandDailyBudget",
   "brandPause",
   "brandCostBreakdown",
