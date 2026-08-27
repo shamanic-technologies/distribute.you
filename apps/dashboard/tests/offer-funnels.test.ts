@@ -276,12 +276,14 @@ describe("the page renders served fields and states the gap", () => {
     expect(PAGE).toContain("`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`");
   });
 
-  it("IS the offer Overview, so it needs no sidebar entry of its own", () => {
-    // An offer sells through funnels, so listing them IS what its Overview answers.
-    // A second entry pointing at the same table would be one surface named twice.
+  it("is BOTH the offer Overview's table and a page of its own", () => {
+    // The Overview answers "what does this offer return, per funnel" inline; the
+    // sidebar entry is how a reader gets to the same table deliberately rather than
+    // by scrolling the Overview. One component, two mounts, never two tables.
     const OVERVIEW = read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
     expect(OVERVIEW).toContain("<OfferFunnelsPage embedded />");
-    expect(SIDEBAR).not.toContain('label: "Sales funnels"');
+    expect(SIDEBAR).toContain('label: "Sales funnels"');
+    expect(SIDEBAR).toContain("`${basePath}/funnels`");
   });
 });
 

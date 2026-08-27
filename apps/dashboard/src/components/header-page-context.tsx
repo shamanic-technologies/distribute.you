@@ -7,6 +7,9 @@ import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { CampaignTitle } from "@/components/campaigns/campaign-title";
 import { OfferMark } from "@/components/marks/offer-mark";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { campaignFunnel } from "@/lib/campaign-funnel";
+import type { SalesFunnelDef, SalesFunnelKeyWire } from "@/lib/sales-funnels";
 
 /**
  * WHERE you are, below the tenant: the offer, and the campaign under it.
@@ -36,6 +39,8 @@ export interface OfferRoute {
   offerId: string;
   /** Present only on `.../offers/:offerId/campaigns/:id`. */
   campaignId: string | null;
+  /** Present on `.../offers/:offerId/funnels/:funnelKey` and everything under it. */
+  funnelKey: string | null;
 }
 
 /**
@@ -49,13 +54,18 @@ export interface OfferRoute {
 export function offerRouteFromPath(pathname: string): OfferRoute | null {
   const p = pathname.split("/").filter(Boolean);
   if (p[0] !== "orgs" || p[2] !== "brands" || p[4] !== "offers") return null;
-  const [, orgId, , brandId, , offerId, section, campaignId] = p;
+  const [, orgId, , brandId, , offerId, section, fourth] = p;
   if (!orgId || !brandId || !offerId) return null;
   return {
     orgId,
     brandId,
     offerId,
-    campaignId: section === "campaigns" && campaignId ? campaignId : null,
+    campaignId: section === "campaigns" && fourth ? fourth : null,
+    // Every page UNDER a funnel keeps the funnel crumb — its Overview, its
+    // campaigns, its leads, its audiences, its settings — because they are all that
+    // funnel's, and a crumb that vanished one level down would leave the deepest
+    // pages saying least about where they are.
+    funnelKey: section === "funnels" && fourth ? decodeURIComponent(fourth) : null,
   };
 }
 
@@ -80,6 +90,33 @@ const HomeIcon = () => (
     />
   </svg>
 );
+
+/** The funnel half of the crumb: its mark and its name, on one line like every
+ *  other crumb. `xs` so it lines up with the offer tile beside it. */
+function FunnelCrumb({
+  def,
+  label,
+  href,
+}: {
+  def: SalesFunnelDef | null;
+  label: string;
+  href: string;
+}) {
+  const body = (
+    <>
+      {def && <SalesFunnelMark def={def} size="xs" />}
+      <span className="truncate">{def?.name ?? label}</span>
+    </>
+  );
+  return (
+    <Link
+      href={href}
+      className="flex min-w-0 items-center gap-1.5 font-medium text-gray-800 transition hover:text-gray-600"
+    >
+      {body}
+    </Link>
+  );
+}
 
 export function HeaderPageContext() {
   const pathname = usePathname() ?? "";
@@ -107,7 +144,13 @@ export function HeaderPageContext() {
   const campaign = campaignQ.data?.campaign ?? null;
   // The offer crumb is a LINK only while it is not the page you are on — a
   // breadcrumb's last item is where you already are.
-  const offerIsCurrent = route.campaignId === null;
+  const offerIsCurrent = route.campaignId === null && route.funnelKey === null;
+  // The funnel a route names, off the shared catalogue — the same one the table and
+  // the campaign crumb resolve it from, never a second spelling.
+  const funnelDef = route.funnelKey
+    ? campaignFunnel(route.funnelKey as SalesFunnelKeyWire)
+    : null;
+  const funnelPath = `${offerPath}/funnels/${encodeURIComponent(route.funnelKey ?? "")}`;
 
   const offerLabel = offer ? (
     <>
@@ -147,6 +190,16 @@ export function HeaderPageContext() {
         >
           {offerLabel}
         </Link>
+      )}
+
+      {route.funnelKey !== null && (
+        <>
+          <Separator />
+          {/* A funnel is named as what it IS, with the mark the tables draw for it.
+              It is a LINK while you are deeper than its own Overview, and the page
+              you are on otherwise: a breadcrumb's last item is where you already are. */}
+          <FunnelCrumb def={funnelDef} label={route.funnelKey} href={funnelPath} />
+        </>
       )}
 
       {route.campaignId !== null && (

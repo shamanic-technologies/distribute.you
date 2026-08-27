@@ -58,9 +58,19 @@ describe("the offer is a route level of its own", () => {
     expect(sidebar).toContain('if (segments[6] === "funnels" && segments[7])');
     expect(sidebar).toContain('return { type: "funnel", orgId, brandId, offerId, funnelKey: segments[7] };');
     expect(sidebar).toContain("function FunnelLevelSidebar(");
-    // It names the funnel from the shared catalogue, never a second spelling of it.
+    // The funnel does NOT name itself in the sidebar: the top bar's breadcrumb does,
+    // the way it names the campaign one level down. Two places naming one thing is how
+    // they come to disagree.
     const funnelSidebar = sidebar.slice(sidebar.indexOf("function FunnelLevelSidebar("));
-    expect(funnelSidebar.slice(0, 1600)).toContain("campaignFunnel(");
+    const body = funnelSidebar.slice(0, 2600);
+    expect(body).toContain('id: "funnel-overview"');
+    expect(body).toContain('id: "funnel-campaigns"');
+    expect(body).toContain('id: "funnel-leads"');
+    expect(body).toContain('id: "funnel-audiences"');
+    expect(body).toContain('label: "Sales Funnel Settings"');
+    const crumb = read("components/header-page-context.tsx");
+    expect(crumb).toContain("funnelKey: section === \"funnels\" && fourth");
+    expect(crumb).toContain("<FunnelCrumb");
   });
 
   it("puts a funnel's campaigns under the FUNNEL, and names no campaign on the offer", () => {

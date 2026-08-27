@@ -525,31 +525,60 @@ function FunnelLevelSidebar({ orgId, brandId, offerId, funnelKey, pathname }: {
   funnelKey: string;
   pathname: string;
 }) {
+  const featureSlug = useSoleFeatureSlug();
+  const revenueOk = isRevenueFeature(featureSlug);
   const offerPath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
-  const funnelPath = `${offerPath}/funnels/${funnelKey}`;
-  // The funnel's own name, off the shared catalogue. A key the catalogue does not
-  // carry prints as itself rather than as a blank heading.
-  const funnel = campaignFunnel(decodeURIComponent(funnelKey) as SalesFunnelKeyWire);
+  const funnelBase = `${offerPath}/funnels/${funnelKey}`;
 
-  return (
-    <SidebarSection topSlot={<TenantSwitcher />} footer={<RewardsCard />}>
-      <div className="px-3 pb-2">
-        <Link href={offerPath} className="text-xs text-gray-400 hover:text-gray-600">
-          Sales funnels
-        </Link>
-        <p className="text-sm font-medium text-gray-900 leading-tight mt-0.5">
-          {funnel?.name ?? decodeURIComponent(funnelKey)}
-        </p>
-      </div>
-      <SidebarLink
-        item={{
+  // The funnel does NOT name itself here: the top bar's breadcrumb does, the way it
+  // names the campaign one level down. Two places naming the same thing is how they
+  // come to disagree, and a sidebar that repeats the crumb wastes the one row a
+  // reader scans for where they can GO.
+  const items: SidebarItem[] = revenueOk
+    ? [
+        { id: "funnel-overview", label: "Overview", href: funnelBase, icon: <OverviewIcon /> },
+        {
           id: "funnel-campaigns",
           label: "Campaigns",
-          href: funnelPath,
+          href: `${funnelBase}/campaigns`,
           icon: <CampaignsIcon />,
-        }}
-        isActive={pathname === funnelPath}
-      />
+        },
+        { id: "funnel-leads", label: "Leads", href: `${funnelBase}/leads`, icon: <LeadsIcon /> },
+        {
+          id: "funnel-audiences",
+          label: "Audiences",
+          href: `${funnelBase}/audiences`,
+          icon: <AudiencesIcon />,
+        },
+      ]
+    : [];
+
+  return (
+    <SidebarSection
+      topSlot={<TenantSwitcher />}
+      // Configuration is not a place you work, so it is anchored at the bottom —
+      // exactly like Campaign Settings in the campaign sidebar and Offer Settings in
+      // the offer one.
+      footer={
+        <div className="border-t border-gray-100">
+          <div className="p-2 space-y-0.5">
+            <SidebarLink
+              item={{
+                id: "funnel-settings",
+                label: "Sales Funnel Settings",
+                href: `${funnelBase}/settings`,
+                icon: <SettingsIcon />,
+              }}
+              isActive={pathname === `${funnelBase}/settings`}
+            />
+          </div>
+          <RewardsCard />
+        </div>
+      }
+    >
+      {items.map((item) => (
+        <SidebarLink key={item.id} item={item} isActive={pathname === item.href} />
+      ))}
     </SidebarSection>
   );
 }
@@ -664,6 +693,16 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
             label: "Overview",
             href: basePath,
             icon: <OverviewIcon />,
+          } satisfies SidebarItem,
+        ]
+      : []),
+    ...(revenueOk
+      ? [
+          {
+            id: "offer-funnels",
+            label: "Sales funnels",
+            href: `${basePath}/funnels`,
+            icon: <FunnelsIcon />,
           } satisfies SidebarItem,
         ]
       : []),
