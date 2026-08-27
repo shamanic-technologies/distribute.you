@@ -52,7 +52,23 @@ export type AcquisitionChannelDef = {
   summary: string;
   /** Its tile, or null for a channel this app has not drawn yet. */
   mark: AcquisitionChannelMark | null;
+  /**
+   * WHO puts the hours in. `platform` is us; `customer` is the brand's own team,
+   * which is how a chain is sold one leg at a time: the legs we do not automate are
+   * worked at their side. Null when the producer states nothing, which is read
+   * as the behaviour that came before the field shipped rather than as a denial.
+   */
+  operatedBy: string | null;
+  /**
+   * The legs this channel performs: the step it moves a lead FROM and the step it
+   * moves it TO. `from: null` means the lead was not on the chain at all, which is
+   * what an entry channel does. Empty when the producer states nothing.
+   */
+  legs: ChannelLeg[];
 };
+
+/** One leg, as the authenticated feature row states it: bare step keys. */
+export type ChannelLeg = { from: string | null; to: string };
 
 /**
  * What this module reads off a features-service feature.
@@ -75,6 +91,16 @@ export interface ChannelSource {
    * behaviour that came before the field shipped rather than as a denial.
    */
   salesFunnels?: string[];
+  /**
+   * What the feature states about being a channel. Structural and fully optional:
+   * the producer added it after this reader existed, and a row without it is a
+   * channel we simply know less about, never an error.
+   */
+  acquisitionChannel?: {
+    operatedBy?: string;
+    family?: string;
+    stepTransitions?: { from?: string | null; to?: string }[];
+  } | null;
 }
 
 /**
@@ -156,6 +182,10 @@ export function acquisitionChannelsFromFeatures(
       name: f.name,
       summary: f.description,
       mark: channelMarkForSlug(f.slug),
+      operatedBy: f.acquisitionChannel?.operatedBy ?? null,
+      legs: (f.acquisitionChannel?.stepTransitions ?? [])
+        .filter((t): t is { from?: string | null; to: string } => typeof t?.to === "string")
+        .map((t) => ({ from: t.from ?? null, to: t.to })),
     }))
     .sort((a, b) => {
       const orderOf = (slug: string) =>

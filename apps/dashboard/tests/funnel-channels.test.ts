@@ -7,6 +7,7 @@ import {
   PROVISIONABLE_CHANNEL_SLUGS,
   typedFunnelTotalUsd,
   type ChannelFeatureRow,
+  channelIsFundable,
 } from "../src/lib/funnel-channels";
 import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
 
@@ -420,5 +421,40 @@ describe("offerFunnelTotalCents", () => {
     );
     const byChannel = Object.fromEntries(mine.map((b) => [b.channel.featureSlug, b.savedCents]));
     expect(offerFunnelTotalCents(byChannel)).toBe(5000);
+  });
+});
+
+describe("channelIsFundable — funding one nothing provisions produces no campaign", () => {
+  it("funds a customer-operated channel off the WIRE, with no list to maintain", () => {
+    // campaign-service provisions a funded pair with no workflow when the customer
+    // operates it: the legs we do not automate are worked at their side, so there is no
+    // DAG and there must not be one. A ninth such channel published upstream is fundable
+    // here with no change, which is the whole point of reading it rather than listing it.
+    expect(channelIsFundable({ featureSlug: "founder-led-closing", operatedBy: "customer" })).toBe(
+      true,
+    );
+    expect(
+      channelIsFundable({ featureSlug: "in-house-meeting-booking", operatedBy: "customer" }),
+    ).toBe(true);
+    expect(
+      channelIsFundable({ featureSlug: "a-channel-published-tomorrow", operatedBy: "customer" }),
+    ).toBe(true);
+  });
+
+  it("keeps the list for a platform-operated channel, because nothing publishes the workflow", () => {
+    expect(
+      channelIsFundable({ featureSlug: "sales-cold-email-outreach", operatedBy: "platform" }),
+    ).toBe(true);
+    // Published, bookable, and campaign-service provisions nothing for it: it has no
+    // workflow, so funding it would state a ceiling and never run.
+    expect(channelIsFundable({ featureSlug: "google-ads", operatedBy: "platform" })).toBe(false);
+    expect(channelIsFundable({ featureSlug: "managed-closing-calls", operatedBy: "platform" })).toBe(
+      false,
+    );
+  });
+
+  it("treats an unstated operator as platform, the behaviour that came before the field", () => {
+    expect(channelIsFundable({ featureSlug: "sales-cold-email-outreach" })).toBe(true);
+    expect(channelIsFundable({ featureSlug: "google-ads", operatedBy: null })).toBe(false);
   });
 });
