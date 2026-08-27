@@ -178,6 +178,12 @@ const KeyIcon = () => (
   </svg>
 );
 
+const ModelIcon = () => (
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h6v4H4V6zm10 8h6v4h-6v-4zM7 10v4a2 2 0 002 2h5" />
+  </svg>
+);
+
 const AuditIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6m3 6v-2m3 2v-4M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -450,6 +456,10 @@ function AppLevelSidebar({ pathname }: { pathname: string }) {
       </div>
       <div className="pt-2 mt-2 border-t border-gray-100">
         <h4 className="px-3 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Features</h4>
+        <SidebarLink
+          item={{ id: "acquisition-model", label: "The model", href: "/model", icon: <ModelIcon /> }}
+          isActive={pathname.startsWith("/model")}
+        />
         <SidebarLink
           item={{
             id: "feature-sales-cold-email",
