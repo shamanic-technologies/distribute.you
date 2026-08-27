@@ -158,6 +158,17 @@ describe("Campaigns page (GA)", () => {
     expect(api).toContain("groupBy: \"campaignId\"");
   });
 
+  // features-service serves `outcomes` REQUIRED and NULLABLE: null is its own word
+  // for "no funnel is wired for this channel and the leads were never read", which a
+  // brand really hits — an offer sold through a channel that states sales funnels but
+  // has no funnel wired (prod: `pr-expert-quote-opportunities`) answers with exactly
+  // that. `.optional()` accepts `undefined` and REFUSES `null`, so the whole read threw
+  // and every campaign row on the offer went blank over one channel's null.
+  it("accepts a group whose outcomes block is null, not only an absent one", () => {
+    expect(api).toContain("outcomes: CampaignRevenueOutcomesSchema.nullish()");
+    expect(api).not.toContain("outcomes: CampaignRevenueOutcomesSchema.optional()");
+  });
+
   // Identity leads: which campaign this is, stated once as the funnel it sells
   // with the channel under it. The return follows, and the table is sorted by it.
   // `$ Invested` sits immediately right of `$ Revenue`: the money block reads

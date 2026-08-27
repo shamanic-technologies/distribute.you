@@ -3382,8 +3382,14 @@ const CampaignRevenueCostEconomicsSchema = z.object({
  * the two counts a consumer gates on are declared — the block carries its own cost
  * figures too, and this repo renders those from `costEconomics` instead, on one basis.
  *
- * Optional so a producer that predates it parses: absent → the row states its figures
- * exactly as it did before, which is "we cannot tell how thin this is", never "it is fine".
+ * NULLISH, and both halves of that are load-bearing. ABSENT covers a producer that
+ * predates the block. NULL is the producer's own word, served on a required field, for
+ * "no funnel is wired for this channel and the leads were never read" — a state a real
+ * brand reaches, because an offer is sold through channels that state sales funnels and
+ * have none wired yet (prod: `pr-expert-quote-opportunities`). Reading that as `.optional()`
+ * refuses the null, so ONE such channel in an offer's fan-out threw the whole read and
+ * blanked every campaign row on the page. Either way the row states its figures exactly
+ * as it did before, which is "we cannot tell how thin this is", never "it is fine".
  */
 const CampaignRevenueOutcomesSchema = z.object({
   recipientsRepliesPositive: z.number().nullish(),
@@ -3396,7 +3402,7 @@ const FeatureRevenueByCampaignSchema = z.object({
       campaignId: z.string(),
       headline: z.object({ totalPipelineUsd: z.number().nullable() }),
       costEconomics: CampaignRevenueCostEconomicsSchema,
-      outcomes: CampaignRevenueOutcomesSchema.optional(),
+      outcomes: CampaignRevenueOutcomesSchema.nullish(),
     }),
   ),
 });

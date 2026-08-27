@@ -186,7 +186,14 @@ export function RoiTrendCard({
         </div>
       ) : (
         <div className="flex-1 min-h-[180px]">
-          <ResponsiveContainer width="100%" height="100%">
+          {/* `minHeight` is what recharts itself asks for in the console when a
+              percentage height cannot resolve. This card is a grid item stretched
+              against its neighbour, so on the first layout pass the flex child has
+              no definite height yet and `height="100%"` measures 0 — recharts then
+              logs `width(-1) and height(-1) ... should be greater than 0` and draws
+              nothing that frame. The floor is the wrapper's own `min-h-[180px]`, so
+              nothing about the settled layout changes. */}
+          <ResponsiveContainer width="100%" height="100%" minHeight={180}>
             <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="roi-fill" x1="0" y1="0" x2="0" y2="1">
