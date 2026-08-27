@@ -8,21 +8,21 @@ an HTTP client first.
 Results are JSON on stdout, failures are JSON on stderr, and the exit code says which kind of
 failure it was. The first reader of this tool is an agent, so that shape comes before pretty output.
 
-## Status: not published yet
-
-`@distribute/cli` is not on npm, so there is no `npm install` line here to copy. Publishing it needs
-an npm credential in this repository, which is the owner's call. Until that lands, run it from the
-monorepo:
+## Install
 
 ```bash
-pnpm install
-pnpm --filter @distribute/cli build
-node packages/cli/dist/index.js --help
+npx @distribute.you/cli --help          # no install
+npm install -g @distribute.you/cli      # or keep it around as `distribute`
 ```
 
-Once it is published, the usual `npx @distribute/cli` will work and this section goes away. The
-package is complete and shippable as it stands: `.github/workflows/publish-cli.yml` publishes it as
-soon as an `NPM_TOKEN` secret exists.
+Then point it at your account once:
+
+```bash
+distribute auth login
+```
+
+The key is the one you create in the dashboard. It carries your organisation and user identity, so
+nothing else needs configuring.
 
 ## Authenticating
 
@@ -140,9 +140,9 @@ or a CI job.
 ## Developing
 
 ```bash
-pnpm --filter @distribute/cli build      # bundle to dist/
-pnpm --filter @distribute/cli test       # unit tests plus the live conformance check
-pnpm --filter @distribute/cli typecheck
+pnpm --filter @distribute.you/cli build      # bundle to dist/
+pnpm --filter @distribute.you/cli test       # unit tests plus the live conformance check
+pnpm --filter @distribute.you/cli typecheck
 ```
 
 The CLI has no runtime dependencies. Installing it pulls one package and nothing else.

@@ -4,10 +4,10 @@ name: Publish CLI
 # permanent, so cutting one is a decision rather than a side effect of landing a
 # commit.
 #
-# One thing is missing before this can run: an NPM_TOKEN repository secret with
-# publish rights on the @distribute scope. Without it the job stops at the first
-# step and says so, rather than failing halfway through with an auth error from
-# npm.
+# It needs an NPM_TOKEN repository secret with publish rights on the
+# @distribute.you scope. The credential check below stops the job at the first
+# step with a readable message if that secret ever goes missing or expires,
+# rather than failing halfway through with an auth error from npm.
 on:
   workflow_dispatch:
     inputs:
@@ -32,7 +32,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ -z "$NPM_TOKEN" ]; then
-            echo "::error::No NPM_TOKEN secret. Add one with publish rights on the @distribute scope, then run this again."
+            echo "::error::No NPM_TOKEN secret. Add one with publish rights on the @distribute.you scope, then run this again."
             exit 1
           fi
 
