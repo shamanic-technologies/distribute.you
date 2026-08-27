@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getOfferFunnels } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -16,6 +15,8 @@ import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-fu
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { scopeIsLearning } from "@/lib/learning-threshold";
+import { LearningTag } from "@/components/learning-tag";
 import {
   funnelViews,
   costCoverageNote,
@@ -57,6 +58,7 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
   const brandId = params?.brandId ?? "";
   const offerId = params?.offerId ?? "";
   const featureSlug = useSoleFeatureSlug();
+  const router = useRouter();
   const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
 
   const funnels = useAuthQuery(
@@ -88,6 +90,20 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
   };
   // Its mark, off the shared catalogue — the same one the campaigns table draws.
   const funnelDefFor = (key: string) => campaignFunnel(key as SalesFunnelKeyWire);
+  // A funnel states `Learning` on its RATIOS while every campaign carrying it is still
+  // learning, and clears the moment ONE of them is measured — the same rule the offer
+  // and the brand headline use, one grain down. A funnel with no campaign at all is
+  // UNMEASURED rather than learning: there is nothing to have an opinion about.
+  const funnelLearningFor = (key: string) => {
+    const wanted = normalizeSalesFunnelKey(key as SalesFunnelKeyWire);
+    return scopeIsLearning(
+      campaignRows.filter(
+        (r) =>
+          r.campaign.funnelKey != null &&
+          normalizeSalesFunnelKey(r.campaign.funnelKey) === wanted,
+      ),
+    );
+  };
 
   return (
     // EMBEDDED is how the offer Overview renders it: an offer sells through funnels,
@@ -152,48 +168,61 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row.funnelKey} className="border-b border-gray-50 align-top">
+                <tr
+                  key={row.funnelKey}
+                  // The whole row is the control, and it responds the way a campaign row
+                  // does: the surface tints, nothing underlines. A link inside a
+                  // clickable row is two affordances for one action.
+                  onClick={() =>
+                    router.push(`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`)
+                  }
+                  className="border-b border-gray-50 align-top cursor-pointer transition hover:bg-gray-50"
+                >
                   <td className="px-4 py-3">
                     {/* The SAME shape a campaign row wears: the mark, the name, and
                         the quieter line under it. A funnel reads one way on this table
                         and the same way in the campaigns table one click down. */}
-                    <Link
-                      href={`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`}
-                      className="flex min-w-0 items-center gap-2.5 group"
-                    >
+                    <span className="flex min-w-0 items-center gap-2.5">
                       {funnelDefFor(row.funnelKey) && (
                         <SalesFunnelMark def={funnelDefFor(row.funnelKey)!} size="sm" />
                       )}
                       <span className="flex h-8 min-w-0 flex-col justify-center">
-                        <span className="truncate leading-[14px] text-gray-800 group-hover:underline">
+                        <span className="truncate leading-[14px] text-gray-800">
                           {row.name}
                         </span>
                         <span className="truncate text-xs leading-[18px] text-gray-500">
                           {row.steps.join("  \u2192  ")}
                         </span>
                       </span>
-                    </Link>
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      {campaignCountFor(row.funnelKey)} campaign
-                      {campaignCountFor(row.funnelKey) === 1 ? "" : "s"}
-                      {row.channelSlugs.length > 0 &&
-                        ` \u00b7 ${row.channelSlugs.map(channelSlugLabel).join(", ")}`}
-                    </p>
+                    </span>
                     {!row.priced && (
                       <p className="text-[11px] text-gray-400 mt-1">
                         {unpricedFunnelReasonLabel(row.unpricedReason)}
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-900 whitespace-nowrap">
-                    {formatRoi(row.roiMultiple)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
-                    {fmtPct(row.costOfAcquisitionPct)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
-                    {fmtUsd(row.costPerAcquisitionUsd)}
-                  </td>
+                  {/* The three RATIOS state `Learning` together or not at all: each
+                      divides by an outcome count, so at a low count each is decided by
+                      whichever outcome happened to land. The TOTALS beside them are
+                      never gated — money already spent and pipeline already earned are
+                      facts, not prices. */}
+                  {funnelLearningFor(row.funnelKey) ? (
+                    <td className="px-4 py-3 text-right" colSpan={3}>
+                      <LearningTag />
+                    </td>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3 text-right text-gray-900 whitespace-nowrap">
+                        {formatRoi(row.roiMultiple)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
+                        {fmtPct(row.costOfAcquisitionPct)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
+                        {fmtUsd(row.costPerAcquisitionUsd)}
+                      </td>
+                    </>
+                  )}
                   <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
                     {fmtUsd(row.pipelineUsd)}
                   </td>
@@ -206,9 +235,6 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                       <p className="text-[11px] text-gray-400">
                         {fmtUsd(row.platformCostUsd)} us · {fmtUsd(row.customerCostUsd)} you
                       </p>
-                    )}
-                    {row.partiallyCosted && (
-                      <p className="text-[11px] text-gray-400">At least</p>
                     )}
                   </td>
                 </tr>

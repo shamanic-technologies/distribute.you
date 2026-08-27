@@ -5,145 +5,176 @@ import { useParams } from "next/navigation";
 import { getOfferFunnels } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
-import { Skeleton } from "@/components/skeleton";
-import { InfoTooltip } from "@/components/visibility/metric-info";
-import { formatRoi } from "@/lib/format-roi";
-import { formatUsdAdaptive } from "@/lib/format-number";
-import {
-  funnelViews,
-  costCoverageNote,
-  unpricedFunnelReasonLabel,
-} from "@/lib/offer-funnels";
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import type { RevenueOverview } from "@/lib/revenue-view";
+import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
+import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { funnelViews, costCoverageNote, unpricedFunnelReasonLabel } from "@/lib/offer-funnels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
-import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
-
-const INVESTED_TIP =
-  "What this funnel has cost all in: what we charged you, plus what you recorded for the steps your own team worked. The second half is never billed; it is here because a funnel you finish yourself would otherwise look cheaper than it is.";
-
-function fmtUsd(value: number | null): string {
-  return value === null ? "—" : formatUsdAdaptive(value);
-}
-
-function StatCard({
-  label,
-  value,
-  pending,
-  tip,
-}: {
-  label: string;
-  value: string;
-  pending: boolean;
-  tip?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1">
-        {label}
-        {tip && <InfoTooltip tip={tip} />}
-      </p>
-      {pending ? (
-        <Skeleton className="h-7 w-20 rounded mt-1.5" />
-      ) : (
-        <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
-      )}
-    </div>
-  );
-}
+import { scopeIsLearning } from "@/lib/learning-threshold";
 
 /**
- * ONE sales funnel: what it returned, and what it cost.
+ * ONE sales funnel, answered the way its offer is answered.
  *
- * The funnel is the finest scope whose money divides into a RETURN — a campaign buys
- * one LEG of it, so a campaign has a cost per step and nothing to divide. Every figure
- * is the row features-service already serves for this funnel; nothing here divides.
+ * The SAME `RevenueOverviewSection` + `OutreachStatCards` the offer Overview renders,
+ * fed by the row features-service already serves for this funnel. One layout, one
+ * vocabulary: a funnel cannot read one way here and another way one level up.
+ *
+ * Two things it does NOT chart, and neither is an omission:
+ *
+ *   - the per-day outreach bars and the return curve are served per BRAND and per
+ *     OFFER, not per funnel. Drawing the offer's curve under a funnel's name would
+ *     state a wider scope's shape as this one's, which is the bug this repo keeps
+ *     recording. The figures that ARE this funnel's are all here.
+ *   - a daily budget: money is funded per (funnel, channel, offer), so a funnel with
+ *     several channels has no single ceiling of its own to compare its spend against.
+ *
+ * A funnel not every leg has a campaign for still answers with what it has, which is
+ * exactly what the producer sends.
  */
 export function FunnelOverviewPage() {
-  const params = useParams<{ brandId: string; offerId: string; funnelKey: string }>();
+  const params = useParams<{ orgId: string; brandId: string; offerId: string; funnelKey: string }>();
+  const orgId = params?.orgId ?? "";
   const brandId = params?.brandId ?? "";
   const offerId = params?.offerId ?? "";
-  const funnelKey = params?.funnelKey ? decodeURIComponent(params.funnelKey) : "";
+  const rawKey = params?.funnelKey ? decodeURIComponent(params.funnelKey) : "";
+  const featureSlug = useSoleFeatureSlug();
+  const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
 
-  // The offer's funnels, on the key its own list already polls, so opening one costs
-  // no request. There is no per-funnel read: the row IS the answer.
+  // The offer's funnels, on the key its own list already polls — opening a funnel
+  // costs no request. There is no per-funnel read: the row IS the answer.
   const funnels = useAuthQuery(
     ["offerFunnels", brandId, offerId],
     () => getOfferFunnels(offerId, brandId),
     { enabled: Boolean(brandId && offerId), ...pollOptions },
   );
 
+  const wanted = rawKey ? normalizeSalesFunnelKey(rawKey as SalesFunnelKeyWire) : null;
   const row = useMemo(() => {
-    const wanted = funnelKey ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire) : null;
     if (!wanted) return null;
     return (
       funnelViews(funnels.data?.funnels ?? []).find(
         (r) => normalizeSalesFunnelKey(r.funnelKey as SalesFunnelKeyWire) === wanted,
       ) ?? null
     );
-  }, [funnels.data, funnelKey]);
+  }, [funnels.data, wanted]);
 
-  const def = funnelKey ? campaignFunnel(funnelKey as SalesFunnelKeyWire) : null;
+  // This funnel's campaigns, collapsed on the campaign IDENTITY by the same hook the
+  // Campaigns table uses — so the rows below and the gate above cannot disagree.
+  const { rows: allRows } = useCampaignRows(brandId, featureSlug, offerId);
+  const funnelRows = useMemo(
+    () =>
+      wanted
+        ? allRows.filter(
+            (r) =>
+              r.campaign.funnelKey != null &&
+              normalizeSalesFunnelKey(r.campaign.funnelKey) === wanted,
+          )
+        : [],
+    [allRows, wanted],
+  );
+  // The ratios state `Learning` while every campaign carrying this funnel still is,
+  // and clear the moment one is measured. The totals beside them are never gated.
+  const economicsLearning = scopeIsLearning(funnelRows);
+
+  const def = rawKey ? campaignFunnel(rawKey as SalesFunnelKeyWire) : null;
   const coverage = costCoverageNote(row?.coverage);
   const pending = funnels.isPending && !funnels.isError;
 
-  return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <header className="flex items-center gap-3">
-        {def && <SalesFunnelMark def={def} size="md" />}
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-gray-900 truncate">
-            {row?.name ?? def?.name ?? funnelKey}
-          </h1>
-          {def && <p className="mt-0.5 text-sm text-gray-500">{def.steps.join("  →  ")}</p>}
-        </div>
-      </header>
+  // The section's shape, carrying THIS funnel's figures and nothing wider. Built
+  // rather than fetched because features-service answers a funnel as a row of its
+  // offer's list, not as a read of its own.
+  const data: RevenueOverview | undefined = row
+    ? {
+        totalPipelineUsd: row.pipelineUsd,
+        costEconomics: {
+          committedCostUsd: row.investedUsd,
+          costOfAcquisitionPct: row.costOfAcquisitionPct,
+          roiMultiple: row.roiMultiple,
+          costPerAcquisitionUsd: row.costPerAcquisitionUsd,
+        },
+        // Empty rather than borrowed. These are the per-lead breakdowns the offer read
+        // carries and the funnel row does not; the section renders nothing for them,
+        // which is the honest answer, and filling them from the offer would state a
+        // wider scope's people as this funnel's.
+        timeSeries: [],
+        organizations: [],
+        leads: [],
+        events: [],
+      }
+    : undefined;
 
-      {!pending && !row ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-400">
-          {funnels.isError
-            ? "Couldn’t read this offer’s sales funnels."
-            : "This offer does not sell through this funnel."}
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="ROI" value={formatRoi(row?.roiMultiple ?? null)} pending={pending} />
-            <StatCard
-              label="$ CAC"
-              value={fmtUsd(row?.costPerAcquisitionUsd ?? null)}
-              pending={pending}
-            />
-            <StatCard
-              label="$ Revenue"
-              value={fmtUsd(row?.pipelineUsd ?? null)}
-              pending={pending}
-            />
-            <StatCard
-              label="$ Invested"
-              value={fmtUsd(row?.investedUsd ?? null)}
-              pending={pending}
-              tip={INVESTED_TIP}
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
+      <RevenueOverviewSection
+        data={pending ? undefined : data}
+        revenuePending={pending}
+        costPending={pending}
+        todayCostPending={pending}
+        activityPending={false}
+        economicsLearning={economicsLearning}
+        funnelKey={rawKey ? (rawKey as SalesFunnelKeyWire) : null}
+        // Neither series is served per funnel, and drawing the offer's under this
+        // name would state a wider scope's shape as this one's.
+        showActivityChart={false}
+        showRoiTrend={false}
+        // Money is funded per (funnel, channel, offer), so a funnel carrying several
+        // channels has no single ceiling of its own. The card states what was spent
+        // and claims none.
+        dailyBudgetCents={null}
+        budgetNote="There is no single daily budget for a sales funnel: money is funded per channel, so this is what the funnel spent with no ceiling of its own to compare it against."
+        brandId={brandId}
+        featureSlug={featureSlug}
+        basePath={basePath}
+        topRow={
+          <OutreachStatCards
+            // The legacy /stats counts are per CHANNEL, not per funnel. The cards read
+            // the economics block above for everything this page states.
+            stats={{}}
+            // The spend BLOCK is per-channel detail the funnel row does not carry;
+            // the cost card reads `economics.committedCostUsd` for the total, which is
+            // this funnel's own.
+            spend={null}
+            pending={pending}
+            economics={pending ? null : data?.costEconomics}
+            totalPipelineUsd={pending ? null : (row?.pipelineUsd ?? null)}
+            showEconomics
+            economicsLearning={economicsLearning}
+            showFunnelMetrics={false}
+          />
+        }
+        costBottomCard={
+          <div className="space-y-3">
+            <h3 className="font-display text-base font-bold text-gray-800">Campaigns</h3>
+            <CampaignsTable
+              brandId={brandId}
+              featureSlug={featureSlug}
+              basePath={basePath}
+              offerId={offerId}
+              funnelKey={rawKey}
             />
           </div>
+        }
+      />
 
-          {row && !row.priced && (
-            <p className="text-sm text-gray-500">
-              {unpricedFunnelReasonLabel(row.unpricedReason)}. The spend above is real:
-              you paid it.
-            </p>
-          )}
-
-          {row && row.customerCostUsd !== null && row.customerCostUsd > 0 && (
-            <p className="text-sm text-gray-600">
-              {fmtUsd(row.platformCostUsd)} of that is what we charged you, and{" "}
-              {fmtUsd(row.customerCostUsd)} is what you recorded for the steps your own
-              team worked.
-            </p>
-          )}
-
-          {coverage && <p className="text-xs text-gray-500 max-w-3xl">{coverage}</p>}
-        </>
+      {!pending && !row && (
+        <p className="text-sm text-gray-500">
+          {funnels.isError
+            ? "Couldn\u2019t read this offer\u2019s sales funnels."
+            : `${def?.name ?? rawKey} is not one of this offer\u2019s sales funnels.`}
+        </p>
       )}
+
+      {row && !row.priced && (
+        <p className="text-sm text-gray-500">
+          {unpricedFunnelReasonLabel(row.unpricedReason)}. The spend above is real: you
+          paid it.
+        </p>
+      )}
+
+      {coverage && <p className="text-xs text-gray-500 max-w-3xl">{coverage}</p>}
     </div>
   );
 }

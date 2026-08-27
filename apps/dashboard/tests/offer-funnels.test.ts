@@ -6,7 +6,6 @@ import {
   costCoverageNote,
   summariseFunnels,
   unpricedFunnelReasonLabel,
-  coverageIsPartial,
 } from "../src/lib/offer-funnels";
 import type { OfferFunnelRow } from "@/lib/api";
 
@@ -138,9 +137,10 @@ describe("costCoverageNote", () => {
     expect(note).toContain("cheaper");
   });
 
-  it("calls a partly-recorded funnel a floor rather than the whole figure", () => {
-    const note = costCoverageNote("platform_and_partial_customer_spend");
-    expect(note).toContain("floor");
+  it("says nothing extra about a partly-recorded funnel", () => {
+    // There WAS a sentence calling the figure a floor. It explained an accounting
+    // nuance nobody had asked about, in the middle of a table of numbers.
+    expect(costCoverageNote("platform_and_partial_customer_spend")).toBeNull();
   });
 
   it("says plainly what a fully-recorded funnel is made of", () => {
@@ -154,12 +154,6 @@ describe("costCoverageNote", () => {
     expect(costCoverageNote(null)).toBeNull();
   });
 
-  it("flags only the partial case as incompletely costed", () => {
-    expect(coverageIsPartial("platform_and_partial_customer_spend")).toBe(true);
-    expect(coverageIsPartial("platform_and_customer_spend")).toBe(false);
-    expect(coverageIsPartial("platform_spend_only")).toBe(false);
-    expect(coverageIsPartial(null)).toBe(false);
-  });
 });
 
 describe("the combined basis is what a customer's own return divides by", () => {
@@ -200,13 +194,6 @@ describe("the combined basis is what a customer's own return divides by", () => 
     expect(view.customerCostUsd).toBeNull();
   });
 
-  it("carries the row's own coverage, so a table can mark a floor", () => {
-    const [view] = funnelViews([
-      row({ funnelKey: "a", name: "A", costCoverage: "platform_and_partial_customer_spend" } as never),
-    ]);
-    expect(view.coverage).toBe("platform_and_partial_customer_spend");
-    expect(view.partiallyCosted).toBe(true);
-  });
 });
 
 describe("summariseFunnels", () => {
@@ -266,7 +253,8 @@ describe("the page renders served fields and states the gap", () => {
   it("states the platform / customer split where there is one", () => {
     expect(PAGE).toContain("us · ");
     expect(PAGE).toContain("row.customerCostUsd !== null && row.customerCostUsd > 0");
-    expect(PAGE).toContain("row.partiallyCosted");
+    // No "At least" marker beside it: it was a word nobody could read.
+    expect(PAGE).not.toContain("At least");
   });
 
 
