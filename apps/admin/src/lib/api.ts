@@ -6179,6 +6179,126 @@ export async function getCrossOrgLifetimeCostPerOutcome(
   return parsed.data;
 }
 
+// ---------------------------------------------------------------------------
+// The acquisition catalogue (public, cross-org — no auth, no org scope).
+//
+// features-service publishes what a customer can BUY: every acquisition
+// channel with its commercial terms and the kinds of first signal it can
+// produce, and — per (funnel, channel) PAIR — either measured economics or an
+// explicit statement of which ingredient is missing. Both are proxied by the
+// gateway under `/public/*`, so a plain `useQuery` reads them (there is no
+// active org to gate on).
+//
+// The step and family vocabularies are read as PLAIN STRINGS rather than as
+// closed enums. Both are expected to grow — a channel that converts a step in
+// the MIDDLE of a chain has no token yet — and a reader that closes the set
+// would throw on the catalogue the day it does.
+// ---------------------------------------------------------------------------
+
+const PublicProducibleStepSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  description: z.string(),
+});
+
+const PublicChannelSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  icon: z.string(),
+  displayOrder: z.coerce.number(),
+  family: z.string(),
+  terms: z.object({
+    /** What operating this channel costs for a day regardless of volume. */
+    dailyOperatingCostCents: z.coerce.number(),
+    minimumCommitmentDays: z.coerce.number(),
+    /** An upper bound we promise, not an estimate. */
+    maxDaysToFirstProduction: z.coerce.number(),
+  }),
+  producibleSteps: z.array(PublicProducibleStepSchema),
+  /** DERIVED upstream from `producibleSteps`, so the two can never disagree. */
+  salesFunnels: z.array(
+    z.object({ key: z.string(), name: z.string(), steps: z.array(z.string()) }),
+  ),
+});
+const PublicChannelCatalogueSchema = z.object({
+  channels: z.array(PublicChannelSchema),
+  producibleSteps: z.array(PublicProducibleStepSchema),
+});
+export type PublicProducibleStep = z.infer<typeof PublicProducibleStepSchema>;
+export type PublicChannel = z.infer<typeof PublicChannelSchema>;
+export type PublicChannelCatalogue = z.infer<typeof PublicChannelCatalogueSchema>;
+
+export async function getPublicChannelCatalogue(): Promise<PublicChannelCatalogue> {
+  const raw = await apiCall<unknown>(`/public/channels`);
+  const parsed = PublicChannelCatalogueSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getPublicChannelCatalogue: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getPublicChannelCatalogue: invalid response shape");
+  }
+  return parsed.data;
+}
+
+const PublicPairStepSchema = z.object({
+  step: z.string(),
+  /** True for the step the funnel is NAMED after. */
+  milestone: z.boolean(),
+  /** Null, never 0, when the leg cannot be priced. */
+  costPerStepUsd: z.coerce.number().nullable(),
+  unpricedReason: z.string().nullable(),
+});
+const PublicChannelFunnelPairSchema = z.object({
+  channelSlug: z.string(),
+  channelName: z.string(),
+  funnelKey: z.string(),
+  funnelName: z.string(),
+  funnelSteps: z.array(z.string()),
+  result: z.discriminatedUnion("measured", [
+    z.object({
+      measured: z.literal(true),
+      economics: z.object({
+        steps: z.array(PublicPairStepSchema),
+        costPerSaleUsd: z.coerce.number().nullable(),
+        costPerSaleUnpricedReason: z.string().nullable(),
+        returnPerDollar: z.coerce.number().nullable(),
+        lifetimeRevenueUsd: z.coerce.number().nullable(),
+        evidence: z.object({
+          totalSpentUsd: z.coerce.number(),
+          conversationsProduced: z.coerce.number(),
+          websiteVisitsProduced: z.coerce.number(),
+          brandCount: z.coerce.number(),
+        }),
+      }),
+    }),
+    z.object({
+      measured: z.literal(false),
+      /** WHICH ingredient is missing, named by the producer. */
+      reason: z.string(),
+    }),
+  ]),
+});
+const PublicChannelFunnelEconomicsSchema = z.object({
+  channelSlug: z.string().nullable(),
+  pairs: z.array(PublicChannelFunnelPairSchema),
+});
+export type PublicChannelFunnelPair = z.infer<typeof PublicChannelFunnelPairSchema>;
+export type PublicChannelFunnelEconomics = z.infer<typeof PublicChannelFunnelEconomicsSchema>;
+
+/** Every pair in the catalogue. Omitting the channel is what returns them all. */
+export async function getPublicChannelFunnelEconomics(): Promise<PublicChannelFunnelEconomics> {
+  const raw = await apiCall<unknown>(`/public/channel-funnel-economics`);
+  const parsed = PublicChannelFunnelEconomicsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[admin] getPublicChannelFunnelEconomics: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[admin] getPublicChannelFunnelEconomics: invalid response shape");
+  }
+  return parsed.data;
+}
+
 // ── CRM service (uploaded CSV contacts) ──────────────────────────────────────
 // crm-service silver contacts + upload sources for a brand, reached via the
 // api-service transparent proxy `/v1/orgs/contacts*`. Distinct from the Google
