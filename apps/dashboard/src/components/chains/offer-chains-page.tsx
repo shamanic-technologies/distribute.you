@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getOfferChains } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -41,9 +42,11 @@ function fmtPct(value: number | null): string {
  * this offer do".
  */
 export function OfferChainsPage() {
-  const params = useParams<{ brandId: string; offerId: string }>();
+  const params = useParams<{ orgId: string; brandId: string; offerId: string }>();
+  const orgId = params?.orgId ?? "";
   const brandId = params?.brandId ?? "";
   const offerId = params?.offerId ?? "";
+  const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
 
   const chains = useAuthQuery(
     ["offerChains", brandId, offerId],
@@ -114,7 +117,17 @@ export function OfferChainsPage() {
               rows.map((row) => (
                 <tr key={row.funnelKey} className="border-b border-gray-50 align-top">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{row.name}</p>
+                    {/* The way DOWN: a chain is carried by campaigns, one per leg as
+                        the product moves, and this is how a reader walks to them. A
+                        query narrowing rather than a route of its own — the campaigns
+                        live under the offer and re-homing them under a funnel segment
+                        would break every link that already points at one. */}
+                    <Link
+                      href={`${basePath}/campaigns?funnel=${encodeURIComponent(row.funnelKey)}`}
+                      className="font-medium text-gray-900 hover:underline"
+                    >
+                      {row.name}
+                    </Link>
                     <p className="text-xs text-gray-500 mt-0.5">{row.steps.join("  →  ")}</p>
                     <p className="text-[11px] text-gray-400 mt-1">
                       {row.campaignCount} campaign{row.campaignCount === 1 ? "" : "s"}

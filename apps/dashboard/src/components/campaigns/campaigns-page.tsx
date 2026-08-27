@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 
 import { useMemo } from "react";
-import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -14,6 +15,7 @@ import { getOfferRevenue, getBrandRevenue, keepLastGoodFeatureRevenue } from "@/
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
+import { campaignFunnel } from "@/lib/campaign-funnel";
 import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
@@ -64,6 +66,13 @@ export function CampaignsPage() {
   const featureSlug = useSoleFeatureSlug();
   const revenueEnabled = isRevenueFeature(featureSlug);
   const basePath = tenantBasePath(orgId, brandId, offerId);
+  // Arrived from a sales funnel? Narrow to the campaigns carrying that chain. A
+  // display filter over rows the hook already fetched, so the walk down costs no
+  // request; the header says which chain, because a list silently showing a third
+  // of itself reads as an offer with fewer campaigns than it has.
+  const searchParams = useSearchParams();
+  const funnelKey = searchParams?.get("funnel") ?? null;
+  const narrowedFunnel = funnelKey ? campaignFunnel(funnelKey as never) : null;
 
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
@@ -157,7 +166,27 @@ export function CampaignsPage() {
           />
         </div>
 
-        <CampaignsTable brandId={brandId} featureSlug={featureSlug} basePath={basePath} offerId={offerId} />
+        {funnelKey && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-gray-600">
+              Showing the campaigns carrying{" "}
+              <span className="font-medium text-gray-900">
+                {narrowedFunnel?.name ?? funnelKey}
+              </span>
+              .
+            </span>
+            <Link href={`${basePath}/campaigns`} className="text-brand-600 hover:underline">
+              Show every campaign
+            </Link>
+          </div>
+        )}
+        <CampaignsTable
+          brandId={brandId}
+          featureSlug={featureSlug}
+          basePath={basePath}
+          offerId={offerId}
+          funnelKey={funnelKey}
+        />
       </div>
     </div>
   );

@@ -155,8 +155,45 @@ describe("the page renders served fields and states the gap", () => {
     expect(PAGE).toContain("do not add up to the offer");
   });
 
+  it("walks DOWN to the campaigns carrying a chain, as a narrowing not a route", () => {
+    // Campaigns live under the OFFER. Re-homing them under a funnel segment would
+    // break every link that already points at one, so the walk down is a query.
+    expect(PAGE).toContain("`${basePath}/campaigns?funnel=${encodeURIComponent(row.funnelKey)}`");
+  });
+
   it("is reachable from the offer sidebar", () => {
     expect(SIDEBAR).toContain('label: "Sales funnels"');
     expect(SIDEBAR).toContain("`${basePath}/chains`");
+  });
+});
+
+describe("the campaigns list narrows to one chain when it was walked into", () => {
+  const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
+  const CAMPAIGNS_PAGE = read("src/components/campaigns/campaigns-page.tsx");
+  const TABLE = read("src/components/campaigns/campaigns-table.tsx");
+
+  it("filters rows the hook ALREADY fetched, so the walk costs no request", () => {
+    // Same query key either way, so the two surfaces cannot disagree about a campaign.
+    expect(TABLE).toContain("const { rows: allRows, settled } = useCampaignRows(");
+    expect(TABLE).toContain("allRows.filter(");
+  });
+
+  it("normalises the funnel key on BOTH sides of the comparison", () => {
+    // A funnel key travels under two spellings while the fleet migrates; comparing
+    // them raw would silently show nothing and read as an offer with no campaigns.
+    expect(TABLE).toContain("normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire)");
+    expect(TABLE).toContain("normalizeSalesFunnelKey(r.campaign.funnelKey)");
+  });
+
+  it("says which chain it narrowed to, and offers the way back", () => {
+    // A list silently showing a third of itself reads as an offer with fewer
+    // campaigns than it has.
+    expect(CAMPAIGNS_PAGE).toContain("Showing the campaigns carrying");
+    expect(CAMPAIGNS_PAGE).toContain("Show every campaign");
+  });
+
+  it("lists every campaign when no chain was named", () => {
+    expect(TABLE).toContain("const rows = narrowed");
+    expect(TABLE).toContain(": allRows;");
   });
 });
