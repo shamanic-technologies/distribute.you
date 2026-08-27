@@ -120,24 +120,42 @@ function activeOrgIdFromPath(): string | null {
  * or when signed out → caller omits the Authorization header and falls back to the
  * cookie. Cached by Clerk (re-mints only near expiry), so per-request cost is low.
  */
-async function getTabSessionToken(): Promise<string | null> {
+async function getTabSessionToken(forceRefresh = false): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const clerk = (
     window as unknown as {
-      Clerk?: { session?: { getToken: () => Promise<string | null> } | null };
+      Clerk?: {
+        session?: {
+          getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>;
+        } | null;
+      };
     }
   ).Clerk;
   try {
-    return (await clerk?.session?.getToken()) ?? null;
+    // `getToken()` is CACHED by Clerk, and the cached token carries the org claim
+    // it was minted with. So a retry after an org-desync 409 that re-sends the
+    // cached token re-sends the STALE org and 409s again, deterministically —
+    // the retry was a no-op for the one case it exists to fix. `skipCache` mints
+    // a fresh token carrying this tab's current active org.
+    return (await clerk?.session?.getToken(forceRefresh ? { skipCache: true } : undefined)) ?? null;
   } catch {
     return null;
   }
 }
 
+/**
+ * Backoff between org-desync retries. Three attempts, not one: a switch has to
+ * get through `setActive` → Clerk's token endpoint → the cookie before the JWT's
+ * org claim matches the URL, and on a slow connection that is comfortably longer
+ * than half a second. Every attempt re-mints (see `getTabSessionToken`), so each
+ * one asks a genuinely different question.
+ */
+const ORG_DESYNC_BACKOFF_MS = [400, 900, 2000] as const;
+
 async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   const { token, method = "GET", body, headers: extraHeaders, suppressPaymentRequired } = options ?? {};
 
-  const send = async (): Promise<Response> => {
+  const send = async (forceFreshToken = false): Promise<Response> => {
     const headers: Record<string, string> = { "Content-Type": "application/json", ...extraHeaders };
     let url: string;
 
@@ -160,7 +178,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       // (Clerk docs: "Organizations → multiple browser tabs" + "Making
       // authenticated requests".) Optional-chained: before Clerk loads, or with no
       // session, we fall back to the cookie (and checkProxyOrg still fails closed).
-      const tabToken = await getTabSessionToken();
+      const tabToken = await getTabSessionToken(forceFreshToken);
       if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
     }
 
@@ -174,13 +192,19 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
   let response = await send();
 
   // Org-switch rotation lag: the proxy refused because the session JWT hadn't
-  // caught up with the UI's org yet. Wait a beat for Clerk to settle, retry once
-  // (the path-derived org is re-read on the retry). Proxy-routed calls only.
-  if (response.status === ORG_DESYNC_STATUS && !token) {
-    const peek = await response.clone().json().catch(() => null);
-    if (peek?.error === ORG_DESYNC_ERROR) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      response = await send();
+  // caught up with the UI's org yet. Wait for Clerk to settle, then retry with a
+  // FRESHLY MINTED token — the cached one carries the org claim that was just
+  // refused, so re-sending it is guaranteed to be refused again. Proxy-routed
+  // calls only. Give up after the backoff table and let the 409 surface: a
+  // desync that outlives ~3s is not rotation lag, it is Clerk being unreachable,
+  // and every surface fails visibly rather than skeletoning forever.
+  if (!token) {
+    for (let attempt = 0; attempt < ORG_DESYNC_BACKOFF_MS.length; attempt++) {
+      if (response.status !== ORG_DESYNC_STATUS) break;
+      const peek = await response.clone().json().catch(() => null);
+      if (peek?.error !== ORG_DESYNC_ERROR) break;
+      await new Promise((resolve) => setTimeout(resolve, ORG_DESYNC_BACKOFF_MS[attempt]));
+      response = await send(true);
     }
   }
 

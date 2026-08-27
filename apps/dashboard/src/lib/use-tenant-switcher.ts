@@ -13,6 +13,14 @@ import { isAdminEmail } from "@/lib/admin-allowlist";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { getBrand, listBrands, listBrandOffers, getBrandOffer, type Offer } from "@/lib/api";
 import { useTenantIdentity } from "@/components/tenant-identity-provider";
+import { withTimeout, isTimeoutError } from "@/lib/with-timeout";
+
+/**
+ * How long any single leg of an org switch may take before the switcher gives up
+ * and says so. Every leg is a Clerk round-trip and none of them has a timeout of
+ * its own, so without this the click can hang for the rest of the session.
+ */
+export const ORG_SWITCH_TIMEOUT_MS = 15_000;
 
 export interface TenantBrand {
   id: string;
@@ -301,22 +309,36 @@ export function useTenantSwitcher() {
       // wrong org, later read 404s (DIS-143 stale write). The proxy's fail-closed guard
       // is the backstop; awaiting closes the race at the source.
       //
-      // STAFF god-mode: the target may be a customer org the staff member is NOT a
-      // member of. Clerk `setActive` rejects a non-member org, so first make them a
-      // real member (role org:admin) server-side. Idempotent. Only staff hit this
-      // (the route 403s otherwise); customers always switch to an org they own.
+      // ASK CLERK FIRST, join only if it refuses. `setActive` rejects an org the
+      // user is not a member of, and that rejection IS the membership answer —
+      // authoritative, server-side, one round-trip. The previous shape asked a
+      // paginated client-side membership list instead (`userMemberships.data`,
+      // FIRST PAGE only), so a staff member of many orgs read as "not a member"
+      // for nearly every target and paid a full Clerk Backend join round-trip on
+      // nearly every click. Same lesson as the god-mode join route itself: trust
+      // Clerk over a paged list.
       //
-      // Skip it entirely when Clerk's own membership list — already loaded on the
-      // client, so free to read — says the membership exists. That check is
-      // authoritative-POSITIVE only: the list is paginated, so an ABSENT membership
-      // proves nothing and still goes through the (idempotent) route. Staff switch
-      // mostly into orgs they joined long ago, and this was a full Clerk Backend API
-      // round-trip on every one of those clicks.
-      const alreadyMember = (userMemberships?.data ?? []).some(
-        (m) => m.organization.id === clerkOrgId,
-      );
-      if (isStaff && !alreadyMember) {
-        const res = await fetch(`/api/admin/orgs/${clerkOrgId}/join`, { method: "POST" });
+      // Only STAFF may take the join branch (the route 403s otherwise); a customer
+      // switching into an org they do not own gets the refusal, stated.
+      const activate = async () => {
+        if (!setActive) return;
+        await withTimeout(
+          setActive({ organization: clerkOrgId }),
+          ORG_SWITCH_TIMEOUT_MS,
+          "Switching organization",
+        );
+      };
+
+      try {
+        await activate();
+      } catch (err) {
+        // A TIMEOUT is not a refusal — the network never answered, so joining and
+        // retrying only doubles the wait. Surface it.
+        if (isTimeoutError(err) || !isStaff) throw err;
+        const res = await fetch(`/api/admin/orgs/${clerkOrgId}/join`, {
+          method: "POST",
+          signal: AbortSignal.timeout(ORG_SWITCH_TIMEOUT_MS),
+        });
         // Fail loud. Continuing past a failed join reaches `setActive` on an org the
         // user does not belong to, which REJECTS — and that rejection was unhandled
         // inside a click handler, so `router.push` never ran and nothing was shown.
@@ -324,9 +346,7 @@ export function useTenantSwitcher() {
         if (!res.ok) {
           throw new Error(`Could not open that organization (join failed: ${res.status}).`);
         }
-      }
-      if (setActive) {
-        await setActive({ organization: clerkOrgId });
+        await activate();
       }
       // Re-mint the session token so the new active org (and, for staff god-mode, the
       // freshly-added membership) are in the cookie BEFORE the navigation hits the
@@ -336,17 +356,30 @@ export function useTenantSwitcher() {
       // not-a-member of the target) → Clerk bounces the URL back → OrgActivator
       // re-syncs the client to the previous org → the switch reverts on its own.
       // No `.catch` here: a failed re-mint IS that revert, so it belongs in the
-      // handler's catch where the user is told, not swallowed.
-      await session?.getToken({ skipCache: true });
+      // handler's catch where the user is told, not swallowed. Bounded for the
+      // same reason as `setActive`: Clerk's token endpoint is the first thing to
+      // become unreachable on a flaky connection, and an unbounded await there
+      // hangs the click forever.
+      if (session) {
+        await withTimeout(
+          session.getToken({ skipCache: true }),
+          ORG_SWITCH_TIMEOUT_MS,
+          "Refreshing your session",
+        );
+      }
       router.push(`/orgs/${clerkOrgId}`);
     } catch (err) {
       console.error("[dashboard] org switch failed:", err);
       setSwitchingOrg(null);
       setSwitchError(
-        err instanceof Error ? err.message : "Could not switch organization.",
+        isTimeoutError(err)
+          ? "Couldn't reach the auth service. Check your connection and try again."
+          : err instanceof Error
+            ? err.message
+            : "Could not switch organization.",
       );
     }
-  }, [isStaff, userMemberships?.data, setActive, session, router]);
+  }, [isStaff, setActive, session, router]);
 
   // Drop the pending state once the URL has actually moved to the target. The
   // navigation is what ends the switch, not the promise resolving — `router.push`
