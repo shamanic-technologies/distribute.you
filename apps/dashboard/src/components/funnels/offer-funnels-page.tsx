@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/skeleton";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { formatRoi } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
+import { channelSlugLabel } from "@/lib/campaign-title";
 import {
   funnelViews,
   costCoverageNote,
@@ -145,7 +146,7 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                     <p className="text-xs text-gray-500 mt-0.5">{row.steps.join("  →  ")}</p>
                     <p className="text-[11px] text-gray-400 mt-1">
                       {row.campaignCount} campaign{row.campaignCount === 1 ? "" : "s"}
-                      {row.channelNames.length > 0 && ` · ${row.channelNames.join(", ")}`}
+                      {row.channelSlugs.length > 0 && ` · ${row.channelSlugs.map(channelSlugLabel).join(", ")}`}
                     </p>
                     {!row.priced && (
                       <p className="text-[11px] text-gray-400 mt-1">

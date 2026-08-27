@@ -50,6 +50,19 @@ describe("the offer is a route level of its own", () => {
     expect(overview).toContain("const offerId = params.offerId as string | undefined;");
   });
 
+  it("gives the funnel its own nav level, so the crumb names the funnel you stand in", () => {
+    // Offer > Funnel > Campaign. Without a level of its own the funnel page inherits
+    // the offer's sidebar and nothing on screen says which funnel it is.
+    const sidebar = read("components/context-sidebar.tsx");
+    expect(sidebar).toContain('| "funnel" | "campaign"');
+    expect(sidebar).toContain('if (segments[6] === "funnels" && segments[7])');
+    expect(sidebar).toContain('return { type: "funnel", orgId, brandId, offerId, funnelKey: segments[7] };');
+    expect(sidebar).toContain("function FunnelLevelSidebar(");
+    // It names the funnel from the shared catalogue, never a second spelling of it.
+    const funnelSidebar = sidebar.slice(sidebar.indexOf("function FunnelLevelSidebar("));
+    expect(funnelSidebar.slice(0, 1600)).toContain("campaignFunnel(");
+  });
+
   it("puts a funnel's campaigns under the FUNNEL, and names no campaign on the offer", () => {
     // Offer > Funnel > Campaign. The offer level lists funnels; a funnel's own page
     // lists the campaigns carrying it; a campaign keeps its existing URL, so every
@@ -88,7 +101,7 @@ describe("the sidebar knows the offer level", () => {
   it("reads the offer at 4/5 and the campaign at 6/7", () => {
     expect(sidebar).toContain('if (segments[4] === "offers" && segments[5])');
     expect(sidebar).toContain('if (segments[6] === "campaigns" && segments[7])');
-    expect(sidebar).toContain('type: "app" | "org" | "brand" | "offer" | "campaign"');
+    expect(sidebar).toContain('type: "app" | "org" | "brand" | "offer" | "funnel" | "campaign"');
   });
 
   it("moves Audiences and Leads onto the offer sidebar, and names no campaign", () => {
@@ -104,7 +117,13 @@ describe("the sidebar knows the offer level", () => {
 
     const brandLevel = sidebar.slice(
       sidebar.indexOf("function BrandLevelSidebar"),
-      sidebar.indexOf("function CampaignLevelSidebar"),
+      // Bounded at whatever function comes NEXT, not at a named one: it used to run to
+      // CampaignLevelSidebar and silently swallowed every level added in between, so it
+      // would fail on any of THEIR entries rather than on the brand's.
+      sidebar.indexOf(
+        "function ",
+        sidebar.indexOf("function BrandLevelSidebar") + "function BrandLevelSidebar".length,
+      ),
     );
     expect(brandLevel).not.toContain('label: "Campaigns"');
     expect(brandLevel).not.toContain('label: "Audiences"');
