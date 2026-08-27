@@ -45,8 +45,6 @@ export function unpricedFunnelReasonLabel(reason: string | null | undefined): st
 const COST_COVERAGE_NOTE: Record<string, string> = {
   platform_spend_only:
     "These costs are what the platform spent. Nobody has recorded what a step your own team worked cost you, so a funnel you finish yourself reads cheaper here than it really is.",
-  platform_and_partial_customer_spend:
-    "Some steps your own team worked have no cost recorded against them, so what these funnels cost you is a floor rather than the whole figure.",
   platform_and_customer_spend:
     "These costs are what the platform spent plus what you recorded for the steps your own team worked.",
 };
@@ -54,11 +52,6 @@ const COST_COVERAGE_NOTE: Record<string, string> = {
 export function costCoverageNote(coverage: string | null | undefined): string | null {
   if (!coverage) return null;
   return COST_COVERAGE_NOTE[coverage] ?? null;
-}
-
-/** True while some leg of this scope has no cost recorded against it. */
-export function coverageIsPartial(coverage: string | null | undefined): boolean {
-  return coverage === "platform_and_partial_customer_spend";
 }
 
 export type FunnelView = {
@@ -95,8 +88,6 @@ export type FunnelView = {
   costPerAcquisitionUsd: number | null;
   /** Which dollars this row's figures are made of. */
   coverage: string | null;
-  /** True while some leg of this funnel has no cost recorded against it. */
-  partiallyCosted: boolean;
 };
 
 /**
@@ -137,7 +128,6 @@ export function funnelViews(funnels: OfferFunnelRow[]): FunnelView[] {
       funnel.costEconomics.costPerAcquisitionUsd ??
       null,
     coverage: funnel.costCoverage ?? null,
-    partiallyCosted: coverageIsPartial(funnel.costCoverage),
   }));
 }
 
