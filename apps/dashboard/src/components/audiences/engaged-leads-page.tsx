@@ -1380,7 +1380,11 @@ export function EngagedLeadsPage({
     });
   };
 
-  const onSetStage = (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => {
+  const onSetStage = (
+    key: WritableStageKey,
+    next: "outcome" | "never",
+    input: { costCents: number; valueCents?: number },
+  ) => {
     setPanelError(null);
     if (selectedLead) setStatedStage({ leadRowId: selectedLead.id, key, next });
     setPanelPending({ key, next });
@@ -1388,7 +1392,9 @@ export function EngagedLeadsPage({
       // The amount rides along only when the control asked for one. lead-service refuses
       // a value on a `never`, and refuses a `sale` outcome WITHOUT one, so the key is
       // omitted rather than sent as undefined-shaped noise.
-      valueCents === undefined ? { step: key, kind: next } : { step: key, kind: next, valueCents },
+      input.valueCents === undefined
+        ? { step: key, kind: next, costCents: input.costCents }
+        : { step: key, kind: next, costCents: input.costCents, valueCents: input.valueCents },
       {
         // lead-service writes the refusal as a sentence for a person to read (a `never`
         // on a step that already happened, a value on a `never`). Surface ITS reason

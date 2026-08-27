@@ -2027,6 +2027,14 @@ export async function setLeadStepStatement(
   body: {
     step: LeadStepName;
     kind: "outcome" | "never";
+    /**
+     * What this leg cost the CUSTOMER, in cents. REQUIRED — lead-service refuses a
+     * statement without one (`cost_required`), because absent is a refusal and never a
+     * zero. The person chooses what goes in: nothing, their time valued however they
+     * like, real expenses. It is their money, never charged by us and never in the
+     * platform's spend ledger; we record what they tell us they spent.
+     */
+    costCents: number;
     valueCents?: number;
     note?: string;
     occurredAt?: string;

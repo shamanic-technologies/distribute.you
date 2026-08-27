@@ -91,6 +91,26 @@ export function saleValueCentsFrom(input: string): number | null {
 }
 
 /**
+ * What a step COST, in cents. A sale and a cost are parsed apart on purpose.
+ *
+ * A sale of nothing is not a sale, so {@link saleValueCentsFrom} refuses zero. A cost of
+ * nothing is an ordinary answer and the commonest one: a founder who runs the meeting
+ * themselves and does not value their own hour states zero, and lead-service accepts it
+ * (`Zero is a legitimate answer`). Reusing the sale parser here would make that person
+ * unable to answer at all.
+ *
+ * Blank stays null — absent is a refusal, never a zero, so the control has to keep
+ * asking rather than deciding for them. Negative stays null: the producer refuses it.
+ */
+export function stepCostCentsFrom(input: string): number | null {
+  const cleaned = input.replace(/[$,\s]/g, "");
+  if (cleaned.length === 0) return null;
+  const amount = Number(cleaned);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  return Math.round(amount * 100);
+}
+
+/**
  * What is known about one stage. Spelled exactly as lead-service spells it, so nothing
  * translates at the boundary — a second vocabulary for one concept is a second place
  * for the two to drift.

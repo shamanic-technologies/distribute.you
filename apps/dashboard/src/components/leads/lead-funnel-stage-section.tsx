@@ -20,6 +20,7 @@ import type { ReplyKind } from "@/lib/reply-kind";
 import {
   isWritableStage,
   saleValueCentsFrom,
+  stepCostCentsFrom,
   stageRequiresValue,
   type LeadFunnelStage,
   type LeadStageKey,
@@ -93,50 +94,79 @@ function StageButton({
 }
 
 /**
- * The amount a won deal was worth, asked for at the moment it is stated.
+ * What a step cost, asked for at the moment it is stated.
  *
- * There is deliberately no way past it: the producer refuses a sale with no amount, and
- * a control that submits anyway would put a customer in front of a refusal it could
- * have avoided asking about. Blank, zero and nonsense all leave the button disabled
- * rather than sending something the person did not mean.
+ * lead-service refuses a statement with no cost, so every transition opens this — the
+ * legs the platform does not automate are worked by the customer's own team, and they
+ * are the only one who knows what that leg cost them. ZERO is a legitimate answer and
+ * absent is a refusal, so the field starts empty and the button stays disabled until
+ * they answer: defaulting it to zero would be this app answering for them.
+ *
+ * A step the producer prices asks for the amount too, on the same form, because a won
+ * deal is refused without one. There is deliberately no way past either question: a
+ * control that submitted anyway would put a customer in front of a refusal it could
+ * have avoided asking about.
  */
-function StageValueForm({
+function StageStatementForm({
   label,
+  askValue,
   busy,
   onSubmit,
   onCancel,
 }: {
   label: string;
+  /** True when this step is priced and the statement is an outcome: ask what it was worth. */
+  askValue: boolean;
   busy: boolean;
-  onSubmit: (valueCents: number) => void;
+  onSubmit: (input: { costCents: number; valueCents?: number }) => void;
   onCancel: () => void;
 }) {
-  const [raw, setRaw] = useState("");
-  const valueCents = saleValueCentsFrom(raw);
+  const [rawCost, setRawCost] = useState("");
+  const [rawValue, setRawValue] = useState("");
+  const costCents = stepCostCentsFrom(rawCost);
+  const valueCents = saleValueCentsFrom(rawValue);
+  const ready = costCents != null && (!askValue || valueCents != null);
   return (
     <form
-      className="flex items-center gap-1.5"
+      className="flex flex-wrap items-center gap-1.5"
       onSubmit={(e) => {
         e.preventDefault();
-        if (valueCents != null) onSubmit(valueCents);
+        if (costCents == null) return;
+        if (askValue && valueCents == null) return;
+        onSubmit(askValue ? { costCents, valueCents: valueCents as number } : { costCents });
       }}
     >
-      <span className="text-xs text-gray-500">$</span>
+      <span className="text-xs text-gray-500">Cost $</span>
       <input
         type="text"
         inputMode="decimal"
         autoFocus
-        value={raw}
-        onChange={(e) => setRaw(e.target.value)}
-        placeholder="4,900"
-        aria-label={`${label}: what the deal was worth, in dollars`}
-        data-testid="lead-funnel-stage-value-input"
-        className="w-24 px-2 py-1 text-xs rounded-md border border-gray-200 focus:outline-none focus:ring-1 focus:ring-green-300"
+        value={rawCost}
+        onChange={(e) => setRawCost(e.target.value)}
+        placeholder="0"
+        aria-label={`${label}: what this step cost you, in dollars`}
+        data-testid="lead-funnel-stage-cost-input"
+        className="w-20 px-2 py-1 text-xs rounded-md border border-gray-200 focus:outline-none focus:ring-1 focus:ring-brand-300"
       />
+      {askValue && (
+        <>
+          <span className="text-xs text-gray-500">Worth $</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={rawValue}
+            onChange={(e) => setRawValue(e.target.value)}
+            placeholder="4,900"
+            aria-label={`${label}: what the deal was worth, in dollars`}
+            data-testid="lead-funnel-stage-value-input"
+            className="w-24 px-2 py-1 text-xs rounded-md border border-gray-200 focus:outline-none focus:ring-1 focus:ring-green-300"
+          />
+        </>
+      )}
       <button
         type="submit"
-        disabled={valueCents == null || busy}
-        title={`${label}: record what it was worth`}
+        disabled={!ready || busy}
+        title={`${label}: record it`}
         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border bg-white text-gray-500 border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {busy && (
@@ -201,7 +231,11 @@ export function LeadFunnelStageSection({
   pending?: { key: LeadStageKey; next: "outcome" | "never" } | null;
   /** A refusal from the producer, already turned into a sentence by the caller. */
   error?: string | null;
-  onSet: (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => void;
+  onSet: (
+    key: WritableStageKey,
+    next: "outcome" | "never",
+    input: { costCents: number; valueCents?: number },
+  ) => void;
   /**
    * The reply row's own control, when the funnel has one. A reply is not a yes/no —
    * nine kinds in four groups — so it gets a picker rather than the two buttons every
@@ -217,7 +251,13 @@ export function LeadFunnelStageSection({
   // The stage whose amount is being asked for. Local because it is a question this
   // control asked, not a fact about the lead — nothing outside this card needs to know
   // that somebody has a field open.
-  const [askingValueFor, setAskingValueFor] = useState<WritableStageKey | null>(null);
+  // Which stage is being answered, and which statement it is. Every transition asks,
+  // because the producer refuses one with no cost; the statement is carried so the
+  // form knows whether to ask what the deal was worth too.
+  const [asking, setAsking] = useState<{
+    key: WritableStageKey;
+    next: "outcome" | "never";
+  } | null>(null);
 
   // A funnel with no stages is the brand-level case: several funnels run at once, so
   // there is no single chain to walk this lead through. State nothing rather than
@@ -283,15 +323,19 @@ export function LeadFunnelStageSection({
                   >
                     {state === "outcome" ? "Happened" : WONT_LABEL}
                   </span>
-                ) : writable && askingValueFor === stage.key ? (
-                  <StageValueForm
+                ) : writable && asking?.key === stage.key ? (
+                  <StageStatementForm
                     label={stage.label}
+                    // A priced step asks what the deal was worth, but only when it
+                    // HAPPENED — a step that never will has nothing to be worth.
+                    askValue={asking.next === "outcome" && stageRequiresValue(stage.key)}
                     busy={busyHere}
-                    onSubmit={(valueCents) => {
-                      setAskingValueFor(null);
-                      onSet(stage.key as WritableStageKey, "outcome", valueCents);
+                    onSubmit={(input) => {
+                      const next = asking.next;
+                      setAsking(null);
+                      onSet(stage.key as WritableStageKey, next, input);
                     }}
-                    onCancel={() => setAskingValueFor(null)}
+                    onCancel={() => setAsking(null)}
                   />
                 ) : writable ? (
                   <>
@@ -314,13 +358,10 @@ export function LeadFunnelStageSection({
                       label="Happened"
                       title={`${stage.label}: happened`}
                       tone="outcome"
-                      // A stage the producer prices refuses a statement with no amount,
-                      // so the click opens the question instead of sending a refusal.
-                      onClick={() =>
-                        stageRequiresValue(stage.key)
-                          ? setAskingValueFor(stage.key as WritableStageKey)
-                          : onSet(stage.key as WritableStageKey, "outcome")
-                      }
+                      // Every statement is refused without a cost, so the click opens the
+                      // question instead of sending a refusal. A priced step is asked what
+                      // it was worth on the same form.
+                      onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "outcome" })}
                     />
                     <StageButton
                       active={state === "never"}
@@ -331,7 +372,9 @@ export function LeadFunnelStageSection({
                       label={WONT_LABEL}
                       title={neverTitle}
                       tone="never"
-                      onClick={() => onSet(stage.key as WritableStageKey, "never")}
+                      // A step that will never happen still cost something to find that
+                      // out, so it is asked for too.
+                      onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "never" })}
                     />
                   </>
                 ) : stage.key === "positive_reply" && reply ? (

@@ -39,11 +39,16 @@ export function useSetLeadStepStatement(leadRowId: string | null) {
   return useMutation<
     unknown,
     Error,
+    // `costCents` is what the leg cost the CUSTOMER and is REQUIRED on every statement:
+    // the legs the platform does not automate are worked by their own team, so they are
+    // the only one who knows. Zero is a legitimate answer and absent is a refusal, so the
+    // control asks rather than defaulting.
+    //
     // `valueCents` is what the outcome was worth. Optional on the wire because most
     // stages carry no amount — but lead-service REFUSES a sale without one, so the
     // control that states a sale always sends it rather than letting the person meet
     // a refusal it could have asked about.
-    { step: LeadStepName; kind: "outcome" | "never"; valueCents?: number }
+    { step: LeadStepName; kind: "outcome" | "never"; costCents: number; valueCents?: number }
   >({
     mutationFn: (input) => setLeadStepStatement(leadRowId as string, input),
     onSuccess: () => {

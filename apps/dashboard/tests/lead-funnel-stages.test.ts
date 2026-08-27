@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isWritableStage,
   saleValueCentsFrom,
+  stepCostCentsFrom,
   stageRequiresValue,
   LEAD_STAGE_KEYS,
   leadFunnelStages,
@@ -190,5 +191,33 @@ describe("the amount a won deal was worth", () => {
     for (const bad of ["", "   ", "abc", "-5", "0", "0.001"]) {
       expect(saleValueCentsFrom(bad)).toBeNull();
     }
+  });
+});
+
+describe("stepCostCentsFrom — a cost is not a sale", () => {
+  it("accepts zero, which is the commonest honest answer", () => {
+    // A founder who runs the meeting themselves and does not value their own hour
+    // states zero, and lead-service accepts it. The sale parser refuses zero, which is
+    // right for a sale and would make that person unable to answer at all.
+    expect(stepCostCentsFrom("0")).toBe(0);
+    expect(stepCostCentsFrom("$0")).toBe(0);
+    expect(stepCostCentsFrom("0.00")).toBe(0);
+    expect(saleValueCentsFrom("0")).toBeNull();
+  });
+
+  it("reads dollars into cents, punctuation and all", () => {
+    expect(stepCostCentsFrom("120")).toBe(12000);
+    expect(stepCostCentsFrom("$1,250.50")).toBe(125050);
+    expect(stepCostCentsFrom(" 7.25 ")).toBe(725);
+  });
+
+  it("leaves blank null, because absent is a refusal and never a zero", () => {
+    expect(stepCostCentsFrom("")).toBeNull();
+    expect(stepCostCentsFrom("   ")).toBeNull();
+  });
+
+  it("refuses what the producer refuses", () => {
+    expect(stepCostCentsFrom("-5")).toBeNull();
+    expect(stepCostCentsFrom("abc")).toBeNull();
   });
 });

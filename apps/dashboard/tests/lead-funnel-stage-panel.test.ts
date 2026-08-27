@@ -202,17 +202,39 @@ describe("the panel answers the click at once", () => {
   });
 });
 
-describe("stating what a won deal was worth", () => {
-  it("asks for the amount instead of sending a sale the producer will refuse", () => {
-    // lead-service 400s a sale with no value. Predicting a refusal and asking the
-    // question is the honest surface; submitting anyway is not.
-    expect(SECTION).toContain("stageRequiresValue(stage.key)");
-    expect(SECTION).toContain("setAskingValueFor(stage.key as WritableStageKey)");
+describe("stating a step asks what it cost, and a won deal what it was worth", () => {
+  it("asks for the cost on EVERY statement instead of sending one the producer will refuse", () => {
+    // lead-service refuses a statement with no cost (`cost_required`): the legs the
+    // platform does not automate are worked by the customer's own team, so they are the
+    // only one who knows. Predicting a refusal and asking is the honest surface.
+    expect(SECTION).toContain('setAsking({ key: stage.key as WritableStageKey, next: "outcome" })');
+    expect(SECTION).toContain('setAsking({ key: stage.key as WritableStageKey, next: "never" })');
+    expect(SECTION).toContain('data-testid="lead-funnel-stage-cost-input"');
   });
 
-  it("cannot submit the amount form until what was typed IS an amount", () => {
-    expect(SECTION).toContain("saleValueCentsFrom(raw)");
-    expect(SECTION).toContain("disabled={valueCents == null || busy}");
+  it("never defaults the cost to zero — absent is a refusal, not a zero", () => {
+    // Zero is a legitimate answer and the person must be the one who gives it.
+    expect(SECTION).toContain('const [rawCost, setRawCost] = useState("");');
+    expect(SECTION).not.toMatch(/costCents:\s*0\b/);
+  });
+
+  it("parses the cost with the parser that ACCEPTS zero, not the sale one", () => {
+    // A sale of nothing is not a sale, so the sale parser refuses zero — correct there,
+    // and it would make a founder who values their own hour at nothing unable to answer
+    // at all. The two are parsed apart on purpose.
+    expect(SECTION).toContain("const costCents = stepCostCentsFrom(rawCost);");
+    expect(SECTION).toContain("const valueCents = saleValueCentsFrom(rawValue);");
+    expect(SECTION).not.toContain("saleValueCentsFrom(rawCost)");
+  });
+
+  it("cannot submit until every question it asked IS answered", () => {
+    expect(SECTION).toContain("const ready = costCents != null && (!askValue || valueCents != null);");
+    expect(SECTION).toContain("disabled={!ready || busy}");
+  });
+
+  it("asks what the deal was worth only on a priced step that HAPPENED", () => {
+    // A step that never will has nothing to be worth.
+    expect(SECTION).toContain('askValue={asking.next === "outcome" && stageRequiresValue(stage.key)}');
   });
 
   it("reads the recorded amount back where it was typed", () => {
@@ -221,15 +243,16 @@ describe("stating what a won deal was worth", () => {
     expect(PAGE).toContain("values={panelValues}");
   });
 
-  it("sends the amount only when the control asked for one", () => {
-    // A `never` carries no value and the producer refuses one, so the key is omitted
-    // rather than sent empty.
-    expect(PAGE).toContain("valueCents === undefined ? { step: key, kind: next }");
+  it("always sends the cost, and the amount only when it was asked for", () => {
+    expect(PAGE).toContain("costCents: input.costCents");
+    expect(PAGE).toContain("input.valueCents === undefined");
   });
 
-  it("leaves every other stage a single click, with no amount in the request", () => {
-    expect(SECTION).toContain(': onSet(stage.key as WritableStageKey, "outcome")');
-    expect(SECTION).toContain('onClick={() => onSet(stage.key as WritableStageKey, "never")}');
+  it("declares the cost REQUIRED on the wire, so a caller cannot omit it", () => {
+    const API = read("src/lib/api.ts");
+    const write = API.slice(API.indexOf("export async function setLeadStepStatement"));
+    expect(write.slice(0, 900)).toContain("costCents: number;");
+    expect(write.slice(0, 900)).not.toContain("costCents?: number");
   });
 });
 
