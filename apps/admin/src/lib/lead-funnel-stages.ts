@@ -132,14 +132,20 @@ export interface LeadFunnelStage {
   wontLabel: string;
 }
 
-const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string }> = {
-  "Positive reply": { key: "positive_reply", wontLabel: "Never replying" },
-  "Website visit": { key: "website_visit", wontLabel: "Never visiting" },
-  "Meeting booked": { key: "meeting_booked", wontLabel: "Never booking" },
-  "Meeting attended": { key: "meeting_attended", wontLabel: "Never attending" },
-  Signup: { key: "signup", wontLabel: "Never signing up" },
-  "Form filled": { key: "form_submission", wontLabel: "Never filling it" },
-  "Paid client": { key: "sale", wontLabel: "Never buying" },
+const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
+  // `label` overrides what THIS panel calls the step, and exactly one step needs it.
+  // The catalogue names the first leg "Positive reply" because a funnel is priced leg
+  // by leg and that leg is the positive one; on a lead panel the row already carries
+  // the reply's own KIND beside it (Interested, Wants to book, Not interested), so
+  // "Positive reply" states as a heading the very thing the control next to it is
+  // there to answer. "Replied" is the fact; the picker says what kind.
+  "Positive reply": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
+  "Website visit": { key: "website_visit", wontLabel: "Won't visit" },
+  "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
+  "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },
+  Signup: { key: "signup", wontLabel: "Won't sign up" },
+  "Form filled": { key: "form_submission", wontLabel: "Won't fill it" },
+  "Paid client": { key: "sale", wontLabel: "Won't buy" },
 };
 
 /** The funnel's display name, for the line under the panel heading. */
@@ -164,7 +170,7 @@ export function leadFunnelStages(funnelKey: SalesFunnelKeyWire | null | undefine
       console.error(`[admin] lead-funnel-stages: no stage for step "${step}"`);
       continue;
     }
-    stages.push({ key: stage.key, label: step, wontLabel: stage.wontLabel });
+    stages.push({ key: stage.key, label: stage.label ?? step, wontLabel: stage.wontLabel });
   }
   return stages;
 }
