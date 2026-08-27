@@ -12,7 +12,7 @@ describe("Dashboard root only routes", () => {
     // The old build-in-public "public metrics" page was removed — the root is a
     // pure redirect now (first-run users are sent to /onboarding at the edge).
     expect(content).toContain('redirect("/orgs")');
-    expect(content).not.toContain("distribute public metrics");
+    expect(content).not.toContain("distribute.you public metrics");
     expect(content).not.toContain("fetchPublicStatsSummary");
     expect(content).not.toContain("PublicAnalyticsChart");
   });

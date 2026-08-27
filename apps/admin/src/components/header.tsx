@@ -46,7 +46,7 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
           {minimal ? (
             <div className="flex items-center gap-2">
               <span className="inline-flex h-7 w-7 items-center justify-center text-blue-600 dark:text-white">
-                <svg viewBox="0 0 64 64" width={28} height={28} role="img" aria-label="distribute admin">
+                <svg viewBox="0 0 64 64" width={28} height={28} role="img" aria-label="distribute.you admin">
                   <circle cx="32" cy="32" r="16" fill="currentColor" opacity="0.24" />
                   <circle cx="32" cy="32" r="9" fill="currentColor" />
                 </svg>
@@ -57,7 +57,7 @@ export function Header({ minimal = false }: { minimal?: boolean }) {
           ) : (
             <Link href="/" className="flex items-center gap-2 pr-4 border-r border-gray-200">
               <span className="inline-flex h-7 w-7 items-center justify-center text-blue-600 dark:text-white">
-                <svg viewBox="0 0 64 64" width={28} height={28} role="img" aria-label="distribute admin">
+                <svg viewBox="0 0 64 64" width={28} height={28} role="img" aria-label="distribute.you admin">
                   <circle cx="32" cy="32" r="16" fill="currentColor" opacity="0.24" />
                   <circle cx="32" cy="32" r="9" fill="currentColor" />
                 </svg>

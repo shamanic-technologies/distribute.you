@@ -86,9 +86,9 @@ export const EMAIL_TEMPLATES = [
       </p>
       <ul style="color:#4a4a4a;font-size:16px;line-height:1.8;margin-bottom:30px;">
         <li><a href="https://docs.distribute.you" style="color:${EMAIL_ACCENT_TEXT};">Read the documentation</a></li>
-        <li><a href="https://github.com/shamanic-technologies/distribute" style="color:${EMAIL_ACCENT_TEXT};">Star us on GitHub</a></li>
+        <li><a href="https://github.com/shamanic-technologies/distribute.you" style="color:${EMAIL_ACCENT_TEXT};">Star us on GitHub</a></li>
       </ul>`),
-    textBody: "You're on the list!\n\nThanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute",
+    textBody: "You're on the list!\n\nThanks for joining the distribute.you waitlist. We'll notify you as soon as we're ready to launch.\n\nIn the meantime, you can:\n- Read the documentation: https://docs.distribute.you\n- Star us on GitHub: https://github.com/shamanic-technologies/distribute.you.you",
   },
   // Email 1 — sent at SIGNUP (before onboarding, so no brand/goal exists yet).
   // Short "why distribute" value-prop, goal-agnostic. The goal-specific

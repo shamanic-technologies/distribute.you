@@ -1,6 +1,6 @@
-# distribute CLI
+# distribute.you CLI
 
-Drive the [distribute](https://distribute.you) API from a shell. Authenticate once, then read and
+Drive the [distribute.you](https://distribute.you) API from a shell. Authenticate once, then read and
 change the things the product is made of: brands, campaigns, leads, audiences, workflows, runs and
 billing. Anything the API can do, the CLI can send, so scripting the product does not mean writing
 an HTTP client first.
@@ -26,7 +26,7 @@ nothing else needs configuring.
 
 ## Authenticating
 
-Create an API key in the distribute dashboard, then hand it over once:
+Create an API key in the distribute.you dashboard, then hand it over once:
 
 ```bash
 echo "$MY_KEY" | distribute auth login

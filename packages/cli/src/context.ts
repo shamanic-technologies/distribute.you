@@ -63,7 +63,7 @@ function readTimeout(args: ParsedArgs): number {
 export function requireKey(context: Context): string {
   if (context.apiKey) return context.apiKey;
   throw authError(
-    "No API key. Run `distribute auth login`, set DISTRIBUTE_API_KEY, or pass --key. Create a key in the distribute dashboard or with POST /v1/api-keys.",
+    "No API key. Run `distribute auth login`, set DISTRIBUTE_API_KEY, or pass --key. Create a key in the distribute.you dashboard or with POST /v1/api-keys.",
   );
 }
 

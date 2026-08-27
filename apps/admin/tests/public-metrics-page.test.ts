@@ -29,13 +29,13 @@ const proxy = fs.readFileSync(
 
 describe("cross-org build-in-public metrics page", () => {
   it("lives at /metrics and is reached from the header logo", () => {
-    expect(metricsPage).toContain("distribute public metrics");
+    expect(metricsPage).toContain("distribute.you public metrics");
     expect(metricsPage).toContain('href="/orgs"');
     // Header logo points at the app root, which forwards to /orgs.
     expect(header).toContain('href="/"');
     // Bare root just forwards to /orgs.
     expect(rootPage).toContain('redirect("/orgs")');
-    expect(rootPage).not.toContain("distribute public metrics");
+    expect(rootPage).not.toContain("distribute.you public metrics");
   });
 
   it("is not per-viewer flag gated — the admin edge already staff-gates the app", () => {
