@@ -8,12 +8,12 @@
  *
  * The word is built rather than written, so the guard does not fail on itself.
  *
- * WHAT IS ALLOWED, and only this: a key another service PUTS ON THE WIRE. A key is
- * whatever the producer sends it as, so renaming one here would simply stop reading
- * the field. lead-service's `/orgs/leads/{id}/step-statements` serves the funnel's
- * steps under that older word; every value this app derives from it is called a
- * funnel. Tracked as a lead-service rename request — the day it serves the new name,
- * read that and shrink this list.
+ * The producer carve-out is CLOSED. lead-service used to serve the funnel's steps
+ * under the older word, so these apps had to read a key they did not choose; it now
+ * serves `funnelSteps` / `inFunnel` / `stepIndex` (lead-service v0.62.0, live), the
+ * transitional fallback is deleted, and nothing here reads the old spelling. What is
+ * left on this list is only the word used for something that genuinely is NOT a sales
+ * funnel. Do not re-open it for a producer: ask that producer to rename instead.
  */
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync, statSync } from "fs";
@@ -23,14 +23,7 @@ const BANNED = ["ch", "ain"].join("");
 const REPO = join(__dirname, "..", "..", "..");
 
 /** Files allowed to carry it, and why. Path is relative to the repo root. */
-const PRODUCER_OWNED = new Set([
-  // lead-service wire keys (`chain`, `inChain`, `chainIndex`) and the comments naming them.
-  "apps/dashboard/src/lib/api.ts",
-  "apps/admin/src/lib/api.ts",
-  "apps/dashboard/src/lib/use-lead-step-statements.ts",
-  "apps/admin/src/lib/use-lead-step-statements.ts",
-  "apps/dashboard/tests/lead-funnel-stage-panel.test.ts",
-  "apps/admin/tests/lead-funnel-stage-panel.test.ts",
+const ALLOWED = new Set([
   // A blockchain, in a platform prompt. The precise word for the thing it names.
   "apps/dashboard/src/instrumentation.ts",
   // This guard names what it forbids.
@@ -50,7 +43,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe("one word for a sales funnel, across the three apps", () => {
-  it("uses no second word for it anywhere but a producer's own wire key", () => {
+  it("uses no second word for it anywhere it means a sales funnel", () => {
     const offenders: string[] = [];
     for (const app of ["dashboard", "admin", "landing"]) {
       for (const sub of ["src", "tests", "public", "scripts"]) {
@@ -62,7 +55,7 @@ describe("one word for a sales funnel, across the three apps", () => {
         }
         for (const file of files) {
           const rel = file.slice(REPO.length + 1);
-          if (PRODUCER_OWNED.has(rel)) continue;
+          if (ALLOWED.has(rel)) continue;
           if (readFileSync(file, "utf8").toLowerCase().includes(BANNED)) offenders.push(rel);
         }
       }
