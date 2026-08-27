@@ -27,7 +27,7 @@ import {
 } from "@/lib/first-outcome-reassurance";
 import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
-import { CampaignsTable } from "@/components/campaigns/campaigns-table";
+import { OfferFunnelsPage } from "@/components/funnels/offer-funnels-page";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { OffersTable } from "@/components/offers/offers-table";
@@ -520,24 +520,16 @@ export default function BrandOverviewPage() {
       <div className="space-y-3 pt-2">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-gray-800">
-            {offerId ? "Campaigns" : "Offers"}
+            {offerId ? "Sales funnels" : "Offers"}
           </h2>
-          {offerId && (
-            <Link
-              href={`${basePath}/campaigns`}
-              className="text-sm text-brand-600 hover:underline"
-            >
-              View all
-            </Link>
-          )}
         </div>
         {offerId ? (
-          <CampaignsTable
-            brandId={brandId}
-            featureSlug={featureSlug}
-            basePath={basePath}
-            offerId={offerId}
-          />
+          /* An offer sells through FUNNELS, and a campaign buys one LEG of one of
+             them — so a campaign has a cost per step and no return of its own, and
+             listing campaigns here would skip the level where a return exists. The
+             offer level names no campaign at all now; a funnel row walks down to
+             the campaigns carrying it. */
+          <OfferFunnelsPage embedded />
         ) : (
           <OffersTable brandId={brandId} featureSlug={featureSlug} basePath={brandPath} />
         )}

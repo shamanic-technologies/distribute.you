@@ -45,7 +45,7 @@ function fmtPct(value: number | null): string {
  * and no ratio does, so the offer's own Overview stays the number to trust for "what did
  * this offer do".
  */
-export function OfferFunnelsPage() {
+export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const params = useParams<{ orgId: string; brandId: string; offerId: string }>();
   const orgId = params?.orgId ?? "";
   const brandId = params?.brandId ?? "";
@@ -67,26 +67,31 @@ export function OfferFunnelsPage() {
   const pending = funnels.isPending && !funnels.isError;
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-      <header>
-        <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-1.5">
-          Sales funnels
-          <InfoTooltip tip={FUNNEL_TIP} />
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 max-w-3xl">
-          Each way this offer turns a stranger into a paying client, and what each one
-          returned. A campaign buys one step of a funnel, so the return lives here.
-        </p>
-        {!pending && summary.total > 0 && (
-          <p className="mt-2 text-sm text-gray-600">
-            {summary.total} funnel{summary.total === 1 ? "" : "s"}, and{" "}
-            {summary.priced === 0
-              ? "none of them can be priced yet"
-              : `${summary.priced} of them priced`}
-            .
+    // EMBEDDED is how the offer Overview renders it: an offer sells through funnels,
+    // so the Overview lists those rather than the campaigns two levels down. It then
+    // owns the page chrome and the heading, and this contributes the table alone.
+    <div className={embedded ? "space-y-3" : "p-4 md:p-8 max-w-7xl mx-auto space-y-6"}>
+      {!embedded && (
+        <header>
+          <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-1.5">
+            Sales funnels
+            <InfoTooltip tip={FUNNEL_TIP} />
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 max-w-3xl">
+            Each way this offer turns a stranger into a paying client, and what each one
+            returned. A campaign buys one step of a funnel, so the return lives here.
           </p>
-        )}
-      </header>
+          {!pending && summary.total > 0 && (
+            <p className="mt-2 text-sm text-gray-600">
+              {summary.total} funnel{summary.total === 1 ? "" : "s"}, and{" "}
+              {summary.priced === 0
+                ? "none of them can be priced yet"
+                : `${summary.priced} of them priced`}
+              .
+            </p>
+          )}
+        </header>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
         <table className="w-full md:min-w-[880px] text-sm">
@@ -118,7 +123,7 @@ export function OfferFunnelsPage() {
               <tr>
                 <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={COLUMN_COUNT}>
                   {funnels.isError
-                    ? "Couldn&apos;t read this offer&apos;s sales funnels."
+                    ? "Couldn\u2019t read this offer\u2019s sales funnels."
                     : "This offer sells through no sales funnel yet."}
                 </td>
               </tr>
@@ -132,7 +137,7 @@ export function OfferFunnelsPage() {
                         live under the offer and re-homing them under a funnel segment
                         would break every link that already points at one. */}
                     <Link
-                      href={`${basePath}/campaigns?funnel=${encodeURIComponent(row.funnelKey)}`}
+                      href={`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`}
                       className="font-medium text-gray-900 hover:underline"
                     >
                       {row.name}
@@ -183,12 +188,6 @@ export function OfferFunnelsPage() {
 
       {coverage && <p className="text-xs text-gray-500 max-w-3xl">{coverage}</p>}
 
-      <p className="text-xs text-gray-400 max-w-3xl">
-        These rows do not add up to the offer, on purpose. Money adds across funnels, but a
-        person worked through two of them is one person to the offer and sits in both rows,
-        and no rate is the sum of two rates. Your offer Overview is the number to read for
-        what the offer as a whole did.
-      </p>
     </div>
   );
 }

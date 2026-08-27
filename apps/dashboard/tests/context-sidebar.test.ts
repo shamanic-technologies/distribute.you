@@ -80,14 +80,13 @@ describe("Context sidebar", () => {
     expect(content).not.toContain('href: `${basePath}/conversions`');
   });
 
-  it("has a GA Campaigns entry — revenue features only, no staff gate, no badge", () => {
+  it("names no campaign at the OFFER level: an offer sells through funnels", () => {
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    // The campaign concept is GA: the entry is gated on the revenue feature alone
-    // and states no maturity.
-    expect(content).toContain("const campaignsOk = isRevenueFeature(featureSlug)");
+    // A campaign buys one LEG of a funnel, so it has a cost per step and no return.
+    // The offer Overview lists the funnels; a funnel's own page lists its campaigns.
     expect(content).not.toContain("useIsAdminUser");
-    expect(content).toContain('id: "campaigns"');
-    expect(content).toContain('href: `${basePath}/campaigns`');
+    const offerSidebar = content.slice(content.indexOf("function OfferLevelSidebar("));
+    expect(offerSidebar.slice(0, 2000)).not.toContain('id: "campaigns"');
   });
 
   it("keeps Brand Settings OUT of the campaign sidebar (it is a brand-level surface)", () => {

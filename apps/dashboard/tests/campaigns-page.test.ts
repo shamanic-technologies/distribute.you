@@ -40,10 +40,13 @@ describe("Campaigns page (GA)", () => {
     expect(overview).not.toContain("staff-only");
   });
 
-  it("shows the Campaigns entry on every revenue feature, with no beta badge", () => {
-    expect(sidebar).toContain("const campaignsOk = isRevenueFeature(featureSlug)");
-    expect(sidebar).toContain('id: "campaigns"');
-    expect(sidebar).toContain("/campaigns`");
+  it("does NOT hang a Campaigns entry off the offer, because an offer sells funnels", () => {
+    // An offer sells through FUNNELS and a campaign buys one LEG of one of them, so a
+    // campaign has a cost per step and no return of its own. Naming campaigns at the
+    // offer level would skip the level where a return exists.
+    const offerSidebar = sidebar.slice(sidebar.indexOf("function OfferLevelSidebar("));
+    expect(offerSidebar.slice(0, 2000)).not.toContain('id: "campaigns"');
+    expect(sidebar).not.toContain("const campaignsOk = isRevenueFeature(featureSlug)");
     expect(page).not.toContain("MaturityBadge");
     // The campaign-level nav rows (Overview / Leads / Strategy / Audiences) drop
     // their badges too — a GA surface states no maturity.
@@ -54,7 +57,6 @@ describe("Campaigns page (GA)", () => {
   // The surface is called Campaigns everywhere it is named: nav entry, page
   // heading, empty state, and the URL.
   it("names the surface Campaigns, never Channels", () => {
-    expect(sidebar).toContain('label: "Campaigns"');
     expect(sidebar).not.toContain('label: "Channels"');
     expect(page).toContain(">Campaigns</h1>");
     expect(table).toContain("No campaigns yet.");
