@@ -24,7 +24,7 @@ export default function ChooseOrganizationTaskPage() {
               height={28}
             />
             <span className="text-lg font-semibold text-gray-950">
-              distribute
+              distribute.you
             </span>
           </Link>
         </div>

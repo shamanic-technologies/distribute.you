@@ -113,13 +113,13 @@ export function OnboardingTopChrome() {
         >
           <Image
             src="/logo-distribute.svg"
-            alt="distribute"
+            alt="distribute.you"
             width={28}
             height={28}
             className="rounded-md"
           />
           <span className="hidden font-display text-lg font-extrabold tracking-tight text-gray-900 sm:block">
-            distribute
+            distribute.you
           </span>
         </Link>
 

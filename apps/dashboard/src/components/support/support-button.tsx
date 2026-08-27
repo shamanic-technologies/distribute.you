@@ -55,7 +55,7 @@ export function SupportButton({ raised = false }: { raised?: boolean }) {
 
   const intro = email
     ? `Hi! I'm ${email}${org ? ` (${org})` : ""} and I have a question:`
-    : "Hi! I have a question about distribute:";
+    : "Hi! I have a question about distribute.you:";
   const href = `https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent(intro)}`;
 
   // The dashboard SupportButton is mounted on both the dashboard shell and the

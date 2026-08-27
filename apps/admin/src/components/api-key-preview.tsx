@@ -80,7 +80,7 @@ export function ApiKeyPreview() {
           </svg>
           <h3 className="font-display font-bold text-gray-800">API Key</h3>
         </div>
-        <p className="text-sm text-gray-600 mb-4">Create an API key to use distribute.</p>
+        <p className="text-sm text-gray-600 mb-4">Create an API key to use distribute.you.</p>
         <button
           onClick={handleCreate}
           disabled={creating}

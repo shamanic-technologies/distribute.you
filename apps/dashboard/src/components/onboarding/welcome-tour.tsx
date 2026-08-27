@@ -83,7 +83,7 @@ export function WelcomeTour({ onComplete }: { onComplete?: () => void }) {
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Welcome to distribute"
+      aria-label="Welcome to distribute.you"
     >
       {/* Backdrop — soft brand wash + blur, click to dismiss. */}
       <button

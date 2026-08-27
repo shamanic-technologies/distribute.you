@@ -3307,7 +3307,7 @@ export function Onboarding() {
             <ShieldCheckIcon className="h-5 w-5 text-brand-600" />
             <h2 className="font-display text-2xl font-bold text-gray-900">We reach out on your behalf.</h2>
           </div>
-          <p className="mb-4 text-sm leading-6 text-gray-500">distribute is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong> — never from yours, like a PR firm pitching from its own contacts.</p>
+          <p className="mb-4 text-sm leading-6 text-gray-500">distribute.you is a marketing agency. All outreach goes out from inboxes and domains <strong>we own and warm</strong>, never from yours, like a PR firm pitching from its own contacts.</p>
           <ul className="mb-6 space-y-1.5">
             {AGENCY_BENEFITS.map((b) => (
               <li key={b} className="flex items-start gap-2 text-xs leading-5 text-gray-600"><CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />{b}</li>

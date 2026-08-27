@@ -9,7 +9,7 @@ describe("Cross-org metrics page shows public global metrics", () => {
       "../src/app/(authed)/(dashboard)/metrics/page.tsx"
     );
     const content = fs.readFileSync(pagePath, "utf-8");
-    expect(content).toContain("distribute public metrics");
+    expect(content).toContain("distribute.you public metrics");
     expect(content).toContain("fetchPublicStatsSummary");
     expect(content).toContain("Unique visitors over time");
     expect(content).toContain("Signup conversion over time");

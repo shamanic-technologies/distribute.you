@@ -32,7 +32,7 @@ describe("onboarding copy", () => {
 
   it("covers the welcome topics: why, credits, on-behalf, timeline, audiences", () => {
     const joined = WELCOME_STEPS.map((s) => `${s.title} ${s.description}`).join(" ");
-    expect(joined).toMatch(/Welcome to distribute/);
+    expect(joined).toMatch(/Welcome to distribute\.you/);
     expect(joined).toMatch(/\$400/);
     expect(joined).toMatch(/on your behalf/);
     expect(joined).toMatch(/Within 1 hour/);

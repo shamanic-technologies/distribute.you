@@ -83,7 +83,7 @@ export default function SignUpPage() {
                 color: "oklch(97% 0.003 264)",
               }}
             >
-              distribute
+              distribute.you
             </span>
             <span
               style={{
@@ -201,7 +201,7 @@ export default function SignUpPage() {
                   color: "oklch(12% 0.008 264)",
                 }}
               >
-                distribute
+                distribute.you
               </span>
               <span
                 style={{
