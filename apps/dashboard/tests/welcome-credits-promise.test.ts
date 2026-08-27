@@ -167,15 +167,15 @@ describe("$900 referred-signup promise", () => {
   it("the landing JS surfaces bump their cache-buster past the fixed copy", () => {
     // A `public/landing/**` JS edit ships nothing visible unless every HTML that
     // links it bumps `?v=N`: the old query string is its own long-lived edge
-    // cache key. main.js is at v10 and pricing-modal-v1.js (the homepage) at v7.
+    // cache key. main.js is at v11 and pricing-modal-v1.js (the homepage) at v7.
     const linked = [
       ["apps/landing/public/landing/index-v1.html", "js/pricing-modal-v1.js?v=7"],
-      ["apps/landing/public/landing/pricing.html", "js/main.js?v=10"],
-      ["apps/landing/public/landing/performance.html", "js/main.js?v=10"],
-      ["apps/landing/public/landing/use-cases.html", "js/main.js?v=10"],
-      ["apps/landing/public/landing/cold-email-cost-guide.html", "js/main.js?v=10"],
-      ["apps/landing/public/landing/cold-email-vs-linkedin.html", "js/main.js?v=10"],
-      ["apps/landing/public/landing/cold-email-for-saas-founders.html", "js/main.js?v=10"],
+      ["apps/landing/public/landing/pricing.html", "js/main.js?v=11"],
+      ["apps/landing/public/landing/performance.html", "js/main.js?v=11"],
+      ["apps/landing/public/landing/use-cases.html", "js/main.js?v=11"],
+      ["apps/landing/public/landing/cold-email-cost-guide.html", "js/main.js?v=11"],
+      ["apps/landing/public/landing/cold-email-vs-linkedin.html", "js/main.js?v=11"],
+      ["apps/landing/public/landing/cold-email-for-saas-founders.html", "js/main.js?v=11"],
     ] as const;
     for (const [rel, expected] of linked) {
       expect(read(rel), `${rel} must link ${expected}`).toContain(expected);
