@@ -22,6 +22,7 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
+import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
@@ -477,6 +478,7 @@ export function CampaignsTable({
   featureSlug,
   basePath,
   offerId,
+  funnelKey,
 }: {
   brandId: string;
   featureSlug: string;
@@ -484,9 +486,25 @@ export function CampaignsTable({
   basePath: string;
   /** The OFFER whose campaigns to list. Omitted → every campaign of the brand. */
   offerId?: string;
+  /**
+   * Narrow to ONE sales chain, which is how the Sales funnels page walks down into
+   * the campaigns carrying a chain. A DISPLAY filter over rows the hook already
+   * fetched: the query key does not change, so arriving here from a chain costs no
+   * request and the two surfaces cannot disagree about a campaign.
+   *
+   * Normalised on both sides — a funnel key travels under two spellings while the
+   * fleet migrates, and comparing them raw would silently show nothing.
+   */
+  funnelKey?: string | null;
 }) {
   const router = useRouter();
-  const { rows, settled } = useCampaignRows(brandId, featureSlug, offerId);
+  const { rows: allRows, settled } = useCampaignRows(brandId, featureSlug, offerId);
+  const narrowed = funnelKey ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire) : null;
+  const rows = narrowed
+    ? allRows.filter(
+        (r) => r.campaign.funnelKey != null && normalizeSalesFunnelKey(r.campaign.funnelKey) === narrowed,
+      )
+    : allRows;
 
   return (
     /* Below `md` the row narrows to the two things a reader can act on: what the
