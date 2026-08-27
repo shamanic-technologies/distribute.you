@@ -130,13 +130,39 @@ export const PROVISIONABLE_CHANNEL_SLUGS: ReadonlySet<string> = new Set([
   "feedback-request-cold-email-outreach",
 ]);
 
+/**
+ * Whether funding this channel actually produces a campaign.
+ *
+ * campaign-service provisions a funded pair when the channel has an active workflow
+ * to run OR when the CUSTOMER operates it — the legs we do not automate are worked at
+ * their side, so there is no DAG and there must not be one. It states neither fact to
+ * this app, so the two halves are answered differently on purpose:
+ *
+ *   - customer-operated is read off the WIRE, so a ninth such channel published
+ *     upstream is fundable here with no change;
+ *   - platform-operated stays on the list above, which is this app's proxy for "does
+ *     it have a workflow", the one thing nothing publishes. It is temporary by
+ *     construction: the day campaign-service states what it can provision, both
+ *     halves read that and the list goes.
+ *
+ * Funding one nothing provisions states a ceiling and produces no campaign, which is
+ * worse than not offering it: nothing errors and nothing ever runs.
+ */
+export function channelIsFundable(channel: {
+  featureSlug: string;
+  operatedBy?: string | null;
+}): boolean {
+  if (channel.operatedBy === "customer") return true;
+  return PROVISIONABLE_CHANNEL_SLUGS.has(channel.featureSlug);
+}
+
 export function channelsForFunnel(
   funnelKey: SalesFunnelKey,
   features: ChannelFeatureRow[],
 ): AcquisitionChannelDef[] {
   return acquisitionChannelsFromFeatures(features).filter((channel) => {
     // Funding one nothing provisions states a ceiling and produces no campaign.
-    if (!PROVISIONABLE_CHANNEL_SLUGS.has(channel.featureSlug)) return false;
+    if (!channelIsFundable(channel)) return false;
     const feature = features.find((f) => f.slug === channel.featureSlug);
     // Unreachable by construction, since every channel here was built from one
     // of these rows. Kept so the read below narrows without an assertion.

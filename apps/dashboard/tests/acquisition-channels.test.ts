@@ -216,3 +216,46 @@ describe("copy", () => {
     expect(lib).not.toContain("—");
   });
 });
+
+describe("a channel carries the leg it performs and who runs it", () => {
+  it("reads both off the feature row's own channel blob", () => {
+    const [entry, closer] = acquisitionChannelsFromFeatures([
+      {
+        slug: "sales-cold-email-outreach",
+        name: "Sales Cold Email Outreach",
+        description: "",
+        displayOrder: 1,
+        salesFunnels: ["sales_meetings_from_conversation"],
+        acquisitionChannel: {
+          operatedBy: "platform",
+          stepTransitions: [{ from: null, to: "conversation" }],
+        },
+      },
+      {
+        slug: "founder-led-closing",
+        name: "Founder Led Closing",
+        description: "",
+        displayOrder: 2,
+        salesFunnels: ["sales_meetings_from_conversation"],
+        acquisitionChannel: {
+          operatedBy: "customer",
+          stepTransitions: [{ from: "meeting_attended", to: "paid_client" }],
+        },
+      },
+    ]);
+    expect(entry.operatedBy).toBe("platform");
+    expect(entry.legs).toEqual([{ from: null, to: "conversation" }]);
+    expect(closer.operatedBy).toBe("customer");
+    expect(closer.legs).toEqual([{ from: "meeting_attended", to: "paid_client" }]);
+  });
+
+  it("says nothing rather than guessing when the producer states nothing", () => {
+    // The field shipped after this reader existed. A row without it is a channel we know
+    // less about, never an error and never a fabricated operator.
+    const [channel] = acquisitionChannelsFromFeatures([
+      { slug: "x", name: "X", description: "", salesFunnels: ["form_magnet"] },
+    ]);
+    expect(channel.operatedBy).toBeNull();
+    expect(channel.legs).toEqual([]);
+  });
+});
