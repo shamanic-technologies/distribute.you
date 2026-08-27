@@ -59,3 +59,46 @@ describe("admin's funnel chains match this app's catalogue", () => {
     expect(Object.keys(adminChains()).sort()).toEqual(SALES_FUNNELS.map((d) => d.key).sort());
   });
 });
+
+/**
+ * The staff console writes the SAME statement through the SAME producer, so the cost
+ * lead-service now demands has to be asked for there too. Pinned from this side for the
+ * same reason as the chains above: this suite is a CI merge gate and admin's is not, so
+ * a staff console that quietly stopped asking would go on 400-ing with nothing red.
+ */
+describe("admin asks for the step cost too", () => {
+  const ADMIN_SECTION = readFileSync(
+    join(__dirname, "../../admin/src/components/leads/lead-funnel-stage-section.tsx"),
+    "utf8",
+  );
+  const ADMIN_API = readFileSync(join(__dirname, "../../admin/src/lib/api.ts"), "utf8");
+  const ADMIN_PAGE = readFileSync(
+    join(
+      __dirname,
+      "../../admin/src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/features/[featureSlug]/leads/page.tsx",
+    ),
+    "utf8",
+  );
+
+  it("declares the cost required on the write", () => {
+    expect(ADMIN_API).toContain("costCents: number;");
+    expect(ADMIN_API).toContain("costCents: z.number().nullable(),");
+  });
+
+  it("opens the question on both kinds instead of writing straight through", () => {
+    expect(ADMIN_SECTION).toContain("stepCostCentsFrom(rawCost)");
+    expect(ADMIN_SECTION).toContain('setAsking({ key: stage.key as WritableStageKey, next: "never" })');
+    expect(ADMIN_SECTION).not.toContain('onClick={() => onSet(stage.key as WritableStageKey, "never")}');
+  });
+
+  it("defaults nothing when the field is left empty", () => {
+    expect(ADMIN_SECTION).toContain("if (costCents == null) return;");
+    expect(ADMIN_SECTION).not.toContain("costCents: 0");
+    expect(ADMIN_PAGE).not.toContain("costCents: 0");
+  });
+
+  it("sends it on every statement and reads it back", () => {
+    expect(ADMIN_PAGE).toContain("? { step: key, kind: next, costCents }");
+    expect(ADMIN_PAGE).toContain("costs={panelCosts}");
+  });
+});

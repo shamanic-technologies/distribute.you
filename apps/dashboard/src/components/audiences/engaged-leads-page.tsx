@@ -42,6 +42,7 @@ import { salesFunnelByKey } from "@/lib/sales-funnels";
 import {
   impliedStages,
   stageStatesFrom,
+  stageCostsFrom,
   stageValuesFrom,
   useLeadStepStatements,
   useSetLeadStepStatement,
@@ -1316,6 +1317,10 @@ export function EngagedLeadsPage({
   // What a stated outcome was worth, so the amount somebody typed reads back where they
   // typed it. Absent when nobody said — never a zero standing in for an unpriced deal.
   const panelValues = useMemo(() => stageValuesFrom(stepStatements), [stepStatements]);
+  // What the CUSTOMER said each hand-stated stage cost them. Their own money, recorded
+  // because they told us and never charged. Present-with-null is a statement made
+  // before the cost was asked for, which reads as unanswered rather than as a zero.
+  const panelCosts = useMemo(() => stageCostsFrom(stepStatements), [stepStatements]);
   // Stages the CHAIN concluded rather than anybody stating — they render as the answer
   // they are and offer no control.
   const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
@@ -1380,15 +1385,24 @@ export function EngagedLeadsPage({
     });
   };
 
-  const onSetStage = (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => {
+  const onSetStage = (
+    key: WritableStageKey,
+    next: "outcome" | "never",
+    costCents: number,
+    valueCents?: number,
+  ) => {
     setPanelError(null);
     if (selectedLead) setStatedStage({ leadRowId: selectedLead.id, key, next });
     setPanelPending({ key, next });
     setStage.mutate(
-      // The amount rides along only when the control asked for one. lead-service refuses
+      // `costCents` always rides along: lead-service refuses a statement without it on
+      // both kinds, and the control asked the person for it rather than defaulting one.
+      // The VALUE rides along only when the control asked for one — lead-service refuses
       // a value on a `never`, and refuses a `sale` outcome WITHOUT one, so the key is
       // omitted rather than sent as undefined-shaped noise.
-      valueCents === undefined ? { step: key, kind: next } : { step: key, kind: next, valueCents },
+      valueCents === undefined
+        ? { step: key, kind: next, costCents }
+        : { step: key, kind: next, costCents, valueCents },
       {
         // lead-service writes the refusal as a sentence for a person to read (a `never`
         // on a step that already happened, a value on a `never`). Surface ITS reason
@@ -1536,6 +1550,7 @@ export function EngagedLeadsPage({
                 delivery={<StatusBadge status={statusOf(selectedLead)} />}
                 implied={panelImplied}
                 values={panelValues}
+                costs={panelCosts}
                 pending={panelPending}
                 error={panelError}
                 onSet={onSetStage}

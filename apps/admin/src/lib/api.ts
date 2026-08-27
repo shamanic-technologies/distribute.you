@@ -7052,6 +7052,18 @@ const LeadStepEntrySchema = z.object({
   inChain: z.boolean().optional(),
   source: z.enum(["tracker", "manual"]).nullable(),
   valueCents: z.number().nullable(),
+  /**
+   * What the CUSTOMER stated getting through this step cost THEM, in cents. Their own
+   * money: we record it because they told us, we never charge it, and it never enters
+   * the platform's spend ledger or their billing.
+   *
+   * Required-and-nullable, matching the producer. `0` is a STATED zero. `null` means
+   * nobody answered: a pending step, a step the chain implied, a tracker-reported one,
+   * or a statement made before the cost became mandatory. Declaring it `.optional()`
+   * would read `undefined` on a body that legitimately carries a null, which is the one
+   * distinction this field exists to hold.
+   */
+  costCents: z.number().nullable(),
   note: z.string().nullable(),
   statedByUserId: z.string().nullable(),
   at: z.string().nullable(),
@@ -7110,6 +7122,14 @@ export async function setLeadStepStatement(
   body: {
     step: LeadStepName;
     kind: "outcome" | "never";
+    /**
+     * What the step cost the CUSTOMER, in cents. MANDATORY on every statement, outcome
+     * and "never" alike: lead-service 400s with code `cost_required` without it, and a
+     * meeting that was run and went nowhere still cost what it cost. `0` is a legal
+     * answer and is recorded as a stated zero; there is no default, because an absent
+     * answer and a stated zero are different statements.
+     */
+    costCents: number;
     valueCents?: number;
     note?: string;
     occurredAt?: string;
