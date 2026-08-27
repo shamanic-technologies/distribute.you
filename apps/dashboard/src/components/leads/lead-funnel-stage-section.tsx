@@ -39,9 +39,6 @@ const WONT_LABEL = "Won't happen";
 const VALUE_TIP =
   "What the deal is worth. We record the amount you state instead of pricing it at your average customer, which is what every return and cost-per-customer figure is built on.";
 
-const DELIVERY_TIP =
-  "What our sending has already done with this lead, measured rather than stated: queued, sent, delivered, bounced, unsubscribed. Nobody edits it here, and it is not a step of the funnel below, which is about what the person did next.";
-
 const TRACKED_TIP =
   "We already recorded this automatically. You can still state it yourself, which is what to do when the automatic match missed, for example when someone signed up with a different address than the one we emailed.";
 
@@ -229,19 +226,13 @@ export function LeadFunnelStageSection({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <h3 className={HEADING_CLASS}>Funnel progress</h3>
-        <InfoTooltip tip="What happened to this lead at each stage of the funnel this campaign sells. Anything you state here counts exactly like something we tracked automatically." />
-      </div>
+      <h3 className={`${HEADING_CLASS} mb-1`}>Funnel progress</h3>
       <p className="text-xs text-gray-500 mb-3">{funnelName}</p>
 
       <ul className="divide-y divide-gray-100">
         {delivery != null && (
           <li className="flex items-center justify-between gap-3 py-2 first:pt-0">
-            <span className="text-sm text-gray-800 min-w-0 flex items-center gap-1.5">
-              <span className="truncate">Delivery</span>
-              <InfoTooltip tip={DELIVERY_TIP} />
-            </span>
+            <span className="text-sm text-gray-800 min-w-0 truncate">Delivery</span>
             <span className="flex items-center gap-1.5 shrink-0">{delivery}</span>
           </li>
         )}
