@@ -78,7 +78,10 @@ describe("An org switch is bounded and its 409 recovery can actually succeed", (
   it("states a network failure instead of a spinner", () => {
     const body = handlerBody();
     expect(body).toContain("setSwitchingOrg(null)");
-    expect(body).toContain("Couldn't reach the auth service.");
+    // The sentence itself moved into the alias-free `org-switch-error.ts` so it
+    // could name the offline case, which is what most timeouts here really are.
+    // Its own copy is pinned by `org-switch-error-message.test.ts`.
+    expect(body).toContain("orgSwitchErrorMessage(");
   });
 
   it("keeps the setActive → re-mint → navigate ordering (#1940)", () => {

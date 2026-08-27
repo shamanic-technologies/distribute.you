@@ -273,6 +273,11 @@ html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15); }
 html.dark .text-purple-600 { color: #c084fc; }
 html.dark .text-purple-700 { color: #c084fc; }
 html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
+/* The blue text/border pair the stale-build notice reads through. Same gap the
+   purple pair above had: without these two the accompanying bg-blue-50 tint
+   carried near-black text and an invisible border on the dark surface. */
+html.dark .text-blue-900 { color: #bfdbfe; }
+html.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
 html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15); }
 
