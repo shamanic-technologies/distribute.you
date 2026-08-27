@@ -13,7 +13,6 @@ import {
   getFeatureRevenue,
   fetchFeatureStats,
   getBrandSalesEconomics,
-  getBrandPause,
   getBrandConversionToken,
   getFeaturePipelineActivity,
   fetchFeatureAudienceStats,
@@ -277,12 +276,14 @@ export function CampaignOverviewPage() {
   const { cents: runningDailyBudgetCents, settled: budgetSettled } =
     useRunningDailyBudgetCents(brandId, { enabled });
 
-  const { data: pauseData } = useAuthQuery(
-    ["brandPause", brandId],
-    () => getBrandPause(brandId),
-    { enabled, ...pollOptions },
-  );
-  const isBrandPaused = pauseData?.paused === true;
+  // What THIS campaign may spend today. Same query key as the brand-level read one line
+  // up — the producer decomposes its answer per campaign, so this costs no request — but
+  // a banner headed "This campaign" must gate on this campaign, not on its brand's sum:
+  // a sibling campaign spending elsewhere says nothing about the one on screen.
+  const { cents: campaignRunningDailyBudgetCents } = useRunningDailyBudgetCents(brandId, {
+    campaignId,
+    enabled,
+  });
 
   const { data: conversionTokenData } = useAuthQuery(
     ["brandConversionToken", brandId],
@@ -435,7 +436,11 @@ export function CampaignOverviewPage() {
   const recommendedLearningUsd = recommendedLearningSpendUsd(outcomeUnitCostUsd);
   const showFirstOutcomeReassurance = shouldShowReassurance({
     revealed: statsRevealed && revenueRevealed,
-    paused: isBrandPaused,
+    // This campaign's own running money, not campaign-service's brand-level pause flag:
+    // nothing has written that flag since the brand-level Pause control was removed, so
+    // it is frozen and wrong both ways — it hid this banner from campaigns that are
+    // spending today, and showed it beside campaigns that are not running at all.
+    runningDailyBudgetCents: campaignRunningDailyBudgetCents,
     outcomeCount: goalOutcomeCount(optimizationGoal, data?.spend, totalWebsiteClicks),
     recommendedSpendUsd: recommendedLearningUsd,
     spentUsd: data?.spend?.totalSpentCents != null ? data.spend.totalSpentCents / 100 : null,
