@@ -32,6 +32,15 @@ import { LearningTag } from "@/components/learning-tag";
 
 const BREAK_EVEN = 1;
 
+/**
+ * A scope still learning AND still under break-even gets a fixed 10x ceiling rather than
+ * an axis that ends at its own best day so far. Scaled to its own data, a flat 0.0x line
+ * is drawn across the very top of a 0-to-1 band and reads as a result; against the
+ * multiple a return is actually judged on, it reads as what it is — barely started, with
+ * the break-even line visible above it as the thing still to reach. Owner-picked.
+ */
+const LEARNING_CEILING = 10;
+
 type RoiChartPoint = {
   date: string;
   label: string;
@@ -132,7 +141,9 @@ export function RoiTrendCard({
     if (data.length === 0) return null;
     const values = data.map((d) => d.roiMultiple);
     const min = Math.min(...values, BREAK_EVEN);
-    const max = Math.max(...values, BREAK_EVEN);
+    // Under break-even the ceiling is the fixed multiple, not the brand's own best day.
+    const max =
+      Math.max(...values) < BREAK_EVEN ? LEARNING_CEILING : Math.max(...values, BREAK_EVEN);
     // Every point sitting exactly at break-even is a degenerate domain, which renders as a
     // band with no height — pad it, and state the one real value rather than the padding.
     if (min === max) return { domain: [min - 1, max + 1] as [number, number], ticks: [min] };
@@ -248,7 +259,14 @@ export function RoiTrendCard({
                 axisLine={false}
                 width={44}
               />
-              <Tooltip content={<RoiTooltip />} cursor={{ stroke: "#cbd5e1", strokeWidth: 1 }} />
+              {/* NO hover card on the placeholder. A tooltip is how a reader takes a
+                  reading, so offering one on a curve we have just said is provisional
+                  hands back the exact value the dots and the labels were removed for —
+                  a third way of stating a number, wearing an interaction. The measured
+                  chart keeps it. */}
+              {!learning && (
+                <Tooltip content={<RoiTooltip />} cursor={{ stroke: "#cbd5e1", strokeWidth: 1 }} />
+              )}
               {/* While learning, the SAME curve is drawn provisional rather than
                   withheld: a dotted grey line, no marked points and no fill under it. A
                   reader can see the shape their money has traced without reading it as a
@@ -271,11 +289,10 @@ export function RoiTrendCard({
                 // take a reading off a placeholder. The line alone carries the shape, and
                 // the hover tooltip carries a value when someone asks for one.
                 dot={false}
-                activeDot={
-                  // Same trap as the dot above: rendered outside the Area's element, so it
-                  // needs its own colour or the hovered point is a BLACK blob on a grey line.
-                  learning ? { r: 4, strokeWidth: 0, fill: "currentColor", className: "text-gray-500" } : { r: 4 }
-                }
+                // No hovered point either while learning: it is the tooltip's anchor, and
+                // there is no tooltip left to anchor. Kept on, it marks a point on a curve
+                // whose whole treatment says not to read one.
+                activeDot={learning ? false : { r: 4 }}
                 isAnimationActive={false}
               />
             </AreaChart>
