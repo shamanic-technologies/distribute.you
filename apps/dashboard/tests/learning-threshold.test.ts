@@ -247,24 +247,30 @@ describe("the scope surfaces (offer and brand)", () => {
   });
 
   it("draws the curve PROVISIONAL rather than withholding it", () => {
-    // A dotted grey line with its points marked and no fill: the reader sees the shape
-    // their money has traced without reading it as a trend to act on. The paragraph this
+    // A dotted grey line, no marked points and no fill: the reader sees the shape their
+    // money has traced without reading it as a trend to act on. The paragraph this
     // replaced made people read a sentence to find out there was nothing to see.
     expect(trend).toContain("learning = false,");
     expect(trend).toContain('className={learning ? "text-gray-400" : "text-brand-600"}');
     expect(trend).toContain('strokeDasharray={learning ? "2 4" : undefined}');
     expect(trend).toContain('fill={learning ? "none" : "url(#roi-fill)"}');
-    expect(trend).toContain('{ r: 2.5, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }');
-    // The hovered point is rendered outside the Area too, so it needs the same treatment
-    // or it is a black blob on a grey line.
+    // NOTHING states a per-point value on the placeholder: no plotted dot, and no label
+    // printed above one. Both invite a reading off a curve we just said is provisional.
+    expect(trend).toContain("dot={false}");
+    expect(trend).not.toContain("LabelList");
+    // The hovered point is rendered outside the Area, so it needs its own colour class or
+    // it is a black blob on a grey line. It stays: it is the tooltip's anchor, shown on
+    // demand rather than plotted.
     expect(trend).toContain('learning ? { r: 4, strokeWidth: 0, fill: "currentColor", className: "text-gray-500" } : { r: 4 }');
-    // Each point states its own value while learning — a placeholder is read at a glance,
-    // not interrogated — up to the count past which the labels would collide.
-    expect(trend).toContain("<LabelList");
-    expect(trend).toContain("learning && data.length <= LABELLED_POINTS_MAX");
-    // And the scale keeps its middle: recharts drops ticks it thinks will not fit, which
-    // on a short card leaves the two ends and nothing between them.
-    expect(trend).toContain("tickCount={5}");
+    // While learning the axis states its two ENDS and nothing between them, and both ends
+    // span break-even so its dashed line is never clipped out of the domain.
+    expect(trend).toContain("domain={learning && learningBounds ? learningBounds.domain : undefined}");
+    expect(trend).toContain("ticks={learning && learningBounds ? learningBounds.ticks : undefined}");
+    expect(trend).toContain("Math.min(...values, BREAK_EVEN)");
+    expect(trend).toContain("Math.max(...values, BREAK_EVEN)");
+    // The MEASURED chart keeps its middle: recharts drops ticks it thinks will not fit,
+    // which on a short card leaves the two ends and nothing between them.
+    expect(trend).toContain("tickCount={learning ? undefined : 5}");
     expect(trend).toContain("interval={0}");
     expect(trend).not.toContain("Too few outcomes so far to draw a return");
     // Grey via currentColor, never a hex: an SVG stroke is not reached by the html.dark

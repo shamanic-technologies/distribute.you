@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import {
   Area,
   AreaChart,
-  LabelList,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -32,9 +31,6 @@ import { LearningTag } from "@/components/learning-tag";
  */
 
 const BREAK_EVEN = 1;
-
-/** Past this many points the per-point labels collide, and the tooltip carries the values. */
-const LABELLED_POINTS_MAX = 10;
 
 type RoiChartPoint = {
   date: string;
@@ -127,6 +123,21 @@ export function RoiTrendCard({
   learning?: boolean;
 }) {
   const data = useMemo(() => buildPoints(history), [history]);
+  // While learning the axis states its two ENDS and nothing in between. A five-tick scale
+  // invites a reader to read a value off a curve we have just told them is a placeholder,
+  // and the two ends are what give the shape a size. Both ends span the data AND
+  // break-even, so the dashed break-even line stays inside the domain instead of being
+  // clipped out of view.
+  const learningBounds = useMemo(() => {
+    if (data.length === 0) return null;
+    const values = data.map((d) => d.roiMultiple);
+    const min = Math.min(...values, BREAK_EVEN);
+    const max = Math.max(...values, BREAK_EVEN);
+    // Every point sitting exactly at break-even is a degenerate domain, which renders as a
+    // band with no height — pad it, and state the one real value rather than the padding.
+    if (min === max) return { domain: [min - 1, max + 1] as [number, number], ticks: [min] };
+    return { domain: [min, max] as [number, number], ticks: [min, max] };
+  }, [data]);
   const latest = data.length > 0 ? data[data.length - 1] : null;
   // Above break-even the brand is making its money back, and that reads green. Below it
   // stays the ordinary text colour rather than turning red: a young brand is under 1x by
@@ -211,15 +222,20 @@ export function RoiTrendCard({
                 tickLine={false}
                 axisLine={{ stroke: "#e2e8f0" }}
               />
-              {/* `interval={0}` + an explicit `tickCount`: recharts otherwise drops ticks it
-                  thinks will not fit, and on a short card that collapses the scale to its
-                  two ends — 0.0x and 8.0x with nothing between them, which reads as an axis
-                  with no values. Five is what the default aims for; stating it makes it a
-                  promise rather than a preference. */}
+              {/* Measured chart: `interval={0}` + an explicit `tickCount`, because recharts
+                  otherwise drops ticks it thinks will not fit, and on a short card that
+                  collapses the scale to its two ends — 0.0x and 8.0x with nothing between
+                  them, which reads as an axis with no values. Five is what the default aims
+                  for; stating it makes it a promise rather than a preference.
+
+                  Learning chart: the two ends are exactly what we DO want, so the domain is
+                  pinned to them and no intermediate tick is drawn. */}
               <YAxis
                 tickFormatter={(value: number) => formatRoi(value)}
                 tick={{ fontSize: 11, fill: "#94a3b8" }}
-                tickCount={5}
+                domain={learning && learningBounds ? learningBounds.domain : undefined}
+                ticks={learning && learningBounds ? learningBounds.ticks : undefined}
+                tickCount={learning ? undefined : 5}
                 interval={0}
                 tickLine={false}
                 axisLine={false}
@@ -227,10 +243,10 @@ export function RoiTrendCard({
               />
               <Tooltip content={<RoiTooltip />} cursor={{ stroke: "#cbd5e1", strokeWidth: 1 }} />
               {/* While learning, the SAME curve is drawn provisional rather than
-                  withheld: a dotted grey line with its points marked, and no fill under
-                  it. A reader can see the shape their money has traced without reading it
-                  as a trend to act on — the prose this replaced said the same thing and
-                  made people read a paragraph to find out there was nothing to see.
+                  withheld: a dotted grey line, no marked points and no fill under it. A
+                  reader can see the shape their money has traced without reading it as a
+                  trend to act on — the prose this replaced said the same thing and made
+                  people read a paragraph to find out there was nothing to see.
 
                   Grey through `currentColor` off a `text-gray-*` class, like the
                   break-even line: an SVG stroke attribute is not reached by the
@@ -243,39 +259,18 @@ export function RoiTrendCard({
                 strokeWidth={learning ? 1.5 : 2}
                 strokeDasharray={learning ? "2 4" : undefined}
                 fill={learning ? "none" : "url(#roi-fill)"}
-                dot={
-                  learning
-                    ? // The dot needs its OWN colour class: recharts renders it outside the
-                      // Area's element, so `currentColor` there resolves against the root and
-                      // came back BLACK against the grey line (measured, not assumed).
-                      { r: 2.5, strokeWidth: 0, fill: "currentColor", className: "text-gray-400" }
-                    : false
-                }
+                // No plotted points at either state. While learning they were marked, each
+                // with its own value printed above it — two ways of inviting a reader to
+                // take a reading off a placeholder. The line alone carries the shape, and
+                // the hover tooltip carries a value when someone asks for one.
+                dot={false}
                 activeDot={
                   // Same trap as the dot above: rendered outside the Area's element, so it
                   // needs its own colour or the hovered point is a BLACK blob on a grey line.
                   learning ? { r: 4, strokeWidth: 0, fill: "currentColor", className: "text-gray-500" } : { r: 4 }
                 }
                 isAnimationActive={false}
-              >
-                {/* A placeholder curve is read at a glance, not interrogated — so while
-                    learning each point states its own value instead of making the reader
-                    hover to find one. Only while the series is short enough for the labels
-                    not to collide; past that the hover tooltip is the only readable way and
-                    stays the only one. */}
-                {learning && data.length <= LABELLED_POINTS_MAX && (
-                  <LabelList
-                    dataKey="roiMultiple"
-                    position="top"
-                    offset={8}
-                    formatter={(value: unknown) =>
-                      typeof value === "number" ? formatRoi(value) : ""
-                    }
-                    className="fill-gray-400"
-                    fontSize={10}
-                  />
-                )}
-              </Area>
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
