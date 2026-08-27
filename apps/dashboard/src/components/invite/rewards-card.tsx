@@ -48,11 +48,16 @@ import { promiseProgressWidth, promiseUnlockLine } from "@/lib/free-credit-promi
  * is deliberately NOT in `balance` or `credited`, so nothing here double-counts
  * against the figures on Billing.
  *
- * The heading states what is coming; the bar and the line under it describe the
+ * The heading states what is coming; the bar and the (i) beside it describe the
  * NEAREST promise, because that is the one the customer's next payment moves.
  * billing returns them cheapest-bar-first, so the first row is that one. The rest
  * are not listed: a list of four promises in a 224px rail is a ledger, and the
  * ledger is the Billing page this card links to.
+ *
+ * The unlock sentence sits behind the (i) rather than under the bar: it names a
+ * second dollar figure, and two figures stacked in a 224px rail read as an amount
+ * owed beside the amount coming. The heading now says what the money IS ("Free
+ * $347 credits"), so the sentence is the detail, not the statement.
  *
  * That split is the goal-gradient reading (Hull; Kivetz and Nunes on endowed
  * progress, and every loyalty counter that says "16 stars until your next
@@ -104,16 +109,21 @@ function NextPromise({
     >
       <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 leading-snug">
         <span aria-hidden="true">🎁</span>
-        {formatBillingCentsWhole(headlineCents(totalCents, promise))} on the way
+        <span className="min-w-0">
+          Free {formatBillingCentsWhole(headlineCents(totalCents, promise))} credits on the way
+        </span>
+        <span className="ml-auto shrink-0">
+          <InfoTooltip
+            tip={promiseUnlockLine(formatBillingCentsWhole(promise.amountCents), remaining)}
+            placement="bottom"
+          />
+        </span>
       </p>
       {width !== null && (
         <div className="h-1 w-full overflow-hidden rounded-full bg-white">
           <div className="h-full rounded-full bg-brand-500" style={{ width: `${width}%` }} />
         </div>
       )}
-      <p className="text-[11px] leading-snug text-gray-600">
-        {promiseUnlockLine(formatBillingCentsWhole(promise.amountCents), remaining)}
-      </p>
     </Link>
   );
 }

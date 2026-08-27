@@ -114,6 +114,14 @@ describe("the rewards card", () => {
     expect(card).not.toContain("more in payments");
   });
 
+  it("says what the money IS in the heading, and puts the unlock sentence behind the (i)", () => {
+    // Two dollar figures stacked in a 224px rail read as an amount owed beside
+    // the amount coming, so the heading states the gift and the sentence that
+    // names the bar moves into the tooltip.
+    expect(card).toContain("Free {formatBillingCentsWhole(headlineCents(totalCents, promise))} credits");
+    expect(card).toMatch(/tip=\{promiseUnlockLine\(/);
+  });
+
   it("states a promise in whole dollars, never a charge's cents", () => {
     // A promise is a whole-dollar offer; cents on it are noise in a 224px rail.
     // The charge formatter stays put on the Billing page, where an exact amount
