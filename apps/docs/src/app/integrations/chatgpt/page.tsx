@@ -1,13 +1,14 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 
 export const metadata = docsMetadata("/integrations/chatgpt");
 
 export default function ChatGPTIntegrationPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-3">ChatGPT</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">{docsHeading("/integrations/chatgpt")}</h1>
       <p className="text-base text-gray-500 mb-8">
-        Use distribute with ChatGPT Plus, Pro, Team, or Enterprise.
+        Use distribute.you with ChatGPT Plus, Pro, Team, or Enterprise.
       </p>
 
       <div className="prose">
@@ -25,7 +26,7 @@ export default function ChatGPTIntegrationPage() {
 
         <h2>Option 2: REST API via GPT Actions</h2>
         <p>
-          You can also create a custom GPT that calls the distribute REST API:
+          You can also create a custom GPT that calls the distribute.you REST API:
         </p>
         <ol>
           <li>Create a new GPT in ChatGPT</li>
@@ -37,7 +38,7 @@ export default function ChatGPTIntegrationPage() {
         <h2>Requirements</h2>
         <ul>
           <li>ChatGPT Plus, Pro, Team, or Enterprise subscription</li>
-          <li>distribute API key (get one at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you</a>)</li>
+          <li>distribute.you API key (get one at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you</a>)</li>
         </ul>
       </div>
     </div>

@@ -1,13 +1,14 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 
 export const metadata = docsMetadata("/integrations/claude-desktop");
 
 export default function ClaudeDesktopIntegrationPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-3">Claude Desktop</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">{docsHeading("/integrations/claude-desktop")}</h1>
       <p className="text-base text-gray-500 mb-8">
-        Add distribute tools to the Claude Desktop app.
+        Add distribute.you tools to the Claude Desktop app.
       </p>
 
       <div className="prose">
@@ -18,7 +19,7 @@ export default function ClaudeDesktopIntegrationPage() {
           <li><strong>Windows:</strong> <code>%APPDATA%\Claude\claude_desktop_config.json</code></li>
         </ul>
 
-        <p>Add the distribute MCP server:</p>
+        <p>Add the distribute.you MCP server:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
   "mcpServers": {
@@ -39,12 +40,12 @@ export default function ClaudeDesktopIntegrationPage() {
         <h2>Verify</h2>
         <p>Ask Claude:</p>
         <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg border border-gray-200">
-          <code>&quot;Check my distribute connection&quot;</code>
+          <code>&quot;Check my distribute.you connection&quot;</code>
         </pre>
 
         <h2>Usage</h2>
         <p>
-          Once connected, you can use all 35 distribute tools from Claude Desktop.
+          Once connected, you can use all 35 distribute.you tools from Claude Desktop.
           See the <a href="/mcp/tools">Tools Reference</a> for the full list.
         </p>
       </div>

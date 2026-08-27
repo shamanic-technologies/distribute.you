@@ -5,6 +5,8 @@ import {
   DOCS_ROUTES,
   MCP_ENDPOINT_URL,
   OPENAPI_DOCUMENT_URL,
+  PRODUCT_NAME,
+  docsHeading,
   docsUrl,
 } from "../../src/lib/docs-routes";
 
@@ -82,6 +84,83 @@ describe("the product name appears once per title", () => {
       "utf8",
     );
     expect(helper).toContain("namesProduct ? { absolute: route.title }");
+  });
+});
+
+describe("headings name the product, and match the title list", () => {
+  const files = pageFiles(APP_DIR);
+
+  it.each(files)("%s renders its h1 from docsHeading", (file) => {
+    const src = readFileSync(file, "utf8");
+    // A hand-written h1 is how the tab and the first heading on the page came
+    // to say two different things, and how a heading ends up naming a word
+    // (`Brands`) rather than the product a search would be typed against.
+    expect(src).toContain(`docsHeading("${routeOf(file)}")`);
+    expect(src).not.toMatch(/<h1[^>]*>\s*[A-Za-z]/);
+  });
+
+  it.each(DOCS_ROUTES)("$path builds a heading that names the product", (route) => {
+    expect(docsHeading(route.path)).toContain(PRODUCT_NAME);
+  });
+
+  it("never says the product name twice in one heading", () => {
+    for (const route of DOCS_ROUTES) {
+      const heading = docsHeading(route.path);
+      expect(heading.split(PRODUCT_NAME).length - 1).toBe(1);
+    }
+  });
+});
+
+/**
+ * The bare word is an ordinary English verb and an npm package somebody else
+ * owns, so it cannot rank and it cannot disambiguate. Anything a reader or a
+ * crawler is shown says `distribute.you`.
+ *
+ * What stays bare is an IDENTIFIER: renaming it breaks something. The MCP
+ * server name becomes part of a client's tool names, the npm scope is a
+ * published package, the rest are a file name, a URL path and a social handle.
+ */
+describe("the product is never named by the bare word", () => {
+  const IDENTIFIERS = [
+    "distribute.you",
+    "@distribute/",
+    "@distribute_you",
+    "logo-distribute",
+    "distribute-openapi",
+    "mcp add distribute ",
+    '"distribute": {',
+    "&quot;distribute&quot;",
+    "<code>distribute</code>",
+    "webhooks/distribute",
+    "shamanic-technologies/distribute",
+  ];
+
+  function sourceFiles(dir: string): string[] {
+    const found: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) {
+        found.push(...sourceFiles(full));
+      } else if (/\.(tsx?|txt)$/.test(entry)) {
+        found.push(full);
+      }
+    }
+    return found;
+  }
+
+  const files = [
+    ...sourceFiles(join(__dirname, "../../src")),
+    ...sourceFiles(join(__dirname, "../../public")),
+  ];
+
+  it.each(files)("%s spells the product name in full", (file) => {
+    let src = readFileSync(file, "utf8");
+    for (const id of IDENTIFIERS) src = src.replaceAll(id, "");
+    expect(src).not.toMatch(/\bdistribute\b/);
+  });
+
+  it.each(files)("%s carries no em-dash", (file) => {
+    expect(readFileSync(file, "utf8")).not.toContain("\u2014");
   });
 });
 

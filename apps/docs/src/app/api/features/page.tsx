@@ -1,4 +1,5 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata = docsMetadata("/api/features");
@@ -36,7 +37,7 @@ export default function FeaturesApiPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">Features</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/api/features")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
@@ -85,7 +86,7 @@ GET /v1/features/:featureSlug/stats?groupBy=campaign&brandId=brand_abc123
 X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
         <p>
-          Returns performance statistics for a feature — total cost, completed runs, active
+          Returns performance statistics for a feature: total cost, completed runs, active
           campaigns, and custom stats. Use <code>groupBy</code> to break down by brand, campaign,
           or workflow.
         </p>
@@ -104,7 +105,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
 X-API-Key: dist_YOUR_KEY`}</code>
         </pre>
         <p>
-          Returns the stats key registry — maps stat keys to their type (<code>count</code>,{" "}
+          Returns the stats key registry: maps stat keys to their type (<code>count</code>,{" "}
           <code>rate</code>, <code>currency</code>) and human-readable label.
         </p>
 

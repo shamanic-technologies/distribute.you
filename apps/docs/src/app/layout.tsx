@@ -100,13 +100,13 @@ const softwareJsonLd = {
   name: "distribute.you",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  description: "AI-powered distribution automation platform. Automate sales outreach, journalist pitches, and hiring campaigns. Provide your URL and budget — distribute.you handles the rest.",
+  description: "AI-powered distribution automation platform. Automate sales outreach, journalist pitches, and hiring campaigns. Provide your URL and budget, and distribute.you handles the rest.",
   url: "https://distribute.you",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
-    description: "Transparent variable costs — pay only for what you use, no half-used subscriptions. Live unit prices at distribute.you/pricing.",
+    description: "Transparent variable costs: pay only for what you use, no half-used subscriptions. Live unit prices at distribute.you/pricing.",
   },
   featureList: [
     "Sales cold email automation",
@@ -170,7 +170,7 @@ const faqJsonLd = {
       name: "How do I install the distribute.you MCP server?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "For Claude Code: run 'claude mcp add distribute.you -- npx @distribute/mcp --api-key=YOUR_KEY'. For Claude Desktop or Cursor, add the MCP server config to your configuration file. See docs.distribute.you/mcp/installation for details.",
+        text: "For Claude Code: run 'claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY'. For Claude Desktop or Cursor, add the MCP server config to your configuration file. See docs.distribute.you/mcp/installation for details.",
       },
     },
     {
@@ -186,7 +186,7 @@ const faqJsonLd = {
       name: "How much does distribute.you cost?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute.you charges transparent variable costs — every unit price we re-bill is published live at distribute.you/pricing, grouped by provider and cost type. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). No fixed subscription you only half-use. See your cost breakdown in real-time in the dashboard.",
+        text: "distribute.you charges transparent variable costs: every unit price we re-bill is published live at distribute.you/pricing, grouped by provider and cost type. You buy credits and only pay for what you use (AI calls, lead enrichment, email sends). No fixed subscription you only half-use. See your cost breakdown in real-time in the dashboard.",
       },
     },
   ],

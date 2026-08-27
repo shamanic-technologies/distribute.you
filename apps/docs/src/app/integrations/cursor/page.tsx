@@ -1,13 +1,14 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 
 export const metadata = docsMetadata("/integrations/cursor");
 
 export default function CursorIntegrationPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-3">Cursor</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">{docsHeading("/integrations/cursor")}</h1>
       <p className="text-base text-gray-500 mb-8">
-        Connect distribute to Cursor IDE.
+        Connect distribute.you to Cursor IDE.
       </p>
 
       <div className="prose">
@@ -25,17 +26,17 @@ export default function CursorIntegrationPage() {
         </pre>
 
         <h2>Restart</h2>
-        <p>Restart Cursor after saving. The distribute tools will appear in Agent mode.</p>
+        <p>Restart Cursor after saving. The distribute.you tools will appear in Agent mode.</p>
 
         <h2>Verify</h2>
         <p>In Cursor&apos;s Agent mode, ask:</p>
         <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg border border-gray-200">
-          <code>&quot;Check my distribute connection&quot;</code>
+          <code>&quot;Check my distribute.you connection&quot;</code>
         </pre>
 
         <h2>Usage</h2>
         <p>
-          Use all 35 distribute tools from Cursor&apos;s Agent mode.
+          Use all 35 distribute.you tools from Cursor&apos;s Agent mode.
           See the <a href="/mcp/tools">Tools Reference</a> for the full list.
         </p>
       </div>

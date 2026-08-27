@@ -1,11 +1,12 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 
 export const metadata = docsMetadata("/api/webhooks");
 
 export default function WebhooksApiPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-3">Webhooks</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">{docsHeading("/api/webhooks")}</h1>
       <p className="text-base text-gray-500 mb-8">
         Receive real-time notifications when campaign events occur.
       </p>
@@ -176,7 +177,7 @@ X-Distribute-Signature: sha256=xxxxx
         <h2>Verifying Signatures</h2>
         <p>
           All webhooks include an <code>X-Distribute-Signature</code> header.
-          Verify it to ensure the request is from distribute:
+          Verify it to ensure the request is from distribute.you:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`import crypto from 'crypto';

@@ -1,11 +1,12 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
 export const metadata = docsMetadata("/api");
 
-const LLM_INSTRUCTIONS = `# distribute REST API
+const LLM_INSTRUCTIONS = `# distribute.you REST API
 
 ## Base URL
 https://api.distribute.you/v1
@@ -21,20 +22,20 @@ import { DistributeClient } from "@distribute/api-client";
 const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
 
 ## Endpoint Groups
-- /me, /api-keys — Identity
-- /brands — Brand management
-- /features — Automation features and stats
-- /campaigns — Campaign CRUD and stats
-- /workflows — Workflow inspection
-- /leads — Lead listing
-- /emails — Email listing
-- /outlets — Media outlet discovery
-- /journalists — Journalist discovery
-- /discoveries — Article discovery
-- /press-kits — Press kit generation
-- /billing — Balance and transactions
-- /runs/stats — Cost analytics
-- /email-gateway — Delivery stats`;
+- /me, /api-keys: Identity
+- /brands: Brand management
+- /features: Automation features and stats
+- /campaigns: Campaign CRUD and stats
+- /workflows: Workflow inspection
+- /leads: Lead listing
+- /emails: Email listing
+- /outlets: Media outlet discovery
+- /journalists: Journalist discovery
+- /discoveries: Article discovery
+- /press-kits: Press kit generation
+- /billing: Balance and transactions
+- /runs/stats: Cost analytics
+- /email-gateway: Delivery stats`;
 
 const API_SECTIONS = [
   { name: "Brands", href: "/api/brands", description: "Create brands from URLs, extract structured data with AI" },
@@ -56,7 +57,7 @@ export default function ApiOverviewPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">distribute.you API Reference</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/api")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-4">
@@ -110,8 +111,8 @@ const { brands } = await client.listBrands();`}</code>
             <tr><th>Code</th><th>Meaning</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>400</code></td><td>Bad request — invalid parameters</td></tr>
-            <tr><td><code>401</code></td><td>Unauthorized — invalid or missing API key</td></tr>
+            <tr><td><code>400</code></td><td>Bad request: invalid parameters</td></tr>
+            <tr><td><code>401</code></td><td>Unauthorized: invalid or missing API key</td></tr>
             <tr><td><code>404</code></td><td>Resource not found</td></tr>
             <tr><td><code>429</code></td><td>Rate limit exceeded</td></tr>
             <tr><td><code>500</code></td><td>Internal server error</td></tr>

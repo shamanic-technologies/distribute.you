@@ -1,10 +1,11 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
 export const metadata = docsMetadata("/quickstart");
 
-const LLM_INSTRUCTIONS = `# distribute Quick Start
+const LLM_INSTRUCTIONS = `# distribute.you Quick Start
 
 ## 1. Create Account
 Sign up at dashboard.distribute.you/sign-up
@@ -17,7 +18,7 @@ Format: dist_xxxxxxxxxxxxxxxxxxxx
 claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
 
 ## 4. Test Connection
-Ask: "Check my distribute connection" → calls whoami tool
+Ask: "Check my distribute.you connection" → calls whoami tool
 
 ## 5. Create a Brand
 "Create a brand for acme.com" → calls brands_create
@@ -43,11 +44,11 @@ export default function QuickstartPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">Quick Start</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/quickstart")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Get up and running with distribute in 5 minutes.
+        Get up and running with distribute.you in 5 minutes.
       </p>
 
       <div className="prose">
@@ -70,7 +71,7 @@ export default function QuickstartPage() {
         </p>
 
         <h2>3. Install the MCP Server</h2>
-        <p>The fastest way to use distribute is from Claude Code:</p>
+        <p>The fastest way to use distribute.you is from Claude Code:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>
         </pre>
@@ -86,7 +87,7 @@ export default function QuickstartPage() {
         <h2>4. Test the Connection</h2>
         <p>In your AI client, ask:</p>
         <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg">
-          <code>&quot;Check my distribute connection&quot;</code>
+          <code>&quot;Check my distribute.you connection&quot;</code>
         </pre>
         <p>
           The AI will call the <code>whoami</code> tool and confirm your user ID,
@@ -99,7 +100,7 @@ export default function QuickstartPage() {
           <code>&quot;Create a brand for acme.com&quot;</code>
         </pre>
         <p>
-          distribute will scrape your website, analyze your business, and create a brand profile
+          distribute.you will scrape your website, analyze your business, and create a brand profile
           that powers all future campaigns.
         </p>
 
@@ -109,7 +110,7 @@ export default function QuickstartPage() {
           <code>&quot;Launch a cold email campaign for acme.com targeting CTOs at SaaS startups. $10/day budget.&quot;</code>
         </pre>
 
-        <p>distribute will:</p>
+        <p>distribute.you will:</p>
         <ol>
           <li>Use your brand profile to understand your business</li>
           <li>Find matching leads via Apollo</li>
@@ -120,9 +121,9 @@ export default function QuickstartPage() {
 
         <h2>What&apos;s Next?</h2>
         <ul>
-          <li><a href="/mcp">MCP Server</a> — Full MCP documentation and all 35 tools</li>
-          <li><a href="/api">API Reference</a> — REST API for programmatic access</li>
-          <li><a href="/integrations">Integrations</a> — Claude, Cursor, n8n, Zapier, Make.com</li>
+          <li><a href="/mcp">MCP Server</a>: Full MCP documentation and all 35 tools</li>
+          <li><a href="/api">API Reference</a>: REST API for programmatic access</li>
+          <li><a href="/integrations">Integrations</a>: Claude, Cursor, n8n, Zapier, Make.com</li>
         </ul>
       </div>
     </div>
