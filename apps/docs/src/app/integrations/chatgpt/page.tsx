@@ -1,5 +1,11 @@
 import { docsMetadata } from "@/lib/docs-metadata";
 import { docsHeading } from "@/lib/docs-routes";
+import { OPENAPI_DOCUMENT_URL } from "@/lib/docs-routes";
+import {
+  AUTH_HEADER_LINE,
+  MCP_SERVER_NAME,
+  MCP_URL,
+} from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/integrations/chatgpt");
 
@@ -19,8 +25,9 @@ export default function ChatGPTIntegrationPage() {
         <ol>
           <li>Go to <strong>Settings &rarr; Connectors</strong></li>
           <li>Click <strong>Add Custom Connector</strong></li>
-          <li>Enter the name: <code>distribute</code></li>
-          <li>Configure the MCP server command: <code>npx @distribute/mcp --api-key=YOUR_KEY</code></li>
+          <li>Enter the name: <code>{MCP_SERVER_NAME}</code></li>
+          <li>Enter the server URL: <code>{MCP_URL}</code></li>
+          <li>Add the header <code>{AUTH_HEADER_LINE}</code></li>
           <li>Save and enable</li>
         </ol>
 
@@ -31,8 +38,8 @@ export default function ChatGPTIntegrationPage() {
         <ol>
           <li>Create a new GPT in ChatGPT</li>
           <li>Add an Action pointing to <code>https://api.distribute.you/v1</code></li>
-          <li>Configure authentication with your API key in the <code>X-API-Key</code> header</li>
-          <li>Import the OpenAPI spec from <code>https://api.distribute.you/docs</code></li>
+          <li>Configure authentication with your API key in the <code>Authorization</code> header</li>
+          <li>Import the OpenAPI document from <code>{OPENAPI_DOCUMENT_URL}</code></li>
         </ol>
 
         <h2>Requirements</h2>

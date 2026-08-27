@@ -9,6 +9,22 @@ import {
   docsHeading,
   docsUrl,
 } from "../../src/lib/docs-routes";
+import {
+  API_KEY_PREFIX,
+  AUTH_HEADER_LINE,
+  AUTH_HEADER_NAME,
+  CLAUDE_CODE_MCP_COMMAND,
+  CLI_NPM_URL,
+  CLI_PACKAGE,
+  DEVELOPER_HUB_URL,
+  MCP_HTTP_CONFIG,
+  MCP_REMOTE_BRIDGE_PACKAGE,
+  MCP_STDIO_BRIDGE_CONFIG,
+  MCP_TOOLS,
+  MCP_TOOL_COUNT,
+  MCP_URL,
+  mcpToolsByCategory,
+} from "../../src/lib/developer-surfaces";
 
 /**
  * The Is Agentic audit scored this domain PARTIAL on two counts: developer
@@ -127,7 +143,9 @@ describe("the product is never named by the bare word", () => {
     "@distribute_you",
     "logo-distribute",
     "distribute-openapi",
-    "mcp add distribute ",
+    "mcp add --transport http distribute ",
+    'MCP_SERVER_NAME = "distribute"',
+    "distribute ops",
     '"distribute": {',
     "&quot;distribute&quot;",
     "<code>distribute</code>",
@@ -235,5 +253,196 @@ describe("the OpenAPI document and the MCP server have a predictable page", () =
       "utf8",
     );
     expect(sidebar).toContain('href: "/openapi"');
+  });
+});
+
+/**
+ * Everything below is about a developer resource being USABLE once a name
+ * search has surfaced it.
+ *
+ * The audit item this file already guards is "developer resources nobody can
+ * find by name". Finding them is necessary and not sufficient: for months the
+ * pages that did surface printed an npx command for an MCP package that has
+ * never existed on npm, an auth header the API answers 401 to, and a catalogue
+ * of thirty-five MCP tools the server does not expose. A developer who found
+ * the docs pasted a command that failed, then a header that was rejected.
+ *
+ * Each literal below was checked against the thing that answers for it: the
+ * npm registry for a package, the deployed openapi.json for the auth scheme,
+ * and a connected client for the tool list. None of them can be checked by
+ * rendering a page, which is why they are pinned here.
+ */
+describe("nothing on this site prints a command that cannot run", () => {
+  function textFiles(dir: string): string[] {
+    const found: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) {
+        found.push(...textFiles(full));
+      } else if (/\.(tsx?|txt)$/.test(entry)) {
+        found.push(full);
+      }
+    }
+    return found;
+  }
+
+  const files = [
+    ...textFiles(join(__dirname, "../../src")),
+    ...textFiles(join(__dirname, "../../public")),
+  ];
+
+  // Every one of these 404s or is refused. A comment naming one would pass a
+  // reader and fail this guard, so the module that explains them describes
+  // them instead of spelling them.
+  const RETIRED = [
+    "@distribute/mcp", // npm 404: this package has never been published
+    "@distribute/api-client", // npm 404
+    "DistributeClient", // the client class of that package
+    "X-API-Key", // api-service's admin path, not the org-key scheme
+    "dist_", // no key has ever carried this prefix
+    "DISTRIBUTE_API_KEY", // a flag on the package that does not exist
+    "35 tools",
+  ];
+
+  it.each(files)("%s prints no retired command, package or header", (file) => {
+    const src = readFileSync(file, "utf8");
+    for (const retired of RETIRED) {
+      expect(src).not.toContain(retired);
+    }
+  });
+});
+
+describe("the developer surfaces are spelled once", () => {
+  const files = [
+    join(APP_DIR, "authentication/page.tsx"),
+    join(APP_DIR, "quickstart/page.tsx"),
+    join(APP_DIR, "mcp/page.tsx"),
+    join(APP_DIR, "mcp/installation/page.tsx"),
+    join(APP_DIR, "mcp/tools/page.tsx"),
+    join(APP_DIR, "api/page.tsx"),
+    join(APP_DIR, "openapi/page.tsx"),
+  ];
+
+  it.each(files)("%s reads them from developer-surfaces, never its own copy", (file) => {
+    const src = readFileSync(file, "utf8");
+    expect(src).toContain('from "@/lib/developer-surfaces"');
+    // A hand-written header line is how twenty-two files drifted together.
+    expect(src).not.toMatch(/Authorization: Bearer distrib\.usr_/);
+  });
+
+  it("names the scheme the deployed OpenAPI document declares", () => {
+    expect(AUTH_HEADER_NAME).toBe("Authorization");
+    expect(API_KEY_PREFIX).toBe("distrib.usr_");
+    expect(AUTH_HEADER_LINE).toBe("Authorization: Bearer distrib.usr_YOUR_KEY");
+  });
+
+  it("names the one npm package this product publishes", () => {
+    expect(CLI_PACKAGE).toBe("@distribute.you/cli");
+    expect(CLI_NPM_URL).toBe(`https://www.npmjs.com/package/${CLI_PACKAGE}`);
+  });
+
+  it("registers the MCP server as a remote endpoint, not a subprocess", () => {
+    expect(MCP_URL).toBe("https://mcp.distribute.you/mcp");
+    expect(CLAUDE_CODE_MCP_COMMAND).toContain("--transport http");
+    expect(CLAUDE_CODE_MCP_COMMAND).toContain(MCP_URL);
+    expect(CLAUDE_CODE_MCP_COMMAND).toContain(AUTH_HEADER_LINE);
+    expect(MCP_HTTP_CONFIG).toContain(`"url": "${MCP_URL}"`);
+    expect(MCP_HTTP_CONFIG).not.toContain('"command"');
+    // The stdio path is a bridge to the same URL, never a package of ours.
+    expect(MCP_STDIO_BRIDGE_CONFIG).toContain(MCP_REMOTE_BRIDGE_PACKAGE);
+    expect(MCP_STDIO_BRIDGE_CONFIG).toContain(MCP_URL);
+  });
+});
+
+describe("the MCP tool catalogue is the one the server exposes", () => {
+  it("names six prefixed tools, and the count is read rather than written", () => {
+    expect(MCP_TOOL_COUNT).toBe(MCP_TOOLS.length);
+    expect(MCP_TOOLS.map((t) => t.name).sort()).toEqual([
+      "distribute_campaign_stats",
+      "distribute_list_brands",
+      "distribute_list_campaigns",
+      "distribute_list_workflows",
+      "distribute_status",
+      "distribute_suggest_icp",
+    ]);
+  });
+
+  it("groups every tool, losing none", () => {
+    const grouped = mcpToolsByCategory().flatMap((g) => g.tools);
+    expect(grouped).toHaveLength(MCP_TOOLS.length);
+    expect(new Set(grouped.map((t) => t.name)).size).toBe(MCP_TOOLS.length);
+  });
+
+  it("is rendered from that list, not restated on the page", () => {
+    const src = readFileSync(join(APP_DIR, "mcp/tools/page.tsx"), "utf8");
+    expect(src).toContain("mcpToolsByCategory()");
+    expect(src).not.toContain("const TOOL_CATEGORIES = [");
+  });
+});
+
+/**
+ * A REST route these docs print has to be a route the API serves. The four
+ * pages that documented outlets, journalists, articles and press kits were
+ * removed because none of those paths is in the deployed OpenAPI document:
+ * that surface left the product, and the documentation was the straggler.
+ */
+describe("no page documents a REST surface the API does not serve", () => {
+  const RETIRED_PATHS = [
+    "/v1/outlets",
+    "/v1/journalists",
+    "/v1/discoveries",
+    "/v1/press-kits",
+    "/v1/billing/balance",
+  ];
+
+  const files = pageFiles(APP_DIR);
+
+  it.each(files)("%s prints none of the retired paths", (file) => {
+    const src = readFileSync(file, "utf8");
+    for (const path of RETIRED_PATHS) {
+      expect(src).not.toContain(path);
+    }
+  });
+
+  it("keeps no route, sidebar entry or llms.txt line for the removed pages", () => {
+    const sidebar = readFileSync(join(__dirname, "../../src/components/sidebar.tsx"), "utf8");
+    const llms = readFileSync(join(__dirname, "../../public/llms.txt"), "utf8");
+    for (const path of ["/api/outlets", "/api/journalists", "/api/articles", "/api/press-kits"]) {
+      expect(DOCS_ROUTES.map((r) => r.path)).not.toContain(path);
+      expect(sidebar).not.toContain(path);
+      expect(llms).not.toContain(path);
+    }
+  });
+});
+
+describe("the two domains point at each other", () => {
+  it("llms.txt names the apex hub, the CLI and the MCP tools", () => {
+    const llms = readFileSync(join(__dirname, "../../public/llms.txt"), "utf8");
+    expect(llms).toContain(DEVELOPER_HUB_URL);
+    expect(llms).toContain(CLI_NPM_URL);
+    for (const tool of MCP_TOOLS) expect(llms).toContain(tool.name);
+  });
+
+  it("every page carries a crawlable link to the hub, through the sidebar", () => {
+    const sidebar = readFileSync(join(__dirname, "../../src/components/sidebar.tsx"), "utf8");
+    expect(sidebar).toContain("DEVELOPER_HUB_URL");
+    expect(sidebar).toContain("OPENAPI_DOCUMENT_URL");
+    expect(sidebar).toContain("MCP_URL");
+    expect(sidebar).toContain("CLI_NPM_URL");
+  });
+
+  it("declares the API, the OpenAPI document and the MCP server as structured data", () => {
+    const layout = readFileSync(join(APP_DIR, "layout.tsx"), "utf8");
+    expect(layout).toContain("developerSurfacesJsonLd");
+    expect(layout).toContain('"@type": "WebAPI"');
+    expect(layout).toContain('"@type": "APIReference"');
+    // A name search matches on a name, so every node carries the product's.
+    for (const marker of [
+      'name: "distribute.you API"',
+      'name: "distribute.you OpenAPI document"',
+      'name: "distribute.you MCP server"',
+    ]) {
+      expect(layout).toContain(marker);
+    }
   });
 });

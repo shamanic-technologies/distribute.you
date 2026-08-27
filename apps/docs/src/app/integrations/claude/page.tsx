@@ -1,26 +1,34 @@
 import { docsMetadata } from "@/lib/docs-metadata";
 import { docsHeading } from "@/lib/docs-routes";
 import { CopyForLLM } from "@/components/copy-for-llm";
+import {
+  CLAUDE_CODE_MCP_COMMAND,
+  MCP_TOOLS,
+  MCP_TOOL_COUNT,
+  MCP_URL,
+} from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/integrations/claude");
 
 const LLM_INSTRUCTIONS = `# distribute.you + Claude Code
 
-## Install
-claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
+## Connect
+The server is hosted at ${MCP_URL}. Nothing to install.
+${CLAUDE_CODE_MCP_COMMAND}
 
 ## Verify
-Ask: "Check my distribute.you connection" → whoami tool
+Ask: "Check my distribute.you connection" -> distribute_status tool
 
-## Example Prompts
-- "Create a brand for acme.com"
-- "Launch a cold email campaign targeting CTOs, $10/day budget"
-- "Show stats for my latest campaign"
-- "Generate a press kit for my brand"
-- "What's my billing balance?"
+## Example prompts
+- "Show me all my brands"
+- "Read acme.com and suggest who I should be targeting"
+- "Which of my campaigns are still running?"
+- "What did campaign camp_abc123 produce, and what did it cost?"
+- "Which workflows can I run?"
 
-## 35 tools available
-See full list: docs.distribute.you/mcp/tools`;
+## Tools (${MCP_TOOL_COUNT} total)
+${MCP_TOOLS.map((t) => t.name).join(", ")}
+Full list: docs.distribute.you/mcp/tools`;
 
 export default function ClaudeIntegrationPage() {
   return (
@@ -34,13 +42,14 @@ export default function ClaudeIntegrationPage() {
       </p>
 
       <div className="prose">
-        <h2>Install</h2>
+        <h2>Connect</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>
+          <code>{CLAUDE_CODE_MCP_COMMAND}</code>
         </pre>
         <p>
-          This registers <code>@distribute/mcp</code> as a local MCP server.
-          Claude Code will have access to 35 tools for managing your entire distribution pipeline.
+          The server is hosted at <code>{MCP_URL}</code> and speaks Streamable HTTP, so this
+          registers a URL rather than installing anything. Claude Code then has the{" "}
+          {MCP_TOOL_COUNT} distribute.you tools.
         </p>
 
         <h2>Verify</h2>
@@ -48,36 +57,40 @@ export default function ClaudeIntegrationPage() {
         <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg border border-gray-200">
           <code>&quot;Check my distribute.you connection&quot;</code>
         </pre>
-        <p>Claude will call the <code>whoami</code> tool and show your user ID and org ID.</p>
+        <p>
+          It calls the <code>distribute_status</code> tool and shows your user id and org id.
+        </p>
 
         <h2>Usage</h2>
-        <p>Just describe what you want in natural language:</p>
+        <p>Describe what you want in natural language:</p>
         <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg border border-gray-200 overflow-x-auto">
-          <code>{`"Create a brand for acme.com and launch a cold email campaign
-targeting CTOs at SaaS startups with $50/day budget"`}</code>
+          <code>{`"Read acme.com, suggest who I should be targeting,
+then show me what my running campaigns are costing"`}</code>
         </pre>
 
         <p>Claude Code will:</p>
         <ol>
-          <li>Call <code>brands_create</code> with your URL</li>
-          <li>Call <code>features_list</code> to find the right feature</li>
-          <li>Call <code>workflows_list</code> to pick the best workflow</li>
-          <li>Call <code>campaigns_create</code> with your parameters</li>
+          <li>Call <code>distribute_suggest_icp</code> with the website</li>
+          <li>Call <code>distribute_list_campaigns</code> to find what is running</li>
+          <li>Call <code>distribute_campaign_stats</code> for each one</li>
         </ol>
+        <p>
+          Creating a brand or launching a campaign is not one of these tools. That is a call to the{" "}
+          <a href="/api">REST API</a>, or a signup in the dashboard.
+        </p>
 
-        <h2>Example Prompts</h2>
+        <h2>Example prompts</h2>
         <ul>
           <li>&quot;Show me all my brands&quot;</li>
-          <li>&quot;What workflows are available for journalist outreach?&quot;</li>
+          <li>&quot;Which workflows can I run?&quot;</li>
           <li>&quot;Get the stats for campaign camp_abc123&quot;</li>
-          <li>&quot;Generate a press kit highlighting our latest product launch&quot;</li>
-          <li>&quot;How much have I spent this month?&quot;</li>
-          <li>&quot;List all journalists discovered for my brand&quot;</li>
+          <li>&quot;Read acme.com and tell me who to target&quot;</li>
+          <li>&quot;Which of my campaigns stopped?&quot;</li>
         </ul>
 
-        <h2>All 35 Tools</h2>
+        <h2>All {MCP_TOOL_COUNT} tools</h2>
         <p>
-          See the full <a href="/mcp/tools">Tools Reference</a> for detailed descriptions.
+          See the full <a href="/mcp/tools">Tools Reference</a> for what each one does.
         </p>
       </div>
     </div>

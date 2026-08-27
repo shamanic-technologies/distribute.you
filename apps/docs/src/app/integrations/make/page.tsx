@@ -18,7 +18,7 @@ export default function MakeIntegrationPage() {
           <li>Add an HTTP module to your scenario</li>
           <li>Select <strong>Make a request</strong></li>
           <li>Set the URL to <code>https://api.distribute.you/v1/...</code></li>
-          <li>Add a header: <code>X-API-Key: dist_YOUR_KEY</code></li>
+          <li>Add a header: <code>Authorization: Bearer distrib.usr_YOUR_KEY</code></li>
         </ol>
 
         <h2>Webhook Trigger</h2>

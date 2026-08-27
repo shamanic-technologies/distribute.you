@@ -6,6 +6,15 @@ import {
   OPENAPI_EXPLORER_URL,
   docsHeading,
 } from "@/lib/docs-routes";
+import {
+  AUTH_HEADER_LINE,
+  CLI_NPM_URL,
+  CLI_PACKAGE,
+  DEVELOPER_HUB_URL,
+  MCP_REMOTE_BRIDGE_PACKAGE,
+  MCP_TOOLS,
+  MCP_TOOL_COUNT,
+} from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/openapi");
 
@@ -22,21 +31,24 @@ const LLM_INSTRUCTIONS = `# distribute.you machine-readable entry points
 ## OpenAPI document
 ${OPENAPI_DOCUMENT_URL}
 Covers every REST route under https://api.distribute.you/v1.
-Authenticate with the header: X-API-Key: dist_YOUR_KEY
+Authenticate with the header: ${AUTH_HEADER_LINE}
 
 ## Interactive API explorer
 ${OPENAPI_EXPLORER_URL}
 
-## MCP server (Streamable HTTP)
+## MCP server (Streamable HTTP, hosted)
 ${MCP_ENDPOINT_URL}
-35 tools for brands, campaigns, workflows, leads, outlets, journalists,
-articles, press kits, billing and costs.
+${MCP_TOOL_COUNT} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}.
+Same header as the REST API. There is no local server to install.
 
-## Local MCP server (stdio)
-npx @distribute/mcp --api-key=dist_YOUR_KEY
+## Command line
+npx ${CLI_PACKAGE} --help
 
 ## Documentation index for agents
 https://docs.distribute.you/llms.txt
+
+## Every developer surface, on one page
+${DEVELOPER_HUB_URL}
 `;
 
 export default function OpenApiPage() {
@@ -75,19 +87,19 @@ export default function OpenApiPage() {
 
         <h2>MCP server</h2>
         <p>
-          The hosted server speaks Streamable HTTP and exposes 35 tools. Point
-          any MCP-compatible client at it:
+          The server is hosted, speaks Streamable HTTP and exposes {MCP_TOOL_COUNT} tools. Point any
+          MCP-compatible client at it, with the same header the REST API takes:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{MCP_ENDPOINT_URL}</code>
+          <code>{`${MCP_ENDPOINT_URL}
+${AUTH_HEADER_LINE}`}</code>
         </pre>
         <p>
-          Or run it locally over stdio, which is what the{" "}
-          <a href="/mcp/installation/">installation guide</a> configures:
+          There is no local server to install. The{" "}
+          <a href="/mcp/installation/">installation guide</a> configures each client against that
+          URL, bridging through <code>{MCP_REMOTE_BRIDGE_PACKAGE}</code> for a client that only
+          speaks stdio.
         </p>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>npx @distribute/mcp --api-key=dist_YOUR_KEY</code>
-        </pre>
 
         <h2>Authentication</h2>
         <p>
@@ -95,13 +107,20 @@ export default function OpenApiPage() {
           header. See <a href="/authentication/">Authentication</a>.
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>X-API-Key: dist_YOUR_KEY</code>
+          <code>{AUTH_HEADER_LINE}</code>
         </pre>
 
         <h2>Reading the docs as an agent</h2>
         <p>
           <a href="/llms.txt">docs.distribute.you/llms.txt</a> lists every page
           on this site with a one-line summary, plus the three URLs above.
+        </p>
+
+        <h2>Every developer surface</h2>
+        <p>
+          The API, this document, the explorer, the MCP server and the{" "}
+          <a href={CLI_NPM_URL}>{CLI_PACKAGE}</a> command line client are named together at{" "}
+          <a href={DEVELOPER_HUB_URL}>{DEVELOPER_HUB_URL}</a>.
         </p>
       </div>
     </div>
