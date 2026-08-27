@@ -238,7 +238,6 @@ describe("the page renders served fields and states the gap", () => {
     // One concept, one word, in identifiers and in prose alike.
     const surface = PAGE + read("src/lib/offer-funnels.ts");
     expect(surface).not.toMatch(/chain/i);
-    expect(SIDEBAR).toContain('id: "offer-funnels"');
   });
 
   it("renders money through the shared formatters and divides nothing", () => {
@@ -264,23 +263,23 @@ describe("the page renders served fields and states the gap", () => {
     expect(PAGE).toContain("row.partiallyCosted");
   });
 
-  it("says the rows do not add up to the offer", () => {
-    expect(PAGE).toContain("do not add up to the offer");
+
+  it("walks DOWN to a funnel's own page, which is where its campaigns live", () => {
+    // Offer > Funnel > Campaign. The offer no longer lists campaigns at all: it sells
+    // through funnels, and a campaign buys one leg of one of them.
+    expect(PAGE).toContain("`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`");
   });
 
-  it("walks DOWN to the campaigns carrying a funnel, as a narrowing not a route", () => {
-    // Campaigns live under the OFFER. Re-homing them under a funnel segment would
-    // break every link that already points at one, so the walk down is a query.
-    expect(PAGE).toContain("`${basePath}/campaigns?funnel=${encodeURIComponent(row.funnelKey)}`");
-  });
-
-  it("is reachable from the offer sidebar", () => {
-    expect(SIDEBAR).toContain('label: "Sales funnels"');
-    expect(SIDEBAR).toContain("`${basePath}/funnels`");
+  it("IS the offer Overview, so it needs no sidebar entry of its own", () => {
+    // An offer sells through funnels, so listing them IS what its Overview answers.
+    // A second entry pointing at the same table would be one surface named twice.
+    const OVERVIEW = read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
+    expect(OVERVIEW).toContain("<OfferFunnelsPage embedded />");
+    expect(SIDEBAR).not.toContain('label: "Sales funnels"');
   });
 });
 
-describe("the campaigns list narrows to one funnel when it was walked into", () => {
+describe("the campaigns list IS a funnel's page, narrowed by the route", () => {
   const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
   const CAMPAIGNS_PAGE = read("src/components/campaigns/campaigns-page.tsx");
   const TABLE = read("src/components/campaigns/campaigns-table.tsx");
@@ -302,7 +301,7 @@ describe("the campaigns list narrows to one funnel when it was walked into", () 
     // A list silently showing a third of itself reads as an offer with fewer
     // campaigns than it has.
     expect(CAMPAIGNS_PAGE).toContain("Showing the campaigns carrying");
-    expect(CAMPAIGNS_PAGE).toContain("Show every campaign");
+    expect(CAMPAIGNS_PAGE).toContain("All sales funnels");
   });
 
   it("lists every campaign when no funnel was named", () => {

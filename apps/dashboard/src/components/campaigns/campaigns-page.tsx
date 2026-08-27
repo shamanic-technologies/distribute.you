@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -70,8 +70,10 @@ export function CampaignsPage() {
   // display filter over rows the hook already fetched, so the walk down costs no
   // request; the header says which funnel, because a list silently showing a third
   // of itself reads as an offer with fewer campaigns than it has.
-  const searchParams = useSearchParams();
-  const funnelKey = searchParams?.get("funnel") ?? null;
+  // The funnel comes from the ROUTE (`.../funnels/[funnelKey]`), which is the only
+  // way in: an offer names no campaign of its own, so this page is always reached
+  // through the funnel whose campaigns it lists.
+  const funnelKey = params.funnelKey ? String(params.funnelKey) : null;
   const narrowedFunnel = funnelKey ? campaignFunnel(funnelKey as never) : null;
 
   // The rows the table renders, read through the SAME hook the table uses — so the
@@ -175,8 +177,8 @@ export function CampaignsPage() {
               </span>
               .
             </span>
-            <Link href={`${basePath}/campaigns`} className="text-brand-600 hover:underline">
-              Show every campaign
+            <Link href={basePath} className="text-brand-600 hover:underline">
+              All sales funnels
             </Link>
           </div>
         )}

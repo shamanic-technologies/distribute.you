@@ -25,7 +25,7 @@ describe("the offer is a route level of its own", () => {
       `${OFFER}/page.tsx`,
       `${OFFER}/audiences/page.tsx`,
       `${OFFER}/audiences/leads/page.tsx`,
-      `${OFFER}/campaigns/page.tsx`,
+      `${OFFER}/funnels/[funnelKey]/page.tsx`,
       `${OFFER}/campaigns/[id]/page.tsx`,
     ]) {
       expect(exists(rel), `${rel} must exist`).toBe(true);
@@ -50,13 +50,23 @@ describe("the offer is a route level of its own", () => {
     expect(overview).toContain("const offerId = params.offerId as string | undefined;");
   });
 
-  it("lists OFFERS at brand level and CAMPAIGNS at offer level", () => {
+  it("puts a funnel's campaigns under the FUNNEL, and names no campaign on the offer", () => {
+    // Offer > Funnel > Campaign. The offer level lists funnels; a funnel's own page
+    // lists the campaigns carrying it; a campaign keeps its existing URL, so every
+    // link that already points at one still resolves.
+    expect(exists(`${OFFER}/funnels/[funnelKey]/page.tsx`)).toBe(true);
+    expect(exists(`${OFFER}/campaigns/page.tsx`)).toBe(false);
+    expect(exists(`${OFFER}/campaigns/[id]/page.tsx`)).toBe(true);
+  });
+
+  it("lists OFFERS at brand level and SALES FUNNELS at offer level", () => {
     const overview = read(`${APP}/page.tsx`);
-    // A campaign sells one proposition, so naming campaigns on the brand would skip
-    // the level that owns them.
-    expect(overview).toContain('{offerId ? "Campaigns" : "Offers"}');
+    // An offer sells through funnels; a campaign buys one LEG of one of them and has
+    // no return of its own. Listing campaigns here would skip the level that has one.
+    expect(overview).toContain('{offerId ? "Sales funnels" : "Offers"}');
     expect(overview).toContain("<OffersTable");
-    expect(overview).toContain("<CampaignsTable");
+    expect(overview).toContain("<OfferFunnelsPage embedded />");
+    expect(overview).not.toContain("<CampaignsTable");
   });
 
   it("keeps the Top-3 audiences card off the brand Overview", () => {
@@ -81,9 +91,11 @@ describe("the sidebar knows the offer level", () => {
     expect(sidebar).toContain('type: "app" | "org" | "brand" | "offer" | "campaign"');
   });
 
-  it("moves Campaigns, Audiences and Leads onto the offer sidebar", () => {
+  it("moves Audiences and Leads onto the offer sidebar, and names no campaign", () => {
     const offerLevel = sidebar.slice(sidebar.indexOf("function OfferLevelSidebar"));
-    expect(offerLevel).toContain('href: `${basePath}/campaigns`');
+    // NOT campaigns: an offer sells through funnels, its Overview lists those, and a
+    // funnel's own page is where its campaigns live.
+    expect(offerLevel.slice(0, 2000)).not.toContain('href: `${basePath}/campaigns`');
     expect(offerLevel).toContain('href: `${basePath}/audiences`');
     expect(offerLevel).toContain('href: `${basePath}/audiences/leads`');
     // Identity is the brand's, so Brand Settings is not in here — it lives in

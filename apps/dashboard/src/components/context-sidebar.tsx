@@ -600,9 +600,6 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
   const brandPath = `/orgs/${orgId}/brands/${brandId}`;
   const basePath = `${brandPath}/offers/${offerId}`;
   const revenueOk = isRevenueFeature(featureSlug);
-  // Campaigns — GA. Shown to every customer on a revenue feature; the staff
-  // preview gate and its beta badge are gone.
-  const campaignsOk = isRevenueFeature(featureSlug);
   const defsReady = !featuresLoading;
 
   const items: SidebarItem[] = [
@@ -613,29 +610,6 @@ function OfferLevelSidebar({ orgId, brandId, offerId, pathname }: {
             label: "Overview",
             href: basePath,
             icon: <OverviewIcon />,
-          } satisfies SidebarItem,
-        ]
-      : []),
-    // The grain BETWEEN the offer and its campaigns. A campaign buys one leg of a
-    // funnel, so it has a cost per step and no return of its own: the return lives
-    // at the funnel, which is the smallest scope whose money divides into one.
-    ...(revenueOk
-      ? [
-          {
-            id: "offer-funnels",
-            label: "Sales funnels",
-            href: `${basePath}/funnels`,
-            icon: <FunnelsIcon />,
-          } satisfies SidebarItem,
-        ]
-      : []),
-    ...(campaignsOk
-      ? [
-          {
-            id: "campaigns",
-            label: "Campaigns",
-            href: `${basePath}/campaigns`,
-            icon: <CampaignsIcon />,
           } satisfies SidebarItem,
         ]
       : []),
