@@ -192,4 +192,30 @@ describe("the chain constrains its neighbours", () => {
     // Exactly how this read behaved before the chain existed — no fabricated cascade.
     expect(HOOK2).toContain("Partial<Record<LeadStageKey, boolean>>");
   });
+
+  it("says Won't happen, and states it once", () => {
+    // "Never" read as a blank somebody had not filled in yet rather than as the
+    // decision it is. The word is declared once so the button and the concluded pill
+    // cannot come to say it two ways; the WIRE value is untouched.
+    expect(SECTION).toContain('const WONT_LABEL = "Won\'t happen";');
+    expect(SECTION).toContain("label={WONT_LABEL}");
+    expect(SECTION).toContain('{state === "outcome" ? "Happened" : WONT_LABEL}');
+    expect(SECTION).not.toContain('label="Never"');
+    // The footer paragraph explaining the word is gone with it: a control that needs a
+    // sentence under the card to be understood is a control that reads wrong.
+    expect(SECTION).not.toContain("counts as no outcome");
+    expect(SECTION).not.toContain("NEVER_TIP");
+  });
+
+  it("states what our sending did ABOVE the chain, read-only, and the page passes it", () => {
+    // Delivery is measured, so there is nothing to state: no button, no picker. It
+    // sits above the funnel because every chain starts after the email arrives. The
+    // page half is what actually puts it on screen — a component that merely HANDLES
+    // the prop renders nothing at all if nobody passes it.
+    expect(SECTION).toContain("delivery?: ReactNode;");
+    expect(SECTION).toContain("{delivery != null && (");
+    expect(SECTION).toContain("{delivery}</span>");
+    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 900);
+    expect(call).toContain("delivery={<StatusBadge status={statusOf(selectedLead)} />}");
+  });
 });

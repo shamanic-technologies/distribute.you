@@ -11,13 +11,27 @@ import {
 import { SALES_FUNNELS } from "../src/lib/sales-funnels";
 
 describe("leadFunnelStages", () => {
-  it("covers EVERY step label of EVERY funnel in the catalogue", () => {
+  it("covers EVERY step of EVERY funnel in the catalogue, in order", () => {
     // The guard that matters: a funnel added to the catalogue, or a step label
     // reworded, must not silently drop a stage off the lead panel. A dropped stage
-    // is invisible — the panel just renders one control fewer.
+    // is invisible — the panel just renders one control fewer. Counted per funnel
+    // rather than compared label for label, because the panel is allowed to rename a
+    // step for its own surface (below) and a rename must not read as a drop.
     for (const def of SALES_FUNNELS) {
       const stages = leadFunnelStages(def.key);
-      expect(stages.map((s) => s.label)).toEqual(def.steps);
+      expect(stages).toHaveLength(def.steps.length);
+    }
+  });
+
+  it("says Replied where the catalogue prices a Positive reply, and copies every other step verbatim", () => {
+    // The ONE override, pinned by name so a second one has to be a deliberate edit
+    // here. Every other label is the catalogue's own word, so the panel and the
+    // settings card keep saying the same thing about the same leg.
+    for (const def of SALES_FUNNELS) {
+      const stages = leadFunnelStages(def.key);
+      expect(stages.map((s) => s.label)).toEqual(
+        def.steps.map((step) => (step === "Positive reply" ? "Replied" : step)),
+      );
     }
   });
 

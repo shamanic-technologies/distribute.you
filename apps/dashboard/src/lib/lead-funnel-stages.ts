@@ -113,7 +113,11 @@ export type LeadStageState = "pending" | "outcome" | "never";
 
 export interface LeadFunnelStage {
   key: LeadStageKey;
-  /** Verbatim from the funnel catalogue, so the panel and the settings card agree. */
+  /**
+   * What this panel calls the step. The funnel catalogue's own word by default, so the
+   * panel and the settings card agree; overridden only where the catalogue's pricing
+   * vocabulary reads wrong on a lead (see `STAGE_FOR_STEP`).
+   */
   label: string;
   /** What the terminal "this will never happen" reads as for THIS stage. */
   wontLabel: string;
@@ -126,14 +130,20 @@ export interface LeadFunnelStage {
  * drops. Matching on the label rather than restating each funnel's chain is what
  * keeps ONE chain: a catalogue edit reaches here without a second list to remember.
  */
-const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string }> = {
-  "Positive reply": { key: "positive_reply", wontLabel: "Never replying" },
-  "Website visit": { key: "website_visit", wontLabel: "Never visiting" },
-  "Meeting booked": { key: "meeting_booked", wontLabel: "Never booking" },
-  "Meeting attended": { key: "meeting_attended", wontLabel: "Never attending" },
-  Signup: { key: "signup", wontLabel: "Never signing up" },
-  "Form filled": { key: "form_submission", wontLabel: "Never filling it" },
-  "Paid client": { key: "sale", wontLabel: "Never buying" },
+const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
+  // `label` overrides what THIS panel calls the step, and exactly one step needs it.
+  // The catalogue names the first leg "Positive reply" because a funnel is priced leg
+  // by leg and that leg is the positive one; on a lead panel the row already carries
+  // the reply's own KIND beside it (Interested, Wants to book, Not interested), so
+  // "Positive reply" states as a heading the very thing the control next to it is
+  // there to answer. "Replied" is the fact; the picker says what kind.
+  "Positive reply": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
+  "Website visit": { key: "website_visit", wontLabel: "Won't visit" },
+  "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
+  "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },
+  Signup: { key: "signup", wontLabel: "Won't sign up" },
+  "Form filled": { key: "form_submission", wontLabel: "Won't fill it" },
+  "Paid client": { key: "sale", wontLabel: "Won't buy" },
 };
 
 /**
@@ -162,7 +172,7 @@ export function leadFunnelStages(funnelKey: SalesFunnelKeyWire | null | undefine
       console.error(`[lead-funnel-stages] no stage for step "${step}" on funnel ${def.key}`);
       continue;
     }
-    stages.push({ key: stage.key, label: step, wontLabel: stage.wontLabel });
+    stages.push({ key: stage.key, label: stage.label ?? step, wontLabel: stage.wontLabel });
   }
   return stages;
 }

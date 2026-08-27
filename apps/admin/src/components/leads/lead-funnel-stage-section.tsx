@@ -16,7 +16,7 @@
  * twice would be two affordances for one fact.
  */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
@@ -32,16 +32,17 @@ import {
 const HEADING_CLASS = "text-xs font-medium text-gray-500 uppercase tracking-wider";
 
 /**
- * Why the terminal statement is worth making, in the words of the person making it.
- * A reader who thinks "Never" is just a tidier way of leaving a stage blank will not
- * use it, and the distinction it creates (dead here vs still on its way) is the whole
- * reason a cost per acquisition means anything before a campaign has finished.
+ * The terminal statement, in the words a person uses about a deal that is not coming.
+ * "Never" read as an absence someone had not filled in yet; this reads as the decision
+ * it is. The wire value is still `never` — this is copy, not vocabulary.
  */
-const NEVER_TIP =
-  "Marks the lead as done at this stage. It counts as no outcome and moves no number, it just separates the leads that are finished from the ones still on their way. A funnel is a chain, so it also ends every step after it, and stating a later step reaches every step before it.";
+const WONT_LABEL = "Won't happen";
 
 const VALUE_TIP =
   "What the deal is worth. We record the amount you state instead of pricing it at your average customer, which is what every return and cost-per-customer figure is built on.";
+
+const DELIVERY_TIP =
+  "What our sending has already done with this lead, measured rather than stated: queued, sent, delivered, bounced, unsubscribed. Nobody edits it here, and it is not a step of the funnel below, which is about what the person did next.";
 
 const TRACKED_TIP =
   "We already recorded this automatically. You can still state it yourself, which is what to do when the automatic match missed, for example when someone signed up with a different address than the one we emailed.";
@@ -164,6 +165,7 @@ export function LeadFunnelStageSection({
   stages,
   states,
   tracked,
+  delivery,
   implied,
   values,
   pending,
@@ -178,6 +180,13 @@ export function LeadFunnelStageSection({
   states: Partial<Record<LeadStageKey, LeadStageState>>;
   /** Stages we ALSO measured automatically, so the row can say so. */
   tracked: Partial<Record<LeadStageKey, boolean>>;
+  /**
+   * Where our own sending got to, as the caller already renders it elsewhere. Read
+   * only: it is measured, so there is nothing for a person to state, and it sits ABOVE
+   * the chain because every funnel starts after the email arrives. Absent (a scope
+   * with no delivery evidence to hand) and the row simply does not render.
+   */
+  delivery?: ReactNode;
   /**
    * Stages the CHAIN concluded rather than a person stating. A funnel is a chain, so a
    * "never" ends every later step and an outcome reaches every earlier one. These are
@@ -218,6 +227,15 @@ export function LeadFunnelStageSection({
       <p className="text-xs text-gray-500 mb-3">{funnelName}</p>
 
       <ul className="divide-y divide-gray-100">
+        {delivery != null && (
+          <li className="flex items-center justify-between gap-3 py-2 first:pt-0">
+            <span className="text-sm text-gray-800 min-w-0 flex items-center gap-1.5">
+              <span className="truncate">Delivery</span>
+              <InfoTooltip tip={DELIVERY_TIP} />
+            </span>
+            <span className="flex items-center gap-1.5 shrink-0">{delivery}</span>
+          </li>
+        )}
         {stages.map((stage, stageIndex) => {
           const state = states[stage.key] ?? "pending";
           // Only the stage being written stays unlocked; every other row waits, because
@@ -263,7 +281,7 @@ export function LeadFunnelStageSection({
                         : "Follows from an earlier step you ended."
                     }
                   >
-                    {state === "outcome" ? "Happened" : "Never"}
+                    {state === "outcome" ? "Happened" : WONT_LABEL}
                   </span>
                 ) : writable && askingValueFor === stage.key ? (
                   <StageValueForm
@@ -310,7 +328,7 @@ export function LeadFunnelStageSection({
                       // honest surface for a refusal we can predict is not offering it.
                       disabled={locked || state === "never" || state === "outcome"}
                       busy={spinningOn("never")}
-                      label="Never"
+                      label={WONT_LABEL}
                       title={neverTitle}
                       tone="never"
                       onClick={() => onSet(stage.key as WritableStageKey, "never")}
@@ -324,11 +342,6 @@ export function LeadFunnelStageSection({
           );
         })}
       </ul>
-
-      <p className="text-xs text-gray-500 mt-3 flex items-center gap-1.5">
-        <span>Never counts as no outcome, and ends the steps after it.</span>
-        <InfoTooltip tip={NEVER_TIP} />
-      </p>
 
       {error && (
         <p className="text-xs text-red-600 mt-2" data-testid="lead-funnel-stage-error">
