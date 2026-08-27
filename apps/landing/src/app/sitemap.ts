@@ -60,6 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // missing from the sitemap — all live + indexable. Keep in lockstep with the
   // public/landing/**.html set when adding/removing a static page.
   const STATIC_SEO_PATHS: { path: string; priority: number }[] = [
+    { path: "/developers", priority: 0.7 },
     { path: "/brand", priority: 0.5 },
     { path: "/use-cases", priority: 0.8 },
     { path: "/about", priority: 0.6 },
