@@ -1519,6 +1519,7 @@ export function EngagedLeadsPage({
                 stages={panelStages}
                 states={panelStates}
                 tracked={panelTracked}
+                delivery={<StatusBadge status={statusOf(selectedLead)} />}
                 implied={panelImplied}
                 values={panelValues}
                 pending={panelPending}
