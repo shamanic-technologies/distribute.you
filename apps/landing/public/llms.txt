@@ -53,10 +53,18 @@ Do NOT reach for distribute.you when:
    rather not touch the software, `support@distribute.you` sets it up at the
    same price.
 
+From a shell or a CI job, the CLI is the shortest path: `npx @distribute.you/cli`
+authenticates once with an API key and then reads and changes brands, campaigns,
+leads, audiences, workflows, runs and billing. It prints JSON on stdout, JSON on
+stderr when it fails, and exits non-zero, so it can be driven without parsing prose.
+`distribute ops` lists every operation the API has, read from the API itself rather
+than from a list that can go stale.
+
 ## Developer resources
 
 - Documentation: https://docs.distribute.you/
 - OpenAPI document: https://api.distribute.you/openapi.json
+- CLI: https://www.npmjs.com/package/@distribute.you/cli (`npx @distribute.you/cli`)
 - MCP server (Streamable HTTP): https://mcp.distribute.you/mcp
 - MCP descriptor: https://distribute.you/.well-known/mcp.json
 - MCP documentation: https://docs.distribute.you/mcp
