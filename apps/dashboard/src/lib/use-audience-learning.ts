@@ -61,7 +61,7 @@ export function useAudienceLearning(
     campaignRows.forEach(({ campaign }, i) => {
       const rows = statsData[i]?.audiences ?? [];
       // What this campaign's funnel actually measures — a positive reply on the reply-led
-      // chains, a website visit on the visit-led ones. Never its terminal outcome: that
+      // funnels, a website visit on the visit-led ones. Never its terminal outcome: that
       // needs the brand's tracker live and is legitimately 0, which would hold every
       // audience in learning forever.
       const steps = stepsFor(null, campaign.funnelKey as SalesFunnelKeyWire | null);

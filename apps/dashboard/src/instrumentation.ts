@@ -605,7 +605,7 @@ A workflow DAG consists of **nodes** (steps), **edges** (execution order), and a
 ### Node types
 
 - **http.call** — Call any microservice. Config: \\\`{ service, method, path, body?, query?, headers? }\\\`. This is the recommended type for all service calls.
-- **condition** — If/then/else branching. Outgoing edges with a \\\`condition\\\` field define conditional branches (the target chain only executes when the JS expression is true). Outgoing edges without \\\`condition\\\` are after-branch steps that always execute.
+- **condition** — If/then/else branching. Outgoing edges with a \\\`condition\\\` field define conditional branches (the target branch only executes when the JS expression is true). Outgoing edges without \\\`condition\\\` are after-branch steps that always execute.
 - **wait** — Delay. Config: \\\`{ seconds }\\\`.
 - **for-each** — Loop over items. Config: \\\`{ iterator, parallel?, skipFailures? }\\\`. Body nodes are nested inside the loop.
 - **script** — Custom JavaScript.

@@ -49,7 +49,7 @@ describe("static-shell-first: pages pass `pending`, not a whole-body skeleton sw
     const overview = read(`${APP}/page.tsx`);
     expect(overview).toContain("RevenueOverviewSection");
     // Revenue data (features-service) and Total-spent (runs-service) resolve on
-    // different cold chains → separate latches, so the fast cost card never waits
+    // different cold paths → separate latches, so the fast cost card never waits
     // on the slower revenue call. No single `valuesRevealed` AND of both queries.
     expect(overview).toContain("revenueRevealed");
     expect(overview).toContain("costRevealed");

@@ -122,7 +122,7 @@ export default function ModelPage() {
           <div>
             <h2 className="text-base font-semibold text-gray-900">Steps</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Every step a chain can pass through. A channel states which one it moves a lead
+              Every step a funnel can pass through. A channel states which one it moves a lead
               FROM and which one it moves it TO, and that leg is what joins it to a funnel.
             </p>
           </div>
@@ -155,7 +155,7 @@ export default function ModelPage() {
           <div>
             <h2 className="text-base font-semibold text-gray-900">Sales funnels</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Every chain on sale, and the signal it starts on. A funnel no channel can start is not
+              Every funnel on sale, and the signal it starts on. A funnel no channel can start is not
               listed, because nothing can sell it.
             </p>
           </div>

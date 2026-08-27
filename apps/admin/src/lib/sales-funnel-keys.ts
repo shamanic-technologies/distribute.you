@@ -21,7 +21,7 @@ export const SALES_FUNNEL_KEYS = [
 
 export type SalesFunnelKey = (typeof SALES_FUNNEL_KEYS)[number];
 
-/** What each funnel is called, and the chain it runs. */
+/** What each funnel is called, and the steps it runs. */
 const SALES_FUNNEL_LABELS: Record<SalesFunnelKey, string> = {
   sales_meetings_from_conversation: "Sales Meeting from Conversation",
   sales_meetings_from_website: "Sales Meeting from Website",

@@ -39,13 +39,13 @@ export default function FeatureOverviewPage() {
 
   // Per-card reveal (NOT one page-wide barrier): the revenue data (headline /
   // chart / CAC / ROI / conversions) comes from features-service `/revenue`, the
-  // Total-spent figure from runs-service — two DIFFERENT cold chains. Gate each on
+  // Total-spent figure from runs-service — two DIFFERENT cold paths. Gate each on
   // its OWN query so the fast cost + Top-campaigns cards paint immediately instead
   // of being held in skeleton by the slower revenue call. (#1551: one barrier per
   // card, never a single AND that freezes everything until the slowest resolves.)
   // Reveal on SETTLE (resolved OR errored), never success-only — the fix the customer
   // dashboard took in #2650 and this fork never got. `/revenue` is the slowest cold
-  // chain and fails intermittently; gating on `data !== undefined` alone leaves the
+  // path and fails intermittently; gating on `data !== undefined` alone leaves the
   // section skeletoned FOREVER after one transient error, with no error UI and no
   // recovery. Settling on `isError` paints "—" instead, the error still logs loud, and
   // the monotonic latch keeps the section revealed while the next poll recovers.

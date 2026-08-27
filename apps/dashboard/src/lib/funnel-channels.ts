@@ -7,7 +7,7 @@
 // figure is their SUM. billing serves that sum, so nothing here adds one up.
 //
 // Not every channel can sell every funnel: the feedback-request offer buys a
-// CONVERSATION, while the website-led chains start with a click it has no way to
+// CONVERSATION, while the website-led funnels start with a click it has no way to
 // sell. features-service states that per feature and this module reads it. Do
 // NOT hardcode the matrix here, and do not infer it from a funnel's shape.
 //

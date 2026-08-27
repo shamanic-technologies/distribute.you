@@ -45,7 +45,7 @@ describe("Cost & efficiency card on feature Overview (served costEconomics)", ()
 
   it("CAC % and ROI × read the served costEconomics, not client arithmetic", () => {
     // Single source: the two ratios come straight off the features-service prop
-    // (optional-chained — the card now renders its shell before data arrives).
+    // (read with `?.` — the card now renders its shell before data arrives).
     expect(card).toContain("costEconomics?.costOfAcquisitionPct");
     expect(card).toContain("costEconomics?.roiMultiple");
     // Served nulls still render as an em dash.

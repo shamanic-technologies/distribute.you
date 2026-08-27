@@ -42,17 +42,17 @@ const keys = (funnelKey: SalesFunnelKeyWire) => funnelSteps(funnelKey).map((s) =
 /**
  * A campaign sells ONE sales funnel and states which on its own row. The goal cannot
  * stand in for it: `reply_meeting` and `visit_meeting` both answer to `sales_meetings`,
- * so a goal-keyed surface hands the website-visit leg to a campaign whose chain starts at
+ * so a goal-keyed surface hands the website-visit leg to a campaign whose funnel starts at
  * a positive reply. That is what put "Website Visits · Cost per website visit · Sales
  * Meetings" on a Sales-Meeting-from-Conversation campaign.
  */
-describe("funnelSteps — the campaign's own chain, not the goal's superset", () => {
+describe("funnelSteps — the campaign's own steps, not the goal's superset", () => {
   it("puts the reply where the website visit sits on the website funnels", () => {
     expect(keys("reply_meeting")).toEqual(["outreach", "positive_replies", "sales_meetings"]);
     expect(keys("reply_meeting")).not.toContain("website_visits");
   });
 
-  it("keeps the visit on every chain that starts with a click onto the site", () => {
+  it("keeps the visit on every funnel that starts with a click onto the site", () => {
     expect(keys("visit_meeting")).toEqual(["outreach", "website_visits", "sales_meetings"]);
     expect(keys("visit_signup")).toEqual(["outreach", "website_visits", "signups"]);
     expect(keys("visit_form")).toEqual(["outreach", "website_visits", "form_submissions"]);
@@ -67,9 +67,9 @@ describe("funnelSteps — the campaign's own chain, not the goal's superset", ()
     expect(keys("form_magnet")).toEqual(keys("visit_form"));
   });
 
-  it("ends every chain on its own terminal outcome", () => {
+  it("ends every funnel on its own terminal outcome", () => {
     // Unlike the 1-step goals (a visit / a reply IS the outcome), a funnel always carries
-    // an outcome pair — the chain is what it sells, and it sells a paid client.
+    // an outcome pair — the funnel is what it sells, and it sells a paid client.
     for (const key of ALL_FUNNELS) {
       const steps = funnelSteps(key);
       expect(steps[steps.length - 1]?.outcome, key).toBeTruthy();
@@ -123,7 +123,7 @@ describe("the campaign Overview reads the funnel it states", () => {
   it("takes the funnel off the campaign row and never derives it from the goal", () => {
     expect(page).toContain("const campaignFunnelKey = campaign?.funnelKey ?? null;");
     expect(page).toContain("funnelKey={campaignFunnelKey}");
-    // Deriving a funnel from a goal prints a chain the campaign never stated — two
+    // Deriving a funnel from a goal prints steps the campaign never stated — two
     // funnels answer to `meetingBooked`, so the goal cannot pick between them.
     expect(page).not.toContain("primaryFunnelForGoal");
   });
@@ -132,12 +132,12 @@ describe("the campaign Overview reads the funnel it states", () => {
 describe("the stat cards decide each pair from the steps, not from a goal test", () => {
   const cards = read("components/revenue/outreach-stat-cards.tsx");
 
-  it("gates the Website Visits pair on the visit actually being on the chain", () => {
+  it("gates the Website Visits pair on the visit actually being on the funnel", () => {
     expect(cards).toContain('const showVisitPair = hasStep("website_visits");');
     expect(cards).toContain("{showFunnelMetrics && showVisitPair && (");
   });
 
-  it("shows the reply pair whenever the reply is a mid-chain signal", () => {
+  it("shows the reply pair whenever the reply is a mid-funnel signal", () => {
     expect(cards).toContain(
       'const showReplyPair = hasStep("positive_replies") && !isPositiveReplies;',
     );
@@ -146,7 +146,7 @@ describe("the stat cards decide each pair from the steps, not from a goal test",
     expect(cards).not.toContain('const showReplyPair = goal === "sales";');
   });
 
-  it("keeps the terminal-reply case (the 1-step goal) distinct from a mid-chain reply", () => {
+  it("keeps the terminal-reply case (the 1-step goal) distinct from a mid-funnel reply", () => {
     expect(cards).toContain(
       'const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;',
     );
@@ -186,7 +186,7 @@ describe("the chart and the Leads tabs follow the same funnel", () => {
     expect(leads).not.toContain("leadTabsFor(goal");
     expect(leads).not.toContain("outcomeTabFor(goal");
     // The auto-select latch is one-shot, so it must not fire before the funnels land or
-    // it parks the user on a tab the chain does not offer.
+    // it parks the user on a tab the funnel does not offer.
     expect(leads).toContain("if (!campaignRows.settled) return;");
   });
 });

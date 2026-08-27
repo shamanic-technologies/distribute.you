@@ -87,7 +87,7 @@ describe("campaignTitleParts", () => {
   });
 
   // The goal is the retired, lossier vocabulary — two funnels answer to
-  // `meetingBooked` — so a chain derived from it is one the campaign never
+  // `meetingBooked` — so steps derived from it are ones the campaign never
   // stated. campaign-service persists the funnel on every campaign.
   it("never derives a funnel from a goal", () => {
     const parts = campaignTitleParts(row({ funnelKey: null }), CHANNELS);

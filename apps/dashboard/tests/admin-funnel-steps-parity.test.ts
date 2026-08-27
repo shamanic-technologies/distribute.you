@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { SALES_FUNNELS } from "../src/lib/sales-funnels";
 
 /**
- * The staff console carries its OWN copy of the funnel chains, because it has no
+ * The staff console carries its OWN copy of the funnel steps, because it has no
  * `sales-funnels.ts` catalogue of its own (it is a deliberate fork and keeps its own
  * settings surfaces). This guard is the thing that stops the copy drifting.
  *
@@ -14,18 +14,18 @@ import { SALES_FUNNELS } from "../src/lib/sales-funnels";
  *
  * Read as source text rather than imported — admin is a separate app with its own
  * tsconfig, and reaching across with a runtime import would couple the two builds. The
- * chains are plain data, so parsing the literal is enough to compare them.
+ * funnels are plain data, so parsing the literal is enough to compare them.
  */
-const ADMIN_CHAINS = readFileSync(
+const ADMIN_FUNNEL_STEPS = readFileSync(
   join(__dirname, "../../admin/src/lib/lead-funnel-stages.ts"),
   "utf8",
 );
 
-/** Pull `FUNNEL_CHAINS`'s per-funnel `steps` arrays straight out of the source. */
-function adminChains(): Record<string, string[]> {
-  const block = ADMIN_CHAINS.slice(
-    ADMIN_CHAINS.indexOf("export const FUNNEL_CHAINS"),
-    ADMIN_CHAINS.indexOf("export function normalizeSalesFunnelKey"),
+/** Pull `FUNNEL_STEPS`'s per-funnel `steps` arrays straight out of the source. */
+function adminFunnelSteps(): Record<string, string[]> {
+  const block = ADMIN_FUNNEL_STEPS.slice(
+    ADMIN_FUNNEL_STEPS.indexOf("export const FUNNEL_STEPS"),
+    ADMIN_FUNNEL_STEPS.indexOf("export function normalizeSalesFunnelKey"),
   );
   const out: Record<string, string[]> = {};
   for (const m of block.matchAll(/(\w+):\s*\{\s*name:\s*"[^"]*",\s*steps:\s*\[([^\]]*)\]/g)) {
@@ -34,36 +34,36 @@ function adminChains(): Record<string, string[]> {
   return out;
 }
 
-describe("admin's funnel chains match this app's catalogue", () => {
-  it("parses admin's chains at all (the guard is worthless if it silently finds none)", () => {
-    const chains = adminChains();
-    expect(Object.keys(chains).length).toBe(SALES_FUNNELS.length);
+describe("admin's funnel steps match this app's catalogue", () => {
+  it("parses admin's funnels at all (the guard is worthless if it silently finds none)", () => {
+    const funnels = adminFunnelSteps();
+    expect(Object.keys(funnels).length).toBe(SALES_FUNNELS.length);
   });
 
   it("carries the same steps, funnel for funnel and label for label", () => {
     // `SALES_FUNNELS` is the single source. Admin's literal copy exists because it has
     // no catalogue; it must say exactly the same thing.
-    const chains = adminChains();
+    const funnels = adminFunnelSteps();
     for (const def of SALES_FUNNELS) {
-      expect(chains[def.key]).toEqual(def.steps);
+      expect(funnels[def.key]).toEqual(def.steps);
     }
   });
 
   it("carries the same funnel NAMES too, so one funnel reads one way in both consoles", () => {
     for (const def of SALES_FUNNELS) {
-      expect(ADMIN_CHAINS).toContain(`name: "${def.name}"`);
+      expect(ADMIN_FUNNEL_STEPS).toContain(`name: "${def.name}"`);
     }
   });
 
   it("covers every funnel this app sells, with no extras", () => {
-    expect(Object.keys(adminChains()).sort()).toEqual(SALES_FUNNELS.map((d) => d.key).sort());
+    expect(Object.keys(adminFunnelSteps()).sort()).toEqual(SALES_FUNNELS.map((d) => d.key).sort());
   });
 });
 
 /**
  * The staff console writes the SAME statement through the SAME producer, so the cost
  * lead-service now demands has to be asked for there too. Pinned from this side for the
- * same reason as the chains above: this suite is a CI merge gate and admin's is not, so
+ * same reason as the funnels above: this suite is a CI merge gate and admin's is not, so
  * a staff console that quietly stopped asking would go on 400-ing with nothing red.
  */
 describe("admin asks for the step cost too", () => {

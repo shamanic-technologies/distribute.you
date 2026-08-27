@@ -1283,7 +1283,7 @@ export function EngagedLeadsPage({
 
 
   // ── Funnel-stage statements for the open lead ────────────────────────────────
-  // Campaign scope only: the panel walks ONE chain, and a brand runs several funnels
+  // Campaign scope only: the panel walks ONE funnel's steps, and a brand runs several funnels
   // at once. `activeFunnelKeys` is already narrowed to this campaign's own row above,
   // so there is nothing extra to fetch and no goal to fall back to.
   const panelFunnel = campaignId && activeFunnelKeys[0] ? salesFunnelByKey(activeFunnelKeys[0]) : null;
@@ -1321,7 +1321,7 @@ export function EngagedLeadsPage({
   // because they told us and never charged. Present-with-null is a statement made
   // before the cost was asked for, which reads as unanswered rather than as a zero.
   const panelCosts = useMemo(() => stageCostsFrom(stepStatements), [stepStatements]);
-  // Stages the CHAIN concluded rather than anybody stating — they render as the answer
+  // Stages the FUNNEL concluded rather than anybody stating — they render as the answer
   // they are and offer no control.
   const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
   // What we already measured, off the /revenue join the stat cards above already poll —
@@ -1540,7 +1540,7 @@ export function EngagedLeadsPage({
               </div>
             </div>
             {/* Campaign scope only. A brand runs several funnels at once, so there is no
-                single chain to walk this lead through and the section states nothing. */}
+                single funnel to walk this lead through and the section states nothing. */}
             {campaignId && panelFunnel && (
               <LeadFunnelStageSection
                 funnelName={panelFunnel.name}

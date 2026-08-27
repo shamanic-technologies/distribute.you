@@ -112,8 +112,6 @@ describe("unpricedFunnelReasonLabel", () => {
       "no_channel_funnel",
       "no_economics_declared",
       "funnel_not_declared",
-      // Transitional: the producer's previous spelling of the same reason.
-      "chain_not_declared",
     ]) {
       const label = unpricedFunnelReasonLabel(reason);
       expect(label).not.toBe(reason);
@@ -221,30 +219,26 @@ describe("the page renders served fields and states the gap", () => {
   const API = read("src/lib/api.ts");
   const SIDEBAR = read("src/components/context-sidebar.tsx");
 
-  it("reads whichever of the two gateway paths is live, new one first", () => {
-    // features-service is renaming this grain and there is no alias on either side,
-    // so for the length of that rollout the reader asks for the new path and takes
-    // the old one on a 404 — and ONLY on a 404, so a live error is never swallowed.
-    expect(API).toContain('const OFFER_FUNNELS_PATHS = ["funnels", "chains"] as const;');
-    expect(API).toContain("`/offers/${offerId}/${segment}?${query.toString()}`");
-    expect(API).toContain("err.status !== 404) throw err");
+  it("reads the one live gateway path", () => {
+    // features-service serves this grain under one name, at one path, with one body
+    // key. There is nothing left to tolerate: no second path, no 404 fallback.
+    expect(API).toContain("`/offers/${offerId}/funnels?${query.toString()}`");
+    expect(API).not.toContain("OFFER_FUNNELS_PATHS");
+    expect(API).not.toContain("err.status !== 404) throw err");
     expect(API).toContain('query.set("pricing", "net")');
   });
 
-  it("takes the rows under whichever key the wire spelled them", () => {
-    // Same array, two spellings, for one rollout window. Delete `chains` once the
-    // producer's rename is live in prod.
-    expect(API).toContain("funnels: z.array(OfferFunnelRowSchema).optional()");
-    expect(API).toContain("chains: z.array(OfferFunnelRowSchema).optional()");
-    expect(API).toContain("const rows = funnels ?? chains;");
+  it("requires the rows under the producer's own key", () => {
+    // REQUIRED, not optional: the producer marks `funnels` required, so a body
+    // without it is a producer break the parse must state rather than a blank table.
+    expect(API).toContain("funnels: z.array(OfferFunnelRowSchema),");
   });
 
-  it("names nothing on this grain a chain any more", () => {
-    // One concept, one word. The step SEQUENCE is still a chain in ordinary English;
-    // the sales funnel is not.
+  it("calls this grain a sales funnel and nothing else", () => {
+    // One concept, one word, in identifiers and in prose alike.
     const surface = PAGE + read("src/lib/offer-funnels.ts");
-    expect(surface).not.toMatch(/OfferChain|chainViews|summariseChains|unpricedChainReasonLabel/);
-    expect(SIDEBAR).not.toContain('id: "offer-chains"');
+    expect(surface).not.toMatch(/chain/i);
+    expect(SIDEBAR).toContain('id: "offer-funnels"');
   });
 
   it("renders money through the shared formatters and divides nothing", () => {

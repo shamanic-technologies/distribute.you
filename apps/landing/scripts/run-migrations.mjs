@@ -10,7 +10,7 @@
  * The Vercel build for `distribute-landing` has DATABASE_URL set, so the
  * migrations run there.
  *
- * Invocation: `pnpm --filter @distribute/landing prebuild` (chained from
+ * Invocation: `pnpm --filter @distribute/landing prebuild` (run from
  * Vercel `next build` via package.json prebuild script).
  *
  * Caveat — each statement is sent on its own. Postgres allows only ONE

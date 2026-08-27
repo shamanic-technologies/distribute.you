@@ -6,7 +6,7 @@ import {
   formatCacPercent,
   formatMultiple,
   heroMonthlyOutcomes,
-  heroRoiChain,
+  heroRoiSteps,
 } from "../../src/lib/static-html";
 
 const homepagePath = path.resolve(
@@ -54,13 +54,13 @@ describe("heroMonthlyOutcomes", () => {
   });
 });
 
-describe("heroRoiChain", () => {
+describe("heroRoiSteps", () => {
   // The shipped constants: $50/day, 31 days, the #roi calculator's own $2,500
   // lifetime revenue, 30-70% closing.
-  const chain = (cost: number) => heroRoiChain(50, 31, cost, 2500, 30, 70);
+  const roi = (cost: number) => heroRoiSteps(50, 31, cost, 2500, 30, 70);
 
-  it("carries the whole chain from spend to cost of acquisition", () => {
-    expect(chain(72)).toEqual({
+  it("carries the whole derivation from spend to cost of acquisition", () => {
+    expect(roi(72)).toEqual({
       buyers: 22,
       salesLow: 7,
       salesHigh: 15,
@@ -73,7 +73,7 @@ describe("heroRoiChain", () => {
     // Closing more of the same buyers earns more revenue for the same spend,
     // so the best case is the CHEAPEST percentage. Getting this backwards
     // would headline the worst case.
-    const c = chain(72)!;
+    const c = roi(72)!;
     expect(Number(c.cacPctLow.replace("%", ""))).toBeLessThan(
       Number(c.cacPctHigh.replace("%", "")),
     );
@@ -83,7 +83,7 @@ describe("heroRoiChain", () => {
     // $1,550 spent against 7 × $2,500 of revenue is 8.9%, and against
     // 15 × $2,500 it is 4.1%. Deriving from the ROUNDED sales is what makes
     // the visible arithmetic hold; #roi does the exact version.
-    const c = chain(72)!;
+    const c = roi(72)!;
     expect(((50 * 31) / (c.salesLow * 2500)) * 100).toBeCloseTo(8.86, 1);
     expect(((50 * 31) / (c.salesHigh * 2500)) * 100).toBeCloseTo(4.13, 1);
   });
@@ -92,13 +92,13 @@ describe("heroRoiChain", () => {
     // A $20,000 ticket does not close at 70%, so pairing both optimistic ends
     // describes a client who does not exist and prints a 0.5% acquisition cost
     // nobody believes. Only the win rate is banded.
-    const c = chain(72)!;
+    const c = roi(72)!;
     expect(Number(c.cacPctLow.replace("%", ""))).toBeGreaterThan(1);
   });
 
   it("follows the live rate: a cheaper reply lowers the cost of acquisition", () => {
-    const dear = chain(150)!;
-    const cheap = chain(40)!;
+    const dear = roi(150)!;
+    const cheap = roi(40)!;
     expect(cheap.buyers).toBeGreaterThan(dear.buyers);
     expect(cheap.salesHigh).toBeGreaterThan(dear.salesHigh);
     expect(Number(cheap.cacPctHigh.replace("%", ""))).toBeLessThan(
@@ -106,16 +106,16 @@ describe("heroRoiChain", () => {
     );
   });
 
-  it("drops the chain rather than printing a band it cannot stand behind", () => {
-    expect(chain(0)).toBeNull();
-    expect(chain(Number.NaN)).toBeNull();
+  it("drops the rows rather than printing a band it cannot stand behind", () => {
+    expect(roi(0)).toBeNull();
+    expect(roi(Number.NaN)).toBeNull();
     // A rate so dear that the low end rounds to zero sales would print a 0x
     // return beside a running campaign. At $1,500 the budget buys one buyer a
     // month, and 30% of one rounds to none.
-    expect(chain(1500)).toBeNull();
-    expect(heroRoiChain(50, 31, 72, 0, 30, 70)).toBeNull();
+    expect(roi(1500)).toBeNull();
+    expect(heroRoiSteps(50, 31, 72, 0, 30, 70)).toBeNull();
     // A band whose high end sits below its low end is not a band.
-    expect(heroRoiChain(50, 31, 72, 2500, 70, 30)).toBeNull();
+    expect(heroRoiSteps(50, 31, 72, 2500, 70, 30)).toBeNull();
   });
 });
 
@@ -205,10 +205,10 @@ describe("hero console markup", () => {
     expect(html).toContain("if(run!==countRun)return;");
   });
 
-  it("collapses the chain rows instead of hiding them in place", () => {
+  it("collapses the step rows instead of hiding them in place", () => {
     // An invisible row still occupies its space, which stretched the card to
     // full height and left a tall blank under the counter while it counted.
-    expect(html).toContain('.console-chain[data-reveal]>*{display:none}');
+    expect(html).toContain('.console-steps[data-reveal]>*{display:none}');
     expect(html).not.toContain('[data-reveal="pending"]{opacity:0}');
   });
 
@@ -220,7 +220,7 @@ describe("hero console markup", () => {
     expect(html).toContain("slot.style.minHeight=slot.offsetHeight+'px'");
     // Measured BEFORE the rows collapse, or it reserves the collapsed height.
     const init = html.indexOf("var slot=document.querySelector('[data-console-slot]')");
-    const collapse = html.indexOf("chainEl.setAttribute('data-reveal','pending')");
+    const collapse = html.indexOf("stepsEl.setAttribute('data-reveal','pending')");
     expect(init).toBeGreaterThan(-1);
     expect(init).toBeLessThan(collapse);
   });
@@ -238,12 +238,12 @@ describe("hero console markup", () => {
   });
 
   it("does not replay the reveal when the count re-runs", () => {
-    expect(html).toContain("chainEl.getAttribute('data-reveal')==='done')return;");
+    expect(html).toContain("stepsEl.getAttribute('data-reveal')==='done')return;");
   });
 
   it("honours a reduced-motion preference", () => {
     expect(html).toContain("prefers-reduced-motion: reduce");
-    expect(html).toContain("if(reduce){countEl.textContent=String(target);revealChain();return;}");
+    expect(html).toContain("if(reduce){countEl.textContent=String(target);revealSteps();return;}");
   });
 });
 
@@ -252,14 +252,14 @@ describe("hero console server render", () => {
     // A scraper and a reader with JS off both get the figure; the attribute is
     // only what the count-up animates towards.
     expect(staticHtmlSrc).toContain(
-      '<i data-hero-outcome="${chain.buyers}">${chain.buyers}</i>',
+      '<i data-hero-outcome="${steps.buyers}">${steps.buyers}</i>',
     );
   });
 
   it("keeps only the budget when the rate cannot be graded", () => {
     // The budget is true whatever the rate does, but with nothing to hand over
     // there are no two zones to name.
-    expect(staticHtmlSrc).toContain("if (chain === null) return budgetRow;");
+    expect(staticHtmlSrc).toContain("if (steps === null) return budgetRow;");
   });
 
   it("names the buyer the product actually finds", () => {
@@ -281,14 +281,14 @@ describe("hero console server render", () => {
     const zone = html.slice(html.indexOf(".zone-label{"), html.indexOf(".zone-label{") + 260);
     expect(zone).not.toMatch(/border|background/);
     expect(zone).toContain("margin:20px 0 9px");
-    // Scoped to the body: the second label is the first child of the chain
+    // Scoped to the body: the second label is the first child of the steps
     // block, and an unscoped :first-child strips the gap between the halves.
     expect(html).toContain(".console-body>.zone-label:first-child{margin-top:0}");
     expect(html).not.toContain("\n    .zone-label:first-child{margin-top:0}");
   });
 
   it("explains why the budget buys that many buyers", () => {
-    // The one link the chain never showed. Every step is checkable now.
+    // The one step nothing ever showed. Every step is checkable now.
     expect(staticHtmlSrc).toContain("per interested buyer");
     expect(staticHtmlSrc).toContain("usdSmart(costPerOutcomeUsd)");
   });
@@ -317,7 +317,7 @@ describe("hero console server render", () => {
   });
 
   it("derives the budget label from the same constant as the count", () => {
-    expect(staticHtmlSrc).toContain("heroChainRows(boot.best)");
+    expect(staticHtmlSrc).toContain("heroRoiStepRows(boot.best)");
     expect(staticHtmlSrc).toContain("$${HERO_DAILY_BUDGET_USD} / day");
   });
 });

@@ -215,7 +215,7 @@ interface CampaignRow {
 
 /**
  * The outcome a campaign's projections rest on: the first step of its funnel that is
- * actually MEASURED — a positive reply on the reply-led chains, a website visit on the
+ * actually MEASURED — a positive reply on the reply-led funnels, a website visit on the
  * visit-led ones.
  *
  * Not the funnel's terminal outcome (a booked meeting, a signup): those need the brand's

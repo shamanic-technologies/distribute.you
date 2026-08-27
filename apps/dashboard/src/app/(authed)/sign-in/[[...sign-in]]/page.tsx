@@ -22,8 +22,8 @@ import {
 // read by the sign-up page so the plaintext password never lingers on disk.
 const PREFILL_AUTH_KEY = "distribute_prefill_auth";
 
-// Same window the sign-up verify screen uses: long enough that a user cannot
-// chain resends and lose track of which code is live.
+// Same window the sign-up verify screen uses: long enough that a user cannot fire
+// back-to-back resends and lose track of which code is live.
 const RESEND_COOLDOWN_SECONDS = 30;
 
 type SignInLike = NonNullable<ReturnType<typeof useSignIn>["signIn"]>;

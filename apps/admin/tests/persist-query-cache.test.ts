@@ -91,7 +91,7 @@ describe("isPersistableQueryKey — STATUS-AGNOSTIC predicate (the per-query per
   // REGRESSION: the per-query persister evaluates this ONCE while the query is still
   // `pending` (data undefined) and reuses the verdict for BOTH restore and persist.
   // A status check here ⇒ false at restore time ⇒ the persister is a silent total
-  // no-op (every load cold-fetches the Neon chain). So it MUST ignore status.
+  // no-op (every load cold-fetches the Neon path). So it MUST ignore status.
   it("matches a non-sensitive key regardless of status (pending must still match)", () => {
     expect(isPersistableQueryKey(["fleetRevenue"])).toBe(true);
     expect(isPersistableQueryKey(["brand", "b1"])).toBe(true);

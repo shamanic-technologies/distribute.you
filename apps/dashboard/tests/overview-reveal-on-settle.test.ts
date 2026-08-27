@@ -9,7 +9,7 @@ const read = (rel: string) => fs.readFileSync(path.join(SRC, rel), "utf-8");
 /**
  * Reveal-on-SETTLE: the brand Overview gates every revenue-driven region on the
  * `/revenue` query SETTLING (resolved OR errored), never success-only. `/revenue`
- * is the slowest cold chain and intermittently fails on a cold backend (features
+ * is the slowest cold path and intermittently fails on a cold backend (features
  * → downstream Neon scale-to-zero); gating reveal on `data !== undefined` alone
  * left the whole section skeletoned FOREVER on a transient error, with no error
  * UI and no recovery. This is the durable fix behind the recurring "overview

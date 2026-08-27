@@ -11,7 +11,7 @@ import {
   type FunnelCatalogueEntry,
 } from "../src/lib/onboarding-funnel-view";
 
-// The catalogue as it stands: a name, a step chain, one rate key per arrow (null
+// The catalogue as it stands: a name, a step list, one rate key per arrow (null
 // where nothing in the fleet measures that leg), and two destination flags.
 const REPLY_MEETING: FunnelCatalogueEntry = {
   key: "reply_meeting",
@@ -54,7 +54,7 @@ const resolveRates = (entry: FunnelCatalogueEntry) =>
     .map((key) => ({ key, label: `${key} label`, tip: `${key} tip` }));
 
 describe("funnelStepLabels", () => {
-  it("reads the chain, including a four-step one", () => {
+  it("reads the steps, including a four-step funnel", () => {
     expect(funnelStepLabels(REPLY_MEETING)).toEqual([
       "Positive reply",
       "Meeting booked",
@@ -63,7 +63,7 @@ describe("funnelStepLabels", () => {
     ]);
   });
 
-  it("returns an empty chain rather than throwing when the entry carries none", () => {
+  it("returns an empty step list rather than throwing when the entry carries none", () => {
     expect(funnelStepLabels({ key: "x" })).toEqual([]);
   });
 });
@@ -73,7 +73,7 @@ describe("funnelTitle", () => {
     expect(funnelTitle(REPLY_MEETING)).toBe("Sales Meeting from Conversation");
   });
 
-  it("falls back to the chain for an entry from before the names existed", () => {
+  it("falls back to the funnel for an entry from before the names existed", () => {
     expect(funnelTitle(UNNAMED)).toBe("Website visit → Form filled → Paid client");
   });
 

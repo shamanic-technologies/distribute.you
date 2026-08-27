@@ -120,19 +120,19 @@ export function BestModelStats({
   roiMultiple: number | null;
   floored: boolean;
   cppr: number | null;
-  /** The SALES FUNNEL these numbers were priced on. Null states no chain. */
+  /** The SALES FUNNEL these numbers were priced on. Null states no funnel. */
   funnelKey: SalesFunnelKeyWire | null;
 }) {
-  // Every tile is gated on the FUNNEL's own chain, never on a goal. `sales_meetings`
+  // Every tile is gated on the FUNNEL's own steps, never on a goal. `sales_meetings`
   // covers BOTH meeting funnels, so a goal-gated grid put "Cost per website visit"
-  // beside a reply→meeting chain that has no visit leg — a step the brand does not buy,
-  // on the card that prices what it does. A null funnel states no chain (`[Outreach]`),
+  // beside a reply→meeting funnel that has no visit leg — a step the brand does not buy,
+  // on the card that prices what it does. A null funnel states no steps (`[Outreach]`),
   // so only the funnel-independent tiles render rather than a borrowed set.
   const steps = stepsFor(null, funnelKey);
   const hasStep = (key: GoalStep["key"]) => steps.some((s) => s.key === key);
   const showVisitStat = hasStep("website_visits");
   const showReplyStat = hasStep("positive_replies");
-  // The chain's terminal step, and the only honest source for the outcome's name here.
+  // The funnel's terminal step, and the only honest source for the outcome's name here.
   const outcomeStep = steps.find((s) => s.outcome) ?? null;
   // The step's own singular noun, not its label: a label is a column heading ("Sales
   // Meetings") and this prices ONE of them.

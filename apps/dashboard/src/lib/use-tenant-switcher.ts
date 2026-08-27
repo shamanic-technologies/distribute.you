@@ -92,7 +92,7 @@ export function orgDomainFromName(name?: string | null): string | null {
  * with a raw `fetch` behind module-level 60s caches, and held the org label in a
  * `useRef` — none of which survive a page load, so every hard navigation showed
  * the `Dashboard` / `Brand` placeholders and an empty logo slot for as long as the
- * cold gateway → brand-service chain took to answer.
+ * cold gateway → brand-service path took to answer.
  *
  * Three consequences worth keeping in mind when editing:
  *  - `["brands"]` and `["brand", brandId]` are the SAME keys the org-overview,

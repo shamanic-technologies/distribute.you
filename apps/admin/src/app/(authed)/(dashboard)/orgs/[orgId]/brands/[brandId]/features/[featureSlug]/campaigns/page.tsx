@@ -181,7 +181,7 @@ function GenericFeaturePage({
   // behind one global barrier (CLAUDE.md "group at the finest COHERENT level,
   // independent ACROSS groups"). The campaign LIST only needs `campaigns` (fast
   // campaign-service) so it paints immediately instead of waiting for the slow
-  // features-service revenue/stats cold chain; the revenue hero / charts / cost
+  // features-service revenue/stats cold path; the revenue hero / charts / cost
   // donut reveal on THEIR sources as those return. Within each group the latch is a
   // barrier + monotonic hold (a poll / Clerk token rotation / transient error never
   // sends a shown card back to skeleton), paired with the global

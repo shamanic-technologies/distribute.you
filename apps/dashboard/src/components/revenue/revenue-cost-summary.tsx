@@ -21,7 +21,7 @@ const TODAY_SPENT_TIP =
  *
  * It used to carry a third figure, a top-3 of the PROVIDERS the money went to.
  * That is gone, with nothing in its place: a customer buys an outcome, and which
- * vendors sit behind it is our supply chain rather than their result. It was
+ * vendors sit behind it is our own sourcing rather than their result. It was
  * also the one thing on the page that said nothing about whether their money
  * was working. `spend.sources` is still on the wire and simply not read.
  */
@@ -63,7 +63,7 @@ export function RevenueCostSummary({
    */
   budgetNote?: string;
   pending?: boolean;
-  /** Reveal gate for the Total-spent figure when it resolves on a DIFFERENT chain
+  /** Reveal gate for the Total-spent figure when it resolves on a DIFFERENT path
    *  than the revenue data. The feature Overview now sources spend from `/revenue`
    *  itself, so it passes the revenue reveal here; other consumers omit it →
    *  falls back to `pending` (single reveal). */
@@ -132,7 +132,7 @@ export function RevenueCostSummary({
           There is deliberately NO default. This used to fall back to a Top-3
           cost-source list — which vendor the money went to — and that answers a
           question no customer asked: they buy an outcome, and the provider mix
-          behind it is our supply chain, not their result. It is also the one
+          behind it is our own sourcing, not their result. It is also the one
           figure on the page that says nothing about whether their money is
           working. Removed with nothing in its place. */}
       {bottomCard ?? null}

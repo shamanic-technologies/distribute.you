@@ -90,7 +90,7 @@ describe("Beta onboarding guided flow", () => {
     expect(src).toContain("setAudiencePrefetch");
     expect(src).toContain("audience prewarm (ICP + suggest)");
     expect(src).toContain("prefetch={audiencePrefetch}");
-    // The prewarm chains ICP -> suggestAudiences in the parent (background).
+    // The prewarm runs ICP then suggestAudiences in the parent (background).
     expect(src).toMatch(/suggestBrandIcp\(id\)[\s\S]{0,400}suggestAudiences\(id, prompt\)/);
     // BOTH paths auto-fire the suggest — zero click. The no-prewarm path always did;
     // the prewarm path only did when it came back WITH candidates, so a prewarm whose
@@ -158,7 +158,7 @@ describe("Beta onboarding guided flow", () => {
 
   it("asks the conversion rates the funnel catalogue defines, not the goal's", () => {
     // The per-goal rate list held the entry legs of DIFFERENT funnels, so it asked for
-    // numbers belonging to no single path. Each funnel's own chain is the question now.
+    // numbers belonging to no single path. Each funnel's own steps are the question now.
     expect(src).not.toContain("RATE_KEYS_FOR_OUTCOME");
     expect(src).toContain("funnelRateFields");
     expect(src).toContain("Website visits to signup rate");

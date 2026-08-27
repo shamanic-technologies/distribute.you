@@ -1,7 +1,7 @@
 /**
  * The acquisition model, as the fleet actually declares it.
  *
- * Everything a customer buys is one pair: a SALES FUNNEL (the chain of steps
+ * Everything a customer buys is one pair: a SALES FUNNEL (the sequence of steps
  * from a first signal to a paid client) bought through an ACQUISITION CHANNEL
  * (where we go to produce that first signal). features-service publishes both
  * halves and the join between them: a channel states the steps it can PRODUCE,
@@ -54,7 +54,7 @@ export function channelOperatorLabel(operator: string | null | undefined): strin
 
 /**
  * The leg in words: what a channel moves a lead FROM and TO. `from: null` means the lead was not on
- * the chain at all, which is every entry channel, so it reads as producing the step rather than as
+ * the funnel at all, which is every entry channel, so it reads as producing the step rather than as
  * converting one.
  */
 export function legLabel(transition: PublicStepTransition): string {
@@ -97,9 +97,9 @@ export function unpricedStepLabel(reason: string | null | undefined): string {
 export type FunnelSummary = {
   key: string;
   name: string;
-  /** The whole chain, worded as brand-service words it. */
+  /** The whole step sequence, worded as brand-service words it. */
   steps: string[];
-  /** The step the chain STARTS on. This is what a channel has to produce. */
+  /** The step the funnel STARTS on. This is what a channel has to produce. */
   entryStep: string | null;
   /** How many published channels may be sold through it. */
   channelCount: number;
@@ -107,7 +107,7 @@ export type FunnelSummary = {
 
 /**
  * The funnel catalogue, read off the channels rather than kept here. A funnel
- * nothing can sell has no row, which is the honest reading: a chain with no
+ * nothing can sell has no row, which is the honest reading: a funnel with no
  * channel able to produce its entry step is not on sale.
  *
  * Ordered by how many channels can sell it (widest first), then by name, so the
@@ -179,7 +179,7 @@ export type MatrixRow = {
   operatedBy: string;
   /** One entry per leg this channel performs, in the catalogue's own order. */
   legLabels: string[];
-  /** True when every leg starts from nothing, i.e. the channel only ever opens a chain. */
+  /** True when every leg starts from nothing, i.e. the channel only ever opens a funnel. */
   entryOnly: boolean;
   sellableFunnelCount: number;
   /** One entry per funnel of the catalogue, in catalogue order. */
@@ -327,14 +327,14 @@ export const MODEL_OBJECTS: ModelObject[] = [
   },
   {
     name: "Sales funnel",
-    what: "The chain of steps from a first signal to a paid client, with a conversion rate on every arrow.",
+    what: "The funnel of steps from a first signal to a paid client, with a conversion rate on every arrow.",
     owner: "brand-service declares it per brand; features-service publishes the catalogue",
     key: "funnelKey",
     relatesTo: "A brand declares the funnels it sells through, and prices each one.",
   },
   {
     name: "Funnel step",
-    what: "One stage of a chain. The step a funnel is named after is its milestone.",
+    what: "One stage of a funnel. The step a funnel is named after is its milestone.",
     owner: "brand-service words it, features-service prices it",
     key: "the step's own words",
     relatesTo: "Sits inside one funnel, between two conversion rates.",

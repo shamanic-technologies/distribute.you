@@ -9,7 +9,7 @@ import * as path from "path";
  * persister: it read `/api/v1/brands` and `/api/v1/brands/:id` with a raw `fetch`
  * behind module-level 60s caches, and held the org label in a `useRef`. None of
  * those survive a page load, so every hard navigation showed `Dashboard` / `Brand`
- * and an empty logo slot until the cold gateway → brand-service chain answered.
+ * and an empty logo slot until the cold gateway → brand-service path answered.
  *
  * Routing all three identity reads through React Query puts them under the same
  * persister every other page already uses. Source-substring guards (the dashboard
@@ -122,13 +122,13 @@ describe("Tenant switcher first-frame identity", () => {
   it("ranks the seed LAST, so a fresher source always wins", () => {
     // The seed is a memory of the previous visit; Clerk / the query cache are the
     // live values. Ordering it first would pin a renamed brand to its old name.
-    const orgChain = sliceFrom(hook, "const displayOrg:", 700);
-    expect(orgChain.indexOf("liveOrg")).toBeLessThan(orgChain.indexOf("seededOrg"));
-    expect(orgChain.indexOf("orgIdentityQuery.data")).toBeLessThan(orgChain.indexOf("seededOrg"));
+    const orgOrder = sliceFrom(hook, "const displayOrg:", 700);
+    expect(orgOrder.indexOf("liveOrg")).toBeLessThan(orgOrder.indexOf("seededOrg"));
+    expect(orgOrder.indexOf("orgIdentityQuery.data")).toBeLessThan(orgOrder.indexOf("seededOrg"));
 
-    const brandChain = sliceFrom(hook, "const displayBrand: TenantBrand", 500);
-    expect(brandChain.indexOf("brands.find")).toBeLessThan(brandChain.indexOf("seededBrand"));
-    expect(brandChain.indexOf("byIdBrand")).toBeLessThan(brandChain.indexOf("seededBrand"));
+    const brandOrder = sliceFrom(hook, "const displayBrand: TenantBrand", 500);
+    expect(brandOrder.indexOf("brands.find")).toBeLessThan(brandOrder.indexOf("seededBrand"));
+    expect(brandOrder.indexOf("byIdBrand")).toBeLessThan(brandOrder.indexOf("seededBrand"));
   });
 
   it("writes a resolved identity back so the NEXT load paints it server-side", () => {

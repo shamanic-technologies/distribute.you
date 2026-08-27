@@ -858,7 +858,7 @@ const ROI_DEFAULT_LTR_USD = 2500;
 const ROI_DEFAULT_WIN_RATE_PCT = 30;
 
 // Whole numbers above 10, one decimal below, so a 14x reads as "14x" and a 3.4x
-// keeps its precision. One rule, so the calculator and the hero chain cannot
+// keeps its precision. One rule, so the calculator and the hero steps cannot
 // round a multiple two different ways.
 export function formatMultiple(value: number): string | null {
   if (!Number.isFinite(value) || value < 0) return null;
@@ -933,7 +933,7 @@ export function heroMonthlyOutcomes(
 const HERO_WIN_RATE_LOW_PCT = 30;
 const HERO_WIN_RATE_HIGH_PCT = 70;
 
-export type HeroChain = {
+export type HeroRoiSteps = {
   buyers: number;
   salesLow: number;
   salesHigh: number;
@@ -950,7 +950,7 @@ export function formatCacPercent(value: number): string | null {
 
 // Spend to cost of acquisition, in one derivation. Every figure below the
 // buyers count is computed from the ROUNDED count above it rather than from the
-// raw ratio, because a reader can multiply what is on screen and the chain has
+// raw ratio, because a reader can multiply what is on screen and the derivation has
 // to survive that: 22 buyers, 7 sales, $1,550 against 7 × $2,500 really is 9%.
 // The exact unrounded arithmetic lives in #roi, where the reader supplies their
 // own two inputs and nothing is rounded to whole people.
@@ -958,14 +958,14 @@ export function formatCacPercent(value: number): string | null {
 // The band INVERTS: closing more of the same buyers earns more revenue for the
 // same spend, so the BEST case is the LOW percentage. Reported low-to-high, the
 // way a cost is read.
-export function heroRoiChain(
+export function heroRoiSteps(
   dailyBudgetUsd: number,
   monthDays: number,
   costPerOutcomeUsd: number,
   ltrUsd: number,
   winLowPct: number,
   winHighPct: number,
-): HeroChain | null {
+): HeroRoiSteps | null {
   const buyers = heroMonthlyOutcomes(dailyBudgetUsd, monthDays, costPerOutcomeUsd);
   if (buyers === null) return null;
   if (!(ltrUsd > 0) || !(winLowPct > 0) || !(winHighPct >= winLowPct)) return null;
@@ -989,13 +989,13 @@ export function heroRoiChain(
 // off) still sees the real figures rather than zeroes that JS fills in.
 // Each arrow carries the assumption it applies, so a reader can see that the
 // win rate is THEIRS, not a result we are claiming.
-function heroChainRows(costPerOutcomeUsd: number): string {
+function heroRoiStepRows(costPerOutcomeUsd: number): string {
   const budgetRow =
     `<div class="console-metric">` +
     `<span>Daily budget</span><b>$${HERO_DAILY_BUDGET_USD} / day</b>` +
     `</div>`;
 
-  const chain = heroRoiChain(
+  const steps = heroRoiSteps(
     HERO_DAILY_BUDGET_USD,
     HERO_MONTH_DAYS,
     costPerOutcomeUsd,
@@ -1006,29 +1006,29 @@ function heroChainRows(costPerOutcomeUsd: number): string {
   // The budget is true whatever the rate does, but with nothing to hand over
   // there are no two zones, and a lone "distribute.you handles" would name a
   // division of work the card is no longer showing.
-  if (chain === null) return budgetRow;
+  if (steps === null) return budgetRow;
 
-  const sales = `${chain.salesLow} to ${chain.salesHigh}`;
+  const sales = `${steps.salesLow} to ${steps.salesHigh}`;
   return (
     // Who does what, by LABEL plus whitespace rather than a nested container.
     // A boundary would be the stronger grouping (NN/g: common region overpowers
     // proximity) but it is only the right tool when whitespace is unavailable,
     // and here it is available; a second border inside a bordered card is ink
-    // that carries no data. The chain STOPS at the reader's own sales: their
+    // that carries no data. The derivation STOPS at the reader's own sales: their
     // lifetime revenue is an input only they hold, so pricing it here would
     // state a number about their business we never measured.
     `<p class="zone-label">distribute.you handles</p>` +
     budgetRow +
-    // The one link the chain never explained: why that budget buys that many.
+    // The one step nothing ever explained: why that budget buys that many.
     // Every step is checkable now, $50 × 31 ÷ this rate is the count below.
-    `<p class="chain-arrow">${usdSmart(costPerOutcomeUsd)} per interested buyer</p>` +
+    `<p class="step-arrow">${usdSmart(costPerOutcomeUsd)} per interested buyer</p>` +
     `<div class="console-outcome">` +
     `<span>Interested B2B buyers</span>` +
-    `<b><i data-hero-outcome="${chain.buyers}">${chain.buyers}</i> per month 🎉</b>` +
+    `<b><i data-hero-outcome="${steps.buyers}">${steps.buyers}</i> per month 🎉</b>` +
     `</div>` +
-    `<div class="console-chain" data-hero-chain>` +
+    `<div class="console-steps" data-hero-steps>` +
     `<p class="zone-label">You handle</p>` +
-    `<p class="chain-arrow">${HERO_WIN_RATE_LOW_PCT}-${HERO_WIN_RATE_HIGH_PCT}% of them become customers</p>` +
+    `<p class="step-arrow">${HERO_WIN_RATE_LOW_PCT}-${HERO_WIN_RATE_HIGH_PCT}% of them become customers</p>` +
     `<div class="console-metric"><span>Your sales</span><b>${sales} per month</b></div>` +
     `</div>`
   );
@@ -1066,7 +1066,7 @@ async function withCacBoot(html: string) {
     .replaceAll("__SEG_COST_LOW__", segment.low)
     .replaceAll("__SEG_COST_MID__", segment.mid)
     .replaceAll("__SEG_COST_HIGH__", segment.high)
-    .replaceAll("__HERO_CONSOLE__", heroChainRows(boot.best))
+    .replaceAll("__HERO_CONSOLE__", heroRoiStepRows(boot.best))
     .replaceAll("__ROI_LTR__", ROI_DEFAULT_LTR_USD.toLocaleString("en-US"))
     .replaceAll("__ROI_WIN_RATE__", String(ROI_DEFAULT_WIN_RATE_PCT))
     .replaceAll(

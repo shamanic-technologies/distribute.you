@@ -4,7 +4,7 @@
  *
  * THE GAP IT FILLS. The other four guard against an ERROR / undefined / key-change / eviction.
  * NONE guard against a *successful* refetch that returns VALID-but-degenerate data — a field that
- * was non-null legitimately flips to null/empty on a 200 (a cold Neon chain / half-warm downstream
+ * was non-null legitimately flips to null/empty on a 200 (a cold Neon path / half-warm downstream
  * returns zeroed unit costs or fewer rows). `keepPreviousData` can't help: the null IS the new
  * valid query data, so React Query installs it and any UI derived off it (a budget card, a
  * disabled-gate, a badge) collapses mid-session.

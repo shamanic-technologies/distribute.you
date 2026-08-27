@@ -437,7 +437,7 @@ export async function getReportRevenue(
  *  features-service `workflow-projection` (cross-org workflow efficiency × the
  *  brand's saved sales-economics): ROI = 100 / cacPct, budget-invariant
  *  (budgetUsd:1 just populates `projection`). Keyed on `workflowDynastySlug`.
- *  Fail-soft: a cold/slow projection chain degrades to "—" ROI rather than
+ *  Fail-soft: a cold/slow projection path degrades to "—" ROI rather than
  *  aborting the whole ISR prerender (CLAUDE.md build-time-prerender exception). */
 export interface WorkflowRoiProjection {
   workflowDynastySlug: string;

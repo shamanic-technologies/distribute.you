@@ -95,7 +95,7 @@ describe("what a customer may FUND", () => {
 });
 
 describe("channelsForFunnel", () => {
-  // The feedback-request offer buys a CONVERSATION. The other three chains start
+  // The feedback-request offer buys a CONVERSATION. The other three funnels start
   // with a website click it has no way to sell, so a shorter list is a real
   // restriction rather than a gap.
   it("offers both channels on the conversation funnel and one on the rest", () => {

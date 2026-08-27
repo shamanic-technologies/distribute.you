@@ -19,7 +19,7 @@ describe("Leads tabs come from the active campaigns' funnels", () => {
   it("unions the funnels, most advanced first, with Outreach always last", () => {
     const both = leadTabsForFunnels(["reply_meeting", "visit_signup"]);
     expect(both.engagement).toEqual(["positive-replies", "clicks", "outreach"]);
-    // Each funnel contributes the outcome its own chain terminates in — a booked
+    // Each funnel contributes the outcome its own steps terminate in — a booked
     // meeting for reply_meeting, a signup for visit_signup — most advanced first.
     expect(both.outcomes).toEqual(["meetings", "signups"]);
   });
@@ -103,7 +103,7 @@ describe("the daily digest is news about the return", () => {
  *
  * `org_brands.optimization_goal` is `NOT NULL` with a server default, so it reads
  * "website purchases" for a brand that stated nothing — brand-service's own schema
- * comment says nothing reads it. Any surface that resolved it was naming a chain the
+ * comment says nothing reads it. Any surface that resolved it was naming a funnel the
  * brand may never have declared.
  */
 describe("no surface reads the retired brand goal", () => {
@@ -127,12 +127,12 @@ describe("no surface reads the retired brand goal", () => {
   it("derives a goal from a FUNNEL, never a funnel from a goal", () => {
     const funnels = read("lib/sales-funnels.ts");
     // Lossless direction: every funnel terminates in exactly one outcome. The reverse
-    // is lossy — `sales_meetings` covers both meeting chains — and stays banned.
+    // is lossy — `sales_meetings` covers both meeting funnels — and stays banned.
     expect(funnels).toContain("export function goalForFunnelKey(");
     expect(read("lib/campaign-funnel.ts")).not.toContain("primaryFunnelForGoal");
   });
 
-  it("lets a surface state no chain at all, instead of defaulting to one", () => {
+  it("lets a surface state no funnel at all, instead of defaulting to one", () => {
     const steps = read("lib/goal-steps.ts");
     // Neither funnel nor goal → the Outreach floor, which is true whatever a brand sells.
     expect(steps).toContain("if (funnelKey) return funnelSteps(funnelKey);");

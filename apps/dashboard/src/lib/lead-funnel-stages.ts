@@ -1,19 +1,19 @@
 /**
  * The stages of ONE campaign's sales funnel, as a person states them about ONE lead.
  *
- * This is the human chain, not the measured one. `goal-steps.ts` answers "which steps
+ * This is the human funnel, not the measured one. `goal-steps.ts` answers "which steps
  * carry a stat" — it stops at the funnel's measured outcome, so a reply-led funnel ends
  * at `sales_meetings` and never mentions the meeting being attended or the client
- * paying. Those two are real stages of the chain a person walks a lead through; they
+ * paying. Those two are real stages of the funnel a person walks a lead through; they
  * simply have no automatic signal, which is exactly why a human has to state them.
  *
- * So the source here is `SALES_FUNNELS[key].steps` — the SAME chain the Sales Funnels
+ * So the source here is `SALES_FUNNELS[key].steps` — the SAME steps the Sales Funnels
  * settings card renders and the same one brand-service prices leg by leg. One
  * vocabulary: a stage reads the same words on the settings card and on the lead panel,
  * and a funnel added to the catalogue is offered here for free.
  *
  * NOT keyed on the brand goal. `sales_meetings` covers both meeting funnels, so a goal
- * cannot say whether the chain starts at a reply or at a website visit — the exact
+ * cannot say whether the funnel starts at a reply or at a website visit — the exact
  * distinction this panel exists to record. A campaign has stated its `funnelKey` since
  * #3344, so there is nothing to fall back to.
  *
@@ -36,7 +36,7 @@ export type LeadStageKey =
 /**
  * The stages lead-service ACCEPTS a statement on, spelled exactly as it spells them.
  *
- * Deliberately narrower than `LeadStageKey`. Two stages of the human chain are not on
+ * Deliberately narrower than `LeadStageKey`. Two stages of the human funnel are not on
  * this list and cannot be: a positive REPLY is a fact about a message, so it is stated
  * on the reply itself (instantly-service owns that vocabulary), and a website VISIT is
  * a click the delivery layer measures, which lead-service's outcome ledger has no entry
@@ -61,7 +61,7 @@ export function isWritableStage(key: LeadStageKey): key is WritableStageKey {
  * The stages lead-service REFUSES a statement on unless it says what the outcome was
  * worth. Exactly one: the sale.
  *
- * A won deal is the one place in the whole chain where estimating has no excuse. With
+ * A won deal is the one place in the whole funnel where estimating has no excuse. With
  * no amount, every money figure downstream — pipeline, return, cost of acquisition —
  * silently prices the deal at the brand's AVERAGE lifetime revenue, a number that
  * describes no real customer. Every other stage keeps the amount optional, because an
@@ -149,8 +149,8 @@ export interface LeadFunnelStage {
  * Catalogue step label → stage. The mapping is exhaustive over every label the four
  * funnels use; `leadFunnelStages.test.ts` walks the whole catalogue and fails if a
  * step label has no entry, so a new funnel cannot ship a stage this panel silently
- * drops. Matching on the label rather than restating each funnel's chain is what
- * keeps ONE chain: a catalogue edit reaches here without a second list to remember.
+ * drops. Matching on the label rather than restating each funnel's steps is what
+ * keeps ONE source: a catalogue edit reaches here without a second list to remember.
  */
 const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
   // `label` overrides what THIS panel calls the step, and exactly one step needs it.
@@ -171,14 +171,14 @@ const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; lab
 /**
  * The ordered stages of the campaign's funnel, base → terminal.
  *
- * An ABSENT funnel returns NOTHING rather than a guessed chain. That is the brand-level
+ * An ABSENT funnel returns NOTHING rather than guessed steps. That is the brand-level
  * case by construction: a brand runs several funnels at once, so there is no single
- * chain to walk a lead through and the panel states nothing instead of picking one.
+ * funnel to walk a lead through and the panel states nothing instead of picking one.
  *
  * A funnel key the catalogue does NOT carry THROWS, via `normalizeSalesFunnelKey` — the
  * same contract `campaignFunnel` honours. That is deliberate and documented at the
  * catalogue: the column is CHECK-constrained upstream, so an unknown value is a
- * vocabulary drift worth seeing, not one to paper over with a plausible chain. Absent
+ * vocabulary drift worth seeing, not one to paper over with a plausible funnel. Absent
  * and unknown are different statements and must not collapse onto one another.
  */
 export function leadFunnelStages(funnelKey: SalesFunnelKeyWire | null | undefined): LeadFunnelStage[] {

@@ -95,14 +95,14 @@ const SALES_ECON_DEFAULTS = { ltv: "4000", replyToMeeting: "40", meetingToClose:
 
 const DAYS_PER_MONTH = 30.4;
 
-// Cold-start self-heal for the workflow-projection query. The projection rides a cold Neon chain
+// Cold-start self-heal for the workflow-projection query. The projection rides a cold Neon path
 // (api→features→workflow/runs/email-gateway/brand, all scale-to-zero) that can answer the FIRST
 // request with a valid-but-degenerate 200 (null unit costs / empty workflows) while half-warming —
 // collapsing the §3 budget cards to the "no data yet" message. keep-last-good (#1548) can't heal the
 // FIRST fetch (no prior good value to keep), and #1542 dropped the 5s poll, so a cold first load used
 // to stick on the message until a manual window-refocus. Re-add a BOUNDED poll: refetch only while no
 // workflow has a usable costPerCloseUsd, and give up after N tries so a genuinely-empty brand doesn't
-// poll forever. Stops the moment the chain warms — preserves #1542's fetch-once-when-good intent.
+// poll forever. Stops the moment the path warms — preserves #1542's fetch-once-when-good intent.
 const PROJECTION_WARMUP_INTERVAL_MS = 4000;
 const PROJECTION_WARMUP_TRIES = 5;
 
@@ -527,7 +527,7 @@ export default function FeatureCreateCampaignPage() {
   // features-service owns the econ-INDEPENDENT per-workflow GLOBAL unit costs (contacted/reply/
   // click $) — slow-changing, so FETCH-ONCE (no poll): the cards update INSTANTLY from the client
   // econLive recompute below, NOT from re-fetching this. We still allow refetchOnWindowFocus, but
-  // guard it with `structuralSharing: keepLastGoodWorkflowProjection` — the cold Neon chain can
+  // guard it with `structuralSharing: keepLastGoodWorkflowProjection` — the cold Neon path can
   // answer a refocus refetch with a valid-but-degenerate 200 (null unit costs / fewer workflows)
   // that would otherwise collapse the budget cards + Launch button (both derive off
   // costPerCloseUsd). Keep-last-good holds the resolved values across such a transient
@@ -565,7 +565,7 @@ export default function FeatureCreateCampaignPage() {
 
   // The brand's LIVE conversion economics (from the §2 inputs), as decimals — drives the
   // client-side funnel recompute below so the budget cards update INSTANTLY as the user edits,
-  // without a per-edit round-trip through the cold Neon chain. On first paint these equal the
+  // without a per-edit round-trip through the cold Neon path. On first paint these equal the
   // brand's SAVED econ (hydrated above), so the recompute reproduces the server's numbers exactly.
   const econLive = useMemo<FunnelEconomics>(
     () => ({

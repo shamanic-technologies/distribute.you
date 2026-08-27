@@ -76,7 +76,7 @@ export function recommendedLearningSpendUsd(
  * How many outcomes of ANY kind a brand has produced.
  *
  * At brand level there is no goal to count one of, so this counts what the brand has to
- * show whatever funnel produced it. A brand selling through several chains has landed
+ * show whatever funnel produced it. A brand selling through several funnels has landed
  * its first result the moment ANY of them converts.
  *
  * Website clicks are deliberately NOT in the union: a click is an engagement signal on

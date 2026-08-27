@@ -70,7 +70,7 @@ describe("Onboarding sales-economics writes", () => {
     expect(body).not.toContain("setModelEconomicsError(err instanceof Error ? err.message");
   });
 
-  it("shows the primary funnel's OWN chain, not the retired goal's rate set", () => {
+  it("shows the primary funnel's OWN steps, not the retired goal's rate set", () => {
     // `RATE_KEYS_FOR_OUTCOME` mixed the entry legs of DIFFERENT funnels (the meeting
     // goal asked for reply-to-meeting AND visit-to-meeting, one from each meeting
     // funnel), so the block asked for numbers belonging to no single path.

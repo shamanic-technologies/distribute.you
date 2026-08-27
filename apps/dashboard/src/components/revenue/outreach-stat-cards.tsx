@@ -123,11 +123,11 @@ export function OutreachStatCards({
    * A campaign sells exactly one funnel and states which on its own row, so it passes
    * this and the funnel decides which steps appear. The goal cannot: `reply_meeting` and
    * `visit_meeting` both answer to `sales_meetings`, so a goal-keyed row prints "Website
-   * Visits / Cost per website visit" on a campaign whose chain starts at a positive
+   * Visits / Cost per website visit" on a campaign whose funnel starts at a positive
    * reply — the wrong funnel's steps under the campaign's own name.
    *
    * Absent on a brand-level surface (a brand runs several funnels at once, so no single
-   * chain describes it) and on a pre-funnel campaign → the goal keys the row exactly as
+   * funnel's steps describe it) and on a pre-funnel campaign → the goal keys the row exactly as
    * before.
    */
   funnelKey?: SalesFunnelKeyWire | null;
@@ -207,12 +207,12 @@ export function OutreachStatCards({
     conversionToken?.status === "live_waiting";
   // No default goal. The brand one is retired — `NOT NULL` with a server default, so it
   // reads "website purchases" for a brand that stated nothing — and defaulting to it put
-  // a chain's steps on a surface that never named one. Absent goal AND absent funnel
+  // a funnel's steps on a surface that never named one. Absent goal AND absent funnel
   // means the step helpers return the Outreach floor and no funnel pair renders.
   const goal = optimizationGoal ?? null;
   // Which steps this row states, keyed on the FUNNEL when the surface is scoped to one and
   // on the goal otherwise. Every pair below is decided from this list rather than from a
-  // `goal === "x"` test, so a chain that does not buy a click cannot be given the
+  // `goal === "x"` test, so a funnel that does not buy a click cannot be given the
   // Website-Visits pair (the reply→meeting funnel is exactly that case).
   const steps = stepsFor(goal, funnelKey);
   const hasStep = (key: string) => steps.some((s) => s.key === key);
@@ -274,9 +274,9 @@ export function OutreachStatCards({
   // website_purchase) show their outcome ungated.
   const goalIsBeta = goal === "sales";
   // The Website Visits pair renders only when a click onto the site is actually on the
-  // chain. It is for the reply→meeting funnel, whose first step is a positive reply.
+  // funnel. It is for the reply→meeting funnel, whose first step is a positive reply.
   const showVisitPair = hasStep("website_visits");
-  // The reply pair as a MID-chain signal, beside its own outcome below: the reply→meeting
+  // The reply pair as a MID-funnel signal, beside its own outcome below: the reply→meeting
   // funnel (reply → meeting booked) and the combined `sales` goal (which wins a paying
   // client via EITHER the visit→paid or the reply→paid path, so it shows both signals).
   // Reply attribution is inbox-sourced, so no conversion-tracker CTA.
@@ -398,7 +398,7 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* Only when a click onto the site is on the chain. The `positive_replies` goal
+      {/* Only when a click onto the site is on the funnel. The `positive_replies` goal
           (reply→paid) and the reply→meeting FUNNEL both start at a reply, so neither
           buys a website visit and neither gets these two cards. */}
       {showFunnelMetrics && showVisitPair && (
@@ -423,7 +423,7 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* The reply as a mid-chain signal, above its own outcome: the reply→meeting funnel
+      {/* The reply as a mid-funnel signal, above its own outcome: the reply→meeting funnel
           (where it takes the slot the Website Visits pair holds on the website funnels),
           and the combined `sales` goal (which shows both signals).
           Inbox-sourced attribution → no conversion-tracker CTA. */}

@@ -25,7 +25,7 @@ describe("the brand Overview is scoped to the brand's money", () => {
   it("drops the channel-scoped Outreach-activity chart at brand level", () => {
     expect(overview).toContain("showActivityChart={false}");
     expect(section).toContain("showActivityChart?: boolean");
-    // The chart labels a chain's steps, so it renders only when a chain is named — and
+    // The chart labels a funnel's steps, so it renders only when a funnel is named — and
     // a brand names none.
     expect(section).toContain("{showActivityChart && optimizationGoal && (");
     // The chart itself stays — it is the campaign Overview's, and that page renders
@@ -160,8 +160,8 @@ describe("brand surfaces list campaigns and state money", () => {
     // Every funnel-scoped pair is off at brand level; the campaign route keeps them all.
     expect(audiences).toContain('optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney');
     // The two signal pairs are keyed on the CAMPAIGN's own funnel steps, never on the
-    // retired goal — a goal cannot separate the two meeting chains, so it printed the
-    // visit pair on a campaign whose chain starts at a positive reply. `!brandLevelMoney`
+    // retired goal — a goal cannot separate the two meeting funnels, so it printed the
+    // visit pair on a campaign whose funnel starts at a positive reply. `!brandLevelMoney`
     // is still what turns both off at brand level.
     expect(audiences).toContain('const showVisitCols = hasStep("website_visits") && !brandLevelMoney;');
     expect(audiences).toContain('hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney');
@@ -214,7 +214,7 @@ describe("brand surfaces list campaigns and state money", () => {
  * features-service v0.129.0 made "name NEITHER a funnel NOR a goal" a first-class
  * request: it prices every audience through the best-returning funnel the brand
  * declared and sorts on return descending. That is the only honest answer at brand
- * level — naming one funnel would denominate the whole table in one chain's terms,
+ * level — naming one funnel would denominate the whole table in one funnel's terms,
  * and the goal that used to pick it is a server-defaulted retired column.
  */
 describe("brand-level audience reads name neither a funnel nor a goal", () => {
@@ -227,7 +227,7 @@ describe("brand-level audience reads name neither a funnel nor a goal", () => {
 
   it("sends only the brandId from the Overview's Top-audiences card", () => {
     // `offerId` is a SCOPE (which audiences are priced), never a funnel or a goal
-    // (the chain they are priced through) — it is `undefined` at brand level.
+    // (the funnel they are priced through) — it is `undefined` at brand level.
     expect(overview).toContain("fetchFeatureAudienceStats(featureSlug, { brandId, offerId })");
     // The goal mapping is gone from this page entirely.
     expect(overview).not.toContain("goalForOptimizationGoal");
@@ -255,7 +255,7 @@ describe("brand-level audience reads name neither a funnel nor a goal", () => {
     expect(api).toContain('z.literal("returnPerDollar")');
     // `goal` is null on the brand read — a strict union would throw on every one.
     expect(api).toContain('z.literal("formSubmission"),\n  ]).nullable(),');
-    // Each row names the chain it was priced through: an audience's best chain is
+    // Each row names the funnel it was priced through: an audience's best funnel is
     // routinely not the brand's.
     expect(api).toContain("basisFunnelKey");
   });
