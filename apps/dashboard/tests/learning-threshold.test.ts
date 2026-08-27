@@ -258,16 +258,22 @@ describe("the scope surfaces (offer and brand)", () => {
     // printed above one. Both invite a reading off a curve we just said is provisional.
     expect(trend).toContain("dot={false}");
     expect(trend).not.toContain("LabelList");
-    // The hovered point is rendered outside the Area, so it needs its own colour class or
-    // it is a black blob on a grey line. It stays: it is the tooltip's anchor, shown on
-    // demand rather than plotted.
-    expect(trend).toContain('learning ? { r: 4, strokeWidth: 0, fill: "currentColor", className: "text-gray-500" } : { r: 4 }');
+    // And NO hover card either. A tooltip is how a reader takes a reading, so offering
+    // one hands back the value the dots and the labels were removed for — a third way of
+    // stating it, wearing an interaction. The hovered point goes with it: it was that
+    // tooltip's anchor. The measured chart keeps both.
+    expect(trend).toContain("{!learning && (");
+    expect(trend).toContain("activeDot={learning ? false : { r: 4 }}");
     // While learning the axis states its two ENDS and nothing between them, and both ends
     // span break-even so its dashed line is never clipped out of the domain.
     expect(trend).toContain("domain={learning && learningBounds ? learningBounds.domain : undefined}");
     expect(trend).toContain("ticks={learning && learningBounds ? learningBounds.ticks : undefined}");
     expect(trend).toContain("Math.min(...values, BREAK_EVEN)");
-    expect(trend).toContain("Math.max(...values, BREAK_EVEN)");
+    // Under break-even the ceiling is a FIXED multiple, not the scope's own best day:
+    // scaled to its own data a flat 0.0x line is drawn across the top of a 0-to-1 band
+    // and reads as a result.
+    expect(trend).toContain("const LEARNING_CEILING = 10;");
+    expect(trend).toContain("Math.max(...values) < BREAK_EVEN ? LEARNING_CEILING");
     // The MEASURED chart keeps its middle: recharts drops ticks it thinks will not fit,
     // which on a short card leaves the two ends and nothing between them.
     expect(trend).toContain("tickCount={learning ? undefined : 5}");
