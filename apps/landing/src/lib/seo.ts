@@ -24,7 +24,16 @@ export function organizationJsonLd(description = SITE_DESCRIPTION) {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
-    legalName: "Shamanic Technologies",
+    // The registered entity, not a trading name. "Shamanic Technologies" was
+    // never a legal name — it is the GitHub organisation handle, which is why it
+    // read as one for so long. BLOOMING GENERATION is a SASU registered at the
+    // address below; both are public record on the French company register, and
+    // a commercial site here is required to publish them.
+    legalName: "BLOOMING GENERATION",
+    // SIREN. `identifier` is what schema.org offers for a national company
+    // number, and it is the thing that makes the rest of this block verifiable
+    // rather than merely stated.
+    identifier: "882102775",
     url: SITE_URL,
     logo: BRAND_LOGO_URL,
     image: BRAND_LOGO_URL,

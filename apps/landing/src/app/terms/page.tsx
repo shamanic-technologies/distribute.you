@@ -10,7 +10,8 @@ export const revalidate = 86400;
 
 const TERMS_URL = `${PROD_URLS.landing}/terms`;
 const LAST_UPDATED = "June 24, 2026";
-const COMPANY = "Shamanic Technologies";
+const COMPANY = "BLOOMING GENERATION";
+const COMPANY_SIREN = "882102775";
 const SERVICE = "distribute";
 const SUPPORT_EMAIL = "support@distribute.you";
 
@@ -64,6 +65,12 @@ const SECTIONS: SectionDef[] = [
           regarding your access to and use of the {SERVICE} platform, websites,
           APIs, dashboards, and related services (collectively, the
           &ldquo;Service&rdquo;).
+        </p>
+        <p>
+          {COMPANY} is a SASU registered in France under SIREN {COMPANY_SIREN},
+          with its registered office at 285 rue de l&rsquo;&Eacute;glise, 46140
+          Douelle, France. Support reaches a person at{" "}
+          <a href="mailto:support@distribute.you">support@distribute.you</a>.
         </p>
         <p>
           By creating an account, accessing, or using the Service, you confirm

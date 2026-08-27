@@ -122,8 +122,14 @@ describe("Organization structured data", () => {
     expect(org.address.streetAddress).toContain("285 rue de l");
   });
 
-  it("keeps the legal name untouched", () => {
-    expect(org.legalName).toBe("Shamanic Technologies");
+  // The registered entity, verified against the company register rather than
+  // against what the site used to say. "Shamanic Technologies" is the GitHub
+  // organisation handle and was never a legal name; a commercial site here is
+  // required to publish the real one, and an agent checking legitimacy reads
+  // exactly this field.
+  it("states the registered entity and its SIREN", () => {
+    expect(org.legalName).toBe("BLOOMING GENERATION");
+    expect(org.identifier).toBe("882102775");
   });
 
   for (const page of ["index-v1.html", "use-cases.html", "pricing.html", "about.html"]) {
@@ -144,7 +150,8 @@ describe("Organization structured data", () => {
       expect(organizations).toHaveLength(1);
       expect(organizations[0]).toMatchObject({
         "@type": "Organization",
-        legalName: "Shamanic Technologies",
+        legalName: "BLOOMING GENERATION",
+        identifier: "882102775",
         address: { "@type": "PostalAddress", addressLocality: "Douelle" },
         contactPoint: { email: "support@distribute.you" },
       });
