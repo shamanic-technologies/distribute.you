@@ -155,7 +155,7 @@ describe("the panel answers the click at once", () => {
     // earlier never, and the cascade is its answer. The pending statement covers one
     // row while that read lands; it does not replace it.
     expect(HOOK).toContain("invalidateQueries");
-    expect(PAGE).not.toContain("chainIndex <");
+    expect(PAGE).not.toContain("stepIndex <");
   });
 
   it("writes the producer's own answer into the cache instead of re-reading it", () => {
@@ -337,7 +337,7 @@ describe("the funnel constrains its neighbours", () => {
     // states none. Re-deriving the order in the browser is a second source that can
     // disagree with what the campaign actually sells.
     expect(HOOK2).toContain('entry.origin !== "implied"');
-    expect(HOOK2).not.toContain("chainIndex <");
+    expect(HOOK2).not.toContain("stepIndex <");
   });
 
   it("treats a producer without origin as nothing implied", () => {
