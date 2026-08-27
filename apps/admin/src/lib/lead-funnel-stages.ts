@@ -111,6 +111,28 @@ export function isWritableStage(key: LeadStageKey): key is WritableStageKey {
 }
 
 /**
+ * What the person typed about what a step COST THEM, as the cents lead-service takes,
+ * or null when it is not an amount at all.
+ *
+ * ZERO IS A REAL ANSWER here, which is the whole difference from the value parser above:
+ * a step that cost nothing and a step nobody priced are exactly the two things the
+ * producer's refusal exists to keep apart, so `"0"` returns 0 and a BLANK field returns
+ * null. Null is a refusal to submit, never a zero standing in for silence. A negative,
+ * a word, and anything that is not a number all return null too.
+ *
+ * Currency decoration the person pastes in ($, thousands separators, surrounding
+ * spaces) is accepted, because rejecting "$1,200" for its punctuation teaches nothing.
+ */
+export function stepCostCentsFrom(input: string): number | null {
+  const cleaned = input.replace(/[$,\s]/g, "");
+  if (cleaned.length === 0) return null;
+  const amount = Number(cleaned);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  const cents = Math.round(amount * 100);
+  return cents >= 0 ? cents : null;
+}
+
+/**
  * What is known about one stage. Spelled exactly as lead-service spells it, so nothing
  * translates at the boundary.
  *

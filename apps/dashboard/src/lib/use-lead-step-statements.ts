@@ -39,11 +39,16 @@ export function useSetLeadStepStatement(leadRowId: string | null) {
   return useMutation<
     unknown,
     Error,
-    // `valueCents` is what the outcome was worth. Optional on the wire because most
-    // stages carry no amount — but lead-service REFUSES a sale without one, so the
-    // control that states a sale always sends it rather than letting the person meet
-    // a refusal it could have asked about.
-    { step: LeadStepName; kind: "outcome" | "never"; valueCents?: number }
+    // `costCents` is what the step cost the CUSTOMER, and lead-service refuses a
+    // statement without it (400, code `cost_required`) on BOTH kinds — a meeting that
+    // was run and went nowhere still cost what it cost. Required here so a caller has
+    // to ask the person rather than defaulting on their behalf; `0` is a legal answer.
+    //
+    // `valueCents` is what the outcome was WORTH, a different question. Optional on the
+    // wire because most stages carry no amount — but lead-service REFUSES a sale
+    // without one, so the control that states a sale always sends it rather than
+    // letting the person meet a refusal it could have asked about.
+    { step: LeadStepName; kind: "outcome" | "never"; costCents: number; valueCents?: number }
   >({
     mutationFn: (input) => setLeadStepStatement(leadRowId as string, input),
     onSuccess: () => {
@@ -84,6 +89,32 @@ export function stageValuesFrom(
     if (entry.state !== "outcome" || typeof entry.valueCents !== "number") continue;
     const key = (entry.step === "purchase" ? "sale" : entry.step) as LeadStageKey;
     out[key] = entry.valueCents;
+  }
+  return out;
+}
+
+/**
+ * What the CUSTOMER said each stated step cost THEM, in cents, as the panel's map.
+ *
+ * A key is PRESENT with `null` when somebody stated the step and no cost came back with
+ * it — a statement made before the cost became mandatory. That is "unanswered", and it
+ * must not read as a stated zero, so the two are kept apart by presence rather than by
+ * value. A step nobody stated by hand is simply absent: an implied step carries no
+ * author, and a tracker knows nothing about a customer's own spend.
+ *
+ * This is never platform spend. Nothing here is charged, and it belongs nowhere near a
+ * credit balance or an invoice.
+ */
+export function stageCostsFrom(
+  data: LeadStepStatements | undefined,
+): Partial<Record<LeadStageKey, number | null>> {
+  const out: Partial<Record<LeadStageKey, number | null>> = {};
+  for (const entry of data?.steps ?? []) {
+    if (entry.state === "pending") continue;
+    if (entry.origin === "implied") continue;
+    if (entry.source !== "manual") continue;
+    const key = (entry.step === "purchase" ? "sale" : entry.step) as LeadStageKey;
+    out[key] = typeof entry.costCents === "number" ? entry.costCents : null;
   }
   return out;
 }

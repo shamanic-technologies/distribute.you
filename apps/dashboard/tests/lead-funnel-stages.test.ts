@@ -3,6 +3,7 @@ import {
   isWritableStage,
   saleValueCentsFrom,
   stageRequiresValue,
+  stepCostCentsFrom,
   LEAD_STAGE_KEYS,
   leadFunnelStages,
   trackedStages,
@@ -190,5 +191,32 @@ describe("the amount a won deal was worth", () => {
     for (const bad of ["", "   ", "abc", "-5", "0", "0.001"]) {
       expect(saleValueCentsFrom(bad)).toBeNull();
     }
+  });
+});
+
+describe("stepCostCentsFrom", () => {
+  it("reads what the author typed as cents", () => {
+    expect(stepCostCentsFrom("120")).toBe(12000);
+    expect(stepCostCentsFrom("120.50")).toBe(12050);
+    expect(stepCostCentsFrom("$1,200")).toBe(120000);
+    expect(stepCostCentsFrom("  1 200 ")).toBe(120000);
+  });
+
+  it("takes ZERO as a real answer, unlike the value parser", () => {
+    // A step that cost nothing and a step nobody priced are exactly the two things
+    // lead-service's refusal exists to keep apart. Zero submits and reads back.
+    expect(stepCostCentsFrom("0")).toBe(0);
+    expect(stepCostCentsFrom("$0")).toBe(0);
+    expect(stepCostCentsFrom("0.00")).toBe(0);
+    expect(stepCostCentsFrom("0.001")).toBe(0);
+  });
+
+  it("refuses a blank field rather than answering it with a zero", () => {
+    // Null is a refusal to submit. Nothing here defaults on the author's behalf.
+    for (const blank of ["", "   "]) expect(stepCostCentsFrom(blank)).toBeNull();
+  });
+
+  it("refuses everything that is not an amount, negatives included", () => {
+    for (const bad of ["abc", "-5", "-0.01", "1,2,x"]) expect(stepCostCentsFrom(bad)).toBeNull();
   });
 });

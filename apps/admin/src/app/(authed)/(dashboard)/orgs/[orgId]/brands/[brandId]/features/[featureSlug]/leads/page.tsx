@@ -15,6 +15,7 @@ import {
 } from "@/lib/lead-funnel-stages";
 import {
   impliedStages,
+  stageCostsFrom,
   stageStatesFrom,
   stageValuesFrom,
   useLeadStepStatements,
@@ -347,6 +348,10 @@ export default function FeatureLeadsPage() {
   const [panelError, setPanelError] = useState<string | null>(null);
   const panelStates = useMemo(() => stageStatesFrom(stepStatements), [stepStatements]);
   const panelValues = useMemo(() => stageValuesFrom(stepStatements), [stepStatements]);
+  // What the CUSTOMER said each hand-stated stage cost them. Their own money, recorded
+  // because they told us and never charged. Present-with-null is a statement made
+  // before the cost was asked for, which reads as unanswered rather than as a zero.
+  const panelCosts = useMemo(() => stageCostsFrom(stepStatements), [stepStatements]);
   const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
   // What was already measured, off the lead row this page already holds.
   const panelTracked = useMemo(
@@ -359,11 +364,20 @@ export default function FeatureLeadsPage() {
     [selectedLead],
   );
 
-  const onSetStage = (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => {
+  const onSetStage = (
+    key: WritableStageKey,
+    next: "outcome" | "never",
+    costCents: number,
+    valueCents?: number,
+  ) => {
     setPanelError(null);
     setPanelPending({ key, next });
     setStage.mutate(
-      valueCents === undefined ? { step: key, kind: next } : { step: key, kind: next, valueCents },
+      // `costCents` always rides along: lead-service refuses a statement without it on
+      // both kinds, and the control asked the person for it rather than defaulting one.
+      valueCents === undefined
+        ? { step: key, kind: next, costCents }
+        : { step: key, kind: next, costCents, valueCents },
       {
         // lead-service writes its refusal as a sentence for a person to read. Surface
         // ITS reason through the helper, never the thrown Error's own message field,
@@ -487,6 +501,7 @@ export default function FeatureLeadsPage() {
                 tracked={panelTracked}
                 implied={panelImplied}
                 values={panelValues}
+                costs={panelCosts}
                 pending={panelPending}
                 error={panelError}
                 onSet={onSetStage}

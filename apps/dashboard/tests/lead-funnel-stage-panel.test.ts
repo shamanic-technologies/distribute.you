@@ -207,12 +207,14 @@ describe("stating what a won deal was worth", () => {
     // lead-service 400s a sale with no value. Predicting a refusal and asking the
     // question is the honest surface; submitting anyway is not.
     expect(SECTION).toContain("stageRequiresValue(stage.key)");
-    expect(SECTION).toContain("setAskingValueFor(stage.key as WritableStageKey)");
+    // Only on an OUTCOME: the producer refuses a value attached to a "never".
+    expect(SECTION).toContain('needsValue={asking.next === "outcome" && stageRequiresValue(stage.key)}');
   });
 
   it("cannot submit the amount form until what was typed IS an amount", () => {
-    expect(SECTION).toContain("saleValueCentsFrom(raw)");
-    expect(SECTION).toContain("disabled={valueCents == null || busy}");
+    expect(SECTION).toContain("saleValueCentsFrom(rawValue)");
+    expect(SECTION).toContain("const ready = costCents != null && (!needsValue || valueCents != null);");
+    expect(SECTION).toContain("disabled={!ready || busy}");
   });
 
   it("reads the recorded amount back where it was typed", () => {
@@ -223,13 +225,91 @@ describe("stating what a won deal was worth", () => {
 
   it("sends the amount only when the control asked for one", () => {
     // A `never` carries no value and the producer refuses one, so the key is omitted
-    // rather than sent empty.
-    expect(PAGE).toContain("valueCents === undefined ? { step: key, kind: next }");
+    // rather than sent empty. The COST rides along either way.
+    expect(PAGE).toContain("? { step: key, kind: next, costCents }");
+    expect(PAGE).toContain(": { step: key, kind: next, costCents, valueCents }");
+  });
+});
+
+describe("stating what the step cost the customer", () => {
+  const API = read("src/lib/api.ts");
+  const STAGES = read("src/lib/lead-funnel-stages.ts");
+
+  it("asks on BOTH kinds, because a step that went nowhere still cost something", () => {
+    // lead-service makes the cost mandatory on an outcome and on a "never" alike, so
+    // neither button can write straight through any more.
+    expect(SECTION).toContain('onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "outcome" })}');
+    expect(SECTION).toContain('onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "never" })}');
+    // The one-click write is GONE, so nothing can reach the producer without an amount.
+    expect(SECTION).not.toContain(': onSet(stage.key as WritableStageKey, "outcome")');
+    expect(SECTION).not.toContain('onClick={() => onSet(stage.key as WritableStageKey, "never")}');
   });
 
-  it("leaves every other stage a single click, with no amount in the request", () => {
-    expect(SECTION).toContain(': onSet(stage.key as WritableStageKey, "outcome")');
-    expect(SECTION).toContain('onClick={() => onSet(stage.key as WritableStageKey, "never")}');
+  it("blocks the write until the person answers, and defaults nothing for them", () => {
+    // A blank field is an unanswered question, never a zero somebody did not type.
+    expect(SECTION).toContain("stepCostCentsFrom(rawCost)");
+    expect(SECTION).toContain("if (costCents == null) return;");
+    expect(SECTION).not.toContain("costCents ?? 0");
+    expect(SECTION).not.toContain("costCents: 0");
+    expect(PAGE).not.toContain("costCents: 0");
+  });
+
+  it("makes the cost REQUIRED on the write, so a caller has to ask", () => {
+    expect(API).toContain("costCents: number;");
+    expect(API).not.toContain("costCents?: number");
+  });
+
+  it("reads the cost back required-and-nullable, matching the producer", () => {
+    // `.optional()` would read undefined on a body that legitimately carries a null,
+    // which is the one distinction this field exists to hold.
+    expect(API).toContain("costCents: z.number().nullable(),");
+    expect(API).not.toContain("costCents: z.number().nullable().optional()");
+  });
+
+  it("keeps a stated zero apart from a statement nobody was asked for", () => {
+    // Presence, not value: absent means nobody stated the stage by hand, null means the
+    // statement predates the question, 0 means somebody answered zero.
+    expect(HOOK).toContain("typeof entry.costCents === \"number\" ? entry.costCents : null");
+    expect(SECTION).toContain("const statedCost = costs && stage.key in costs ? costs[stage.key] ?? null : undefined;");
+    expect(SECTION).toContain('statedCost === null ? "Cost not stated"');
+  });
+
+  it("puts the recorded cost on screen, and the page passes it", () => {
+    // A component that merely HANDLES the prop renders nothing if nobody passes it.
+    expect(SECTION).toContain('data-testid="lead-funnel-stage-cost"');
+    expect(PAGE).toContain("stageCostsFrom(stepStatements)");
+    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 900);
+    expect(call).toContain("costs={panelCosts}");
+  });
+
+  it("says whose money it is beside the field, not only inside a tooltip", () => {
+    // A dollar box on a screen that also shows credits reads as something we are about
+    // to charge, and nobody opens a tooltip to find out otherwise.
+    expect(SECTION).toContain('const COST_CAPTION = "Your own spend. We never bill it.";');
+    expect(SECTION).toContain('data-testid="lead-funnel-stage-cost-caption"');
+    expect(SECTION).toContain("we never charge you for it");
+  });
+
+  it("never presents it as platform spend, credits or an invoice", () => {
+    // The COPY only, not the comments around it: a comment explaining that a dollar box
+    // must not read as credits legitimately writes the word.
+    const copy = [
+      SECTION.slice(SECTION.indexOf("const COST_TIP"), SECTION.indexOf("\n\n", SECTION.indexOf("const COST_TIP"))),
+      SECTION.slice(SECTION.indexOf("const COST_CAPTION"), SECTION.indexOf(";", SECTION.indexOf("const COST_CAPTION"))),
+    ].join(" ").toLowerCase();
+    for (const forbidden of ["credit", "invoice", "billed to you", "we charge you", "balance"]) {
+      expect(copy).not.toContain(forbidden);
+    }
+    // And it says the opposite, in the author's own terms.
+    expect(copy).toContain("this is your money");
+    expect(copy).toContain("we never charge you");
+  });
+
+  it("surfaces the producer's own refusal, cost_required included", () => {
+    // lead-service writes its 400 as a sentence for a person to read; the helper
+    // forwards it rather than replacing it with a generic failure.
+    expect(STAGES).toContain("if ((status === 400 || status === 409) && typeof upstream === \"string\"");
+    expect(PAGE).toContain("leadStepErrorMessage(err)");
   });
 });
 
