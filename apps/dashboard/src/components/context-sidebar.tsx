@@ -12,6 +12,8 @@ import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { TenantSwitcher } from "@/components/tenant-switcher";
 import { RewardsCard } from "@/components/invite/rewards-card";
 import { MaturityBadge } from "@/components/maturity-badge";
+import { campaignFunnel } from "@/lib/campaign-funnel";
+import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
@@ -232,11 +234,12 @@ const SettingsIcon = () => (
 // brand: no `/features/[featureSlug]` segment. Brand-level sections live directly
 // under `/orgs/[orgId]/brands/[brandId]/...`.
 interface NavigationLevel {
-  type: "app" | "org" | "brand" | "offer" | "campaign";
+  type: "app" | "org" | "brand" | "offer" | "funnel" | "campaign";
   orgId?: string;
   brandId?: string;
   offerId?: string;
   campaignId?: string;
+  funnelKey?: string;
 }
 
 /**
@@ -259,6 +262,13 @@ function getNavigationLevel(segments: string[]): NavigationLevel {
         // "Campaigns" nav entry highlights.
         if (segments[6] === "campaigns" && segments[7]) {
           return { type: "campaign", orgId, brandId, offerId, campaignId: segments[7] };
+        }
+        // Funnel LEVEL — `.../funnels/[funnelKey]` is the level between the offer and
+        // a campaign: an offer sells through funnels, and a campaign buys one LEG of
+        // one of them. It gets its own sidebar so the crumb names the funnel you are
+        // standing in rather than leaving it to the page heading.
+        if (segments[6] === "funnels" && segments[7]) {
+          return { type: "funnel", orgId, brandId, offerId, funnelKey: segments[7] };
         }
         return { type: "offer", orgId, brandId, offerId };
       }
@@ -500,6 +510,50 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
 // (campaign-filtered pages); Strategy + Audiences are campaign-scoped views of the
 // brand's shared config (a campaign inherits what campaign-service does not store
 // per campaign). GA: shown on every revenue feature, no staff gate, no beta badge.
+/**
+ * ONE sales funnel, the level between an offer and a campaign.
+ *
+ * An offer sells through funnels and a campaign buys one LEG of one of them, so this
+ * is where a return exists and the campaigns beneath it are what produced it. The
+ * sidebar names the funnel, so a reader standing in it knows which funnel they
+ * are looking at without reading the page heading.
+ */
+function FunnelLevelSidebar({ orgId, brandId, offerId, funnelKey, pathname }: {
+  orgId: string;
+  brandId: string;
+  offerId: string;
+  funnelKey: string;
+  pathname: string;
+}) {
+  const offerPath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
+  const funnelPath = `${offerPath}/funnels/${funnelKey}`;
+  // The funnel's own name, off the shared catalogue. A key the catalogue does not
+  // carry prints as itself rather than as a blank heading.
+  const funnel = campaignFunnel(decodeURIComponent(funnelKey) as SalesFunnelKeyWire);
+
+  return (
+    <SidebarSection topSlot={<TenantSwitcher />} footer={<RewardsCard />}>
+      <div className="px-3 pb-2">
+        <Link href={offerPath} className="text-xs text-gray-400 hover:text-gray-600">
+          Sales funnels
+        </Link>
+        <p className="text-sm font-medium text-gray-900 leading-tight mt-0.5">
+          {funnel?.name ?? decodeURIComponent(funnelKey)}
+        </p>
+      </div>
+      <SidebarLink
+        item={{
+          id: "funnel-campaigns",
+          label: "Campaigns",
+          href: funnelPath,
+          icon: <CampaignsIcon />,
+        }}
+        isActive={pathname === funnelPath}
+      />
+    </SidebarSection>
+  );
+}
+
 function CampaignLevelSidebar({ orgId, brandId, offerId, campaignId, pathname }: {
   orgId: string;
   brandId: string;
@@ -701,6 +755,16 @@ export function ContextSidebar() {
           orgId={level.orgId!}
           brandId={level.brandId!}
           offerId={level.offerId!}
+          pathname={pathname}
+        />
+      );
+    case "funnel":
+      return (
+        <FunnelLevelSidebar
+          orgId={level.orgId!}
+          brandId={level.brandId!}
+          offerId={level.offerId!}
+          funnelKey={level.funnelKey!}
           pathname={pathname}
         />
       );

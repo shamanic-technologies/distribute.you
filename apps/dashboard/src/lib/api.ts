@@ -3352,9 +3352,17 @@ export async function getFeatureRevenue(
  * field is on the wire precisely so a consumer states the gap rather than presenting an
  * optimistic return as the whole answer.
  */
+/**
+ * A channel carrying a funnel, as features-service states it: the feature slug it IS,
+ * and the campaigns of this offer running on it.
+ *
+ * It carries NO display name. A channel's name is resolved from the catalogue this app
+ * already fetches, which is where every other surface reads it — asking the producer
+ * for a second copy of it is how the two come to disagree.
+ */
 const OfferFunnelChannelSchema = z.object({
-  slug: z.string(),
-  name: z.string().nullish(),
+  featureSlug: z.string(),
+  campaignIds: z.array(z.string()),
 });
 /**
  * What the CUSTOMER states their own legs cost them. Never charged, in no ledger of

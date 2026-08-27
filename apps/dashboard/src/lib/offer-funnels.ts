@@ -68,8 +68,13 @@ export type FunnelView = {
   steps: string[];
   /** How many campaigns of this offer sell through it. One today, one per leg as the product moves. */
   campaignCount: number;
-  /** The channels carrying it, by name where the producer stated one. */
-  channelNames: string[];
+    /**
+   * The feature slugs of the channels carrying this funnel. SLUGS, not names: a
+   * channel's name is resolved from the catalogue this app already fetches, which is
+   * where every other surface reads it. Asking the producer for a second copy of the
+   * name is how the two come to disagree about one channel.
+   */
+  channelSlugs: string[];
   priced: boolean;
   unpricedReason: string | null;
   pipelineUsd: number | null;
@@ -106,7 +111,7 @@ export function funnelViews(funnels: OfferFunnelRow[]): FunnelView[] {
     name: funnel.name,
     steps: funnel.steps,
     campaignCount: funnel.campaignIds.length,
-    channelNames: funnel.channels.map((c) => c.name ?? c.slug),
+    channelSlugs: funnel.channels.map((c) => c.featureSlug),
     priced: funnel.priced,
     unpricedReason: funnel.unpricedReason,
     pipelineUsd: funnel.headline.totalPipelineUsd,

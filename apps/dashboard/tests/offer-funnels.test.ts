@@ -14,7 +14,7 @@ function row(over: Partial<OfferFunnelRow> & { funnelKey: string; name: string }
   return {
     steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
     campaignIds: ["c1"],
-    channels: [{ slug: "sales-cold-email-outreach", name: "Sales Cold Email Outreach" }],
+    channels: [{ featureSlug: "sales-cold-email-outreach", campaignIds: ["c1"] }],
     priced: true,
     unpricedReason: null,
     headline: { totalPipelineUsd: 7000 },
@@ -47,7 +47,7 @@ describe("funnelViews", () => {
     expect(view.costPerAcquisitionUsd).toBe(953);
     expect(view.costOfAcquisitionPct).toBe(38.2);
     expect(view.campaignCount).toBe(1);
-    expect(view.channelNames).toEqual(["Sales Cold Email Outreach"]);
+    expect(view.channelSlugs).toEqual(["sales-cold-email-outreach"]);
   });
 
   it("keeps the producer's order rather than ranking by return", () => {
@@ -60,11 +60,17 @@ describe("funnelViews", () => {
     expect(views.map((v) => v.funnelKey)).toEqual(["a", "b"]);
   });
 
-  it("falls back to the channel slug only when the producer named none", () => {
+  it("carries the channel SLUG, because the name is the catalogue's to state", () => {
+    // Asking the producer for a second copy of a channel's name is how the two come to
+    // disagree about one channel. Every other surface resolves it from the catalogue.
     const [view] = funnelViews([
-      row({ funnelKey: "a", name: "A", channels: [{ slug: "founder-led-closing", name: null }] } as never),
+      row({
+        funnelKey: "a",
+        name: "A",
+        channels: [{ featureSlug: "founder-led-closing", campaignIds: [] }],
+      } as never),
     ]);
-    expect(view.channelNames).toEqual(["founder-led-closing"]);
+    expect(view.channelSlugs).toEqual(["founder-led-closing"]);
   });
 
   it("leaves an unpriced funnel's money null, never zero", () => {
