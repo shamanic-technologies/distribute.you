@@ -1,4 +1,5 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { URLS, DISTRIBUTION_FEATURES } from "@distribute/content";
 import { CopyForLLM } from "@/components/copy-for-llm";
@@ -7,7 +8,7 @@ const liveFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "live");
 const comingFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "coming-soon");
 
 const channelList = liveFeatures
-  .map((f) => `- ${f.title} — ${f.description}`)
+  .map((f) => `- ${f.title}: ${f.description}`)
   .join("\n");
 
 const LLM_INSTRUCTIONS = `# distribute.you Documentation
@@ -45,11 +46,11 @@ export default function DocsHome() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">distribute.you Documentation</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Provide a URL and a budget — distribute.you finds the right people,
+        Provide a URL and a budget. distribute.you finds the right people,
         writes personalized cold email, sends it on your behalf, AI-qualifies the replies,
         and forwards the good ones to your inbox.
       </p>
@@ -65,7 +66,7 @@ export default function DocsHome() {
         <ul>
           {liveFeatures.map((f) => (
             <li key={f.id}>
-              <strong>{f.title}</strong> — {f.description}
+              <strong>{f.title}</strong>: {f.description}
             </li>
           ))}
         </ul>
@@ -75,7 +76,7 @@ export default function DocsHome() {
             <ul>
               {comingFeatures.map((f) => (
                 <li key={f.id}>
-                  <strong>{f.title}</strong> — {f.description}
+                  <strong>{f.title}</strong>: {f.description}
                 </li>
               ))}
             </ul>
@@ -85,7 +86,7 @@ export default function DocsHome() {
         <h2>Getting Started</h2>
         <ol>
           <li><a href={URLS.signUp}>Create an account</a> and get your API key</li>
-          <li>Set up your brand — provide your URL, distribute.you analyzes your site automatically</li>
+          <li>Set up your brand: provide your URL, distribute.you analyzes your site automatically</li>
           <li>Set a budget and launch your cold email campaign</li>
           <li>Get notified when someone replies</li>
         </ol>
@@ -141,7 +142,7 @@ export default function DocsHome() {
 
         <h2>Pricing</h2>
         <p>
-          distribute.you charges transparent variable costs — every unit price we re-bill is published
+          distribute.you charges transparent variable costs: every unit price we re-bill is published
           live at <a href="https://distribute.you/pricing">distribute.you/pricing</a>, grouped by
           provider and cost type. You buy credits and only pay for what you use (AI calls, lead
           enrichment, email sends). No fixed subscription you only half-use. See your cost

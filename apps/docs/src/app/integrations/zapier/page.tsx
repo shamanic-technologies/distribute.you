@@ -1,24 +1,25 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 
 export const metadata = docsMetadata("/integrations/zapier");
 
 export default function ZapierIntegrationPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-3">Zapier</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">{docsHeading("/integrations/zapier")}</h1>
       <p className="text-base text-gray-500 mb-8">
-        Connect distribute to 5,000+ apps with Zapier.
+        Connect distribute.you to 5,000+ apps with Zapier.
       </p>
 
       <div className="prose">
         <h2>Setup</h2>
-        <p>Use <strong>Webhooks by Zapier</strong> to call the distribute REST API:</p>
+        <p>Use <strong>Webhooks by Zapier</strong> to call the distribute.you REST API:</p>
         <ol>
           <li>Create a new Zap</li>
           <li>Choose your trigger (schedule, webhook, another app)</li>
           <li>Add a <strong>Webhooks by Zapier</strong> action</li>
           <li>Select <strong>Custom Request</strong></li>
-          <li>Configure with the distribute API endpoint</li>
+          <li>Configure with the distribute.you API endpoint</li>
         </ol>
 
         <h2>Example: Campaign Stats to Slack</h2>
@@ -30,7 +31,7 @@ export default function ZapierIntegrationPage() {
 
         <h2>Incoming Webhooks</h2>
         <p>
-          Use <strong>Catch Hook</strong> as a trigger to receive distribute webhook events.
+          Use <strong>Catch Hook</strong> as a trigger to receive distribute.you webhook events.
           See <a href="/api/webhooks">Webhooks</a>.
         </p>
 

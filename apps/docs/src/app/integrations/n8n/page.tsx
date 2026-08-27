@@ -1,18 +1,19 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 
 export const metadata = docsMetadata("/integrations/n8n");
 
 export default function N8nIntegrationPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-3">n8n</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-3">{docsHeading("/integrations/n8n")}</h1>
       <p className="text-base text-gray-500 mb-8">
-        Build automated workflows with distribute and n8n.
+        Build automated workflows with distribute.you and n8n.
       </p>
 
       <div className="prose">
         <h2>Setup</h2>
-        <p>Use the <strong>HTTP Request</strong> node in n8n to call the distribute REST API:</p>
+        <p>Use the <strong>HTTP Request</strong> node in n8n to call the distribute.you REST API:</p>
         <ol>
           <li>Add an HTTP Request node</li>
           <li>Set the base URL to <code>https://api.distribute.you/v1</code></li>
@@ -37,7 +38,7 @@ Body:
 
         <h2>Webhook Trigger</h2>
         <p>
-          Use the distribute webhook to trigger n8n workflows when events occur
+          Use the distribute.you webhook to trigger n8n workflows when events occur
           (replies received, campaigns completed, etc.). See{" "}
           <a href="/api/webhooks">Webhooks</a>.
         </p>

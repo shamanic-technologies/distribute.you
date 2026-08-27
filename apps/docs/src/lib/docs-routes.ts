@@ -8,9 +8,9 @@
  * to guess at, and guessing is how a documented API ends up unfindable by the
  * name of the product it documents.
  *
- * The product name is spelled `distribute.you` here, never the bare word
- * `distribute`: someone searching for the product types the domain, and the
- * bare word is an ordinary English verb that matches nothing.
+ * The product name is spelled `distribute.you` here, never the bare word on its
+ * own: someone searching for the product types the domain, and the bare word is
+ * an ordinary English verb that matches nothing.
  */
 export interface DocsRoute {
   /** Path with a leading slash, no trailing slash. `/` is the home page. */
@@ -207,6 +207,22 @@ export const DOCS_ROUTES: DocsRoute[] = [
       "Build visual automation scenarios with distribute.you and Make.com, orchestrating campaigns, leads and outreach through the REST API.",
   },
 ];
+
+/**
+ * The `<h1>` a page renders.
+ *
+ * Derived from the same route list as the `<title>`, so the tab and the first
+ * heading on the page can never say two different things. Every heading names
+ * the product, because the audit's own remedy for developer resources nobody
+ * can find by name is to put the product name in the titles AND the headings:
+ * a page headed `Brands` answers a search for `brands`, which is a word, not a
+ * product. A title that already opens with the name is left alone rather than
+ * repeating it.
+ */
+export function docsHeading(path: string): string {
+  const { title } = docsRoute(path);
+  return title.startsWith(PRODUCT_NAME) ? title : `${PRODUCT_NAME} ${title}`;
+}
 
 export function docsRoute(path: string): DocsRoute {
   const found = DOCS_ROUTES.find((route) => route.path === path);

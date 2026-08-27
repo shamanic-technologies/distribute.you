@@ -1,6 +1,7 @@
-# distribute Documentation
+# distribute.you Documentation
 
-Public documentation for distribute - The DFY, BYOK MCP Platform.
+Public documentation for distribute.you: AI cold email outreach done for you,
+reachable from an MCP server, a REST API and a TypeScript client.
 
 Part of the [distribute.you](https://github.com/shamanic-technologies/distribute.you) monorepo.
 

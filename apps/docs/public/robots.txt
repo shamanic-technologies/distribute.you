@@ -1,4 +1,4 @@
-# distribute Docs - https://docs.distribute.you
+# distribute.you Docs - https://docs.distribute.you
 User-agent: *
 Allow: /
 

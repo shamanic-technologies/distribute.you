@@ -1,4 +1,5 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata = docsMetadata("/mcp/tools");
@@ -7,7 +8,7 @@ const TOOL_CATEGORIES = [
   {
     name: "Identity",
     tools: [
-      { name: "whoami", description: "Check your identity — returns your user ID, org ID, and auth type. Use this to verify your API key is working." },
+      { name: "whoami", description: "Check your identity: returns your user ID, org ID, and auth type. Use this to verify your API key is working." },
     ],
   },
   {
@@ -25,9 +26,9 @@ const TOOL_CATEGORIES = [
       { name: "features_list", description: "List all available automation features (e.g. Sales Cold Email Outreach, Journalist Pitch, Press Kit Generation). Each feature defines a type of campaign you can run." },
       { name: "features_get", description: "Get details of a specific feature, including its required inputs, outputs, charts, and entities." },
       { name: "features_prefill", description: "Pre-fill a feature's input fields using brand data. Returns suggested values for each input based on the brand's website analysis." },
-      { name: "features_stats", description: "Get performance statistics for a specific feature — total cost, completed runs, active campaigns, and custom stats. Can be grouped by brand, campaign, or workflow." },
+      { name: "features_stats", description: "Get performance statistics for a specific feature: total cost, completed runs, active campaigns, and custom stats. Can be grouped by brand, campaign, or workflow." },
       { name: "features_global_stats", description: "Get aggregate performance statistics across all features. Can be grouped by feature or brand." },
-      { name: "features_stats_registry", description: "Get the stats key registry — maps stat keys to their type (count, rate, currency) and human-readable label." },
+      { name: "features_stats_registry", description: "Get the stats key registry: maps stat keys to their type (count, rate, currency) and human-readable label." },
     ],
   },
   {
@@ -37,7 +38,7 @@ const TOOL_CATEGORIES = [
       { name: "campaigns_get", description: "Get details of a specific campaign including its status, workflow, brand, feature inputs, and budget settings." },
       { name: "campaigns_create", description: "Create and launch a new campaign. Requires a workflow slug, brand URL(s), and optionally budget limits and feature inputs. The campaign starts running immediately." },
       { name: "campaigns_stop", description: "Stop a running campaign. The campaign can be viewed afterwards but will no longer execute." },
-      { name: "campaigns_stats", description: "Get performance statistics for a campaign — leads served, emails sent/delivered/opened/replied, cost breakdown, and reply classifications." },
+      { name: "campaigns_stats", description: "Get performance statistics for a campaign: leads served, emails sent/delivered/opened/replied, cost breakdown, and reply classifications." },
     ],
   },
   {
@@ -57,7 +58,7 @@ const TOOL_CATEGORIES = [
     tools: [
       { name: "workflows_list", description: "List available workflows. Optionally filter by feature to see workflows for a specific automation type." },
       { name: "workflows_get", description: "Get full details of a workflow including its DAG (directed acyclic graph), nodes, edges, required providers, and version info." },
-      { name: "workflows_summary", description: "Get a human-readable summary of a workflow — what it does, what steps it takes, and what API providers it requires." },
+      { name: "workflows_summary", description: "Get a human-readable summary of a workflow: what it does, what steps it takes, and what API providers it requires." },
       { name: "workflows_key_status", description: "Check if all required API keys are configured for a workflow. Shows which providers are ready and which are missing." },
     ],
   },
@@ -71,7 +72,7 @@ const TOOL_CATEGORIES = [
   {
     name: "Journalists",
     tools: [
-      { name: "journalists_list", description: "List journalists discovered for a brand with enriched data — contact info, outlet, outreach status, email delivery status, and campaign associations." },
+      { name: "journalists_list", description: "List journalists discovered for a brand with enriched data: contact info, outlet, outreach status, email delivery status, and campaign associations." },
       { name: "journalists_by_campaign", description: "List journalists discovered for a specific campaign." },
     ],
   },
@@ -87,22 +88,22 @@ const TOOL_CATEGORIES = [
       { name: "press_kits_list", description: "List press kits (media kits). Optionally filter by brand or campaign." },
       { name: "press_kits_get", description: "Get the full content of a press kit including its MDX page content, status, and metadata." },
       { name: "press_kits_generate", description: "Generate a new press kit using AI. Provide an instruction describing what kind of press kit you want, and optionally associate it with a brand and/or campaign." },
-      { name: "press_kits_view_stats", description: "Get view statistics for press kits — total views, unique visitors, and optional grouping by country, media kit, or day." },
+      { name: "press_kits_view_stats", description: "Get view statistics for press kits: total views, unique visitors, and optional grouping by country, media kit, or day." },
     ],
   },
   {
     name: "Billing",
     tools: [
       { name: "billing_balance", description: "Check your current credit balance and whether it's depleted." },
-      { name: "billing_account", description: "Get your billing account details — credit balance, auto-topup settings, and payment method status." },
+      { name: "billing_account", description: "Get your billing account details: credit balance, auto-topup settings, and payment method status." },
     ],
   },
   {
     name: "Costs",
     tools: [
-      { name: "costs_brand_breakdown", description: "Get a cost breakdown for a brand — shows costs grouped by cost type (e.g. LLM calls, email sends, lead enrichment)." },
+      { name: "costs_brand_breakdown", description: "Get a cost breakdown for a brand: shows costs grouped by cost type (e.g. LLM calls, email sends, lead enrichment)." },
       { name: "costs_by_brand", description: "Get total costs grouped by brand across your entire organization." },
-      { name: "costs_delivery_stats", description: "Get email delivery statistics for a brand — emails sent, delivered, opened, clicked, replied, bounced, and reply classifications." },
+      { name: "costs_delivery_stats", description: "Get email delivery statistics for a brand: emails sent, delivered, opened, clicked, replied, bounced, and reply classifications." },
     ],
   },
 ];
@@ -115,11 +116,11 @@ export default function McpToolsPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">Tools Reference</h1>
-        <CopyForLLM content={`# distribute MCP Tools (35 total)\n\n${LLM_INSTRUCTIONS}`} />
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/mcp/tools")}</h1>
+        <CopyForLLM content={`# distribute.you MCP Tools (35 total)\n\n${LLM_INSTRUCTIONS}`} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Complete reference for all 35 distribute MCP tools.
+        Complete reference for all 35 distribute.you MCP tools.
       </p>
 
       <div className="space-y-12">

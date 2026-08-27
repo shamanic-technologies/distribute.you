@@ -1,11 +1,12 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
 
 export const metadata = docsMetadata("/mcp");
 
-const LLM_INSTRUCTIONS = `# distribute MCP Server
+const LLM_INSTRUCTIONS = `# distribute.you MCP Server
 
 ## Install
 npm: npx @distribute/mcp --api-key=dist_YOUR_KEY
@@ -33,18 +34,18 @@ export default function McpOverviewPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">distribute.you MCP Server</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/mcp")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Use distribute from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client.
+        Use distribute.you from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client.
       </p>
 
       <div className="prose">
         <h2>What is MCP?</h2>
         <p>
           The <strong>Model Context Protocol (MCP)</strong> is an open standard that allows AI assistants
-          to connect to external tools. distribute provides an MCP server with 35 tools for managing
+          to connect to external tools. distribute.you provides an MCP server with 35 tools for managing
           your entire distribution pipeline.
         </p>
 
@@ -59,7 +60,7 @@ export default function McpOverviewPage() {
         <h2>How It Works</h2>
         <p>
           The <code>@distribute/mcp</code> package runs as a local stdio server. Your AI client
-          communicates with it via the MCP protocol, and it calls the distribute API on your behalf.
+          communicates with it via the MCP protocol, and it calls the distribute.you API on your behalf.
         </p>
         <ol>
           <li>Install via <code>npx @distribute/mcp</code> with your API key</li>

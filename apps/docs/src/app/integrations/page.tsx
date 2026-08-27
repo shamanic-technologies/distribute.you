@@ -1,10 +1,11 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata = docsMetadata("/integrations");
 
-const LLM_INSTRUCTIONS = `# distribute Integrations
+const LLM_INSTRUCTIONS = `# distribute.you Integrations
 
 ## MCP Clients (recommended)
 - Claude Code: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
@@ -25,22 +26,22 @@ const LLM_INSTRUCTIONS = `# distribute Integrations
 const MCP_CLIENTS = [
   {
     name: "Claude Code",
-    description: "Use distribute from Claude Code with one command.",
+    description: "Use distribute.you from Claude Code with one command.",
     href: "/integrations/claude",
   },
   {
     name: "Claude Desktop",
-    description: "Add distribute tools to Claude Desktop app.",
+    description: "Add distribute.you tools to Claude Desktop app.",
     href: "/integrations/claude-desktop",
   },
   {
     name: "Cursor",
-    description: "Connect distribute to Cursor IDE.",
+    description: "Connect distribute.you to Cursor IDE.",
     href: "/integrations/cursor",
   },
   {
     name: "ChatGPT",
-    description: "Use distribute with ChatGPT Plus, Pro, Team, or Enterprise.",
+    description: "Use distribute.you with ChatGPT Plus, Pro, Team, or Enterprise.",
     href: "/integrations/chatgpt",
   },
 ];
@@ -53,7 +54,7 @@ const AUTOMATION_PLATFORMS = [
   },
   {
     name: "Zapier",
-    description: "Connect distribute to 5,000+ apps with Zapier.",
+    description: "Connect distribute.you to 5,000+ apps with Zapier.",
     href: "/integrations/zapier",
   },
   {
@@ -67,11 +68,11 @@ export default function IntegrationsPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">distribute.you Integrations</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/integrations")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Connect distribute to your favorite tools and platforms.
+        Connect distribute.you to your favorite tools and platforms.
       </p>
 
       <h2 className="text-lg font-semibold text-gray-900 mb-3">MCP Clients</h2>
@@ -94,7 +95,7 @@ export default function IntegrationsPage() {
 
       <h2 className="text-lg font-semibold text-gray-900 mb-3">Automation Platforms</h2>
       <p className="text-gray-500 text-sm mb-4">
-        Use the REST API to integrate distribute with automation platforms.
+        Use the REST API to integrate distribute.you with automation platforms.
       </p>
       <div className="grid gap-2 mb-10">
         {AUTOMATION_PLATFORMS.map((item) => (

@@ -1,9 +1,10 @@
 import { docsMetadata } from "@/lib/docs-metadata";
+import { docsHeading } from "@/lib/docs-routes";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
 export const metadata = docsMetadata("/mcp/installation");
 
-const LLM_INSTRUCTIONS = `# distribute MCP Installation
+const LLM_INSTRUCTIONS = `# distribute.you MCP Installation
 
 ## Claude Code
 claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
@@ -40,11 +41,11 @@ export default function McpInstallationPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-semibold text-gray-900">Installation</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{docsHeading("/mcp/installation")}</h1>
         <CopyForLLM content={LLM_INSTRUCTIONS} />
       </div>
       <p className="text-base text-gray-500 mb-8">
-        Install the distribute MCP server for your preferred AI client.
+        Install the distribute.you MCP server for your preferred AI client.
       </p>
 
       <div className="prose">
@@ -53,7 +54,7 @@ export default function McpInstallationPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>
         </pre>
-        <p>Restart Claude Code. You now have access to 35 distribute tools.</p>
+        <p>Restart Claude Code. You now have access to 35 distribute.you tools.</p>
 
         <h2>Claude Desktop</h2>
         <p>Edit your Claude Desktop config file:</p>
@@ -91,7 +92,7 @@ export default function McpInstallationPage() {
 
         <h2>Any MCP Client</h2>
         <p>
-          The distribute MCP server uses <strong>stdio transport</strong>. Configure your client to run:
+          The distribute.you MCP server uses <strong>stdio transport</strong>. Configure your client to run:
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>npx @distribute/mcp --api-key=YOUR_KEY</code>
@@ -109,8 +110,8 @@ export default function McpInstallationPage() {
           <tbody>
             <tr>
               <td><code>--api-key=KEY</code></td>
-              <td>Your distribute API key</td>
-              <td>—</td>
+              <td>Your distribute.you API key</td>
+              <td>None</td>
             </tr>
             <tr>
               <td><code>--base-url=URL</code></td>
@@ -120,7 +121,7 @@ export default function McpInstallationPage() {
             <tr>
               <td><code>DISTRIBUTE_API_KEY</code></td>
               <td>API key via environment variable</td>
-              <td>—</td>
+              <td>None</td>
             </tr>
             <tr>
               <td><code>DISTRIBUTE_API_URL</code></td>
@@ -134,7 +135,7 @@ export default function McpInstallationPage() {
         <h2>Verify Installation</h2>
         <p>After installing, ask your AI client:</p>
         <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg border border-gray-200">
-          <code>&quot;Check my distribute connection&quot;</code>
+          <code>&quot;Check my distribute.you connection&quot;</code>
         </pre>
         <p>
           The AI will call the <code>whoami</code> tool and return your user ID and org ID.
