@@ -5320,16 +5320,22 @@ export async function getSendForecast(
 }
 
 // ---------------------------------------------------------------------------
-// Audit → Accounts: one row per customer account across the fleet, with the
-// per-brand daily budget + a true active/inactive verdict, plus fleet financial
-// stats (total daily budget over ACTIVE brands + its MRR/ARR equivalent). Every
+// Audit → Accounts: one row per customer account across the fleet, with BOTH of
+// its daily budgets + a true active/inactive verdict, plus fleet financial stats
+// (total RUNNING budget over ACTIVE brands + its MRR/ARR equivalent). Every
 // number is computed server-side by features-service (a displayed stat is never
 // derived in the browser); the admin only renders + resolves the Clerk org name
 // client-side from `orgExternalId`. Staff-gated platform view (no org context) —
 // same auth path as the other /features/audit/* calls.
-// A row is "active" iff dailyBudgetUsd > 0 AND orgBalanceUsd > dailyBudgetUsd
-// (the org can afford at least one more day); everything else is "inactive"
-// (paused / $0 / null budget, or an org whose credits can't cover the budget).
+//
+// TWO BUDGETS, answering different questions. CONFIGURED is every ceiling the
+// customer set in billing. RUNNING is the part of it standing behind a campaign
+// that is ongoing right now — billing's own brand total is the configured one and
+// is status-blind, so it counts money posted against funnels whose campaign is
+// stopped or was never created. Anything claiming to be money in play reads
+// RUNNING. A row is "active" iff runningDailyBudgetUsd > 0 AND the org can fund
+// another day of it; "paused" iff money is configured with nothing running
+// against it; else "inactive".
 // ---------------------------------------------------------------------------
 export interface AuditAccountRow {
   orgId: string; // internal org UUID
@@ -5338,18 +5344,21 @@ export interface AuditAccountRow {
   brandId: string;
   brandName: string | null;
   brandDomain: string | null;
-  dailyBudgetUsd: number | null;
+  configuredDailyBudgetUsd: number; // every ceiling the customer set (USD) — what they posted
+  runningDailyBudgetUsd: number; // the part behind an ongoing campaign (USD) — the money in play
   orgBalanceUsd: number; // org available credit balance (USD)
-  // "paused" = brand explicitly paused in campaign-service (brand_pause) — keeps its
-  // budget but campaigns are HELD, so it's not spending (wins over active/inactive).
-  // "active" = not paused, budget > 0, org can fund the next day. Else "inactive".
+  // "active" = running budget > 0 and the org can fund the next day.
+  // "paused" = money configured, nothing running against it (campaigns stopped, or
+  // campaign-service never gave this funnel one). It keeps its ceiling and spends nothing.
+  // Else "inactive". There is no brand-level pause flag in this rule any more.
   status: "active" | "paused" | "inactive";
 }
 
 export interface AuditAccountsStats {
-  totalDailyBudgetUsd: number; // sum over ACTIVE rows only (paused excluded — not spending)
-  mrrUsd: number; // totalDailyBudgetUsd × 30
-  arrUsd: number; // totalDailyBudgetUsd × 365
+  totalRunningDailyBudgetUsd: number; // sum over ACTIVE rows only — what the fleet can spend today
+  totalConfiguredDailyBudgetUsd: number; // sum over the SAME rows of what those customers posted
+  mrrUsd: number; // totalRunningDailyBudgetUsd × 30
+  arrUsd: number; // totalRunningDailyBudgetUsd × 365
   activeCount: number;
   pausedCount: number;
   inactiveCount: number;
@@ -5589,7 +5598,8 @@ export interface CustomerRow {
   activeThisMonth: boolean;
   activeDays: string[]; // YYYY-MM-DD, ascending
   status: "active" | "paused" | "inactive";
-  dailyBudgetUsd: number | null;
+  configuredDailyBudgetUsd: number; // every ceiling this account set (USD)
+  runningDailyBudgetUsd: number; // the part behind an ongoing campaign (USD) — the money in play
   orgBalanceUsd: number; // spendable
   orgActualBalanceUsd: number; // actual (active-verdict figure)
   autoTopupEnabled: boolean;

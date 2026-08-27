@@ -345,20 +345,17 @@ export function ActiveUsersTable({
 
   const { names, orgs } = useOrgNames(data.users);
 
-  // Join the live accounts snapshot (per org×brand status + configured daily
-  // budget) onto each user (org) by orgId. A user is "current"ly active when it
-  // owns ≥1 ACTIVE brand — the same verdict as the Active-users stat card. The
-  // budget column sums the configured daily budget across the org's brands.
+  // Join the live accounts snapshot (per org×brand status + daily budgets) onto each user (org) by
+  // orgId. A user is "current"ly active when it owns ≥1 ACTIVE brand — the same verdict as the
+  // Active-users stat card. The budget column sums the RUNNING budget across the org's brands: what
+  // it can spend today, not what it posted, so the column and the verdict beside it agree.
   const orgMeta = useMemo(() => {
-    const map = new Map<string, { active: boolean; dailyBudgetUsd: number | null }>();
+    const map = new Map<string, { active: boolean; runningDailyBudgetUsd: number | null }>();
     for (const row of accounts?.rows ?? []) {
-      const prev = map.get(row.orgId) ?? { active: false, dailyBudgetUsd: null };
+      const prev = map.get(row.orgId) ?? { active: false, runningDailyBudgetUsd: null };
       const active = prev.active || row.status === "active";
-      const budget =
-        row.dailyBudgetUsd === null
-          ? prev.dailyBudgetUsd
-          : (prev.dailyBudgetUsd ?? 0) + row.dailyBudgetUsd;
-      map.set(row.orgId, { active, dailyBudgetUsd: budget });
+      const budget = (prev.runningDailyBudgetUsd ?? 0) + row.runningDailyBudgetUsd;
+      map.set(row.orgId, { active, runningDailyBudgetUsd: budget });
     }
     return map;
   }, [accounts]);
@@ -456,7 +453,7 @@ export function ActiveUsersTable({
                     </div>
                   </td>
                   <td className="py-2.5 px-4 font-medium tabular-nums text-gray-700">
-                    {budgetLabel(orgMeta.get(row.orgId)?.dailyBudgetUsd ?? null)}
+                    {budgetLabel(orgMeta.get(row.orgId)?.runningDailyBudgetUsd ?? null)}
                   </td>
                   <td className="py-2.5 px-4 text-gray-700">{monthLabel(row.firstActiveMonth)}</td>
                   <td className="py-2.5 px-4 text-gray-700">{monthLabel(row.lastActiveMonth)}</td>
