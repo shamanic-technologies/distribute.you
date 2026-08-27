@@ -16,13 +16,13 @@ const MCP_ENDPOINT = "https://mcp.distribute.you/mcp";
 export function GET() {
   return Response.json(
     {
-      name: "distribute",
+      name: "distribute.you",
       description:
         "Autonomous sales meetings acquisition. Launch and inspect outbound campaigns, list brands and workflows, read live campaign stats, and suggest an ideal customer profile from a website.",
       version: "1",
       servers: [
         {
-          name: "distribute",
+          name: "distribute.you",
           url: MCP_ENDPOINT,
           transport: "streamable-http",
           authentication: { type: "oauth2" },

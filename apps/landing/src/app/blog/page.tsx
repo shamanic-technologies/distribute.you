@@ -20,14 +20,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: BLOG_URL,
-    title: "Blog — Stories from the Solo Path",
+    title: "Blog — Stories from the Solo Path | distribute.you",
     description:
       "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
-    images: [{ url: DEFAULT_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute Blog" }],
+    images: [{ url: DEFAULT_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute.you Blog" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog — Stories from the Solo Path",
+    title: "Blog — Stories from the Solo Path | distribute.you",
     description:
       "Stories, playbooks, and benchmarks for solo builders and small teams running their own distribution — outbound, PR, and growth.",
     images: [DEFAULT_OG_IMAGE_PATH],
@@ -182,7 +182,7 @@ export default async function BlogIndexPage() {
       <Section variant="prose" outerClassName="dy-section" className="text-center">
         <div className="dy-eyebrow mb-6">
           <span className="dy-dot" />
-          distribute blog
+          distribute.you blog
         </div>
         <h1 className="dy-title mb-4 text-4xl md:text-5xl">
           Stories from the solo path

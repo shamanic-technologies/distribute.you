@@ -20,32 +20,32 @@ export const revalidate = 86400;
 
 const INVESTORS_URL = `${PROD_URLS.landing}/investors`;
 const PAGE_DESCRIPTION =
-  "Live platform metrics, growth data, infrastructure, and SAFE-round details for distribute. Public investor page, updated on every load.";
+  "Live platform metrics, growth data, infrastructure, and SAFE-round details for distribute.you. Public investor page, updated on every load.";
 
 export const metadata: Metadata = {
   title: "Investor Information",
   description: PAGE_DESCRIPTION,
   keywords: [
-    "distribute investors",
-    "distribute SAFE round",
-    "distribute platform metrics",
-    "distribute revenue",
+    "distribute.you investors",
+    "distribute.you SAFE round",
+    "distribute.you platform metrics",
+    "distribute.you revenue",
     "cold email startup investors",
     "Y Combinator SAFE",
-    "distribute growth metrics",
+    "distribute.you growth metrics",
   ],
   openGraph: {
     type: "website",
     locale: "en_US",
     url: INVESTORS_URL,
-    siteName: "distribute Investors",
-    title: "distribute, Investor Information",
+    siteName: "distribute.you Investors",
+    title: "distribute.you, Investor Information",
     description: PAGE_DESCRIPTION,
-    images: [{ url: INVESTORS_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute Investor Information" }],
+    images: [{ url: INVESTORS_OG_IMAGE_PATH, width: 1200, height: 630, alt: "distribute.you Investor Information" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute, Investor Information",
+    title: "distribute.you, Investor Information",
     description: PAGE_DESCRIPTION,
     images: [INVESTORS_OG_IMAGE_PATH],
     creator: TWITTER_HANDLE,
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
 const investorsOrganizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "distribute",
+  name: "distribute.you",
   url: PROD_URLS.landing,
   logo: BRAND_LOGO_URL,
   image: BRAND_LOGO_URL,
@@ -75,7 +75,7 @@ const investorsBreadcrumbJsonLd = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", position: 1, name: "distribute", item: PROD_URLS.landing },
+    { "@type": "ListItem", position: 1, name: "distribute.you", item: PROD_URLS.landing },
     { "@type": "ListItem", position: 2, name: "Investor Information", item: INVESTORS_URL },
   ],
 };
@@ -99,12 +99,12 @@ export default function InvestorsPage() {
             <div className="flex items-center justify-center gap-3 mb-6">
               <Image
                 src="/landing/logo/logo-distribute.svg"
-                alt="distribute"
+                alt="distribute.you"
                 width={40}
                 height={40}
                 className="rounded-lg"
               />
-              <h1 className="font-display text-4xl font-bold">distribute</h1>
+              <h1 className="font-display text-4xl font-bold">distribute.you</h1>
             </div>
             <p className="text-xl text-gray-600 mb-2">Investor Information</p>
             <p className="text-sm text-gray-500">

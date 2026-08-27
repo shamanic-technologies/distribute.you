@@ -90,7 +90,7 @@ export async function Footer({ disclaimer }: FooterProps) {
                 href="/"
                 className="font-display font-bold text-white text-xl hover:text-brand-400 transition"
               >
-                distribute
+                distribute.you
               </a>
               <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">
                 beta
@@ -166,7 +166,7 @@ export async function Footer({ disclaimer }: FooterProps) {
         {/* Bottom strip */}
         <div className="border-t border-gray-900 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-gray-600">
           <span>
-            © {year} distribute.
+            © {year} distribute.you.
           </span>
           <span className="text-gray-700">
             Built by{" "}

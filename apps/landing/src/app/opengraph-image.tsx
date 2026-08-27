@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "edge";
-export const alt = "distribute - Sales cold email outreach done for you.";
+export const alt = "distribute.you - Sales cold email outreach done for you.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -32,7 +32,7 @@ export default async function OG() {
             alt=""
           />
           <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>
-            distribute
+            distribute.you
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

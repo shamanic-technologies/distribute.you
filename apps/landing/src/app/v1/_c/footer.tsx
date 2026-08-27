@@ -79,7 +79,7 @@ export function Footer({ disclaimer }: FooterProps) {
             <div className="flex items-center gap-2 mb-4">
               <Image
                 src="/logo-head.jpg"
-                alt="distribute"
+                alt="distribute.you"
                 width={28}
                 height={28}
                 className="rounded-lg"
@@ -88,7 +88,7 @@ export function Footer({ disclaimer }: FooterProps) {
                 href="/"
                 className="font-display font-bold text-white text-xl hover:text-brand-400 transition"
               >
-                distribute
+                distribute.you
               </a>
               <span className="text-[10px] text-brand-400 font-medium bg-brand-500/10 px-1.5 py-0.5 rounded uppercase">
                 beta
@@ -134,7 +134,7 @@ export function Footer({ disclaimer }: FooterProps) {
         {/* Bottom strip */}
         <div className="border-t border-gray-900 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-gray-600">
           <span>
-            © {year} distribute. MIT License. 100% open source.
+            © {year} distribute.you. MIT License. 100% open source.
           </span>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
             <a href="/privacy" className="hover:text-gray-400 transition">

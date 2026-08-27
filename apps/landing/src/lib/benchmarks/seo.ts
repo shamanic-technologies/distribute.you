@@ -23,12 +23,12 @@ export function buildBenchmarkDescription(
   featureDescription: string,
 ): string {
   const candidates = [
-    `${featureDescription} Real ${featureName} performance from every brand on distribute — sortable, no cherry-picking.`,
-    `${featureDescription} Real ${featureName} performance from every brand on distribute.`,
-    `${featureDescription} ${featureName} performance from every brand on distribute.`,
-    `Real ${featureName} performance from every brand on distribute — sortable leaderboard, no cherry-picking.`,
-    `${featureName} benchmarks — real performance from every brand on distribute.`,
+    `${featureDescription} Real ${featureName} performance from every brand on distribute.you — sortable, no cherry-picking.`,
+    `${featureDescription} Real ${featureName} performance from every brand on distribute.you.`,
+    `${featureDescription} ${featureName} performance from every brand on distribute.you.`,
+    `Real ${featureName} performance from every brand on distribute.you — sortable leaderboard, no cherry-picking.`,
+    `${featureName} benchmarks — real performance from every brand on distribute.you.`,
   ];
   const fit = candidates.find((c) => c.length <= DESCRIPTION_MAX);
-  return fit ?? clamp(`${featureName} benchmarks on distribute.`, DESCRIPTION_MAX);
+  return fit ?? clamp(`${featureName} benchmarks on distribute.you.`, DESCRIPTION_MAX);
 }

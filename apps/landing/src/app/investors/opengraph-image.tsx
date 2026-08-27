@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { SITE_URL } from "@/lib/seo";
 
 export const runtime = "edge";
-export const alt = "distribute: Investor Information";
+export const alt = "distribute.you: Investor Information";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -26,7 +26,7 @@ export default async function OG() {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <img src={`${SITE_URL}/brand/icon.png`} width={44} height={44} style={{ borderRadius: 11 }} alt="" />
           <div style={{ fontSize: 28, fontWeight: 700 }}>
-            distribute · Investors
+            distribute.you · Investors
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

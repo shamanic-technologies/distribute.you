@@ -1,8 +1,8 @@
 import { PROD_URLS } from "@/lib/env-urls";
 
-export const SITE_NAME = "distribute";
+export const SITE_NAME = "distribute.you";
 export const SITE_URL = PROD_URLS.landing;
-export const SITE_TITLE = "distribute - AI cold email, done for you";
+export const SITE_TITLE = "distribute.you - AI cold email, done for you";
 export const SITE_DESCRIPTION =
   "Drop your website URL. We email your ideal customers. AI reads every reply. Only real buyers land in your Gmail. You read 5 emails, not 200. No SDR. No setup. Cancel anytime.";
 export const TWITTER_HANDLE = "@distribute_you";

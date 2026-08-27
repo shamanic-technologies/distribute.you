@@ -7,7 +7,7 @@ import "./v1.css";
 // Self-contained: its own component copies + scoped CSS so it renders
 // faithfully and never affects the current green landing.
 export const metadata: Metadata = {
-  title: "distribute — archive (v1)",
+  title: "Archive (v1)",
   robots: { index: false, follow: false },
 };
 
