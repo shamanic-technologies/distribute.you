@@ -73,6 +73,41 @@ describe("the model page reads the catalogue, it does not keep one", () => {
   });
 });
 
+describe("the reader tracks the DEPLOYED catalogue contract", () => {
+  // features-service widened the catalogue so a channel can state an INTERNAL leg. The step
+  // vocabulary moved from `producibleSteps` to `steps` at the root in the same ship, and because
+  // this reader declared the old name REQUIRED, the page threw on every load until it was
+  // repointed. Pin the names the wire actually carries.
+  const reader = API.slice(
+    API.indexOf("const PublicChannelStepSchema"),
+    API.indexOf("export async function getPublicChannelFunnelEconomics"),
+  );
+
+  it("reads the step vocabulary under the name the wire uses", () => {
+    expect(reader).toContain("steps: z.array(PublicChannelStepSchema)");
+    expect(reader).not.toContain("producibleSteps");
+  });
+
+  it("reads the leg and who operates the channel", () => {
+    expect(reader).toContain("stepTransitions: z.array(PublicStepTransitionSchema)");
+    expect(reader).toContain("operatedBy: z.string()");
+    // `from` is null for an entry channel, and that is a value the producer means to send.
+    expect(reader).toContain("from: PublicChannelStepSchema.nullable()");
+  });
+});
+
+describe("the page states the leg, not only what a channel produces", () => {
+  it("renders the leg and the operator", () => {
+    expect(PAGE).toContain("row.legLabels");
+    expect(PAGE).toContain("channelOperatorLabel(row.operatedBy)");
+  });
+
+  it("reads the root vocabulary under its wire name", () => {
+    expect(PAGE).toContain("catalogue.data?.steps");
+    expect(PAGE).not.toContain("catalogue.data?.producibleSteps");
+  });
+});
+
 describe("the sidebar", () => {
   it("links the page from the Features section", () => {
     expect(SIDEBAR).toContain('href: "/model"');

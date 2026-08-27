@@ -3,6 +3,8 @@ import {
   MODEL_OBJECTS,
   buildMatrixRows,
   channelFamilyLabel,
+  channelOperatorLabel,
+  legLabel,
   funnelCatalogueFrom,
   stepCostsForPair,
   summariseCells,
@@ -10,6 +12,10 @@ import {
   unpricedStepLabel,
 } from "../src/lib/acquisition-model";
 import type { PublicChannel, PublicChannelFunnelPair } from "@/lib/api";
+
+const STEP_CONVERSATION = { key: "conversation", label: "Conversation", description: "" };
+const STEP_MEETING_ATTENDED = { key: "meeting_attended", label: "Meeting attended", description: "" };
+const STEP_PAID_CLIENT = { key: "paid_client", label: "Paid client", description: "" };
 
 const REPLY_MEETING = {
   key: "sales_meetings_from_conversation",
@@ -29,7 +35,8 @@ function channel(over: Partial<PublicChannel> & { slug: string; name: string }):
     displayOrder: 1,
     family: "outbound_one_to_one",
     terms: { dailyOperatingCostCents: 800, minimumCommitmentDays: 30, maxDaysToFirstProduction: 14 },
-    producibleSteps: [{ key: "conversation", label: "Conversation", description: "" }],
+    operatedBy: "platform",
+    stepTransitions: [{ from: null, to: STEP_CONVERSATION }],
     salesFunnels: [REPLY_MEETING],
     ...over,
   } as PublicChannel;
@@ -87,12 +94,54 @@ describe("channelFamilyLabel", () => {
     expect(channelFamilyLabel("outbound_one_to_one")).toBe("Outbound, one to one");
     expect(channelFamilyLabel("paid_reach")).toBe("Paid reach");
     expect(channelFamilyLabel("earned")).toBe("Earned");
+    expect(channelFamilyLabel("conversion")).toBe("Conversion");
   });
 
   it("renders an unknown family verbatim rather than blank", () => {
     expect(channelFamilyLabel("owned_media")).toBe("owned_media");
     expect(channelFamilyLabel(null)).toBe("Not stated");
     expect(channelFamilyLabel(undefined)).toBe("Not stated");
+  });
+});
+
+describe("legLabel", () => {
+  it("reads an entry leg as producing its step, not as converting one", () => {
+    expect(legLabel({ from: null, to: STEP_CONVERSATION })).toBe("Produces Conversation");
+  });
+
+  it("names both ends of an internal leg", () => {
+    expect(legLabel({ from: STEP_MEETING_ATTENDED, to: STEP_PAID_CLIENT })).toBe(
+      "Meeting attended to Paid client",
+    );
+  });
+});
+
+describe("channelOperatorLabel", () => {
+  it("says who puts the hours in", () => {
+    expect(channelOperatorLabel("platform")).toBe("Us");
+    expect(channelOperatorLabel("customer")).toBe("Their own team");
+  });
+
+  it("renders an operator we have not met verbatim rather than blank", () => {
+    expect(channelOperatorLabel("partner")).toBe("partner");
+    expect(channelOperatorLabel(null)).toBe("Not stated");
+  });
+});
+
+describe("a channel that converts an INTERNAL leg", () => {
+  it("keeps its row, is not entry-only, and states who runs it", () => {
+    const closer = channel({
+      slug: "founder-led-closing",
+      name: "Founder Led Closing",
+      operatedBy: "customer",
+      stepTransitions: [{ from: STEP_MEETING_ATTENDED, to: STEP_PAID_CLIENT }],
+      salesFunnels: [REPLY_MEETING],
+    });
+    const funnels = funnelCatalogueFrom([closer]);
+    const rows = buildMatrixRows([closer], funnels, []);
+    expect(rows[0].entryOnly).toBe(false);
+    expect(rows[0].legLabels).toEqual(["Meeting attended to Paid client"]);
+    expect(rows[0].operatedBy).toBe("customer");
   });
 });
 
@@ -219,7 +268,8 @@ describe("buildMatrixRows", () => {
     );
     expect(rows[0].dailyOperatingCostCents).toBe(24000);
     expect(rows[0].maxDaysToFirstProduction).toBe(5);
-    expect(rows[0].producibleStepKeys).toEqual(["conversation"]);
+    expect(rows[0].legLabels).toEqual(["Produces Conversation"]);
+    expect(rows[0].entryOnly).toBe(true);
   });
 });
 
