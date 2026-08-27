@@ -115,8 +115,23 @@ export function daysSinceFirstSpend(
 export interface ReassuranceGate {
   /** Both the stats and `/revenue` queries have settled (resolved OR errored). */
   revealed: boolean;
-  /** A paused brand HOLDS its campaigns, so "your campaign is running" would be a lie. */
-  paused: boolean;
+  /**
+   * What the subject may spend TODAY — the part of its configured ceilings standing
+   * behind a campaign that is ONGOING right now (`useRunningDailyBudgetCents`).
+   *
+   * This replaced campaign-service's brand-level `paused` flag, which the brand-level
+   * Pause control used to write and which nothing has written since that control was
+   * removed. A frozen flag is wrong in BOTH directions and the banner inherited both
+   * errors: a brand marked paused in July while its campaign spends today was told
+   * nothing, and a brand that funded a funnel and has no campaign at all read
+   * `paused: false` and was promised results from a campaign that does not exist.
+   *
+   * `null` means the read has not landed or has failed — "we cannot tell", which is
+   * NOT a licence to promise anything, so the banner stays hidden. `0` means nothing
+   * is running: that brand is waiting on us rather than on results, and a promise is
+   * the one thing it must not be shown.
+   */
+  runningDailyBudgetCents: number | null;
   /** {@link goalOutcomeCount} for a campaign's goal, or {@link brandOutcomeCount}. */
   outcomeCount: number;
   /** {@link recommendedLearningSpendUsd}; `null` = unknown, so no spend cap applies. */
@@ -131,13 +146,15 @@ export interface ReassuranceGate {
  * The banner is a LEARNING-WINDOW notice, not a permanent empty state. It claims results
  * typically take two to four weeks, so it must retire itself once that claim stops being
  * true — otherwise a brand three months in reads a promise the product already broke.
- * Exits: the first outcome lands; spend passes the recommended window (a campaign, which
- * has one outcome to price); or the window itself elapses (a brand, which has no goal to
- * price one with, so it is held to the two-to-four weeks it promised).
+ * Exits: nothing is running, so there is no campaign to promise anything about; the
+ * first outcome lands; spend passes the recommended window (a campaign, which has one
+ * outcome to price); or the window itself elapses (a brand, which has no goal to price
+ * one with, so it is held to the two-to-four weeks it promised).
  */
 export function shouldShowReassurance(gate: ReassuranceGate): boolean {
   if (!gate.revealed) return false;
-  if (gate.paused) return false;
+  // No money running (or no answer yet) => nothing to reassure anyone about.
+  if (gate.runningDailyBudgetCents == null || gate.runningDailyBudgetCents <= 0) return false;
   if (gate.outcomeCount >= 1) return false;
   if (
     gate.recommendedSpendUsd != null &&

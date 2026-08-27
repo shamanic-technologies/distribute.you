@@ -1928,50 +1928,6 @@ export async function saveBrandFunnelBudget(
   return parsed.data;
 }
 
-// ── Brand pause (per-brand Pause / Restart) ──
-// A single brand-level boolean honored by campaign-service's scheduler: when
-// paused, none of the brand's ongoing campaigns are run (HELD, not stopped) so a
-// Restart resumes them with zero re-launch. No outreach = no usage = no auto-topup
-// charge, so this also "pauses the spend". paused defaults false when never set.
-export interface BrandPause {
-  brandId: string;
-  orgId: string;
-  paused: boolean;
-  updatedAt: string | null;
-}
-
-const BrandPauseSchema = z.object({
-  brandId: z.string(),
-  orgId: z.string(),
-  paused: z.boolean(),
-  updatedAt: z.string().nullable(),
-});
-
-/**
- * GET /brands/:brandId/pause — current pause state (paused=false when never set).
- *
- * READ ONLY. There is no writer left in the dashboard: the brand-level Pause control is
- * gone, because money is funded per SALES FUNNEL and dropping a funnel's ceiling to zero
- * is how a customer stops that chain — a brand-wide flag beside per-funnel ceilings is two
- * ways to say one thing. What still reads this is the first-outcome reassurance banner,
- * which must not promise results to a brand that is not running.
- */
-export async function getBrandPause(
-  brandId: string,
-  token?: string,
-): Promise<BrandPause> {
-  const raw = await apiCall<unknown>(`/brands/${brandId}/pause`, { token });
-  const parsed = BrandPauseSchema.safeParse(raw);
-  if (!parsed.success) {
-    console.error("[dashboard] getBrandPause: response shape mismatch", {
-      issues: parsed.error.issues,
-      raw,
-    });
-    throw new Error("[dashboard] getBrandPause: invalid response shape");
-  }
-  return parsed.data;
-}
-
 // ── Per-lead funnel step statements (lead-service v0.57.0 via the api-service proxy) ──
 //
 // What happened to ONE lead at each step of its campaign's sales funnel, stated by a

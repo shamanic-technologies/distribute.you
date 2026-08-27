@@ -56,7 +56,7 @@ describe("recommendedLearningSpendUsd", () => {
 describe("shouldShowReassurance", () => {
   const waiting = {
     revealed: true,
-    paused: false,
+    runningDailyBudgetCents: 5_000,
     outcomeCount: 0,
     recommendedSpendUsd: 720,
     spentUsd: 100,
@@ -70,8 +70,19 @@ describe("shouldShowReassurance", () => {
     expect(shouldShowReassurance({ ...waiting, outcomeCount: 1 })).toBe(false);
   });
 
-  it("hides while the brand is paused", () => {
-    expect(shouldShowReassurance({ ...waiting, paused: true })).toBe(false);
+  it("hides when nothing is running, however much is configured", () => {
+    // A brand that funded a funnel and has no campaign is waiting on US, not on results.
+    expect(shouldShowReassurance({ ...waiting, runningDailyBudgetCents: 0 })).toBe(false);
+  });
+
+  it("hides while the running figure is unknown, rather than claiming anything", () => {
+    // null = the read has not landed or failed. It is not a licence to promise results.
+    expect(shouldShowReassurance({ ...waiting, runningDailyBudgetCents: null })).toBe(false);
+  });
+
+  it("shows on a running campaign regardless of any stale brand pause flag", () => {
+    // The gate reads money, never campaign-service's frozen brand-level `paused`.
+    expect(shouldShowReassurance({ ...waiting, runningDailyBudgetCents: 1 })).toBe(true);
   });
 
   it("hides once spend passes the recommended window", () => {

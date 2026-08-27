@@ -211,15 +211,43 @@ describe("the brand-level Pause control is gone, everywhere", () => {
     }
   });
 
-  it("keeps the READ, which the reassurance banner needs", () => {
-    // A banner promising a first outcome must not run on a brand that is not running.
-    expect(read("lib/api.ts")).toContain("export async function getBrandPause");
-    for (const rel of [
-      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
-      "components/campaigns/campaign-overview-page.tsx",
-    ]) {
-      expect(read(rel), rel).toContain("getBrandPause(brandId)");
-      expect(read(rel), rel).toContain("paused: isBrandPaused");
+  it("leaves no READER either — the flag is frozen, so it is gone", () => {
+    // Nothing has written it since the control was removed, so it is stale in BOTH
+    // directions: prod holds a brand marked paused in July whose campaign spends today,
+    // and brands with a funded funnel and no campaign at all reading `paused: false`.
+    // The reassurance banner was its last reader; it gates on running money now.
+    expect(read("lib/api.ts")).not.toContain("export async function getBrandPause");
+    expect(read("lib/api.ts")).not.toContain("BrandPauseSchema");
+    const srcFiles = fs
+      .readdirSync(path.join(SRC), { recursive: true, encoding: "utf-8" })
+      .filter((f) => f.endsWith(".ts") || f.endsWith(".tsx"));
+    for (const rel of srcFiles) {
+      const body = fs.readFileSync(path.join(SRC, rel), "utf-8");
+      expect(body, `${rel} still reads the brand pause flag`).not.toContain("getBrandPause");
+      expect(body, `${rel} still keys a query on the brand pause flag`).not.toContain(
+        '"brandPause"',
+      );
     }
+  });
+
+  it("gates the reassurance banner on money actually running, at each page's own grain", () => {
+    // The brand Overview speaks for the whole brand, so it reads the brand's running
+    // total. The campaign Overview says "This campaign", so it narrows to that campaign
+    // — off the SAME query key, which is what keeps it free of a second request.
+    const brand = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
+    expect(brand).toContain("useRunningDailyBudgetCents(brandId, { enabled })");
+    expect(brand).toContain("runningDailyBudgetCents,");
+
+    const campaign = read("components/campaigns/campaign-overview-page.tsx");
+    expect(campaign).toContain("campaignId,");
+    expect(campaign).toContain("runningDailyBudgetCents: campaignRunningDailyBudgetCents");
+
+    // The gate itself refuses on an unknown or zero figure — no fallback resurrects
+    // the flag, and "we cannot tell" never becomes a promise.
+    const gate = read("lib/first-outcome-reassurance.ts");
+    expect(gate).toContain(
+      "if (gate.runningDailyBudgetCents == null || gate.runningDailyBudgetCents <= 0) return false;",
+    );
+    expect(gate).not.toContain("gate.paused");
   });
 });

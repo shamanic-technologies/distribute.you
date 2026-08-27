@@ -66,7 +66,7 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "features", "feature", "statsRegistry", "entityRegistry", "platformPrices", "billingAccount",
       // brand metadata + config
       "brand", "brands", "brandUserFields", "brandExtractedFields", "brandSalesEconomics",
-      "brandDailyBudget", "brandPause", "brandCostBreakdown", "brandCostBreakdownToday",
+      "brandDailyBudget", "brandCostBreakdown", "brandCostBreakdownToday",
       // brand entity sub-lists (big — now persisted too)
       "brandLeads", "brandEmails", "leadEmail", "brandOutlets", "brandArticles", "brandJournalists",
       "enrichedJournalists", "brandRuns", "brandMediaKits", "mediaKit",
@@ -290,7 +290,7 @@ describe("coldRestorablePairs — nav-time reseed picks only cold, current, this
     const pairs = coldRestorablePairs(
       [
         entry(["brand", "b1"], undefined),
-        [`${PREFIX}-["brandPause","b1"]`, "{not-json"],
+        [`${PREFIX}-["brandDailyBudget","b1"]`, "{not-json"],
       ],
       PREFIX,
       V,
