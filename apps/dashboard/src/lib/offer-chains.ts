@@ -44,12 +44,21 @@ export function unpricedChainReasonLabel(reason: string | null | undefined): str
  */
 const COST_COVERAGE_NOTE: Record<string, string> = {
   platform_spend_only:
-    "These costs are what the platform spent. What a step your own team worked cost you is recorded per lead and is not in these figures yet, so a chain you finish yourself reads cheaper here than it really is.",
+    "These costs are what the platform spent. Nobody has recorded what a step your own team worked cost you, so a funnel you finish yourself reads cheaper here than it really is.",
+  platform_and_partial_customer_spend:
+    "Some steps your own team worked have no cost recorded against them, so what these funnels cost you is a floor rather than the whole figure.",
+  platform_and_customer_spend:
+    "These costs are what the platform spent plus what you recorded for the steps your own team worked.",
 };
 
 export function costCoverageNote(coverage: string | null | undefined): string | null {
   if (!coverage) return null;
   return COST_COVERAGE_NOTE[coverage] ?? null;
+}
+
+/** True while some leg of this scope has no cost recorded against it. */
+export function coverageIsPartial(coverage: string | null | undefined): boolean {
+  return coverage === "platform_and_partial_customer_spend";
 }
 
 export type ChainView = {
@@ -64,10 +73,25 @@ export type ChainView = {
   priced: boolean;
   unpricedReason: string | null;
   pipelineUsd: number | null;
+  /**
+   * What this chain has cost ALL IN: what the platform charged plus what the customer
+   * recorded for the legs their own team worked. The three ratios below divide by it.
+   *
+   * The charged half alone is not the customer's answer to "what did this chain cost
+   * me" — a chain whose last legs they run themselves would read far cheaper than it
+   * is. The split is carried beside it so either half is readable without inferring
+   * one from the other.
+   */
   investedUsd: number | null;
+  platformCostUsd: number | null;
+  customerCostUsd: number | null;
   roiMultiple: number | null;
   costOfAcquisitionPct: number | null;
   costPerAcquisitionUsd: number | null;
+  /** Which dollars this row's figures are made of. */
+  coverage: string | null;
+  /** True while some leg of this chain has no cost recorded against it. */
+  partiallyCosted: boolean;
 };
 
 /**
@@ -86,10 +110,26 @@ export function chainViews(chains: OfferChainRow[]): ChainView[] {
     priced: chain.priced,
     unpricedReason: chain.unpricedReason,
     pipelineUsd: chain.headline.totalPipelineUsd,
-    investedUsd: chain.costEconomics.committedCostUsd ?? null,
-    roiMultiple: chain.costEconomics.roiMultiple,
-    costOfAcquisitionPct: chain.costEconomics.costOfAcquisitionPct,
-    costPerAcquisitionUsd: chain.costEconomics.costPerAcquisitionUsd ?? null,
+    // The combined block when the producer sends one, the charged block otherwise.
+    // NOT a fallback that mixes them: with nothing declared the producer makes the two
+    // identical by construction, so this reads the same figure either way and simply
+    // keeps working against a body that predates the block.
+    investedUsd:
+      chain.combinedCostEconomics?.committedCostUsd ?? chain.costEconomics.committedCostUsd ?? null,
+    platformCostUsd:
+      chain.combinedCostEconomics?.platformCommittedCostUsd ??
+      chain.costEconomics.committedCostUsd ??
+      null,
+    customerCostUsd: chain.combinedCostEconomics?.customerDeclaredCostUsd ?? null,
+    roiMultiple: chain.combinedCostEconomics?.roiMultiple ?? chain.costEconomics.roiMultiple,
+    costOfAcquisitionPct:
+      chain.combinedCostEconomics?.costOfAcquisitionPct ?? chain.costEconomics.costOfAcquisitionPct,
+    costPerAcquisitionUsd:
+      chain.combinedCostEconomics?.costPerAcquisitionUsd ??
+      chain.costEconomics.costPerAcquisitionUsd ??
+      null,
+    coverage: chain.costCoverage ?? null,
+    partiallyCosted: coverageIsPartial(chain.costCoverage),
   }));
 }
 

@@ -6,6 +6,7 @@ import {
   costCoverageNote,
   summariseChains,
   unpricedChainReasonLabel,
+  coverageIsPartial,
 } from "../src/lib/offer-chains";
 import type { OfferChainRow } from "@/lib/api";
 
@@ -18,6 +19,16 @@ function row(over: Partial<OfferChainRow> & { funnelKey: string; name: string })
     unpricedReason: null,
     headline: { totalPipelineUsd: 7000 },
     costEconomics: {
+      committedCostUsd: 2670,
+      costOfAcquisitionPct: 38.2,
+      roiMultiple: 2.62,
+      costPerAcquisitionUsd: 953,
+    },
+    customerCost: { declaredCostUsd: 0, statedCount: 0, unstatedCount: 0 },
+    costCoverage: "platform_spend_only",
+    combinedCostEconomics: {
+      platformCommittedCostUsd: 2670,
+      customerDeclaredCostUsd: 0,
       committedCostUsd: 2670,
       costOfAcquisitionPct: 38.2,
       roiMultiple: 2.62,
@@ -65,6 +76,14 @@ describe("chainViews", () => {
         unpricedReason: "no_economics_declared",
         headline: { totalPipelineUsd: null },
         costEconomics: { committedCostUsd: 120, costOfAcquisitionPct: null, roiMultiple: null, costPerAcquisitionUsd: null },
+        combinedCostEconomics: {
+          platformCommittedCostUsd: 120,
+          customerDeclaredCostUsd: 0,
+          committedCostUsd: 120,
+          costOfAcquisitionPct: null,
+          roiMultiple: null,
+          costPerAcquisitionUsd: null,
+        },
       } as never),
     ]);
     expect(view.priced).toBe(false);
@@ -76,7 +95,12 @@ describe("chainViews", () => {
 
   it("reads an absent committed cost as null rather than zero", () => {
     const [view] = chainViews([
-      row({ funnelKey: "a", name: "A", costEconomics: { costOfAcquisitionPct: null, roiMultiple: null, costPerAcquisitionUsd: null } } as never),
+      row({
+        funnelKey: "a",
+        name: "A",
+        costEconomics: { costOfAcquisitionPct: null, roiMultiple: null, costPerAcquisitionUsd: null },
+        combinedCostEconomics: null,
+      } as never),
     ]);
     expect(view.investedUsd).toBeNull();
   });
@@ -98,18 +122,80 @@ describe("unpricedChainReasonLabel", () => {
 });
 
 describe("costCoverageNote", () => {
-  it("states that a self-finished funnel reads cheaper than it is", () => {
-    // The platform spends nothing on a leg the customer's own team works, so a chain
-    // whose last legs are manual is understated here. Saying it is the alternative to
-    // presenting an optimistic return as the whole answer.
+  it("says the funnel reads cheap when nothing of the customer's is recorded", () => {
     const note = costCoverageNote("platform_spend_only");
     expect(note).toContain("your own team");
     expect(note).toContain("cheaper");
   });
 
+  it("calls a partly-recorded funnel a floor rather than the whole figure", () => {
+    const note = costCoverageNote("platform_and_partial_customer_spend");
+    expect(note).toContain("floor");
+  });
+
+  it("says plainly what a fully-recorded funnel is made of", () => {
+    const note = costCoverageNote("platform_and_customer_spend");
+    expect(note).toContain("plus what you recorded");
+    expect(note).not.toContain("cheaper");
+  });
+
   it("says nothing about a coverage it does not know", () => {
     expect(costCoverageNote("something_else")).toBeNull();
     expect(costCoverageNote(null)).toBeNull();
+  });
+
+  it("flags only the partial case as incompletely costed", () => {
+    expect(coverageIsPartial("platform_and_partial_customer_spend")).toBe(true);
+    expect(coverageIsPartial("platform_and_customer_spend")).toBe(false);
+    expect(coverageIsPartial("platform_spend_only")).toBe(false);
+    expect(coverageIsPartial(null)).toBe(false);
+  });
+});
+
+describe("the combined basis is what a customer's own return divides by", () => {
+  it("reads the ratios off the combined block, not the charged one", () => {
+    // What we charged is not the customer's answer to "what did this funnel cost me":
+    // a funnel whose last legs they run themselves would read far cheaper than it is.
+    const [view] = chainViews([
+      row({
+        funnelKey: "a",
+        name: "A",
+        combinedCostEconomics: {
+          platformCommittedCostUsd: 2670,
+          customerDeclaredCostUsd: 1330,
+          committedCostUsd: 4000,
+          costOfAcquisitionPct: 57.1,
+          roiMultiple: 1.75,
+          costPerAcquisitionUsd: 1428,
+        },
+      } as never),
+    ]);
+    expect(view.investedUsd).toBe(4000);
+    expect(view.roiMultiple).toBe(1.75);
+    expect(view.costPerAcquisitionUsd).toBe(1428);
+    // Both halves readable without inferring one from the other.
+    expect(view.platformCostUsd).toBe(2670);
+    expect(view.customerCostUsd).toBe(1330);
+  });
+
+  it("reads the charged block when the producer sends no combined one", () => {
+    // Not a fallback that MIXES the two: with nothing declared the producer makes them
+    // identical by construction, so this is the same figure and simply keeps working
+    // against a body that predates the block.
+    const [view] = chainViews([
+      row({ funnelKey: "a", name: "A", combinedCostEconomics: null, costCoverage: null } as never),
+    ]);
+    expect(view.investedUsd).toBe(2670);
+    expect(view.roiMultiple).toBe(2.62);
+    expect(view.customerCostUsd).toBeNull();
+  });
+
+  it("carries the row's own coverage, so a table can mark a floor", () => {
+    const [view] = chainViews([
+      row({ funnelKey: "a", name: "A", costCoverage: "platform_and_partial_customer_spend" } as never),
+    ]);
+    expect(view.coverage).toBe("platform_and_partial_customer_spend");
+    expect(view.partiallyCosted).toBe(true);
   });
 });
 
@@ -149,6 +235,12 @@ describe("the page renders served fields and states the gap", () => {
     // so would present an optimistic figure as the whole answer.
     expect(PAGE).toContain("costCoverageNote(chains.data?.costCoverage)");
     expect(PAGE).toContain("{coverage && ");
+  });
+
+  it("states the platform / customer split where there is one", () => {
+    expect(PAGE).toContain("us · ");
+    expect(PAGE).toContain("row.customerCostUsd !== null && row.customerCostUsd > 0");
+    expect(PAGE).toContain("row.partiallyCosted");
   });
 
   it("says the rows do not add up to the offer", () => {
