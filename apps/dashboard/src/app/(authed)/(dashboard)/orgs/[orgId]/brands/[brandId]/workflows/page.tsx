@@ -99,9 +99,9 @@ export default function FeatureWorkflowsPage() {
   // features-service workflow-projection × the brand's saved sales-economics.
   // ROI = the server-computed `roiMultiple` (= LTR / costPerCloseUsd = 100 / cacPct,
   // budget-independent), rendered verbatim — the dashboard no longer inverts cacPct.
-  // This is the cold Neon chain, so it is NOT gated into the table barrier below —
+  // This is the cold Neon path, so it is NOT gated into the table barrier below —
   // the table reveals on workflows+ranked and each ROI cell shows its own skeleton
-  // while pending. keep-last-good guards a degenerate cold-chain refocus refetch.
+  // while pending. keep-last-good guards a degenerate cold-path refocus refetch.
   const { data: projection } = useAuthQuery(
     ["workflowProjection", brandId, featureSlug],
     () => getWorkflowProjection({ featureSlug, brandId, objective: "meeting-booked", budgetUsd: 1 }),

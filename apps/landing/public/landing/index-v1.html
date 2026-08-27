@@ -366,7 +366,7 @@
       text-transform:uppercase;
     }
     /* Scoped to the body: the second zone label is the first child of the
-       chain block, and an unscoped :first-child would strip the gap that
+       steps block, and an unscoped :first-child would strip the gap that
        separates the two halves. */
     .console-body>.zone-label:first-child{margin-top:0}
     .zone-label+.console-metric{margin-top:0}
@@ -386,7 +386,7 @@
     /* Spend to return. Each arrow states the assumption it applies, so the two
        figures the reader owns (their closing and their lifetime revenue) read
        as inputs rather than as something we are claiming on their behalf. */
-    .chain-arrow{
+    .step-arrow{
       display:flex;
       align-items:center;
       gap:8px;
@@ -397,19 +397,19 @@
       font-size:9.5px;
       letter-spacing:.03em;
     }
-    .chain-arrow::before{content:'↓';color:var(--green);font-size:13px;line-height:1}
+    .step-arrow::before{content:'↓';color:var(--green);font-size:13px;line-height:1}
     /* Each row is COLLAPSED, not merely transparent: an invisible row still
        occupies its space, which stretched the card to full height and left a
        tall blank under the counter while it was still counting. The card grows
        as the rows arrive instead. Collapsed only once the script has claimed
-       the block, so a reader with JS off keeps the whole chain from the first
+       the block, so a reader with JS off keeps every step from the first
        paint. */
-    .console-chain[data-reveal]>*{display:none}
-    .console-chain[data-reveal]>.is-in{animation:chain-in .34s ease both}
-    .console-chain[data-reveal]>.chain-arrow.is-in{display:flex}
-    .console-chain[data-reveal]>.zone-label.is-in{display:block}
-    .console-chain[data-reveal]>div.is-in{display:block}
-    @keyframes chain-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    .console-steps[data-reveal]>*{display:none}
+    .console-steps[data-reveal]>.is-in{animation:steps-in .34s ease both}
+    .console-steps[data-reveal]>.step-arrow.is-in{display:flex}
+    .console-steps[data-reveal]>.zone-label.is-in{display:block}
+    .console-steps[data-reveal]>div.is-in{display:block}
+    @keyframes steps-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
     .proof-rail{
       border-top:1px solid var(--line-soft);
@@ -2245,22 +2245,22 @@ __CAC_BOOT_SLOT__
       var domainEl=document.querySelector('[data-hero-domain]');
       var okEl=document.querySelector('[data-hero-ok]');
       var countEl=document.querySelector('[data-hero-outcome]');
-      var chainEl=document.querySelector('[data-hero-chain]');
+      var stepsEl=document.querySelector('[data-hero-steps]');
       var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       var placeholder=domainEl?domainEl.textContent:'';
       var target=countEl?parseInt(countEl.getAttribute('data-hero-outcome'),10):NaN;
 
-      /* The chain reads as a consequence of the count, so it arrives once the
+      /* The steps read as a consequence of the count, so it arrives once the
          total has landed. It is hidden only after the script has claimed it and
          a reveal is guaranteed: a reader with JS off, or a reduced-motion
          preference, keeps the whole thing on screen from the first paint. */
       /* One row at a time, so the card grows in steps rather than jumping to
          its full height. Idempotent: retyping re-runs the count but must not
          replay the reveal. */
-      function revealChain(){
-        if(!chainEl||chainEl.getAttribute('data-reveal')==='done')return;
-        chainEl.setAttribute('data-reveal','done');
-        var kids=chainEl.children;
+      function revealSteps(){
+        if(!stepsEl||stepsEl.getAttribute('data-reveal')==='done')return;
+        stepsEl.setAttribute('data-reveal','done');
+        var kids=stepsEl.children;
         for(var i=0;i<kids.length;i++){
           (function(el,idx){
             if(reduce){el.classList.add('is-in');return;}
@@ -2268,7 +2268,7 @@ __CAC_BOOT_SLOT__
           })(kids[i],i);
         }
       }
-      if(chainEl&&!reduce&&countEl&&isFinite(target)){
+      if(stepsEl&&!reduce&&countEl&&isFinite(target)){
         /* Reserve the finished height BEFORE collapsing anything: at this
            point every row is still in flow, so the slot measures what the card
            will end up being. Without it the card's growth re-centres the
@@ -2276,8 +2276,8 @@ __CAC_BOOT_SLOT__
            rather than height, so a later font swap can only add. */
         var slot=document.querySelector('[data-console-slot]');
         if(slot)slot.style.minHeight=slot.offsetHeight+'px';
-        chainEl.setAttribute('data-reveal','pending');
-        setTimeout(revealChain,9000); /* nothing can leave it hidden */
+        stepsEl.setAttribute('data-reveal','pending');
+        setTimeout(revealSteps,9000); /* nothing can leave it hidden */
       }
 
       /* Only a bare dotted host is mirrored. A half-typed value keeps the
@@ -2294,8 +2294,8 @@ __CAC_BOOT_SLOT__
          enough to keep a large total inside the budget. */
       var countRun=0;
       function countUp(){
-        if(!countEl||!isFinite(target)){revealChain();return;}
-        if(reduce){countEl.textContent=String(target);revealChain();return;}
+        if(!countEl||!isFinite(target)){revealSteps();return;}
+        if(reduce){countEl.textContent=String(target);revealSteps();return;}
         var HOLD_MS=150,MAX_TOTAL_MS=5000;
         var hold=Math.max(24,Math.min(HOLD_MS,MAX_TOTAL_MS/target));
         var run=++countRun,start=null,shown=-1;
@@ -2305,7 +2305,7 @@ __CAC_BOOT_SLOT__
           if(start===null)start=now;
           var n=Math.min(target,Math.floor((now-start)/hold));
           if(n!==shown){shown=n;countEl.textContent=String(n);}
-          if(n<target)requestAnimationFrame(step); else revealChain();
+          if(n<target)requestAnimationFrame(step); else revealSteps();
         }
         requestAnimationFrame(step);
       }

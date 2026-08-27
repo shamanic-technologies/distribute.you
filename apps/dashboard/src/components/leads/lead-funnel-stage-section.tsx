@@ -106,7 +106,7 @@ function StageButton({
 /**
  * The question every statement now has to answer, asked at the moment it is made.
  *
- * The platform automates the first link of the chain and the CUSTOMER performs the rest,
+ * The platform automates the first link of the funnel and the CUSTOMER performs the rest,
  * so they are the only one who can say what their leg cost. lead-service makes that cost
  * mandatory on both kinds of statement, so this form stands between the button and the
  * write on every stage, "Won't happen" included: a meeting that was run and went nowhere
@@ -228,7 +228,7 @@ export function LeadFunnelStageSection({
   reply,
   disabled = false,
 }: {
-  /** The campaign's funnel, named so the reader knows which chain these stages are. */
+  /** The campaign's funnel, named so the reader knows which funnel's steps these are. */
   funnelName: string;
   stages: LeadFunnelStage[];
   /** What has been stated per stage. A stage absent from the map is pending. */
@@ -238,12 +238,12 @@ export function LeadFunnelStageSection({
   /**
    * Where our own sending got to, as the caller already renders it elsewhere. Read
    * only: it is measured, so there is nothing for a person to state, and it sits ABOVE
-   * the chain because every funnel starts after the email arrives. Absent (a scope
+   * the steps because every funnel starts after the email arrives. Absent (a scope
    * with no delivery evidence to hand) and the row simply does not render.
    */
   delivery?: ReactNode;
   /**
-   * Stages the CHAIN concluded rather than a person stating. A funnel is a chain, so a
+   * Stages the FUNNEL concluded rather than a person stating. A funnel is ORDERED, so a
    * "never" ends every later step and an outcome reaches every earlier one. These are
    * real answers with no author: they render as the conclusion they are and offer no
    * control, because there is nothing left to state and it would move on its own the
@@ -298,7 +298,7 @@ export function LeadFunnelStageSection({
   );
 
   // A funnel with no stages is the brand-level case: several funnels run at once, so
-  // there is no single chain to walk this lead through. State nothing rather than
+  // there is no single funnel to walk this lead through. State nothing rather than
   // render an empty card that reads as a stage list we failed to load.
   if (stages.length === 0) return null;
 
@@ -327,7 +327,7 @@ export function LeadFunnelStageSection({
           // hand, a `null` one is a statement made before the cost was asked for, and a
           // `0` is a real answer somebody gave. All three read differently.
           const statedCost = costs && stage.key in costs ? costs[stage.key] ?? null : undefined;
-          // What ending this step also ends. A funnel is a chain, so one click here
+          // What ending this step also ends. A funnel is ORDERED, so one click here
           // ends every later step too — the control says so before it is pressed
           // rather than after, which is the difference between a decision and a
           // surprise.
@@ -337,7 +337,7 @@ export function LeadFunnelStageSection({
               ? `${stage.wontLabel}. Also ends: ${alsoEnded.join(", ")}.`
               : stage.wontLabel;
           // A stage lead-service does not accept a statement on renders as a READING,
-          // never as a dead control. Two of the human chain's stages are like this: a
+          // never as a dead control. Two of the human funnel's stages are like this: a
           // reply is a fact about a message, and a visit is a click the delivery layer
           // measures. Both are still worth showing; neither is ours to state here.
           const writable = isWritableStage(stage.key);

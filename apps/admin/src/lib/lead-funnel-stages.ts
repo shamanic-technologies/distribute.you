@@ -2,17 +2,17 @@
  * The stages of ONE campaign's sales funnel, as a person states them about ONE lead.
  *
  * Twin of the customer dashboard's `lib/lead-funnel-stages.ts`, with ONE difference: the
- * dashboard derives each chain from `SALES_FUNNELS[key].steps`, its funnel catalogue.
+ * dashboard derives each step list from `SALES_FUNNELS[key].steps`, its funnel catalogue.
  * This app has no such catalogue (the staff console is a deliberate fork and carries its
- * own settings surfaces), so the chains are written out below.
+ * own settings surfaces), so the funnels are written out below.
  *
- * That literal copy is pinned by a guard in the DASHBOARD's suite — `FUNNEL_CHAINS` here
+ * That literal copy is pinned by a guard in the DASHBOARD's suite — `FUNNEL_STEPS` here
  * must equal `SALES_FUNNELS`'s steps there, funnel for funnel and label for label. The
  * guard lives on that side on purpose: `apps/dashboard`'s tests are a CI merge gate and
  * this app's are not, so a drift caught there blocks a merge instead of rotting quietly.
  *
  * NOT keyed on the brand goal. `sales_meetings` covers both meeting funnels, so a goal
- * cannot say whether the chain starts at a reply or at a website visit — the exact
+ * cannot say whether the funnel starts at a reply or at a website visit — the exact
  * distinction this panel exists to record.
  *
  * Alias-free on purpose, so it carries real unit tests rather than source-substring
@@ -32,10 +32,10 @@ export type CanonicalSalesFunnelKey =
 export type SalesFunnelKeyWire = SalesFunnelKey | CanonicalSalesFunnelKey;
 
 /**
- * Each funnel's chain, base to terminal — the SAME labels the dashboard's catalogue
+ * Each funnel's steps, base to terminal — the SAME labels the dashboard's catalogue
  * carries. Pinned equal by the dashboard-side guard; edit both or neither.
  */
-export const FUNNEL_CHAINS: Record<SalesFunnelKey, { name: string; steps: string[] }> = {
+export const FUNNEL_STEPS: Record<SalesFunnelKey, { name: string; steps: string[] }> = {
   reply_meeting: {
     name: "Sales Meeting from Conversation",
     steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
@@ -55,11 +55,11 @@ export const FUNNEL_CHAINS: Record<SalesFunnelKey, { name: string; steps: string
 };
 
 /**
- * Collapse any wire spelling onto the key the chains are written on.
+ * Collapse any wire spelling onto the key the funnels are written on.
  *
  * THROWS on anything else rather than guessing a funnel — the column is
  * CHECK-constrained upstream, so a value arriving here that we cannot name is a
- * vocabulary drift worth seeing, not one to paper over with a plausible chain.
+ * vocabulary drift worth seeing, not one to paper over with a plausible funnel.
  */
 export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey {
   switch (key) {
@@ -172,21 +172,21 @@ const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; lab
 
 /** The funnel's display name, for the line under the panel heading. */
 export function funnelDisplayName(funnelKey: SalesFunnelKeyWire): string {
-  return FUNNEL_CHAINS[normalizeSalesFunnelKey(funnelKey)].name;
+  return FUNNEL_STEPS[normalizeSalesFunnelKey(funnelKey)].name;
 }
 
 /**
  * The ordered stages of the campaign's funnel, base → terminal.
  *
- * An ABSENT funnel returns NOTHING rather than a guessed chain — a campaign that states
- * no funnel has no chain to walk, and inventing one would show a staff member steps the
+ * An ABSENT funnel returns NOTHING rather than guessed steps — a campaign that states
+ * no funnel has no steps to walk, and inventing one would show a staff member steps the
  * campaign never sold.
  */
 export function leadFunnelStages(funnelKey: SalesFunnelKeyWire | null | undefined): LeadFunnelStage[] {
   if (!funnelKey) return [];
-  const chain = FUNNEL_CHAINS[normalizeSalesFunnelKey(funnelKey)];
+  const funnel = FUNNEL_STEPS[normalizeSalesFunnelKey(funnelKey)];
   const stages: LeadFunnelStage[] = [];
-  for (const step of chain.steps) {
+  for (const step of funnel.steps) {
     const stage = STAGE_FOR_STEP[step];
     if (!stage) {
       console.error(`[admin] lead-funnel-stages: no stage for step "${step}"`);

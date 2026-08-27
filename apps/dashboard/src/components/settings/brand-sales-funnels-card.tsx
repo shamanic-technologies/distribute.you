@@ -610,9 +610,9 @@ export function BrandSalesFunnelsCard({
             {def.name}
           </p>
 
-          {/* The chain, kept quieter than the name. Once the funnel is chosen,
+          {/* The funnel, kept quieter than the name. Once the funnel is chosen,
               each arrow carries the rate for that leg and the lifetime revenue
-              closes the chain, where the last step earns it. */}
+              closes the funnel, where the last step earns it. */}
           <p className="mt-0.5 flex flex-wrap items-start gap-x-1.5 text-xs text-gray-500">
             {def.steps.map((step, i) => {
               const pct = i > 0 && showNumbers ? funnelLegPct(def, state.draft, i - 1) : null;

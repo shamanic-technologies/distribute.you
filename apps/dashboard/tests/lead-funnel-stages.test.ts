@@ -36,7 +36,7 @@ describe("leadFunnelStages", () => {
     }
   });
 
-  it("returns the chain in catalogue order, base to terminal", () => {
+  it("returns the steps in catalogue order, base to terminal", () => {
     expect(leadFunnelStages("reply_meeting").map((s) => s.key)).toEqual([
       "positive_reply",
       "meeting_booked",
@@ -74,7 +74,7 @@ describe("leadFunnelStages", () => {
     );
   });
 
-  it("states NOTHING for an absent funnel rather than guessing a chain", () => {
+  it("states NOTHING for an absent funnel rather than guessing its steps", () => {
     // The brand-level case by construction: a brand runs several funnels at once.
     expect(leadFunnelStages(null)).toEqual([]);
     expect(leadFunnelStages(undefined)).toEqual([]);

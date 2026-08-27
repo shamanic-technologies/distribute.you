@@ -193,7 +193,7 @@ export function retentionSeries(rows: RetentionBucket[], granularity: "month" | 
 // A SECOND, genuinely different money notion from the realized-revenue series
 // above, and the two must never be read as one number:
 //   realized revenue = what customers CONSUMED (cold-email spend actualized on
-//                      the runs ledger). Stripe is nowhere in that chain.
+//                      the runs ledger). Stripe is nowhere in that path.
 //   cash collected   = what customers PAID us (Stripe charges), minus what went
 //                      back out (settled refunds + lost disputes).
 // They differ by prepaid credit bought and not yet burned, so cash legitimately

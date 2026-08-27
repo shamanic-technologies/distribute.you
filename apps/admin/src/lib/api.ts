@@ -2477,7 +2477,7 @@ export async function fetchGlobalRankedWorkflows(params: {
 // cost-per-close + funnel projection from the brand's SAVED economics, but the campaigns/new page
 // no longer renders those directly: it recomputes cost-per-close + the funnel CLIENT-side from the
 // unit costs × the LIVE §2 econ inputs (lib/sales-funnel-projection.ts mirrors the server formula)
-// so the budget cards update instantly without a per-edit round-trip through the cold Neon chain.
+// so the budget cards update instantly without a per-edit round-trip through the cold Neon path.
 // On first paint the live econ == the saved econ, so the client numbers equal the server's exactly.
 // Wire shape verified against the deployed contract via api-registry. safeParse per CLAUDE.md.
 export type SalesObjective = "meeting-booked" | "self-serve";
@@ -2533,7 +2533,7 @@ export type WorkflowProjectionResponse = z.infer<typeof WorkflowProjectionRespon
 
 /**
  * `structuralSharing` merge for the workflow-projection query. Every field above is `.nullable()`
- * because a COLD Neon chain (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
+ * because a COLD Neon path (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
  * can answer a poll/refocus refetch with a VALID 200 whose unit costs / cost-per-close are null,
  * or with fewer workflows, while it half-warms. That degenerate-but-valid payload would otherwise
  * collapse the budget cards + Launch button (which derive off `costPerCloseUsd`). Keep the last-good
@@ -5023,7 +5023,7 @@ export interface InstantlyAccountHealthRow {
   sentToday: number; // real emails sent today (UTC); honest 0, never null
   queueSize: number; // un-sent STEPS queued to Instantly for this account; honest 0, never null
   // The four date-buckets partition the un-sent STEPS by each step's projected
-  // send date (chained real per-step delays), so:
+  // send date (consecutive real per-step delays), so:
   // queueSize === queuedFirstUnsent + queuedNextToday + queuedNextTomorrow + queuedNextLater.
   // queuedSequences (leads) is a DISTINCT granularity — NOT the bucket sum.
   //
@@ -5736,7 +5736,7 @@ const REVENUE_WEEKS_MAX = 104;
  *
  * NOTE what this measures: summed NET ACTUALIZED cold-email spend (runs-service
  * cost ledger, after each org's usage discount) — the money customers CONSUMED.
- * It is not Stripe cash: no part of this chain touches Stripe. Cash collected is
+ * It is not Stripe cash: no part of this path touches Stripe. Cash collected is
  * a separate, larger figure (prepaid credit not yet burned), served by
  * `/public/stats/billing`. Both are rendered on the Revenue view, apart.
  */
@@ -6201,7 +6201,7 @@ export async function getCrossOrgLifetimeCostPerOutcome(
 //
 // The step and family vocabularies are read as PLAIN STRINGS rather than as
 // closed enums. Both are expected to grow — a channel that converts a step in
-// the MIDDLE of a chain has no token yet — and a reader that closes the set
+// the MIDDLE of a funnel has no token yet — and a reader that closes the set
 // would throw on the catalogue the day it does.
 // ---------------------------------------------------------------------------
 
@@ -6213,7 +6213,7 @@ const PublicChannelStepSchema = z.object({
 
 /**
  * The leg a channel performs: the step it moves a lead FROM, and the step it moves it TO.
- * `from: null` is "from nothing" — the lead was not on the chain at all until this channel
+ * `from: null` is "from nothing" — the lead was not on the funnel at all until this channel
  * produced its first signal, which is what every entry channel does.
  */
 const PublicStepTransitionSchema = z.object({
@@ -7049,7 +7049,7 @@ const LeadStepEntrySchema = z.object({
   step: z.string(),
   state: z.enum(["outcome", "never", "pending"]),
   /**
-   * Whether a PERSON stated this step or the CHAIN implies it (lead-service v0.60.0).
+   * Whether a PERSON stated this step or the FUNNEL implies it (lead-service v0.60.0).
    * An implied step carries no author, no note and no date, and it moves on its own when
    * the statement behind it is retracted — so it must not be offered as a control, and
    * must not read as something somebody said.
@@ -7060,12 +7060,17 @@ const LeadStepEntrySchema = z.object({
   /** The STATED step an implied one follows from. */
   impliedBy: z.string().nullable().optional(),
   /**
-   * What a person actually stated about THIS step, whatever the chain concluded — so a
-   * real statement is never lost to satisfy the chain. A `never` later contradicted by
+   * What a person actually stated about THIS step, whatever the funnel concluded — so a
+   * real statement is never lost to satisfy the funnel. A `never` later contradicted by
    * an outcome reads state=outcome, origin=implied, statedState=never.
    */
   statedState: z.enum(["outcome", "never"]).nullable().optional(),
-  /** Whether the step is on this lead's chain at all. Off-chain, no rule reaches it. */
+  /**
+   * Whether the step is on this lead's funnel at all. Off it, no rule reaches it.
+   *
+   * ⚠️ `inChain` is lead-service's own wire spelling, like `chain` on the envelope
+   * below — a producer-owned key this app reads and does not name.
+   */
   inChain: z.boolean().optional(),
   source: z.enum(["tracker", "manual"]).nullable(),
   valueCents: z.number().nullable(),
@@ -7075,7 +7080,7 @@ const LeadStepEntrySchema = z.object({
    * the platform's spend ledger or their billing.
    *
    * Required-and-nullable, matching the producer. `0` is a STATED zero. `null` means
-   * nobody answered: a pending step, a step the chain implied, a tracker-reported one,
+   * nobody answered: a pending step, a step the funnel implied, a tracker-reported one,
    * or a statement made before the cost became mandatory. Declaring it `.optional()`
    * would read `undefined` on a body that legitimately carries a null, which is the one
    * distinction this field exists to hold.
@@ -7102,6 +7107,12 @@ const LeadStepStatementsSchema = z
      * The funnel this lead's CAMPAIGN sells through, and its steps IN ORDER, both read
      * from campaign-service by the producer and never guessed. `.optional()` only to
      * decouple the rollout.
+     *
+     * ⚠️ `chain` is lead-service's OWN wire spelling of the funnel's steps, so it is the
+     * one place this app may not rename: a key is whatever the producer sends it as, and
+     * changing it here would simply stop reading the field. Everything derived from it is
+     * called a funnel (`funnelStepsFrom`). Tracked as a lead-service rename request; the
+     * day it serves `steps`, read the new name and delete this one.
      */
     funnelKey: z.string().optional(),
     chain: z.array(z.string()).optional(),

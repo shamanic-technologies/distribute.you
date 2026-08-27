@@ -33,7 +33,7 @@
  * STORAGE = IndexedDB (idb-keyval), NOT localStorage. localStorage's hard ~5MB
  * per-origin cap was the regression: a big list (leads/emails on a heavy brand)
  * blew the cap → `removeOldestQuery` evicted the small overview queries → the
- * overview cold-skeletoned on the slow Neon chain (the very thing persist-all was
+ * overview cold-skeletoned on the slow Neon path (the very thing persist-all was
  * meant to prevent). IndexedDB has no such cap, so nothing is evicted and big-list
  * pages persist fully too.
  *
@@ -132,7 +132,7 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "brandOffers",
   "brandOffer",
   // Offer Settings reads both of these on every visit, and both are answered by
-  // the slow brand-service chain. Unlisted they are default-OFF, so the page
+  // the slow brand-service path. Unlisted they are default-OFF, so the page
   // would cold-skeleton every time instead of painting from disk. Each key
   // carries the offer, so two propositions of one brand never share an entry.
   "offerUserFields",
@@ -244,7 +244,7 @@ export function persisterStorageKey(orgId: string | null | undefined): string {
  * deploy, so a high-velocity app (≈12 deploys/day here) busted the entire
  * persisted cache on essentially every visit → the persist-everything work
  * (#2074) never survived to a return visit and every page cold-skeletoned on the
- * slow Neon chain. The shape almost never changes; the SHA always does — so the
+ * slow Neon path. The shape almost never changes; the SHA always does — so the
  * SHA was the wrong key. This is TanStack's own recommended pattern for actively
  * deployed apps. Cross-deploy shape safety still holds without the per-deploy
  * bust: `safeParse` / `z.coerce` on the list readers, keep-last-good

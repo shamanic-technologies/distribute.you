@@ -373,9 +373,9 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // would hide the reply columns on the very brand that optimises for replies.
   // WHICH steps this table's columns describe: the CAMPAIGN's own funnel when it states
   // one, the goal otherwise. Keyed on the funnel because the goal cannot separate the two
-  // meeting chains — `reply_meeting` and `visit_meeting` both answer to `sales_meetings`,
+  // meeting funnels — `reply_meeting` and `visit_meeting` both answer to `sales_meetings`,
   // so a goal-keyed table printed "Website Visits / Cost per website visit" on a campaign
-  // whose chain starts at a positive reply, and hid the reply pair on one that starts at a
+  // whose funnel starts at a positive reply, and hid the reply pair on one that starts at a
   // click. Same single source the stat cards read (`stepsFor`), so a campaign's columns and
   // its cards cannot describe two different funnels.
   const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);
@@ -425,15 +425,15 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // reply→paid path, so its ranking surfaces BOTH funnels: the reply funnel (Positive
   // replies + CPPR) ALONGSIDE the website-visit funnel + the Sale outcome — mirroring the
   // sales-meetings reply columns. website_purchase stays visit-only (single close path).
-  // A reply pair renders when a positive reply is ON the chain — the reply→meeting funnel,
+  // A reply pair renders when a positive reply is ON the steps — the reply→meeting funnel,
   // the reply-terminal goal, and the combined `sales` goal (which wins a client through
   // either path, so it surfaces both signals).
   const showReplyCols = (hasStep("positive_replies") || optimizationGoal === "sales") && !brandLevelMoney;
   // The website-visit pair is funnel-scoped like every pair above it: it names the
-  // first step of the visit-led chains while the rows beside it are attributed across
+  // first step of the visit-led funnels while the rows beside it are attributed across
   // every funnel the brand sells through. Off at brand level for that reason, and off
   // for positive_replies because a click is not in the reply→paid funnel at all.
-  // ...and the visit pair only when a click onto the site is on the chain. It used to read
+  // ...and the visit pair only when a click onto the site is on the funnel. It used to read
   // `!isPositiveReplies`, which is the retired GOAL's answer: true for every campaign whose
   // goal is not the reply-terminal one, including the reply→meeting funnel that buys no
   // visit at all. That is the sibling-condition trap — a pair already gated on something
@@ -495,7 +495,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
       // Brand level names NEITHER goal nor funnel — features-service prices every
       // audience through the best-returning funnel the brand declared and sorts on
       // return descending. Under a campaign the funnel is stated, because a campaign
-      // sells exactly one and the goal cannot separate the two meeting chains.
+      // sells exactly one and the goal cannot separate the two meeting funnels.
       fetchFeatureAudienceStats(featureSlug, {
         brandId,
         ...(brandLevelMoney

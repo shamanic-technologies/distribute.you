@@ -75,9 +75,9 @@ describe("SALES_FUNNELS definitions", () => {
     ]);
   });
 
-  // The name is what the funnel IS; the chain under it is how it runs. A card
-  // titled by its own chain has nothing left to say on its second line.
-  it("names every funnel, distinctly, and never with its own chain", () => {
+  // The name is what the funnel IS; the steps under it are how it runs. A card
+  // titled by its own funnel has nothing left to say on its second line.
+  it("names every funnel, distinctly, and never with its own steps", () => {
     expect(SALES_FUNNELS.map((f) => f.name)).toEqual([
       "Sales Meeting from Conversation",
       "Sales Meeting from Website",
@@ -90,9 +90,9 @@ describe("SALES_FUNNELS definitions", () => {
     }
   });
 
-  // One leg per arrow: a chain that declares fewer legs than arrows leaves an
+  // One leg per arrow: a funnel that declares fewer legs than arrows leaves an
   // arrow whose rate nobody decided on.
-  it("declares one leg per arrow of the chain", () => {
+  it("declares one leg per arrow of the funnel", () => {
     for (const funnel of SALES_FUNNELS) {
       expect(funnel.legs.length).toBe(funnel.steps.length - 1);
     }
@@ -164,7 +164,7 @@ describe("SALES_FUNNELS definitions", () => {
     expect(salesFunnelByKey("visit_form").requiresWebsite).toBe(true);
   });
 
-  // A booking link is worth collecting wherever a meeting sits in the chain; a
+  // A booking link is worth collecting wherever a meeting sits in the funnel; a
   // page destination only where a click onto the site starts it.
   it("collects a booking link on the meeting funnels and a page on the click-led ones", () => {
     expect(salesFunnelByKey("reply_meeting").bookingLink).toBe(true);
@@ -253,8 +253,8 @@ describe("funnelDraftFromBrand", () => {
 });
 
 /**
- * A brand configured on a goal the catalogue prices under a longer chain. Its
- * one end-to-end rate is still true of that whole chain, so it lands on the leg
+ * A brand configured on a goal the catalogue prices under a longer funnel. Its
+ * one end-to-end rate is still true of that whole funnel, so it lands on the leg
  * ending on a paid client and every leg above it passes everyone through: the
  * product multiplies back to exactly the number the brand gave us.
  *
@@ -270,7 +270,7 @@ describe("a goal the catalogue carries no funnel of its own for", () => {
   const pct = (draft: FunnelDraft, key: string) =>
     parseLocaleNumberInput(draft.rates[key as keyof FunnelDraft["rates"]] ?? "");
 
-  it("maps a positive-replies brand onto the reply-led meeting chain", () => {
+  it("maps a positive-replies brand onto the reply-led meeting funnel", () => {
     const draft = seed("positive_replies", "reply_meeting");
     expect(pct(draft, "replyToMeetingPct")).toBe(100);
     expect(pct(draft, "meetingBookedToAttendedPct")).toBe(100);
@@ -278,22 +278,22 @@ describe("a goal the catalogue carries no funnel of its own for", () => {
     expect(pct(draft, "meetingToClosePct")).toBe(25);
   });
 
-  it("maps a website-visits brand onto the website-purchase chain", () => {
+  it("maps a website-visits brand onto the website-purchase funnel", () => {
     const draft = seed("website_visits", "visit_signup");
     expect(pct(draft, "visitToSignupPct")).toBe(100);
     expect(pct(draft, "signupToPaidClientPct")).toBe(5);
   });
 
-  // A paid client won through EITHER path, so both chains seed, each from the
+  // A paid client won through EITHER path, so both funnels seed, each from the
   // rate that describes its own first signal.
-  it("maps a sales brand onto both chains at once", () => {
+  it("maps a sales brand onto both funnels at once", () => {
     expect(pct(seed("sales", "reply_meeting"), "meetingToClosePct")).toBe(25);
     expect(pct(seed("sales", "visit_signup"), "signupToPaidClientPct")).toBe(5);
   });
 
-  // The chain has to multiply back to what the brand actually told us, or the
+  // The funnel has to multiply back to what the brand actually told us, or the
   // prefill quietly restates its economics as a different number.
-  it("keeps the product across the chain equal to the rate the brand gave us", () => {
+  it("keeps the product across the funnel equal to the rate the brand gave us", () => {
     const draft = seed("positive_replies", "reply_meeting");
     const legs = ["replyToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"];
     const product = legs.reduce((acc, leg) => acc * ((pct(draft, leg) ?? 0) / 100), 1);
@@ -312,8 +312,8 @@ describe("a goal the catalogue carries no funnel of its own for", () => {
 
   // The wire types this rate non-null, so this is the older-producer case: a
   // payload that simply does not carry it. Without an end-to-end number there is
-  // no chain to spread, so the funnel reads its own named legs again rather than
-  // seeding a chain of 100s that would multiply back to nothing.
+  // no funnel to spread, so it reads its own named legs again rather than
+  // seeding a run of 100s that would multiply back to nothing.
   it("falls back to the named legs when the end-to-end rate is absent", () => {
     const draft = funnelDraftFromBrand(
       salesFunnelByKey("reply_meeting"),
@@ -539,9 +539,9 @@ describe("buildFunnelPatch", () => {
     expect(isEmptyFunnelPatch(buildFunnelPatch(def, blank, NOTHING_DECLARED))).toBe(true);
   });
 
-  // brand-service 400s on a rate outside the chain and on a destination the
+  // brand-service 400s on a rate outside the funnel and on a destination the
   // funnel has no use for, so a patch must never be able to carry either.
-  it("never carries a rate outside the funnel's own chain", () => {
+  it("never carries a rate outside the funnel's own steps", () => {
     const draft = {
       ...savedDraft,
       rates: { ...savedDraft.rates, replyToMeetingPct: "50" },
@@ -620,9 +620,9 @@ describe("funnelLegPct", () => {
 });
 
 describe("funnelLifetimeLabel", () => {
-  // A lifetime revenue is what the last step of the chain is worth, so it reads
-  // at the end of that chain rather than on a line of its own.
-  it("closes the chain with what a client is worth", () => {
+  // A lifetime revenue is what the last step of the funnel is worth, so it reads
+  // at the end of that funnel rather than on a line of its own.
+  it("closes the funnel with what a client is worth", () => {
     expect(funnelLifetimeLabel(draftFor("visit_signup"))).toBe("$4,000 lifetime revenue");
   });
 
@@ -674,7 +674,7 @@ describe("destination chips", () => {
     expect(funnelDestinationChips(salesFunnelByKey("reply_meeting"), draftFor("reply_meeting"))).toEqual([]);
   });
 
-  // The lifetime revenue now closes the chain, so it is not a chip.
+  // The lifetime revenue now closes the funnel, so it is not a chip.
   it("carries no lifetime revenue", () => {
     const chips = funnelDestinationChips(salesFunnelByKey("visit_form"), draftFor("visit_form"));
     for (const chip of chips) expect(chip.kind).not.toBe("ltr");
@@ -682,7 +682,7 @@ describe("destination chips", () => {
 });
 
 describe("no goal-to-funnel resolver", () => {
-  // `meetingBooked` is the goal of TWO funnels, so a goal cannot name a chain on
+  // `meetingBooked` is the goal of TWO funnels, so a goal cannot name its steps on
   // its own. A surface naming what something buys reads the funnel a campaign or
   // a brand actually stated — campaign-service persists it on every campaign —
   // never one derived from the retired goal vocabulary.
@@ -765,7 +765,7 @@ describe("Sales Funnels card", () => {
   // own stored values instead, so a confirmed number is never re-guessed.
   it("seeds a declared funnel from what it declared, not from the brand blend", () => {
     expect(src).toContain("funnelDraftFromDeclared(def, saved)");
-    // Optional-chained since the card hydrates on SETTLE: an errored economics
+    // Read with `?.` since the card hydrates on SETTLE: an errored economics
     // read still lets the other three seed what they know.
     expect(src).toContain("funnelDraftFromBrand(");
     expect(src).toContain("econData?.salesEconomics ?? null");
@@ -878,20 +878,20 @@ describe("Sales Funnels card", () => {
     expect(src).toContain('"border-gray-200 bg-gray-50"');
   });
 
-  // The lifetime revenue closes the chain, where the last step earns it.
-  it("closes the chain with the lifetime revenue", () => {
+  // The lifetime revenue closes the funnel, where the last step earns it.
+  it("closes the funnel with the lifetime revenue", () => {
     expect(src).toContain("{lifetime}");
   });
 
-  // The chain is what the funnel does, not what it is called.
-  it("titles each card with the funnel name and keeps the chain under it", () => {
+  // The funnel is what it does, not what it is called.
+  it("titles each card with the funnel name and keeps its steps under it", () => {
     expect(src).toContain("{def.name}");
     expect(src).toContain("def.steps.map((step, i)");
     expect(src).toContain("funnelLegPct(def, state.draft, i - 1)");
   });
 
   // A tile that only covers the title reads as decoration next to a two-line
-  // block; this one runs alongside the name AND the chain. The tile itself lives
+  // block; this one runs alongside the name AND the funnel. The tile itself lives
   // in the shared mark so the Campaigns table draws a funnel the same way.
   it("runs the shared icon tile alongside both lines", () => {
     expect(src).toContain("<SalesFunnelMark def={def}");

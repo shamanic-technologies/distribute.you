@@ -26,7 +26,7 @@ describe("the projection is priced on the FUNNEL, never on a goal", () => {
   // that buys ~86x more clicks than replies, so the click leg supplies nearly every
   // projected outcome — and the RANKING rides the same number, so the workflow crowned
   // BEST is whichever is cheapest per click. Measured on a conversation-led brand: $26 per
-  // meeting and 26.8x return against $283 and 2.1x for the chain it actually sells.
+  // meeting and 26.8x return against $283 and 2.1x for the funnel it actually sells.
   it("sends ?funnel= and canonicalises it", () => {
     const reader = sliceFrom(api, "export async function getWorkflowProjectionLadder(", 2600);
     expect(reader).toContain('query.set("funnel", canonicalSalesFunnelKey(params.funnel))');
@@ -61,8 +61,8 @@ describe("the projection is priced on the FUNNEL, never on a goal", () => {
   });
 });
 
-describe("BestModelStats renders the funnel's own chain", () => {
-  it("takes a funnelKey and gates every tile on the chain's steps", () => {
+describe("BestModelStats renders the funnel's own steps", () => {
+  it("takes a funnelKey and gates every tile on the funnel's steps", () => {
     expect(bestModelCard).toContain("funnelKey: SalesFunnelKeyWire | null");
     expect(bestModelCard).toContain("const steps = stepsFor(null, funnelKey)");
     expect(bestModelCard).toContain('hasStep("website_visits")');
@@ -71,7 +71,7 @@ describe("BestModelStats renders the funnel's own chain", () => {
 
   it("carries no goal prop and no goal-keyed branch", () => {
     // `goal === "sales_meetings"` was true of BOTH meeting funnels, which is how a
-    // reply -> meeting chain ended up with a "Cost per website visit" tile.
+    // reply -> meeting funnel ended up with a "Cost per website visit" tile.
     expect(bestModelCard).not.toContain("goal: BrandOptimizationGoal");
     expect(bestModelCard).not.toContain('goal === "sales_meetings"');
     expect(bestModelCard).not.toContain("isWebsiteVisitsGoal");
@@ -146,7 +146,7 @@ describe("funnelDraftFromBrand seeds from the EFFECTIVE economics shape", () => 
     visitToClosePct: 1.3,
   };
 
-  it("fills the reply -> meeting chain's own legs", () => {
+  it("fills the reply -> meeting funnel's own legs", () => {
     const draft = funnelDraftFromBrand(salesFunnelByKey("reply_meeting"), effective, null);
     expect(draft.rates.replyToMeetingPct).toBe("75");
     expect(draft.rates.meetingToClosePct).toBe("10");

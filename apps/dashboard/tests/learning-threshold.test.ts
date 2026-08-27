@@ -110,7 +110,7 @@ describe("the cost cards state Learning instead of a thin price", () => {
   });
 
   it("gates both cost-per-positive-reply sites on the reply count", () => {
-    // The terminal-reply outcome card and the mid-chain reply pair are two render
+    // The terminal-reply outcome card and the mid-funnel reply pair are two render
     // sites for one number; gating one leaves the row contradicting itself.
     const hits = src.match(/isLearning\(spend\?\.positiveRepliesCount\)/g) ?? [];
     expect(hits.length).toBeGreaterThanOrEqual(2);

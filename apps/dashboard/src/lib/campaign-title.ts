@@ -73,7 +73,7 @@ export interface CampaignTitleParts {
  *
  * The funnel half reads the campaign's OWN funnel key and NOTHING else. There is
  * deliberately no fallback to the goal: the goal is the retired, lossier
- * vocabulary — two funnels answer to `meetingBooked` — so a chain derived from
+ * vocabulary — two funnels answer to `meetingBooked` — so steps derived from
  * it is one the campaign never stated. campaign-service persists the funnel on
  * every campaign, so a campaign that states none leaves the half unstated rather
  * than guessed.

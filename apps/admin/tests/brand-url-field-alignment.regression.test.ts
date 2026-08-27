@@ -67,7 +67,7 @@ describe("Brand URL field alignment (regression: Go button disabled)", () => {
       expect(legacyNewPage).not.toMatch(/\.find\([^)]+\)\?\.brandUrl/);
     });
 
-    it("reads b.url in the brand option label fallback chain", () => {
+    it("reads b.url in the brand option label fallback order", () => {
       expect(legacyNewPage).toContain("b.name || b.domain || b.url");
     });
   });

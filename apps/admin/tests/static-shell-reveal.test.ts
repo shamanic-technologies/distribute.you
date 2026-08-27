@@ -71,7 +71,7 @@ describe("static-shell-first: pages pass `pending`, not a whole-body skeleton sw
     const overview = read(`${APP}/overview/page.tsx`);
     expect(overview).toContain("RevenueOverviewSection");
     // Revenue data (features-service) and Total-spent (runs-service) resolve on
-    // different cold chains → separate latches, so the fast cost card never waits
+    // different cold paths → separate latches, so the fast cost card never waits
     // on the slower revenue call. No single `valuesRevealed` AND of both queries.
     expect(overview).toContain("revenueRevealed");
     expect(overview).toContain("costRevealed");
@@ -83,7 +83,7 @@ describe("static-shell-first: pages pass `pending`, not a whole-body skeleton sw
   it("campaigns page reveals each card on its OWN data (per-card barriers, no single whole-body gate)", () => {
     const campaigns = read(`${APP}/campaigns/page.tsx`);
     // Per-card reveal latches — the list paints on `campaigns` alone instead of
-    // waiting for the slow features-service revenue/stats cold chain.
+    // waiting for the slow features-service revenue/stats cold path.
     expect(campaigns).toContain("listRevealed");
     expect(campaigns).toContain("chartsRevealed");
     expect(campaigns).toContain("heroRevealed");

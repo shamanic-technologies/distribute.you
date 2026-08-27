@@ -246,7 +246,7 @@ export function CampaignOverviewPage() {
     { enabled, ...pollOptions },
   );
   // The campaign's OWN goal, from campaign-service — NOT the brand column, which is
-  // retired and would name a chain this campaign never ran. Null when a campaign
+  // retired and would name a funnel this campaign never ran. Null when a campaign
   // predates the field; the funnel it states is the richer answer anyway, and every
   // step surface here already prefers it.
   // The funnel a campaign states it sells — the richer answer, and what every step
@@ -259,7 +259,7 @@ export function CampaignOverviewPage() {
       : "sales_meetings";
   // What this campaign actually SELLS, read off the campaign row. It is the richer of the
   // two fields: `sales_meetings` covers both meeting funnels, so the goal alone cannot say
-  // whether the chain starts at a positive reply or at a click onto the site — and every
+  // whether the funnel starts at a positive reply or at a click onto the site — and every
   // step-labelled surface below (stat cards, activity bars, the Outcome line) needs to
   // know. NULL on a pre-funnel campaign, which correctly falls back to the goal.
   const visitToMeetingPct =
@@ -319,7 +319,7 @@ export function CampaignOverviewPage() {
         // audience-stats read above already sends. Without it the projection is
         // priced from BOTH channels at once (`clicks·visitToMeeting +
         // replies·replyToMeeting`), which on a conversation-led campaign forecasts
-        // the website chain it does not sell.
+        // the website funnel it does not sell.
         ...(campaignFunnelKey ? { funnel: campaignFunnelKey } : {}),
         budgetUsd: monthlyBudgetUsd ?? undefined,
       }),
@@ -386,7 +386,7 @@ export function CampaignOverviewPage() {
     // column than this card shows. The card sorts + slices on the brand's metric instead.
     // A campaign sells exactly ONE funnel and states which, so it names it: the goal
     // cannot, since `reply_meeting` and `visit_meeting` both answer to `meetingBooked`
-    // and would price a reply-driven chain against clicks it never buys. A campaign that
+    // and would price a reply-driven funnel against clicks it never buys. A campaign that
     // predates the funnel keeps the goal.
     () => fetchFeatureAudienceStats(featureSlug!, {
       brandId,

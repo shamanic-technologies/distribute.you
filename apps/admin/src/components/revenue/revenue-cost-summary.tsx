@@ -64,7 +64,7 @@ export function RevenueCostSummary({
   costEconomics?: CostEconomics;
   pending?: boolean;
   /** Reveal gate for the Total-spent figure (runs-service cost breakdown) when it
-   *  resolves on a DIFFERENT chain than `costEconomics` (features-service). The
+   *  resolves on a DIFFERENT path than `costEconomics` (features-service). The
    *  feature Overview passes this so Total-spent never waits on the slower revenue
    *  call; other consumers omit it → falls back to `pending` (single reveal). */
   costPending?: boolean;

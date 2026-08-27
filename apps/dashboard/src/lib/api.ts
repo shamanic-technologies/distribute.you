@@ -176,7 +176,7 @@ async function apiCall<T>(endpoint: string, options?: ApiOptions): Promise<T> {
       // THIS tab's active-org token; Clerk's `auth()` honors an Authorization
       // Bearer over the cookie, giving the proxy the correct per-tab org.
       // (Clerk docs: "Organizations → multiple browser tabs" + "Making
-      // authenticated requests".) Optional-chained: before Clerk loads, or with no
+      // authenticated requests".) Read with `?.`: before Clerk loads, or with no
       // session, we fall back to the cookie (and checkProxyOrg still fails closed).
       const tabToken = await getTabSessionToken(forceFreshToken);
       if (tabToken) headers["Authorization"] = `Bearer ${tabToken}`;
@@ -1105,11 +1105,11 @@ export async function saveBrandClickDestination(
 // ── Brand sales funnels (the ways a brand sells) ──
 // brand-service owns the store and the shape; api-service proxies it verbatim
 // under /v1/brands/:brandId/sales-funnels, beside the sales-economics routes it
-// mirrors. A funnel is one chain from the first signal outreach can buy (a
+// mirrors. A funnel is one sequence from the first signal outreach can buy (a
 // positive reply, or a click onto the site) down to a paid client, and it owns
-// everything that chain needs priced: the rate of each of its legs, the lifetime
+// everything that funnel needs priced: the rate of each of its legs, the lifetime
 // revenue of a client won through it, the page a click lands on and, when a
-// meeting sits in the chain, a booking link.
+// meeting sits in the funnel, a booking link.
 //
 // NOTHING IS DEFAULTED upstream: a value the brand never declared reads `null`,
 // and `null` is how a consumer knows not to rank on it. Never turn one into a 0.
@@ -1164,7 +1164,7 @@ const DeclaredSalesFunnelSchema = z.object({
   // once no brand-service in any environment still sends them.
   goal: z.string().optional(),
   currentGoal: z.string().optional(),
-  // Exactly the legs of THIS funnel's chain. A leg the brand never gave us is
+  // Exactly the legs of THIS funnel's steps. A leg the brand never gave us is
   // null; a rate the funnel does not price is absent entirely.
   rates: z.record(z.string(), z.number().nullable()),
   lifetimeRevenueUsd: z.number().nullable(),
@@ -1263,7 +1263,7 @@ const DeclareBrandSalesFunnelResponseSchema = z.object({
 /**
  * PUT /brands/:brandId/sales-funnels/:funnelKey — declare the funnel and write
  * what the patch carries. Idempotent: the declaration IS the row. brand-service
- * rejects a rate outside this funnel's chain, a destination it has no use for,
+ * rejects a rate outside this funnel's steps, a destination it has no use for,
  * and a website-led funnel on a brand with no website — those 400s reach the
  * caller intact and are the answer, not something to pre-empt here.
  */
@@ -1684,7 +1684,7 @@ export async function saveBrandDailyBudget(
 
 // ── Per-funnel daily ceilings ──
 // A brand funds each SALES FUNNEL separately: a $200 self-serve plan and a $20k
-// contract are not worth the same daily spend, so each chain carries its own
+// contract are not worth the same daily spend, so each funnel carries its own
 // ceiling. billing-service owns the store; api-service proxies it verbatim.
 //
 // TWO STATES, MUTUALLY EXCLUSIVE, and billing enforces it: a brand is either on
@@ -1886,7 +1886,7 @@ export async function stateBrandFunnelBudgets(
 /**
  * PATCH /brands/:brandId/funnel-budgets/:funnelKey — one ceiling, which is what
  * brand Settings edits. Zero is an ordinary value: it means the brand is not
- * funding that chain right now, which is how a customer pauses one without
+ * funding that funnel right now, which is how a customer pauses one without
  * losing what they told us about how it sells.
  *
  * `featureSlug` and `offerId` name the other two coordinates of the campaign the
@@ -1949,7 +1949,7 @@ const LeadStepEntrySchema = z.object({
   step: z.string(),
   state: z.enum(["outcome", "never", "pending"]),
   /**
-   * Whether a PERSON stated this step or the CHAIN implies it (lead-service v0.60.0).
+   * Whether a PERSON stated this step or the FUNNEL implies it (lead-service v0.60.0).
    * An implied step carries no author, no note and no date, and it moves on its own when
    * the statement behind it is retracted — so it must not be offered as a control, and
    * must not read as something somebody said.
@@ -1960,12 +1960,17 @@ const LeadStepEntrySchema = z.object({
   /** The STATED step an implied one follows from. */
   impliedBy: z.string().nullable().optional(),
   /**
-   * What a person actually stated about THIS step, whatever the chain concluded — so a
-   * real statement is never lost to satisfy the chain. A `never` later contradicted by
+   * What a person actually stated about THIS step, whatever the funnel concluded — so a
+   * real statement is never lost to satisfy the funnel. A `never` later contradicted by
    * an outcome reads state=outcome, origin=implied, statedState=never.
    */
   statedState: z.enum(["outcome", "never"]).nullable().optional(),
-  /** Whether the step is on this lead's chain at all. Off-chain, no rule reaches it. */
+  /**
+   * Whether the step is on this lead's funnel at all. Off it, no rule reaches it.
+   *
+   * ⚠️ `inChain` is lead-service's own wire spelling, like `chain` on the envelope
+   * below — a producer-owned key this app reads and does not name.
+   */
   inChain: z.boolean().optional(),
   source: z.enum(["tracker", "manual"]).nullable(),
   valueCents: z.number().nullable(),
@@ -1975,7 +1980,7 @@ const LeadStepEntrySchema = z.object({
    * the platform's spend ledger or their billing.
    *
    * Required-and-nullable, matching the producer. `0` is a STATED zero. `null` means
-   * nobody answered: a pending step, a step the chain implied, a tracker-reported one,
+   * nobody answered: a pending step, a step the funnel implied, a tracker-reported one,
    * or a statement made before the cost became mandatory. Declaring it `.optional()`
    * would read `undefined` on a body that legitimately carries a null, which is the one
    * distinction this field exists to hold.
@@ -2002,6 +2007,12 @@ const LeadStepStatementsSchema = z
      * The funnel this lead's CAMPAIGN sells through, and its steps IN ORDER, both read
      * from campaign-service by the producer and never guessed. `.optional()` only to
      * decouple the rollout.
+     *
+     * ⚠️ `chain` is lead-service's OWN wire spelling of the funnel's steps, so it is the
+     * one place this app may not rename: a key is whatever the producer sends it as, and
+     * changing it here would simply stop reading the field. Everything derived from it is
+     * called a funnel (`funnelStepsFrom`). Tracked as a lead-service rename request; the
+     * day it serves `steps`, read the new name and delete this one.
      */
     funnelKey: z.string().optional(),
     chain: z.array(z.string()).optional(),
@@ -2872,7 +2883,7 @@ export interface Feature {
    * Which sales funnels this feature may be SOLD THROUGH, in brand-service's
    * funnel vocabulary. features-service states it per feature, because not every
    * acquisition channel can sell every funnel: the feedback-request offer buys a
-   * conversation, while the website-led chains start with a click it cannot sell.
+   * conversation, while the website-led funnels start with a click it cannot sell.
    *
    * An EMPTY array is a statement ("sells through none", every non-sales
    * feature); ABSENT means the producer has not shipped the field to this
@@ -3042,7 +3053,7 @@ export interface FeatureAudienceStatsRow {
  */
 export interface AudienceProjection {
   /** PROJECTED cost to win ONE paying client from this audience — the denominator of
-   *  `returnPerDollar`. Null (never 0) when the chain has no path to a paying client. */
+   *  `returnPerDollar`. Null (never 0) when the funnel has no path to a paying client. */
   costPerPaidClientUsd: number | null;
   /** PROJECTED dollars of lifetime revenue per dollar spent. Null (never 0) when
    *  unmeasurable. An audience with no measured grain inherits `brandProjection`. */
@@ -3050,7 +3061,7 @@ export interface AudienceProjection {
   /** Brand-level read only: the declared funnel this row was priced through — the
    *  best-returning one for THIS audience, which is routinely not the brand's. */
   basisFunnelKey?: string | null;
-  /** Brand-level read only: the lifetime revenue that chain values a client at. */
+  /** Brand-level read only: the lifetime revenue that funnel values a client at. */
   lifetimeRevenueUsd?: number | null;
   /**
    * PROJECTED cost of winning a customer as a SHARE of what that customer is worth —
@@ -3085,8 +3096,8 @@ const AudienceProjectionSchema = z.object({
   costPerPaidClientUsd: z.coerce.number().nullable(),
   returnPerDollar: z.coerce.number().nullable(),
   costOfAcquisitionPct: z.coerce.number().nullable().optional(),
-  // Brand-level read only: an audience's best chain is routinely NOT the brand's, and
-  // two audiences can be priced through chains the brand values differently.
+  // Brand-level read only: an audience's best funnel is routinely NOT the brand's, and
+  // two audiences can be priced through funnels the brand values differently.
   basisFunnelKey: z.string().nullable().optional(),
   lifetimeRevenueUsd: z.coerce.number().nullable().optional(),
 });
@@ -3218,7 +3229,7 @@ export async function fetchFeatureAudienceStats(
     funnel?: SalesFunnelKeyWire;
     /**
      * DEPRECATED. The retired brand goal, kept only for a caller that still has one.
-     * It cannot name a chain — `reply_meeting` and `visit_meeting` both answer to
+     * It cannot name a funnel — `reply_meeting` and `visit_meeting` both answer to
      * `meetingBooked` — so prefer `funnel`.
      */
     goal?: FeatureAudienceStatsGoal;
@@ -3244,7 +3255,7 @@ export async function fetchFeatureAudienceStats(
   // than a missing parameter: features-service then prices every audience through the
   // best-returning funnel the brand declared and sorts on return descending. That is
   // the only honest answer at brand level — a brand runs several funnels at once, so
-  // naming one would denominate the whole table in one chain's terms.
+  // naming one would denominate the whole table in one funnel's terms.
   const query = new URLSearchParams({ brandId: params.brandId });
   if (params.funnel) query.set("funnel", params.funnel);
   else if (params.goal) query.set("goal", params.goal);
@@ -3329,7 +3340,7 @@ export async function getFeatureRevenue(
  *
  * The grain under the offer, and the reason it exists: the product sells a funnel one
  * LEG at a time, so a campaign buys a single link and has no return of its own — the
- * lifetime revenue sits at the END of the chain of steps. The funnel is the finest
+ * lifetime revenue sits at the END of the funnel's steps. The funnel is the finest
  * scope whose money divides into a return at all.
  *
  * ROWS DO NOT SUM TO THE OFFER, deliberately. Money adds (a run belongs to exactly one
@@ -3402,42 +3413,17 @@ const OfferFunnelRowSchema = z.object({
     })
     .nullish(),
 });
-/**
- * ⚠️ TRANSITIONAL, and it must not become permanent.
- *
- * features-service is renaming this grain from "chain" to "funnel" — the product has
- * exactly one word for it and this is the one. There is no alias on either side, so for
- * the length of that rollout the wire may answer under EITHER key with a byte-identical
- * array. Both are declared optional and the reader takes whichever is present; that is
- * the sanctioned `new ?? old` RENAME shape (one concept, two spellings), never a
- * fallback between two different things.
- *
- * Delete `chains` — here, in `getOfferFunnels`'s path tolerance, and in the
- * `chain_not_declared` label — once features-service's rename is live in PROD. Tracked
- * as the follow-up on the rename issue.
- */
 const OfferFunnelsResponseSchema = z.object({
   offerId: z.string(),
   brandId: z.string(),
   costBasis: z.string(),
   /** Which dollars the cost is made of. Rendered, never hidden. */
   costCoverage: z.string(),
-  funnels: z.array(OfferFunnelRowSchema).optional(),
-  chains: z.array(OfferFunnelRowSchema).optional(),
+  funnels: z.array(OfferFunnelRowSchema),
   unattributedCampaignIds: z.array(z.string()),
 });
 export type OfferFunnelRow = z.infer<typeof OfferFunnelRowSchema>;
-/**
- * What a caller reads. `funnels` is REQUIRED here whatever the wire spelled it, so no
- * consumer ever learns the transition happened.
- */
-export type OfferFunnels = Omit<
-  z.infer<typeof OfferFunnelsResponseSchema>,
-  "funnels" | "chains"
-> & { funnels: OfferFunnelRow[] };
-
-/** The path features-service is renaming TO, and the one it is renaming FROM. */
-const OFFER_FUNNELS_PATHS = ["funnels", "chains"] as const;
+export type OfferFunnels = z.infer<typeof OfferFunnelsResponseSchema>;
 
 export async function getOfferFunnels(
   offerId: string,
@@ -3448,26 +3434,10 @@ export async function getOfferFunnels(
   // Same NET basis as every other money read on this app. Never a per-caller toggle.
   query.set("pricing", "net");
 
-  // Ask for the new path first; a gateway that has not shipped it yet answers 404 and
-  // we ask the old one. Only a 404 is retried — any other failure is the real answer
-  // and is thrown, so this can never swallow a live error. Transitional, same window
-  // as the dual response key above.
-  let raw: unknown;
-  for (const [i, segment] of OFFER_FUNNELS_PATHS.entries()) {
-    try {
-      raw = await apiCall<unknown>(
-        `/offers/${offerId}/${segment}?${query.toString()}`,
-        { token },
-      );
-      break;
-    } catch (err) {
-      const last = i === OFFER_FUNNELS_PATHS.length - 1;
-      if (last || !(err instanceof ApiError) || err.status !== 404) throw err;
-      console.info(
-        `[dashboard] getOfferFunnels: /${segment} not served yet, falling back to the previous path`,
-      );
-    }
-  }
+  const raw = await apiCall<unknown>(
+    `/offers/${offerId}/funnels?${query.toString()}`,
+    { token },
+  );
 
   const parsed = OfferFunnelsResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -3476,13 +3446,7 @@ export async function getOfferFunnels(
     });
     throw new Error("[dashboard] getOfferFunnels: invalid response shape");
   }
-  const { funnels, chains, ...rest } = parsed.data;
-  const rows = funnels ?? chains;
-  if (!rows) {
-    console.error("[dashboard] getOfferFunnels: body carried neither `funnels` nor `chains`");
-    throw new Error("[dashboard] getOfferFunnels: invalid response shape");
-  }
-  return { ...rest, funnels: rows };
+  return parsed.data;
 }
 
 /**
@@ -4857,7 +4821,7 @@ export type WorkflowProjectionResponse = z.infer<typeof WorkflowProjectionRespon
 
 /**
  * `structuralSharing` merge for the workflow-projection query. Every field above is `.nullable()`
- * because a COLD Neon chain (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
+ * because a COLD Neon path (api→features→workflow/runs/email-gateway/brand, all scale-to-zero)
  * can answer a poll/refocus refetch with a VALID 200 whose unit costs / cost-per-close are null,
  * or with fewer workflows, while it half-warms. That degenerate-but-valid payload would otherwise
  * collapse the budget cards + Launch button (which derive off `costPerCloseUsd`). Keep the last-good
@@ -4951,7 +4915,7 @@ export async function getWorkflowProjection(
     objective: SalesObjective;
     /** The funnel this surface sells, when it states one. Wins over `objective` at the
      *  producer, which is the whole point: a campaign runs exactly ONE funnel, and the
-     *  objective it derives from a goal cannot say which of the two meeting chains that
+     *  objective it derives from a goal cannot say which of the two meeting funnels that
      *  is. Absent on a brand-level surface, which states no funnel by design. */
     funnel?: SalesFunnelKeyWire;
     budgetUsd?: number;
@@ -5060,7 +5024,7 @@ const WorkflowProjectionLadderResponseSchema = z.object({
    *  request, and the authoritative answer to what was priced. The two meeting
    *  funnels carry the SAME `goal`/`objective` echo and DIFFERENT numbers, which is
    *  why the goal is retired as an identity: reading the echo tells you nothing
-   *  about which chain produced the money. Declared here or zod STRIPS it. */
+   *  about which funnel produced the money. Declared here or zod STRIPS it. */
   funnelKey: z.string().nullable().optional(),
   objective: z.string().nullable().optional(),
   goal: z.string().nullable().optional(),
@@ -5104,14 +5068,14 @@ export async function getWorkflowProjectionLadder(
      * outcome — and both the RANKING (`recommendedWorkflowDynastySlug` is an argmin on
      * that mixed cost) and the economics then describe the website funnel. A brand
      * selling through conversation read `$26` per meeting and `26.8×` return where its
-     * own reply chain gives `$283` and `2.1×`. features-service wins `funnel` over
+     * own reply funnel gives `$283` and `2.1×`. features-service wins `funnel` over
      * `goal`, so send this and nothing else; a funnel the brand never declared 404s
      * rather than being silently priced.
      */
     funnel?: SalesFunnelKeyWire;
     /**
      * DEPRECATED — the retired vocabulary, kept only for the brand-level callers that
-     * state no funnel (a brand sells through several at once, so no single chain
+     * state no funnel (a brand sells through several at once, so no single funnel
      * describes it) and for the legacy `getWorkflowProjection` wrapper. A surface that
      * KNOWS its funnel must send `funnel` and neither of these. Removing them outright
      * would not make those callers funnel-aware, it would silently drop them onto
@@ -5128,7 +5092,7 @@ export async function getWorkflowProjectionLadder(
   const query = new URLSearchParams();
   query.set("brandId", params.brandId);
   // funnel WINS over goal/objective at the producer, so a caller that states one gets
-  // its own chain priced whatever else it sends.
+  // its own funnel priced whatever else it sends.
   if (params.funnel) query.set("funnel", canonicalSalesFunnelKey(params.funnel));
   if (params.goal) query.set("goal", params.goal);
   if (params.objective) query.set("objective", params.objective);

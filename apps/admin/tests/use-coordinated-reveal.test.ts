@@ -142,11 +142,11 @@ describe("feature pages adopt the coordinated body reveal", () => {
     );
     expect(src).toContain("useCoordinatedReveal");
     // Revenue (features-service) and Total-spent (runs-service) resolve on different
-    // cold chains → SEPARATE latches, so the fast cost card never waits on the slower
+    // cold paths → SEPARATE latches, so the fast cost card never waits on the slower
     // revenue call (#1551: one barrier per card, never a single AND of both queries).
     // Each latch settles on resolved OR errored, never success-only: gating on
     // `data !== undefined` alone skeletons the card FOREVER after one transient
-    // failure of the slow `/revenue` chain, with no error UI and no recovery.
+    // failure of the slow `/revenue` path, with no error UI and no recovery.
     expect(src).toMatch(/useCoordinatedReveal\(\[data !== undefined \|\| revenueIsError\]\)/);
     expect(src).toMatch(/useCoordinatedReveal\(\[costData !== undefined \|\| costIsError\]\)/);
     expect(src).not.toMatch(/data !== undefined,\s*costData !== undefined/);

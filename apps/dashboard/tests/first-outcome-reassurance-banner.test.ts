@@ -26,10 +26,10 @@ describe("first-outcome reassurance banner copy", () => {
     expect(BANNER).not.toContain("week or two");
   });
 
-  it("names the outcome when the surface sells ONE chain, and says results when it does not", () => {
+  it("names the outcome when the surface sells ONE funnel, and says results when it does not", () => {
     // A positive-replies campaign told to wait for its first CLICKS is being described a
     // funnel step it does not buy. A BRAND has no goal at all — it runs several funnels
-    // — so it says "results" rather than picking one chain's word.
+    // — so it says "results" rather than picking one funnel's word.
     expect(BANNER).toContain('goal ? outcomeNounPlural(goal) : "results"');
     expect(BANNER).not.toContain("website clicks");
   });
@@ -41,7 +41,7 @@ describe("first-outcome reassurance banner copy", () => {
     expect(BANNER).not.toContain("recommendedSpendUsd");
     expect(BANNER).not.toContain("of spend before");
     // With no goal there is no outcome to price a multiple in, so the line speaks in
-    // the window itself rather than defaulting to some chain's unit cost.
+    // the window itself rather than defaulting to some funnel's unit cost.
     expect(BANNER).toContain("Give it the full window before you judge the return.");
   });
 });
@@ -79,7 +79,7 @@ describe("first-outcome reassurance gating", () => {
     expect(src).not.toContain("goal={optimizationGoal}");
     expect(src).not.toContain("goalOutcomeCount");
     expect(src).not.toContain("recommendedLearningSpendUsd");
-    // The whole workflow-projection chain went with it — it resolved a workflow for a
+    // The whole workflow-projection path went with it — it resolved a workflow for a
     // goal the brand does not have.
     expect(src).not.toContain("getWorkflowProjection");
     expect(src).not.toContain("salesObjectiveForOptimizationGoal");

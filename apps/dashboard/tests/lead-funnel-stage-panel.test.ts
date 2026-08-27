@@ -11,7 +11,7 @@ const HOOK = read("src/lib/use-lead-step-statements.ts");
 describe("lead funnel stage panel", () => {
   it("keys the control set on the campaign's FUNNEL, never on a goal", () => {
     // `sales_meetings` covers both meeting funnels, so a goal cannot say whether the
-    // chain starts at a reply or at a website visit — the exact distinction this panel
+    // funnel starts at a reply or at a website visit — the exact distinction this panel
     // records. The campaign has stated its funnelKey since #3344.
     const slice = PAGE.slice(PAGE.indexOf("const panelFunnel ="), PAGE.indexOf("const onSetStage ="));
     expect(slice).toContain("activeFunnelKeys[0]");
@@ -150,7 +150,7 @@ describe("the panel answers the click at once", () => {
     expect(slice).toContain("[statedStage.key]: statedStage.next");
   });
 
-  it("still re-reads the chain from the producer, never deriving it here", () => {
+  it("still re-reads the funnel from the producer, never deriving it here", () => {
     // lead-service decides more than the field written — an outcome supersedes an
     // earlier never, and the cascade is its answer. The pending statement covers one
     // row while that read lands; it does not replace it.
@@ -313,11 +313,11 @@ describe("stating what the step cost the customer", () => {
   });
 });
 
-describe("the chain constrains its neighbours", () => {
+describe("the funnel constrains its neighbours", () => {
   const HOOK2 = read("src/lib/use-lead-step-statements.ts");
 
-  it("renders a step the CHAIN concluded as an answer, with no control", () => {
-    // A funnel is a chain: a never ends every later step, an outcome reaches every
+  it("renders a step the FUNNEL concluded as an answer, with no control", () => {
+    // A funnel is ORDERED: a never ends every later step, an outcome reaches every
     // earlier one. Nobody stated those, so offering a button would invite somebody to
     // state a thing already concluded, which would move on its own the moment the
     // statement behind it changed.
@@ -326,13 +326,13 @@ describe("the chain constrains its neighbours", () => {
   });
 
   it("says what ending a step also ends, BEFORE it is clicked", () => {
-    // One click mid-chain ends every step after it. A control that does more than it
+    // One click mid-funnel ends every step after it. A control that does more than it
     // says is a surprise, not a decision.
     expect(SECTION).toContain("Also ends:");
     expect(SECTION).toContain("title={neverTitle}");
   });
 
-  it("reads implied from the producer's own origin, never re-deriving the chain here", () => {
+  it("reads implied from the producer's own origin, never re-deriving the funnel here", () => {
     // lead-service takes the funnel from campaign-service and refuses a campaign that
     // states none. Re-deriving the order in the browser is a second source that can
     // disagree with what the campaign actually sells.
@@ -341,7 +341,7 @@ describe("the chain constrains its neighbours", () => {
   });
 
   it("treats a producer without origin as nothing implied", () => {
-    // Exactly how this read behaved before the chain existed — no fabricated cascade.
+    // Exactly how this read behaved before the funnel existed — no fabricated cascade.
     expect(HOOK2).toContain("Partial<Record<LeadStageKey, boolean>>");
   });
 
@@ -359,9 +359,9 @@ describe("the chain constrains its neighbours", () => {
     expect(SECTION).not.toContain("NEVER_TIP");
   });
 
-  it("states what our sending did ABOVE the chain, read-only, and the page passes it", () => {
+  it("states what our sending did ABOVE the funnel, read-only, and the page passes it", () => {
     // Delivery is measured, so there is nothing to state: no button, no picker. It
-    // sits above the funnel because every chain starts after the email arrives. The
+    // sits above the steps because every funnel starts after the email arrives. The
     // page half is what actually puts it on screen — a component that merely HANDLES
     // the prop renders nothing at all if nobody passes it.
     expect(SECTION).toContain("delivery?: ReactNode;");

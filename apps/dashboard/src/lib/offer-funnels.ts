@@ -22,17 +22,11 @@ import type { OfferFunnelRow } from "./api";
  * The SPEND is real and reported in all three: the customer paid it. What is null is
  * the pipeline, the return and the cost of acquisition, and null is never zero and
  * never the brand-wide record an un-narrowed read legitimately falls back to.
- *
- * ⚠️ `chain_not_declared` is TRANSITIONAL — features-service is renaming that value to
- * `funnel_not_declared` and there is no alias on either side, so both are carried for
- * the length of the rollout and say the same sentence. Delete it once the producer's
- * rename is live in PROD (same follow-up as the dual response key in `api.ts`).
  */
 const UNPRICED_REASON_LABEL: Record<string, string> = {
   no_channel_funnel: "No channel carrying this funnel measures anything yet",
   no_economics_declared: "This brand states no conversion rates or lifetime revenue",
   funnel_not_declared: "This brand does not sell through this funnel",
-  chain_not_declared: "This brand does not sell through this funnel",
 };
 
 export function unpricedFunnelReasonLabel(reason: string | null | undefined): string {

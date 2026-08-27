@@ -125,7 +125,7 @@ export function BreadcrumbNav() {
     <>
     <nav
       className={`flex items-center text-sm min-w-0 ${
-        // Mobile: the breadcrumb chain can exceed the viewport — scroll it
+        // Mobile: the breadcrumb row can exceed the viewport — scroll it
         // horizontally so org/brand + their switchers stay reachable.
         // When a dropdown is open switch to overflow-visible, else the
         // absolutely-positioned panel gets clipped by the scroll container.

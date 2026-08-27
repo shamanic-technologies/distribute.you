@@ -101,7 +101,7 @@ describe("Campaigns page (GA)", () => {
 
   // The funnel column reads the campaign's OWN key and NOTHING else. The goal is
   // the retired, lossier vocabulary — two funnels answer to `meetingBooked` — so
-  // deriving a funnel from it prints a chain the campaign never stated.
+  // deriving a funnel from it prints steps the campaign never stated.
   // campaign-service persists the funnel on every campaign, so a missing one is
   // a real gap and reads as one.
   it("names the funnel from the campaign's own key, with no goal fallback", () => {

@@ -54,14 +54,14 @@ export type AcquisitionChannelDef = {
   mark: AcquisitionChannelMark | null;
   /**
    * WHO puts the hours in. `platform` is us; `customer` is the brand's own team,
-   * which is how a chain is sold one leg at a time: the legs we do not automate are
+   * which is how a funnel is sold one leg at a time: the legs we do not automate are
    * worked at their side. Null when the producer states nothing, which is read
    * as the behaviour that came before the field shipped rather than as a denial.
    */
   operatedBy: string | null;
   /**
    * The legs this channel performs: the step it moves a lead FROM and the step it
-   * moves it TO. `from: null` means the lead was not on the chain at all, which is
+   * moves it TO. `from: null` means the lead was not on the funnel at all, which is
    * what an entry channel does. Empty when the producer states nothing.
    */
   legs: ChannelLeg[];

@@ -14,7 +14,7 @@ interface FirstOutcomeReassuranceBannerProps {
    * A campaign sells exactly one funnel, so it can name what it is buying and price a
    * learning window in it. A brand runs several at once and has no goal at all, so it
    * passes none and the copy speaks in results and in time — the two things that are
-   * true whatever chain converts first.
+   * true whatever funnel converts first.
    */
   goal?: BrandOptimizationGoal | null;
 }
@@ -42,8 +42,8 @@ export function FirstOutcomeReassuranceBanner({
   subject,
   goal,
 }: FirstOutcomeReassuranceBannerProps) {
-  // Named outcome when the surface sells one chain; "results" when it sells several.
-  // Not a default goal: picking one would name a chain the brand may never have
+  // Named outcome when the surface sells one funnel; "results" when it sells several.
+  // Not a default goal: picking one would name a funnel the brand may never have
   // declared, which is the retired-goal bug this whole line of work removed.
   const outcomes = goal ? outcomeNounPlural(goal) : "results";
   const outcome = goal ? outcomeNoun(goal) : null;

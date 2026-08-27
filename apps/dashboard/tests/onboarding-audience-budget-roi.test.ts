@@ -141,7 +141,7 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
       expect(stats).toBeGreaterThan(inputs);
     });
 
-    it("edits the PRIMARY FUNNEL's own chain, not the retired goal's rate set", () => {
+    it("edits the PRIMARY FUNNEL's own steps, not the retired goal's rate set", () => {
       // The per-goal rate list held the entry legs of DIFFERENT funnels (the meeting
       // goal asked for reply-to-meeting AND visit-to-meeting, one from each meeting
       // funnel), so this block used to ask for numbers belonging to no single path.
@@ -174,7 +174,7 @@ describe("Onboarding audience feedback, outcome noun, budget source and ROI inpu
       // A stale ROI must not sit beside freshly typed inputs.
       const drop = body.indexOf("setBestModelLadder(null)");
       // Refetched on the FUNNEL it just priced, never on a goal: `sales_meetings` covers
-      // both meeting chains, so a goal-keyed refetch reprices the website funnel.
+      // both meeting funnels, so a goal-keyed refetch reprices the website funnel.
       const refetch = body.indexOf("fetchBestModelLadder(id, funnel.key)");
       expect(drop).toBeGreaterThan(-1);
       expect(refetch).toBeGreaterThan(drop);

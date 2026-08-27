@@ -70,7 +70,7 @@ export function OutreachStatCardsAuto({
   // WHICH steps this row shows comes from the campaign's own SALES FUNNEL, never from
   // the brand goal — that column is retired in brand-service (NOT NULL with a server
   // default, so it reads "website purchases" for a brand that stated nothing) and it
-  // cannot separate the two meeting chains either. Same `["campaign", id]` key the
+  // cannot separate the two meeting funnels either. Same `["campaign", id]` key the
   // campaign Overview and the top bar already poll → one request for all three.
   const { data: campaignData } = useAuthQuery(
     ["campaign", campaignId ?? "none"],

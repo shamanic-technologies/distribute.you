@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  FUNNEL_CHAINS,
+  FUNNEL_STEPS,
   isWritableStage,
   leadFunnelStages,
   saleValueCentsFrom,
@@ -15,7 +15,7 @@ const PAGE = read("src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/fe
 const SECTION = read("src/components/leads/lead-funnel-stage-section.tsx");
 
 describe("admin funnel stages", () => {
-  it("walks each funnel's own chain", () => {
+  it("walks each funnel's own steps", () => {
     expect(leadFunnelStages("reply_meeting").map((s) => s.key)).toEqual([
       "positive_reply",
       "meeting_booked",
@@ -30,12 +30,12 @@ describe("admin funnel stages", () => {
   });
 
   it("states nothing for a campaign that names no funnel", () => {
-    // A campaign with no funnel has no chain. Showing steps it never sold would be
+    // A campaign with no funnel has no steps. Showing steps it never sold would be
     // worse than showing none.
     expect(leadFunnelStages(null)).toEqual([]);
   });
 
-  it("resolves the chain from each lead's OWN campaign, not one funnel for the page", () => {
+  it("resolves the funnel from each lead's OWN campaign, not one funnel for the whole page", () => {
     // This page lists a whole feature's leads across many campaigns.
     expect(PAGE).toContain("funnelByCampaignId.get(selectedLead.campaignId)");
     expect(PAGE).toContain("if (c.funnelKey) m.set(c.id, c.funnelKey");
@@ -90,8 +90,8 @@ describe("the reply vocabulary no longer offers deal progress", () => {
     }
   });
 
-  it("keeps admin's chains equal to the funnel catalogue's names", () => {
-    expect(Object.keys(FUNNEL_CHAINS).sort()).toEqual(
+  it("keeps admin's funnels equal to the funnel catalogue's names", () => {
+    expect(Object.keys(FUNNEL_STEPS).sort()).toEqual(
       ["reply_meeting", "visit_form", "visit_meeting", "visit_signup"],
     );
   });

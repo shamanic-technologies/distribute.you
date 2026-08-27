@@ -186,7 +186,7 @@ export default function BrandOverviewPage() {
   // The Outreach stat card + graph "Outreach" bars = total email SEQUENCES sent
   // (per-day volume, UNDEDUPED by lead — features-service#416 `sequences`), which
   // matches "budget spent today". This is NOT the deduped distinct-lead
-  // `outreachContacted`. Fallback chain renders correctly on BOTH current prod
+  // `outreachContacted`. Fallback order renders correctly on BOTH current prod
   // features (no `sequences` → `outreachContacted`, itself already normalized to
   // prefer `recipientsContacted`) and post-#416; `sequences.total >=
   // outreachContacted.total` is expected (different grain, not reconciled).
@@ -305,9 +305,9 @@ export default function BrandOverviewPage() {
     // NEITHER goal nor funnel: the brand-level read. features-service then prices every
     // audience through the best-returning funnel the brand declared and sorts on return
     // descending, which is the only honest answer here — a brand runs several funnels at
-    // once, so naming one would denominate the card in a single chain's terms.
+    // once, so naming one would denominate the card in a single funnel's terms.
     // `offerId` is a SCOPE, not a funnel or a goal: it narrows which audiences are
-    // priced, never the chain they are priced through.
+    // priced, never the funnel they are priced through.
     () => fetchFeatureAudienceStats(featureSlug, { brandId, offerId }),
     { enabled: enabled && !!offerId, ...pollOptions },
   );
@@ -320,11 +320,11 @@ export default function BrandOverviewPage() {
   const activeAudiences = audiencesData?.audiences.filter((a) => a.status === "active");
 
   // Per-card reveal (NOT one page-wide barrier): revenue (features-service) and
-  // total/today spend (runs-service) are separate cold chains — gate each on its
+  // total/today spend (runs-service) are separate cold paths — gate each on its
   // own query so the fast cost figures aren't held by the slower revenue call.
   //
   // Reveal on SETTLE (resolved OR errored), never success-only. `/revenue` is the
-  // slowest cold chain and intermittently FAILS on a cold backend (features →
+  // slowest cold path and intermittently FAILS on a cold backend (features →
   // downstream Neon scale-to-zero). Gating on `data !== undefined` alone left the
   // whole section skeletoned FOREVER after a transient error — no error UI, no
   // recovery. Settling on `isError` paints "—"/stale instead; the error still logs
@@ -346,7 +346,7 @@ export default function BrandOverviewPage() {
     revenueSettled,
   ]);
   // The cost card's spend block rides the `/revenue` payload now → it reveals
-  // with revenue (was its own runs-service cost-breakdown chain).
+  // with revenue (was its own runs-service cost-breakdown path).
   const costRevealed = revenueRevealed;
   const statsRevealed = useCoordinatedReveal([
     featureStatsData !== undefined || featureStatsIsError,

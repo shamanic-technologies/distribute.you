@@ -2032,11 +2032,11 @@ export function Onboarding() {
   // funnels, so a goal-keyed request is priced from BOTH channels (`clicks·visitToMeeting
   // + replies·replyToMeeting`) — and per dollar that buys ~86× more clicks than replies,
   // so the click leg supplies nearly every projected outcome. Two things then describe
-  // the wrong chain: `recommendedWorkflowDynastySlug` is an argmin on that mixed cost, so
+  // the wrong funnel: `recommendedWorkflowDynastySlug` is an argmin on that mixed cost, so
   // the workflow crowned BEST is whichever is cheapest per CLICK (its cost per reply is
   // incidental and can be several times the reply-cheapest one), and the economics beside
   // it price the website funnel. Measured on a conversation-led brand: $26 per meeting and
-  // 26.8× return, where its own reply chain gives $283 and 2.1×.
+  // 26.8× return, where its own reply funnel gives $283 and 2.1×.
   function fetchBestModelLadder(id: string, funnelKey: string | null): Promise<void> {
     const p = getWorkflowProjectionLadder({
       featureSlug: SALES_FEATURE_SLUG,
@@ -2272,12 +2272,12 @@ export function Onboarding() {
   }
 
   // The numbers the best-model ROI is computed from, as the PRIMARY FUNNEL states
-  // them: its own chain legs plus the lifetime revenue that closes the chain.
+  // them: its own funnel legs plus the lifetime revenue that closes the funnel.
   //
   // These used to come from the retired goal vocabulary, whose per-goal rate list
   // held the ENTRY legs of DIFFERENT funnels (the meeting goal asked for both
   // reply-to-meeting and visit-to-meeting, one from each meeting funnel) rather than
-  // the chain of the one funnel being priced. So the block asked for numbers that
+  // the steps of the one funnel being priced. So the block asked for numbers that
   // belonged to no single path, and wrote them to a record nothing reads. It now
   // shows exactly what the funnel's own screen showed, in the same words, writing to
   // the same place.
@@ -3191,7 +3191,7 @@ export function Onboarding() {
 
   // Every way the brand sells. Selection only: no rates, no lifetime revenue, no
   // destination URL. Those are asked once per funnel after payment, so this step
-  // stays a single question ("which chains do you sell through?") instead of a form.
+  // stays a single question ("which funnels do you sell through?") instead of a form.
   if (step === "funnels") {
     return (
       <StepShell
@@ -3409,7 +3409,7 @@ export function Onboarding() {
             </span>
           )}
         </div>
-        <FunnelChain steps={funnel.steps} tone={funnel.tone} />
+        <FunnelStepRow steps={funnel.steps} tone={funnel.tone} />
         <p className="mt-4 mb-5 text-sm leading-6 text-gray-500">
           What this path is worth to you, and where it sends people. We prefilled it from what we already know — correct anything that is off.
         </p>
@@ -3497,7 +3497,7 @@ export function Onboarding() {
     const bestSlug = brandRow?.workflow.workflowDynastySlug ?? null;
     const avatar = bestSlug ? modelAvatar(bestSlug) : { emoji: "✨", color: "#6366f1" };
     const pending = bestModelLadder === null;
-    // The primary funnel's own chain — the same fields, in the same words, that its
+    // The primary funnel's own steps — the same fields, in the same words, that its
     // detail screen collected a few steps back, because they are the same numbers.
     const economicsFunnel = primaryFunnel;
     const economicsDef = modelFunnelDef();
@@ -3529,7 +3529,7 @@ export function Onboarding() {
 
             A superlative over a set of ONE says nothing: "your most profitable path"
             and "your primary goal" both promise a comparison the page cannot show when
-            the brand sells through a single chain, so with one path it simply states
+            the brand sells through a single funnel, so with one path it simply states
             what that path returns. */}
         <h2 className="font-display text-2xl font-bold text-gray-900">
           {selectedFunnels.length > 1 ? "Your most profitable path with us." : "What your path should return."}
@@ -3555,7 +3555,7 @@ export function Onboarding() {
               )}
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-gray-900">{primaryFunnel.title}</div>
-                <FunnelChain steps={primaryFunnel.steps} tone={primaryFunnel.tone} />
+                <FunnelStepRow steps={primaryFunnel.steps} tone={primaryFunnel.tone} />
               </div>
             </div>
             {monthlyPipelineLabel(resolved) && (
@@ -3889,7 +3889,7 @@ export function Onboarding() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium text-gray-900">{f.title}</div>
-                  <FunnelChain steps={f.steps} tone={f.tone} />
+                  <FunnelStepRow steps={f.steps} tone={f.tone} />
                 </div>
                 <div className="flex shrink-0 items-baseline gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 focus-within:border-brand-400">
                   <span className="text-lg font-bold text-gray-400">$</span>
@@ -4501,9 +4501,9 @@ function NextButton({ onClick, disabled = false, busy = false, label = "Continue
   );
 }
 
-// The funnel's chain, rendered under its title. Discreet on purpose: the name is
-// what identifies the path, the chain is the reminder of what it means.
-function FunnelChain({ steps, tone }: { steps: string[]; tone: { iconBg: string; iconText: string } }) {
+// The funnel's steps, rendered under its title. Discreet on purpose: the name is
+// what identifies the path, the steps are the reminder of what it means.
+function FunnelStepRow({ steps, tone }: { steps: string[]; tone: { iconBg: string; iconText: string } }) {
   if (steps.length === 0) return null;
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500">
@@ -4518,7 +4518,7 @@ function FunnelChain({ steps, tone }: { steps: string[]; tone: { iconBg: string;
 }
 
 // One sales funnel, as a selectable card: a tone-coloured mark tall enough to
-// cover both text rows, the funnel's NAME as the heading, and its chain under it
+// cover both text rows, the funnel's NAME as the heading, and its steps under it
 // in a lighter weight. `radio` switches the control from multi-select to the
 // single primary-goal pick — same card, so the two steps read as one idea.
 function FunnelSelectCard({
@@ -4553,7 +4553,7 @@ function FunnelSelectCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-gray-900">{funnel.title}</span>
-        <FunnelChain steps={funnel.steps} tone={funnel.tone} />
+        <FunnelStepRow steps={funnel.steps} tone={funnel.tone} />
       </span>
       <span
         className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${radio ? "rounded-full" : "rounded-md"} ${selected ? "border-brand-500 bg-brand-500 text-white" : "border-gray-300"}`}

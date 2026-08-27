@@ -80,7 +80,7 @@ describe("Audiences page", () => {
   it("shows a signal pair only when that step is on the campaign's own funnel", () => {
     // The gate is the FUNNEL's steps, not the retired goal: `reply_meeting` and
     // `visit_meeting` both answer to `sales_meetings`, so a goal-keyed table printed
-    // "Website Visits / Cost per website visit" on a campaign whose chain starts at a
+    // "Website Visits / Cost per website visit" on a campaign whose funnel starts at a
     // positive reply. `!brandLevelMoney` still drops both at brand level, where a visit
     // names one funnel's first step while the rows are attributed across every funnel.
     expect(src).toContain("const funnelStepsHere = stepsFor(optimizationGoal, campaignFunnelKey);");

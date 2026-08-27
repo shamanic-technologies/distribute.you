@@ -2,7 +2,7 @@
 //
 // Why an adapter rather than reading `SALES_FUNNELS` fields directly at each
 // render site: the catalogue moves. It gained a name per funnel, a fourth funnel,
-// a four-step chain, per-arrow rate legs and a pair of destination flags in a
+// a four-step funnel, per-arrow rate legs and a pair of destination flags in a
 // single settings-card redesign — and the onboarding step picked all of that up
 // without touching a render site, because the shape is read in ONE place. Keep it
 // that way: the next reshape should be a diff to this file only.
@@ -18,7 +18,7 @@
 export type FunnelCatalogueEntry = {
   key: string;
   name?: string;
-  /** The chain of step labels, e.g. Positive reply → Meeting booked → Paid client. */
+  /** The step labels, e.g. Positive reply → Meeting booked → Paid client. */
   steps?: readonly string[];
   /** One entry per arrow: the rate key priced on that leg, or null when nothing measures it. */
   legs?: readonly (string | null)[];
@@ -26,7 +26,7 @@ export type FunnelCatalogueEntry = {
   requiresWebsite?: boolean;
   /** This funnel lands an outreach click on a page of the brand's own site. */
   pageDestination?: boolean;
-  /** A meeting sits in the chain, so a scheduling page is worth collecting. Optional by nature. */
+  /** A meeting sits in the funnel, so a scheduling page is worth collecting. Optional by nature. */
   bookingLink?: boolean;
   tone?: { iconBg?: string; iconText?: string };
 };
@@ -45,9 +45,9 @@ export type FunnelDestinationView = {
 
 export type FunnelView = {
   key: string;
-  /** Card title. The catalogue's own name when it has one, else the chain. */
+  /** Card title. The catalogue's own name when it has one, else its steps. */
   title: string;
-  /** The chain, rendered under the title. */
+  /** The steps, rendered under the title. */
   steps: string[];
   goal: string | null;
   requiresWebsite: boolean;
@@ -74,13 +74,13 @@ const BOOKING_DESTINATION: Omit<FunnelDestinationView, "optional"> = {
   placeholder: "https://cal.com/yourteam/30min",
 };
 
-/** The chain of step labels the funnel renders under its name. */
+/** The step labels the funnel renders under its name. */
 export function funnelStepLabels(entry: FunnelCatalogueEntry): string[] {
   return (entry.steps ?? []).map((s) => s.trim()).filter(Boolean);
 }
 
 /**
- * The card title. A catalogue that names its funnels wins; otherwise the chain
+ * The card title. A catalogue that names its funnels wins; otherwise the steps
  * itself is the title, which is how the settings card read before the names
  * existed — so a missing name degrades to the previous look, never to an empty
  * heading.
@@ -106,7 +106,7 @@ export function funnelDestinations(entry: FunnelCatalogueEntry): FunnelDestinati
 
 /**
  * Build the view. `resolveRates` is the catalogue's OWN rate resolver (it maps a
- * funnel's legs onto the stored rate fields, deduped and in chain order) — passed
+ * funnel's legs onto the stored rate fields, deduped and in step order) — passed
  * in rather than reimplemented here so the labels a user reads in onboarding are
  * byte-identical to the ones on the settings card.
  */

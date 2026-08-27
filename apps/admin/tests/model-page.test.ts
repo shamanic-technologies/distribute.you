@@ -120,7 +120,7 @@ describe("the sidebar", () => {
 describe("the reader keeps the growing vocabularies open", () => {
   it("does not close the family or step enums", () => {
     // Both sets are expected to grow (a channel converting a step in the MIDDLE
-    // of a chain has no token yet); a closed enum would throw on that catalogue.
+    // of a funnel has no token yet); a closed enum would throw on that catalogue.
     const block = API.slice(API.indexOf("const PublicProducibleStepSchema"));
     const reader = block.slice(0, block.indexOf("export async function getPublicChannelFunnelEconomics"));
     expect(reader).not.toContain("z.enum");

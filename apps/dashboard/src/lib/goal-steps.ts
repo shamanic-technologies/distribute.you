@@ -86,7 +86,7 @@ export interface GoalStep {
      * SINGULAR human noun for this outcome, for copy that prices one of them
      * ("Cost / sales meeting"). Lives on the step because the step is what a
      * funnel-keyed surface has in hand — the retired goal cannot name it: one goal
-     * covers both meeting chains, and it is the CHAIN that decides what was bought.
+     * covers both meeting funnels, and it is the FUNNEL's steps that decide what was bought.
      */
     noun: string;
     /**
@@ -236,11 +236,11 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
  * Ordered funnel steps for the SALES FUNNEL a campaign runs — the richer keying, and
  * the one a campaign-scoped surface must use.
  *
- * The goal cannot name a chain on its own: `reply_meeting` and `visit_meeting` both
+ * The goal cannot name a funnel on its own: `reply_meeting` and `visit_meeting` both
  * answer to `sales_meetings`, so `goalSteps` has to cover BOTH paths and hands out the
  * website-visit leg to a campaign that never buys a click. That is what put "Website
  * Visits · Cost per website visit" on a Sales-Meeting-from-Conversation campaign, whose
- * chain starts at a positive reply. The funnel key knows which one it is.
+ * funnel starts at a positive reply. The funnel key knows which one it is.
  *
  * Each funnel maps onto exactly the step constants above, so a funnel-keyed surface and
  * a goal-keyed one cannot drift into two labels for one number:
@@ -249,7 +249,7 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
  *  - `visit_signup`   Outreach → Website Visits  → Signups
  *  - `visit_form`     Outreach → Website Visits  → Form submissions
  *
- * The last step of every chain is the funnel's own terminal OUTCOME, so a campaign always
+ * The last step of every funnel is its own terminal OUTCOME, so a campaign always
  * carries an outcome pair — unlike the 1-step goals, which have none.
  */
 export function funnelSteps(funnelKey: SalesFunnelKeyWire): GoalStep[] {
@@ -269,7 +269,7 @@ export function funnelSteps(funnelKey: SalesFunnelKeyWire): GoalStep[] {
  * The steps a surface should show: the FUNNEL's when one is stated, the goal's otherwise.
  *
  * `funnelKey` is null on a brand-level surface (a brand sells through several funnels at
- * once, so no single chain describes it) and on a pre-funnel campaign that predates the
+ * once, so no single funnel's steps describe it) and on a pre-funnel campaign that predates the
  * model. Both fall back to the goal, which is what every one of these surfaces did before
  * the funnel existed — so a null is byte-identical to the old behaviour, not a degraded
  * one. Every funnel-aware surface reads THIS, never `goalSteps` directly.
@@ -280,10 +280,10 @@ export function stepsFor(
 ): GoalStep[] {
   if (funnelKey) return funnelSteps(funnelKey);
   if (goal) return goalSteps(goal);
-  // Neither: the surface states no chain and there is no goal to stand in for one —
-  // the brand goal is retired, and defaulting to it named a chain the brand may never
+  // Neither: the surface states no funnel and there is no goal to stand in for one —
+  // the brand goal is retired, and defaulting to it named a funnel the brand may never
   // have declared. `Outreach` is the honest floor: every lead we contacted is in it
-  // whatever the funnel, so a surface with no chain shows that and nothing more.
+  // whatever the funnel, so a surface with no funnel shows that and nothing more.
   return [OUTREACH_STEP];
 }
 
@@ -396,13 +396,13 @@ export function outcomeTabFor(
 /**
  * The tabs a BRAND shows: the union over the funnels its ACTIVE campaigns sell.
  *
- * A brand runs several sales funnels at once, so no single chain describes it and the
+ * A brand runs several sales funnels at once, so no single funnel's steps describe it and the
  * goal cannot stand in — that column is retired in brand-service (`NOT NULL` with a
  * server default, so it reads "website purchases" for a brand that stated nothing) and
  * it collapses the two meeting funnels onto one word anyway. What a brand actually
  * sells through is what its live campaigns run.
  *
- * Built from `funnelSteps`, the same per-funnel chain a campaign-scoped surface reads,
+ * Built from `funnelSteps`, the same per-funnel step list a campaign-scoped surface reads,
  * so a tab cannot mean one thing on a campaign page and another on the brand's.
  *
  * `outreach` is always present and always last: every lead we contacted is in it

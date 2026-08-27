@@ -58,14 +58,14 @@ describe("sales funnel key vocabulary", () => {
     expect(normalizeSalesFunnelKey("website_purchases")).toBe("visit_signup");
   });
 
-  it("names a chain for every key the catalogue carries", () => {
+  it("names a funnel for every key the catalogue carries", () => {
     for (const def of SALES_FUNNELS) {
       expect(campaignFunnel(def.key)?.name).toBe(def.name);
     }
   });
 
   // A funnel the catalogue does not carry is a vocabulary drift we want to see,
-  // not a plausible chain the brand never declared.
+  // not a plausible funnel the brand never declared.
   it("throws on a key it cannot name", () => {
     expect(() => campaignFunnel("visit_whatsapp" as never)).toThrow();
   });
@@ -79,7 +79,7 @@ describe("sales funnel key vocabulary", () => {
 
 describe("no goal fallback", () => {
   // The goal is the retired, lossier vocabulary: `meetingBooked` is the goal of
-  // two different funnels, so a chain derived from it is one the campaign never
+  // two different funnels, so steps derived from it are ones the campaign never
   // stated. campaign-service persists the funnel on every campaign, so this
   // module resolves that key and offers nothing else.
   it("exports no goal-to-funnel resolver", async () => {

@@ -325,9 +325,9 @@ export default function FeatureLeadsPage() {
   const selectedFull = selectedLead?.lead ?? null;
   const selectedOrg = selectedFull?.organization ?? null;
   // ── Funnel stages for the open lead ──────────────────────────────────────────
-  // This page lists a whole FEATURE's leads, so the chain is the funnel of each lead's
-  // OWN campaign — not one funnel for the page. campaign-service persists it on the
-  // campaign row; a campaign that states none has no chain to walk and the section
+  // This page lists a whole FEATURE's leads, so the steps are the funnel of each lead's
+  // OWN campaign — not one funnel for the whole page. campaign-service persists it on the
+  // campaign row; a campaign that states none has no funnel to walk and the section
   // renders nothing rather than showing steps it never sold.
   const { data: campaignsData } = useAuthQuery(
     ["campaigns", brandId],

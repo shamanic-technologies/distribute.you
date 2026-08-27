@@ -13,10 +13,10 @@ describe("OutreachStatCards copy", () => {
   );
   const auto = read("../src/components/revenue/outreach-stat-cards-auto.tsx");
 
-  it("defaults to NO goal, so a surface that names no chain shows no chain's steps", () => {
+  it("defaults to NO goal, so a surface that names no funnel shows no steps at all", () => {
     expect(cards).toContain("type { BrandOptimizationGoal }");
     expect(cards).toContain("optimizationGoal?: BrandOptimizationGoal");
-    // The old `?? "sales_meetings"` default put one chain's steps on every surface,
+    // The old `?? "sales_meetings"` default put one funnel's steps on every surface,
     // including those that state none. The brand column it stood in for is retired
     // (NOT NULL, server-defaulted), so the default was a guess dressed as a value.
     expect(cards).toContain("const goal = optimizationGoal ?? null;");
@@ -51,9 +51,9 @@ describe("OutreachStatCards copy", () => {
     // Single-step reply→paid goal: Website Visits + CPC cards are hidden, and the unified
     // outcome card becomes Positive Replies + Cost per positive reply (GA, no beta badge,
     // no conversion-tracker CTA — reply attribution is inbox-sourced).
-    // Decided from the STEPS, not a goal test: the reply is terminal only when the chain
+    // Decided from the STEPS, not a goal test: the reply is terminal only when the funnel
     // carries no downstream outcome. See campaign-funnel-steps.test.ts for the funnel case,
-    // where a reply is a MID-chain signal above its own Sales Meetings pair.
+    // where a reply is a MID-funnel signal above its own Sales Meetings pair.
     expect(cards).toContain(
       'const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;',
     );

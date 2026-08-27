@@ -22,7 +22,7 @@ describe("Cost summary card on feature Overview (actual spend)", () => {
 
   // The card used to carry a top-3 of the PROVIDERS the money went to. It is
   // gone, with nothing in its place: a customer buys an outcome, and which
-  // vendors sit behind it is our supply chain rather than their result. It was
+  // vendors sit behind it is our own sourcing rather than their result. It was
   // also the one figure on the page that said nothing about whether their money
   // was working.
   it("names no provider - the cost-source breakdown is gone, not relabelled", () => {

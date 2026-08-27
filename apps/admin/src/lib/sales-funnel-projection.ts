@@ -3,7 +3,7 @@
 // GLOBAL unit costs (contacted/reply/click $) — those are econ-INDEPENDENT and fetched once via
 // getWorkflowProjection. This module recomputes cost-per-close + the funnel from the brand's LIVE
 // conversion economics so the §3 budget cards update INSTANTLY as the user edits the metric inputs,
-// with NO per-edit server round-trip (the cold Neon chain api→features→{workflow,runs,email-gateway,
+// with NO per-edit server round-trip (the cold Neon path api→features→{workflow,runs,email-gateway,
 // brand} took ~20s). On first load the live econ == the brand's saved econ, so this reproduces the
 // server's costPerCloseUsd/projection exactly (same formula, same inputs); thereafter it tracks the
 // live inputs. KEEP IN LOCKSTEP with the server formula — guarded by sales-funnel-projection.test.ts.

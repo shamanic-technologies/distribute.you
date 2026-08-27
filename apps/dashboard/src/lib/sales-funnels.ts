@@ -1,10 +1,10 @@
-// The sales funnels a brand can sell through. A funnel is one chain from the
+// The sales funnels a brand can sell through. A funnel is one sequence from the
 // first signal we can buy (a positive reply, or a click onto the site) down to a
-// paid client, and it owns everything that chain needs priced: its own
+// paid client, and it owns everything that funnel needs priced: its own
 // conversion rates, its own lifetime revenue, its own landing page and, when a
-// meeting sits in the chain, its own booking link.
+// meeting sits in the funnel, its own booking link.
 //
-// Every arrow of a chain converts at a rate, and brand-service now stores all of
+// Every arrow of a funnel converts at a rate, and brand-service now stores all of
 // them PER FUNNEL — including the meeting show-up rate, which lives nowhere else
 // in the fleet. Nothing seeds that one, so it starts blank on every brand; see
 // `SeedlessFunnelRateKey`.
@@ -68,7 +68,7 @@ export function canonicalSalesFunnelKey(key: SalesFunnelKeyWire): CanonicalSales
  * Exhaustive, and it THROWS on anything else rather than guessing a funnel: the
  * column is CHECK-constrained in brand-service, so a value arriving here that we
  * cannot name is a vocabulary drift we want to see, not one to paper over with a
- * plausible-looking chain the brand never declared.
+ * plausible-looking funnel the brand never declared.
  */
 export function normalizeSalesFunnelKey(key: SalesFunnelKeyWire): SalesFunnelKey {
   switch (key) {
@@ -163,7 +163,7 @@ export type SalesFunnelDef = {
   key: SalesFunnelKey;
   /** What the funnel is called. Read as the card's title. */
   name: string;
-  /** The chain, rendered under the name. */
+  /** The steps, rendered under the name. */
   steps: string[];
   /** One entry per arrow between two steps: the rate that leg converts at. */
   legs: FunnelRateKey[];
@@ -174,7 +174,7 @@ export type SalesFunnelDef = {
   /** This funnel lands an outreach click on a page of the brand's own site. */
   pageDestination: boolean;
   /**
-   * A meeting sits in the chain, so a scheduling page is worth collecting. It is
+   * A meeting sits in the funnel, so a scheduling page is worth collecting. It is
    * OPTIONAL: a brand that books over email still runs the funnel.
    */
   bookingLink: boolean;
@@ -236,9 +236,9 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
 /**
  * The least a brand may fund a funnel with, per day, once it funds it at all.
  * ZERO is always legal and is NOT a violation of this: it means the brand is not
- * funding that chain right now, which is how it pauses one.
+ * funding that funnel right now, which is how it pauses one.
  *
- * The floor differs by what the chain buys. A sales meeting costs an order of
+ * The floor differs by what the funnel buys. A sales meeting costs an order of
  * magnitude more than a website purchase, so a dollar a day would buy a meeting
  * funnel nothing at all and the customer would watch it sit still — a budget
  * that cannot purchase one outcome is worse than an honest refusal.
@@ -342,7 +342,7 @@ export function partitionFunnelsBySelection(isSelected: (key: SalesFunnelKey) =>
 
 // There is deliberately NO goal-to-funnel resolver here. The goal is the
 // retired, lossier vocabulary — `meetingBooked` is the goal of two different
-// funnels — so a surface naming a chain reads the funnel a campaign or a brand
+// funnels — so a surface naming a funnel reads the one a campaign or a brand
 // actually stated, never one derived from its goal. campaign-service persists
 // the funnel on every campaign for exactly this reason.
 
@@ -352,7 +352,7 @@ export function salesFunnelByKey(key: SalesFunnelKey): SalesFunnelDef {
   return def;
 }
 
-/** The rates this funnel prices, in chain order, deduped across repeated legs. */
+/** The rates this funnel prices, in step order, deduped across repeated legs. */
 export function funnelRateFields(def: SalesFunnelDef): FunnelRateField[] {
   const seen = new Set<FunnelRateKey>();
   const out: FunnelRateField[] = [];
@@ -406,7 +406,7 @@ export function validateBookingUrl(input: string): FunnelValidation {
  * than being forced to invent a replacement.
  *
  * These checks exist to make typing pleasant, not to be the source of truth —
- * brand-service rejects a rate outside the chain, a destination the funnel has
+ * brand-service rejects a rate outside the funnel's steps, a destination the funnel has
  * no use for, and a website-led funnel on a brand with no website, and that 400
  * is the answer. Reports the first problem so the card names one thing to fix.
  */
@@ -506,7 +506,7 @@ function ratePatchValue(raw: string | undefined): number | null {
  * and a field the user emptied is sent as an explicit `null` so it really clears.
  *
  * Two things this can never emit, because brand-service 400s on both rather than
- * dropping them: a rate outside THIS funnel's chain (it walks the chain's own
+ * dropping them: a rate outside THIS funnel's steps (it walks the funnel's own
  * legs), and a destination the funnel has no use for (each is gated on the
  * funnel's own flag).
  *
@@ -573,7 +573,7 @@ export function isEmptyFunnelPatch(patch: SalesFunnelPatch): boolean {
 /**
  * What to put in front of the user when a write is refused. brand-service says
  * exactly what was wrong with the funnel it was asked to store, in a sentence
- * written for a person — a rate that is not on this chain, a destination the
+ * written for a person — a rate that is not on this funnel, a destination the
  * funnel has no use for, a page off the brand domain — so a 400 shows that
  * sentence rather than being swallowed behind one generic line.
  *
@@ -597,13 +597,13 @@ export function funnelWriteErrorMessage(err: unknown): string {
 
 /**
  * A goal the brand configured that the catalogue carries no funnel of its own
- * for, and the funnel whose chain ends on the same thing.
+ * for, and the funnel whose steps end on the same thing.
  *
  * These goals price ONE end-to-end step (`Positive reply -> Paid client`,
  * `Website visit -> Paid client`) where the funnel spells the same journey out
- * over several legs. The brand's number is still true of the whole chain, so it
+ * over several legs. The brand's number is still true of the whole funnel, so it
  * seeds the LAST leg (the one landing on `Paid client`) and every leg above it
- * seeds at 100%: the product across the chain then equals exactly the rate the
+ * seeds at 100%: the product across the funnel then equals exactly the rate the
  * brand gave us, instead of a number nobody stated.
  *
  * `sales` is a paid client won through EITHER path, so it seeds both funnels,
@@ -613,7 +613,7 @@ export function funnelWriteErrorMessage(err: unknown): string {
  */
 type OrphanGoalSeed = {
   funnelKey: SalesFunnelKey;
-  /** The blended rate that is true of this funnel's WHOLE chain. */
+  /** The blended rate that is true of this funnel's WHOLE step list. */
   from: "replyToPaidClientPct" | "visitToPaidClientPct";
 };
 
@@ -647,7 +647,7 @@ export function orphanGoalSeedFor(
  * a page destination from its click destination. A booking link has nowhere to
  * come from, so it starts empty rather than guessing one.
  *
- * A brand whose goal the catalogue prices under a different chain is translated
+ * A brand whose goal the catalogue prices under a different funnel is translated
  * through `orphanGoalSeedFor` rather than read leg by leg: brand-service stores
  * every blended rate NOT NULL with a server default, so reading a leg that goal
  * never configured hands back a plausible number the brand never stated.
@@ -686,7 +686,7 @@ export function funnelDraftFromBrand(
   fields.forEach((rate, index) => {
     // The brand's goal is priced as one step the catalogue spells out over
     // several: its rate lands on the leg that ends on a paid client, the rest
-    // pass everyone through, and the chain multiplies back to what it gave us.
+    // pass everyone through, and the funnel multiplies back to what it gave us.
     if (endToEnd !== null && endToEnd !== undefined) {
       rates[rate.key] = formatLocaleNumberInputValue(
         index === fields.length - 1 ? endToEnd : FULL_CONVERSION_PCT,
@@ -740,7 +740,7 @@ export function hostOf(url: string): string | null {
 }
 
 /**
- * The percentage printed under one arrow of the chain, or null when the brand
+ * The percentage printed under one arrow of the funnel, or null when the brand
  * has not given us that rate. A rate we do not have prints nothing rather than a
  * zero — "not filled in" and "converts at 0%" are different statements.
  */
@@ -753,7 +753,7 @@ export function funnelLegPct(def: SalesFunnelDef, draft: FunnelDraft, legIndex: 
 
 /**
  * What a client won through this funnel is worth, printed at the END of the
- * chain — a lifetime revenue is what the last step is worth, so it belongs after
+ * funnel — a lifetime revenue is what the last step is worth, so it belongs after
  * `Paid client` rather than on a line of its own.
  */
 export function funnelLifetimeLabel(draft: FunnelDraft): string | null {
@@ -803,7 +803,7 @@ export function funnelDestinationChips(
  * other way round.
  *
  * Deriving a funnel FROM a goal is banned and stays banned: `sales_meetings` covers
- * both meeting chains, so it prints a chain the campaign never stated. Going the other
+ * both meeting funnels, so it prints steps the campaign never stated. Going the other
  * way is exact, because every funnel terminates in exactly one outcome — which is why
  * features-service publishes the same echo on `funnel-ranking`.
  *

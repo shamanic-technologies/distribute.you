@@ -21,7 +21,7 @@ import {
 // linger in sessionStorage.
 const PREFILL_AUTH_KEY = "distribute_prefill_auth";
 
-// Long enough that a user cannot chain resends and lose track of which code is
+// Long enough that a user cannot fire back-to-back resends and lose track of which code is
 // live (only the newest one works), short enough to not feel punitive.
 const RESEND_COOLDOWN_SECONDS = 30;
 

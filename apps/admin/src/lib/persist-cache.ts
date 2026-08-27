@@ -37,7 +37,7 @@
  * STORAGE = IndexedDB (idb-keyval), NOT localStorage. localStorage's hard ~5MB
  * per-origin cap was the regression: a big list blew the cap → `removeOldestQuery`
  * evicted the small overview queries → those pages cold-skeletoned on the slow Neon
- * chain (the very thing persist meant to prevent). IndexedDB has no such cap.
+ * path (the very thing persist meant to prevent). IndexedDB has no such cap.
  *
  * NB admin ≠ dashboard: `admin.distribute.you` is a SEPARATE origin with its OWN
  * storage — this cache never touches the customer dashboard cache.

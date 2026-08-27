@@ -22,7 +22,7 @@ describe("RevenueCostSummary — replaceable bottom card", () => {
   // There is deliberately NO default any more. The fallback used to be a top-3
   // of the PROVIDERS the money went to, which answers a question no customer
   // asked -- they buy an outcome, and the vendor mix behind it is our supply
-  // chain. A caller that passes nothing now gets nothing.
+  // funnel. A caller that passes nothing now gets nothing.
   it("falls back to nothing, not to a provider breakdown", () => {
     expect(card).not.toContain("Top cost sources");
     expect(card).not.toContain("bottomCard !== undefined");

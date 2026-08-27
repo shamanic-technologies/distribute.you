@@ -134,16 +134,16 @@ export function stageStatesFrom(
 }
 
 /**
- * Which stages the CHAIN concluded rather than a person stating (lead-service v0.60.0).
+ * Which stages the FUNNEL concluded rather than a person stating (lead-service v0.60.0).
  *
- * A funnel is a chain: a "never" makes every later step never, an outcome makes every
+ * A funnel is ORDERED: a "never" makes every later step never, an outcome makes every
  * earlier one reached. Those steps are real answers and render as such — but nobody
  * said them, so they carry no author and no date, and offering a control on one would
  * invite somebody to "state" a thing that is already concluded and would move on its own
  * the moment the statement behind it changed.
  *
  * A producer that has not shipped `origin` yet reports nothing implied, which is exactly
- * how this read behaved before the chain existed.
+ * how this read behaved before the funnel existed.
  */
 export function impliedStages(
   data: LeadStepStatements | undefined,
@@ -158,13 +158,16 @@ export function impliedStages(
 }
 
 /**
- * The steps of this lead's chain, in the producer's order, or null when it did not say.
+ * The steps of this lead's funnel, in the producer's order, or null when it did not say.
+ *
+ * `data.chain` is lead-service's own wire spelling of those steps — a producer-owned
+ * key, not a name this app chose; everything derived from it is called a funnel.
  *
  * Read from the producer rather than resolved here: it takes the funnel from
  * campaign-service and refuses (409) a campaign that states none, so this is the one
  * answer that cannot drift from what the campaign actually sells.
  */
-export function chainStepsFrom(data: LeadStepStatements | undefined): LeadStageKey[] | null {
+export function funnelStepsFrom(data: LeadStepStatements | undefined): LeadStageKey[] | null {
   if (!data?.chain) return null;
   return data.chain.map((s) => (s === "purchase" ? "sale" : s) as LeadStageKey);
 }
