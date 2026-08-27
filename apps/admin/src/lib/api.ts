@@ -7068,9 +7068,12 @@ const LeadStepEntrySchema = z.object({
   /**
    * Whether the step is on this lead's funnel at all. Off it, no rule reaches it.
    *
-   * ⚠️ `inChain` is lead-service's own wire spelling, like `chain` on the envelope
+   * `inFunnel` says whether the step is on the lead's funnel at all. `inChain` is the
+   * pre-rename spelling of the same thing, read transitionally beside it.
    * below — a producer-owned key this app reads and does not name.
    */
+  inFunnel: z.boolean().optional(),
+  /** @deprecated lead-service's pre-rename spelling of `inFunnel`. Transitional — delete. */
   inChain: z.boolean().optional(),
   source: z.enum(["tracker", "manual"]).nullable(),
   valueCents: z.number().nullable(),
@@ -7108,13 +7111,13 @@ const LeadStepStatementsSchema = z
      * from campaign-service by the producer and never guessed. `.optional()` only to
      * decouple the rollout.
      *
-     * ⚠️ `chain` is lead-service's OWN wire spelling of the funnel's steps, so it is the
-     * one place this app may not rename: a key is whatever the producer sends it as, and
-     * changing it here would simply stop reading the field. Everything derived from it is
-     * called a funnel (`funnelStepsFrom`). Tracked as a lead-service rename request; the
-     * day it serves `steps`, read the new name and delete this one.
+     * `funnelSteps` is the funnel's steps in the producer's order. `chain` is the spelling
+     * lead-service served them under until today; it is read ONLY so this page keeps
+     * rendering across the producer's rename, and it goes the moment that rename is live.
      */
     funnelKey: z.string().optional(),
+    funnelSteps: z.array(z.string()).optional(),
+    /** @deprecated lead-service's pre-rename spelling of `funnelSteps`. Transitional — delete. */
     chain: z.array(z.string()).optional(),
   })
   .passthrough();

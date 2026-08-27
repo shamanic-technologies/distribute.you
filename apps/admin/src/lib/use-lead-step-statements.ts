@@ -160,14 +160,15 @@ export function impliedStages(
 /**
  * The steps of this lead's funnel, in the producer's order, or null when it did not say.
  *
- * `data.chain` is lead-service's own wire spelling of those steps — a producer-owned
- * key, not a name this app chose; everything derived from it is called a funnel.
+ * Read from `funnelSteps`, with the producer's pre-rename `chain` accepted beside it so the
+ * section keeps rendering across that rename. The fallback is transitional and goes with it.
  *
  * Read from the producer rather than resolved here: it takes the funnel from
  * campaign-service and refuses (409) a campaign that states none, so this is the one
  * answer that cannot drift from what the campaign actually sells.
  */
 export function funnelStepsFrom(data: LeadStepStatements | undefined): LeadStageKey[] | null {
-  if (!data?.chain) return null;
-  return data.chain.map((s) => (s === "purchase" ? "sale" : s) as LeadStageKey);
+  const steps = data?.funnelSteps ?? data?.chain;
+  if (!steps) return null;
+  return steps.map((s) => (s === "purchase" ? "sale" : s) as LeadStageKey);
 }
