@@ -9,7 +9,6 @@ import {
   getOfferRevenue,
   getBrandRevenue,
   fetchFeatureStats,
-  getBrandPause,
   getBrandConversionToken,
   getFeaturePipelineActivity,
   fetchFeatureAudienceStats,
@@ -264,16 +263,6 @@ export default function BrandOverviewPage() {
   // inherited the overstatement.
   const { cents: runningDailyBudgetCents } = useRunningDailyBudgetCents(brandId, { enabled });
 
-  // Pause state — shares the campaign overview's pause query key so both surfaces
-  // hit one cache entry. A paused brand holds (doesn't run) its campaigns, so the
-  // "campaign is running" reassurance banner must not show while paused.
-  const { data: pauseData } = useAuthQuery(
-    ["brandPause", brandId],
-    () => getBrandPause(brandId),
-    { enabled, ...pollOptions },
-  );
-  const isBrandPaused = pauseData?.paused === true;
-
   // Conversion-tracker liveness (lead-service pixel). Shares the outreach-stat-cards
   // + settings-card query key → one cache entry, no extra network. The Outreach-
   // activity graph's Form-submissions bar is hidden until the tracker is live
@@ -371,7 +360,12 @@ export default function BrandOverviewPage() {
   // spend as the first point of its own return curve, so nothing is invented here.
   const showFirstOutcomeReassurance = shouldShowReassurance({
     revealed: statsRevealed && revenueRevealed,
-    paused: isBrandPaused,
+    // Money actually running, not campaign-service's brand-level pause flag: nothing
+    // has written that flag since the brand-level Pause control was removed, so it is
+    // frozen and wrong both ways — it hid this banner from brands whose campaigns are
+    // spending today, and showed it to brands that have funded a funnel and have no
+    // campaign at all.
+    runningDailyBudgetCents,
     outcomeCount: brandOutcomeCount(data?.spend),
     daysRunning: daysSinceFirstSpend(data?.roiHistory?.daily?.[0]?.date, new Date()),
   });

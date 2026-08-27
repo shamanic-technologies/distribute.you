@@ -122,7 +122,6 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // money cold-skeletons on every visit without this line.
   "brandSpendableBudget",
   "brandDailyBudget",
-  "brandPause",
   "brandCostBreakdown",
   "brandCostBreakdownToday",
   "brandConversionToken",

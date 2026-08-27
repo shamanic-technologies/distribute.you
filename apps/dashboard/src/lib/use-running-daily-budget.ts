@@ -27,7 +27,11 @@ import { useAuthQuery } from "@/lib/use-auth-query";
  */
 export function useRunningDailyBudgetCents(
   brandId: string,
-  { offerId, enabled = true }: { offerId?: string; enabled?: boolean } = {},
+  {
+    offerId,
+    campaignId,
+    enabled = true,
+  }: { offerId?: string; campaignId?: string; enabled?: boolean } = {},
 ): { cents: number | null; settled: boolean } {
   const spendableQ = useAuthQuery(
     ["brandSpendableBudget", brandId],
@@ -40,12 +44,19 @@ export function useRunningDailyBudgetCents(
   // never a sum of our own: the offer carries its own running figure. An offer this
   // brand does not sell reads 0 — it funds nothing here — which is what the brand's
   // own rows would say about it.
+  // Narrowing to one campaign is the same SELECTION one grain finer: the producer
+  // decomposes its answer by campaign as well as by offer, so a surface scoped to one
+  // campaign reads that campaign's own running figure rather than its brand's sum. A
+  // campaign absent from the answer reads 0 — it is not among the ones running.
   const cents =
     data === undefined
       ? null
-      : offerId
-        ? (data.offers.find((o) => o.offerId === offerId)?.runningDailyBudgetCents ?? 0)
-        : data.runningDailyBudgetCents;
+      : campaignId
+        ? (data.campaigns.find((c) => c.campaignId === campaignId)
+            ?.runningDailyBudgetCents ?? 0)
+        : offerId
+          ? (data.offers.find((o) => o.offerId === offerId)?.runningDailyBudgetCents ?? 0)
+          : data.runningDailyBudgetCents;
 
   const settled = data !== undefined || spendableQ.isError;
 
