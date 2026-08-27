@@ -152,7 +152,7 @@ Email matches best.
 For a sale, also send the amount:
 { "event": "sale", "email": "the-user@email.com", "valueCents": 4900 }
 
-Also fire {"event":"ping"} (no other fields) once on page load, so distribute
+Also fire {"event":"ping"} (no other fields) once on page load, so distribute.you
 can confirm the tracker is live before the first real conversion.
 
 Wire it server-side on the success handler where possible (most reliable).

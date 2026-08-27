@@ -101,4 +101,4 @@ export function userAgent(): string {
 }
 
 /** Kept in step with package.json by tests/unit/version.test.ts. */
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";

@@ -354,7 +354,7 @@ export default function SignInPage() {
                 color: "oklch(97% 0.003 264)",
               }}
             >
-              distribute
+              distribute.you
             </span>
             <span
               style={{
@@ -472,7 +472,7 @@ export default function SignInPage() {
                   color: "oklch(12% 0.008 264)",
                 }}
               >
-                distribute
+                distribute.you
               </span>
               <span
                 style={{
@@ -515,7 +515,7 @@ export default function SignInPage() {
             >
               {secondFactorPending
                 ? `We sent a code to ${email}`
-                : "Sign in to your distribute dashboard"}
+                : "Sign in to your distribute.you dashboard"}
             </p>
           </div>
 

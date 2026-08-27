@@ -170,7 +170,7 @@ export default function ForgotPasswordPage() {
                 color: "oklch(97% 0.003 264)",
               }}
             >
-              distribute
+              distribute.you
             </span>
             <span
               style={{
@@ -272,7 +272,7 @@ export default function ForgotPasswordPage() {
                   color: "oklch(12% 0.008 264)",
                 }}
               >
-                distribute
+                distribute.you
               </span>
             </Link>
           </div>

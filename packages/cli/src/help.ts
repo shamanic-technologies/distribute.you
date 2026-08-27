@@ -9,7 +9,7 @@ export function helpText(): string {
     return `  ${pad(commandName(route) + positional, 32)}${route.summary}`;
   }).join("\n");
 
-  return `distribute, the command line interface for the distribute API.
+  return `The distribute.you command line interface. The command is \`distribute\`.
 
 Usage
   distribute <command> [flags]
@@ -44,7 +44,7 @@ Flags
 
 Credentials
   A key is read from --key, then DISTRIBUTE_API_KEY, then the file written by
-  auth login. Create a key in the distribute dashboard or with
+  auth login. Create a key in the distribute.you dashboard or with
   distribute call POST /v1/api-keys --data name=my-cli-key
 
 Output

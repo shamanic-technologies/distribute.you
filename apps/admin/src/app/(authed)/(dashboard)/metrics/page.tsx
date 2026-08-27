@@ -358,7 +358,7 @@ export default async function PlatformMetrics({ searchParams }: PageProps) {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">Build in public</p>
                   <h1 className="mt-1 text-3xl font-semibold tracking-normal text-gray-950 md:text-4xl">
-                    distribute public metrics
+                    distribute.you public metrics
                   </h1>
                 </div>
               </div>

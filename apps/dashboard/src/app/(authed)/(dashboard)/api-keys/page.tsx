@@ -51,7 +51,7 @@ export default function ApiKeysPage() {
     <DashboardPage width="wide">
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">API Keys</h1>
-        <p className="text-gray-600">Manage API keys for distribute and REST API access.</p>
+        <p className="text-gray-600">Manage API keys for distribute.you and REST API access.</p>
       </div>
 
       {error && (

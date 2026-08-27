@@ -33,7 +33,21 @@ describe("copy", () => {
     expect(helpText()).toMatch(/6 network/);
   });
 
-  it("claims no install path, because the package is not published yet", () => {
+  it("keeps the install path in the README, not in the help", () => {
     expect(helpText()).not.toMatch(/npm install|npx |pnpm add/);
+  });
+
+  it("names the product distribute.you, never the bare verb", () => {
+    const text = helpText();
+    expect(text).toContain("distribute.you");
+    // The command is called `distribute`; the PRODUCT never is.
+    expect(text).not.toMatch(/the distribute API|distribute dashboard(?!\.)/);
+  });
+
+  it("names the product distribute.you wherever a message mentions it", () => {
+    for (const file of sourceFiles(SRC)) {
+      const source = readFileSync(file, "utf8");
+      expect(`${file}:${/the distribute API|the distribute dashboard/.test(source)}`).toBe(`${file}:false`);
+    }
   });
 });

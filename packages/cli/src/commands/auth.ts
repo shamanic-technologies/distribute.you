@@ -15,7 +15,7 @@ export async function login(context: Context, args: ParsedArgs): Promise<ExitCod
   const key = flagValue(args, "key") ?? (await keyFromInput(context));
   if (!key) {
     throw usageError(
-      "No key given. Pass --key, or pipe it in: `echo $KEY | distribute auth login`. Create a key in the distribute dashboard.",
+      "No key given. Pass --key, or pipe it in: `echo $KEY | distribute auth login`. Create a key in the distribute.you dashboard.",
     );
   }
 
@@ -68,7 +68,7 @@ async function keyFromInput(context: Context): Promise<string | undefined> {
   if (context.interactive) {
     const rl = createInterface({ input: process.stdin, output: process.stderr });
     try {
-      const answer = await rl.question("Paste your distribute API key (it will be visible as you type): ");
+      const answer = await rl.question("Paste your distribute.you API key (it will be visible as you type): ");
       return answer.trim() || undefined;
     } finally {
       rl.close();

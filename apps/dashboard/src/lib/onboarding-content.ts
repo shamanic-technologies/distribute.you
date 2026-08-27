@@ -33,7 +33,7 @@ Founder, distribute.you</pre>
 
 export const WELCOME_STEPS: WelcomeStep[] = [
   {
-    title: "Welcome to distribute",
+    title: "Welcome to distribute.you",
     description:
       "We run your cold email outreach end to end. You give us a URL and a budget. We find the right people, write every email, send it from our own inboxes, and report back. Nothing for you to set up.",
   },
