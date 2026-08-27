@@ -117,8 +117,11 @@ describe("the rewards card", () => {
   it("says what the money IS in the heading, and puts the unlock sentence behind the (i)", () => {
     // Two dollar figures stacked in a 224px rail read as an amount owed beside
     // the amount coming, so the heading states the gift and the sentence that
-    // names the bar moves into the tooltip.
-    expect(card).toContain("Free {formatBillingCentsWhole(headlineCents(totalCents, promise))} credits");
+    // names the bar moves into the tooltip. The heading carries no adjective in
+    // front of the figure: one line in that rail has room for the amount and
+    // what it is, and nothing else.
+    expect(card).toContain("{formatBillingCentsWhole(headlineCents(totalCents, promise))} credits on the way");
+    expect(card).not.toContain("Free {formatBillingCentsWhole(headlineCents");
     expect(card).toMatch(/tip=\{promiseUnlockLine\(/);
   });
 

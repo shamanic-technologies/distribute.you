@@ -110,7 +110,7 @@ function NextPromise({
       <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 leading-snug">
         <span aria-hidden="true">🎁</span>
         <span className="min-w-0">
-          Free {formatBillingCentsWhole(headlineCents(totalCents, promise))} credits on the way
+          {formatBillingCentsWhole(headlineCents(totalCents, promise))} credits on the way
         </span>
         <span className="ml-auto shrink-0">
           <InfoTooltip
