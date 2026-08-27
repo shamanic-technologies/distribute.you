@@ -10,6 +10,7 @@ import {
   MODEL_OBJECTS,
   buildMatrixRows,
   channelFamilyLabel,
+  channelOperatorLabel,
   funnelCatalogueFrom,
   summariseCells,
   unmeasuredReasonLabel,
@@ -119,10 +120,10 @@ export default function ModelPage() {
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-3">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">First signals</h2>
+            <h2 className="text-base font-semibold text-gray-900">Steps</h2>
             <p className="mt-1 text-sm text-gray-500">
-              The kinds of first signal a channel can produce. This vocabulary is what joins a
-              channel to a funnel, and it is published so nobody hardcodes it.
+              Every step a chain can pass through. A channel states which one it moves a lead
+              FROM and which one it moves it TO, and that leg is what joins it to a funnel.
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -132,13 +133,13 @@ export default function ModelPage() {
                   <Skeleton key={i} className="h-4 w-full rounded" />
                 ))}
               </div>
-            ) : (catalogue.data?.producibleSteps ?? []).length === 0 ? (
+            ) : (catalogue.data?.steps ?? []).length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-gray-400">
                 Couldn&apos;t read the step vocabulary.
               </p>
             ) : (
               <ul className="divide-y divide-gray-50">
-                {(catalogue.data?.producibleSteps ?? []).map((step) => (
+                {(catalogue.data?.steps ?? []).map((step) => (
                   <li key={step.key} className="px-4 py-3">
                     <p className="text-sm font-medium text-gray-900">{step.label}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>
@@ -238,7 +239,8 @@ export default function ModelPage() {
                 <th className="px-4 py-2 font-medium text-right">Per day</th>
                 <th className="px-4 py-2 font-medium text-right">Min booking</th>
                 <th className="px-4 py-2 font-medium text-right">Producing within</th>
-                <th className="px-4 py-2 font-medium">Produces</th>
+                <th className="px-4 py-2 font-medium">Leg</th>
+                <th className="px-4 py-2 font-medium">Run by</th>
                 <th className="px-4 py-2 font-medium text-right">Funnels</th>
               </tr>
             </thead>
@@ -246,14 +248,14 @@ export default function ModelPage() {
               {catalogueLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-50">
-                    <td className="px-4 py-3" colSpan={7}>
+                    <td className="px-4 py-3" colSpan={8}>
                       <Skeleton className="h-4 w-full rounded" />
                     </td>
                   </tr>
                 ))
               ) : visibleRows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={7}>
+                  <td className="px-4 py-8 text-center text-sm text-gray-400" colSpan={8}>
                     {catalogue.isError
                       ? "Couldn't read the channel catalogue."
                       : "No channel in this family."}
@@ -279,7 +281,10 @@ export default function ModelPage() {
                       {row.maxDaysToFirstProduction === null ? "—" : `${row.maxDaysToFirstProduction}d`}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {row.producibleStepLabels.length === 0 ? "—" : row.producibleStepLabels.join(", ")}
+                      {row.legLabels.length === 0 ? "—" : row.legLabels.join(", ")}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {channelOperatorLabel(row.operatedBy)}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">{row.sellableFunnelCount}</td>
                   </tr>

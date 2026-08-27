@@ -14,7 +14,7 @@
  * this file carries real unit tests rather than source-substring guards.
  */
 
-import type { PublicChannel, PublicChannelFunnelPair } from "./api";
+import type { PublicChannel, PublicChannelFunnelPair, PublicStepTransition } from "./api";
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -29,11 +29,38 @@ const CHANNEL_FAMILY_LABEL: Record<string, string> = {
   outbound_one_to_one: "Outbound, one to one",
   paid_reach: "Paid reach",
   earned: "Earned",
+  conversion: "Conversion",
 };
 
 export function channelFamilyLabel(family: string | null | undefined): string {
   if (!family) return "Not stated";
   return CHANNEL_FAMILY_LABEL[family] ?? family;
+}
+
+/**
+ * Who puts the hours in. A channel the CUSTOMER operates spends none of the platform's money, so
+ * its daily operating cost is a stated zero rather than a blank — what such a leg costs THEM is
+ * declared per lead, and the catalogue never guesses at it.
+ */
+const CHANNEL_OPERATOR_LABEL: Record<string, string> = {
+  platform: "Us",
+  customer: "Their own team",
+};
+
+export function channelOperatorLabel(operator: string | null | undefined): string {
+  if (!operator) return "Not stated";
+  return CHANNEL_OPERATOR_LABEL[operator] ?? operator;
+}
+
+/**
+ * The leg in words: what a channel moves a lead FROM and TO. `from: null` means the lead was not on
+ * the chain at all, which is every entry channel, so it reads as producing the step rather than as
+ * converting one.
+ */
+export function legLabel(transition: PublicStepTransition): string {
+  return transition.from === null
+    ? `Produces ${transition.to.label}`
+    : `${transition.from.label} to ${transition.to.label}`;
 }
 
 /**
@@ -149,8 +176,11 @@ export type MatrixRow = {
   dailyOperatingCostCents: number | null;
   minimumCommitmentDays: number | null;
   maxDaysToFirstProduction: number | null;
-  producibleStepKeys: string[];
-  producibleStepLabels: string[];
+  operatedBy: string;
+  /** One entry per leg this channel performs, in the catalogue's own order. */
+  legLabels: string[];
+  /** True when every leg starts from nothing, i.e. the channel only ever opens a chain. */
+  entryOnly: boolean;
   sellableFunnelCount: number;
   /** One entry per funnel of the catalogue, in catalogue order. */
   cells: MatrixCell[];
@@ -207,8 +237,9 @@ export function buildMatrixRows(
         dailyOperatingCostCents: channel.terms?.dailyOperatingCostCents ?? null,
         minimumCommitmentDays: channel.terms?.minimumCommitmentDays ?? null,
         maxDaysToFirstProduction: channel.terms?.maxDaysToFirstProduction ?? null,
-        producibleStepKeys: (channel.producibleSteps ?? []).map((s) => s.key),
-        producibleStepLabels: (channel.producibleSteps ?? []).map((s) => s.label),
+        operatedBy: channel.operatedBy,
+        legLabels: (channel.stepTransitions ?? []).map(legLabel),
+        entryOnly: (channel.stepTransitions ?? []).every((t) => t.from === null),
         sellableFunnelCount: sellable.size,
         cells,
       };
