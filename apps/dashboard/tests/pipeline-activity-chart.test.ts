@@ -11,8 +11,23 @@ describe("Brand overview outcome + outreach-activity charts", () => {
   const section = read("components/revenue/revenue-overview-section.tsx");
   const chart = read("components/revenue/pipeline-activity-chart.tsx");
   const outcome = read("components/revenue/outcome-trend-card.tsx");
+  const roiTrend = read("components/revenue/roi-trend-card.tsx");
   const revenueView = read("lib/revenue-view.ts");
   const revenueParse = read("lib/revenue-parse.ts");
+
+  // A percentage height resolves against nothing on the first layout pass of a
+  // stretched grid item, so the two cards whose chart wrapper is `flex-1` measure 0
+  // and recharts logs `width(-1) and height(-1) ... should be greater than 0`. The
+  // floor it asks for in that same message is the fix, and it is the wrapper's own
+  // `min-h-[180px]`, so the settled layout is unchanged. The outreach-activity chart
+  // is deliberately NOT in this list: its wrapper is `h-[300px] lg:h-[200px]`, a
+  // definite height, so it never had the problem and needs no floor.
+  it("floors the two percentage-height charts so recharts can measure them", () => {
+    for (const src of [outcome, roiTrend]) {
+      expect(src).toContain('<ResponsiveContainer width="100%" height="100%" minHeight={180}>');
+    }
+    expect(chart).toContain('<ResponsiveContainer width="100%" height="100%">');
+  });
 
   it("fetches the locked pipeline-activity forecast endpoint with brand, days, and timezone", () => {
     expect(api).toContain("getFeaturePipelineActivity");

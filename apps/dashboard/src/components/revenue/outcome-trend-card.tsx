@@ -175,7 +175,11 @@ export function OutcomeTrendCard({
         </div>
       ) : (
         <div className="flex-1 min-h-[180px]">
-          <ResponsiveContainer width="100%" height="100%">
+          {/* Same floor as the Return-on-spend card beside it, for the same reason:
+              a stretched grid item has no definite height on the first layout pass,
+              so `height="100%"` measures 0 and recharts logs `width(-1) and
+              height(-1)`. `minHeight` is the fix recharts names in that message. */}
+          <ResponsiveContainer width="100%" height="100%" minHeight={180}>
             <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="outcome-fill" x1="0" y1="0" x2="0" y2="1">
