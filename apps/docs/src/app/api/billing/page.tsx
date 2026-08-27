@@ -32,7 +32,7 @@ export default function BillingApiPage() {
         <h2>Check Balance</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/billing/accounts/balance
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
@@ -44,7 +44,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <h2>Get Account</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/billing/accounts
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns credit balance, auto-topup settings, and payment method status.</p>
 

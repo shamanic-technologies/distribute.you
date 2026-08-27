@@ -3,6 +3,14 @@ import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { URLS, DISTRIBUTION_FEATURES } from "@distribute/content";
 import { CopyForLLM } from "@/components/copy-for-llm";
+import {
+  AUTH_HEADER_LINE,
+  CLAUDE_CODE_MCP_COMMAND,
+  CLI_NPM_URL,
+  CLI_PACKAGE,
+  DEVELOPER_HUB_URL,
+  MCP_URL,
+} from "@/lib/developer-surfaces";
 
 const liveFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "live");
 const comingFeatures = DISTRIBUTION_FEATURES.filter((f) => f.status === "coming-soon");
@@ -29,16 +37,18 @@ ${channelList}
 
 ## Quick Start
 1. Sign up at dashboard.distribute.you ($400 free credits)
-2. Get API key (dist_xxx format)
-3. Install MCP: claude mcp add distribute.you -- npx @distribute/mcp --api-key=YOUR_KEY
-4. "Create a brand for acme.com"
-5. "Launch a cold email campaign targeting CTOs, $5/day budget"
+2. Get API key (distrib.usr_xxx format)
+3. Connect MCP (hosted, nothing to install):
+   ${CLAUDE_CODE_MCP_COMMAND}
+4. "Show me my brands"
+5. "Read acme.com and suggest who I should be targeting"
 
 ## Access Methods
 - Dashboard: dashboard.distribute.you (default)
-- REST API: api.distribute.you/v1
-- TypeScript Client: @distribute/api-client
-- MCP Server: npx @distribute/mcp`;
+- REST API: api.distribute.you/v1 (${AUTH_HEADER_LINE})
+- MCP Server: ${MCP_URL} (hosted, Streamable HTTP)
+- CLI: ${CLI_PACKAGE}
+- Every surface named on one page: ${DEVELOPER_HUB_URL}`;
 
 export const metadata = docsMetadata("/");
 
@@ -95,17 +105,20 @@ export default function DocsHome() {
 
         <h3>MCP Server (recommended)</h3>
         <p>
-          Install the <code>@distribute/mcp</code> package to use distribute.you from Claude Code, Claude Desktop,
-          Cursor, or any MCP-compatible client. See the <Link href="/mcp">MCP Server docs</Link>.
+          The MCP server is hosted at <code>{MCP_URL}</code> and speaks Streamable HTTP, so there is
+          nothing to install: your client connects to a URL with your API key. Works with Claude
+          Code, Claude Desktop, Cursor, and any other MCP-compatible client. See the{" "}
+          <Link href="/mcp">MCP Server docs</Link>.
         </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>claude mcp add distribute.you -- npx @distribute/mcp --api-key=YOUR_KEY</code>
+          <code>{CLAUDE_CODE_MCP_COMMAND}</code>
         </pre>
 
         <h3>REST API</h3>
         <p>
-          Use the <code>@distribute/api-client</code> TypeScript client or call the REST API directly.
-          See the <Link href="/api">API Reference</Link>.
+          Call the REST API directly with one header, or drive it from a shell with the{" "}
+          <a href={CLI_NPM_URL}>{CLI_PACKAGE}</a> command line client. See the{" "}
+          <Link href="/api">API Reference</Link>.
         </p>
 
         <h3>Dashboard</h3>

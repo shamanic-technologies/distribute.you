@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { URLS } from "@distribute/content";
+import { OPENAPI_DOCUMENT_URL } from "@/lib/docs-routes";
+import { CLI_NPM_URL, DEVELOPER_HUB_URL, MCP_URL } from "@/lib/developer-surfaces";
 
 const NAV_ITEMS = [
   {
@@ -32,14 +34,22 @@ const NAV_ITEMS = [
       { name: "Workflows", href: "/api/workflows" },
       { name: "Leads", href: "/api/leads" },
       { name: "Emails", href: "/api/emails" },
-      { name: "Outlets", href: "/api/outlets" },
-      { name: "Journalists", href: "/api/journalists" },
-      { name: "Articles", href: "/api/articles" },
-      { name: "Press Kits", href: "/api/press-kits" },
       { name: "Billing", href: "/api/billing" },
       { name: "Costs", href: "/api/costs" },
       { name: "Webhooks", href: "/api/webhooks" },
       { name: "Interactive Docs \u2197", href: URLS.apiDocs, external: true },
+    ],
+  },
+  {
+    // The apex hub names every developer surface on one page, and a name search
+    // lands on whichever of the two domains ranks. A crawlable link from every
+    // page of this site is how the two are reachable from each other.
+    title: "Developer resources",
+    items: [
+      { name: "All surfaces \u2197", href: DEVELOPER_HUB_URL, external: true },
+      { name: "OpenAPI document \u2197", href: OPENAPI_DOCUMENT_URL, external: true },
+      { name: "MCP endpoint \u2197", href: MCP_URL, external: true },
+      { name: "Command line client \u2197", href: CLI_NPM_URL, external: true },
     ],
   },
   {

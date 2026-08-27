@@ -17,7 +17,7 @@ export default function N8nIntegrationPage() {
         <ol>
           <li>Add an HTTP Request node</li>
           <li>Set the base URL to <code>https://api.distribute.you/v1</code></li>
-          <li>Add a header: <code>X-API-Key: dist_YOUR_KEY</code></li>
+          <li>Add a header: <code>Authorization: Bearer distrib.usr_YOUR_KEY</code></li>
         </ol>
 
         <h2>Example: Create Campaign on Schedule</h2>
@@ -25,7 +25,7 @@ export default function N8nIntegrationPage() {
           <code>{`Method: POST
 URL: https://api.distribute.you/v1/campaigns
 Headers:
-  X-API-Key: dist_YOUR_KEY
+  Authorization: Bearer distrib.usr_YOUR_KEY
   Content-Type: application/json
 Body:
 {

@@ -1,5 +1,6 @@
 import { docsMetadata } from "@/lib/docs-metadata";
 import { docsHeading } from "@/lib/docs-routes";
+import { MCP_HTTP_CONFIG, MCP_TOOL_COUNT, MCP_URL } from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/integrations/cursor");
 
@@ -13,16 +14,13 @@ export default function CursorIntegrationPage() {
 
       <div className="prose">
         <h2>Setup</h2>
-        <p>Add to <code>.cursor/mcp.json</code> in your project root (or global config):</p>
+        <p>
+          Cursor speaks Streamable HTTP natively, so there is nothing to install: the server is
+          hosted at <code>{MCP_URL}</code>. Add this to <code>.cursor/mcp.json</code> in your
+          project root, or to the global config:
+        </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "mcpServers": {
-    "distribute": {
-      "command": "npx",
-      "args": ["@distribute/mcp", "--api-key=YOUR_KEY"]
-    }
-  }
-}`}</code>
+          <code>{MCP_HTTP_CONFIG}</code>
         </pre>
 
         <h2>Restart</h2>
@@ -36,7 +34,7 @@ export default function CursorIntegrationPage() {
 
         <h2>Usage</h2>
         <p>
-          Use all 35 distribute.you tools from Cursor&apos;s Agent mode.
+          Use all {MCP_TOOL_COUNT} distribute.you tools from Cursor&apos;s Agent mode.
           See the <a href="/mcp/tools">Tools Reference</a> for the full list.
         </p>
       </div>

@@ -35,7 +35,7 @@ export default function CostsApiPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/runs/stats/costs?groupBy=costName
 GET /v1/runs/stats/costs?groupBy=costName&brandId=brand_abc123
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>
           Returns costs grouped by the specified dimension. Common groupBy values:
@@ -45,7 +45,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <h2>Delivery Stats</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/email-gateway/stats?brandId=brand_abc123
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{

@@ -3,6 +3,14 @@ import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
+import {
+  AUTH_HEADER_LINE,
+  CLI_INSTALL_COMMAND,
+  CLI_NPM_URL,
+  CLI_PACKAGE,
+  DEVELOPER_HUB_URL,
+  curlExample,
+} from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/api");
 
@@ -12,14 +20,12 @@ const LLM_INSTRUCTIONS = `# distribute.you REST API
 https://api.distribute.you/v1
 
 ## Authentication
-All requests require X-API-Key header:
-X-API-Key: dist_YOUR_KEY
+All requests carry one header:
+${AUTH_HEADER_LINE}
 
-## TypeScript Client
-npm install @distribute/api-client
-
-import { DistributeClient } from "@distribute/api-client";
-const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
+## Command line
+npx @distribute.you/cli --help
+The command distribute ops lists every operation this API has, read from the API itself.
 
 ## Endpoint Groups
 - /me, /api-keys: Identity
@@ -29,10 +35,6 @@ const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
 - /workflows: Workflow inspection
 - /leads: Lead listing
 - /emails: Email listing
-- /outlets: Media outlet discovery
-- /journalists: Journalist discovery
-- /discoveries: Article discovery
-- /press-kits: Press kit generation
 - /billing: Balance and transactions
 - /runs/stats: Cost analytics
 - /email-gateway: Delivery stats`;
@@ -44,10 +46,6 @@ const API_SECTIONS = [
   { name: "Workflows", href: "/api/workflows", description: "Inspect workflows, DAGs, and key status" },
   { name: "Leads", href: "/api/leads", description: "List discovered leads and their outreach status" },
   { name: "Emails", href: "/api/emails", description: "View generated emails and sequences" },
-  { name: "Outlets", href: "/api/outlets", description: "Media outlets discovered for your brand" },
-  { name: "Journalists", href: "/api/journalists", description: "Journalists discovered for PR outreach" },
-  { name: "Articles", href: "/api/articles", description: "Articles mentioning your brand" },
-  { name: "Press Kits", href: "/api/press-kits", description: "Generate and manage press kits" },
   { name: "Billing", href: "/api/billing", description: "Balance, account settings, transactions" },
   { name: "Costs", href: "/api/costs", description: "Cost breakdown and delivery statistics" },
   { name: "Webhooks", href: "/api/webhooks", description: "Real-time event notifications" },
@@ -88,22 +86,25 @@ export default function ApiOverviewPage() {
         </pre>
 
         <h2>Authentication</h2>
-        <p>All requests require your API key in the <code>X-API-Key</code> header:</p>
+        <p>All requests require your API key in the <code>Authorization</code> header:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`curl https://api.distribute.you/v1/me \\
-  -H "X-API-Key: dist_YOUR_KEY"`}</code>
+          <code>{curlExample("/v1/me")}</code>
         </pre>
 
-        <h2>TypeScript Client</h2>
+        <h2>From a shell</h2>
+        <p>
+          The CLI is the shortest path from a terminal or a CI job. It authenticates once with an
+          API key, prints JSON on stdout, prints JSON on stderr when it fails, and exits non-zero,
+          so it can be driven without parsing prose.
+        </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`npm install @distribute/api-client`}</code>
+          <code>{CLI_INSTALL_COMMAND}</code>
         </pre>
-        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`import { DistributeClient } from "@distribute/api-client";
-
-const client = new DistributeClient({ apiKey: "dist_YOUR_KEY" });
-const { brands } = await client.listBrands();`}</code>
-        </pre>
+        <p>
+          <code>distribute ops</code> lists every operation this API has, read from the API itself
+          rather than from a list that can go stale. The package is on npm as{" "}
+          <a href={CLI_NPM_URL}>{CLI_PACKAGE}</a>.
+        </p>
 
         <h2>Errors</h2>
         <table>
@@ -133,6 +134,11 @@ const { brands } = await client.listBrands();`}</code>
           </Link>
         ))}
       </div>
+
+      <p className="text-sm text-gray-500 mt-10">
+        Every developer surface distribute.you publishes, this API included, is named together at{" "}
+        <a href={DEVELOPER_HUB_URL} className="underline">{DEVELOPER_HUB_URL}</a>.
+      </p>
     </div>
   );
 }

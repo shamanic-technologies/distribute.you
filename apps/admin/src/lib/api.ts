@@ -6205,10 +6205,20 @@ export async function getCrossOrgLifetimeCostPerOutcome(
 // would throw on the catalogue the day it does.
 // ---------------------------------------------------------------------------
 
-const PublicProducibleStepSchema = z.object({
+const PublicChannelStepSchema = z.object({
   key: z.string(),
   label: z.string(),
   description: z.string(),
+});
+
+/**
+ * The leg a channel performs: the step it moves a lead FROM, and the step it moves it TO.
+ * `from: null` is "from nothing" — the lead was not on the chain at all until this channel
+ * produced its first signal, which is what every entry channel does.
+ */
+const PublicStepTransitionSchema = z.object({
+  from: PublicChannelStepSchema.nullable(),
+  to: PublicChannelStepSchema,
 });
 
 const PublicChannelSchema = z.object({
@@ -6218,6 +6228,8 @@ const PublicChannelSchema = z.object({
   icon: z.string(),
   displayOrder: z.coerce.number(),
   family: z.string(),
+  /** WHO puts the hours in. A customer-operated channel spends none of our money. */
+  operatedBy: z.string(),
   terms: z.object({
     /** What operating this channel costs for a day regardless of volume. */
     dailyOperatingCostCents: z.coerce.number(),
@@ -6225,17 +6237,22 @@ const PublicChannelSchema = z.object({
     /** An upper bound we promise, not an estimate. */
     maxDaysToFirstProduction: z.coerce.number(),
   }),
-  producibleSteps: z.array(PublicProducibleStepSchema),
-  /** DERIVED upstream from `producibleSteps`, so the two can never disagree. */
+  stepTransitions: z.array(PublicStepTransitionSchema),
+  /** DERIVED upstream from the legs, so the two can never disagree. */
   salesFunnels: z.array(
     z.object({ key: z.string(), name: z.string(), steps: z.array(z.string()) }),
   ),
 });
 const PublicChannelCatalogueSchema = z.object({
   channels: z.array(PublicChannelSchema),
-  producibleSteps: z.array(PublicProducibleStepSchema),
+  /**
+   * The step vocabulary itself. Named `steps` on the wire since the catalogue learned to express
+   * INTERNAL legs: they are no longer only the signals a channel can produce out of nothing.
+   */
+  steps: z.array(PublicChannelStepSchema),
 });
-export type PublicProducibleStep = z.infer<typeof PublicProducibleStepSchema>;
+export type PublicChannelStep = z.infer<typeof PublicChannelStepSchema>;
+export type PublicStepTransition = z.infer<typeof PublicStepTransitionSchema>;
 export type PublicChannel = z.infer<typeof PublicChannelSchema>;
 export type PublicChannelCatalogue = z.infer<typeof PublicChannelCatalogueSchema>;
 

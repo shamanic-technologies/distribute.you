@@ -50,20 +50,20 @@ export default function CampaignsApiPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/campaigns
 GET /v1/campaigns?brandId=brand_abc123&status=all
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
 
         <h2>Get Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/campaigns/:campaignId
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
 
         <h2>Create Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`POST /v1/campaigns
 Content-Type: application/json
-X-API-Key: dist_YOUR_KEY
+Authorization: Bearer distrib.usr_YOUR_KEY
 
 {
   "name": "Q2 Sales Outreach",
@@ -106,13 +106,13 @@ X-API-Key: dist_YOUR_KEY
         <h2>Stop Campaign</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`POST /v1/campaigns/:campaignId/stop
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
 
         <h2>Campaign Stats</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/campaigns/:campaignId/stats
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`{
@@ -136,7 +136,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/campaigns/stats
 GET /v1/campaigns/stats?brandId=brand_abc123
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns stats for all campaigns (or filtered by brand) in a single call.</p>
 

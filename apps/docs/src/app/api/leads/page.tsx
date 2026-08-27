@@ -31,7 +31,7 @@ export default function LeadsApiPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/leads?campaignId=camp_abc123
 GET /v1/leads?brandId=brand_abc123
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Filter by campaign or brand. Returns contact details, company info, and outreach status.</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">

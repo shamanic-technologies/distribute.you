@@ -8,11 +8,11 @@ const LLM_INSTRUCTIONS = `# Brands API
 
 ## List Brands
 GET /v1/brands
-X-API-Key: dist_YOUR_KEY
+Authorization: Bearer distrib.usr_YOUR_KEY
 
 ## Get Brand
 GET /v1/brands/:brandId
-X-API-Key: dist_YOUR_KEY
+Authorization: Bearer distrib.usr_YOUR_KEY
 
 ## Create Brand
 POST /v1/brands
@@ -46,7 +46,7 @@ export default function BrandsApiPage() {
         <h2>List Brands</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/brands
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns all brands in your organization.</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
@@ -68,7 +68,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <h2>Get Brand</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/brands/:brandId
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns detailed brand info including bio, mission, location, and categories.</p>
 
@@ -76,7 +76,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`POST /v1/brands
 Content-Type: application/json
-X-API-Key: dist_YOUR_KEY
+Authorization: Bearer distrib.usr_YOUR_KEY
 
 {
   "url": "https://acme.com"
@@ -99,7 +99,7 @@ X-API-Key: dist_YOUR_KEY
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`POST /v1/brands/extract-fields
 Content-Type: application/json
-X-API-Key: dist_YOUR_KEY
+Authorization: Bearer distrib.usr_YOUR_KEY
 
 {
   "brandIds": ["brand_abc123"],
@@ -117,7 +117,7 @@ X-API-Key: dist_YOUR_KEY
         <h2>List Extracted Fields</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/brands/:brandId/extracted-fields
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns all previously extracted fields for a brand with their cached values.</p>
 

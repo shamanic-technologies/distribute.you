@@ -3,32 +3,33 @@ import { docsHeading } from "@/lib/docs-routes";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 import { URLS } from "@distribute/content";
+import {
+  AUTH_HEADER_LINE,
+  CLAUDE_CODE_MCP_COMMAND,
+  DEVELOPER_HUB_URL,
+  MCP_TOOLS,
+  MCP_TOOL_COUNT,
+  MCP_URL,
+} from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/mcp");
 
 const LLM_INSTRUCTIONS = `# distribute.you MCP Server
 
-## Install
-npm: npx @distribute/mcp --api-key=dist_YOUR_KEY
-Claude Code: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
+Hosted, Streamable HTTP. Nothing to install.
 
-## 35 Tools Available
-Identity: whoami
-Brands: brands_list, brands_get, brands_create, brands_extract_fields
-Features: features_list, features_get, features_prefill, features_stats, features_global_stats, features_stats_registry
-Campaigns: campaigns_list, campaigns_get, campaigns_create, campaigns_stop, campaigns_stats
-Leads: leads_list
-Emails: emails_list
-Workflows: workflows_list, workflows_get, workflows_summary, workflows_key_status
-Outlets: outlets_list, outlets_by_campaign
-Journalists: journalists_list, journalists_by_campaign
-Articles: articles_list
-Press Kits: press_kits_list, press_kits_get, press_kits_generate, press_kits_view_stats
-Billing: billing_balance, billing_account, billing_transactions
-Costs: costs_brand_breakdown, costs_by_brand, costs_delivery_stats
+Endpoint: ${MCP_URL}
+Header:   ${AUTH_HEADER_LINE}
+
+## Connect from Claude Code
+${CLAUDE_CODE_MCP_COMMAND}
+
+## Tools (${MCP_TOOL_COUNT} total)
+${MCP_TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n")}
 
 ## Auth
---api-key=dist_xxx or DISTRIBUTE_API_KEY env var`;
+One header on every request, carrying an API key issued in the dashboard. The
+key carries the org and user identity, so no other header is needed.`;
 
 export default function McpOverviewPage() {
   return (
@@ -44,136 +45,78 @@ export default function McpOverviewPage() {
       <div className="prose">
         <h2>What is MCP?</h2>
         <p>
-          The <strong>Model Context Protocol (MCP)</strong> is an open standard that allows AI assistants
-          to connect to external tools. distribute.you provides an MCP server with 35 tools for managing
-          your entire distribution pipeline.
+          The <strong>Model Context Protocol (MCP)</strong> is an open standard that lets AI
+          assistants connect to external tools. distribute.you runs a hosted MCP server with{" "}
+          {MCP_TOOL_COUNT} tools for reading and steering your outreach.
         </p>
 
-        <h2>Quick Install</h2>
+        <h2>Connect</h2>
+        <p>
+          The server is hosted and speaks Streamable HTTP, so there is no package to install. From
+          Claude Code, one command:
+        </p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY</code>
+          <code>{CLAUDE_CODE_MCP_COMMAND}</code>
         </pre>
         <p>
-          See <Link href="/mcp/installation">Installation</Link> for Claude Desktop, Cursor, and other clients.
+          See <Link href="/mcp/installation">Installation</Link> for Claude Desktop, Cursor, and
+          every other client.
         </p>
 
-        <h2>How It Works</h2>
+        <h2>How it works</h2>
         <p>
-          The <code>@distribute/mcp</code> package runs as a local stdio server. Your AI client
-          communicates with it via the MCP protocol, and it calls the distribute.you API on your behalf.
+          Your client opens an HTTP connection to <code>{MCP_URL}</code> and sends your API key as a
+          Bearer token. The server calls the distribute.you API on your behalf, as the org that key
+          belongs to.
         </p>
         <ol>
-          <li>Install via <code>npx @distribute/mcp</code> with your API key</li>
-          <li>Your AI client discovers 35 available tools</li>
+          <li>Register the endpoint and the header with your client</li>
+          <li>Your client discovers the {MCP_TOOL_COUNT} tools it advertises</li>
           <li>Describe what you want in natural language</li>
-          <li>The AI translates to the appropriate tool calls</li>
+          <li>The AI translates that into tool calls</li>
         </ol>
 
-        <h2>Example Prompts</h2>
+        <h2>Example prompts</h2>
         <pre className="bg-gray-50 text-gray-800 p-4 rounded-lg overflow-x-auto border border-gray-200">
-          <code>{`"Create a brand for acme.com"
-"Launch a cold email campaign targeting CTOs at tech startups, $10/day budget"
-"Show me the stats for my latest campaign"
-"Generate a press kit for my brand"
-"What's my current billing balance?"
-"List all journalists discovered for acme.com"`}</code>
+          <code>{`"Show me the brands on my account"
+"Which of my campaigns are still running?"
+"What did my latest campaign produce, and what did it cost?"
+"Read acme.com and suggest who I should be targeting"
+"Which workflows can I run?"`}</code>
         </pre>
 
-        <h2>Tool Categories</h2>
+        <h2>Tools</h2>
         <table>
           <thead>
             <tr>
-              <th>Category</th>
-              <th>Tools</th>
-              <th>Description</th>
+              <th>Tool</th>
+              <th>What it does</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Identity</td>
-              <td>1</td>
-              <td>Verify connection and API key</td>
-            </tr>
-            <tr>
-              <td>Brands</td>
-              <td>4</td>
-              <td>Create and manage brand profiles</td>
-            </tr>
-            <tr>
-              <td>Features</td>
-              <td>6</td>
-              <td>Browse automation types and stats</td>
-            </tr>
-            <tr>
-              <td>Campaigns</td>
-              <td>5</td>
-              <td>Create, stop, and monitor campaigns</td>
-            </tr>
-            <tr>
-              <td>Workflows</td>
-              <td>4</td>
-              <td>Inspect workflow details and key status</td>
-            </tr>
-            <tr>
-              <td>Leads</td>
-              <td>1</td>
-              <td>List discovered leads</td>
-            </tr>
-            <tr>
-              <td>Emails</td>
-              <td>1</td>
-              <td>View generated emails</td>
-            </tr>
-            <tr>
-              <td>Outlets</td>
-              <td>2</td>
-              <td>Media outlets discovered for your brand</td>
-            </tr>
-            <tr>
-              <td>Journalists</td>
-              <td>2</td>
-              <td>Journalists discovered for your brand</td>
-            </tr>
-            <tr>
-              <td>Articles</td>
-              <td>1</td>
-              <td>Articles mentioning your brand</td>
-            </tr>
-            <tr>
-              <td>Press Kits</td>
-              <td>4</td>
-              <td>Generate and manage press kits</td>
-            </tr>
-            <tr>
-              <td>Billing</td>
-              <td>3</td>
-              <td>Balance, account, transactions</td>
-            </tr>
-            <tr>
-              <td>Costs</td>
-              <td>3</td>
-              <td>Cost breakdown and delivery stats</td>
-            </tr>
+            {MCP_TOOLS.map((tool) => (
+              <tr key={tool.name}>
+                <td><code>{tool.name}</code></td>
+                <td>{tool.description}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
         <p>
-          See the full <Link href="/mcp/tools">Tools Reference</Link> for detailed descriptions of each tool.
+          The full <Link href="/mcp/tools">Tools Reference</Link> carries the same list with each
+          tool&apos;s arguments. Anything beyond these is reachable over the{" "}
+          <Link href="/api">REST API</Link>, which covers every operation the platform has.
         </p>
 
         <h2>Authentication</h2>
-        <p>
-          The MCP server requires your API key, provided via CLI flag or environment variable:
-        </p>
+        <p>The server takes one header, the same one the REST API takes:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`# CLI flag (recommended)
-npx @distribute/mcp --api-key=dist_YOUR_KEY
-
-# Environment variable
-DISTRIBUTE_API_KEY=dist_YOUR_KEY npx @distribute/mcp`}</code>
+          <code>{AUTH_HEADER_LINE}</code>
         </pre>
         <p>
           Get your API key at{" "}
-          <a href={URLS.apiKeys}>{URLS.apiKeys.replace("https://", "")}</a>.
+          <a href={URLS.apiKeys}>{URLS.apiKeys.replace("https://", "")}</a>. Every developer surface
+          is named together at <a href={DEVELOPER_HUB_URL}>{DEVELOPER_HUB_URL}</a>.
         </p>
       </div>
     </div>

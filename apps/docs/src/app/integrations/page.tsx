@@ -1,5 +1,14 @@
 import { docsMetadata } from "@/lib/docs-metadata";
 import { docsHeading } from "@/lib/docs-routes";
+import {
+  CLAUDE_CODE_MCP_COMMAND,
+  CLI_NPM_URL,
+  CLI_PACKAGE,
+  DEVELOPER_HUB_URL,
+  MCP_REMOTE_BRIDGE_PACKAGE,
+  MCP_TOOL_COUNT,
+  MCP_URL,
+} from "@/lib/developer-surfaces";
 import Link from "next/link";
 import { CopyForLLM } from "@/components/copy-for-llm";
 
@@ -8,9 +17,10 @@ export const metadata = docsMetadata("/integrations");
 const LLM_INSTRUCTIONS = `# distribute.you Integrations
 
 ## MCP Clients (recommended)
-- Claude Code: claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY
-- Claude Desktop: add to claude_desktop_config.json
-- Cursor: add to .cursor/mcp.json
+The server is hosted at ${MCP_URL} and speaks Streamable HTTP. Nothing to install.
+- Claude Code: ${CLAUDE_CODE_MCP_COMMAND}
+- Claude Desktop: Settings, Connectors, Add custom connector (or bridge with ${MCP_REMOTE_BRIDGE_PACKAGE})
+- Cursor: add the URL and header to .cursor/mcp.json
 - ChatGPT: MCP connector or GPT Actions
 
 ## Automation Platforms (REST API)
@@ -19,9 +29,11 @@ const LLM_INSTRUCTIONS = `# distribute.you Integrations
 - Make.com: HTTP module
 
 ## Integration Methods
-1. MCP Server: 35 tools, recommended for AI clients
-2. REST API: api.distribute.you/v1, TypeScript client available
-3. Webhooks: real-time event notifications`;
+1. MCP Server: ${MCP_TOOL_COUNT} tools, recommended for AI clients
+2. REST API: api.distribute.you/v1, with ${CLI_PACKAGE} on the command line
+3. Webhooks: real-time event notifications
+
+Every developer surface on one page: ${DEVELOPER_HUB_URL}`;
 
 const MCP_CLIENTS = [
   {
@@ -77,8 +89,9 @@ export default function IntegrationsPage() {
 
       <h2 className="text-lg font-semibold text-gray-900 mb-3">MCP Clients</h2>
       <p className="text-gray-500 text-sm mb-4">
-        Use the <code className="text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded text-xs">@distribute/mcp</code> server
-        from any MCP-compatible AI client.
+        Connect any MCP-compatible AI client to the hosted server at{" "}
+        <code className="text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded text-xs">{MCP_URL}</code>.
+        There is nothing to install.
       </p>
       <div className="grid gap-2 mb-10">
         {MCP_CLIENTS.map((item) => (
@@ -115,14 +128,15 @@ export default function IntegrationsPage() {
 
         <h3>1. MCP Server (Recommended)</h3>
         <p>
-          Install <code>@distribute/mcp</code> for full automation from AI clients.
-          35 tools for brands, campaigns, workflows, leads, press kits, billing, and more.
+          Point any AI client at the hosted server. {MCP_TOOL_COUNT} tools for reading and steering
+          brands, campaigns, workflows and targeting. See the <Link href="/mcp">MCP Server docs</Link>.
         </p>
 
         <h3>2. REST API</h3>
         <p>
-          Call the REST API directly or use the <code>@distribute/api-client</code> TypeScript client.
-          See the <Link href="/api">API Reference</Link>.
+          Call the REST API directly, or drive it from a shell with the{" "}
+          <a href={CLI_NPM_URL}>{CLI_PACKAGE}</a> command line client. It covers every operation the
+          platform has. See the <Link href="/api">API Reference</Link>.
         </p>
 
         <h3>3. Webhooks</h3>
