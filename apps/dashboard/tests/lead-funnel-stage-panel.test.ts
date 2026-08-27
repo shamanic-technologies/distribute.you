@@ -130,6 +130,78 @@ describe("the reply row", () => {
   });
 });
 
+describe("the panel answers the click at once", () => {
+  it("shows the kind the person just picked, before the producer has answered", () => {
+    // A picker that keeps reading "Replied, kind not stated" for the whole write reads
+    // as a control that did nothing. The CALL SITE is what puts it on screen — a page
+    // that computes the value and passes the served one is the feature entirely absent
+    // with the component perfectly correct.
+    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 900);
+    expect(call).toContain("kind: shownReplyKind");
+    expect(PAGE).toContain("statedReply.email === replyEmail");
+  });
+
+  it("shows the stage statement just pressed, scoped to the lead it was made on", () => {
+    // Same gap, one row up: the stage rows read off a query that only answers after the
+    // write plus a re-read. Scoped by lead row, so opening another lead cannot inherit
+    // somebody else's pending statement.
+    const slice = PAGE.slice(PAGE.indexOf("const panelStates = useMemo("), PAGE.indexOf("const panelValues ="));
+    expect(slice).toContain("statedStage.leadRowId !== selectedLead?.id");
+    expect(slice).toContain("[statedStage.key]: statedStage.next");
+  });
+
+  it("still re-reads the chain from the producer, never deriving it here", () => {
+    // lead-service decides more than the field written — an outcome supersedes an
+    // earlier never, and the cascade is its answer. The pending statement covers one
+    // row while that read lands; it does not replace it.
+    expect(HOOK).toContain("invalidateQueries");
+    expect(PAGE).not.toContain("chainIndex <");
+  });
+
+  it("writes the producer's own answer into the cache instead of re-reading it", () => {
+    // The response IS the row this query reads (`limit: 1`, newest first). Invalidating
+    // costs a second round trip to learn what the producer has already said, and it is
+    // that wait the pill sat through.
+    const slice = PAGE.slice(PAGE.indexOf("const setReply = useMutation("), PAGE.indexOf("const onSetReply ="));
+    expect(slice).toContain("setQueryData");
+    expect(slice).toContain("qualifications: [res.qualification]");
+    expect(slice).not.toContain('invalidateQueries({ queryKey: ["leadReplyKind"');
+  });
+
+  it("drops a pending statement the producer refused", () => {
+    // The panel error says why; leaving it up would state something nobody recorded.
+    const reply = PAGE.slice(PAGE.indexOf("const onSetReply ="), PAGE.indexOf("const onSetStage ="));
+    expect(reply).toContain("setStatedReply(null)");
+    const stage = PAGE.slice(PAGE.indexOf("const onSetStage ="), PAGE.indexOf("const onSetStage =") + 1400);
+    expect(stage).toContain("setStatedStage(null)");
+  });
+
+  it("leads the panel with what happened, above who the person works for", () => {
+    // The funnel is what the reader came to state; the organisation is context they can
+    // scroll to.
+    expect(PAGE.indexOf("<LeadFunnelStageSection")).toBeLessThan(PAGE.indexOf(">Organization<"));
+  });
+
+  it("states the delivery badge once, on the funnel row that owns it", () => {
+    // The identity card carried the same badge under "Status", so one lead read its own
+    // delivery twice on one screen. The two GLOBAL flags stay: they are about every
+    // brand in the org, which nothing below repeats.
+    expect(PAGE).not.toContain('<span className="text-gray-500">Status:</span>');
+    expect(PAGE).toContain("Across every brand:");
+    expect(PAGE).toContain("Global Unsubscribed");
+  });
+
+  it("carries no info tooltip on the card heading nor on the delivery row", () => {
+    // Both explained what the card already reads as. The tips that stay are the ones
+    // that state something the row cannot: what an amount is for, and that an outcome
+    // was also measured automatically.
+    expect(SECTION).not.toContain("DELIVERY_TIP");
+    expect(SECTION).not.toContain("counts exactly like something we tracked");
+    expect(SECTION).toContain("VALUE_TIP");
+    expect(SECTION).toContain("TRACKED_TIP");
+  });
+});
+
 describe("stating what a won deal was worth", () => {
   it("asks for the amount instead of sending a sale the producer will refuse", () => {
     // lead-service 400s a sale with no value. Predicting a refusal and asking the

@@ -35,6 +35,7 @@ import {
   leadFunnelStages,
   leadStepErrorMessage,
   trackedStages,
+  type LeadStageState,
   type WritableStageKey,
 } from "@/lib/lead-funnel-stages";
 import { salesFunnelByKey } from "@/lib/sales-funnels";
@@ -1298,7 +1299,20 @@ export function EngagedLeadsPage({
   // `isPending` alone cannot say which of the two that was.
   const [panelPending, setPanelPending] = useState<{ key: WritableStageKey; next: "outcome" | "never" } | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
-  const panelStates = useMemo(() => stageStatesFrom(stepStatements), [stepStatements]);
+  // The statement just pressed, shown while the producer is answering. lead-service
+  // decides more than the one field written — it can supersede an earlier `never`, and
+  // it stamps the source and the time — so the READ still re-fetches and wins; this
+  // only fills the two round trips a write takes, during which the row would otherwise
+  // read exactly as it did before the click. Scoped to the lead row it was made on, so
+  // opening another lead cannot inherit it.
+  const [statedStage, setStatedStage] = useState<
+    { leadRowId: string; key: WritableStageKey; next: LeadStageState } | null
+  >(null);
+  const panelStates = useMemo(() => {
+    const served = stageStatesFrom(stepStatements);
+    if (!statedStage || statedStage.leadRowId !== selectedLead?.id) return served;
+    return { ...served, [statedStage.key]: statedStage.next };
+  }, [stepStatements, statedStage, selectedLead]);
   // What a stated outcome was worth, so the amount somebody typed reads back where they
   // typed it. Absent when nobody said — never a zero standing in for an unpriced deal.
   const panelValues = useMemo(() => stageValuesFrom(stepStatements), [stepStatements]);
@@ -1326,13 +1340,25 @@ export function EngagedLeadsPage({
   // is the resolved vocabulary; `status` is the raw thing a person clicked and is
   // deliberately not rendered.
   const replyKind = replyData?.qualifications[0]?.replyKind ?? null;
+  // The kind just picked, shown before the producer has answered. A picker that keeps
+  // reading "Replied, kind not stated" for the whole write reads as a control that did
+  // nothing. Dropped the moment the producer answers — its own resolution is what
+  // stands, this only fills the gap.
+  const [statedReply, setStatedReply] = useState<{ email: string; kind: ReplyKind } | null>(null);
+  const shownReplyKind = statedReply && statedReply.email === replyEmail ? statedReply.kind : replyKind;
   const [replyPending, setReplyPending] = useState(false);
   const queryClient = useQueryClient();
   const setReply = useMutation({
     mutationFn: (kind: ReplyKind) =>
       setManualQualification({ campaignId: campaignId as string, email: replyEmail as string, status: kind }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leadReplyKind", campaignId ?? "none", replyEmail ?? "none"] });
+    onSuccess: (res) => {
+      // The response IS the row this query reads (`limit: 1`, newest first), so write it
+      // rather than invalidating: a re-read is a second round trip spent learning what
+      // the producer has already told us, and it is that wait the pill sat through.
+      queryClient.setQueryData(["leadReplyKind", campaignId ?? "none", replyEmail ?? "none"], {
+        qualifications: [res.qualification],
+      });
+      setStatedReply(null);
       // A reply kind decides whether the sequence keeps sending, so the lead rows the
       // table renders can change with it.
       queryClient.invalidateQueries({ queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId] });
@@ -1341,10 +1367,13 @@ export function EngagedLeadsPage({
 
   const onSetReply = (kind: ReplyKind) => {
     setPanelError(null);
+    if (replyEmail) setStatedReply({ email: replyEmail, kind });
     setReplyPending(true);
     setReply.mutate(kind, {
       onError: (err) => {
         console.error("[dashboard] setManualQualification failed", err);
+        // Nothing was recorded, so stop showing it — the panel error says why.
+        setStatedReply(null);
         setPanelError(leadStepErrorMessage(err));
       },
       onSettled: () => setReplyPending(false),
@@ -1353,6 +1382,7 @@ export function EngagedLeadsPage({
 
   const onSetStage = (key: WritableStageKey, next: "outcome" | "never", valueCents?: number) => {
     setPanelError(null);
+    if (selectedLead) setStatedStage({ leadRowId: selectedLead.id, key, next });
     setPanelPending({ key, next });
     setStage.mutate(
       // The amount rides along only when the control asked for one. lead-service refuses
@@ -1366,6 +1396,8 @@ export function EngagedLeadsPage({
         // sets to the whole downstream body verbatim.
         onError: (err) => {
           console.error("[dashboard] setLeadStepStatement failed", err);
+          // Nothing was recorded, so stop showing it — the panel error says why.
+          setStatedStage(null);
           setPanelError(leadStepErrorMessage(err));
         },
         onSettled: () => setPanelPending(null),
@@ -1487,10 +1519,29 @@ export function EngagedLeadsPage({
                 {personLocation && <div><span className="text-gray-500">Location:</span><p className="font-medium">{personLocation}</p></div>}
                 {selectedFull?.departments?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Departments:</span><p className="font-medium">{selectedFull.departments.join(", ")}</p></div> : null}
                 {selectedFull?.functions?.length ? <div className="sm:col-span-2"><span className="text-gray-500">Functions:</span><p className="font-medium">{selectedFull.functions.join(", ")}</p></div> : null}
-                <div><span className="text-gray-500">Status:</span><p className="font-medium flex items-center gap-1.5 flex-wrap"><StatusBadge status={statusOf(selectedLead)} />{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                {(selectedLead.global?.bounced || selectedLead.global?.unsubscribed) && (
+                  <div><span className="text-gray-500">Across every brand:</span><p className="font-medium flex items-center gap-1.5 flex-wrap">{selectedLead.global?.bounced && <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">Global Bounced</span>}{selectedLead.global?.unsubscribed && <span className="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Global Unsubscribed</span>}</p></div>
+                )}
                 {selectedFull?.linkedinUrl && <div className="sm:col-span-2"><span className="text-gray-500">LinkedIn:</span><p><a href={selectedFull.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{selectedFull.linkedinUrl}</a></p></div>}
               </div>
             </div>
+            {/* Campaign scope only. A brand runs several funnels at once, so there is no
+                single chain to walk this lead through and the section states nothing. */}
+            {campaignId && panelFunnel && (
+              <LeadFunnelStageSection
+                funnelName={panelFunnel.name}
+                stages={panelStages}
+                states={panelStates}
+                tracked={panelTracked}
+                delivery={<StatusBadge status={statusOf(selectedLead)} />}
+                implied={panelImplied}
+                values={panelValues}
+                pending={panelPending}
+                error={panelError}
+                onSet={onSetStage}
+                reply={{ kind: shownReplyKind, pending: replyPending, onSet: onSetReply }}
+              />
+            )}
             {selectedOrg && (selectedOrg.name || selectedOrg.primaryDomain || selectedOrg.industry) && (
               <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
                 <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Organization</h3>
@@ -1510,23 +1561,6 @@ export function EngagedLeadsPage({
             {selectedLead.offer && <OfferSection offer={selectedLead.offer} />}
             {selectedAudienceInline && (
               <AudienceSection inline={selectedAudienceInline} full={selectedAudienceFull} />
-            )}
-            {/* Campaign scope only. A brand runs several funnels at once, so there is no
-                single chain to walk this lead through and the section states nothing. */}
-            {campaignId && panelFunnel && (
-              <LeadFunnelStageSection
-                funnelName={panelFunnel.name}
-                stages={panelStages}
-                states={panelStates}
-                tracked={panelTracked}
-                delivery={<StatusBadge status={statusOf(selectedLead)} />}
-                implied={panelImplied}
-                values={panelValues}
-                pending={panelPending}
-                error={panelError}
-                onSet={onSetStage}
-                reply={{ kind: replyKind, pending: replyPending, onSet: onSetReply }}
-              />
             )}
             {/* No `Served:` footer. It printed an internal pipeline instant, in a
                 different date format than every row above it, for a step the customer
