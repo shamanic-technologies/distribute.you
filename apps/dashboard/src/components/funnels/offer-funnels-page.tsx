@@ -11,6 +11,11 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
 import { formatRoi } from "@/lib/format-roi";
 import { formatUsdAdaptive } from "@/lib/format-number";
 import { channelSlugLabel } from "@/lib/campaign-title";
+import { campaignFunnel } from "@/lib/campaign-funnel";
+import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import {
   funnelViews,
   costCoverageNote,
@@ -51,6 +56,7 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
   const orgId = params?.orgId ?? "";
   const brandId = params?.brandId ?? "";
   const offerId = params?.offerId ?? "";
+  const featureSlug = useSoleFeatureSlug();
   const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
 
   const funnels = useAuthQuery(
@@ -66,6 +72,22 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
   // Reveal on SETTLE: a read that errors falls through to a stated empty table rather
   // than holding the page in a skeleton forever.
   const pending = funnels.isPending && !funnels.isError;
+
+  // How many campaigns carry a funnel, counted the way the Campaigns table counts
+  // them: ONE per campaign IDENTITY. campaign-service keeps every superseded row a
+  // workflow switch produced, so the ids the producer sends are the stored rows —
+  // 47 of them for a funnel a customer knows as two campaigns.
+  const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
+  const campaignCountFor = (key: string) => {
+    const wanted = normalizeSalesFunnelKey(key as SalesFunnelKeyWire);
+    return campaignRows.filter(
+      (r) =>
+        r.campaign.funnelKey != null &&
+        normalizeSalesFunnelKey(r.campaign.funnelKey) === wanted,
+    ).length;
+  };
+  // Its mark, off the shared catalogue — the same one the campaigns table draws.
+  const funnelDefFor = (key: string) => campaignFunnel(key as SalesFunnelKeyWire);
 
   return (
     // EMBEDDED is how the offer Overview renders it: an offer sells through funnels,
@@ -132,21 +154,30 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
               rows.map((row) => (
                 <tr key={row.funnelKey} className="border-b border-gray-50 align-top">
                   <td className="px-4 py-3">
-                    {/* The way DOWN: a funnel is carried by campaigns, one per leg as
-                        the product moves, and this is how a reader walks to them. A
-                        query narrowing rather than a route of its own — the campaigns
-                        live under the offer and re-homing them under a funnel segment
-                        would break every link that already points at one. */}
+                    {/* The SAME shape a campaign row wears: the mark, the name, and
+                        the quieter line under it. A funnel reads one way on this table
+                        and the same way in the campaigns table one click down. */}
                     <Link
                       href={`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`}
-                      className="font-medium text-gray-900 hover:underline"
+                      className="flex min-w-0 items-center gap-2.5 group"
                     >
-                      {row.name}
+                      {funnelDefFor(row.funnelKey) && (
+                        <SalesFunnelMark def={funnelDefFor(row.funnelKey)!} size="sm" />
+                      )}
+                      <span className="flex h-8 min-w-0 flex-col justify-center">
+                        <span className="truncate leading-[14px] text-gray-800 group-hover:underline">
+                          {row.name}
+                        </span>
+                        <span className="truncate text-xs leading-[18px] text-gray-500">
+                          {row.steps.join("  \u2192  ")}
+                        </span>
+                      </span>
                     </Link>
-                    <p className="text-xs text-gray-500 mt-0.5">{row.steps.join("  →  ")}</p>
                     <p className="text-[11px] text-gray-400 mt-1">
-                      {row.campaignCount} campaign{row.campaignCount === 1 ? "" : "s"}
-                      {row.channelSlugs.length > 0 && ` · ${row.channelSlugs.map(channelSlugLabel).join(", ")}`}
+                      {campaignCountFor(row.funnelKey)} campaign
+                      {campaignCountFor(row.funnelKey) === 1 ? "" : "s"}
+                      {row.channelSlugs.length > 0 &&
+                        ` \u00b7 ${row.channelSlugs.map(channelSlugLabel).join(", ")}`}
                     </p>
                     {!row.priced && (
                       <p className="text-[11px] text-gray-400 mt-1">
