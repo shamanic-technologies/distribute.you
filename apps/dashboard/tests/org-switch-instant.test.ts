@@ -61,16 +61,19 @@ describe("Org switch is instant to the eye and fails loud", () => {
     ).toBeLessThan(firstAwaitAt);
   });
 
-  it("skips the Clerk join round-trip when the staff member is already a member", () => {
-    // Clerk's own membership list is already loaded client-side, so a present
-    // membership is free and authoritative-positive. Absent is NOT authoritative
-    // (the list is paginated), so we still call the idempotent route then.
+  it("skips the Clerk join round-trip unless Clerk itself refuses the org", () => {
+    // This originally read the client-side membership list to decide. That list is
+    // PAGINATED and only its first page is loaded, so a staff member of many orgs
+    // read as "not a member" for nearly every target and paid a full Clerk Backend
+    // join on nearly every click — one of the three causes of the "switching takes
+    // infinite time" report. `setActive` rejecting IS the membership answer, and it
+    // is authoritative. Fully guarded in org-switch-recovery.test.ts.
     const body = handlerBody();
-    expect(body).toContain("alreadyMember");
-    const memberAt = body.indexOf("alreadyMember");
+    expect(body).not.toContain("alreadyMember");
+    const activateAt = body.indexOf("await activate();");
     const joinAt = body.indexOf("/api/admin/orgs/${clerkOrgId}/join");
     expect(joinAt, "the join route call is gone").toBeGreaterThan(-1);
-    expect(memberAt, "the membership check must gate the join call").toBeLessThan(joinAt);
+    expect(activateAt, "the join must be the recovery from a refusal").toBeLessThan(joinAt);
   });
 
   it("fails loud on a join rejection instead of walking into setActive", () => {
@@ -87,7 +90,7 @@ describe("Org switch is instant to the eye and fails loud", () => {
     // switch revert on its own (#1940). It is caught by the handler's own catch
     // now, which surfaces it.
     const body = handlerBody();
-    expect(body).toContain("await session?.getToken({ skipCache: true })");
+    expect(body).toContain("session.getToken({ skipCache: true })");
     expect(body).not.toContain("getToken({ skipCache: true }).catch");
   });
 
@@ -97,7 +100,7 @@ describe("Org switch is instant to the eye and fails loud", () => {
     // navigation reach the middleware.
     const body = handlerBody();
     const order =
-      /setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/.test(body);
+      /activate\(\)[\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/.test(body);
     expect(order, "setActive → getToken → router.push ordering broken").toBe(true);
   });
 

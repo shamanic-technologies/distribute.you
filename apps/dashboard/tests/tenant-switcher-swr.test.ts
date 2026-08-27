@@ -68,7 +68,7 @@ describe("Tenant switcher SWR identity", () => {
 
   it("still closes the org-switch race (setActive → fresh token → navigate)", () => {
     const match = hook.match(
-      /handleOrgSwitch[\s\S]*?await setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
+      /handleOrgSwitch[\s\S]*?setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
     );
     expect(match, "getToken must sit between setActive and router.push").not.toBeNull();
   });

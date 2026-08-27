@@ -126,7 +126,7 @@ describe("Org switch cross-org isolation framework", () => {
     expect(content).toContain("getTabSessionToken");
     expect(content).toContain("window");
     expect(content).toContain(".Clerk");
-    expect(content).toContain("session?.getToken()");
+    expect(content).toContain("clerk?.session?.getToken(");
     expect(content).toContain("`Bearer ${tabToken}`");
   });
 
@@ -166,7 +166,7 @@ describe("Org switch cross-org isolation framework", () => {
 
   it("handleOrgSwitch awaits setActive before navigating", () => {
     const content = read(tenantSwitchPath);
-    expect(content).toContain("await setActive({ organization: clerkOrgId })");
+    expect(content).toContain("setActive({ organization: clerkOrgId })");
   });
 
   it("handleOrgSwitch re-mints the session token AFTER setActive, BEFORE navigating", () => {
@@ -175,7 +175,7 @@ describe("Org switch cross-org isolation framework", () => {
     // previous org / not-a-member of the target) and bounces the URL back → the
     // god-mode switch reverts on its own. The fresh mint closes that race.
     const content = read(tenantSwitchPath);
-    expect(content).toContain('await session?.getToken({ skipCache: true })');
+    expect(content).toContain('session.getToken({ skipCache: true })');
     const match = content.match(
       /handleOrgSwitch[\s\S]*?setActive\([\s\S]*?getToken\(\{ skipCache: true \}\)[\s\S]*?router\.push/,
     );
