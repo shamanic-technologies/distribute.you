@@ -8,7 +8,7 @@ import posthog from "posthog-js";
 // No user context here (public pages), so the prefill is generic.
 const SUPPORT_PHONE = "33680478702";
 const HREF = `https://wa.me/${SUPPORT_PHONE}?text=${encodeURIComponent(
-  "Hi! I have a question about distribute:",
+  "Hi! I have a question about distribute.you:",
 )}`;
 
 export function SupportWhatsAppButton() {

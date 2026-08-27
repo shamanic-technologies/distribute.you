@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { PROD_URLS } from "@/lib/env-urls";
-import { organizationJsonLd as sharedOrganizationJsonLd } from "@/lib/seo";
+import { SITE_NAME, organizationJsonLd as sharedOrganizationJsonLd } from "@/lib/seo";
 import { INVITE_FORWARD_SCRIPT } from "@/lib/static-html";
 import { SupportWhatsAppButton } from "@/components/support-whatsapp-button";
 
 const SITE_URL = PROD_URLS.landing;
-const SITE_NAME = "distribute";
-const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $400 welcome credits, cancel anytime.";
+const SITE_DESCRIPTION = "Sales cold email outreach done for you. Drop a URL, set a budget, and distribute.you finds prospects, writes emails, sends sequences, qualifies replies with AI, and forwards buyers to Gmail. $400 welcome credits, cancel anytime.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "distribute - Sales cold email outreach done for you",
-    template: "%s | distribute",
+    default: "distribute.you - Sales cold email outreach done for you",
+    template: "%s | distribute.you",
   },
   description: SITE_DESCRIPTION,
   keywords: [
@@ -31,9 +30,9 @@ export const metadata: Metadata = {
     "distribute.you",
     "sales automation",
   ],
-  authors: [{ name: "distribute" }],
-  creator: "distribute",
-  publisher: "distribute",
+  authors: [{ name: "distribute.you" }],
+  creator: "distribute.you",
+  publisher: "distribute.you",
   formatDetection: {
     email: false,
     address: false,
@@ -44,20 +43,20 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "distribute - Sales cold email outreach done for you",
+    title: "distribute.you - Sales cold email outreach done for you",
     description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "distribute - Sales cold email outreach done for you",
+        alt: "distribute.you - Sales cold email outreach done for you",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute - Sales cold email outreach done for you",
+    title: "distribute.you - Sales cold email outreach done for you",
     description: "Drop a URL, set a budget. We find prospects, write emails, send sequences, qualify replies, and forward buyers to Gmail.",
     images: ["/opengraph-image"],
     creator: "@distribute_you",
@@ -86,7 +85,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "distribute",
+  name: "distribute.you",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description: SITE_DESCRIPTION,
@@ -102,7 +101,7 @@ const jsonLd = {
   ],
   provider: {
     "@type": "Organization",
-    name: "distribute",
+    name: "distribute.you",
     url: SITE_URL,
     sameAs: [
       PROD_URLS.github,
@@ -123,7 +122,7 @@ const organizationJsonLd = sharedOrganizationJsonLd(
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "distribute",
+  name: "distribute.you",
   url: SITE_URL,
   description: SITE_DESCRIPTION,
 };
@@ -131,8 +130,8 @@ const websiteJsonLd = {
 const howToJsonLd = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "How to launch sales cold email outreach with distribute",
-  description: "Drop a URL, set a daily budget, and let distribute find prospects, write cold emails, send sequences, qualify replies, and forward buyers to Gmail.",
+  name: "How to launch sales cold email outreach with distribute.you",
+  description: "Drop a URL, set a daily budget, and let distribute.you find prospects, write cold emails, send sequences, qualify replies, and forward buyers to Gmail.",
   step: [
     {
       "@type": "HowToStep",
@@ -144,7 +143,7 @@ const howToJsonLd = {
       "@type": "HowToStep",
       position: 2,
       name: "Set a daily budget",
-      text: "Set a sales outreach budget before launch. distribute builds the list, writes the sequence, and sends from managed infrastructure.",
+      text: "Set a sales outreach budget before launch. distribute.you builds the list, writes the sequence, and sends from managed infrastructure.",
     },
     {
       "@type": "HowToStep",

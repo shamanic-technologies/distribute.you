@@ -271,7 +271,7 @@ describe("MCP descriptor", () => {
       openapi: string;
       documentation: string;
     };
-    expect(body.name).toBe("distribute");
+    expect(body.name).toBe("distribute.you");
     expect(body.servers[0].url).toBe("https://mcp.distribute.you/mcp");
     expect(body.servers[0].transport).toBe("streamable-http");
     expect(body.openapi).toBe("https://api.distribute.you/openapi.json");

@@ -56,7 +56,7 @@ const SALES_COLD_EMAIL: BenchmarkContent = {
   whyMatters: {
     eyebrow: "Solo founder × cold sales",
     title: "Most of your first 100 customers come from a cold inbox",
-    body: "Cold sales email is the highest-leverage channel for a founder who hasn't raised. SEO takes a year. Ads burn your runway. A tight ICP filter + a 3-step sequence + warmed inboxes gets you replies inside a week and customers inside a month. The industry average is 3.43% reply rate; top-quartile campaigns hit 15–25%. The gap is targeting, personalization, and deliverability. distribute runs all three on autopilot, and your first $400 spent is matched in free credits.",
+    body: "Cold sales email is the highest-leverage channel for a founder who hasn't raised. SEO takes a year. Ads burn your runway. A tight ICP filter + a 3-step sequence + warmed inboxes gets you replies inside a week and customers inside a month. The industry average is 3.43% reply rate; top-quartile campaigns hit 15–25%. The gap is targeting, personalization, and deliverability. distribute.you runs all three on autopilot, and your first $400 spent is matched in free credits.",
   },
   studies: [
     {

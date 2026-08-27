@@ -73,7 +73,7 @@ function HeroDashboardMock() {
     <div className="mx-auto w-full max-w-6xl rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden text-left">
       <div className="flex min-h-[520px] min-w-0">
         <aside className="hidden md:flex w-56 flex-col border-r border-gray-200 bg-gray-50 p-5">
-          <div className="font-display font-bold text-gray-900 mb-6">distribute</div>
+          <div className="font-display font-bold text-gray-900 mb-6">distribute.you</div>
           <div className="text-xs text-gray-400 mb-3">Campaign</div>
           <div className="rounded-lg bg-white border border-gray-200 p-3 mb-5">
             <p className="text-sm font-medium text-gray-900">prompthub.ai</p>
@@ -215,15 +215,15 @@ const faqJsonLd = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "What is distribute?",
+      name: "What is distribute.you?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute is a pay-as-you-go platform that runs cold email outreach on your behalf. You give us a URL and a daily budget; we find your buyers, write personalized cold emails, send from agency-warmed inboxes, qualify replies with AI, and forward only the positive ones to your Gmail.",
+        text: "distribute.you is a pay-as-you-go platform that runs cold email outreach on your behalf. You give us a URL and a daily budget; we find your buyers, write personalized cold emails, send from agency-warmed inboxes, qualify replies with AI, and forward only the positive ones to your Gmail.",
       },
     },
     {
       "@type": "Question",
-      name: "How much does distribute cost?",
+      name: "How much does distribute.you cost?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "$25 free credits. No subscription. No credit card. Launch in 5 minutes.",
@@ -231,7 +231,7 @@ const faqJsonLd = {
     },
     {
       "@type": "Question",
-      name: "Can I run distribute myself?",
+      name: "Can I run distribute.you myself?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Yes. The cold email workflow is open source under MIT on GitHub. You can self-host with your own API keys, your own mailbox warmup, and your own infrastructure.",
@@ -250,7 +250,7 @@ const faqJsonLd = {
       name: "How long does it take to warm up a cold mailbox?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "3 to 5 weeks of progressive sending before a cold inbox can safely run real outreach at 40 emails per day (Lemlist Warmup Guide, 2025). distribute uses pre-warmed agency inboxes so you skip this entirely.",
+        text: "3 to 5 weeks of progressive sending before a cold inbox can safely run real outreach at 40 emails per day (Lemlist Warmup Guide, 2025). distribute.you uses pre-warmed agency inboxes so you skip this entirely.",
       },
     },
   ],

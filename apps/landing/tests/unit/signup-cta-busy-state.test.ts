@@ -83,8 +83,8 @@ describe("cache-buster tokens moved with the JS", () => {
       .filter((f) => read(f).includes("js/main.js"));
     expect(pages.length).toBeGreaterThan(0);
     for (const page of pages) {
-      expect(read(page)).toContain("js/main.js?v=10");
-      expect(read(page)).not.toContain("js/main.js?v=9");
+      expect(read(page)).toContain("js/main.js?v=11");
+      expect(read(page)).not.toContain("js/main.js?v=10");
     }
   });
 });

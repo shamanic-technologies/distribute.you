@@ -12,18 +12,18 @@ const TERMS_URL = `${PROD_URLS.landing}/terms`;
 const LAST_UPDATED = "June 24, 2026";
 const COMPANY = "BLOOMING GENERATION";
 const COMPANY_SIREN = "882102775";
-const SERVICE = "distribute";
+const SERVICE = "distribute.you";
 const SUPPORT_EMAIL = "support@distribute.you";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms of Service for the distribute platform — pricing, credits, outreach on your behalf, public performance data, and acceptable use.",
+    "Terms of Service for the distribute.you platform — pricing, credits, outreach on your behalf, public performance data, and acceptable use.",
   alternates: { canonical: TERMS_URL },
   openGraph: {
-    title: "Terms of Service — distribute",
+    title: "Terms of Service — distribute.you",
     description:
-      "How distribute works: pricing, credits, outreach infrastructure, public performance data, and your responsibilities.",
+      "How distribute.you works: pricing, credits, outreach infrastructure, public performance data, and your responsibilities.",
     url: TERMS_URL,
     type: "article",
     images: [
@@ -31,15 +31,15 @@ export const metadata: Metadata = {
         url: DEFAULT_OG_IMAGE_PATH,
         width: 1200,
         height: 630,
-        alt: "distribute — Terms of Service",
+        alt: "distribute.you — Terms of Service",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Terms of Service — distribute",
+    title: "Terms of Service — distribute.you",
     description:
-      "How distribute works: pricing, credits, outreach infrastructure, public performance data, and your responsibilities.",
+      "How distribute.you works: pricing, credits, outreach infrastructure, public performance data, and your responsibilities.",
     images: [DEFAULT_OG_IMAGE_PATH],
     creator: TWITTER_HANDLE,
   },

@@ -10,19 +10,19 @@ const SUPPORT_EMAIL = "support@distribute.you";
 export const metadata: Metadata = {
   title: "Brand assets",
   description:
-    "Download the distribute logo, wordmark, icon, banner, and favicon in SVG, plus colors, typography, and usage guidelines.",
+    "Download the distribute.you logo, wordmark, icon, banner, and favicon in SVG, plus colors, typography, and usage guidelines.",
   alternates: { canonical: BRAND_URL },
   openGraph: {
-    title: "distribute brand assets",
+    title: "distribute.you brand assets",
     description:
       "Logo, wordmark, icon, banner, favicon, colors, and usage guidelines.",
     url: BRAND_URL,
     type: "website",
-    images: [{ url: "/brand/banner.svg", width: 1200, height: 630, alt: "distribute" }],
+    images: [{ url: "/brand/banner.svg", width: 1200, height: 630, alt: "distribute.you" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "distribute brand assets",
+    title: "distribute.you brand assets",
     description: "Logo, wordmark, icon, banner, favicon, colors, and usage guidelines.",
     images: ["/brand/banner.svg"],
   },
@@ -145,7 +145,7 @@ export default function BrandPage() {
         <header className="bp-top">
           <a className="bp-logo" href="/">
             <img className="bp-dmark" src="/brand/logo-mark.svg" alt="" aria-hidden="true" />
-            distribute
+            distribute.you
           </a>
           <a className="bp-back" href="/">
             Back to site
@@ -154,11 +154,11 @@ export default function BrandPage() {
 
         <section className="bp-hero">
           <div className="bp-eyebrow">Brand kit</div>
-          <h1>distribute brand assets</h1>
+          <h1>distribute.you brand assets</h1>
           <p>
             The logo, wordmark, icon, banner, and favicon in SVG, plus our
             colors, typography, and a few rules. Use these to reference or link
-            to distribute. Do not modify or redraw the mark.
+            to distribute.you. Do not modify or redraw the mark.
           </p>
           <a className="bp-btn" href="/brand/distribute-brand.zip" download>
             Download all assets (.zip) ↓
@@ -203,7 +203,7 @@ export default function BrandPage() {
           <div className="bp-grid">
             <div className="bp-card">
               <div className="bp-preview dark" style={{ height: 220 }}>
-                <img src="/brand/banner.svg" alt="distribute banner" loading="lazy" />
+                <img src="/brand/banner.svg" alt="distribute.you banner" loading="lazy" />
               </div>
               <div className="bp-meta">
                 <div className="nm">Banner, 1200 x 630</div>
@@ -272,7 +272,7 @@ export default function BrandPage() {
               <ul>
                 <li>Keep clear space around the logo, at least the height of the mark.</li>
                 <li>Use the on-dark logo on dark, the on-light logo on light.</li>
-                <li>Write the name lowercase: distribute.</li>
+                <li>Write the name lowercase: distribute.you.</li>
                 <li>Scale the SVG. It stays sharp at any size.</li>
               </ul>
             </div>

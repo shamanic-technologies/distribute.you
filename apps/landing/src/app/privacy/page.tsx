@@ -14,12 +14,12 @@ const SUPPORT_EMAIL = "support@distribute.you";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Privacy Policy for distribute, covering account data, outreach data, campaign analytics, and third-party providers.",
+    "Privacy Policy for distribute.you, covering account data, outreach data, campaign analytics, and third-party providers.",
   alternates: { canonical: PRIVACY_URL },
   openGraph: {
-    title: "Privacy Policy - distribute",
+    title: "Privacy Policy - distribute.you",
     description:
-      "How distribute handles account data, outreach data, campaign analytics, and third-party providers.",
+      "How distribute.you handles account data, outreach data, campaign analytics, and third-party providers.",
     url: PRIVACY_URL,
     type: "article",
     images: [
@@ -27,15 +27,15 @@ export const metadata: Metadata = {
         url: DEFAULT_OG_IMAGE_PATH,
         width: 1200,
         height: 630,
-        alt: "distribute - Privacy Policy",
+        alt: "distribute.you - Privacy Policy",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Privacy Policy - distribute",
+    title: "Privacy Policy - distribute.you",
     description:
-      "How distribute handles account data, outreach data, campaign analytics, and third-party providers.",
+      "How distribute.you handles account data, outreach data, campaign analytics, and third-party providers.",
     images: [DEFAULT_OG_IMAGE_PATH],
     creator: TWITTER_HANDLE,
   },
@@ -53,14 +53,14 @@ const SECTIONS = [
   {
     title: "How we use information",
     body: [
-      "We use this information to operate distribute, generate and send outreach on your behalf, measure campaign performance, prevent abuse, provide support, and improve the product.",
+      "We use this information to operate distribute.you, generate and send outreach on your behalf, measure campaign performance, prevent abuse, provide support, and improve the product.",
       "We may publish aggregated or public performance data as described in our Terms, but we do not sell personal information.",
     ],
   },
   {
     title: "Third-party providers",
     body: [
-      "distribute relies on infrastructure and API providers for AI inference, lead enrichment, email delivery, analytics, payments, hosting, and observability.",
+      "distribute.you relies on infrastructure and API providers for AI inference, lead enrichment, email delivery, analytics, payments, hosting, and observability.",
       "Provider access is limited to the information needed to deliver the service and is governed by their own terms and policies.",
     ],
   },
@@ -94,7 +94,7 @@ export default function PrivacyPage() {
           </h1>
           <p className="dy-mono mt-4 text-sm text-[var(--dy-muted)]">Last updated {LAST_UPDATED}</p>
           <p className="dy-body mt-6 text-lg">
-            This Privacy Policy explains how distribute collects, uses, and
+            This Privacy Policy explains how distribute.you collects, uses, and
             protects information when you use our websites, dashboard, APIs,
             and related services.
           </p>

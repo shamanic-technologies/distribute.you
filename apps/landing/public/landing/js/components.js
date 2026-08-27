@@ -6,8 +6,8 @@ const NAV_HTML = `
 <nav id="nav">
   <div class="nav-inner">
     <a href="/" class="nav-logo">
-      <img src="/landing/logo/logo-distribute.svg" class="nav-logo-img" alt="distribute">
-      distribute <span class="nav-chip">beta</span>
+      <img src="/landing/logo/logo-distribute.svg" class="nav-logo-img" alt="distribute.you">
+      distribute.you <span class="nav-chip">beta</span>
     </a>
     <ul class="nav-links">
       <li><a href="/how-it-works" data-path="/how-it-works">How it works</a></li>
@@ -26,7 +26,7 @@ const NAV_HTML = `
   <div class="nav-mobile-top">
     <a href="/" class="nav-mobile-logo">
       <img src="/landing/logo/logo-distribute.svg" alt="">
-      distribute
+      distribute.you
     </a>
     <button class="nav-mobile-close" id="navClose" aria-label="Close menu">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><line x1="4" y1="4" x2="16" y2="16"/><line x1="16" y1="4" x2="4" y2="16"/></svg>
@@ -48,8 +48,8 @@ const FOOTER_HTML = `
     <div class="ft-grid">
       <div class="ft-brand">
         <a href="/" class="nav-logo">
-          <img src="/landing/logo/logo-distribute.svg" class="nav-logo-img" alt="distribute">
-          distribute <span class="nav-chip">beta</span>
+          <img src="/landing/logo/logo-distribute.svg" class="nav-logo-img" alt="distribute.you">
+          distribute.you <span class="nav-chip">beta</span>
         </a>
         <p>AI outreach automation platform. Drop a URL, set a daily budget, get sales.</p>
         <p class="ft-by">Built by <a href="https://twitter.com/kevinlourd">@kevinlourd</a> and contributors.</p>
@@ -82,7 +82,7 @@ const FOOTER_HTML = `
       </div>
     </div>
     <div class="ft-bottom">
-      <span class="ft-copy">&copy; 2026 distribute.</span>
+      <span class="ft-copy">&copy; 2026 distribute.you.</span>
       <div class="ft-links">
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   distribute: floating WhatsApp support button
+   distribute.you: floating WhatsApp support button
    Self-injects a bottom-right FAB linking to our WhatsApp Pro line.
    Self-contained (inlines its own <style>) so it needs no styles.css
    edit / ?v bump, and works on every served page incl. index-v1.html
@@ -9,7 +9,7 @@
   if (document.getElementById('dy-wa-support')) return;
 
   var PHONE = '33680478702';
-  var TEXT = encodeURIComponent('Hi! I have a question about distribute:');
+  var TEXT = encodeURIComponent('Hi! I have a question about distribute.you:');
   var HREF = 'https://wa.me/' + PHONE + '?text=' + TEXT;
 
   var style = document.createElement('style');
