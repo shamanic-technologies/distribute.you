@@ -36,13 +36,13 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/",
     title: "distribute.you Documentation",
     description:
-      "Documentation for distribute.you: AI cold email outreach done for you, reachable from an MCP server, a REST API and a TypeScript client.",
+      "Documentation for distribute.you: AI cold email outreach done for you, reachable from a hosted MCP server, a REST API with a published OpenAPI document, and a command line client.",
   },
   {
     path: "/quickstart",
     title: "Quick Start",
     description:
-      "Get started with distribute.you in 5 minutes. Install the MCP server and launch your first campaign from Claude Code or Cursor.",
+      "Get started with distribute.you in 5 minutes. Connect the hosted MCP server and read your first campaign from Claude Code or Cursor.",
   },
   {
     path: "/authentication",
@@ -60,19 +60,19 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/mcp",
     title: "distribute.you MCP Server",
     description:
-      "Use distribute.you from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client. 35 tools for brands, campaigns, workflows and more.",
+      "Use distribute.you from Claude Code, Claude Desktop, Cursor, or any MCP-compatible client. A hosted server over Streamable HTTP, with tools for brands, campaigns and workflows.",
   },
   {
     path: "/mcp/installation",
     title: "MCP Installation",
     description:
-      "Install the distribute.you MCP server for Claude Code, Claude Desktop, Cursor, and any other MCP-compatible client.",
+      "Connect the hosted distribute.you MCP server from Claude Code, Claude Desktop, Cursor, and any other MCP-compatible client. Nothing to install.",
   },
   {
     path: "/mcp/tools",
     title: "MCP Tools Reference",
     description:
-      "Reference for all 35 distribute.you MCP tools: brands, campaigns, workflows, leads, press kits, billing and more.",
+      "Reference for every tool the hosted distribute.you MCP server exposes, covering brands, campaigns, workflows and targeting.",
   },
   {
     path: "/api",
@@ -117,30 +117,6 @@ export const DOCS_ROUTES: DocsRoute[] = [
       "View AI-generated emails and full outreach sequences for any campaign, with content and send status, via the distribute.you REST API.",
   },
   {
-    path: "/api/outlets",
-    title: "Outlets API",
-    description:
-      "List media outlets and publications discovered for your brand, with domain authority and topic fit, via the distribute.you REST API.",
-  },
-  {
-    path: "/api/journalists",
-    title: "Journalists API",
-    description:
-      "List journalists and reporters discovered for your PR outreach, with their beats, outlets and context, via the distribute.you REST API.",
-  },
-  {
-    path: "/api/articles",
-    title: "Articles API",
-    description:
-      "List and retrieve articles that mention your brand, discovered across your distribute.you PR and outreach campaigns, via the REST API.",
-  },
-  {
-    path: "/api/press-kits",
-    title: "Press Kits API",
-    description:
-      "Generate, list and manage AI-powered press kits, ready-to-send media assets for your brand, via the distribute.you REST API.",
-  },
-  {
     path: "/api/billing",
     title: "Billing API",
     description:
@@ -168,13 +144,13 @@ export const DOCS_ROUTES: DocsRoute[] = [
     path: "/integrations/claude",
     title: "Claude Code Integration",
     description:
-      "Use distribute.you from Claude Code. One command installs the MCP server and 35 tools for brands, campaigns, leads and more.",
+      "Use distribute.you from Claude Code. One command registers the hosted MCP server and its tools for brands, campaigns and workflows.",
   },
   {
     path: "/integrations/claude-desktop",
     title: "Claude Desktop Integration",
     description:
-      "Add the 35 distribute.you tools to Claude Desktop. Configure the MCP server once and automate brand distribution from chat.",
+      "Add the distribute.you tools to Claude Desktop. Register the hosted MCP server once and read your campaigns from chat.",
   },
   {
     path: "/integrations/cursor",

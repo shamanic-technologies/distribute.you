@@ -25,7 +25,7 @@ export default function ZapierIntegrationPage() {
         <h2>Example: Campaign Stats to Slack</h2>
         <ol>
           <li><strong>Trigger:</strong> Schedule (daily)</li>
-          <li><strong>Action 1:</strong> Webhooks by Zapier &rarr; GET <code>https://api.distribute.you/v1/campaigns/stats</code> with header <code>X-API-Key: dist_YOUR_KEY</code></li>
+          <li><strong>Action 1:</strong> Webhooks by Zapier &rarr; GET <code>https://api.distribute.you/v1/campaigns/stats</code> with header <code>Authorization: Bearer distrib.usr_YOUR_KEY</code></li>
           <li><strong>Action 2:</strong> Slack &rarr; Send Channel Message with stats summary</li>
         </ol>
 

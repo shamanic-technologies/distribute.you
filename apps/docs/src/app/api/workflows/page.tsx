@@ -40,14 +40,14 @@ export default function WorkflowsApiPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/workflows
 GET /v1/workflows?featureSlug=sales-email-cold-outreach
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns all workflows, optionally filtered by feature.</p>
 
         <h2>Get Workflow</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/workflows/:workflowId
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>
           Returns full workflow details including the DAG (directed acyclic graph),
@@ -57,7 +57,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <h2>Workflow Summary</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/workflows/:workflowId/summary
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>
           Returns a human-readable summary of what the workflow does, its steps,
@@ -81,7 +81,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <h2>Key Status</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/workflows/:workflowId/key-status
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Checks whether all required API keys are configured for this workflow.</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">

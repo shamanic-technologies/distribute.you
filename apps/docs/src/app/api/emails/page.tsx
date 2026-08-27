@@ -33,14 +33,14 @@ export default function EmailsApiPage() {
         <h2>List Campaign Emails</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/campaigns/:campaignId/emails
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns all generated emails for a campaign with subject, body, and recipient details.</p>
 
         <h2>List Brand Emails</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/emails?brandId=brand_abc123
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns all emails across campaigns for a brand.</p>
 

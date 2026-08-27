@@ -1,5 +1,12 @@
 import { docsMetadata } from "@/lib/docs-metadata";
 import { docsHeading } from "@/lib/docs-routes";
+import {
+  AUTH_HEADER_LINE,
+  MCP_REMOTE_BRIDGE_PACKAGE,
+  MCP_STDIO_BRIDGE_CONFIG,
+  MCP_TOOL_COUNT,
+  MCP_URL,
+} from "@/lib/developer-surfaces";
 
 export const metadata = docsMetadata("/integrations/claude-desktop");
 
@@ -13,22 +20,26 @@ export default function ClaudeDesktopIntegrationPage() {
 
       <div className="prose">
         <h2>Setup</h2>
-        <p>Edit your Claude Desktop configuration file:</p>
+        <p>
+          The distribute.you MCP server is hosted at <code>{MCP_URL}</code> and speaks Streamable
+          HTTP. On a build with remote connectors, add it under{" "}
+          <strong>Settings, Connectors, Add custom connector</strong>, with that URL and this
+          header:
+        </p>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+          <code>{AUTH_HEADER_LINE}</code>
+        </pre>
+        <p>
+          Otherwise bridge the desktop app to the hosted server with{" "}
+          <code>{MCP_REMOTE_BRIDGE_PACKAGE}</code>, which is published on npm and is not ours. Edit
+          your configuration file:
+        </p>
         <ul>
           <li><strong>macOS:</strong> <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></li>
           <li><strong>Windows:</strong> <code>%APPDATA%\Claude\claude_desktop_config.json</code></li>
         </ul>
-
-        <p>Add the distribute.you MCP server:</p>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
-          <code>{`{
-  "mcpServers": {
-    "distribute": {
-      "command": "npx",
-      "args": ["@distribute/mcp", "--api-key=YOUR_KEY"]
-    }
-  }
-}`}</code>
+          <code>{MCP_STDIO_BRIDGE_CONFIG}</code>
         </pre>
 
         <h2>Restart</h2>
@@ -45,7 +56,7 @@ export default function ClaudeDesktopIntegrationPage() {
 
         <h2>Usage</h2>
         <p>
-          Once connected, you can use all 35 distribute.you tools from Claude Desktop.
+          Once connected, you can use all {MCP_TOOL_COUNT} distribute.you tools from Claude Desktop.
           See the <a href="/mcp/tools">Tools Reference</a> for the full list.
         </p>
       </div>

@@ -2,10 +2,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { DocsLayout } from "@/components/docs-layout";
 import { ThemeProvider } from "@/components/theme-provider";
+import { OPENAPI_DOCUMENT_URL } from "@/lib/docs-routes";
+import {
+  AUTH_HEADER_LINE,
+  CLAUDE_CODE_MCP_COMMAND,
+  DEVELOPER_HUB_URL,
+  MCP_TOOLS,
+  MCP_TOOL_COUNT,
+  MCP_URL,
+} from "@/lib/developer-surfaces";
 
 const SITE_URL = "https://docs.distribute.you";
 const SITE_NAME = "distribute.you Documentation";
-const SITE_DESCRIPTION = "Complete documentation for distribute.you - AI-powered distribution automation via MCP. Integration guides for ChatGPT, Claude, Cursor, n8n, Zapier, and Make.com.";
+const SITE_DESCRIPTION = "Complete documentation for distribute.you: the hosted MCP server, the REST API and its OpenAPI document, authentication, and the command line client. Integration guides for Claude Code, Claude Desktop, Cursor, ChatGPT, n8n, Zapier and Make.com.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -100,7 +109,7 @@ const softwareJsonLd = {
   name: "distribute.you",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  description: "AI-powered distribution automation platform. Automate sales outreach, journalist pitches, and hiring campaigns. Provide your URL and budget, and distribute.you handles the rest.",
+  description: "Autonomous sales meetings acquisition, run for you. Give distribute.you a website and a daily budget; it picks the buyers, writes and sends the outreach from domains we own and warm, reads every reply, and passes the interested ones to you. Cold email is the channel it runs, and every outcome is priced against real spend.",
   url: "https://distribute.you",
   offers: {
     "@type": "Offer",
@@ -109,15 +118,72 @@ const softwareJsonLd = {
     description: "Transparent variable costs: pay only for what you use, no half-used subscriptions. Live unit prices at distribute.you/pricing.",
   },
   featureList: [
-    "Sales cold email automation",
-    "Journalist outreach and PR",
-    "Hiring outreach",
-    "Press kit generation",
+    "Sales cold email outreach run for you",
+    "Buyers picked from a website and a budget",
+    "Sending domains we own and warm, so yours is never used",
+    "Replies read and qualified, interested ones forwarded",
     "AI-powered email generation",
     "Workflow ranking system",
-    "MCP server with 35 tools",
-    "REST API and TypeScript client",
+    "Hosted MCP server over Streamable HTTP",
+    "REST API with a published OpenAPI document",
+    "Command line client on npm",
     "Real-time performance dashboards",
+  ],
+};
+
+/**
+ * The developer surfaces, declared as the things they are.
+ *
+ * The audit that prompted this scored developer-resource discoverability as
+ * partial: the resources existed and a name search did not surface them. A
+ * page that only mentions an API in prose is a page a search engine has to
+ * infer an API from. `WebAPI`, `APIReference` and a `SoftwareApplication` for
+ * the MCP server say it outright, and they name the product in every `name`,
+ * so a search for the product by name has something to match. The same three
+ * nodes are published on the apex hub, so the two domains agree.
+ */
+const developerSurfacesJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebAPI",
+      name: "distribute.you API",
+      url: "https://api.distribute.you",
+      description:
+        "REST API for brands, campaigns, audiences, leads, workflows, runs and billing on distribute.you.",
+      documentation: `${SITE_URL}/api/`,
+      termsOfService: "https://distribute.you/terms",
+      provider: {
+        "@type": "Organization",
+        name: "distribute.you",
+        url: "https://distribute.you",
+      },
+    },
+    {
+      "@type": "APIReference",
+      name: "distribute.you OpenAPI document",
+      url: OPENAPI_DOCUMENT_URL,
+      description:
+        "OpenAPI description of every distribute.you API operation, served by the API itself.",
+      programmingModel: "REST",
+      inLanguage: "en",
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "distribute.you MCP server",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Any",
+      url: MCP_URL,
+      description: `Hosted Model Context Protocol server for distribute.you, spoken over Streamable HTTP, exposing ${MCP_TOOL_COUNT} tools. Authenticated with the same API key as the REST API.`,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    },
+    {
+      "@type": "WebPage",
+      name: "distribute.you developer resources",
+      url: DEVELOPER_HUB_URL,
+      description:
+        "Every machine-readable surface distribute.you publishes, at a fixed address: the REST API and its OpenAPI document, the MCP server, the CLI, and the docs.",
+    },
   ],
 };
 
@@ -162,7 +228,7 @@ const faqJsonLd = {
       name: "What is distribute.you?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "distribute.you is an AI-powered distribution automation platform that uses the Model Context Protocol (MCP) to enable AI assistants like ChatGPT, Claude, and Cursor to launch and manage cold email campaigns, find leads, and automate outreach.",
+        text: `distribute.you runs cold email outreach for you: you give it a website and a daily budget, and it picks the buyers, writes and sends the email from domains it owns and warms, and passes the interested replies to you. It publishes a REST API with an OpenAPI document at ${OPENAPI_DOCUMENT_URL}, a hosted Model Context Protocol server at ${MCP_URL}, a command line client on npm, and a page naming all of them at ${DEVELOPER_HUB_URL}, so an AI assistant such as Claude, Cursor or ChatGPT can read and steer it.`,
       },
     },
     {
@@ -170,7 +236,7 @@ const faqJsonLd = {
       name: "How do I install the distribute.you MCP server?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "For Claude Code: run 'claude mcp add distribute -- npx @distribute/mcp --api-key=YOUR_KEY'. For Claude Desktop or Cursor, add the MCP server config to your configuration file. See docs.distribute.you/mcp/installation for details.",
+        text: `The server is hosted, so there is nothing to install. For Claude Code, run: ${CLAUDE_CODE_MCP_COMMAND}. For Claude Desktop or Cursor, register the endpoint ${MCP_URL} with the header ${AUTH_HEADER_LINE}. See docs.distribute.you/mcp/installation for details.`,
       },
     },
     {
@@ -178,7 +244,7 @@ const faqJsonLd = {
       name: "What tools are available?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "The distribute.you MCP server provides 35 tools for managing brands, campaigns, workflows, leads, emails, outlets, journalists, articles, press kits, billing, and costs. See docs.distribute.you/mcp/tools for the full reference.",
+        text: `The hosted distribute.you MCP server exposes ${MCP_TOOL_COUNT} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}. Anything beyond those is reachable over the REST API, whose OpenAPI document is published at ${OPENAPI_DOCUMENT_URL}. See docs.distribute.you/mcp/tools for the full reference.`,
       },
     },
     {
@@ -223,6 +289,10 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(developerSurfacesJsonLd) }}
         />
         <script
           type="application/ld+json"

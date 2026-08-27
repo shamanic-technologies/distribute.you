@@ -49,7 +49,7 @@ export default function FeaturesApiPage() {
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/features
 GET /v1/features?implemented=true
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>
           Returns all available automation features. Filter with <code>implemented=true</code> to
@@ -59,7 +59,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <h2>Get Feature</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/features/:slug
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Returns full feature details including inputs, outputs, charts, and entities.</p>
 
@@ -67,7 +67,7 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`POST /v1/features/:featureSlug/prefill?format=text
 Content-Type: application/json
-X-API-Key: dist_YOUR_KEY
+Authorization: Bearer distrib.usr_YOUR_KEY
 
 {
   "brandIds": ["brand_abc123"]
@@ -83,7 +83,7 @@ X-API-Key: dist_YOUR_KEY
           <code>{`GET /v1/features/:featureSlug/stats
 GET /v1/features/:featureSlug/stats?groupBy=brand
 GET /v1/features/:featureSlug/stats?groupBy=campaign&brandId=brand_abc123
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>
           Returns performance statistics for a feature: total cost, completed runs, active
@@ -95,14 +95,14 @@ X-API-Key: dist_YOUR_KEY`}</code>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/features/stats
 GET /v1/features/stats?groupBy=feature
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>Aggregate performance statistics across all features.</p>
 
         <h2>Stats Registry</h2>
         <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
           <code>{`GET /v1/features/stats/registry
-X-API-Key: dist_YOUR_KEY`}</code>
+Authorization: Bearer distrib.usr_YOUR_KEY`}</code>
         </pre>
         <p>
           Returns the stats key registry: maps stat keys to their type (<code>count</code>,{" "}
