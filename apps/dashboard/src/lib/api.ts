@@ -3325,6 +3325,79 @@ export async function getFeatureRevenue(
 }
 
 /**
+ * An offer's money, ONE ROW PER SALES CHAIN.
+ *
+ * The grain under the offer, and the reason it exists: the product sells a chain one
+ * LEG at a time, so a campaign buys a single link and has no return of its own — the
+ * lifetime revenue sits at the END of the chain. The chain is the finest scope whose
+ * money divides into a return at all.
+ *
+ * ROWS DO NOT SUM TO THE OFFER, deliberately. Money adds (a run belongs to exactly one
+ * chain) but people do not (a lead worked through two chains is ONE lead to the offer
+ * and sits in both rows) and no ratio does. The offer's own read stays the number to
+ * trust for "what did this offer do", and `unattributedCampaignIds` names the campaigns
+ * whose spend is in the offer and in no row.
+ *
+ * ⚠️ `costCoverage` states which dollars the cost is made of. It reads
+ * `platform_spend_only` today: a chain whose last legs are worked by the customer's own
+ * team reads CHEAPER here than it truly is, because what those legs cost THEM is
+ * declared per lead against lead-service and this read does not yet fold it in. The
+ * field is on the wire precisely so a consumer states the gap rather than presenting an
+ * optimistic return as the whole answer.
+ */
+const OfferChainChannelSchema = z.object({
+  slug: z.string(),
+  name: z.string().nullish(),
+});
+const OfferChainRowSchema = z.object({
+  funnelKey: z.string(),
+  name: z.string(),
+  steps: z.array(z.string()),
+  campaignIds: z.array(z.string()),
+  channels: z.array(OfferChainChannelSchema),
+  /** False leaves every money-derived figure null and names the missing ingredient. */
+  priced: z.boolean(),
+  unpricedReason: z.string().nullable(),
+  headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+  costEconomics: z.object({
+    committedCostUsd: z.number().optional(),
+    costOfAcquisitionPct: z.number().nullable(),
+    roiMultiple: z.number().nullable(),
+    costPerAcquisitionUsd: z.number().nullish(),
+  }),
+});
+const OfferChainsResponseSchema = z.object({
+  offerId: z.string(),
+  brandId: z.string(),
+  costBasis: z.string(),
+  /** Which dollars the cost is made of. Rendered, never hidden. */
+  costCoverage: z.string(),
+  chains: z.array(OfferChainRowSchema),
+  unattributedCampaignIds: z.array(z.string()),
+});
+export type OfferChainRow = z.infer<typeof OfferChainRowSchema>;
+export type OfferChains = z.infer<typeof OfferChainsResponseSchema>;
+
+export async function getOfferChains(
+  offerId: string,
+  brandId: string,
+  token?: string,
+): Promise<OfferChains> {
+  const query = new URLSearchParams({ brandId });
+  // Same NET basis as every other money read on this app. Never a per-caller toggle.
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(`/offers/${offerId}/chains?${query.toString()}`, { token });
+  const parsed = OfferChainsResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOfferChains: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getOfferChains: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
  * What an OFFER returned — across every acquisition channel it is sold through.
  *
  * The read above names ONE channel, because a feature IS a channel in this fleet.
