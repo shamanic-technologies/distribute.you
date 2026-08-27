@@ -487,9 +487,9 @@ export function CampaignsTable({
   /** The OFFER whose campaigns to list. Omitted → every campaign of the brand. */
   offerId?: string;
   /**
-   * Narrow to ONE sales chain, which is how the Sales funnels page walks down into
-   * the campaigns carrying a chain. A DISPLAY filter over rows the hook already
-   * fetched: the query key does not change, so arriving here from a chain costs no
+   * Narrow to ONE sales funnel, which is how the Sales funnels page walks down into
+   * the campaigns carrying a funnel. A DISPLAY filter over rows the hook already
+   * fetched: the query key does not change, so arriving here from a funnel costs no
    * request and the two surfaces cannot disagree about a campaign.
    *
    * Normalised on both sides — a funnel key travels under two spellings while the
