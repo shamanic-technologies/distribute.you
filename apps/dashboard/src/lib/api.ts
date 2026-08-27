@@ -3349,6 +3349,20 @@ const OfferChainChannelSchema = z.object({
   slug: z.string(),
   name: z.string().nullish(),
 });
+/**
+ * What the CUSTOMER states their own legs cost them. Never charged, in no ledger of
+ * ours, and it never reaches billing.
+ *
+ * NULL means the statements could not be READ. Zeros mean nobody has stated one. Two
+ * different things a reader acts on differently, so they are never collapsed.
+ */
+const CustomerDeclaredCostSchema = z.object({
+  declaredCostUsd: z.number(),
+  /** How many statements carried a cost. A stated zero is an answer and is counted. */
+  statedCount: z.number(),
+  /** How many did not, because nobody was ever asked. Above 0 = cannot be fully costed. */
+  unstatedCount: z.number(),
+});
 const OfferChainRowSchema = z.object({
   funnelKey: z.string(),
   name: z.string(),
@@ -3359,12 +3373,34 @@ const OfferChainRowSchema = z.object({
   priced: z.boolean(),
   unpricedReason: z.string().nullable(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
+  /** What the customer was CHARGED. Reported apart, never blended into the block below. */
   costEconomics: z.object({
     committedCostUsd: z.number().optional(),
     costOfAcquisitionPct: z.number().nullable(),
     roiMultiple: z.number().nullable(),
     costPerAcquisitionUsd: z.number().nullish(),
   }),
+  customerCost: CustomerDeclaredCostSchema.nullish(),
+  /** Which dollars THIS ROW's figures are made of. */
+  costCoverage: z.string().nullish(),
+  /**
+   * The chain's cost of acquisition WITH the customer's own legs in it, and the return
+   * that divides by it. The byte-same three ratios off the summed basis, so with nothing
+   * declared this block is identical to the charged one and the whole ladder moves
+   * together the day a cost is stated.
+   *
+   * `.nullish()` for rollout tolerance only: required on the wire today.
+   */
+  combinedCostEconomics: z
+    .object({
+      platformCommittedCostUsd: z.number(),
+      customerDeclaredCostUsd: z.number(),
+      committedCostUsd: z.number(),
+      costOfAcquisitionPct: z.number().nullable(),
+      roiMultiple: z.number().nullable(),
+      costPerAcquisitionUsd: z.number().nullable(),
+    })
+    .nullish(),
 });
 const OfferChainsResponseSchema = z.object({
   offerId: z.string(),

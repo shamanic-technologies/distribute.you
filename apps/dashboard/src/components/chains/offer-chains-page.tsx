@@ -19,6 +19,9 @@ import {
 
 const COLUMN_COUNT = 6;
 
+const INVESTED_TIP =
+  "What this funnel has cost all in: what we charged you, plus what you recorded for the steps your own team worked. The second half is never billed; it is here because a funnel you finish yourself would otherwise look cheaper than it is.";
+
 const CHAIN_TIP =
   "A sales funnel is the path from a first signal to a paying client. It is the smallest scope whose money divides into a return, because what a customer is worth is only known at the end of it.";
 
@@ -93,7 +96,12 @@ export function OfferChainsPage() {
               <th className="px-4 py-2 font-medium text-right">% CAC</th>
               <th className="px-4 py-2 font-medium text-right">$ CAC</th>
               <th className="px-4 py-2 font-medium text-right">$ Revenue</th>
-              <th className="px-4 py-2 font-medium text-right">$ Invested</th>
+              <th className="px-4 py-2 font-medium text-right">
+                <span className="inline-flex items-center gap-1">
+                  $ Invested
+                  <InfoTooltip tip={INVESTED_TIP} />
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -153,6 +161,17 @@ export function OfferChainsPage() {
                   </td>
                   <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
                     {fmtUsd(row.investedUsd)}
+                    {/* The split, only where there is one to state. What we charged and
+                        what you recorded are two questions with two owners, and one of
+                        them is what we bill. */}
+                    {row.customerCostUsd !== null && row.customerCostUsd > 0 && (
+                      <p className="text-[11px] text-gray-400">
+                        {fmtUsd(row.platformCostUsd)} us · {fmtUsd(row.customerCostUsd)} you
+                      </p>
+                    )}
+                    {row.partiallyCosted && (
+                      <p className="text-[11px] text-gray-400">At least</p>
+                    )}
                   </td>
                 </tr>
               ))
