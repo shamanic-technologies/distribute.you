@@ -71,6 +71,15 @@ const FOOTER_HTML = `
         </ul>
       </div>
       <div class="ft-col">
+        <h4>Developers</h4>
+        <ul>
+          <li><a href="/developers">Developer resources</a></li>
+          <li><a href="https://docs.distribute.you/">Documentation</a></li>
+          <li><a href="https://api.distribute.you/openapi.json">OpenAPI document</a></li>
+          <li><a href="https://mcp.distribute.you/mcp">MCP server</a></li>
+        </ul>
+      </div>
+      <div class="ft-col">
         <h4>Company</h4>
         <ul>
           <li><a href="/about">About</a></li>

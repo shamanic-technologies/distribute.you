@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>distribute.you developer resources: API, OpenAPI, MCP server, CLI</title>
+  <meta name="description" content="Every machine-readable surface distribute.you publishes, at a fixed address: the REST API and its OpenAPI document, the MCP server, the CLI, and the docs.">
+  <link rel="canonical" href="https://distribute.you/developers">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:site_name" content="distribute.you">
+  <meta property="og:url" content="https://distribute.you/developers">
+  <meta property="og:title" content="distribute.you developer resources: API, OpenAPI, MCP server, CLI">
+  <meta property="og:description" content="Every machine-readable surface distribute.you publishes, at a fixed address: the REST API and its OpenAPI document, the MCP server, the CLI, and the docs.">
+  <meta property="og:image" content="https://distribute.you/opengraph-image">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="distribute.you - Autonomous Sales Meetings Acquisition">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@distribute_you">
+  <meta name="twitter:creator" content="@distribute_you">
+  <meta name="twitter:title" content="distribute.you developer resources: API, OpenAPI, MCP server, CLI">
+  <meta name="twitter:description" content="Every machine-readable surface distribute.you publishes, at a fixed address: the REST API and its OpenAPI document, the MCP server, the CLI, and the docs.">
+  <meta name="twitter:image" content="https://distribute.you/opengraph-image">
+  <link rel="icon" href="/landing/logo/logo-distribute-blue.svg" type="image/svg+xml">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://distribute.you/"},{"@type":"ListItem","position":2,"name":"Developer resources","item":"https://distribute.you/developers"}]},{"@type":"WebPage","name":"distribute.you developer resources","url":"https://distribute.you/developers","description":"Every machine-readable surface distribute.you publishes, at a fixed address: the REST API and its OpenAPI document, the MCP server, the CLI, and the docs.","inLanguage":"en","isPartOf":{"@type":"WebSite","name":"distribute.you","url":"https://distribute.you"}},{"@type":"WebAPI","name":"distribute.you API","url":"https://api.distribute.you","description":"REST API for brands, campaigns, audiences, leads, workflows, runs and billing on distribute.you.","documentation":"https://docs.distribute.you/","termsOfService":"https://distribute.you/terms","provider":{"@type":"Organization","name":"distribute.you","url":"https://distribute.you"}},{"@type":"APIReference","name":"distribute.you OpenAPI document","url":"https://api.distribute.you/openapi.json","description":"OpenAPI 3.0 description of every distribute.you API operation, served by the API itself.","programmingModel":"REST","inLanguage":"en"},{"@type":"SoftwareApplication","name":"distribute.you MCP server","applicationCategory":"DeveloperApplication","operatingSystem":"Any","url":"https://mcp.distribute.you/mcp","description":"Model Context Protocol server for distribute.you over Streamable HTTP, so an agent can read brands, campaigns and campaign stats on a customer's behalf.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"SoftwareApplication","name":"distribute.you CLI","applicationCategory":"DeveloperApplication","operatingSystem":"Any","url":"https://www.npmjs.com/package/@distribute.you/cli","description":"Command line client for the distribute.you API. Prints JSON on stdout and exits non-zero on failure, so it can be driven from a shell or a CI job.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}</script>
+  <link rel="stylesheet" href="css/styles.css?v=12">
+  <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('dt')||'light')</script>
+</head>
+<body class="page-guide">
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<!-- NAV -->
+<div id="site-nav"></div>
+<script src="js/components.js?v=2"></script>
+
+<!-- HERO -->
+<section class="pillar-hero" id="main-content">
+  <div class="wrap">
+    <div class="hero-eyebrow t-lbl a1">
+      <span class="hero-dot" aria-hidden="true"></span>
+      Developers
+    </div>
+    <h1 class="t-hero a2">distribute.you <br>developer resources.</h1>
+    <p class="pillar-sub a3">Everything distribute.you publishes for a program to read, at an address that does not move: the REST API and its OpenAPI document, the MCP server, the command line client, and the documentation. Every link on this page is a live URL you can request right now.</p>
+  </div>
+</section>
+
+<!-- API -->
+<section class="guide-section guide-section-alt">
+  <div class="wrap">
+    <div class="guide-intro r">
+      <h2 class="t-h2">The distribute.you API</h2>
+      <p>The API is the surface everything else is built on. The dashboard, the CLI and the MCP server are all clients of it, so there is nothing they can do that you cannot.</p>
+      <ul>
+        <li><a href="https://api.distribute.you">api.distribute.you</a>: the base URL. Every path below is relative to it.</li>
+        <li><a href="https://api.distribute.you/openapi.json">api.distribute.you/openapi.json</a>: the OpenAPI 3.0 document, served by the API itself rather than kept in a file that drifts. Every operation carries an <code>operationId</code> and a typed response.</li>
+        <li><a href="https://api.distribute.you/docs">api.distribute.you/docs</a>: the same document as a browsable explorer.</li>
+      </ul>
+      <p>Responses carry <code>RateLimit</code>, <code>RateLimit-Policy</code>, <code>RateLimit-Remaining</code> and <code>RateLimit-Reset</code>, and a throttled request answers <code>429</code> with <code>Retry-After</code>. Read those headers rather than guessing at a rate.</p>
+    </div>
+  </div>
+</section>
+
+<!-- AUTH -->
+<section class="guide-section">
+  <div class="wrap">
+    <div class="guide-intro r">
+      <h2 class="t-h2">Authentication</h2>
+      <p>One scheme: an API key sent as a bearer token. The key begins <code>distrib.usr_</code> and carries your organisation and user identity, so there is no second header to set and no org id to pass.</p>
+      <div class="code-block">curl https://api.distribute.you/v1/brands \<br>&nbsp;&nbsp;-H "Authorization: Bearer distrib.usr_..."</div>
+      <p>Create a key at <a href="https://dashboard.distribute.you/api-keys">dashboard.distribute.you/api-keys</a>, or from the API itself with <code>POST /v1/api-keys</code>. A key has no expiry, so revoking it in the dashboard is how you end its access.</p>
+      <p>Two endpoints need no key at all, because the numbers behind them are published: <a href="https://api.distribute.you/v1/costs/platform-prices">/v1/costs/platform-prices</a> is the live unit-cost catalogue we buy at, and <a href="https://api.distribute.you/v1/public/channels">/v1/public/channels</a> is every acquisition channel that can be sold through, with the sales funnels each one supports.</p>
+    </div>
+  </div>
+</section>
+
+<!-- MCP -->
+<section class="guide-section guide-section-alt">
+  <div class="wrap">
+    <div class="guide-intro r">
+      <h2 class="t-h2">The distribute.you MCP server</h2>
+      <p>If you are wiring an agent rather than writing a client, connect the Model Context Protocol server instead of the REST API. It is the supported programmatic surface for acting on a customer's behalf.</p>
+      <ul>
+        <li><a href="https://mcp.distribute.you/mcp">mcp.distribute.you/mcp</a>: the server endpoint, Streamable HTTP transport, OAuth 2.0.</li>
+        <li><a href="/.well-known/mcp.json">/.well-known/mcp.json</a>: the descriptor, so a client can find the server from the hostname alone.</li>
+        <li><a href="https://docs.distribute.you/mcp">docs.distribute.you/mcp</a>: what each tool takes and returns.</li>
+      </ul>
+      <p>Six tools today: <code>distribute_status</code> for who the caller is acting as, <code>distribute_list_brands</code>, <code>distribute_list_campaigns</code>, <code>distribute_campaign_stats</code> for outcomes and cost, <code>distribute_list_workflows</code>, and <code>distribute_suggest_icp</code> to draft an ideal customer profile from a website.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CLI -->
+<section class="guide-section">
+  <div class="wrap">
+    <div class="guide-intro r">
+      <h2 class="t-h2">The distribute.you CLI</h2>
+      <p>From a shell or a CI job the CLI is the shortest path. It authenticates once with an API key, then reads and changes brands, campaigns, leads, audiences, workflows, runs and billing.</p>
+      <div class="code-block">npx @distribute.you/cli --help</div>
+      <p>It prints JSON on stdout, JSON on stderr when it fails, and exits non-zero, so it can be driven without parsing prose. <code>distribute ops</code> lists every operation the API has, read from the API itself rather than from a list that can go stale. The package is on npm as <a href="https://www.npmjs.com/package/@distribute.you/cli">@distribute.you/cli</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section class="guide-section guide-section-alt">
+  <div class="wrap">
+    <div class="guide-intro r">
+      <h2 class="t-h2">Documentation</h2>
+      <ul>
+        <li><a href="https://docs.distribute.you/">docs.distribute.you</a>: the developer documentation.</li>
+        <li><a href="https://docs.distribute.you/openapi">docs.distribute.you/openapi</a>: the machine-readable entry points, gathered on one page.</li>
+        <li><a href="https://github.com/shamanic-technologies">github.com/shamanic-technologies</a>: the source.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- AGENTS -->
+<section class="guide-section">
+  <div class="wrap">
+    <div class="guide-intro r">
+      <h2 class="t-h2">If you are an agent, not a person</h2>
+      <p>Start with <a href="/llms.txt">/llms.txt</a>. It says what distribute.you is, when to reach for it, when not to, and lists every surface on this page in a form you do not have to parse out of HTML.</p>
+      <ul>
+        <li><a href="/llms.txt">/llms.txt</a>: what this site is and how to call it.</li>
+        <li><a href="/sitemap.xml">/sitemap.xml</a>: every indexable URL on this domain.</li>
+        <li><a href="/robots.txt">/robots.txt</a>: the crawler policy. AI training and AI search crawlers are welcome.</li>
+      </ul>
+      <p>Every statically served page on this domain also answers as markdown. Send <code>Accept: text/markdown</code> and you get the content without the markup; responses carry <code>Vary: Accept</code>, and a request that accepts neither HTML nor markdown gets a <code>406</code> rather than a document it said it could not read.</p>
+      <div class="code-block">curl -H "Accept: text/markdown" https://distribute.you/developers</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT TO BUILD -->
+<section class="guide-section guide-section-alt">
+  <div class="wrap">
+    <div class="guide-intro r">
+      <h2 class="t-h2">What people build on this</h2>
+      <p>The common one is reporting: pull campaign outcomes and their cost into whatever your team already looks at, so the acquisition numbers sit beside the rest of the business instead of in another tab. <a href="/performance">Our own published numbers</a> come from the same endpoints.</p>
+      <p>The other is starting campaigns from somewhere else. If you already know a customer's website, a brand and a campaign can be created without anyone opening the dashboard. Pricing and how the budget is charged are on the <a href="/pricing">pricing page</a>, and the agency model behind it is on the <a href="/about">about page</a>.</p>
+      <p>If something here is missing or wrong, write to <a href="mailto:support@distribute.you">support@distribute.you</a>. The people who answer are the people who build it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<div id="site-footer"></div>
+
+<script src="js/main.js?v=11" defer></script>
+<script src="js/support-button.js?v=1"></script>
+</body>
+</html>

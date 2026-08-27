@@ -44,7 +44,8 @@ Do NOT reach for distribute.you when:
    served page answers `text/markdown; charset=utf-8` and every response carries
    `Vary: Accept`.
 2. For live prices and live performance, read the endpoints under **Developer
-   resources** rather than scraping a page.
+   resources** rather than scraping a page. https://distribute.you/developers is
+   the same list as a page, with the authentication scheme spelled out.
 3. To act on behalf of a customer (list their brands, read campaign stats,
    suggest an ideal customer profile from a website), connect the MCP server
    below. It is the supported programmatic surface.
@@ -61,6 +62,9 @@ stderr when it fails, and exits non-zero, so it can be driven without parsing pr
 than from a list that can go stale.
 
 ## Developer resources
+
+All of these are gathered, named and explained on one page:
+https://distribute.you/developers
 
 - Documentation: https://docs.distribute.you/
 - OpenAPI document: https://api.distribute.you/openapi.json
@@ -100,6 +104,8 @@ than from a list that can go stale.
 - [Performance](https://distribute.you/performance): public leaderboard of workflow performance by cost per positive reply, with per-brand and per-workflow breakdowns
 - [Use cases](https://distribute.you/use-cases): founders, agencies, consultants, B2B brands
 - [About](https://distribute.you/about): the agency model, how billing works, what is guaranteed
+- [Developers](https://distribute.you/developers): the API and its OpenAPI document, how a key
+  authenticates, the MCP server, the CLI, and the machine-readable files on this domain
 - [Contact](https://distribute.you/contact): support, press, and the registered company
 - [Investors](https://distribute.you/investors): live platform metrics, growth data, infrastructure, SAFE round details, ICP definition
 - [Blog](https://distribute.you/blog): playbooks, benchmarks, field notes for solo builders
