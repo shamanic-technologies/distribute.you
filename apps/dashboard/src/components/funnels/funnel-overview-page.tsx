@@ -12,6 +12,7 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
+import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 
 /**
  * ONE sales funnel, answered the way its offer is answered.
@@ -26,9 +27,15 @@ import { scopeIsLearning } from "@/lib/learning-threshold";
  *   - it charts the RETURN, not the per-day outreach bars. Outreach is what a CHANNEL
  *     does and a funnel carries several, so the bars would describe one of its legs;
  *     the return is what the whole funnel is judged on.
- *   - it claims no daily budget. Money is funded per (funnel, channel, offer), so a
- *     funnel with several channels has no single ceiling of its own; the card states
- *     what was spent and claims none.
+ *   - it claims no per-day OUTREACH, for the same reason: outreach is what a channel
+ *     does and a funnel carries several.
+ *
+ * It DOES state a daily budget, and that is the one figure here the producer does not
+ * total: money is funded per (funnel, channel, offer), so a funnel's ceiling is the sum
+ * of the campaigns selling it, which `useRunningDailyBudgetCents` narrows from the rows
+ * campaign-service already served. `RUNNING` rather than configured, like every other
+ * grain — a paused channel's ceiling is not money this funnel may spend today, and the
+ * numerator beside it is what it actually spent.
  *
  * A funnel this offer does not sell answers 404 upstream rather than handing back the
  * offer's numbers under a funnel's name, and this states that rather than a zero.
@@ -43,6 +50,17 @@ export function FunnelOverviewPage() {
   const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
   const wanted = rawKey ? normalizeSalesFunnelKey(rawKey as SalesFunnelKeyWire) : null;
   const enabled = Boolean(brandId && offerId && rawKey);
+
+  // What this funnel may spend TODAY: the running ceilings of the campaigns selling it,
+  // narrowed to THIS offer — billing keys a ceiling on the triple, so a bare funnel
+  // would carry a sibling offer's money under this one's name. Null while the read is in
+  // flight or has failed, which the card renders as no denominator rather than as a zero
+  // ceiling.
+  const { cents: funnelDailyBudgetCents } = useRunningDailyBudgetCents(brandId, {
+    offerId,
+    funnelKey: rawKey || null,
+    enabled,
+  });
 
   const revenue = useAuthQuery(
     ["offerFunnelRevenue", brandId, offerId, wanted ?? "none"],
@@ -98,10 +116,12 @@ export function FunnelOverviewPage() {
         // make one level up.
         showActivityChart={false}
         showRoiTrend
-        // Money is funded per (funnel, channel, offer), so a funnel carrying several
-        // channels has no single ceiling of its own to compare its spend against.
-        dailyBudgetCents={null}
-        budgetNote="There is no daily budget for a single sales funnel: money is funded per channel, so this is what the funnel spent, with no ceiling of its own to compare it against."
+        // Every other Overview states a ceiling beside today's spend; this one used to
+        // claim none, on the reasoning that money is funded per channel. That is why the
+        // figure has to be SUMMED rather than read, not a reason to withhold it: the
+        // funnel's ceiling is exactly the channels selling it, and a bare number with no
+        // denominator reads as a total on a card whose neighbour really is one.
+        dailyBudgetCents={funnelDailyBudgetCents}
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}

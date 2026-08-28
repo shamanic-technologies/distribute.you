@@ -43,9 +43,19 @@ describe("a sales funnel answers at its OWN grain", () => {
     expect(PAGE).toContain("showOutreach={false}");
   });
 
-  it("claims no daily budget, because money is funded per channel", () => {
-    expect(PAGE).toContain("dailyBudgetCents={null}");
-    expect(PAGE).toContain("budgetNote=");
+  // Money is funded per (funnel, channel, offer), so a funnel HAS a ceiling — it is just
+  // the one grain the producer does not total, which is why it is summed from the served
+  // campaign rows rather than read. The page used to claim none at all, and a bare figure
+  // with no denominator reads as a total beside a card whose neighbour really is one.
+  it("states the funnel's own running ceiling, narrowed to this offer", () => {
+    expect(PAGE).toContain("useRunningDailyBudgetCents(brandId, {");
+    expect(PAGE).toContain("funnelKey: rawKey || null");
+    expect(PAGE).toContain("dailyBudgetCents={funnelDailyBudgetCents}");
+    // The offer is load-bearing: billing's per-pair figure spans every offer selling it.
+    const at = PAGE.indexOf("useRunningDailyBudgetCents(brandId, {");
+    expect(PAGE.slice(at, at + 200)).toContain("offerId,");
+    // No note explaining an absent denominator, because there is no longer one absent.
+    expect(PAGE).not.toContain("budgetNote=");
   });
 
   it("gates the ratios on the campaigns carrying THIS funnel", () => {

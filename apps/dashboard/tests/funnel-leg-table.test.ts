@@ -51,11 +51,40 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(table).toContain("acquisitionChannelForFeatureSlug(row.campaign.featureSlug, channels)");
   });
 
-  it("names an arrow nobody sells us as one the brand does itself", () => {
-    // Not a dash: an absent channel reads as a gap, which is a different statement
-    // from an arrow the customer works at their own side.
-    expect(table).toContain('viaNote="Done by you"');
-    expect(identity).toContain("viaNote");
+  // `Done by you` was one sentence for TWO different parties, and it was wrong on the
+  // arrows we work ourselves: a customer reading it on `Sales interest -> Meeting booked`
+  // concludes nobody is answering the replies their budget just bought.
+  it("names WHO works an arrow nobody sells us, in the channel's own shape", () => {
+    expect(table).toContain("statesOperator");
+    expect(table).not.toContain("Done by you");
+    expect(identity).toContain("funnelLegOperator");
+    expect(identity).toContain("funnelLegOperatorLabel");
+    // Our own mark for our arrows, the brand's logo for theirs — the same `Via <mark>
+    // <name>` line a channel renders, so the two read as one vocabulary.
+    expect(identity).toContain("/logo-distribute.svg");
+    expect(identity).toContain("<BrandLogo");
+    // The brand is read off the open tenant, not passed in: every surface rendering this
+    // is already inside that brand and the hook is the one home for its name and logo.
+    expect(identity).toContain("useTenantSwitcher()");
+  });
+
+  // The status pill on the row already says the campaign is stopped; `Learning` beside it
+  // promises a figure that cannot arrive until the customer restarts it, and the
+  // shared-arrow pointer sends them to a row that says nothing about why this one is
+  // quiet. So a paused row states the same word, in the same grey, as its own pill.
+  it("states Paused, not Learning, on a row whose campaign is stopped", () => {
+    expect(legCells).toContain("if (paused) return <LearningTag withInfo={false} paused />;");
+    // The gate is threaded from the CALL SITE, or the component is correct and the
+    // feature is entirely absent.
+    expect(table).toContain("paused={campaign ? !isActiveStatus(campaign.campaign.status) : false}");
+    expect(table).toContain("paused={!isActiveStatus(row.campaign.status)}");
+  });
+
+  // The column heading already says what the rate is a share of, and the rider named the
+  // step directly ABOVE this row on a walk that reads top to bottom.
+  it("states the conversion rate without restating the step before it", () => {
+    expect(legCells).toContain("conversionFromPreviousPct.toFixed(1)");
+    expect(legCells).not.toContain("step.fromStep.toLowerCase()");
   });
 
   it("leads a row with the LEG's mark, falling back to the funnel's", () => {

@@ -533,6 +533,7 @@ function LegOutcomeCells({
   outcomes,
   sharesArrow,
   arrowLead,
+  paused = false,
 }: {
   step: FunnelStepRow | null;
   /**
@@ -546,6 +547,11 @@ function LegOutcomeCells({
   /** This row is the first of its arrow, so it is the one that states the arrow's own
    *  figures. Every later row of the same arrow points back at it. */
   arrowLead: boolean;
+  /** The campaign on this row is STOPPED. It outranks every other reason a derived
+   *  figure is withheld: `Learning` promises a number that cannot arrive until the
+   *  customer restarts it, and the shared-arrow pointer sends them to a row that says
+   *  nothing about why this one produced nothing. */
+  paused?: boolean;
 }) {
   // The rung's cost and rate are FUNNEL-scoped on EVERY row — the `$ / Outcome` tooltip
   // says so outright ("what reaching this step has cost you, not what this one leg
@@ -561,6 +567,10 @@ function LegOutcomeCells({
   // is measured is never called thin because one of its campaigns is quiet.
   const thin = isLearning((sharesArrow ? step?.recipientsReached : outcomes) ?? undefined);
   const derived = (node: React.ReactNode) => {
+    // A stopped campaign says so, before anything else. Same word and same grey the
+    // status pill on this very row wears, so one campaign is never described two ways
+    // across one line.
+    if (paused) return <LearningTag withInfo={false} paused />;
     // The shared (i), never a native `title` — dead on a phone, and this is the one cell
     // on the row whose emptiness needs explaining.
     if (!statesArrowFigures)
@@ -596,14 +606,12 @@ function LegOutcomeCells({
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
         {derived(
-          step?.conversionFromPreviousPct == null ? (
-            "—"
-          ) : (
-            <>
-              {step.conversionFromPreviousPct.toFixed(1)}%{" "}
-              <span className="text-xs text-gray-400">of {step.fromStep.toLowerCase()}</span>
-            </>
-          ),
+          // The rate alone. The column heading already says what it is a share of, and
+          // the rider repeated the step BEFORE this one on every row of a walk that
+          // reads top to bottom — a second name for the line directly above.
+          step?.conversionFromPreviousPct == null
+            ? "—"
+            : `${step.conversionFromPreviousPct.toFixed(1)}%`,
         )}
       </td>
     </>
@@ -687,7 +695,7 @@ export function FunnelLegTable({
                       funnel={funnel}
                       featureSlug={campaign?.campaign.featureSlug ?? null}
                       leg={leg}
-                      viaNote="Done by you"
+                      statesOperator
                     />
                   </td>
                   {/* A campaign states its OWN count; an arrow nobody of ours performs
@@ -701,6 +709,7 @@ export function FunnelLegTable({
                     }
                     sharesArrow={sharesArrow}
                     arrowLead={arrowLead}
+                    paused={campaign ? !isActiveStatus(campaign.campaign.status) : false}
                   />
                   {/* Money the CAMPAIGN spent and may spend. An arrow the brand works
                       itself costs us nothing to run, so it states neither rather than $0
@@ -738,7 +747,13 @@ export function FunnelLegTable({
                   </td>
                   {/* A campaign this funnel has no arrow for has no rung to read, so it
                       states nothing rather than borrowing another arrow's figures. */}
-                  <LegOutcomeCells step={null} outcomes={undefined} sharesArrow={false} arrowLead />
+                  <LegOutcomeCells
+                    step={null}
+                    outcomes={undefined}
+                    sharesArrow={false}
+                    arrowLead
+                    paused={!isActiveStatus(row.campaign.status)}
+                  />
                   <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
                     {fmtUsd(row.revenue?.committedCostUsd)}
                   </td>

@@ -899,6 +899,24 @@ describe("Sales Funnels card", () => {
     expect(mark).toContain('weight="duotone"');
   });
 
+  // A funnel's tile wears the BRAND's primary, not one of the four catalogue tones.
+  // The mark is the one thing a customer meets on every surface of their own
+  // dashboard, and four fixed accents walking down a page read as ours rather than
+  // theirs. `bg-brand-50` / `text-brand-600` are the ramp `:root[data-brand-tint]`
+  // re-declares at the brand's hue, so it rotates by construction — no `tone-tile`
+  // opt-in, because the whole ramp already IS the brand's.
+  it("draws the tile in the brand's own ramp, not a per-funnel tone", () => {
+    expect(mark).toContain("bg-brand-50");
+    expect(mark).toContain('className="text-brand-600"');
+    expect(mark).not.toContain("def.tone");
+    expect(mark).not.toContain("tone-tile");
+    // Both weights must survive dark mode, or the tile paints a light block (fill) or a
+    // near-black glyph (text) on the dark surface.
+    const globals = read("../src/app/globals.css");
+    expect(globals).toContain("html.dark .bg-brand-50 {");
+    expect(globals).toContain("html.dark .text-brand-600 {");
+  });
+
   it("gives each funnel its own icon, declared once", () => {
     const icons = [
       "ChatsCircleIcon",
