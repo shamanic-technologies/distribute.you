@@ -4,6 +4,9 @@ import type { SalesFunnelDef } from "@/lib/sales-funnels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignLegFor, campaignLegLabel, type CampaignLeg } from "@/lib/campaign-leg";
 import { funnelLegMarkFor } from "@/lib/funnel-leg-marks";
+import { funnelLegOperator, funnelLegOperatorLabel } from "@/lib/funnel-leg-operator";
+import { useTenantSwitcher } from "@/lib/use-tenant-switcher";
+import { BrandLogo } from "@/components/brand-logo";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
@@ -99,12 +102,17 @@ export function CampaignIdentity({
   funnel,
   featureSlug,
   leg: legOverride,
-  viaNote,
+  statesOperator = false,
 }: CampaignIdentityParts & {
-  /** What the second line reads when there is NO channel — "Done by you" on an arrow
-   *  the brand works itself. Without it an absent channel reads as a gap, which is a
-   *  different statement from a leg nobody sells us. */
-  viaNote?: string;
+  /**
+   * This surface walks a funnel ARROW by arrow, so a row with no channel is an arrow
+   * nobody sells us rather than a campaign whose channel failed to resolve. It then
+   * states WHO works it, in the same `Via <mark> <name>` shape a channel uses.
+   *
+   * Off by default: everywhere else an absent channel really is a gap, and claiming a
+   * team for it would name one of two parties at random.
+   */
+  statesOperator?: boolean;
 }) {
   const channel = useChannelParts(featureSlug);
   const leg = legOverride ?? campaignLegFor(funnel, channel?.def?.legs);
@@ -136,12 +144,57 @@ export function CampaignIdentity({
               {channel.def && <AcquisitionChannelMark def={channel.def} size="xs" />}
               <span className="truncate">{channel.label}</span>
             </>
+          ) : statesOperator && leg ? (
+            <OperatorVia fromKey={leg.fromKey} toKey={leg.toKey} />
           ) : (
-            <span className="truncate">{viaNote ?? "\u2014"}</span>
+            <span className="truncate">{"\u2014"}</span>
           )}
         </span>
       </div>
     </div>
+  );
+}
+
+/**
+ * WHO works an arrow no campaign performs, drawn exactly like the channel it stands in
+ * for: `Via <mark> <name> team`.
+ *
+ * It replaced `Done by you`, which was one sentence for two different parties and was
+ * wrong on the arrows we do ourselves — a customer read it as "nobody is answering the
+ * replies I just paid for". `funnelLegOperator` owns the split; this only draws it.
+ *
+ * The brand half reads the OPEN brand off the tenant switcher rather than taking a
+ * prop: every surface that renders this is already inside that brand, the hook is the
+ * one home for its name and logo, and its reads are the keys the chrome already polls,
+ * so naming the team costs no request. A name still resolving states `Your team`, never
+ * a blank — see `funnelLegOperatorLabel`.
+ */
+function OperatorVia({ fromKey, toKey }: { fromKey: string | null; toKey: string }) {
+  const { displayBrand } = useTenantSwitcher();
+  const operator = funnelLegOperator(fromKey, toKey);
+  const label = funnelLegOperatorLabel(operator, displayBrand?.name);
+  return (
+    <>
+      <span className="shrink-0">Via</span>
+      {operator === "platform" ? (
+        /* Our own mark, from the same file the tab favicon serves. */
+        <img
+          src="/logo-distribute.svg"
+          alt=""
+          width={14}
+          height={14}
+          className="h-[14px] w-[14px] shrink-0"
+        />
+      ) : (
+        <BrandLogo
+          domain={displayBrand?.domain ?? null}
+          size={14}
+          className="h-[14px] w-[14px] shrink-0 rounded"
+          fallbackClassName="h-[14px] w-[14px] shrink-0 text-gray-400"
+        />
+      )}
+      <span className="truncate">{label}</span>
+    </>
   );
 }
 

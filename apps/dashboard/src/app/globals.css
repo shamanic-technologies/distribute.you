@@ -260,6 +260,12 @@ html.dark .hover\:text-gray-600:hover { color: var(--dy-sub); }
 html.dark .bg-brand-50 { background-color: oklch(74% 0.17 258 / 0.15); }
 html.dark .bg-brand-100 { background-color: oklch(74% 0.17 258 / 0.2); }
 html.dark .border-brand-200 { border-color: oklch(74% 0.17 258 / 0.3); }
+/* The brand ramp's own TEXT weight in dark. `brand-600` is a 54%-lightness token —
+   correct on the white surface, near-invisible on the dark one — and it had no remap
+   because nothing wore it as a foreground until the sales-funnel mark did. Same 74%
+   lightness the `bg-brand-50` fill beside it uses, and restated in the tint block below
+   like every other literal-hue brand utility. */
+html.dark .text-brand-600 { color: oklch(74% 0.17 258); }
 
 /* Status/accent backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15); }
@@ -455,6 +461,9 @@ html.dark[data-brand-tint] body::before {
 
 /* Dark-mode brand surfaces. These are utility remaps written as literal colours
  * (they carry an alpha the ramp steps do not), so each one is restated. */
+html.dark[data-brand-tint] .text-brand-600 {
+  color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258));
+}
 html.dark[data-brand-tint] .bg-brand-50 {
   background-color: oklch(74% calc(0.17 * var(--brand-chroma-scale, 1)) var(--brand-hue, 258) / 0.15);
 }

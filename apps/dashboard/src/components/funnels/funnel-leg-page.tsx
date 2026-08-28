@@ -43,7 +43,7 @@ import type { ConversionLead, SignalSeries } from "@/lib/revenue-view";
  * until now the only way to record that a meeting happened was to open one lead at a time
  * and state it on its panel. The board here does it two columns at a time.
  *
- * It is reached from a `Done by you` row, and from nowhere else. An arrow we run opens
+ * It is reached from a row nobody sells us a campaign for, and from nowhere else. An arrow we run opens
  * its CAMPAIGN instead — that page has a budget, a status and settings this one has
  * nothing to say about, and a campaign is the thing being managed there.
  *

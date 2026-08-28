@@ -33,10 +33,29 @@ describe("the running daily budget is read, never rebuilt in the browser", () =>
   });
 
   it("narrows to an offer by SELECTING the offer's own served total", () => {
-    // `offers` carries each offer's own running figure, so the offer case is a lookup. A `reduce`
-    // here would mean the browser had gone back to adding ceilings up.
+    // `offers` carries each offer's own running figure, so the offer case is a lookup — never a
+    // sum of the campaigns under it, which is what the old browser join did.
     expect(hook).toContain("data.offers.find((o) => o.offerId === offerId)");
-    expect(hook).not.toContain("reduce(");
+    expect(hook).not.toContain("data.offers.filter");
+    expect(hook).not.toContain("data.offers\n");
+  });
+
+  // A FUNNEL is the one grain the producer does not total: it decomposes by offer and by campaign,
+  // and a funnel is neither. So this case adds up the campaign rows it already served — the only
+  // sum in the file, and it is a sum of SERVED per-campaign figures rather than a re-derivation of
+  // the join above (no campaign list, no budget map, no status pairing).
+  it("sums the funnel's own campaigns, because no served total exists at that grain", () => {
+    expect(hook).toContain("normalizeSalesFunnelKey");
+    expect(hook).toContain("data.campaigns");
+    expect(hook).toContain("reduce((sum, c) => sum + c.runningDailyBudgetCents, 0)");
+  });
+
+  // billing keys a ceiling on (funnel x channel x offer), so a funnel with no offer beside it spans
+  // every offer selling it — and would print a sibling offer's money under this one's name.
+  it("narrows the funnel sum to the offer when one is given", () => {
+    const at = hook.indexOf("wantedFunnel");
+    expect(at).toBeGreaterThan(-1);
+    expect(hook.slice(at, at + 700)).toContain("offerId ? c.offerId === offerId : true");
   });
 
   it("reports null — not zero — while the read is unresolved or failed", () => {
