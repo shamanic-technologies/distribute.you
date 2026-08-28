@@ -293,6 +293,18 @@ html.dark .border-green-200 { border-color: rgba(34, 197, 94, 0.3); }
 html.dark .text-red-600 { color: #fca5a5; }
 html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
+/* The orange text/border/track weights the charter's TERTIARY reads through (the
+   Learning tag and the learning countdown band, i.e. every campaign surface that is
+   waiting on a figure). Same gap the purple pair above had, and the same direction:
+   the `-50` fill was remapped years before the weights beside it, so a band legible
+   in the light default carried near-black text, an invisible border and a track that
+   outshone its own fill. `bg-orange-600` (the fill) is deliberately absent — a
+   saturated mid tone reads correctly on the dark surface as-is, exactly like
+   `bg-purple-600` above. */
+html.dark .text-orange-600 { color: #fb923c; }
+html.dark .text-orange-700 { color: #fb923c; }
+html.dark .border-orange-200 { border-color: rgba(249, 115, 22, 0.3); }
+html.dark .bg-orange-200 { background-color: rgba(249, 115, 22, 0.25); }
 html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15); }
 /* The blue and indigo 700-weight text, and the indigo border, that the leads board's
    source pills read through — one pill per column, saying whether the platform
@@ -568,4 +580,36 @@ html.dark:root[data-brand-tint] .tone-tile.bg-orange-50 {
 html.dark:root[data-brand-tint] .tone-tile.text-orange-600,
 html.dark:root[data-brand-tint] .tone-tile .text-orange-600 {
   color: oklch(70.5% 0.187 calc(47.6 + var(--brand-hue-delta, 0)));
+}
+/* The remaining orange weights the Learning tag and its countdown band read through.
+   Same discipline as the purple border above: a tile that rotates its fill and not its
+   border renders two hues at once, and the band adds a 700-weight heading and both
+   halves of a progress bar. L/C read off the computed tokens, never the gamut-mapped
+   hex — Tailwind's orange ramp shifts hue across steps (50 sits at 73.7, 600 at 41.1),
+   so each weight carries its own base. */
+:root[data-brand-tint] .tone-tile.text-orange-700,
+:root[data-brand-tint] .tone-tile .text-orange-700 {
+  color: oklch(55.3% 0.195 calc(38.402 + var(--brand-hue-delta, 0)));
+}
+:root[data-brand-tint] .tone-tile.border-orange-200 {
+  border-color: oklch(90.1% 0.076 calc(70.697 + var(--brand-hue-delta, 0)));
+}
+:root[data-brand-tint] .tone-tile .bg-orange-200 {
+  background-color: oklch(90.1% 0.076 calc(70.697 + var(--brand-hue-delta, 0)));
+}
+:root[data-brand-tint] .tone-tile .bg-orange-600 {
+  background-color: oklch(64.6% 0.222 calc(41.116 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile.text-orange-700,
+html.dark:root[data-brand-tint] .tone-tile .text-orange-700 {
+  color: oklch(70.5% 0.187 calc(47.6 + var(--brand-hue-delta, 0)));
+}
+html.dark:root[data-brand-tint] .tone-tile.border-orange-200 {
+  border-color: oklch(70.5% 0.187 calc(47.6 + var(--brand-hue-delta, 0)) / 0.3);
+}
+html.dark:root[data-brand-tint] .tone-tile .bg-orange-200 {
+  background-color: oklch(70.5% 0.187 calc(47.6 + var(--brand-hue-delta, 0)) / 0.25);
+}
+html.dark:root[data-brand-tint] .tone-tile .bg-orange-600 {
+  background-color: oklch(70.5% 0.187 calc(47.6 + var(--brand-hue-delta, 0)));
 }
