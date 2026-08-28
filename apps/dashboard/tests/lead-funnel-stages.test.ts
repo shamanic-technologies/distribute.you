@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isWritableStage,
   saleValueCentsFrom,
   stageRequiresValue,
   stepCostCentsFrom,
   LEAD_STAGE_KEYS,
+  leadFunnelLegStages,
   leadFunnelStages,
   trackedStages,
   WRITABLE_STAGE_KEYS,
@@ -218,5 +219,80 @@ describe("stepCostCentsFrom", () => {
 
   it("refuses everything that is not an amount, negatives included", () => {
     for (const bad of ["abc", "-5", "-0.01", "1,2,x"]) expect(stepCostCentsFrom(bad)).toBeNull();
+  });
+});
+
+
+describe("leadFunnelLegStages", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const reply = SALES_FUNNELS.find((f) => f.key === "reply_meeting")!;
+  const labels = (stages: { label: string }[]) => stages.map((x) => x.label);
+
+  it("states ONE step for an ENTRY leg, and the rest of the funnel as later", () => {
+    // Cold email puts a lead onto the reply funnel and performs no other arrow of it.
+    // A panel that also offered Meeting booked / attended / Paid client would be
+    // offering controls for three arrows that campaign does not run.
+    const walk = leadFunnelLegStages(reply.key, { fromIndex: null, toIndex: 0 });
+    expect(labels(walk.stages)).toEqual(["Replied"]);
+    expect(labels(walk.later)).toEqual(["Meeting booked", "Meeting attended", "Paid client"]);
+  });
+
+  it("states BOTH steps of an internal leg, the one it converts from and the one it converts to", () => {
+    // A closing team converts an attended meeting into a paid client. Somebody working
+    // that arrow legitimately has to say the meeting was attended before the deal.
+    const walk = leadFunnelLegStages(reply.key, { fromIndex: 2, toIndex: 3 });
+    expect(labels(walk.stages)).toEqual(["Meeting attended", "Paid client"]);
+    expect(walk.later).toEqual([]);
+  });
+
+  it("falls back to the WHOLE funnel when no leg is resolvable", () => {
+    // The deliberate fallback, not a gap: a channel whose feature row predates the
+    // legs field is still a campaign selling this funnel.
+    const walk = leadFunnelLegStages(reply.key, null);
+    expect(labels(walk.stages)).toEqual(labels(leadFunnelStages(reply.key)));
+    expect(walk.later).toEqual([]);
+  });
+
+  it("states nothing at all when there is no funnel", () => {
+    // The brand-level case: several funnels run at once, so there is no single one to
+    // walk a lead through.
+    for (const absent of [null, undefined]) {
+      const walk = leadFunnelLegStages(absent, { fromIndex: null, toIndex: 0 });
+      expect(walk.stages).toEqual([]);
+      expect(walk.later).toEqual([]);
+    }
+  });
+
+  it("falls back LOUDLY on a leg that does not index into this funnel", () => {
+    // A leg outside the funnel's steps is a vocabulary drift worth seeing. The honest
+    // surface is the whole funnel, never an empty panel or a slice of something else.
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const bad of [
+      { fromIndex: null, toIndex: 99 },
+      { fromIndex: -1, toIndex: 1 },
+      { fromIndex: 3, toIndex: 1 },
+    ]) {
+      const walk = leadFunnelLegStages(reply.key, bad);
+      expect(labels(walk.stages)).toEqual(labels(leadFunnelStages(reply.key)));
+      expect(walk.later).toEqual([]);
+    }
+    expect(spy).toHaveBeenCalledTimes(3);
+  });
+
+  it("splits EVERY funnel into stages + later with nothing lost and nothing repeated", () => {
+    // The two halves are complements of the funnel's own walk, whatever the leg — so
+    // the "also ends" message a `never` carries can never understate the cascade.
+    for (const funnel of SALES_FUNNELS) {
+      const full = labels(leadFunnelStages(funnel.key));
+      for (let to = 0; to < funnel.steps.length; to += 1) {
+        for (const from of [null, to === 0 ? null : to - 1]) {
+          const walk = leadFunnelLegStages(funnel.key, { fromIndex: from, toIndex: to });
+          const seen = [...labels(walk.stages), ...labels(walk.later)];
+          expect(full.slice(from ?? to)).toEqual(seen);
+          expect(labels(walk.stages).at(-1)).toBe(full[to]);
+        }
+      }
+    }
   });
 });
