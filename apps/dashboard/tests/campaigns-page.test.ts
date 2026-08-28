@@ -114,8 +114,12 @@ describe("Campaigns page (GA)", () => {
     const body = cell.slice(0, cell.indexOf("\n}\n"));
     expect(body).toContain("campaignFunnel(campaign.funnelKey)");
     expect(body).not.toContain("primaryFunnelForGoal");
-    // A funnel we cannot resolve is a real gap and reads as one.
-    expect(identity).toContain('funnel ? funnel.name : "—"');
+    // The row is named for the LEG the campaign performs, which falls back to the
+    // funnel's own name when the channel states no leg of it — so a campaign is
+    // never unnamed, and a funnel we cannot resolve at all is a real gap that
+    // reads as one.
+    expect(identity).toContain("campaignLegLabel(funnel, channel?.def?.legs)");
+    expect(identity).toContain('{leg ?? "—"}');
     expect(api).toContain("funnelKey: SalesFunnelKeyWire | null;");
   });
 

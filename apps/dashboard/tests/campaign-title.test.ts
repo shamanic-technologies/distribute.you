@@ -137,9 +137,12 @@ describe("the surfaces that name a campaign", () => {
   it("pairs each mark with its OWN name, never both marks then both names", () => {
     // Each half renders its mark immediately before its own label, so the funnel
     // tile and the channel logo are never bunched into one two-logo emblem.
+    // The first half's label is the LEG the campaign performs, not the funnel's
+    // name — a funnel is sold leg by leg, so naming the whole funnel overstates
+    // what most campaigns actually buy.
     const inline = identity.slice(identity.indexOf("export function CampaignIdentityInline("));
     const funnelHalf = inline.indexOf("<SalesFunnelMark");
-    const funnelWord = inline.indexOf("{funnel.name}");
+    const funnelWord = inline.indexOf("{leg}");
     const channelHalf = inline.indexOf("<AcquisitionChannelMark");
     const channelWord = inline.indexOf("{channel.label}");
     expect(funnelHalf).toBeGreaterThan(-1);
