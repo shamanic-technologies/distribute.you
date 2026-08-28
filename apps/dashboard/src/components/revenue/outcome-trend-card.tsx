@@ -49,9 +49,59 @@ function finite(n: number | null | undefined): number {
   return typeof n === "number" && Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
+function nextDay(date: string): string {
+  const d = dateObject(date);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function previousDay(date: string): string {
+  const d = dateObject(date);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * features-service buckets a day ONLY when a lead first carried the signal on it
+ * (`buildSignalSeries`), so a quiet week is ABSENT from `daily` rather than present
+ * at zero. On a category x-axis every present day takes the same width, so two
+ * consecutive days and a three-week gap render identically and the dates read as
+ * unevenly spaced. Filling the gaps at 0 is not inventing data — the producer's
+ * contract is that a missing day had no lead — and it also fixes the CURVE: a
+ * cumulative total is FLAT across a gap, where the unfilled series drew a diagonal
+ * climb through days on which nothing happened.
+ */
+function fillMissingDays(
+  daily: { date: string; count: number }[],
+  until?: string,
+): { date: string; count: number }[] {
+  if (daily.length === 0) return [];
+  const filled: { date: string; count: number }[] = [];
+  let cursor = daily[0].date;
+  for (const day of daily) {
+    while (cursor < day.date) {
+      filled.push({ date: cursor, count: 0 });
+      cursor = nextDay(cursor);
+    }
+    filled.push(day);
+    cursor = nextDay(day.date);
+  }
+  // The quiet stretch between the last outcome and the start of the forecast is a
+  // gap like any other; without it the dashed segment starts a hair after the solid
+  // line whatever the real distance between them.
+  while (until && cursor <= until) {
+    filled.push({ date: cursor, count: 0 });
+    cursor = nextDay(cursor);
+  }
+  return filled;
+}
+
 /** Cumulative running total over the full daily series (ascending by date). */
-function buildCumulative(series: SignalSeries | undefined): OutcomePoint[] {
-  const daily = [...(series?.daily ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+function buildCumulative(series: SignalSeries | undefined, until?: string): OutcomePoint[] {
+  const daily = fillMissingDays(
+    [...(series?.daily ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
+    until,
+  );
   let cumulative = 0;
   return daily.map((d) => {
     cumulative += finite(d.count);
@@ -70,10 +120,15 @@ function buildChartPoints(
   series: SignalSeries | undefined,
   future: { date: string; value: number }[] | undefined,
 ): OutcomeChartPoint[] {
-  const actual = buildCumulative(series);
+  const sortedFuture = [...(future ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  const firstFuture = sortedFuture[0]?.date;
+  const actual = buildCumulative(
+    series,
+    firstFuture ? previousDay(firstFuture) : undefined,
+  );
   const startRun = actual.length > 0 ? actual[actual.length - 1].value : 0;
   let run = startRun;
-  const projected = (future ?? []).map((f) => {
+  const projected = sortedFuture.map((f) => {
     run += finite(f.value);
     return { date: f.date, label: formatDate(f.date), value: run };
   });

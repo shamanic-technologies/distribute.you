@@ -60,6 +60,21 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(outcome).not.toContain("BarChart");
   });
 
+  // features-service buckets a day only when a lead first carried the signal on it,
+  // so a quiet week is ABSENT from `daily`. On a category x-axis every present day
+  // takes the same width, so two consecutive days and a three-week gap render
+  // identically and the dates read as unevenly spaced — and the cumulative line
+  // climbs diagonally across days on which nothing happened.
+  it("fills the missing days at zero so one day is one step on the x-axis", () => {
+    expect(outcome).toContain("fillMissingDays");
+    expect(outcome).toContain("count: 0");
+    const at = outcome.indexOf("function buildCumulative");
+    expect(outcome.slice(at, at + 300)).toContain("fillMissingDays(");
+    // The quiet stretch between the last outcome and the first forecast day is a gap
+    // like any other, so the fill runs up to the day before the dashed segment starts.
+    expect(outcome).toContain("previousDay(firstFuture)");
+  });
+
   it("selects the cumulative outcome series by goal (clicks for visit-driven, replies for reply-driven)", () => {
     expect(section).toContain("isVisitDrivenGoal(optimizationGoal)");
     expect(section).toContain("pipelineActualSeries?.clicks");
