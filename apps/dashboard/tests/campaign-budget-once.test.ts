@@ -42,10 +42,26 @@ describe("campaign Overview — one daily budget, its own, read-only", () => {
     expect(read("lib/api.ts")).not.toContain("updateCampaignDailyBudget");
   });
 
-  it("passes no budget denominator to the cost card", () => {
+  it("gives today's spend a ceiling, and the ceiling is the campaign's OWN", () => {
+    // This guard used to forbid a denominator outright, because the only figure
+    // billing could answer with was the SUM of every funnel's ceiling — a wider
+    // scope than the numerator beside it, so "$50 spent of $180" said nothing
+    // about this campaign. billing keys a ceiling on (offer x funnel x channel)
+    // now, which is exactly what a campaign is, so the pair is one scope and the
+    // card states it. What stays banned is the old sum and any recomposition.
+    expect(page).toContain("dailyBudgetCents={campaignBudgetCentsValue}");
     expect(page).not.toContain("const effectiveBudgetCents");
     expect(page).not.toContain("dailyBudgetCents={effectiveBudgetCents}");
+    expect(page).not.toContain("dailyBudgetCents={runningDailyBudgetCents}");
     expect(page).not.toContain("maxBudgetDailyUsd");
+  });
+
+  it("states WHY there is no ceiling rather than leaving a bare figure", () => {
+    // A campaign naming no funnel or channel has no billing row keyed to it, so
+    // the card renders the spend alone. A reader who expects a denominator is
+    // owed the reason instead of being left to wonder whether it failed to load.
+    expect(page).toContain("budgetNote={");
+    expect(page).toContain("campaignBudgetCentsValue == null");
   });
 
   it("forecasts a month from what may be spent TODAY, not from billing's total", () => {
