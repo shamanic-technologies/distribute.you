@@ -195,6 +195,37 @@ const SpendSchema = z.object({
   cpSaleCents: z.coerce.number().nullable().optional(),
 });
 
+/**
+ * One rung of the funnel: how many reached it, what reaching it cost, and what share of
+ * the rung before converted into it.
+ *
+ * Every figure here is SERVED. The rate in particular has to be: a browser dividing two
+ * served counts is the compute-a-stat-in-the-browser bug, and it would drift from the
+ * producer's own answer the moment either side changed its scope.
+ *
+ * `recipientsReached` is nullable and 0 is NOT null: 0 is measured and means nobody got
+ * here, which is the answer somebody asking "is this working" most needs to read.
+ */
+const FunnelStepSchema = z.object({
+  step: z.string(),
+  leadField: z.string(),
+  recipientsReached: z.number().nullable(),
+  costPerReachCents: z.number().nullable(),
+  fromStep: z.string(),
+  fromRecipientsReached: z.number().nullable(),
+  conversionFromPreviousPct: z.number().nullable(),
+});
+
+const FunnelStepsSchema = z.object({
+  funnelKey: z.string(),
+  name: z.string(),
+  committedSpentCents: z.number(),
+  /** DISTINCT leads contacted — the base the FIRST rung converts from. */
+  contactedRecipients: z.number(),
+  steps: z.array(FunnelStepSchema),
+});
+
+
 const FeatureRevenueResponseSchema = z.object({
   // OPTIONAL because this parser is shared by all THREE money grains, and only the
   // per-feature one names a channel. A feature IS an acquisition channel here, so the
@@ -224,6 +255,14 @@ const FeatureRevenueResponseSchema = z.object({
   repliedPositive: SignalSeriesSchema.optional(),
   meetingsBooked: SignalSeriesSchema.optional(),
   purchased: SignalSeriesSchema.optional(),
+  // THE FUNNEL WALKED STEP BY STEP (features-service#854, live). Required AND NULLABLE
+  // on the wire, which is the producer saying `null` is a value it means to send: it
+  // is null wherever there is no ONE funnel to walk (the brand and offer grains span
+  // several, a lensed read is a subset of the leads beside the whole spend, a channel
+  // with no funnel wired never read its leads at all). `.optional()` would parse every
+  // body EXCEPT the one the null was written for, so `.nullish()` — the same call the
+  // required-and-nullable rule prescribes, and it also tolerates a cached pre-#854 body.
+  funnelSteps: FunnelStepsSchema.nullish(),
   headline: z.object({ totalPipelineUsd: z.number().nullable() }),
   costEconomics: CostEconomicsSchema,
   // Overview-only (null on `?lens=`, absent on grouped) and fail-soft server-side,
@@ -257,6 +296,7 @@ export function parseFeatureRevenue(raw: unknown, label: string): RevenueOvervie
       costPerConversionUsd: d.costEconomics.costPerConversionUsd,
     },
     roiHistory: d.roiHistory ?? null,
+    funnelSteps: d.funnelSteps ?? null,
     spend: d.spend,
     // Normalize the features-service#416 count-series renames at this single parser
     // boundary: prefer the new `recipients*` name, fall back to the legacy one, so

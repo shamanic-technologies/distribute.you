@@ -11,6 +11,7 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
+import { FunnelStepBand } from "@/components/funnels/funnel-step-band";
 
 /**
  * ONE sales funnel, answered the way its offer is answered.
@@ -123,6 +124,12 @@ export function FunnelOverviewPage() {
           />
         }
       />
+
+      {/* The rungs, full width UNDER the chart. The four figures above say what the
+          whole funnel returned; this says WHERE people fall out of it, which is the
+          question this page exists for. Beside the cost cards it would be five rows in
+          ~280px, which is why it is not there. */}
+      <FunnelStepBand breakdown={revenuePending ? undefined : data?.funnelSteps} pending={revenuePending} />
 
       {/* Full width UNDER the chart, exactly where the offer Overview puts what is
           behind its numbers. Beside the cost cards it read as a side note; a funnel's
