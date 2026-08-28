@@ -33,6 +33,22 @@ const TILE: Record<MarkSize, string> = {
 };
 const GLYPH: Record<MarkSize, number> = { xs: 12, sm: 18, md: 26 };
 
+/**
+ * A funnel's tile wears the BRAND's primary colour, not a colour of its own.
+ *
+ * The catalogue still carries four distinct tones and they are still what the
+ * onboarding step rows read — but the MARK is the one thing a customer sees on
+ * every surface of their own dashboard, and it reads as ours rather than theirs
+ * when four fixed accents walk down a page. `brand-50` / `brand-600` are the
+ * ramp `:root[data-brand-tint]` re-declares at the brand's own hue, so this
+ * rotates by construction: it needs none of the opt-in class the decorative
+ * hues carry, because the whole ramp already IS the brand's.
+ *
+ * Consequence accepted: two funnels no longer read apart by colour. The GLYPH is
+ * what tells them apart — four distinct ones, which is why the catalogue is keyed
+ * on one — exactly as the twelve leg marks share a single tone for the same
+ * reason.
+ */
 export function SalesFunnelMark({
   def,
   size = "md",
@@ -45,11 +61,11 @@ export function SalesFunnelMark({
   const Glyph = FUNNEL_ICONS[def.key];
   return (
     <span
-      className={`tone-tile flex shrink-0 items-center justify-center ${TILE[size]} ${def.tone.iconBg} ${
+      className={`flex shrink-0 items-center justify-center ${TILE[size]} bg-brand-50 ${
         dimmed ? "opacity-60" : ""
       }`}
     >
-      <Glyph size={GLYPH[size]} weight="duotone" className={def.tone.iconText} />
+      <Glyph size={GLYPH[size]} weight="duotone" className="text-brand-600" />
     </span>
   );
 }

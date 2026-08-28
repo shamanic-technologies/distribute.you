@@ -9,13 +9,13 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
  * point is that there is no figure yet. The (i) carries the reason, through the shared
  * `InfoTooltip` (a native tooltip attribute shows nothing on a phone).
  *
- * The charter's SECONDARY (purple, ~44 degrees off the primary blue), not amber: this
- * is a waiting state, and an amber/orange pill reads as a warning about something the
- * customer did wrong. It carries none of the decorative mark-tile
- * class, so it does not rotate with a customer's brand hue — a mark tile is decoration,
- * this carries meaning, and meaning never rotates. Every class is in the `html.dark` remapped set (`bg-purple-50` /
- * `text-purple-700` / `border-purple-200`), so it does not paint a light block on the
- * dark surface. Full-perimeter 1px border, per the no-side-accent rule.
+ * The charter's TERTIARY, owner-decided: every campaign surface reads in one accent,
+ * and this tag is the one a reader meets most often on them. It carries `tone-tile`,
+ * so on a customer's dashboard it is THEIR tertiary rather than ours — the fill, the
+ * text and the border each have a rotation rule, or the pill renders two hues at once.
+ * Every class is in the `html.dark` remapped set (`bg-orange-50` / `text-orange-600` /
+ * `border-orange-200`), so it does not paint a light block on the dark surface.
+ * Full-perimeter 1px border, per the no-side-accent rule.
  *
  * `paused` says the campaign that would have produced those outcomes is STOPPED, and
  * the tag then reads **Paused** in the pause grey — the same word and the same tint the
@@ -34,7 +34,7 @@ export function LearningTag({
 }) {
   const tone = paused
     ? "border-gray-200 bg-gray-100 text-gray-500"
-    : "tone-tile border-purple-200 bg-purple-50 text-purple-600";
+    : "tone-tile border-orange-200 bg-orange-50 text-orange-600";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tone}`}
