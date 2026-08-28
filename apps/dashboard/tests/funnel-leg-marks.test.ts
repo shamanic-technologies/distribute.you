@@ -60,6 +60,25 @@ describe("funnel leg marks — one tile per leg, unique fleet-wide", () => {
     }
   });
 
+  it("never reuses a FUNNEL's glyph either — the leg tile stands in for it", () => {
+    // Where a leg cannot be placed, `CampaignIdentity` falls back to the FUNNEL's mark
+    // in the same slot, so a shared icon reads as the funnel where an arrow was meant.
+    // Compared as the icons each mark file actually imports, which is the real surface:
+    // a collision introduced from either side fails here.
+    const iconsOf = (rel: string) => {
+      const src = read(rel);
+      return new Set(
+        [...src.matchAll(/dist\/csr\/([A-Za-z]+)"/g)].map((m) => m[1]),
+      );
+    };
+    const legIcons = iconsOf("components/marks/funnel-leg-mark.tsx");
+    const funnelIcons = iconsOf("components/marks/sales-funnel-mark.tsx");
+    expect(legIcons.size).toBeGreaterThan(0);
+    expect(funnelIcons.size).toBeGreaterThan(0);
+    const shared = [...legIcons].filter((i) => funnelIcons.has(i));
+    expect(shared).toEqual([]);
+  });
+
   it("covers every arrow of every funnel we sell", () => {
     for (const funnel of SALES_FUNNELS) {
       for (const leg of funnelLegs(funnel)) {

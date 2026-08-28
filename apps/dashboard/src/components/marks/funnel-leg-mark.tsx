@@ -1,12 +1,12 @@
 "use client";
 
-import { ChatsCircleIcon } from "@phosphor-icons/react/dist/csr/ChatsCircle";
+import { HandWavingIcon } from "@phosphor-icons/react/dist/csr/HandWaving";
 import { UserPlusIcon } from "@phosphor-icons/react/dist/csr/UserPlus";
 import { NotePencilIcon } from "@phosphor-icons/react/dist/csr/NotePencil";
 import { CursorClickIcon } from "@phosphor-icons/react/dist/csr/CursorClick";
 import { ClipboardTextIcon } from "@phosphor-icons/react/dist/csr/ClipboardText";
 import { CalendarPlusIcon } from "@phosphor-icons/react/dist/csr/CalendarPlus";
-import { CalendarCheckIcon } from "@phosphor-icons/react/dist/csr/CalendarCheck";
+import { CalendarStarIcon } from "@phosphor-icons/react/dist/csr/CalendarStar";
 import { CalendarDotsIcon } from "@phosphor-icons/react/dist/csr/CalendarDots";
 import { VideoCameraIcon } from "@phosphor-icons/react/dist/csr/VideoCamera";
 import { HandshakeIcon } from "@phosphor-icons/react/dist/csr/Handshake";
@@ -26,13 +26,13 @@ import { funnelLegMarkFor, type FunnelLegGlyph } from "@/lib/funnel-leg-marks";
 // Imported per-icon from `dist/csr/<Name>`: the package root is a ~190KB barrel.
 
 const LEG_ICONS: Record<FunnelLegGlyph, Icon> = {
-  chats: ChatsCircleIcon,
+  "hand-waving": HandWavingIcon,
   "user-plus": UserPlusIcon,
   "note-pencil": NotePencilIcon,
   "cursor-click": CursorClickIcon,
   clipboard: ClipboardTextIcon,
   "calendar-plus": CalendarPlusIcon,
-  "calendar-check": CalendarCheckIcon,
+  "calendar-star": CalendarStarIcon,
   "calendar-dots": CalendarDotsIcon,
   "video-camera": VideoCameraIcon,
   handshake: HandshakeIcon,
