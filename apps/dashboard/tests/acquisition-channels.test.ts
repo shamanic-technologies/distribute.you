@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import {
+  OWN_CHANNEL_TONE,
   CHANNEL_MARKS,
   acquisitionChannelForFeatureSlug,
   acquisitionChannelsFromFeatures,
@@ -257,5 +258,39 @@ describe("a channel carries the leg it performs and who runs it", () => {
     ]);
     expect(channel.operatedBy).toBeNull();
     expect(channel.legs).toEqual([]);
+  });
+});
+
+/**
+ * ONE tone for every channel of OURS: the charter's tertiary.
+ *
+ * A campaigns row states its leg and then the channel it buys it through, so the two
+ * tiles have to read as two KINDS of thing. Four colours across the channels made them
+ * read as four kinds of channel, which is not a distinction anybody needs: the glyph and
+ * the vendor logo already say which channel it is.
+ */
+describe("one tone for every channel of ours", () => {
+  it("wears the shared tertiary and nothing else", () => {
+    const own = Object.values(CHANNEL_MARKS).filter((m) => m.kind === "own");
+    expect(own.length).toBeGreaterThan(0);
+    const tones = new Set(
+      own.map((m) => `${(m as { tone: { iconBg: string; iconText: string } }).tone.iconBg}|${(m as { tone: { iconBg: string; iconText: string } }).tone.iconText}`),
+    );
+    expect(tones.size).toBe(1);
+    expect([...tones][0]).toBe(`${OWN_CHANNEL_TONE.iconBg}|${OWN_CHANNEL_TONE.iconText}`);
+  });
+
+  it("is orange, not the indigo that reads as the primary", () => {
+    // Indigo sits ~19 degrees off the charter blue, so a tile wearing it reads as the
+    // primary rather than as a third accent.
+    expect(OWN_CHANNEL_TONE.iconBg).toBe("bg-orange-50");
+    expect(OWN_CHANNEL_TONE.iconText).toBe("text-orange-600");
+  });
+
+  it("leaves a vendor channel its real logo and no tone at all", () => {
+    // A logo is not a tint: the tile stays white so the mark reads as the vendor's own.
+    const vendor = Object.values(CHANNEL_MARKS).filter((m) => m.kind === "vendor");
+    expect(vendor.length).toBeGreaterThan(0);
+    expect(vendor.every((m) => !("tone" in m))).toBe(true);
   });
 });

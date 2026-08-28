@@ -47,13 +47,26 @@ export type FunnelLegGlyph =
   | "receipt";
 
 /**
+ * The ONE tone every leg wears: the charter's SECONDARY, which is where purple sits
+ * (~44 degrees off the primary blue, a relationship `globals.css` preserves under the
+ * `tone-tile` rotation, so on a customer's dashboard this is THEIR secondary).
+ *
+ * The legs used to draw from the same four categorical tints the funnels do, on the
+ * reasoning that a categorical scale exists to be told apart. That is right for FUNNELS,
+ * which a reader really does have to distinguish; it is wrong for legs, because a table
+ * walking one funnel arrow by arrow is a SEQUENCE, and four colours down a sequence read
+ * as four kinds of thing rather than as four steps of one. The GLYPH already tells the
+ * legs apart — twelve distinct ones, which is the whole reason the catalogue is keyed on
+ * a glyph token — so the tone is free to say "this is a step of your funnel" instead.
+ *
+ * Written as whole class strings because Tailwind cannot see a class assembled at
+ * runtime, and both are tints the `html.dark` remap already covers.
+ */
+export const FUNNEL_LEG_TONE = { iconBg: "bg-purple-50", iconText: "text-purple-600" } as const;
+
+/**
  * How a leg is marked: a duotone glyph in a tinted tile, the same treatment the sales
  * funnels and our own channels use.
- *
- * Tones are whole class strings because Tailwind cannot see a class assembled at
- * runtime, and every tint used here is one the `html.dark` remap already covers —
- * deliberately the same four pairs the funnel and channel catalogues draw from, so a
- * leg tile sits beside them without introducing a fifth palette.
  */
 export interface FunnelLegMark {
   glyph: FunnelLegGlyph;
@@ -82,19 +95,19 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
   // ── Entry legs: a lead was not on the funnel at all, and now it is. ──────────
   [funnelLegMarkKey(null, "conversation")]: {
     glyph: "hand-waving",
-    tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey(null, "website_visit")]: {
     glyph: "cursor-click",
-    tone: { iconBg: "bg-indigo-50", iconText: "text-indigo-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey(null, "in_ad_form_submission")]: {
     glyph: "clipboard",
-    tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey(null, "in_ad_booked_meeting")]: {
     glyph: "calendar-plus",
-    tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   // ── Internal legs: one of the funnel's own arrows. ───────────────────────────
   //
@@ -104,35 +117,35 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
   // this catalogue exists to prevent.
   [funnelLegMarkKey("website_visit", "signup")]: {
     glyph: "user-plus",
-    tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("website_visit", "form_filled")]: {
     glyph: "note-pencil",
-    tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("conversation", "meeting_booked")]: {
     glyph: "calendar-star",
-    tone: { iconBg: "bg-purple-50", iconText: "text-purple-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("website_visit", "meeting_booked")]: {
     glyph: "calendar-dots",
-    tone: { iconBg: "bg-purple-50", iconText: "text-purple-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("meeting_booked", "meeting_attended")]: {
     glyph: "video-camera",
-    tone: { iconBg: "bg-indigo-50", iconText: "text-indigo-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("meeting_attended", "paid_client")]: {
     glyph: "handshake",
-    tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("signup", "paid_client")]: {
     glyph: "credit-card",
-    tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
+    tone: FUNNEL_LEG_TONE,
   },
   [funnelLegMarkKey("form_filled", "paid_client")]: {
     glyph: "receipt",
-    tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
+    tone: FUNNEL_LEG_TONE,
   },
 };
 

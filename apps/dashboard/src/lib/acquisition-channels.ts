@@ -38,6 +38,23 @@ export type OwnChannelGlyph = "envelope" | "chat-circle" | "chat-teardrop";
  * use. Tones are whole class strings because Tailwind cannot see a class
  * assembled at runtime, and every tint used here is in the `html.dark` remap.
  */
+/**
+ * The ONE tone every channel of OURS wears: the charter's TERTIARY.
+ *
+ * Orange rather than indigo, and the reason is the primary: indigo sits ~19 degrees off
+ * the charter blue, so a tile wearing it reads as the primary rather than as a third
+ * accent. Orange is the remaining member of the rotated set that is unmistakably its own
+ * colour beside both the primary and the secondary the legs wear.
+ *
+ * Same argument as `FUNNEL_LEG_TONE`, one column over: a row states its leg and then the
+ * channel it buys it through, so the two tiles have to read as two KINDS of thing. Four
+ * colours across the channels made them read as four kinds of channel, which is not a
+ * distinction anybody needs, since the glyph and the vendor logo already say which
+ * channel it is. A channel bought on somebody else's platform keeps that platform's real
+ * logo on a white tile and takes no tone at all; a logo is not a tint.
+ */
+export const OWN_CHANNEL_TONE = { iconBg: "bg-orange-50", iconText: "text-orange-600" } as const;
+
 export type AcquisitionChannelMark =
   | { kind: "vendor"; domain: string }
   | { kind: "own"; glyph: OwnChannelGlyph; tone: { iconBg: string; iconText: string } };
@@ -118,22 +135,22 @@ export const CHANNEL_MARKS: Record<string, AcquisitionChannelMark> = {
   "sales-cold-email-outreach": {
     kind: "own",
     glyph: "envelope",
-    tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
+    tone: OWN_CHANNEL_TONE,
   },
   "feedback-request-cold-email-outreach": {
     kind: "own",
     glyph: "chat-circle",
-    tone: { iconBg: "bg-purple-50", iconText: "text-purple-600" },
+    tone: OWN_CHANNEL_TONE,
   },
   "sales-crm-email-outreach": {
     kind: "own",
     glyph: "envelope",
-    tone: { iconBg: "bg-indigo-50", iconText: "text-indigo-600" },
+    tone: OWN_CHANNEL_TONE,
   },
   "cold-sms-outreach": {
     kind: "own",
     glyph: "chat-teardrop",
-    tone: { iconBg: "bg-indigo-50", iconText: "text-indigo-600" },
+    tone: OWN_CHANNEL_TONE,
   },
   "cold-whatsapp-outreach": { kind: "vendor", domain: "whatsapp.com" },
   "cold-linkedin-outreach": { kind: "vendor", domain: "linkedin.com" },

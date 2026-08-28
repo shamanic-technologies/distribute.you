@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getOfferFunnelRevenue, getOfferFunnelPipelineActivity } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
@@ -146,6 +147,22 @@ export function FunnelOverviewPage() {
           funnelKey={rawKey}
           funnelSteps={revenuePending ? null : (data?.funnelSteps ?? null)}
         />
+        {/* The table above walks the funnel ARROW by arrow, so a campaign appears under
+            the leg it performs and the reader follows the funnel top to bottom. That is
+            the right shape for this page and the wrong one for "what am I running": a
+            campaign carries a return, a status and a budget the walk has no column for.
+            This is the way over to that list, narrowed to this funnel — the SAME
+            `CampaignsPage` every other campaign surface renders, never a second copy. */}
+        {rawKey && (
+          <div className="flex justify-end">
+            <Link
+              href={`${basePath}/funnels/${encodeURIComponent(rawKey)}/campaigns`}
+              className="text-sm font-medium text-brand-600 hover:underline"
+            >
+              See more
+            </Link>
+          </div>
+        )}
       </div>
 
       {!revenuePending && revenue.isError && (

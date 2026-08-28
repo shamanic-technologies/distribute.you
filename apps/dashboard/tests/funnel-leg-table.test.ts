@@ -105,9 +105,13 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     const cells = legCells;
     // ONE gate: they divide by the same count, so stating one beside a tag disclaiming
     // the other lets a reader trust a number we just withheld.
-    // Keyed on the ROW's own count, so a campaign that produced nothing is not lent
-    // the arrow's evidence.
-    expect(cells).toContain("isLearning(outcomes ?? undefined)");
+    // The count is the ARROW's rung where the figure is the arrow's across several
+    // campaigns, and the ROW's own where the row is alone on its arrow: a campaign that
+    // produced nothing is never lent another's evidence, and an arrow that IS measured
+    // is never called thin because one of the campaigns feeding it is quiet.
+    expect(cells).toContain(
+      "isLearning((sharesArrow ? step?.recipientsReached : outcomes) ?? undefined)",
+    );
     // The COUNT cell carries no gate at all: it is measured whatever its size, and it
     // is what shows the bar being approached. Sliced to that one cell rather than
     // compared by index — the gate now lives in a helper declared above it.
@@ -126,12 +130,23 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     expect(legTable).toContain("step?.recipientsReached");
   });
 
-  it("withholds the arrow's cost and rate from a row that shares the arrow", () => {
-    // There is no per-campaign version of either on the wire, so stating them on both
-    // rows says one figure under two names.
-    expect(legCells).toContain("sharesArrow ? (");
+  it("states a shared arrow's cost and rate ONCE, on the arrow's lead row", () => {
+    // The figure is FUNNEL-scoped on every row — the `$ / Outcome` tooltip says so
+    // outright — so a shared arrow does not make it unstateable, only repeatable.
+    // Withholding it from every row of the arrow was the earlier shape, and it made a
+    // funnel whose two channels both feed its first step read as never measured.
+    expect(legCells).toContain("const statesArrowFigures = !sharesArrow || arrowLead;");
+    expect(legCells).toContain("if (!statesArrowFigures)");
     expect(legCells).toContain("COLUMN_INFO.sharedArrow");
+    // The lead row says whose figure it is; the rest point back at it.
+    expect(legCells).toContain("COLUMN_INFO.sharedArrowLead");
     expect(table).toContain("Two campaigns feed this step");
+    expect(table).toContain("stated once on the first of them above");
+    // The CALL SITE, not only the component: a prop the table never passes leaves the
+    // component perfectly correct and the behaviour entirely absent.
+    const map = legTable.slice(legTable.indexOf("{rows.map("));
+    expect(map).toContain("arrowLead");
+    expect(map).toContain("arrowLead={arrowLead}");
     // The shared (i), never a native title — dead on a phone.
     expect(table).not.toContain("title=");
   });
@@ -174,5 +189,36 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
       false,
     );
     expect(page).not.toContain("FunnelStepBand");
+  });
+});
+
+/**
+ * The way over to the funnel's campaign LIST.
+ *
+ * The table above walks the funnel arrow by arrow, which is the right shape for "where
+ * are people falling out" and the wrong one for "what am I running": a campaign carries
+ * a return, a status and a budget the walk has no column for. Both surfaces exist, so
+ * the page says where the other one is.
+ */
+describe("see more", () => {
+  it("links to this funnel's own campaigns page", () => {
+    expect(page).toContain(
+      "`${basePath}/funnels/${encodeURIComponent(rawKey)}/campaigns`",
+    );
+  });
+
+  it("reads as a link, right-aligned, in the brand's own accent", () => {
+    const link = page.slice(page.indexOf("See more") - 500, page.indexOf("See more"));
+    expect(link).toContain("justify-end");
+    // A brand-* ramp step, never a literal charter hex: the ramp rotates with the
+    // brand's tint and an arbitrary-value hex cannot.
+    expect(link).toContain("text-brand-600");
+    expect(link).not.toMatch(/text-\[#/);
+  });
+
+  it("states nothing when there is no funnel in the route to link to", () => {
+    // A link built from an empty key points at the offer's own funnels index, which is
+    // not where the reader asked to go.
+    expect(page).toContain("{rawKey && (");
   });
 });

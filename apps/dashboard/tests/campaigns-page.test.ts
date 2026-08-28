@@ -244,7 +244,10 @@ describe("Campaigns page (GA)", () => {
   it("greens ROI above 1x, never red below, at the table's own size", () => {
     const cell = table.slice(table.indexOf("function RoiCell("));
     const body = cell.slice(0, cell.indexOf("\n}"));
-    expect(body).toContain("multiple != null && multiple > 1");
+    // ONE rule, one home: the ROI stat card and the Return-on-spend headline read the
+    // same `roiIsGood`, so three copies of `> 1` cannot drift apart.
+    expect(body).toContain("roiIsGood(multiple)");
+    expect(body).not.toMatch(/multiple\s*>\s*1/);
     expect(body).toContain("font-semibold");
     expect(body).toContain("text-green-600");
     expect(body).toContain("text-gray-900");
