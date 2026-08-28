@@ -185,18 +185,77 @@ export function leadFunnelStages(funnelKey: SalesFunnelKeyWire | null | undefine
   if (!funnelKey) return [];
   const normalized = normalizeSalesFunnelKey(funnelKey);
   const def = SALES_FUNNELS.find((f) => f.key === normalized)!;
+  return stagesFromSteps(def.steps, def.key);
+}
+
+/** The stage for each of these catalogue steps, in the order given. */
+function stagesFromSteps(steps: readonly string[], funnelKey: string): LeadFunnelStage[] {
   const stages: LeadFunnelStage[] = [];
-  for (const step of def.steps) {
+  for (const step of steps) {
     const stage = STAGE_FOR_STEP[step];
     if (!stage) {
       // Fail loud. A catalogue step with no stage is a gap in THIS file, and the
       // unit test over the whole catalogue is what stops it reaching a customer.
-      console.error(`[lead-funnel-stages] no stage for step "${step}" on funnel ${def.key}`);
+      console.error(`[lead-funnel-stages] no stage for step "${step}" on funnel ${funnelKey}`);
       continue;
     }
     stages.push({ key: stage.key, label: stage.label ?? step, wontLabel: stage.wontLabel });
   }
   return stages;
+}
+
+/**
+ * The stages of the ONE ARROW a campaign performs, and the funnel's stages that come
+ * after it.
+ *
+ * A funnel is sold LEG BY LEG (`campaign-leg.ts`), so a campaign performs exactly one
+ * of its arrows: cold email puts a lead onto the reply funnel and does nothing else,
+ * an in-house closing team converts an attended meeting into a paid client and nothing
+ * else. Walking the WHOLE funnel on a campaign's lead panel therefore offers a control
+ * for three arrows that campaign does not perform — and each of those arrows has its
+ * own page, where the person who actually works it states it.
+ *
+ * The slice is `[from .. to]`, so an ENTRY leg (`fromIndex: null`) states one step and
+ * an internal leg states the step it converts FROM alongside the one it converts TO.
+ * The `from` step stays writable: somebody working that arrow legitimately has to say
+ * the meeting was attended before they can say the deal closed.
+ *
+ * `later` is what the funnel still holds after the slice. It is NOT rendered — it is
+ * what the "Won't happen" control names as also ended, because lead-service cascades a
+ * `never` across the WHOLE funnel and a message built from the rendered rows alone
+ * would understate what one click ends.
+ *
+ * An ABSENT leg returns the whole funnel with nothing after it, byte-same as
+ * `leadFunnelStages`. That is the deliberate fallback, not a gap: a channel whose
+ * feature row predates the legs field, or one whose legs cannot be placed among this
+ * funnel's steps, is still a campaign selling this funnel — the sentence this surface
+ * read before legs existed, so falling back to it loses nothing and invents nothing.
+ * `campaignLegLabel` makes the same fallback for the same reason.
+ */
+export function leadFunnelLegStages(
+  funnelKey: SalesFunnelKeyWire | null | undefined,
+  leg: { fromIndex: number | null; toIndex: number } | null | undefined,
+): { stages: LeadFunnelStage[]; later: LeadFunnelStage[] } {
+  if (!funnelKey) return { stages: [], later: [] };
+  const normalized = normalizeSalesFunnelKey(funnelKey);
+  const def = SALES_FUNNELS.find((f) => f.key === normalized)!;
+  const all = stagesFromSteps(def.steps, def.key);
+  if (!leg) return { stages: all, later: [] };
+
+  const from = leg.fromIndex ?? leg.toIndex;
+  // A leg the catalogue cannot place is a vocabulary drift worth seeing, and the
+  // honest surface for it is the whole funnel rather than an empty panel or a slice
+  // taken from indices that index into something else.
+  if (from < 0 || leg.toIndex >= def.steps.length || from > leg.toIndex) {
+    console.error(
+      `[lead-funnel-stages] leg ${from}..${leg.toIndex} is outside funnel ${def.key} (${def.steps.length} steps)`,
+    );
+    return { stages: all, later: [] };
+  }
+  return {
+    stages: stagesFromSteps(def.steps.slice(from, leg.toIndex + 1), def.key),
+    later: stagesFromSteps(def.steps.slice(leg.toIndex + 1), def.key),
+  };
 }
 
 /**

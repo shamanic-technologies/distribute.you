@@ -35,7 +35,7 @@ import { friendlyDate, friendlyDateTime } from "@/lib/friendly-datetime";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-section";
 import {
-  leadFunnelStages,
+  leadFunnelLegStages,
   leadStepErrorMessage,
   leadStepWithdrawErrorMessage,
   trackedStages,
@@ -63,6 +63,9 @@ import type { ReplyKind } from "@/lib/reply-kind";
 import { useMutation } from "@tanstack/react-query";
 import { normalizeSalesFunnelKey } from "@/lib/sales-funnels";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
+import { campaignLegFor } from "@/lib/campaign-leg";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
 import { buildLeadsCsv } from "@/lib/leads-csv";
@@ -1411,10 +1414,28 @@ export function EngagedLeadsPage({
   // at once. `activeFunnelKeys` is already narrowed to this campaign's own row above,
   // so there is nothing extra to fetch and no goal to fall back to.
   const panelFunnel = campaignId && activeFunnelKeys[0] ? salesFunnelByKey(activeFunnelKeys[0]) : null;
-  const panelStages = useMemo(
-    () => (panelFunnel ? leadFunnelStages(panelFunnel.key) : []),
-    [panelFunnel],
+  // WHICH ARROW of that funnel this campaign performs. A funnel is sold leg by leg, so
+  // walking the whole funnel here offers a control for arrows this campaign does not
+  // run — each of which has its own page, worked by whoever performs it. The channel
+  // is the campaign's own feature slug, and its legs come off the catalogue the page
+  // already holds (a `useMemo` over the `["features"]` query, so no extra request).
+  const panelChannels = useAcquisitionChannels();
+  const panelCampaign = useMemo(
+    () => (campaignId ? campaignRows.rows.find((r) => r.campaign.id === campaignId)?.campaign ?? null : null),
+    [campaignRows.rows, campaignId],
   );
+  const panelLeg = useMemo(() => {
+    if (!panelFunnel || !panelCampaign?.featureSlug) return null;
+    const channel = acquisitionChannelForFeatureSlug(panelCampaign.featureSlug, panelChannels);
+    return campaignLegFor(panelFunnel, channel?.legs);
+  }, [panelFunnel, panelCampaign, panelChannels]);
+  // A leg we cannot place falls back to the whole funnel, the sentence this panel read
+  // before legs existed. `later` is never rendered — it is what a `never` also ends.
+  const panelWalk = useMemo(
+    () => (panelFunnel ? leadFunnelLegStages(panelFunnel.key, panelLeg) : { stages: [], later: [] }),
+    [panelFunnel, panelLeg],
+  );
+  const panelStages = panelWalk.stages;
   const { data: stepStatements } = useLeadStepStatements(
     campaignId && selectedLead ? selectedLead.id : null,
   );
@@ -1824,6 +1845,7 @@ export function EngagedLeadsPage({
               <LeadFunnelStageSection
                 funnelName={panelFunnel.name}
                 stages={panelStages}
+                laterStages={panelWalk.later}
                 states={panelStates}
                 tracked={panelTracked}
                 delivery={<StatusBadge status={statusOf(selectedLead)} />}
