@@ -169,7 +169,6 @@ export function RevenueOverviewSection({
     ? pipelineActualSeries?.clicks
     : pipelineActualSeries?.repliedPositive;
   const outcomeLabel = isVisitDriven ? "Website visits" : "Sales interests";
-  const outcomeColor = isVisitDriven ? "#0891b2" : "#dc2626";
 
   // Forward projection for the Outcome line — the expected daily increments past
   // today (today + forecast horizon). Signups read the per-day clicks forecast;
@@ -218,7 +217,6 @@ export function RevenueOverviewSection({
             series={outcomeSeries}
             future={outcomeFuture}
             label={outcomeLabel}
-            color={outcomeColor}
             pending={revenueLoading}
           />
         )}

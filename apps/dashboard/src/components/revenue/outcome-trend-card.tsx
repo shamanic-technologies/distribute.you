@@ -184,7 +184,6 @@ export function OutcomeTrendCard({
   series,
   future,
   label,
-  color,
   pending = false,
 }: {
   /** Cumulative source: `clicked` (signups) or `repliedPositive` (meetings). */
@@ -193,8 +192,6 @@ export function OutcomeTrendCard({
   future?: { date: string; value: number }[];
   /** Human label for the outcome ("Website clicks" / "Sales interests"). */
   label: string;
-  /** Line + fill color. */
-  color: string;
   pending?: boolean;
 }) {
   const data = useMemo(() => buildChartPoints(series, future), [series, future]);
@@ -237,9 +234,13 @@ export function OutcomeTrendCard({
           <ResponsiveContainer width="100%" height="100%" minHeight={180}>
             <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
+                {/* `currentColor` off a `text-brand-*` class, the same treatment the
+                    Return-on-spend card beside it uses and for the same reason: an SVG
+                    attribute is not reached by the `html.dark` remap, and a hardcoded
+                    hex cannot follow a brand's tint. */}
                 <linearGradient id="outcome-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                  <stop offset="0%" stopColor="currentColor" stopOpacity={0.18} className="text-brand-600" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity={0} className="text-brand-600" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -262,26 +263,31 @@ export function OutcomeTrendCard({
                 content={<OutcomeTooltip label={label} />}
                 cursor={{ stroke: "#cbd5e1", strokeWidth: 1 }}
               />
+              {/* The hovered point needs its OWN colour class: recharts renders the
+                  active dot outside the `<Area>`'s element, so a bare `currentColor`
+                  there resolves against the root and comes back black. */}
               <Area
                 type="monotone"
                 dataKey="actualValue"
-                stroke={color}
+                stroke="currentColor"
+                className="text-brand-600"
                 strokeWidth={2}
                 fill="url(#outcome-fill)"
                 dot={false}
-                activeDot={{ r: 4 }}
+                activeDot={{ r: 4, className: "text-brand-600", fill: "currentColor" }}
                 connectNulls
                 isAnimationActive={false}
               />
               <Area
                 type="monotone"
                 dataKey="projectedValue"
-                stroke={color}
+                stroke="currentColor"
+                className="text-brand-600"
                 strokeWidth={2}
                 strokeDasharray="4 4"
                 fill="none"
                 dot={false}
-                activeDot={{ r: 4 }}
+                activeDot={{ r: 4, className: "text-brand-600", fill: "currentColor" }}
                 connectNulls
                 isAnimationActive={false}
               />
