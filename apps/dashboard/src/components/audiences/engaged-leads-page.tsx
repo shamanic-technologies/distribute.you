@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
-import { POLL_INTERVAL } from "@/lib/query-options";
+import { LEADS_POLL_INTERVAL, POLL_INTERVAL } from "@/lib/query-options";
+import { invalidateLeadOutcome } from "@/lib/write-invalidation";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
 import { CompanyLogo } from "@/components/company-logo";
 import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
@@ -976,7 +977,9 @@ export function EngagedLeadsPage({
   const { data, isPending, isPlaceholderData } = useAuthQuery(
     campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
     () => (campaignId ? listCampaignLeads(campaignId) : listBrandLeads(brandId)),
-    { refetchInterval: POLL_INTERVAL },
+    // The one read on a slower tier: unpaginated by design and huge on a heavy brand.
+    // Every user action that can change it invalidates it explicitly below.
+    { refetchInterval: LEADS_POLL_INTERVAL },
   );
 
   const leads = useMemo(() => data?.leads ?? [], [data]);
@@ -1563,6 +1566,9 @@ export function EngagedLeadsPage({
       // A reply kind decides whether the sequence keeps sending, so the lead rows the
       // table renders can change with it.
       queryClient.invalidateQueries({ queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId] });
+      // And a positive reply IS an outcome, so the stat row above the table, the money
+      // at every grain and the per-audience costs all move with it.
+      invalidateLeadOutcome(queryClient);
     },
   });
 
@@ -1591,6 +1597,8 @@ export function EngagedLeadsPage({
       queryClient.invalidateQueries({
         queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
       });
+      // Taking the statement back un-counts the outcome, at every grain that counted it.
+      invalidateLeadOutcome(queryClient);
     },
   });
 
@@ -1782,6 +1790,9 @@ export function EngagedLeadsPage({
                         queryClient.invalidateQueries({
                           queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
                         });
+                        // The card moved because an outcome changed, so every figure
+                        // that counts that outcome is re-read with it.
+                        invalidateLeadOutcome(queryClient);
                       },
                       // instantly-service writes its refusal as a sentence for a person
                       // to read. Surface ITS reason, never the thrown Error's own

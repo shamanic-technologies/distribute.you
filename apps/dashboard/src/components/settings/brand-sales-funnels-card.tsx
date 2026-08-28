@@ -51,6 +51,7 @@ import {
   parseLocaleNumberInput,
 } from "@/lib/format-number";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { BrandLogo } from "@/components/brand-logo";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 import { InfoTooltip } from "@/components/visibility/metric-info";
@@ -389,6 +390,10 @@ export function BrandSalesFunnelsCard({
     },
     onSuccess: (set, vars) => {
       queryClient.setQueryData(["brandFunnelBudgets", brandId], set);
+      // Funding a funnel changes what every campaign selling it may spend, so the
+      // running total, the campaign rows and the funnels table are re-read at once
+      // rather than waiting for their own next poll.
+      invalidateCampaignMoney(queryClient);
       // Show exactly what persisted, per channel and for the funnel as a whole,
       // so the card can never claim a ceiling billing normalized differently.
       const cents = set.funnels.find((f) => f.funnelKey === vars.def.key)?.dailyBudgetCents ?? 0;
@@ -419,6 +424,9 @@ export function BrandSalesFunnelsCard({
       undeclareOfferSalesFunnel(brandId, offerId, vars.def.key),
     onSuccess: (set, vars) => {
       queryClient.setQueryData(["offerSalesFunnels", brandId, offerId], set);
+      // Dropping a funnel changes which ones the offer sells and what its campaigns
+      // may spend, so those surfaces are re-read now.
+      invalidateCampaignMoney(queryClient);
       // Switching a funnel off KEEPS its row and every number on it, so the form
       // keeps showing what the user entered — switching it back on returns that,
       // instead of an empty form they would have to retype.

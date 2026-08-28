@@ -121,7 +121,8 @@ describe("a move states a reply KIND, and it asks which", () => {
   });
 
   it("renders the producer's own refusal, never the thrown Error's message", () => {
-    const move = sliceFrom(page, "onMove={(email, kind)", 1900);
+    // Measured: the handler runs 1995 chars from its own open tag.
+    const move = sliceFrom(page, "onMove={(email, kind)", 2100);
     expect(move).toContain("leadStepErrorMessage(err)");
     expect(move).not.toContain("err.message");
   });

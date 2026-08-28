@@ -159,9 +159,13 @@ describe("query-provider wiring — the reseed reads keys first and caps what it
 });
 
 describe("poll cadence — freshness traded for the instant paint (owner-decided)", () => {
-  it("polls at 60s: raising it is the safe direction against the 30s Gold TTL", () => {
-    expect(POLL_INTERVAL).toBe(60_000);
-    expect(POLL_INTERVAL).toBeGreaterThanOrEqual(30_000);
+  it("polls at 60s: polls at 5s, matching the producer's own 5s view-cache TTL", () => {
+    // The owner's rule: a refresh may lag, never by more than about five seconds.
+    // features-service `view-cache.ts` DEFAULT_TTL_MS is 5_000 with no override on the
+    // box, and inside the TTL a request costs no fan-out — so this interval buys
+    // freshness on screen without multiplying work upstream. This asserted 60s against
+    // a claimed 30s Gold TTL; both numbers were stale.
+    expect(POLL_INTERVAL).toBe(5_000);
   });
 });
 

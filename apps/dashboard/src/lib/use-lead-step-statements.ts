@@ -8,6 +8,7 @@ import {
 } from "./api";
 import type { LeadStageKey, LeadStageState } from "./lead-funnel-stages";
 import { useAuthQuery, useQueryClient } from "./use-auth-query";
+import { invalidateLeadOutcome } from "./write-invalidation";
 
 /**
  * Per-lead funnel step statements — the read behind the panel, and the write it makes.
@@ -59,10 +60,11 @@ export function useSetLeadStepStatement(leadRowId: string | null) {
       // would be this app guessing at the producer's own answer.
       queryClient.invalidateQueries({ queryKey: leadStepStatementsQueryKey(leadRowId ?? "none") });
       // The brand's outcome counts move on the next read of the revenue join, which is
-      // what the stat cards above the table render. Invalidate the ROOT: the same money
-      // is asked for at several grains under different keys, and a statement changes all
-      // of them.
-      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+      // what the stat cards above the table render. EVERY grain of that money is a
+      // different key — per channel, per campaign, per offer, per funnel, per brand —
+      // plus the per-audience costs and the charts, so all of them are re-read at once
+      // rather than the one root this mutation happens to know about.
+      invalidateLeadOutcome(queryClient);
     },
   });
 }
@@ -90,7 +92,7 @@ export function useWithdrawLeadStepStatement(leadRowId: string | null) {
       queryClient.setQueryData(leadStepStatementsQueryKey(leadRowId ?? "none"), data);
       // A withdrawn outcome stops being counted and the cost stated for that leg stops
       // counting as the customer's spend, so the same money moves at every grain.
-      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+      invalidateLeadOutcome(queryClient);
     },
   });
 }
@@ -123,8 +125,9 @@ export function useSetAnyLeadStepStatement() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: leadStepStatementsQueryKey(variables.leadRowId) });
       // The board reads which column a card sits in off the SAME revenue join the stat
-      // cards poll, so this is what actually moves the card.
-      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+      // cards poll, so this is what actually moves the card — and every other grain of
+      // the money it just changed.
+      invalidateLeadOutcome(queryClient);
     },
   });
 }

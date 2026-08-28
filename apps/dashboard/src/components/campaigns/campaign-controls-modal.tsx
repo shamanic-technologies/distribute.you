@@ -10,6 +10,7 @@ import {
   type BrandFunnelBudgets,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import {
   ROLLUP_LABEL,
@@ -264,8 +265,10 @@ export function CampaignControlsModal({
     if (latestBudgets) {
       queryClient.setQueryData(["brandFunnelBudgets", brandId], latestBudgets);
     }
-    await queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-    await queryClient.invalidateQueries({ queryKey: ["brandDailyBudget", brandId] });
+    // Every figure that states what a campaign may spend, or whether it runs at all —
+    // `brandSpendableBudget` above all, which is the join of billing's ceilings to
+    // campaign-service's statuses and is what the header money reads.
+    invalidateCampaignMoney(queryClient);
 
     setSaving(false);
     setTouched(new Set());

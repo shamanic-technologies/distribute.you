@@ -1103,8 +1103,8 @@ describe("the Sales Funnels card funds each funnel", () => {
     expect(src).toContain("(m) => m.cents !== (state.savedCentsByChannel[m.featureSlug] ?? 0)");
     // The offer rides beside the channel on the write, and the fields are seeded
     // from the offer's OWN ceilings — or the button would offer to spend money
-    // belonging to a sibling offer. Measured: the mutation block is 1220 chars.
-    const mutation = sliceFrom(src, "const budgetMutation = useMutation({", 1220);
+    // belonging to a sibling offer. Measured: the mutation block is 1460 chars.
+    const mutation = sliceFrom(src, "const budgetMutation = useMutation({", 1460);
     expect(mutation).toContain("move.featureSlug,\n          offerId,");
     expect(mutation).toContain("set.offers,\n        offerId,");
     // billing takes it as an optional coordinate, never a required one: every
