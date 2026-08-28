@@ -31,3 +31,27 @@ export function formatRoi(multiple: number | null | undefined, absent = "—"): 
   if (multiple == null || !Number.isFinite(multiple)) return absent;
   return `${multiple.toFixed(roiDigits(multiple))}×`;
 }
+
+/**
+ * Break-even. A return above it means the money is coming back.
+ */
+const BREAK_EVEN = 1;
+
+/**
+ * Whether a return reads GREEN.
+ *
+ * ONE rule, one home, for the same reason `formatRoi` is one function: the ROI stat
+ * card, the Return-on-spend headline and the Campaigns table's ROI cell all sit within
+ * inches of each other, and three copies of `multiple > 1` is how they come to disagree
+ * about where green starts.
+ *
+ * Above break-even is green; BELOW IT STAYS THE ORDINARY TEXT COLOUR, never red. A
+ * campaign that has not finished learning is under 1x by construction, and painting that
+ * red calls it a failure. Red is a verdict and there is none to state here.
+ *
+ * An unmeasurable return is not a bad one: `null` reads false, so it renders in the
+ * ordinary colour beside the caller's own word for "we have no figure".
+ */
+export function roiIsGood(multiple: number | null | undefined): boolean {
+  return multiple != null && Number.isFinite(multiple) && multiple > BREAK_EVEN;
+}

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/skeleton";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { formatRoi } from "@/lib/format-roi";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import type { RoiHistory } from "@/lib/revenue-view";
 import { LearningTag } from "@/components/learning-tag";
 
@@ -158,11 +158,10 @@ export function RoiTrendCard({
     return { domain: [min, max] as [number, number], ticks: [min, max] };
   }, [data]);
   const latest = data.length > 0 ? data[data.length - 1] : null;
-  // Above break-even the brand is making its money back, and that reads green. Below it
-  // stays the ordinary text colour rather than turning red: a young brand is under 1x by
-  // construction, and painting that red calls a campaign that has not finished learning
-  // a failure. Same rule as the Campaigns table's ROI column.
-  const good = latest != null && latest.roiMultiple > BREAK_EVEN;
+  // Green above break-even, ordinary colour below it, never red. The rule lives in
+  // `roiIsGood` because the ROI stat card sits inches above this headline and a second
+  // copy of `> 1` is how the two come to disagree about where green starts.
+  const good = roiIsGood(latest?.roiMultiple);
   // Pipeline whose outcome carries no timestamp sits on no day, so it is counted in the
   // headline ROI and cannot be in this curve. When there is any, the last point and the
   // ROI stat card above legitimately differ — say so rather than let a reader find it.

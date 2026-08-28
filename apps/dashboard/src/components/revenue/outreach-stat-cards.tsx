@@ -7,7 +7,7 @@ import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
 import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { formatUsdAdaptive } from "@/lib/format-number";
-import { formatRoi } from "@/lib/format-roi";
+import { formatRoi, roiIsGood } from "@/lib/format-roi";
 import type { BrandOptimizationGoal } from "@/lib/api";
 import type { CostEconomics, Spend } from "@/lib/revenue-view";
 
@@ -389,6 +389,12 @@ export function OutreachStatCards({
               label="ROI"
               tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.roi}
               value={formatRoi(economics?.roiMultiple)}
+              // Green above break-even, ordinary colour below, never red — the same
+              // `roiIsGood` the Return-on-spend headline and the Campaigns table's ROI
+              // cell read, so the three cannot disagree about where green starts. The
+              // learning branch below replaces the value outright, so a figure we are
+              // declining to state is never painted as a good one.
+              valueClassName={roiIsGood(economics?.roiMultiple) ? "text-green-600" : undefined}
               action={economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />

@@ -269,3 +269,75 @@ describe("campaignStepOutcomes — a campaign's OWN count for a step", () => {
     expect(campaignStepOutcomes(feedback, "conversation")).toBe(0);
   });
 });
+
+/**
+ * A shared arrow states its figures ONCE.
+ *
+ * The rung's cost and rate are the arrow's on every row — the `$ / Outcome` tooltip says
+ * so outright — so two campaigns feeding one step does not make them unstateable, only
+ * repeatable. `arrowLead` marks the row that says them.
+ */
+describe("arrowLead", () => {
+  const funnel = reply!;
+  const legs = funnelLegs(funnel);
+  const entry = legs[0];
+
+  const on = (id: string, legDef: ChannelLeg[]) => ({
+    toIndex: campaignLegFor(funnel, legDef)?.toIndex ?? null,
+    campaign: id,
+  });
+
+  it("leads every arrow, shared or not", () => {
+    const { rows } = buildFunnelLegRows<string>({ legs, steps: [], campaigns: [] });
+    // Every arrow is unclaimed here, so each is alone and each leads itself.
+    expect(rows.every((r) => r.arrowLead)).toBe(true);
+    expect(rows).toHaveLength(legs.length);
+  });
+
+  it("marks exactly one lead per arrow when two campaigns feed it", () => {
+    const { rows } = buildFunnelLegRows<string>({
+      legs,
+      steps: [],
+      campaigns: [on("cold-email", COLD_EMAIL), on("feedback", COLD_EMAIL)],
+    });
+    const shared = rows.filter((r) => r.leg.toIndex === entry.toIndex);
+    expect(shared).toHaveLength(2);
+    expect(shared.filter((r) => r.arrowLead)).toHaveLength(1);
+    expect(shared[0].arrowLead).toBe(true);
+    expect(shared[1].arrowLead).toBe(false);
+    expect(shared.every((r) => r.sharesArrow)).toBe(true);
+  });
+
+  it("marks the lead AFTER the sort, so it is the row that ends up on top", () => {
+    // The sort orders campaigns within an arrow by cost, so the lead cannot be decided
+    // while the rows are still being emitted.
+    const { rows } = buildFunnelLegRows<string>({
+      legs,
+      steps: [],
+      campaigns: [
+        on("a", COLD_EMAIL),
+        on("b", COLD_EMAIL),
+        on("closer", FOUNDER_LED_CLOSING),
+      ],
+    });
+    const leads = rows.filter((r) => r.arrowLead);
+    // One lead per arrow, and never two in a row on the same arrow.
+    expect(leads).toHaveLength(legs.length);
+    for (let i = 1; i < rows.length; i += 1) {
+      if (rows[i].leg.toIndex === rows[i - 1].leg.toIndex) expect(rows[i].arrowLead).toBe(false);
+      else expect(rows[i].arrowLead).toBe(true);
+    }
+  });
+
+  it("leads an arrow nobody of ours performs", () => {
+    const { rows } = buildFunnelLegRows<string>({
+      legs,
+      steps: [],
+      campaigns: [on("closer", FOUNDER_LED_CLOSING)],
+    });
+    // An unclaimed arrow is alone on itself, so it states the rung it has.
+    const unclaimed = rows.filter((r) => r.campaign === null);
+    expect(unclaimed.length).toBeGreaterThan(0);
+    expect(unclaimed.every((r) => r.arrowLead && !r.sharesArrow)).toBe(true);
+  });
+});

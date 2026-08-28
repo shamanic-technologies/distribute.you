@@ -19,6 +19,13 @@ type ScoreCardCommon = {
    * `pending`; `value` is the fallback when `action` is absent.
    */
   action?: ReactNode;
+  /**
+   * The value's colour, when the figure itself carries a reading. Defaults to the
+   * ordinary `text-gray-800` every other card wears — a card passes this only when
+   * the number means something on its own (a return above break-even), never as
+   * decoration. Semantic green and red are verdicts, so they are never a default.
+   */
+  valueClassName?: string;
   pending?: boolean;
 };
 
@@ -45,7 +52,16 @@ export function formatDelta(
 }
 
 export function ScoreCard(props: ScoreCardProps) {
-  const { label, value, subtitle, tooltip, badge, action, pending = false } = props;
+  const {
+    label,
+    value,
+    subtitle,
+    tooltip,
+    badge,
+    action,
+    valueClassName = "text-gray-800",
+    pending = false,
+  } = props;
   const fmt =
     "deltaFormat" in props && props.deltaFormat
       ? formatDelta(props.delta, props.deltaFormat, props.deltaInverted ?? false)
@@ -68,7 +84,7 @@ export function ScoreCard(props: ScoreCardProps) {
         ) : action ? (
           action
         ) : (
-          <p className="text-2xl font-semibold text-gray-800">{value}</p>
+          <p className={`text-2xl font-semibold ${valueClassName}`}>{value}</p>
         )}
         {pending ? (
           <Skeleton className="h-3 w-10 mt-1" />

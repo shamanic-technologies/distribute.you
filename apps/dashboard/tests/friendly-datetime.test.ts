@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { friendlyDate, friendlyDateTime, friendlyTime } from "../src/lib/friendly-datetime";
+import { friendlyDate, friendlyDateTime, friendlyTime, timeAgo } from "../src/lib/friendly-datetime";
 
 // Local time throughout: these are the reader's day boundaries, so the fixtures are
 // built with the local-time Date constructor rather than an ISO string (which would
@@ -70,6 +70,42 @@ describe("friendlyDateTime", () => {
     [at(2026, 7, 28, 16, 23), "Jul 28, 2026 at 4:23pm"],
   ])("renders %s as %s", (d, expected) => {
     expect(friendlyDateTime(d, now)).toBe(expected);
+  });
+});
+
+describe("timeAgo", () => {
+  const now = at(2026, 7, 30, 14, 0);
+
+  it("reads the sub-minute case as Just now, never a second count", () => {
+    expect(timeAgo(new Date(now.getTime() - 1_000), now)).toBe("Just now");
+    expect(timeAgo(new Date(now.getTime() - 59_000), now)).toBe("Just now");
+  });
+
+  it("singularises one minute and one hour", () => {
+    expect(timeAgo(new Date(now.getTime() - 60_000), now)).toBe("1 minute ago");
+    expect(timeAgo(at(2026, 7, 30, 13, 0), now)).toBe("1 hour ago");
+  });
+
+  it("counts minutes, then hours", () => {
+    expect(timeAgo(at(2026, 7, 30, 13, 57), now)).toBe("3 minutes ago");
+    expect(timeAgo(at(2026, 7, 30, 11, 0), now)).toBe("3 hours ago");
+  });
+
+  // Same local-midnight diff friendlyDate uses, so the two surfaces cannot disagree
+  // about which day an instant fell on.
+  it("counts calendar days once the day has turned", () => {
+    expect(timeAgo(at(2026, 7, 29, 22, 0), now)).toBe("1 day ago");
+    expect(timeAgo(at(2026, 7, 28, 16, 23), now)).toBe("2 days ago");
+  });
+
+  it("falls back to the calendar date past a month", () => {
+    expect(timeAgo(at(2026, 6, 1, 9, 0), now)).toBe("Jun 1, 2026");
+  });
+
+  // A few seconds of clock skew must not print a negative count.
+  it("never counts backwards", () => {
+    expect(timeAgo(at(2026, 7, 30, 14, 30), now)).toBe("Just now");
+    expect(timeAgo(at(2026, 8, 2, 9, 0), now)).toBe("Just now");
   });
 });
 

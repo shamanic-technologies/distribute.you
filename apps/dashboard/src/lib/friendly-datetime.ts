@@ -50,3 +50,40 @@ export function friendlyTime(at: string | Date): string {
 export function friendlyDateTime(at: string | Date, now: Date = new Date()): string {
   return `${friendlyDate(at, now)} at ${friendlyTime(at)}`;
 }
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 3_600_000;
+
+/**
+ * `Just now` · `1 minute ago` · `3 hours ago` · `2 days ago` · `Jul 28, 2026`.
+ *
+ * How long ago, for a surface where the reader is judging FRESHNESS rather than
+ * placing an instant — a triage card asking "is this still moving". Under a minute
+ * reads `Just now` rather than a second count, which changes while you look at it
+ * and says nothing a person acts on.
+ *
+ * Days are CALENDAR days, the same local-midnight diff `friendlyDate` uses, so a
+ * card that says `Yesterday` on the lead's panel cannot say `1 day ago` here for an
+ * instant 30 hours back and `2 days ago` for one 26 hours back. Past ~30 days the
+ * elapsed count stops helping and it falls back to the plain calendar date.
+ *
+ * A FUTURE instant reads `Just now`, never a negative count: nothing rendered
+ * through this has happened later than now, so a clock skew of a few seconds must
+ * not print `-1 minutes ago`.
+ */
+export function timeAgo(at: string | Date, now: Date = new Date()): string {
+  const d = new Date(at);
+  const elapsed = now.getTime() - d.getTime();
+  if (elapsed < MINUTE_MS) return "Just now";
+  if (elapsed < HOUR_MS) {
+    const minutes = Math.floor(elapsed / MINUTE_MS);
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+  }
+  const days = Math.round((startOfLocalDay(now) - startOfLocalDay(d)) / DAY_MS);
+  if (days < 1) {
+    const hours = Math.floor(elapsed / HOUR_MS);
+    return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  }
+  if (days > 30) return friendlyDate(d, now);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
+}

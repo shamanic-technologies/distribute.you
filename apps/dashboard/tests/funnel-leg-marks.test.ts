@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   FUNNEL_LEG_MARKS,
+  FUNNEL_LEG_TONE,
   funnelLegMarkFor,
   funnelLegMarkKey,
 } from "../src/lib/funnel-leg-marks";
+import { OWN_CHANNEL_TONE } from "../src/lib/acquisition-channels";
 import { SALES_FUNNELS } from "../src/lib/sales-funnels";
 import { funnelLegs } from "../src/lib/campaign-leg";
 
@@ -131,5 +133,44 @@ describe("funnel leg marks — one tile per leg, unique fleet-wide", () => {
     expect(mark).toContain('weight="duotone"');
     // The tile rotates with the brand like every other mark on the product.
     expect(mark).toContain("tone-tile");
+  });
+});
+
+/**
+ * ONE tone for every leg: the charter's secondary.
+ *
+ * A table walking one funnel arrow by arrow is a SEQUENCE, and four colours down a
+ * sequence read as four kinds of thing rather than as four steps of one. The GLYPH is
+ * what tells the legs apart, which is the whole reason the catalogue is keyed on a glyph
+ * token; the tone is free to say "this is a step of your funnel" instead.
+ */
+describe("one tone for every leg", () => {
+  it("wears the shared secondary and nothing else", () => {
+    const tones = new Set(
+      Object.values(FUNNEL_LEG_MARKS).map((m) => `${m.tone.iconBg}|${m.tone.iconText}`),
+    );
+    expect(tones.size).toBe(1);
+    expect([...tones][0]).toBe(`${FUNNEL_LEG_TONE.iconBg}|${FUNNEL_LEG_TONE.iconText}`);
+  });
+
+  it("is purple, the charter's own secondary", () => {
+    // ~44 degrees off the primary blue, a relationship globals.css preserves under the
+    // tone-tile rotation, so on a customer's dashboard this is THEIR secondary.
+    expect(FUNNEL_LEG_TONE.iconBg).toBe("bg-purple-50");
+    expect(FUNNEL_LEG_TONE.iconText).toBe("text-purple-600");
+  });
+
+  it("carries the tint through a tone-tile so it rotates with the brand", () => {
+    const mark = readFileSync(
+      join(__dirname, "..", "src", "components/marks/funnel-leg-mark.tsx"),
+      "utf8",
+    );
+    expect(mark).toContain("tone-tile");
+    expect(mark).toContain("mark.tone.iconBg");
+    expect(mark).toContain("mark.tone.iconText");
+  });
+
+  it("differs from the tone the channels wear, so a row reads two KINDS of thing", () => {
+    expect(FUNNEL_LEG_TONE.iconText).not.toBe(OWN_CHANNEL_TONE.iconText);
   });
 });
