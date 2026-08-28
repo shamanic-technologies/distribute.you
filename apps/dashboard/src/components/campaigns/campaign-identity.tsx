@@ -2,11 +2,13 @@
 
 import type { SalesFunnelDef } from "@/lib/sales-funnels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
-import { campaignLegLabel } from "@/lib/campaign-leg";
+import { campaignLegFor, campaignLegLabel, type CampaignLeg } from "@/lib/campaign-leg";
+import { funnelLegMarkFor } from "@/lib/funnel-leg-marks";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
 import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
+import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
 
 /**
  * WHICH campaign this is, stated once, in the one vocabulary the whole dashboard
@@ -51,6 +53,15 @@ import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
 export interface CampaignIdentityParts {
   funnel: SalesFunnelDef | null;
   featureSlug: string | null;
+  /**
+   * The leg this row is ABOUT, when the surface already knows it.
+   *
+   * The funnel page walks every arrow of its funnel — including the ones no campaign of
+   * ours performs, which the brand works itself — so those rows have a leg and no
+   * channel to resolve one from. Omitted, the leg is resolved from the channel exactly
+   * as before.
+   */
+  leg?: CampaignLeg | null;
 }
 
 /**
@@ -84,20 +95,50 @@ function useChannelParts(featureSlug: string | null) {
  * Used wherever a campaign occupies a row of its own: the Campaigns table's
  * first column, and each row of the budget modal.
  */
-export function CampaignIdentity({ funnel, featureSlug }: CampaignIdentityParts) {
+export function CampaignIdentity({
+  funnel,
+  featureSlug,
+  leg: legOverride,
+  viaNote,
+}: CampaignIdentityParts & {
+  /** What the second line reads when there is NO channel — "Done by you" on an arrow
+   *  the brand works itself. Without it an absent channel reads as a gap, which is a
+   *  different statement from a leg nobody sells us. */
+  viaNote?: string;
+}) {
   const channel = useChannelParts(featureSlug);
-  const leg = campaignLegLabel(funnel, channel?.def?.legs);
+  const leg = legOverride ?? campaignLegFor(funnel, channel?.def?.legs);
+  // The LEG's tile, not the funnel's: the line beside it names an arrow, so a funnel
+  // tile would mark one thing above words about another. A leg this app has not drawn
+  // falls back to the funnel's own mark rather than to nothing.
+  const legMarked = leg != null && funnelLegMarkFor(leg.fromKey, leg.toKey) != null;
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      {funnel && <SalesFunnelMark def={funnel} size="sm" />}
+      {legMarked && leg ? (
+        <FunnelLegMark fromKey={leg.fromKey} toKey={leg.toKey} size="sm" />
+      ) : (
+        funnel && <SalesFunnelMark def={funnel} size="sm" />
+      )}
       <div className="flex h-8 min-w-0 flex-col justify-center">
-        <span className="truncate leading-[14px] text-gray-800" title={funnel?.name}>
-          {leg ?? "—"}
+        {/* The title carries BOTH: the leg reads truncated on a narrow column, and the
+            funnel is what tells two same-named legs of different funnels apart at brand
+            grain. */}
+        <span
+          className="truncate leading-[14px] text-gray-800"
+          title={leg && funnel ? `${leg.label} (${funnel.name})` : funnel?.name}
+        >
+          {leg?.label ?? funnel?.name ?? "—"}
         </span>
         <span className="flex h-[18px] min-w-0 items-center gap-1 text-xs leading-[18px] text-gray-500">
-          <span className="shrink-0">Via</span>
-          {channel?.def && <AcquisitionChannelMark def={channel.def} size="xs" />}
-          <span className="truncate">{channel ? channel.label : "\u2014"}</span>
+          {channel ? (
+            <>
+              <span className="shrink-0">Via</span>
+              {channel.def && <AcquisitionChannelMark def={channel.def} size="xs" />}
+              <span className="truncate">{channel.label}</span>
+            </>
+          ) : (
+            <span className="truncate">{viaNote ?? "\u2014"}</span>
+          )}
         </span>
       </div>
     </div>

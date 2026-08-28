@@ -32,6 +32,14 @@ export interface CampaignLeg {
   fromIndex: number | null;
   /** Where the step this leg moves a lead TO sits in `steps`. */
   toIndex: number;
+  /**
+   * The SAME two steps under the producer's own tokens — the key a leg's MARK is
+   * looked up on (`funnel-leg-marks.ts`). Carried here rather than re-derived at the
+   * render site because the indices alone cannot say WHICH funnel they index into,
+   * and a mark keyed on the wrong funnel's steps is a tile for a different arrow.
+   */
+  fromKey: string | null;
+  toKey: string;
   /** What to call it, in the funnel's own words. */
   label: string;
 }
@@ -74,13 +82,23 @@ export function campaignLegFor(
     if (leg.from === null) {
       // Onto the funnel from nothing — a leg of this funnel only when it lands on
       // the step the funnel starts at.
-      if (toIndex === 0) resolved = { fromIndex: null, toIndex, label: funnel.steps[0] };
+      if (toIndex === 0) {
+        resolved = {
+          fromIndex: null,
+          toIndex,
+          fromKey: null,
+          toKey: stepKeys[0],
+          label: funnel.steps[0],
+        };
+      }
     } else {
       const fromIndex = stepKeys.indexOf(leg.from);
       if (fromIndex >= 0 && fromIndex === toIndex - 1) {
         resolved = {
           fromIndex,
           toIndex,
+          fromKey: stepKeys[fromIndex],
+          toKey: stepKeys[toIndex],
           label: `${funnel.steps[fromIndex]} → ${funnel.steps[toIndex]}`,
         };
       }
@@ -107,4 +125,32 @@ export function campaignLegLabel(
   const leg = campaignLegFor(funnel, legs);
   if (leg) return leg.label;
   return funnel ? funnel.name : null;
+}
+
+/**
+ * EVERY arrow of a funnel, in the funnel's own order — whether or not any channel
+ * performs it.
+ *
+ * `campaignLegFor` above answers "which leg does this channel do"; this answers "which
+ * legs does this funnel HAVE". A funnel is sold leg by leg and the legs we do not
+ * automate are worked at the brand's side, so a surface that walks a funnel has to list
+ * every arrow and then say who performs each — listing only the ones we run tells a
+ * customer their funnel is shorter than it is.
+ *
+ * Index i is the arrow LANDING on `steps[i]`: the first is the entry leg (onto the
+ * funnel from nothing) and every later one converts the step before it.
+ */
+export function funnelLegs(funnel: SalesFunnelDef | null | undefined): CampaignLeg[] {
+  if (!funnel) return [];
+  return funnel.steps.map((step, i) =>
+    i === 0
+      ? { fromIndex: null, toIndex: 0, fromKey: null, toKey: funnel.stepKeys[0], label: step }
+      : {
+          fromIndex: i - 1,
+          toIndex: i,
+          fromKey: funnel.stepKeys[i - 1],
+          toKey: funnel.stepKeys[i],
+          label: `${funnel.steps[i - 1]} → ${step}`,
+        },
+  );
 }

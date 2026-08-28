@@ -21,6 +21,11 @@ describe("Campaigns page (GA)", () => {
   // cells, ordering and status wording read the table; the ones about the page's own
   // header (tiles, heading, #1 channel) still read the page.
   const table = read("components/campaigns/campaigns-table.tsx");
+  // That file now holds TWO tables: this multi-funnel list, and the leg walk a single
+  // funnel's page renders (`funnel-leg-table.test.ts` owns that one). Every guard about
+  // columns, colSpans and folded cells reads the LIST, or it counts both and reports a
+  // shape neither table has.
+  const listTable = table.slice(table.indexOf("export function CampaignsTable("));
   const identity = read("components/campaigns/campaign-identity.tsx");
   const modal = read("components/campaigns/campaign-controls-modal.tsx");
   const sidebar = read("components/context-sidebar.tsx");
@@ -118,8 +123,10 @@ describe("Campaigns page (GA)", () => {
     // funnel's own name when the channel states no leg of it — so a campaign is
     // never unnamed, and a funnel we cannot resolve at all is a real gap that
     // reads as one.
-    expect(identity).toContain("campaignLegLabel(funnel, channel?.def?.legs)");
-    expect(identity).toContain('{leg ?? "—"}');
+    expect(identity).toContain("campaignLegFor(funnel, channel?.def?.legs)");
+    // A funnel we cannot resolve at all is a real gap and reads as one; a channel that
+    // states no leg of this funnel still names the funnel it sells.
+    expect(identity).toContain('{leg?.label ?? funnel?.name ?? "—"}');
     expect(api).toContain("funnelKey: SalesFunnelKeyWire | null;");
   });
 
@@ -184,7 +191,7 @@ describe("Campaigns page (GA)", () => {
   // pill it answers the other half of one question — is this campaign running,
   // and how hard.
   it("orders the columns Campaign, ROI, % CAC, $ Revenue, $ Invested, $ Budget, Status", () => {
-    const head = table.slice(table.indexOf("<thead>"), table.indexOf("</thead>"));
+    const head = listTable.slice(listTable.indexOf("<thead>"), listTable.indexOf("</thead>"));
     const order = [
       "Campaign",
       "ROI",
@@ -402,10 +409,10 @@ describe("Campaigns page (GA)", () => {
   it("holds the table's own shape as the column count grows", () => {
     // A stale colSpan silently narrows the skeleton and the empty state, and a
     // stale min-w lets the last column fold.
-    expect(table).toContain("md:min-w-[760px]");
+    expect(listTable).toContain("md:min-w-[760px]");
     expect(table).not.toContain("colSpan={8}");
     expect(table).not.toContain("colSpan={9}");
-    expect((table.match(/colSpan=\{7\}/g) ?? []).length).toBe(2);
+    expect((listTable.match(/colSpan=\{7\}/g) ?? []).length).toBe(2);
   });
 
   /**
@@ -458,13 +465,15 @@ describe("Campaigns page (GA)", () => {
 
     it("hides every money column below md, and no more", () => {
       for (const label of ["% CAC", "$ Revenue", "$ Invested", "$ Budget"]) {
-        const at = table.indexOf(`label="${label}"`);
+        const at = listTable.indexOf(`label="${label}"`);
         expect(at).toBeGreaterThan(-1);
-        expect(table.slice(table.lastIndexOf("<th", at), at)).toContain("hidden md:table-cell");
+        expect(listTable.slice(listTable.lastIndexOf("<th", at), at)).toContain(
+          "hidden md:table-cell",
+        );
       }
       // Header + cell for each of the five folded columns (the four money ones and
       // Status). Campaign and ROI render at every width.
-      expect((table.match(/hidden md:table-cell/g) ?? []).length).toBe(10);
+      expect((listTable.match(/hidden md:table-cell/g) ?? []).length).toBe(10);
     });
   });
 
