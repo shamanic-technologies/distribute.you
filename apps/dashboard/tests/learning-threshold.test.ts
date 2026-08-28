@@ -418,6 +418,18 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     expect(table).toContain("<LearningTag withInfo={false} paused={paused} />");
   });
 
+  it("every campaign-scoped entity page states it too, off the campaign it already polls", () => {
+    // `OutreachStatCardsAuto` is the stat row on the campaign Leads page (and every
+    // other campaign-scoped entity page). It holds `["campaign", id]` for the funnel
+    // already, so the flag costs no second read; brand and offer grain fetch no
+    // campaign, so `campaignData` is undefined and the flag is false by construction.
+    const auto = read("components/revenue/outreach-stat-cards-auto.tsx");
+    expect(auto).toContain(
+      "const campaignPaused =\n    campaignData != null && !isRunningStatus(campaignData.campaign.status);",
+    );
+    expect(auto).toContain("paused={campaignPaused}");
+  });
+
   it("the return chart's tag follows the section's flag", () => {
     const section = read("components/revenue/revenue-overview-section.tsx");
     expect(section).toContain("paused={paused}");

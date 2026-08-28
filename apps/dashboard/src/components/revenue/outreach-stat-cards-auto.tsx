@@ -18,6 +18,7 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { salesInterestSharePct } from "@/lib/funnel-share";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
+import { isRunningStatus } from "@/lib/campaign-controls";
 import type { RevenueOverview } from "@/lib/revenue-view";
 
 /**
@@ -90,6 +91,15 @@ export function OutreachStatCardsAuto({
     { enabled: !!campaignId },
   );
   const funnelKey = campaignData?.campaign.funnelKey ?? null;
+  // A PAUSED campaign says `Paused` where it would otherwise say `Learning`: the tag
+  // withholds a figure because too few outcomes have landed, and on a stopped campaign
+  // none are landing, so it would promise a number that cannot arrive until the customer
+  // restarts it. WHICH figures are withheld does not change — that stays keyed on the
+  // outcome counts — so restarting restores exactly the tags it had. Read off the
+  // campaign query this row already makes (no second read); brand and offer grain state
+  // no single status and pass false.
+  const campaignPaused =
+    campaignData != null && !isRunningStatus(campaignData.campaign.status);
 
   // `/revenue` carries the `spend` block that feeds the cost cards (CPC / CPS /
   // CPSM), asked at the grain this row IS: the campaign when one is open, else the
@@ -163,6 +173,7 @@ export function OutreachStatCardsAuto({
       showEconomics={!campaignId}
       economicsLearning={economicsLearning}
       showFunnelMetrics={!!campaignId}
+      paused={campaignPaused}
       outreachOverride={contactedOverride != null ? outreachActions : outreachOverride}
       contactedOverride={contactedOverride}
       // The share of contacted that showed sales interest, through the one helper the
