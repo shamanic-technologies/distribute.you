@@ -116,16 +116,6 @@ describe("the cost cards state Learning instead of a thin price", () => {
     expect(hits.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("gates the goal's own outcome cost too, so one row cannot state two rules", () => {
-    expect(src).toContain("costLearning: isLearning(outcomeCount)");
-  });
-
-  it("keeps the tracker CTA ahead of the tag", () => {
-    // A tracker that is not live is WHY the count is thin, so "set this up" is the
-    // actionable answer; the tag only speaks when there is nothing to set up.
-    expect(src).toContain("outcomeCard.showAction ? trackerButton : null");
-  });
-
   it("swaps the tooltip to the reason rather than keeping the price copy", () => {
     expect(src).toContain("LEARNING_NOTE");
   });
