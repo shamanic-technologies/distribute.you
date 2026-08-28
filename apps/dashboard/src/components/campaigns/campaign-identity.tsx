@@ -2,6 +2,7 @@
 
 import type { SalesFunnelDef } from "@/lib/sales-funnels";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
+import { campaignLegLabel } from "@/lib/campaign-leg";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { AcquisitionChannelMark } from "@/components/marks/acquisition-channel-mark";
@@ -12,12 +13,25 @@ import { SalesFunnelMark } from "@/components/marks/sales-funnel-mark";
  * uses for it.
  *
  * A campaign IS (offer x funnel x channel), so naming one half without the other
- * names half of it. The funnel LEADS because it is what the campaign is buying;
+ * names half of it. The LEG leads because it is what the campaign actually buys;
  * the channel is where it goes to buy it, so it reads quieter and prefixed
  * "Via". Every surface that identifies a campaign — the Campaigns table, the
  * budget modal at all three grains, the top bar — renders one of the two layouts
  * below, so a campaign cannot read one way on a page and another way in the
  * modal that changes its budget.
+ *
+ * The leg rather than the FUNNEL, because a funnel is sold leg by leg and naming a
+ * campaign after the whole funnel overstates almost all of them: a channel that only
+ * takes a lead from the attended meeting to the paid client was reading as "Sales
+ * Meeting from Conversation", which is the name of the funnel it closes the last
+ * arrow of. `campaignLegLabel` states the arrow when the channel declares one for
+ * this funnel and falls back to the funnel's own name when it declares none — the
+ * sentence this surface read before legs existed, so nothing is ever blank.
+ *
+ * Consequence worth knowing at BRAND grain, where the table lists campaigns across
+ * several funnels: two campaigns buying the same step of different funnels read the
+ * same words. The funnel MARK still tells them apart, and the funnel's own name is
+ * on the title attribute.
  *
  * ONE narrowing, several windows: the marks come from the shared components the
  * brand Settings cards render, and the words come from the same two catalogues.
@@ -72,12 +86,13 @@ function useChannelParts(featureSlug: string | null) {
  */
 export function CampaignIdentity({ funnel, featureSlug }: CampaignIdentityParts) {
   const channel = useChannelParts(featureSlug);
+  const leg = campaignLegLabel(funnel, channel?.def?.legs);
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       {funnel && <SalesFunnelMark def={funnel} size="sm" />}
       <div className="flex h-8 min-w-0 flex-col justify-center">
-        <span className="truncate leading-[14px] text-gray-800">
-          {funnel ? funnel.name : "—"}
+        <span className="truncate leading-[14px] text-gray-800" title={funnel?.name}>
+          {leg ?? "—"}
         </span>
         <span className="flex h-[18px] min-w-0 items-center gap-1 text-xs leading-[18px] text-gray-500">
           <span className="shrink-0">Via</span>
@@ -114,14 +129,15 @@ export function CampaignIdentityInline({
   fallbackLabel: string;
 }) {
   const channel = useChannelParts(featureSlug);
+  const leg = campaignLegLabel(funnel, channel?.def?.legs);
   if (!funnel && !channel) return <span className="truncate">{fallbackLabel}</span>;
 
   return (
     <>
-      {funnel && (
-        <span className="flex min-w-0 items-center gap-1.5">
+      {funnel && leg && (
+        <span className="flex min-w-0 items-center gap-1.5" title={funnel.name}>
           <SalesFunnelMark def={funnel} size="xs" />
-          <span className="truncate">{funnel.name}</span>
+          <span className="truncate">{leg}</span>
         </span>
       )}
       {channel && (
