@@ -134,7 +134,7 @@ export default function BrandInfoPage() {
     : null;
   const error = fieldsError?.message ?? null;
 
-  const { data: runsData, isLoading: runsLoading } = useAuthQuery(
+  const { data: runsData, isPending: runsLoading } = useAuthQuery(
     ["brandRuns", brandId],
     () => listBrandRuns(brandId),
     pollOptions,

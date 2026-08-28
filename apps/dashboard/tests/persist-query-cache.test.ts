@@ -323,11 +323,20 @@ describe("every org-scoped read's root is allowlisted (or explicitly sensitive)"
     const unlisted = new Map<string, string>();
     for (const file of walk(SRC)) {
       const src = fs.readFileSync(file, "utf8");
-      for (const m of src.matchAll(/useAuthQuery\(\s*\[\s*"([A-Za-z-]+)"/g)) {
-        const root = m[1];
-        if (SENSITIVE_QUERY_ROOTS.has(root)) continue;
-        if (isPersistableQueryKey([root])) continue;
-        unlisted.set(root, path.relative(SRC, file));
+      for (const call of src.matchAll(/useAuthQuery\(/g)) {
+        // Read the KEY ARGUMENT, not just a literal that starts it. Nine call sites
+        // pick their key with a ternary (`campaignId ? ["campaignLeads", …] : […]`),
+        // so a pattern anchored on `useAuthQuery(["` sees NEITHER branch — and an
+        // unlisted root there is exactly as invisible-and-slow as anywhere else.
+        // The key argument ends at the `,` before the query fn; 400 chars covers
+        // every call site with room, and over-reading only widens the check.
+        const window = src.slice(call.index, call.index + 400);
+        for (const m of window.matchAll(/\[\s*"([A-Za-z-]+)"/g)) {
+          const root = m[1];
+          if (SENSITIVE_QUERY_ROOTS.has(root)) continue;
+          if (isPersistableQueryKey([root])) continue;
+          unlisted.set(root, path.relative(SRC, file));
+        }
       }
     }
     expect([...unlisted].map(([r, f]) => `${r} (${f})`)).toEqual([]);

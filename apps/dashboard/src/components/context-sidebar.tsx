@@ -41,6 +41,17 @@ function SidebarLink({
   return (
     <Link
       href={item.href}
+      // FULL prefetch, not Next's default. Every dashboard route is DYNAMIC (Clerk
+      // `dynamic` on the provider), and for a dynamic route Next's default prefetch
+      // fetches only the LAYOUTS — it stops at the nearest `loading.tsx`. So a click
+      // still waits on a server round-trip for the page itself, and what fills that
+      // wait is the nearest loading boundary: on any funnel / leg / settings
+      // sub-route the nearest one is `offers/[offerId]/loading.tsx`, so drilling in
+      // blanks the WHOLE offer area to a full-page skeleton. `prefetch` pulls the
+      // page's own payload too, so the click has nothing left to wait for and the
+      // boundary never renders. Bounded by construction: a sidebar holds a handful
+      // of links and Next only prefetches the ones actually in the viewport.
+      prefetch
       className={`
         flex min-w-0 items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition
         ${item.comingSoon

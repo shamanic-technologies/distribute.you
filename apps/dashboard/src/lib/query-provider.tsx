@@ -14,15 +14,19 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   PERSIST_GC_TIME_MS,
   PERSIST_MAX_AGE_MS,
-  coldRestorablePairs,
+  coldRestoreFromValue,
+  coldStorageKeys,
+  entryIsTooLargeToPersist,
   persistCacheVersion,
   persisterStorageKey,
   isPersistableQueryKey,
 } from "@/lib/persist-cache";
 import {
   bucketEntries,
+  bucketKeys,
   reclaimLegacyStore,
   sweepStaleEntries,
+  valuesForKeys,
 } from "@/lib/idb-bucket";
 import { installIdleFocusManager } from "@/lib/idle-focus-manager";
 
@@ -58,7 +62,15 @@ async function requestPersistentStorage(): Promise<void> {
 function makeIdbStorage(prefix: string) {
   return {
     getItem: (key: string) => idbGet(key),
-    setItem: (key: string, value: string) => idbSet(key, value),
+    // SIZE-CAPPED. The store is one flat key space that the nav reseed reads as a
+    // unit, so a single oversized snapshot taxes every page in the org — and the
+    // brand leads list is unpaginated by design (~100MB of slim rows on a heavy
+    // brand). Refusing it is not a broken page: the query keeps `keepPreviousData`
+    // in memory and the per-query persister still restores it lazily on its own
+    // fetch. An entry that was small yesterday and is oversized today is DELETED
+    // rather than left behind, or the stale copy would outlive every write.
+    setItem: (key: string, value: string) =>
+      entryIsTooLargeToPersist(value) ? idbDel(key) : idbSet(key, value),
     removeItem: (key: string) => idbDel(key),
     // SCOPED TO THIS ORG, which is the whole point. The persister's own
     // `restoreQueries` / `persisterGc` call `entries()` and only then filter on
@@ -89,19 +101,36 @@ async function reseedColdQueriesFromDisk(
   client: QueryClient,
   orgId: string,
 ): Promise<void> {
+  const prefix = persisterStorageKey(orgId);
   try {
-    const all = await bucketEntries(persisterStorageKey(orgId));
-    const pairs = coldRestorablePairs(
-      all,
-      persisterStorageKey(orgId),
-      persistCacheVersion(),
+    // KEYS FIRST, VALUES ONLY FOR WHAT IS COLD. This used to be one `getAll` over
+    // the whole bucket followed by a `JSON.parse` of every value, on EVERY
+    // navigation — including the entries whose query was already warm in memory and
+    // whose value was therefore parsed only to be discarded. With a big list in the
+    // bucket that is tens of megabytes of IndexedDB transfer plus main-thread parse
+    // per page change, which is what the dashboard's slowness actually was. A query
+    // key is recoverable from its STORAGE key, so the cold-guard now runs on a
+    // string comparison and only the survivors are read.
+    const keys = await bucketKeys(prefix);
+    const cold = coldStorageKeys(
+      keys,
+      prefix,
       (queryKey) => client.getQueryData(queryKey) !== undefined,
     );
-    for (const { queryKey, data, updatedAt } of pairs) {
+    if (cold.length === 0) return;
+    const entries = await valuesForKeys(cold);
+    const buster = persistCacheVersion();
+    for (const [key, value] of entries) {
+      const restore = coldRestoreFromValue(key, value, prefix, buster);
+      if (!restore) continue;
+      // Re-check coldness: the value read is a second round-trip, so a query that
+      // was cold when we listed the keys may have resolved in between. Seeding it
+      // now would stomp fresher data with an older snapshot.
+      if (client.getQueryData(restore.queryKey) !== undefined) continue;
       client.setQueryData(
-        queryKey,
-        data,
-        updatedAt != null ? { updatedAt } : undefined,
+        restore.queryKey,
+        restore.data,
+        restore.updatedAt != null ? { updatedAt: restore.updatedAt } : undefined,
       );
     }
   } catch {
@@ -181,7 +210,21 @@ function OrgScopedQueryClientProvider({
 }) {
   // Created once per mount; the component is keyed by orgId upstream, so this runs
   // fresh per org and the persister prefix can never point at another org's keys.
-  const [{ client }] = useState(() => makeQueryClient(orgId));
+  //
+  // The disk read is KICKED HERE, in the initializer, not in the effect below. An
+  // effect runs after the children have already mounted and rendered, so the first
+  // page of a session paints its skeleton and only then starts asking IndexedDB what
+  // it should have shown. Starting the read during the first render buys back that
+  // whole commit — the read is fire-and-forget either way, and `setQueryData` on a
+  // client nobody is rendering yet is a no-op that lands before the first paint when
+  // it wins the race and behaves exactly as before when it does not.
+  const [{ client }] = useState(() => {
+    const made = makeQueryClient(orgId);
+    if (orgId && typeof window !== "undefined") {
+      void reseedColdQueriesFromDisk(made.client, orgId);
+    }
+    return made;
+  });
   const pathname = usePathname();
   // Only re-seed on org-scoped routes (nothing to gate / restore off `/orgs/…`).
   const isOrgScopedRoute = !!pathname && /\/orgs\/[^/]+/.test(pathname);
@@ -203,7 +246,15 @@ function OrgScopedQueryClientProvider({
   // from disk on every org-scoped route change so the local-first cache always paints
   // its stale content instead of a skeleton. COLD-GUARDED (never stomps fresher memory)
   // and org-prefixed, so re-running it on each navigation is safe and cheap.
+  // The initializer above already kicked the mount read, and `pathname` is in these
+  // deps, so without this latch every mount would read the bucket TWICE — the exact
+  // duplicate the removed `restoreQueries` used to cause.
+  const mountReadKicked = useRef(true);
   useEffect(() => {
+    if (mountReadKicked.current) {
+      mountReadKicked.current = false;
+      return;
+    }
     if (orgId && isOrgScopedRoute) void reseedColdQueriesFromDisk(client, orgId);
   }, [pathname, isOrgScopedRoute, orgId, client]);
 

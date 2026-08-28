@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { getOfferFunnels } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
@@ -59,6 +60,7 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
   const offerId = params?.offerId ?? "";
   const featureSlug = useSoleFeatureSlug();
   const router = useRouter();
+  const prefetch = useRoutePrefetch();
   const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
 
   const funnels = useAuthQuery(
@@ -175,6 +177,15 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                   // clickable row is two affordances for one action.
                   onClick={() =>
                     router.push(`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`)
+                  }
+                  // Warm the funnel's route on hover. Without it the click waits on a
+                  // dynamic RSC render and the nearest loading boundary is the OFFER's,
+                  // so drilling into a funnel blanked this whole page to a skeleton.
+                  onMouseEnter={() =>
+                    prefetch(`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`)
+                  }
+                  onFocus={() =>
+                    prefetch(`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`)
                   }
                   className="border-b border-gray-50 cursor-pointer transition hover:bg-gray-50"
                 >

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
@@ -67,6 +68,7 @@ export function OffersTable({
   basePath: string;
 }) {
   const router = useRouter();
+  const prefetch = useRoutePrefetch();
   const revenueEnabled = isRevenueFeature(featureSlug);
 
   const offersQ = useAuthQuery(["brandOffers", brandId], () => listBrandOffers(brandId), {
@@ -143,6 +145,11 @@ export function OffersTable({
               <tr
                 key={offer.offerId}
                 onClick={() => router.push(`${basePath}/offers/${offer.offerId}`)}
+                // Warm the offer's route while the pointer rests on the row, so the
+                // click has no server round-trip left to wait on and the offer's
+                // `loading.tsx` never gets to render. See `useRoutePrefetch`.
+                onMouseEnter={() => prefetch(`${basePath}/offers/${offer.offerId}`)}
+                onFocus={() => prefetch(`${basePath}/offers/${offer.offerId}`)}
                 className="cursor-pointer transition hover:bg-gray-50"
               >
                 {/* The offer leads the row: it is what the line is ABOUT, and the

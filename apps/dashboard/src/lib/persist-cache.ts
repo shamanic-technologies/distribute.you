@@ -405,3 +405,108 @@ export function snapshotIsStale(
  * Suffix bumps only if the store ever has to be reclaimed again.
  */
 export const RECLAIM_MARKER_KEY = "distribute-cache-reclaimed:1";
+
+/**
+ * Largest snapshot the disk cache will accept, in UTF-16 code units (what
+ * `String.prototype.length` counts, which is what a JS string costs to hold and to
+ * structured-clone in and out of IndexedDB).
+ *
+ * There was no cap, and the store is one flat key space the nav reseed reads as a
+ * unit, so ONE oversized entry taxed every page in the org. The brand leads list is
+ * the offender: it is unpaginated by design (the revenue engine and this page both
+ * want the whole population — see CLAUDE.md), and on a heavy brand the slim
+ * `view=basic` projection is still ~100MB. Writing that on every change and reading
+ * it back on every navigation is the whole of the reported "dashboard is slow".
+ *
+ * 2MB is picked as "large enough that every ordinary page still paints from disk,
+ * small enough that no single entry can dominate a bucket read". A refused entry is
+ * NOT a broken page: the query keeps `keepPreviousData` in memory and the per-query
+ * persister still restores it lazily when it fetches. The only cost is that a truly
+ * enormous list can cold-load once per session instead of painting from disk — which
+ * is the right trade, because reading it from disk was never fast either.
+ */
+export const MAX_PERSISTED_ENTRY_BYTES = 2 * 1024 * 1024;
+
+/** Is this serialized snapshot too large to be worth putting on disk? */
+export function entryIsTooLargeToPersist(value: string): boolean {
+  return value.length > MAX_PERSISTED_ENTRY_BYTES;
+}
+
+/**
+ * Recover a query key from its STORAGE key, without reading the value.
+ *
+ * This is the whole point of the keys-first reseed. Every entry is stored under
+ * `${prefix}-${queryHash}` and the hash is a stable `JSON.stringify` of the query
+ * key, so the key alone answers "which query is this?" — the value is only needed
+ * for the queries that turn out to be cold. Before this, the reseed pulled EVERY
+ * value in the bucket over the IndexedDB boundary and `JSON.parse`d each one, then
+ * discarded the ones whose query was already warm. On a bucket holding a big list
+ * that is tens of megabytes of transfer and main-thread parse, per navigation.
+ *
+ * Returns null for anything that is not this bucket's key or does not carry a JSON
+ * array — a foreign key, the reclaim marker, a hand-written entry.
+ */
+export function queryKeyFromStorageKey(
+  key: string,
+  prefix: string,
+): readonly unknown[] | null {
+  const keyPrefix = `${prefix}-`;
+  if (typeof key !== "string" || !key.startsWith(keyPrefix)) return null;
+  const hash = key.slice(keyPrefix.length);
+  try {
+    const parsed = JSON.parse(hash) as unknown;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The storage keys whose query is COLD (holds no in-memory data) and therefore worth
+ * fetching. Same cold-guard as `coldRestorablePairs` — never stomp fresher memory —
+ * applied one step earlier, so a warm query costs a string comparison instead of a
+ * value read plus a parse.
+ */
+export function coldStorageKeys(
+  keys: readonly string[],
+  prefix: string,
+  hasData: (queryKey: readonly unknown[]) => boolean,
+): string[] {
+  const out: string[] = [];
+  for (const key of keys) {
+    const queryKey = queryKeyFromStorageKey(key, prefix);
+    if (!queryKey) continue;
+    if (!isPersistableQueryKey(queryKey)) continue; // dead / sensitive root left on disk
+    if (hasData(queryKey)) continue; // COLD-GUARD
+    out.push(key);
+  }
+  return out;
+}
+
+/**
+ * Parse ONE fetched value into a seedable snapshot, or null.
+ *
+ * The per-entry half of `coldRestorablePairs`, so the reseed can parse exactly the
+ * values it asked for. Same buster and empty-data guards; the cold guard already ran
+ * on the key.
+ */
+export function coldRestoreFromValue(
+  key: string,
+  value: string,
+  prefix: string,
+  buster: string,
+): ColdRestore | null {
+  const queryKey = queryKeyFromStorageKey(key, prefix);
+  if (!queryKey) return null;
+  let snap: StoredQuerySnapshot;
+  try {
+    snap = JSON.parse(value) as StoredQuerySnapshot;
+  } catch {
+    return null; // corrupt — the persister removes it on its own restore/GC pass
+  }
+  if (!snap || !Array.isArray(snap.queryKey)) return null;
+  if ((snap.buster ?? "") !== buster) return null; // busted → don't paint incompatible data
+  const data = snap.state?.data;
+  if (data === undefined) return null; // nothing was ever painted → nothing to seed
+  return { queryKey: snap.queryKey, data, updatedAt: snap.state?.dataUpdatedAt };
+}
