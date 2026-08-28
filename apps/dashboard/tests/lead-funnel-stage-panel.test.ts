@@ -432,7 +432,11 @@ describe("the panel walks the campaign's OWN arrow, not the whole funnel", () =>
     // arrows. The channel is its own feature slug and its legs ride the acquisition
     // catalogue the page already holds, so this costs no extra request.
     expect(PAGE).toContain("campaignLegFor(panelFunnel, channel?.legs)");
-    expect(PAGE).toContain("acquisitionChannelForFeatureSlug(panelCampaign.featureSlug, panelChannels)");
+    // The channel is the CAMPAIGN's own, read through the one narrowing every
+    // campaign surface shares — never the brand's sole GA feature, which resolves a
+    // different channel's legs for any campaign that is not on it.
+    expect(PAGE).toContain("acquisitionChannelForFeatureSlug(featureSlug, channels)");
+    expect(PAGE).toContain("useScopedFeatureSlug(campaignId)");
     expect(PAGE).toContain("leadFunnelLegStages(panelFunnel.key, panelLeg)");
     // The full-funnel reader is gone from this page: keeping it beside the leg walk is
     // how the two come to disagree about which rows the panel offers.

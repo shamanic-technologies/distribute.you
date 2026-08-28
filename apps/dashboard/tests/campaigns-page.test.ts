@@ -291,8 +291,11 @@ describe("Campaigns page (GA)", () => {
     // Leads: brand level reads the running rows; a campaign's own page reads its
     // own row whatever its status, so a paused campaign still states its funnel.
     const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain(": campaignRows.activeRows;");
-    expect(leads).toContain("campaignRows.rows.filter((r) => r.campaign.id === campaignId)");
+    expect(leads).toContain(": campaignRows.activeRows.map((r) => r.campaign.funnelKey);");
+    // A campaign takes its funnel off its OWN row: the campaign rows are filtered by
+    // feature, so a campaign on any other channel is not among them at all.
+    expect(leads).toContain("? [scopedCampaign?.funnelKey ?? null]");
+    expect(leads).not.toContain("campaignRows.rows.filter((r) => r.campaign.id === campaignId)");
   });
 
   // `listCampaignsByBrand` answers for the WHOLE brand, so it also returns the PR,

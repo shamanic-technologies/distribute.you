@@ -54,7 +54,10 @@ describe('Audiences page under a campaign', () => {
 
   it('takes an optional campaignId and reads the campaign on the shared key', () => {
     expect(src).toContain('campaignId?: string');
-    expect(src).toContain('["campaign", campaignId ?? "none"]');
+    // The read moved into the one narrowing every campaign-scoped surface shares, so the
+    // key lives there — same `["campaign", id]` entry, one poll for all of them.
+    expect(src).toContain('useScopedFeatureSlug(campaignId)');
+    expect(read('../src/lib/scoped-feature-slug.ts')).toContain('["campaign", campaignId ?? "none"]');
   });
 
   it('prefers the campaign goal over the brand goal', () => {

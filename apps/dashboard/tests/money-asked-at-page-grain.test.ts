@@ -47,7 +47,10 @@ describe("money is asked at the grain the surface presents", () => {
 
   it("the shared stat row keeps the per-feature read ONLY for a campaign", () => {
     // A campaign runs exactly one channel, so naming one there is correct.
-    expect(statCards).toContain("getFeatureRevenue(featureSlug, brandId, { campaignId })");
+    // ...and `featureSlug` there is the CAMPAIGN's own channel, resolved before the
+    // read fires, never the brand's sole GA feature.
+    expect(statCards).toContain("getFeatureRevenue(featureSlug as string, brandId, { campaignId })");
+    expect(statCards).toContain("useScopedFeatureSlug(campaignId)");
     expect(statCards).toContain("getOfferRevenue(offerId, brandId)");
     expect(statCards).toContain("getBrandRevenue(brandId)");
   });

@@ -66,6 +66,7 @@ import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { campaignLegFor } from "@/lib/campaign-leg";
+import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import type { ConversionLead, RevenueOverview } from "@/lib/revenue-view";
 import { buildLeadsCsv } from "@/lib/leads-csv";
@@ -980,7 +981,23 @@ export function EngagedLeadsPage({
 
   const leads = useMemo(() => data?.leads ?? [], [data]);
 
-  const featureSlug = useSoleFeatureSlug();
+  // The published channel catalogue, derived from the `["features"]` query this app
+  // already holds — a `useMemo`, not a request. Read twice below: to decide whether the
+  // open campaign's channel has money to report, and to place its leg in the funnel.
+  const channels = useAcquisitionChannels();
+
+  // WHICH CHANNEL this page is about. A campaign is (offer x funnel x channel) and
+  // states its channel on its own row, so a campaign-scoped page reads THAT — never the
+  // brand's sole GA feature, which is a different channel for every campaign that is not
+  // on it. Under the sole slug this page fetched `sales-cold-email-outreach` while the
+  // reader had a `feedback-request-cold-email-outreach` campaign open: the row filter
+  // below then matched no campaign, so no funnel resolved and the lead panel drew no
+  // "Funnel progress" section at all, while the stat row above stated the other
+  // channel's money. The read is the key the campaign Overview and the top bar already
+  // poll, so it costs no request.
+  const { campaign: scopedCampaign, featureSlug, settled: scopeSettled } =
+    useScopedFeatureSlug(campaignId);
+  const campaignScoped = Boolean(campaignId);
 
   // WHICH TABS this page shows comes from the funnels the brand's ACTIVE campaigns
   // sell. At brand level that is the UNION over every live campaign; under a campaign
@@ -996,16 +1013,22 @@ export function EngagedLeadsPage({
   // offering its tab describes something the brand no longer sells. Under a campaign
   // it is that campaign's OWN row whatever its status, so a paused campaign's page
   // still states the funnel it sold.
-  const campaignRows = useCampaignRows(brandId, featureSlug);
+  //
+  // Only the BRAND branch reads those rows, and it keeps its own feature: with no
+  // campaign to bound it, the brand list stays pinned to the one feature it always was.
+  // A campaign takes its funnel off its OWN row instead — the rows are filtered by
+  // feature, so a campaign on any other channel is not among them and asking them for
+  // its funnel is asking a list that cannot contain it.
+  const soleFeatureSlug = useSoleFeatureSlug();
+  const campaignRows = useCampaignRows(brandId, soleFeatureSlug);
   const activeFunnelKeys = useMemo(() => {
-    const scoped = campaignId
-      ? campaignRows.rows.filter((r) => r.campaign.id === campaignId)
-      : campaignRows.activeRows;
-    return scoped
-      .map((r) => r.campaign.funnelKey)
+    const keys = campaignScoped
+      ? [scopedCampaign?.funnelKey ?? null]
+      : campaignRows.activeRows.map((r) => r.campaign.funnelKey);
+    return keys
       .filter((k): k is NonNullable<typeof k> => k != null)
       .map(normalizeSalesFunnelKey);
-  }, [campaignRows.rows, campaignRows.activeRows, campaignId]);
+  }, [campaignRows.activeRows, campaignScoped, scopedCampaign]);
   const funnelTabs = useMemo(() => leadTabsForFunnels(activeFunnelKeys), [activeFunnelKeys]);
 
   // Realized per-lead OUTCOMES (features-service#476 conversion-tracker attribution)
@@ -1014,14 +1037,28 @@ export function EngagedLeadsPage({
   // poll) and join by the lead IDENTITY (`lead.leadId` ↔ `ConversionLead.leadId`, not
   // the leads_campaigns row `id`). The outcome tab (Signups/Meetings/Form submissions/
   // Sales) buckets on the join boolean + dates on its timestamp.
-  const revenueEnabled = isRevenueFeature(featureSlug);
+  // Gated on the channel CATALOGUE under a campaign, not on the brand's revenue-feature
+  // set: that set decides which features get a revenue page on a BRAND-scoped surface,
+  // and gating a campaign on it blanks every campaign that is not on the brand's one GA
+  // channel. And never fire under a GUESSED slug — until the campaign resolves we do not
+  // know its channel, and a read fired on the wrong one lands in that channel's cache
+  // entry and answers about somebody else's money.
+  const revenueEnabled =
+    featureSlug !== null &&
+    (campaignScoped
+      ? acquisitionChannelForFeatureSlug(featureSlug, channels) !== null
+      : isRevenueFeature(featureSlug));
   const { data: revenueData } = useAuthQuery(
     campaignId
       ? ["featureRevenue", brandId, featureSlug, "campaign", campaignId]
       : offerId
         ? ["featureRevenue", brandId, featureSlug, "offer", offerId]
         : ["featureRevenue", brandId, featureSlug],
-    () => getFeatureRevenue(featureSlug, brandId, { campaignId, offerId }),
+    // A campaign belongs to exactly one offer, so `campaignId` alone is the narrower
+    // scope AND makes these args byte-equal to the campaign Overview's — same key, same
+    // request, one poll.
+    () =>
+      getFeatureRevenue(featureSlug as string, brandId, campaignId ? { campaignId } : { offerId }),
     {
       enabled: revenueEnabled,
       refetchInterval: POLL_INTERVAL,
@@ -1187,12 +1224,12 @@ export function EngagedLeadsPage({
     // Wait for the CAMPAIGNS query, which is what decides the tab set now: firing the
     // latch first lands on a tab the funnels do not even offer, and it is one-shot, so
     // a later answer cannot correct it.
-    if (!campaignRows.settled) return;
+    if (!(campaignScoped ? scopeSettled : campaignRows.settled)) return;
     hasAutoSelectedTab.current = true;
     const count = (t: Tab) => groupedByTab.get(t)?.length ?? 0;
     setActiveTab(visibleTabs.find((t) => count(t) > 0) ?? visibleTabs[visibleTabs.length - 1] ?? "outreach");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedLeads.length, campaignRows.settled, groupedByTab, outcomeAvailable]);
+  }, [sortedLeads.length, campaignRows.settled, scopeSettled, campaignScoped, groupedByTab, outcomeAvailable]);
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
@@ -1419,16 +1456,11 @@ export function EngagedLeadsPage({
   // run — each of which has its own page, worked by whoever performs it. The channel
   // is the campaign's own feature slug, and its legs come off the catalogue the page
   // already holds (a `useMemo` over the `["features"]` query, so no extra request).
-  const panelChannels = useAcquisitionChannels();
-  const panelCampaign = useMemo(
-    () => (campaignId ? campaignRows.rows.find((r) => r.campaign.id === campaignId)?.campaign ?? null : null),
-    [campaignRows.rows, campaignId],
-  );
   const panelLeg = useMemo(() => {
-    if (!panelFunnel || !panelCampaign?.featureSlug) return null;
-    const channel = acquisitionChannelForFeatureSlug(panelCampaign.featureSlug, panelChannels);
+    if (!panelFunnel || !featureSlug) return null;
+    const channel = acquisitionChannelForFeatureSlug(featureSlug, channels);
     return campaignLegFor(panelFunnel, channel?.legs);
-  }, [panelFunnel, panelCampaign, panelChannels]);
+  }, [panelFunnel, featureSlug, channels]);
   // A leg we cannot place falls back to the whole funnel, the sentence this panel read
   // before legs existed. `later` is never rendered — it is what a `never` also ends.
   const panelWalk = useMemo(

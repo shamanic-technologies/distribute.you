@@ -46,7 +46,7 @@ describe("Leads tabs come from the active campaigns' funnels", () => {
 
   it("reads the live campaigns, and no goal, on the Leads page", () => {
     const page = read("components/audiences/engaged-leads-page.tsx");
-    expect(page).toContain("useCampaignRows(brandId, featureSlug)");
+    expect(page).toContain("useCampaignRows(brandId, soleFeatureSlug)");
     expect(page).toContain("leadTabsForFunnels(activeFunnelKeys)");
     // The retired goal is gone from this surface entirely.
     expect(page).not.toContain("optimizationGoal");

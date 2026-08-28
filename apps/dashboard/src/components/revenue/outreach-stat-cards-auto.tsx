@@ -4,7 +4,6 @@ import { useParams } from "next/navigation";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
   fetchFeatureStats,
-  getCampaign,
   getFeatureRevenue,
   getOfferRevenue,
   getBrandRevenue,
@@ -12,7 +11,10 @@ import {
 } from "@/lib/api";
 import { pollOptions } from "@/lib/query-options";
 import { isRevenueFeature } from "@/lib/revenue-feature";
+import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { salesInterestSharePct } from "@/lib/funnel-share";
@@ -68,15 +70,37 @@ export function OutreachStatCardsAuto({
   const brandId = params.brandId as string;
   const campaignId = params.id as string | undefined;
   const offerId = params.offerId as string | undefined;
-  const featureSlug = useSoleFeatureSlug();
-  const enabled = isRevenueFeature(featureSlug);
+  // WHICH CHANNEL this row is about. A campaign states its own on its row, so a
+  // campaign-scoped row reads THAT and not the brand's sole GA feature — otherwise it
+  // prices a campaign on the brand's second channel with the FIRST one's money, under
+  // the open campaign's name, while the lead panel below it walks the right one. Same
+  // `["campaign", id]` key the campaign Overview and the top bar already poll, so this
+  // is the read this row was already making, narrowed.
+  const {
+    campaign: scopedCampaign,
+    featureSlug,
+    settled: scopeSettled,
+  } = useScopedFeatureSlug(campaignId);
+  const campaignScoped = Boolean(campaignId);
+  const soleFeatureSlug = useSoleFeatureSlug();
+  const channels = useAcquisitionChannels();
+  // Under a campaign the gate is the channel CATALOGUE, not the brand's revenue-feature
+  // set: that set decides which features get a revenue page on a brand-scoped surface,
+  // and gating a campaign on it blanks every campaign that is not on the brand's one GA
+  // channel. Never fired under a guessed slug — a read on the wrong channel lands in
+  // that channel's cache entry.
+  const enabled =
+    featureSlug !== null &&
+    (campaignScoped
+      ? acquisitionChannelForFeatureSlug(featureSlug, channels) !== null
+      : isRevenueFeature(featureSlug));
 
   const { data: featureStatsData } = useAuthQuery(
     campaignId
       ? ["featureStats", featureSlug, "campaign", campaignId]
       : ["featureStats", featureSlug, brandId],
     () =>
-      fetchFeatureStats(featureSlug, campaignId ? { campaignId } : { brandId }),
+      fetchFeatureStats(featureSlug as string, campaignId ? { campaignId } : { brandId }),
     { enabled, ...pollOptions },
   );
 
@@ -85,12 +109,7 @@ export function OutreachStatCardsAuto({
   // default, so it reads "website purchases" for a brand that stated nothing) and it
   // cannot separate the two meeting funnels either. Same `["campaign", id]` key the
   // campaign Overview and the top bar already poll → one request for all three.
-  const { data: campaignData } = useAuthQuery(
-    ["campaign", campaignId ?? "none"],
-    () => getCampaign(campaignId as string),
-    { enabled: !!campaignId },
-  );
-  const funnelKey = campaignData?.campaign.funnelKey ?? null;
+  const funnelKey = scopedCampaign?.funnelKey ?? null;
   // A PAUSED campaign says `Paused` where it would otherwise say `Learning`: the tag
   // withholds a figure because too few outcomes have landed, and on a stopped campaign
   // none are landing, so it would promise a number that cannot arrive until the customer
@@ -98,8 +117,7 @@ export function OutreachStatCardsAuto({
   // outcome counts — so restarting restores exactly the tags it had. Read off the
   // campaign query this row already makes (no second read); brand and offer grain state
   // no single status and pass false.
-  const campaignPaused =
-    campaignData != null && !isRunningStatus(campaignData.campaign.status);
+  const campaignPaused = scopedCampaign != null && !isRunningStatus(scopedCampaign.status);
 
   // `/revenue` carries the `spend` block that feeds the cost cards (CPC / CPS /
   // CPSM), asked at the grain this row IS: the campaign when one is open, else the
@@ -120,7 +138,7 @@ export function OutreachStatCardsAuto({
         : ["brandRevenue", brandId],
     () =>
       campaignId
-        ? getFeatureRevenue(featureSlug, brandId, { campaignId })
+        ? getFeatureRevenue(featureSlug as string, brandId, { campaignId })
         : offerId
           ? getOfferRevenue(offerId, brandId)
           : getBrandRevenue(brandId),
@@ -140,12 +158,18 @@ export function OutreachStatCardsAuto({
   // scoped row shows funnel steps instead). Read through the same hook the Campaigns
   // table uses, on the same query keys, so it costs no network and a page cannot state a
   // return the campaigns beneath it are all declining to state.
-  const { rows: campaignRows } = useCampaignRows(brandId, featureSlug, offerId);
+  // The brand/offer learning gate, on the feature the brand-level list has always been
+  // pinned to. An offer-scoped list spans channels anyway, and a campaign-scoped row
+  // states funnel steps rather than these ratios.
+  const { rows: campaignRows } = useCampaignRows(brandId, soleFeatureSlug, offerId);
   const economicsLearning = scopeIsLearning(campaignRows);
 
   const statsRevealed = useCoordinatedReveal([featureStatsData !== undefined]);
 
-  if (!enabled) return null;
+  // Hidden only once we KNOW there is nothing to show. While the campaign read is in
+  // flight the reads are disabled and the cards render their own skeletons, rather than
+  // the row appearing out of nowhere a round trip later.
+  if (!enabled && scopeSettled) return null;
 
   const featureStats = featureStatsData?.stats ?? {};
 
