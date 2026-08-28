@@ -89,11 +89,28 @@ export interface FunnelLegRow<C> {
    * Whether another campaign performs this SAME arrow.
    *
    * The rung's cost and rate are the arrow's, funnel-wide, and there is no per-campaign
-   * version of either on the wire. On a shared arrow, printing them on both rows states
-   * one figure under two campaigns' names — so the rows say nothing there instead. Alone
-   * on an arrow, the arrow's figures ARE that campaign's and it states them.
+   * version of either on the wire. Repeating them on every row of a shared arrow prints
+   * one figure under two campaigns' names, so they are stated exactly ONCE per arrow —
+   * see `arrowLead`. Alone on an arrow, the arrow's figures are that campaign's by
+   * construction and the row states them with no rider.
    */
   sharesArrow: boolean;
+  /**
+   * Whether this row is the FIRST of its arrow, and so the one that states the arrow's
+   * own figures.
+   *
+   * Withholding the cost and the rate from every row of a shared arrow was the earlier
+   * shape, and it is what made a funnel whose two channels both feed its first step read
+   * as having no measured cost at all. It was also inconsistent with the unshared case,
+   * where the very same funnel-wide figure IS printed — the tooltip on `$ / Outcome` says
+   * so outright ("what reaching this step has cost you, not what this one leg cost"). So
+   * the figure is not a campaign's on one row and a funnel's on another; it is the
+   * arrow's everywhere, and the only real question was how many times to print it.
+   *
+   * Computed AFTER the sort, because the sort reorders the campaigns within an arrow and
+   * the lead has to be whichever row ends up on top.
+   */
+  arrowLead: boolean;
 }
 
 /**
@@ -134,11 +151,12 @@ export function buildFunnelLegRows<C>({
     const step = steps?.find((s) => s.leadField === wanted) ?? null;
     const onThisLeg = campaigns.filter((c) => c.toIndex === leg.toIndex);
     if (onThisLeg.length === 0) {
-      rows.push({ leg, step, campaign: null, sharesArrow: false });
+      rows.push({ leg, step, campaign: null, sharesArrow: false, arrowLead: true });
       continue;
     }
     const sharesArrow = onThisLeg.length > 1;
-    for (const c of onThisLeg) rows.push({ leg, step, campaign: c.campaign, sharesArrow });
+    for (const c of onThisLeg)
+      rows.push({ leg, step, campaign: c.campaign, sharesArrow, arrowLead: false });
   }
 
   // Step asc, then cost per outcome asc. The loop above already emits the legs in the
@@ -155,6 +173,13 @@ export function buildFunnelLegRows<C>({
     if (cb == null) return -1;
     return ca - cb;
   });
+
+  // The arrow's own figures are stated on whichever row the sort left on top. Done here
+  // rather than in the loop above because the sort reorders the rows sharing one arrow,
+  // and the lead has to be the row a reader's eye lands on first.
+  for (let i = 0; i < rows.length; i += 1) {
+    rows[i].arrowLead = i === 0 || rows[i - 1].leg.toIndex !== rows[i].leg.toIndex;
+  }
 
   // Every campaign this funnel has no arrow for. Still this brand's campaigns, so they
   // are handed back rather than dropped.
