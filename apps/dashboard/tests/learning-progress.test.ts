@@ -221,6 +221,19 @@ describe("the band is mounted where campaigns are read", () => {
     expect(page).toContain("<LearningProgressCallout");
   });
 
+  it("is hidden while the campaign is paused", () => {
+    // A countdown of days left is priced on a daily spend that is not happening, so on
+    // a stopped campaign it states a date nobody can stand behind. The GATE on which
+    // figures are withheld is untouched — restarting restores the band as it was.
+    const page = src("components/campaigns/campaign-overview-page.tsx");
+    expect(page).toContain(
+      "const showLearningProgress = revenueRevealed && !campaignPaused && isLearning(learningSignal);",
+    );
+    expect(page).toContain(
+      "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
+    );
+  });
+
   it("rides the Campaigns list", () => {
     const page = src("components/campaigns/campaigns-page.tsx");
     expect(page).toContain("<LearningProgressCallout");

@@ -121,6 +121,7 @@ export function OutreachStatCards({
   economicsLearning = false,
   showFunnelMetrics = true,
   showOutreach = true,
+  paused = false,
 }: {
   stats: Record<string, number>;
   /**
@@ -220,6 +221,18 @@ export function OutreachStatCards({
    * was contacted", which is false.
    */
   showOutreach?: boolean;
+  /**
+   * The ONE campaign this row is scoped to is PAUSED.
+   *
+   * Every withheld figure then reads `Paused` instead of `Learning`: nothing is being
+   * measured while the campaign is stopped, so a `Learning` tag promises a number that
+   * cannot arrive. Only the WORD changes — which figures are withheld is still decided
+   * by the outcome counts, so restarting the campaign restores the tag it had.
+   *
+   * False at brand and offer grain: a scope runs several campaigns, and one of them
+   * being paused says nothing about the row above them all.
+   */
+  paused?: boolean;
 }) {
   // No default goal. The brand one is retired — `NOT NULL` with a server default, so it
   // reads "website purchases" for a brand that stated nothing — and defaulting to it put
@@ -376,7 +389,7 @@ export function OutreachStatCards({
               label="ROI"
               tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.roi}
               value={formatRoi(economics?.roiMultiple)}
-              action={economicsLearning ? <LearningTag withInfo={false} /> : undefined}
+              action={economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
           </Cell>
@@ -385,7 +398,7 @@ export function OutreachStatCards({
               label="$ CAC"
               tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.cacUsd}
               value={formatUsd(economics?.costPerAcquisitionUsd)}
-              action={economicsLearning ? <LearningTag withInfo={false} /> : undefined}
+              action={economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
           </Cell>
@@ -394,7 +407,7 @@ export function OutreachStatCards({
               label="% CAC"
               tooltip={economicsLearning ? LEARNING_NOTE : ECONOMICS_INFO.cacPct}
               value={formatPct(economics?.costOfAcquisitionPct)}
-              action={economicsLearning ? <LearningTag withInfo={false} /> : undefined}
+              action={economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
           </Cell>
@@ -419,7 +432,7 @@ export function OutreachStatCards({
               label={clickMetric.costLabel}
               tooltip={clickMetric.costLearning ? LEARNING_NOTE : clickMetric.costTooltip}
               value={clickMetric.costValue}
-              action={clickMetric.costLearning ? <LearningTag withInfo={false} /> : undefined}
+              action={clickMetric.costLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
           </Cell>
@@ -457,7 +470,7 @@ export function OutreachStatCards({
               value={formatCostCents(spend?.cpprCents)}
               action={
                 isLearning(spend?.positiveRepliesCount) ? (
-                  <LearningTag withInfo={false} />
+                  <LearningTag withInfo={false} paused={paused} />
                 ) : undefined
               }
               pending={pending}
@@ -484,7 +497,7 @@ export function OutreachStatCards({
               label={outcomeCard.costLabel}
               tooltip={outcomeCard.costLearning ? LEARNING_NOTE : outcomeCard.costTooltip}
               value={outcomeCard.costValue}
-              action={outcomeCard.costLearning ? <LearningTag withInfo={false} /> : undefined}
+              action={outcomeCard.costLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined}
               pending={pending}
             />
           </Cell>

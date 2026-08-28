@@ -1,4 +1,4 @@
-import { LEARNING_NOTE } from "@/lib/learning-threshold";
+import { LEARNING_NOTE, PAUSED_NOTE } from "@/lib/learning-threshold";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 
 /**
@@ -16,12 +16,31 @@ import { InfoTooltip } from "@/components/visibility/metric-info";
  * this carries meaning, and meaning never rotates. Every class is in the `html.dark` remapped set (`bg-purple-50` /
  * `text-purple-700` / `border-purple-200`), so it does not paint a light block on the
  * dark surface. Full-perimeter 1px border, per the no-side-accent rule.
+ *
+ * `paused` says the campaign that would have produced those outcomes is STOPPED, and
+ * the tag then reads **Paused** in the pause grey — the same word and the same tint the
+ * status pill and the controls roll-up already use, so one campaign is never described
+ * two ways on one screen. `Learning` there would state a process that is not running:
+ * a reader waits for a figure that cannot arrive until they restart the campaign. Grey
+ * carries no `tone-tile`: a verdict never rotates with the brand hue, and both classes
+ * are in the `html.dark` remapped set.
  */
-export function LearningTag({ withInfo = true }: { withInfo?: boolean }) {
+export function LearningTag({
+  withInfo = true,
+  paused = false,
+}: {
+  withInfo?: boolean;
+  paused?: boolean;
+}) {
+  const tone = paused
+    ? "border-gray-200 bg-gray-100 text-gray-500"
+    : "tone-tile border-purple-200 bg-purple-50 text-purple-600";
   return (
-    <span className="tone-tile inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-600 whitespace-nowrap">
-      Learning
-      {withInfo && <InfoTooltip tip={LEARNING_NOTE} placement="top" />}
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tone}`}
+    >
+      {paused ? "Paused" : "Learning"}
+      {withInfo && <InfoTooltip tip={paused ? PAUSED_NOTE : LEARNING_NOTE} placement="top" />}
     </span>
   );
 }

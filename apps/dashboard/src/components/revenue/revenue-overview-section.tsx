@@ -47,6 +47,7 @@ export function RevenueOverviewSection({
   showActivityChart = true,
   showRoiTrend = false,
   economicsLearning = false,
+  paused = false,
 }: {
   data?: RevenueOverview;
   pipelineActivity?: PipelineActivityResponse;
@@ -134,6 +135,12 @@ export function RevenueOverviewSection({
   /** Every campaign selling this scope is still learning — the return line then states
    *  why rather than drawing a ratio over almost no outcomes. */
   economicsLearning?: boolean;
+  /**
+   * The ONE campaign this section is scoped to is PAUSED. Threaded to the withheld-figure
+   * tags so they read `Paused` instead of `Learning`; false at brand and offer grain,
+   * where several campaigns sit under one heading.
+   */
+  paused?: boolean;
 }) {
   // Static-shell-first: the section header, card frames, titles and the tab bar
   // render on the first paint; only the data regions skeleton while loading.
@@ -211,7 +218,7 @@ export function RevenueOverviewSection({
             forward projection is the only part sourced from pipeline-activity and
             degrades to no dashed segment. */}
         {showRoiTrend ? (
-          <RoiTrendCard history={data?.roiHistory} pending={revenueLoading} learning={economicsLearning} />
+          <RoiTrendCard history={data?.roiHistory} pending={revenueLoading} learning={economicsLearning} paused={paused} />
         ) : (
           <OutcomeTrendCard
             series={outcomeSeries}

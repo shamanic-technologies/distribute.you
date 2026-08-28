@@ -884,7 +884,13 @@ export function CampaignsTable({
               </td>
             </tr>
           ) : (
-            rows.map(({ campaign, revenue, budgetCents, learning }) => (
+            rows.map(({ campaign, revenue, budgetCents, learning }) => {
+          // A PAUSED row is not gathering the outcomes the bar waits for, so its withheld
+          // ratios read `Paused` — the same word its own status pill states two cells
+          // over. `Learning` there tells a reader to wait for a figure that cannot
+          // arrive until they restart it.
+          const paused = !isActiveStatus(campaign.status);
+          return (
               <tr
                 key={campaign.id}
                 onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
@@ -902,9 +908,9 @@ export function CampaignsTable({
                     unreliable one. Withholding it would hide a real figure behind a word
                     about precision it does not have a precision problem with. */}
                 <td className="px-4 py-3 text-right">
-                  {learning ? <LearningTag withInfo={false} /> : <RoiCell multiple={revenue?.roiMultiple} />}
+                  {learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell multiple={revenue?.roiMultiple} />}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.costOfAcquisitionPct)}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">{fmtUsd(revenue?.totalPipelineUsd)}</td>
                 {/* `costEconomics.committedCostUsd`, read verbatim off the same
                     `pricing=net` group — the exact number the ROI and %CAC beside it
@@ -934,7 +940,8 @@ export function CampaignsTable({
                   <StatusPill status={campaign.status} />
                 </td>
               </tr>
-            ))
+          );
+        })
           )}
         </tbody>
       </table>

@@ -119,6 +119,7 @@ export function RoiTrendCard({
   history,
   pending = false,
   learning = false,
+  paused = false,
 }: {
   /** `/revenue` `roiHistory`. Null when features-service could not build it — it is
    *  fail-soft there so a curve never 502s an Overview whose other numbers are fine. */
@@ -130,6 +131,13 @@ export function RoiTrendCard({
    * line makes that read as a trend. The card states why instead of drawing it.
    */
   learning?: boolean;
+  /**
+   * The one campaign this chart is scoped to is PAUSED — the tag reads `Paused` rather
+   * than `Learning`, since nothing is being measured while it is stopped. The CURVE is
+   * untouched: it is still drawn provisional, because the reason it cannot be read is
+   * unchanged (too few outcomes), only the reason it will stay that way has moved.
+   */
+  paused?: boolean;
 }) {
   const data = useMemo(() => buildPoints(history), [history]);
   // While learning the axis states its two ENDS and nothing in between. A five-tick scale
@@ -173,7 +181,7 @@ export function RoiTrendCard({
           ) : learning ? (
             // The tag KEEPS its (i) here, unlike everywhere else: the sentence that used
             // to explain the muted curve is gone, so this is the only place left that can.
-            <LearningTag />
+            <LearningTag paused={paused} />
           ) : (
             <p
               className={`text-2xl font-bold leading-none ${good ? "text-green-600" : "text-gray-900"}`}

@@ -92,8 +92,27 @@ describe("LearningTag", () => {
   });
 
   it("carries a full-perimeter border, never a side accent", () => {
-    expect(src).toContain("border border-purple-200");
+    expect(src).toContain("rounded-full border px-2");
+    expect(src).toContain("border-purple-200");
+    expect(src).toContain("border-gray-200");
     expect(src).not.toMatch(/border-(left|right|top)|border-l-|border-r-|border-t-/);
+  });
+
+  it("reads Paused in the pause grey when the campaign behind it is stopped", () => {
+    // Same word and same tint as the status pill and the controls roll-up
+    // (`bg-gray-100 text-gray-500 border-gray-200`), so one campaign is never
+    // described two ways on one screen. `Learning` on a stopped campaign states a
+    // process that is not running.
+    expect(src).toContain('paused ? "Paused" : "Learning"');
+    for (const cls of ["bg-gray-100", "text-gray-500", "border-gray-200"]) {
+      expect(src).toContain(cls);
+    }
+    // A VERDICT never rotates with the brand hue — `tone-tile` stays on the purple
+    // branch only.
+    expect(src).toContain("tone-tile border-purple-200");
+    expect(src).not.toMatch(/tone-tile[^"]*gray/);
+    // Its own reason, not the learning one.
+    expect(src).toContain("PAUSED_NOTE");
   });
 
   it("explains itself through the shared InfoTooltip, never a native title", () => {
@@ -195,8 +214,8 @@ describe("the Campaigns table rows", () => {
 
   it("gates the two RATIOS, and nothing else on the row", () => {
     // A return and its reciprocal are one statement in two units, so they move together.
-    expect(src).toContain("learning ? <LearningTag withInfo={false} /> : <RoiCell");
-    expect(src).toContain("learning ? <LearningTag withInfo={false} /> : fmtPct(revenue?.costOfAcquisitionPct)");
+    expect(src).toContain("learning ? <LearningTag withInfo={false} paused={paused} /> : <RoiCell");
+    expect(src).toContain("learning ? <LearningTag withInfo={false} paused={paused} /> : fmtPct(revenue?.costOfAcquisitionPct)");
     // `$ Revenue` is a TOTAL, not a price: it grows with each outcome instead of being
     // decided by whichever one landed, so a thin campaign has a SMALL pipeline rather
     // than an unreliable one. `$ Invested` is money already spent, `$ Budget` a ceiling
@@ -204,7 +223,7 @@ describe("the Campaigns table rows", () => {
     expect(src).toContain("{fmtUsd(revenue?.totalPipelineUsd)}");
     expect(src).toContain("{fmtUsd(revenue?.committedCostUsd)}");
     expect(src).toContain("{fmtDailyBudgetUsd(budgetCents)}");
-    expect(src).not.toContain("LearningTag withInfo={false} /> : fmtUsd(revenue?.totalPipelineUsd)");
+    expect(src).not.toContain("LearningTag withInfo={false} paused={paused} /> : fmtUsd(revenue?.totalPipelineUsd)");
   });
 
   it("does not rank a row by a return it is not showing", () => {
@@ -229,7 +248,7 @@ describe("the scope surfaces (offer and brand)", () => {
   });
 
   it("gates the three RATIOS on the stat row and leaves Pipeline revenue alone", () => {
-    expect(cards).toContain("economicsLearning ? <LearningTag withInfo={false} /> : undefined");
+    expect(cards).toContain("economicsLearning ? <LearningTag withInfo={false} paused={paused} /> : undefined");
     // Pipeline revenue is a TOTAL: it grows with each outcome rather than being decided
     // by whichever one landed, so a thin scope has a small pipeline, not a wrong one.
     const pipelineCard = cards.slice(cards.indexOf('label="Pipeline revenue"'), cards.indexOf('label="ROI"'));
@@ -327,8 +346,8 @@ describe("audienceIsLearning + the per-audience gate", () => {
 
   it("hides the three money columns for that row, and leaves $ Invested", () => {
     expect(table).toContain("const moneyLearning =");
-    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} /> : formatPct(stats?.projection?.costOfAcquisitionPct)");
-    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)");
+    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} paused={campaignPaused} /> : formatPct(stats?.projection?.costOfAcquisitionPct)");
+    expect(table).toContain("moneyLearning ? <LearningTag withInfo={false} paused={campaignPaused} /> : formatUsd(stats?.projection?.costPerPaidClientUsd)");
     expect(table).toContain("formatCents(stats.evidence.totalCostInUsdCents)");
   });
 
@@ -352,7 +371,7 @@ describe("the Top-3 audiences card", () => {
     // Two ways in: the campaign card's own thin-outcome rule, and the scope's rule for
     // this audience. Either one replaces the value.
     expect(src).toContain("{rowLearning || scopeLearning ? (");
-    expect(src).toContain("<LearningTag withInfo={false} />");
+    expect(src).toContain("<LearningTag withInfo={false} paused={paused} />");
   });
 
   it("asks the SAME map the Audiences table asks about a row", () => {
@@ -365,5 +384,44 @@ describe("the Top-3 audiences card", () => {
   it("explains the tag from the header (i), never from inside the row's Link", () => {
     expect(src).toContain("const anyLearning");
     expect(src).toContain("anyLearning ? `${baseTip} ${LEARNING_NOTE}` : baseTip");
+  });
+});
+
+describe("a PAUSED campaign says so where it would have said Learning", () => {
+  // The tag itself is guarded above. These pin the CALL SITES: a component that
+  // HANDLES `paused` while no page passes it is the feature entirely absent with the
+  // component perfectly correct.
+  it("the campaign Overview derives it once and threads it to every surface it owns", () => {
+    const page = read("components/campaigns/campaign-overview-page.tsx");
+    expect(page).toContain(
+      "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
+    );
+    // The stat row, the section (which owns the return chart's tag) and the Top-3 card.
+    expect((page.match(/paused=\{campaignPaused\}/g) ?? []).length).toBe(3);
+  });
+
+  it("the campaign Audiences table reads the campaign it already polls", () => {
+    // No second read: the page holds `["campaign", campaignId]` for its funnel already.
+    const table = read("components/audiences/customer-audiences-page.tsx");
+    expect(table).toContain(
+      "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
+    );
+    expect(table).toContain("paused={campaignPaused}");
+    // Brand grain passes no campaign, so the flag is false there by construction —
+    // several campaigns work those audiences and no single status answers for them.
+    expect(table).toContain('const campaignScoped = Boolean(campaignId);');
+  });
+
+  it("a paused ROW in the Campaigns table states it too", () => {
+    const table = read("components/campaigns/campaigns-table.tsx");
+    expect(table).toContain("const paused = !isActiveStatus(campaign.status);");
+    expect(table).toContain("<LearningTag withInfo={false} paused={paused} />");
+  });
+
+  it("the return chart's tag follows the section's flag", () => {
+    const section = read("components/revenue/revenue-overview-section.tsx");
+    expect(section).toContain("paused={paused}");
+    const chart = read("components/revenue/roi-trend-card.tsx");
+    expect(chart).toContain("<LearningTag paused={paused} />");
   });
 });
