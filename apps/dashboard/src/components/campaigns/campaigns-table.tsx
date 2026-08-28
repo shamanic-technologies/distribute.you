@@ -31,6 +31,7 @@ import {
 import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import type { FunnelStepBreakdown, FunnelStepRow } from "@/lib/revenue-view";
 import {
+  canonicalSalesFunnelKey,
   normalizeSalesFunnelKey,
   salesFunnelByKey,
   type SalesFunnelDef,
@@ -608,6 +609,14 @@ export function FunnelLegTable({
 }) {
   const router = useRouter();
   const open = (row: CampaignRow) => router.push(`${basePath}/campaigns/${row.campaign.id}`);
+  // An arrow the brand works itself has no campaign to open, and it is the one a person
+  // most needs to act on: its own page is where they say who crossed it. An arrow WE run
+  // keeps opening its campaign — that page has a budget, a status and settings a leg page
+  // has nothing to say about.
+  const openLeg = (toKey: string) =>
+    router.push(
+      `${basePath}/funnels/${encodeURIComponent(canonicalSalesFunnelKey(funnel.key))}/legs/${encodeURIComponent(toKey)}`,
+    );
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
@@ -649,10 +658,8 @@ export function FunnelLegTable({
                   /* An arrow several campaigns share has one row EACH, so the key
                      carries the campaign — a key on the arrow alone would collide. */
                   key={`leg-${leg.toIndex}-${campaign?.campaign.id ?? "unclaimed"}`}
-                  onClick={campaign ? () => open(campaign) : undefined}
-                  className={
-                    campaign ? "cursor-pointer transition hover:bg-gray-50" : "transition"
-                  }
+                  onClick={campaign ? () => open(campaign) : () => openLeg(leg.toKey)}
+                  className="cursor-pointer transition hover:bg-gray-50"
                 >
                   <td className="px-4 py-3 text-gray-800">
                     {/* The leg is handed in rather than resolved from a channel: an arrow

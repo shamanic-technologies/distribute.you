@@ -106,6 +106,12 @@ export interface ConversionLead {
   /** Per-lead REALIZED outcomes (features-service#476 conversion-tracker attribution):
    *  boolean + first-occurrence timestamp. `undefined` (not just false) until the
    *  producer reaches prod → the Leads page hides the matching outcome tab until then. */
+  /** Served all along and undeclared until 2026-08-28, so every reader saw `undefined`
+   *  where the producer had said `true`. `undefined` still means "not measured". */
+  clicked?: boolean;
+  repliedPositive?: boolean;
+  meetingAttended?: boolean;
+  meetingAttendedAt?: string | null;
   signup?: boolean;
   signupAt?: string | null;
   formSubmission?: boolean;
