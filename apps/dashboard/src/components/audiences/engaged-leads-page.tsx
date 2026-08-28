@@ -942,9 +942,17 @@ export function EngagedLeadsPage({
   // can honestly answer today.
   const offerId = params.offerId as string | undefined;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  // Board first where there is a board to draw: it is the view that answers where a
-  // lead IS. The toggle keeps the table one press away rather than replacing it — the
-  // table owns the search results count, the sort, the dates and the export.
+  // Board first: it is the view that answers where a lead IS.
+  //
+  // At CAMPAIGN grain it is the ONLY view — no switch, no funnel tabs, no table. A
+  // campaign sells one funnel and its leads are worked one by one, so "where is this
+  // person" is the whole question and a second view of the same rows is a control that
+  // only ever answers a question the page beside it already answers.
+  //
+  // At BRAND grain the toggle stays, and that is not an oversight: with no campaignId
+  // the reply-kind read is disabled and `canMove` is false, so the board there shows
+  // the coarse machine classification and can write nothing. Taking the table away
+  // would leave a read-only board with no dates, no sort and no pagination.
   const [view, setView] = useState<"board" | "table">("board");
   const [activeTab, setActiveTab] = useState<Tab>("positive-replies");
   const [search, setSearch] = useState("");
@@ -1272,6 +1280,9 @@ export function EngagedLeadsPage({
         id: lead.id,
         email: lead.email ?? null,
         name,
+        // Absent on the slim projection and routinely hotlink-blocked at the source,
+        // so the card falls back to an initial rather than a broken image.
+        photoUrl: full?.photoUrl ?? null,
         orgName: full?.organization?.name ?? null,
         orgDomain: full?.organization?.primaryDomain ?? null,
         column,
@@ -1281,7 +1292,9 @@ export function EngagedLeadsPage({
     return out;
   }, [searchedLeads, replyKindByEmail, statedReplyKinds]);
 
-  const showBoard = view === "board";
+  // A campaign page has no table to switch to, so it has no switch either.
+  const boardOnly = Boolean(campaignId);
+  const showBoard = boardOnly || view === "board";
 
   const [boardError, setBoardError] = useState<string | null>(null);
   // A board move states a REPLY KIND, the same write the lead panel makes — never a
@@ -1523,9 +1536,9 @@ export function EngagedLeadsPage({
           <LeadsLoadingSkeleton />
         ) : (
           <>
-            {/* Always offered: the columns are triage states, so unlike the funnel
-                rungs they replaced they need no single funnel to lay out in. */}
-            {(
+            {/* Brand grain only. A campaign page draws the board and nothing else, so
+                a switch there would offer a view it does not have. */}
+            {!boardOnly && (
               <div className="mb-4 inline-flex rounded-lg border border-brand-200 bg-brand-50 p-0.5">
                 {(["board", "table"] as const).map((option) => (
                   <button
@@ -1545,6 +1558,10 @@ export function EngagedLeadsPage({
               </div>
             )}
 
+            {/* The tabs belong to the table: they pick which slice it lists, and the
+                board is a partition of the whole population. Not rendered at all at
+                campaign grain, hidden behind the toggle at brand grain. */}
+            {!boardOnly && (
             <div className={`flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto ${showBoard ? "hidden" : ""}`}>
               {tabs.map((tab) => (
                 <button
@@ -1561,6 +1578,7 @@ export function EngagedLeadsPage({
                 </button>
               ))}
             </div>
+            )}
 
             <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={showBoard ? searchedLeads.length : filteredLeads.length} totalCount={showBoard ? coveredLeads.length : activeList.length} />
 

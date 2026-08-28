@@ -3,6 +3,7 @@ import {
   DISQUALIFYING_REPLY_KINDS,
   INTEREST_REPLY_KINDS,
   LEAD_BOARD_COLUMNS,
+  columnMoveRefusal,
   columnReplyKinds,
   leadBoardColumnFor,
   movableColumnsFrom,
@@ -177,5 +178,24 @@ describe("which columns a card may move to", () => {
     // Correcting one a person got wrong is a statement like any other, and the
     // producer supersedes the earlier one.
     expect(movableColumnsFrom("disqualified").map((c) => c.key)).toContain("contacted");
+  });
+});
+
+describe("a drop lands everywhere, and the form is where a move is refused", () => {
+  it("refuses only Opt-out, and says why in a sentence a person reads", () => {
+    for (const key of ["contacted", "sales_interest", "disqualified"] as const) {
+      expect(columnMoveRefusal(key)).toBeNull();
+    }
+    const refusal = columnMoveRefusal("opt_out");
+    expect(refusal).toBeTruthy();
+    // The reason, not a bare "not allowed" — the rule is about whose act this is.
+    expect(refusal).toMatch(/prospect/i);
+  });
+
+  it("has nothing it could write for Opt-out even if it wanted to", () => {
+    // The refusal is not a preference: instantly-service's vocabulary carries no
+    // unsubscribe value, so the picker for that column is empty by construction.
+    expect(columnReplyKinds("opt_out")).toEqual([]);
+    expect(columnMoveRefusal("opt_out")).not.toBeNull();
   });
 });
