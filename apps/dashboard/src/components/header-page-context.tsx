@@ -145,12 +145,22 @@ export function HeaderPageContext() {
   // The offer crumb is a LINK only while it is not the page you are on — a
   // breadcrumb's last item is where you already are.
   const offerIsCurrent = route.campaignId === null && route.funnelKey === null;
-  // The funnel a route names, off the shared catalogue — the same one the table and
-  // the campaign crumb resolve it from, never a second spelling.
-  const funnelDef = route.funnelKey
-    ? campaignFunnel(route.funnelKey as SalesFunnelKeyWire)
-    : null;
-  const funnelPath = `${offerPath}/funnels/${encodeURIComponent(route.funnelKey ?? "")}`;
+  // The funnel this page is under, which the PATH does not always say.
+  //
+  // A campaign lives at `.../offers/:offerId/campaigns/:id` — off the funnel it was
+  // opened from — so a crumb gated on the path segment vanished exactly one level
+  // deeper than the list the campaign was picked in: the bar read
+  // `Offer / <leg> Via <channel>` and never named the funnel that leg is an arrow
+  // of. The campaign states its own funnel, in the SAME wire vocabulary the funnels
+  // route carries, so the crumb reads the same words and links to the same page
+  // whichever way you arrived. A campaign that states none (the pre-funnel campaign)
+  // renders no crumb rather than a guessed one, and the crumb simply arrives with
+  // the campaign read the bar already makes.
+  const funnelKey = route.funnelKey ?? campaign?.funnelKey ?? null;
+  // The funnel off the shared catalogue — the same one the table and the campaign
+  // crumb resolve it from, never a second spelling.
+  const funnelDef = funnelKey ? campaignFunnel(funnelKey as SalesFunnelKeyWire) : null;
+  const funnelPath = `${offerPath}/funnels/${encodeURIComponent(funnelKey ?? "")}`;
 
   const offerLabel = offer ? (
     <>
@@ -192,13 +202,13 @@ export function HeaderPageContext() {
         </Link>
       )}
 
-      {route.funnelKey !== null && (
+      {funnelKey !== null && (
         <>
           <Separator />
           {/* A funnel is named as what it IS, with the mark the tables draw for it.
               It is a LINK while you are deeper than its own Overview, and the page
               you are on otherwise: a breadcrumb's last item is where you already are. */}
-          <FunnelCrumb def={funnelDef} label={route.funnelKey} href={funnelPath} />
+          <FunnelCrumb def={funnelDef} label={funnelKey} href={funnelPath} />
         </>
       )}
 

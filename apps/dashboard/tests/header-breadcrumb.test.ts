@@ -49,6 +49,22 @@ describe("the top bar names where you are below the tenant", () => {
     expect(src).not.toContain('|| "Campaign"');
   });
 
+  // A campaign lives at `.../offers/:id/campaigns/:id` — OFF the funnel it was
+  // opened from — so a crumb gated on the path segment vanished exactly one level
+  // deeper than the list the campaign was picked in: the bar read
+  // `Offer / <leg> Via <channel>` and never named the funnel the leg belongs to.
+  // The campaign states its own funnel, in the SAME wire vocabulary the funnels
+  // route carries, so the crumb reads the same words and links to the same page
+  // whichever way you arrived.
+  it("names the funnel on a campaign page, off the campaign's own key", () => {
+    expect(src).toContain("route.funnelKey ?? campaign?.funnelKey ?? null");
+    // The gate is the RESOLVED key, never the path segment — that distinction is
+    // the whole fix.
+    expect(src).toContain("{funnelKey !== null && (");
+    expect(src).not.toContain("{route.funnelKey !== null && (");
+    expect(src).toContain("funnels/${encodeURIComponent(funnelKey");
+  });
+
   // Every tile in the bar is the SAME size, and it holds by construction.
   // `OfferMark`'s "sm" is 18px while the funnel and channel marks' "sm" is a
   // 32px table tile, so passing "sm" to both drew an 18px offer beside two
