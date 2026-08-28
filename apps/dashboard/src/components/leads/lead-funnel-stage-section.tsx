@@ -117,7 +117,12 @@ function StageButton({
  * and reads back as a stated zero. The amount a won deal was WORTH is a separate
  * question and is asked here too, on the one stage the producer prices.
  */
-function StageStatementForm({
+/**
+ * Exported so the leads BOARD asks the same two questions in the same words. A second
+ * cost prompt is a second place for the producer's mandatory-cost rule to drift, and it
+ * is the one control standing between a person and a write on every stage.
+ */
+export function StageStatementForm({
   label,
   tone,
   needsValue,

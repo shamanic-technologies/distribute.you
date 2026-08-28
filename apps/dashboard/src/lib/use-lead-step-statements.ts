@@ -67,6 +67,40 @@ export function useSetLeadStepStatement(leadRowId: string | null) {
 }
 
 /**
+ * The same write, for a surface whose target lead is decided at press time.
+ *
+ * The lead panel binds one hook to the lead it has open; the BOARD has no open lead —
+ * the card a person drags is the target, and holding it in state first so a per-lead
+ * hook could be constructed would race the submit. So the row id rides in the mutation
+ * variables instead, and everything else is byte-identical to the hook above: the same
+ * mandatory cost, the same re-read rather than a hand-patched cache, the same root
+ * invalidation because one statement moves the money at several grains.
+ */
+export function useSetAnyLeadStepStatement() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    unknown,
+    Error,
+    {
+      leadRowId: string;
+      step: LeadStepName;
+      kind: "outcome" | "never";
+      costCents: number;
+      valueCents?: number;
+    }
+  >({
+    mutationFn: ({ leadRowId, ...body }) => setLeadStepStatement(leadRowId, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: leadStepStatementsQueryKey(variables.leadRowId) });
+      // The board reads which column a card sits in off the SAME revenue join the stat
+      // cards poll, so this is what actually moves the card.
+      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+    },
+  });
+}
+
+/**
  * The served per-step states, as the panel's map.
  *
  * A step the producer did not mention is simply absent, which the panel already reads as

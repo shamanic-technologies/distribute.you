@@ -6,6 +6,9 @@ import { useParams } from "next/navigation";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
 import { POLL_INTERVAL } from "@/lib/query-options";
 import { useMonotonicStatuses } from "@/lib/use-monotonic-status";
+import { CompanyLogo } from "@/components/company-logo";
+import { LeadBoard, type LeadBoardCard } from "@/components/leads/lead-board";
+import { leadBoardColumnFor, leadBoardColumns } from "@/lib/lead-board";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { SUPPORT_FAB_CLEARANCE } from "@/components/support/support-button";
 import {
@@ -45,6 +48,7 @@ import {
   stageCostsFrom,
   stageValuesFrom,
   useLeadStepStatements,
+  useSetAnyLeadStepStatement,
   useSetLeadStepStatement,
 } from "@/lib/use-lead-step-statements";
 import { listManualQualifications, setManualQualification } from "@/lib/api";
@@ -227,42 +231,6 @@ function htmlToText(html: string): string {
 // `components/report/leads-table.tsx`, and the landing's
 // `provider-avatar.tsx`). Replaces the old Google S2 favicons surface to
 // keep the company-avatar treatment consistent across the whole app.
-const LOGO_DEV_TOKEN = "pk_J1iY4__HSfm9acHjR8FibA";
-
-// `size` is a style rather than a Tailwind class because the class would have to be
-// built from the prop, which the compiler cannot see (same reason `AudienceAvatar`
-// does it this way). Requests twice the rendered size so it stays crisp on a retina
-// screen. `shrink-0` matters wherever the sibling text truncates.
-function CompanyLogo({
-  domain,
-  name,
-  size = 24,
-}: {
-  domain: string | null;
-  name: string | null;
-  size?: number;
-}) {
-  const box = { width: size, height: size };
-  if (domain) {
-    return (
-      <img
-        src={`https://img.logo.dev/${encodeURIComponent(domain)}?token=${LOGO_DEV_TOKEN}&size=${size * 2}`}
-        alt=""
-        style={box}
-        className="shrink-0 rounded"
-        loading="lazy"
-      />
-    );
-  }
-  return (
-    <div
-      style={{ ...box, fontSize: Math.max(11, Math.round(size * 0.4)) }}
-      className="shrink-0 rounded bg-gray-200 flex items-center justify-center font-medium text-gray-500"
-    >
-      {name ? name.charAt(0).toUpperCase() : "?"}
-    </div>
-  );
-}
 
 // Per-lead audience — served ready-made on the lead row by lead-service
 // (`lead.audience` = {id,name,avatarUrl} from the leads_campaigns attribution).
@@ -967,6 +935,10 @@ export function EngagedLeadsPage({
   // can honestly answer today.
   const offerId = params.offerId as string | undefined;
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  // Board first where there is a board to draw: it is the view that answers where a
+  // lead IS. The toggle keeps the table one press away rather than replacing it — the
+  // table owns the search results count, the sort, the dates and the export.
+  const [view, setView] = useState<"board" | "table">("board");
   const [activeTab, setActiveTab] = useState<Tab>("positive-replies");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -1199,18 +1171,77 @@ export function EngagedLeadsPage({
 
   const activeList = groupedByTab.get(activeTab) ?? sortedLeads;
 
+  // ONE predicate, so the table and the board answer the same query. A second copy is
+  // how a search comes to mean one thing in a row and another on a card.
+  const matchesSearch = (l: Lead, q: string): boolean => {
+    const full = l.lead;
+    const name = `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.toLowerCase();
+    return name.includes(q)
+      || (full?.organization?.name?.toLowerCase().includes(q) ?? false)
+      || (full?.headline?.toLowerCase().includes(q) ?? false)
+      || (l.email?.toLowerCase().includes(q) ?? false);
+  };
+
   const filteredLeads = useMemo(() => {
     if (!search) return activeList;
     const q = search.toLowerCase();
-    return activeList.filter((l) => {
-      const full = l.lead;
-      const name = `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.toLowerCase();
-      return name.includes(q)
-        || (full?.organization?.name?.toLowerCase().includes(q) ?? false)
-        || (full?.headline?.toLowerCase().includes(q) ?? false)
-        || (l.email?.toLowerCase().includes(q) ?? false);
-    });
+    return activeList.filter((l) => matchesSearch(l, q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeList, search]);
+
+  // The board spans the WHOLE population rather than one tab's slice — it is a
+  // partition, so scoping it to a tab would draw a board with most of its cards
+  // missing and no way to tell that from an empty pipeline.
+  const searchedLeads = useMemo(() => {
+    if (!search) return coveredLeads;
+    const q = search.toLowerCase();
+    return coveredLeads.filter((l) => matchesSearch(l, q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coveredLeads, search]);
+
+  // ── The BOARD ────────────────────────────────────────────────────────────────
+  // The tabs answer "how many cleared each bar"; the board answers "where is each
+  // lead". Same data, a different statement, so both are offered rather than one
+  // replacing the other — the table keeps the search, the sort, the dates and the
+  // export a board has nowhere to put.
+  //
+  // It renders only when exactly ONE funnel is in scope. A brand selling through
+  // several has no single order to lay columns out in, which is the same refusal
+  // `leadFunnelStages` already makes and for the same reason.
+  const boardFunnelKey = activeFunnelKeys.length === 1 ? activeFunnelKeys[0] : null;
+  const boardColumns = useMemo(() => leadBoardColumns(boardFunnelKey), [boardFunnelKey]);
+  const boardAvailable = boardColumns.length > 0;
+
+  // Cards come off the SAME two sources the page already holds: the lead row for
+  // whether we contacted it, and the /revenue join for every step after that. No
+  // per-lead fetch — a board of 500 cards must not be 500 requests.
+  const boardCards: LeadBoardCard[] = useMemo(() => {
+    if (!boardAvailable) return [];
+    const out: LeadBoardCard[] = [];
+    for (const lead of searchedLeads) {
+      const reached = trackedStages(lead.leadId ? outcomeByLeadId.get(lead.leadId) : undefined);
+      const column = leadBoardColumnFor(boardColumns, reached, lead.contacted === true);
+      if (!column) continue;
+      const full = lead.lead;
+      const name = `${full?.firstName ?? ""} ${full?.lastName ?? ""}`.trim() || lead.email || "Lead";
+      out.push({
+        id: lead.id,
+        name,
+        orgName: full?.organization?.name ?? null,
+        orgDomain: full?.organization?.primaryDomain ?? null,
+        column,
+      });
+    }
+    return out;
+  }, [boardAvailable, boardColumns, searchedLeads, outcomeByLeadId]);
+
+  // A board with no funnel to lay out falls back to the tabs, whatever the toggle
+  // last said — a stored preference must not blank the page on a brand that sells
+  // through several funnels.
+  const showBoard = boardAvailable && view === "board";
+
+  const moveOnBoard = useSetAnyLeadStepStatement();
+  const [boardError, setBoardError] = useState<string | null>(null);
 
   // Paginate the active-tab (post-search) list at 50/page. Pure display slice —
   // the tab count badge + CSV export stay whole-list. Reset to page 0 whenever the
@@ -1443,7 +1474,27 @@ export function EngagedLeadsPage({
           <LeadsLoadingSkeleton />
         ) : (
           <>
-            <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
+            {boardAvailable && (
+              <div className="mb-4 inline-flex rounded-lg border border-brand-200 bg-brand-50 p-0.5">
+                {(["board", "table"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setView(option)}
+                    aria-pressed={view === option}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition ${
+                      view === option
+                        ? "bg-white text-brand-700 shadow-sm"
+                        : "text-brand-600 hover:text-brand-700"
+                    }`}
+                  >
+                    {option === "board" ? "Board" : "Table"}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className={`flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto ${showBoard ? "hidden" : ""}`}>
               {tabs.map((tab) => (
                 <button
                   key={tab.key}
@@ -1460,13 +1511,39 @@ export function EngagedLeadsPage({
               ))}
             </div>
 
-            <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={filteredLeads.length} totalCount={activeList.length} />
+            <EntitySearchBar value={search} onChange={setSearch} placeholder="Search by name, company, title, or email..." resultCount={showBoard ? searchedLeads.length : filteredLeads.length} totalCount={showBoard ? coveredLeads.length : activeList.length} />
 
             {coveredLeads.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
                 <h3 className="font-display font-bold text-lg text-gray-800 mb-2">No leads yet</h3>
                 <p className="text-gray-600 text-sm">Leads appear here once outreach starts.</p>
               </div>
+            ) : showBoard ? (
+              <LeadBoard
+                columns={boardColumns}
+                cards={boardCards}
+                busy={moveOnBoard.isPending}
+                error={boardError}
+                onOpen={(leadRowId) => {
+                  const lead = coveredLeads.find((l) => l.id === leadRowId);
+                  if (lead) setSelectedLead(lead);
+                }}
+                onMove={(leadRowId, step, input) => {
+                  setBoardError(null);
+                  moveOnBoard.mutate(
+                    { leadRowId, step, kind: "outcome", ...input },
+                    {
+                      // lead-service writes its refusal as a sentence for a person to
+                      // read. Surface ITS reason, never the thrown Error's own message
+                      // field, which apiCall sets to the whole downstream body verbatim.
+                      onError: (err) => {
+                        console.error("[dashboard] board move failed", err);
+                        setBoardError(leadStepErrorMessage(err));
+                      },
+                    },
+                  );
+                }}
+              />
             ) : (
               <>
                 <LeadsTable leads={pagedLeads} tab={activeTab} selectedLead={selectedLead} onSelectLead={setSelectedLead} statusOf={statusOf} audienceOf={audienceOf} outcomeDates={outcomeDates} />
