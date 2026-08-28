@@ -221,6 +221,17 @@ describe("the page renders served fields and states the gap", () => {
     expect(API).toContain('query.set("pricing", "net")');
   });
 
+  it("lets every cell sit on the row's middle", () => {
+    // The identity cell is the tallest thing in the row (a 32px mark beside two
+    // lines, plus the unpriced note when there is one), so it sets the row's
+    // height. `align-top` on the <tr> is inherited by every <td>, which parked
+    // each figure ~18px above the row's centre while the funnel it belongs to
+    // read centred beside it. Dropping it returns the cells to the `middle` a
+    // <tr> gives them by default; measured 17.6px off before, 0.3px after, with
+    // the row height unchanged.
+    expect(PAGE).not.toContain("align-top");
+  });
+
   it("requires the rows under the producer's own key", () => {
     // REQUIRED, not optional: the producer marks `funnels` required, so a body
     // without it is a producer break the parse must state rather than a blank table.

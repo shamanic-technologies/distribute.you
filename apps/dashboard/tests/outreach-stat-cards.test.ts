@@ -65,8 +65,9 @@ describe("OutreachStatCards copy", () => {
     // expected cost from the brand's best model), the same cascade it applies per audience),
     // so the card renders the server field VERBATIM and matches the Strategy page.
     expect(cards).toContain("formatCostCents(spend?.cpprCents)");
-    // GA outcome — the reply card carries no beta badge and no setup CTA.
-    expect(cards).toContain("showAction: false");
+    // The reply pair is the ONLY outcome pair left, so nothing gates it on a tracker.
+    expect(cards).not.toContain("trackerButton");
+    expect(cards).not.toContain("showAction");
     // CPPR abbreviation is not used as a card label here (full phrase instead).
     expect(cards).not.toContain('costLabel: "CPPR"');
   });
@@ -82,8 +83,8 @@ describe("OutreachStatCards copy", () => {
       "Until the first one lands it shows what it is expected to cost, or your spend so far once that is higher.",
     );
     // ONE constant behind every cost tooltip on the row (website visit, both positive-reply
-    // cards, and the goal's outcome card) so they cannot drift into describing two rules.
-    expect(cards.match(/EXPECTED_COST_NOTE\}/g) ?? []).toHaveLength(4);
+    // cards) so they cannot drift into describing two rules.
+    expect(cards.match(/EXPECTED_COST_NOTE\}/g) ?? []).toHaveLength(3);
   });
 
   it("renders the server cost verbatim with no client fallback to total spend", () => {
@@ -111,11 +112,16 @@ describe("OutreachStatCards copy", () => {
     expect(cards).not.toContain("isVisitDrivenGoal");
   });
 
-  it("renders the goal's outcome label + cost label from the step (not a hardcoded binary)", () => {
-    // The multi-step outcome card sources its label/cost-label from the goal-steps step.
-    expect(cards).toContain("label: outcomeStep.label");
-    expect(cards).toContain("costLabel: outcome.costLabel");
-    // The render reads them off the unified outcome card.
+  it("states NO outcome pair for a tracker-sourced outcome (Sales Meetings/CPSM and siblings)", () => {
+    // Without a live conversion tracker both cards rendered a "set up conversion tracker"
+    // CTA in place of their value — a chore wearing the shape of a metric — so the pair is
+    // gone at every scope rather than gated. The step's own label/cost-label are no longer
+    // read here; the reply pair below is the only outcome pair the row states.
+    expect(cards).not.toContain("label: outcomeStep.label");
+    expect(cards).not.toContain("costLabel: outcome.costLabel");
+    expect(cards).not.toContain("ConversionTrackerButton");
+    expect(cards).not.toContain("getBrandConversionToken");
+    // The render still reads the surviving (reply) card through the same unified shape.
     expect(cards).toContain("label={outcomeCard.label}");
     expect(cards).toContain("label={outcomeCard.costLabel}");
     expect(cards).not.toContain('label: "Sales"');
@@ -133,14 +139,13 @@ describe("OutreachStatCards copy", () => {
     expect(steps).toContain('costLabel: "CPFS"');
   });
 
-  it("renders the REAL server-provided tracker count for the outcome card, not a hardcoded dash", () => {
-    // Count/cost come from the features-service /revenue spend block (real, tracker-sourced)
-    // via the step's countField/costField, not the old hardcoded value="—".
-    expect(cards).toContain("spend?.[outcome.countField]");
-    expect(cards).toContain("spend?.[outcome.costField]");
-    expect(cards).toContain("outcomeCount != null");
+  it("reads no tracker-sourced count or cost off the spend block", () => {
+    // The tracker outcome pair is gone, so the component no longer indexes the spend block
+    // by the step's countField/costField. The reply card keeps its own named fields.
+    expect(cards).not.toContain("spend?.[outcome.countField]");
+    expect(cards).not.toContain("spend?.[outcome.costField]");
+    expect(cards).not.toContain("outcomeCount");
     expect(cards).toContain("value={outcomeCard.countValue}");
-    // No projection language on the cost tooltips.
     expect(cards).not.toContain("Coming soon");
   });
 
@@ -194,7 +199,7 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain("{showOutreach && contactedOverride != null && (");
     // ...and the actions card only disambiguates itself when the other one is beside it.
     expect(cards).toContain(
-      "A lead can be outreached several times, so this counts more than the leads it reached.",
+      "A lead can be outreached several times over their lifetime.",
     );
   });
 
