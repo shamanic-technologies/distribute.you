@@ -95,3 +95,51 @@ describe("the top bar names where you are below the tenant", () => {
     }
   });
 });
+/**
+ * A leg page is ONE ARROW of a funnel, and it is the deepest thing a path names.
+ * The bar stopped at the funnel there, so two different legs of one funnel wore
+ * the same crumb and the page said nothing about which arrow you had opened.
+ */
+describe("the leg crumb", () => {
+  it("parses `funnels/:key/legs/:legKey` in the same one parser", () => {
+    expect(src).toContain("legKey: string | null;");
+    expect(src).toContain('sixth === "legs"');
+    // Only under a funnel: a `legs` segment anywhere else names no arrow of
+    // anything, and a crumb for it would be a word with no funnel behind it.
+    expect(src).toContain("funnelKey !== null && sixth === \"legs\"");
+    expect(src).toContain("decodeURIComponent(seventh)");
+  });
+
+  it("names the arrow in the funnel's OWN words, off the shared walk", () => {
+    // The same list the funnel page lists its rows from and the same words a
+    // campaign is named with, so an arrow reads identically whether you opened
+    // it as a leg or as the campaign that performs it.
+    expect(src).toContain('from "@/lib/campaign-leg"');
+    expect(src).toContain("funnelLegs(funnelDef).find((l) => l.toKey === route.legKey)");
+    expect(src).toContain("<FunnelLegMark fromKey={leg.fromKey} toKey={leg.toKey} size=\"xs\" />");
+    expect(src).toContain("{leg.label}");
+  });
+
+  it("renders NOTHING for a key naming no arrow of this funnel", () => {
+    // Same rule as the funnel crumb for a key the catalogue does not carry: a
+    // guessed crumb is worse than none.
+    expect(src).toContain("{leg !== null && (");
+    expect(src).toContain("?? null)");
+  });
+
+  it("is where you already are, so it is never a link", () => {
+    const marker = "{leg !== null && (";
+    const at = src.indexOf(marker);
+    expect(at).toBeGreaterThan(-1);
+    // 547 chars — measured to the block's closing brace, not padded: this is a
+    // `not.toContain`, so a slice that ran past it would reach the campaign
+    // crumb, which legitimately renders a <Link>.
+    const block = src.slice(at, at + 547);
+    expect(block).toContain('aria-current="page"');
+    expect(block).not.toContain("<Link");
+  });
+
+  it("stops treating the offer as the current page on a leg route", () => {
+    expect(src).toContain("route.funnelKey === null && route.legKey === null");
+  });
+});
