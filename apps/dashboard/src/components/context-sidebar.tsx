@@ -8,13 +8,12 @@ import { Skeleton } from "@/components/skeleton";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { formatCount } from "@/lib/format-number";
-import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { TenantSwitcher } from "@/components/tenant-switcher";
 import { RewardsCard } from "@/components/invite/rewards-card";
 import { MaturityBadge } from "@/components/maturity-badge";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
-import { FEATURE_GATES, type Maturity } from "@/lib/feature-gates";
+import { type Maturity } from "@/lib/feature-gates";
 import { explicitHierarchyHref } from "@/lib/last-brand";
 
 interface SidebarItem {
@@ -141,11 +140,6 @@ const OrgIcon = () => (
   </svg>
 );
 
-const InfoIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
 
 const EnvelopeIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
@@ -159,11 +153,6 @@ const NewspaperIcon = () => (
   </svg>
 );
 
-const WorkflowIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h4v4H4zM10 14h4v4h-4zM16 6h4v4h-4zM6 10v4l4 0M18 10v4l-4 0" />
-  </svg>
-);
 
 const CalendarIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
@@ -183,11 +172,6 @@ const BillingIcon = () => (
   </svg>
 );
 
-const CrmIcon = () => (
-  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-  </svg>
-);
 
 const OverviewIcon = () => (
   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-5 h-5">
@@ -314,12 +298,10 @@ function AppLevelSidebar() {
 // On the bare org landing (`/orgs/[orgId]`, the last-brand resolver / empty-org
 // state) there is nothing to navigate to, so the sidebar is the switcher alone.
 function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string }) {
-  const crmEnabled = useFeatureFlag(FEATURE_GATES["services-crm"].flag);
   const isSettingsPath =
     pathname.startsWith(`/orgs/${orgId}/billing`) ||
     pathname.startsWith(`/orgs/${orgId}/api-keys`) ||
-    pathname.startsWith(`/orgs/${orgId}/provider-keys`) ||
-    pathname.startsWith(`/orgs/${orgId}/services`);
+    pathname.startsWith(`/orgs/${orgId}/provider-keys`);
 
   return (
     <SidebarSection topSlot={<TenantSwitcher />}>
@@ -343,19 +325,6 @@ function OrgLevelSidebar({ orgId, pathname }: { orgId: string; pathname: string 
             }}
             isActive={pathname.startsWith(`/orgs/${orgId}/api-keys`) || pathname.startsWith(`/orgs/${orgId}/provider-keys`)}
           />
-
-          {crmEnabled && (
-            <SidebarLink
-              item={{
-                id: "crm",
-                label: "CRM (Google)",
-                href: `/orgs/${orgId}/services/crm`,
-                icon: <CrmIcon />,
-                maturity: FEATURE_GATES["services-crm"].maturity,
-              }}
-              isActive={pathname.startsWith(`/orgs/${orgId}/services/crm`)}
-            />
-          )}
         </>
       )}
     </SidebarSection>
@@ -375,11 +344,12 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
   const featureSlug = useSoleFeatureSlug();
   const { isLoading: featuresLoading } = useFeatures();
   const basePath = `/orgs/${orgId}/brands/${brandId}`;
-  // Brand Info + Workflows are alpha (staff-only); default-hidden until PostHog
-  // resolves. Folded flat into this footer so the brand sidebar stays mounted on
-  // /brand-info + /workflows (no separate Settings sidebar level).
-  const brandInfoOk = useFeatureFlag(FEATURE_GATES["brand-info"].flag);
-  const workflowsOk = useFeatureFlag(FEATURE_GATES["workflows"].flag);
+  // Brand Info and Workflows were `useFeatureFlag`-gated here, which returns false
+  // unconditionally in the dashboard — so both entries were hidden from everyone and
+  // their pages were reachable only by typing a URL. Both surfaces live in
+  // `apps/admin`, where alpha gating actually resolves; the dashboard copies were
+  // deleted rather than graduated. Do not re-add a `useFeatureFlag` entry here: in
+  // this app it does not stage a surface, it removes it.
 
   // The old "Database" section (raw entity rows: Leads/Emails/Outlets/…) stays
   // removed. Engaged leads are now surfaced under Audiences; the per-entity count
@@ -458,30 +428,6 @@ function BrandLevelSidebar({ orgId, brandId, pathname }: {
               }}
               isActive={pathname === `${basePath}/settings`}
             />
-            {brandInfoOk && (
-              <SidebarLink
-                item={{
-                  id: "brand-info",
-                  label: "Brand Info",
-                  href: `${basePath}/brand-info`,
-                  icon: <InfoIcon />,
-                  maturity: FEATURE_GATES["brand-info"].maturity,
-                }}
-                isActive={pathname.startsWith(`${basePath}/brand-info`)}
-              />
-            )}
-            {workflowsOk && (
-              <SidebarLink
-                item={{
-                  id: "workflows",
-                  label: "Workflows",
-                  href: `${basePath}/workflows`,
-                  icon: <WorkflowIcon />,
-                  maturity: FEATURE_GATES["workflows"].maturity,
-                }}
-                isActive={pathname === `${basePath}/workflows` || pathname.startsWith(`${basePath}/workflows/`)}
-              />
-            )}
           </div>
           <RewardsCard />
         </div>

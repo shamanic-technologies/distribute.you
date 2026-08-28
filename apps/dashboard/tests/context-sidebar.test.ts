@@ -149,11 +149,13 @@ describe("Context sidebar", () => {
     expect(content).toContain('`/orgs/${orgId}/api-keys`');
   });
 
-  it("keeps the Workflows route (flat footer link in the brand sidebar, staff-only alpha)", () => {
+  it("drops the Workflows entry — it was alpha-gated, so it rendered for nobody", () => {
+    // `useFeatureFlag` returns false unconditionally in the dashboard, so this entry
+    // was invisible to everyone and its page URL-reachable only. Workflows lives in
+    // `apps/admin`, where the gate resolves; the dashboard copy is deleted.
     const content = fs.readFileSync(sidebarPath, "utf-8");
-    expect(content).toContain('"Workflows"');
-    expect(content).toContain('`${basePath}/workflows`');
-    expect(content).toContain('FEATURE_GATES["workflows"]');
+    expect(content).not.toContain('"Workflows"');
+    expect(content).not.toContain('`${basePath}/workflows`');
   });
 
   it("no longer renders a Brand Profile footer link (page removed)", () => {

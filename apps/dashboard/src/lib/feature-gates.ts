@@ -1,59 +1,27 @@
 /**
- * Feature maturity gating — single source of truth.
+ * What survives of the dashboard's maturity gating.
  *
- * Three maturity levels:
- *   - `alpha` → staff only (PostHog flag targeted at the staff email)
- *   - `beta`  → opt-in cohort (PostHog flag targeted at a beta cohort)
- *   - `ga`    → everyone — INTENTIONALLY ABSENT from this registry (no flag,
- *               always rendered)
+ * The FEATURE_GATES registry and `useFeatureFlag` are GONE from this app. Since the
+ * admin/dashboard split (2026-06-14) the hook returned `false` unconditionally here,
+ * so a gate did not STAGE a surface, it REMOVED it: every gated entry was hidden from
+ * everyone, staff included, and its page was reachable only by typing a URL. Brand
+ * Info, Workflows and the Google CRM console all sat that way for months and were
+ * deleted; they live in `apps/admin`, where the gate resolves against PostHog.
  *
- * To gate a surface: add an entry here, then in the component
- *   `const ok = useFeatureFlag(FEATURE_GATES["<key>"].flag); if (!ok) return null;`
- * and render `<MaturityBadge level={FEATURE_GATES["<key>"].maturity} />`.
- *
- * Graduation needs no redeploy for the audience change — flip the flag's
- * targeting in the PostHog UI (email → cohort → 100%). Code only changes to
- * relabel the maturity or to fully GA-ify (delete the flag + drop the gate).
- *
- * Flag naming convention: `<maturity>-<surface>` (e.g. `alpha-services-crm`).
+ * So there is no way to alpha-gate a dashboard surface, and that is deliberate: the
+ * public dashboard is GA-only. A surface that needs a limited audience here goes
+ * behind the EMAIL allowlist (`beta-allowlist.ts` + `useIsBetaUser`), which actually
+ * evaluates, and carries a visible `<MaturityBadge level="beta" />`.
  */
 
+/** Maturity levels a badge can state. `alpha` is admin-only; the dashboard ships beta and GA. */
 export type Maturity = "alpha" | "beta";
 
-export interface FeatureGate {
-  /** PostHog feature-flag key. */
-  flag: string;
-  /** Maturity level — drives the badge shown to viewers who can see the surface. */
-  maturity: Maturity;
-}
-
-export const FEATURE_GATES = {
-  "services-crm": { flag: "alpha-services-crm", maturity: "alpha" },
-  // The org API-key page graduated to GA — no entry here. It had been gated on
-  // `alpha-keys`, which in the dashboard resolves to false for everyone, so the
-  // gate hid the surface rather than staging it.
-  "brand-info": { flag: "alpha-brand-info", maturity: "alpha" },
-  "brand-features": { flag: "alpha-brand-features", maturity: "alpha" },
-  // Workflows page (brand-scoped + app-level) and its sidebar entries. The
-  // Feature Settings sub-level that hosts Workflows is GA; only Workflows itself
-  // stays staff-only, so the flag is named for the surface it actually gates.
-  workflows: { flag: "alpha-workflows", maturity: "alpha" },
-  // Brand Database section rows tied to the not-yet-launched PR/press features
-  // (Outlets/Journalists/Articles). Leads + Emails stay GA (sales-cold-email is
-  // launched). Independent of brand-features so it can graduate on its own.
-  "brand-database": { flag: "alpha-brand-database", maturity: "alpha" },
-} as const satisfies Record<string, FeatureGate>;
-
-export type FeatureGateKey = keyof typeof FEATURE_GATES;
-
 /**
- * Brand-page features that are GA — always rendered, no flag, no badge.
+ * Brand-page features that are GA — always rendered, no gate, no badge.
  *
- * Every OTHER feature on a brand overview page (sidebar list + body grid)
- * renders under the `brand-features` alpha gate (staff-only). Consumed by both
- * surfaces so they stay in lockstep — single source of truth. Graduate a
- * feature by adding its slug here (then drop the whole gate once the
- * `brand-features` flag goes GA).
+ * Read by `sole-feature.ts` to resolve the one feature a brand's surfaces are about.
+ * A feature graduates by being added here.
  */
 export const GA_BRAND_FEATURES: ReadonlySet<string> = new Set([
   "sales-cold-email-outreach",

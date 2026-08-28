@@ -56,7 +56,6 @@ describe("every ROI surface reads the one helper", () => {
     "components/revenue/roi-trend-card.tsx",
     "components/revenue/top-audiences-card.tsx",
     "components/strategy/best-model-card.tsx",
-    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/workflows/page.tsx",
     "lib/outcome-digest.ts",
   ];
 

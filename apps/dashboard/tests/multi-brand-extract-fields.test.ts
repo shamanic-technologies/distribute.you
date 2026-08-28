@@ -47,11 +47,6 @@ describe("Multi-brand extract-fields response types", () => {
       path.join(__dirname, "../src/components/onboarding/onboarding.tsx"),
       "utf-8",
     );
-    const brandInfoPage = fs.readFileSync(
-      path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"),
-      "utf-8",
-    );
     expect(onboardingPage).toContain("extractBrandFields([newBrandId]");
-    expect(brandInfoPage).toContain("extractBrandFields([brandId]");
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { FEATURE_GATES } from "../src/lib/feature-gates";
+import * as featureGates from "../src/lib/feature-gates";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
@@ -20,8 +20,10 @@ const sidebar = read("../src/components/context-sidebar.tsx");
  * means dropping the gate, not widening a PostHog flag.
  */
 describe("org API keys — GA, no maturity gate", () => {
-  it("carries no feature-gate entry", () => {
-    expect(FEATURE_GATES).not.toHaveProperty("keys");
+  it("carries no feature-gate entry — the registry itself no longer exists", () => {
+    // `useFeatureFlag` returned false unconditionally in this app, so a gate hid a
+    // surface rather than staging it. Registry and hook are both deleted.
+    expect(featureGates).not.toHaveProperty("FEATURE_GATES");
   });
 
   it("the sidebar entry is ungated and wears no maturity badge", () => {

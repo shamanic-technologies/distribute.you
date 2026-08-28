@@ -1,34 +1,57 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { FEATURE_GATES, MATURITY_STYLES, GA_BRAND_FEATURES } from "../src/lib/feature-gates";
+import * as featureGates from "../src/lib/feature-gates";
+import { MATURITY_STYLES, GA_BRAND_FEATURES } from "../src/lib/feature-gates";
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, rel), "utf-8");
 
-describe("feature-gates registry", () => {
-  it("gates services-crm as alpha; the API-key page is GA so it carries no gate", () => {
-    expect(FEATURE_GATES["services-crm"]).toEqual({ flag: "alpha-services-crm", maturity: "alpha" });
-    expect(FEATURE_GATES).not.toHaveProperty("keys");
+/**
+ * There is no alpha gating in the dashboard, and there must not be one again.
+ *
+ * `useFeatureFlag` returned `false` unconditionally in this app since the
+ * admin/dashboard split, so a gate did not STAGE a surface — it REMOVED it: the nav
+ * entry rendered for nobody and the page was reachable only by typing a URL. Brand
+ * Info, Workflows and the Google CRM console lived that way for months before being
+ * deleted; all three exist in `apps/admin`, where the flag resolves. A dashboard
+ * surface that needs a limited audience uses the EMAIL allowlist, which evaluates.
+ */
+describe("no alpha gating in the dashboard", () => {
+  it("the FEATURE_GATES registry is gone", () => {
+    expect(featureGates).not.toHaveProperty("FEATURE_GATES");
   });
 
-  it("gates brand-info + brand-features as alpha with alpha-* flags", () => {
-    expect(FEATURE_GATES["brand-info"]).toEqual({ flag: "alpha-brand-info", maturity: "alpha" });
-    expect(FEATURE_GATES["brand-features"]).toEqual({ flag: "alpha-brand-features", maturity: "alpha" });
+  it("the useFeatureFlag hook is gone — the file itself must not come back", () => {
+    expect(fs.existsSync(path.join(__dirname, "../src/lib/use-feature-flag.ts"))).toBe(false);
   });
 
-  it("gates workflows (page + sidebar entries) as alpha; Feature Settings landing is GA", () => {
-    expect(FEATURE_GATES["workflows"]).toEqual({ flag: "alpha-workflows", maturity: "alpha" });
-    // Feature Settings itself is GA → no gate entry for it.
-    expect(FEATURE_GATES).not.toHaveProperty("feature-settings");
+  // Match the CALL, not the bare word: several files legitimately EXPLAIN in a
+  // comment why this app has no flag gating, and a guard that trips on its own
+  // rationale is the source-substring trap this repo keeps recording.
+  it("nothing under src calls useFeatureFlag", () => {
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) walk(full);
+        else if (/\.tsx?$/.test(e.name) && fs.readFileSync(full, "utf-8").includes("useFeatureFlag("))
+          offenders.push(path.relative(path.join(__dirname, "../src"), full));
+      }
+    };
+    walk(path.join(__dirname, "../src"));
+    expect(offenders).toEqual([]);
   });
 
-  it("gates brand-database as alpha (Outlets/Journalists/Articles; Leads+Emails stay GA)", () => {
-    expect(FEATURE_GATES["brand-database"]).toEqual({ flag: "alpha-brand-database", maturity: "alpha" });
-  });
-
-  it("every flag follows the <maturity>-<surface> naming convention", () => {
-    for (const gate of Object.values(FEATURE_GATES)) {
-      expect(gate.flag.startsWith(`${gate.maturity}-`)).toBe(true);
+  it("the surfaces those gates hid are DELETED, not left URL-reachable", () => {
+    for (const dead of [
+      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info",
+      "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/workflows",
+      "app/(authed)/(dashboard)/workflows",
+      "app/(authed)/(dashboard)/orgs/[orgId]/services",
+      "app/(authed)/services",
+      "components/workflows",
+    ]) {
+      expect(fs.existsSync(path.join(__dirname, "../src", dead)), dead).toBe(false);
     }
   });
 });
@@ -65,17 +88,24 @@ describe("org overview page — stats + org-level feature surface removed", () =
   });
 });
 
-describe("context-sidebar — alpha gating + maturity badges", () => {
+describe("context-sidebar — no alpha gating, badges kept for beta", () => {
   const sidebar = read("../src/components/context-sidebar.tsx");
 
-  it("imports the shared gating primitives", () => {
-    expect(sidebar).toMatch(/useFeatureFlag/);
+  it("still renders a maturity badge (the beta surfaces use it)", () => {
     expect(sidebar).toMatch(/MaturityBadge/);
-    expect(sidebar).toMatch(/FEATURE_GATES/);
   });
 
-  it("gates CRM behind its alpha flag", () => {
-    expect(sidebar).toMatch(/FEATURE_GATES\["services-crm"\]/);
+  it("holds no gate: every entry it renders is one somebody can actually reach", () => {
+    // The CALL and the registry READ — the file's comments explain the history and
+    // must stay free to name both.
+    expect(sidebar).not.toMatch(/useFeatureFlag\(/);
+    expect(sidebar).not.toMatch(/FEATURE_GATES\[/);
+  });
+
+  it("carries no link to a deleted surface", () => {
+    expect(sidebar).not.toContain("/services/crm");
+    expect(sidebar).not.toContain("/brand-info");
+    expect(sidebar).not.toContain("}/workflows");
   });
 
   // Scope the next assertions to the OrgLevelSidebar function body only —
@@ -102,11 +132,10 @@ describe("context-sidebar — alpha gating + maturity badges", () => {
     sidebar.indexOf("export function ContextSidebar"),
   );
 
-  it("Brand Info is a flat footer link in BrandLevelSidebar (alpha-gated)", () => {
+  it("no longer offers Brand Info or Workflows (both deleted)", () => {
     expect(brand.length).toBeGreaterThan(0);
-    // Brand Info folded into the brand sidebar footer, still alpha-gated.
-    expect(brand).toMatch(/FEATURE_GATES\["brand-info"\]/);
-    expect(brand).toMatch(/`\$\{basePath\}\/brand-info`/);
+    expect(brand).not.toContain("/brand-info");
+    expect(brand).not.toContain("}/workflows");
   });
 
   it("no longer surfaces a Brand Profile footer link (page removed)", () => {

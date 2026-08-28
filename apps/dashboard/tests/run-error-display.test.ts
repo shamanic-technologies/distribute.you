@@ -31,23 +31,3 @@ describe("ErrorSummary type definition", () => {
     expect(generationRun).toContain("errorSummary?: ErrorSummary");
   });
 });
-
-describe("Brand info page — failed run error display", () => {
-  const pagePath = path.resolve(
-    __dirname,
-    "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
-  );
-  const content = fs.readFileSync(pagePath, "utf-8");
-
-  it("should display rootCause from errorSummary for failed runs", () => {
-    expect(content).toContain("run.errorSummary.rootCause");
-  });
-
-  it("should display failedStep from errorSummary for failed runs", () => {
-    expect(content).toContain("run.errorSummary.failedStep");
-  });
-
-  it("should only show error details when status is failed and errorSummary exists", () => {
-    expect(content).toContain('run.status === "failed" && run.errorSummary');
-  });
-});

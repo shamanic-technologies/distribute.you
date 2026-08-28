@@ -5,12 +5,6 @@ import * as path from "path";
 const apiPath = path.resolve(__dirname, "../src/lib/api.ts");
 const apiContent = fs.readFileSync(apiPath, "utf-8");
 
-const brandInfoPath = path.resolve(
-  __dirname,
-  "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"
-);
-const brandInfoContent = fs.readFileSync(brandInfoPath, "utf-8");
-
 const brandOverviewPath = path.resolve(
   __dirname,
   "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx"
@@ -66,27 +60,5 @@ describe("Brand overview page handles missing brand", () => {
     // flashing the empty state during the initial fetch.
     expect(brandOverviewContent).toContain("Brand not found");
     expect(brandOverviewContent).toMatch(/!brandLoading\s*&&\s*!brand/);
-  });
-});
-
-describe("Brand info page handles missing brand", () => {
-  it("should use brandLoading in skeleton guard", () => {
-    // Must read isPending, not isLoading — an org-gated (disabled) query reports
-    // isLoading false while unresolved, dropping through the skeleton guard to
-    // "Brand not found" during the org-settle window. isPending holds the
-    // skeleton until the query resolves.
-    expect(brandInfoContent).toMatch(/isPending:\s*brandLoading/);
-    expect(brandInfoContent).toContain("brandLoading || fieldsLoading");
-  });
-
-  it("should show 'Brand not found' when brand is null", () => {
-    expect(brandInfoContent).toContain("Brand not found");
-    expect(brandInfoContent).toMatch(/if\s*\(\s*!brand\s*\)/);
-  });
-
-  it("should use brand (not brandUrl) for Generate button guard", () => {
-    // Generate button and handler should depend on brand existing, not brandUrl
-    expect(brandInfoContent).not.toMatch(/brandUrl\s*&&\s*\(/);
-    expect(brandInfoContent).toContain("brand && (");
   });
 });

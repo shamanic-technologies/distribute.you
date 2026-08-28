@@ -21,14 +21,11 @@ describe("Workflow API endpoints (create/upgrade/fork split)", () => {
     expect(apiContent).not.toMatch(/interface GenerateWorkflowResult\b/);
   });
 
-  it("exports createWorkflow that POSTs /workflows/create", () => {
-    expect(apiContent).toContain("export async function createWorkflow");
-    const fnMatch = apiContent.match(
-      /export async function createWorkflow\([\s\S]*?\n\}/,
-    );
-    expect(fnMatch).toBeTruthy();
-    expect(fnMatch![0]).toContain('"/workflows/create"');
-    expect(fnMatch![0]).toContain('method: "POST"');
+  it("no longer exports createWorkflow — the page that called it is deleted", () => {
+    // The brand Workflows surface was `useFeatureFlag`-gated, i.e. rendered for
+    // nobody, and went with the rest of that cluster. Workflow authoring lives in
+    // `apps/admin`, where the gate resolves.
+    expect(apiContent).not.toContain("export async function createWorkflow");
   });
 
   it("does not export upgradeWorkflow (agent-only via api-service tool)", () => {

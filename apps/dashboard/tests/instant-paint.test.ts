@@ -209,11 +209,10 @@ describe("route transitions — the destination is warmed before the click", () 
  * and the surface flashes its empty / not-found state before the read has run.
  */
 describe("reveal gates — no surface reads isLoading off a useAuthQuery", () => {
-  const files = [
-    "app/(authed)/(dashboard)/orgs/[orgId]/api-keys/page.tsx",
-    "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx",
-    "components/workflows/workflow-detail-panel.tsx",
-  ];
+  // brand-info and the workflow detail panel were on this list and are now DELETED —
+  // both were `useFeatureFlag`-gated, which in the dashboard hides a surface from
+  // everyone rather than staging it. They live in `apps/admin`, where the gate resolves.
+  const files = ["app/(authed)/(dashboard)/orgs/[orgId]/api-keys/page.tsx"];
 
   it("gates on isPending in every live surface that used to read isLoading", () => {
     for (const file of files) {

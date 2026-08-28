@@ -1275,8 +1275,26 @@ The ICP ("The Serial Builder", `/investors`) is a solo / 1–3-person team runni
 
 distribute = "Stripe of Distribution" (thin wrapper over Apollo, Anthropic, Resend, LinkedIn, Muck Rack, Featured, Adobe, Gartner…). Wherever a provider/source/tool is named on a public page, show its logo via `apps/landing/src/components/provider-avatar.tsx` (`logo.dev` + `NEXT_PUBLIC_LOGO_DEV_TOKEN`, initial-letter fallback). NEVER hand-roll a provider SVG, NEVER ship the initial fallback as the intended UI — set the token in every env. New Channels-grid mappings in `apps/landing/src/data/feature-providers.ts`; stat/study mappings via `SourcedStat.providerDomain` / `ExternalStudy.providerDomain`.
 
-### Feature maturity gating (alpha / beta / ga) — dashboard
+### There is NO alpha gating in the dashboard — a `useFeatureFlag` gate there DELETES a surface, it does not stage one
 
+`useFeatureFlag` returned `false` unconditionally in `apps/dashboard` from the 2026-06-14 admin/dashboard split onward, so every gated entry rendered for NOBODY — staff included — and its page was reachable only by typing the URL. That reads in a diff as a staged alpha and behaves as orphaned code, which is why it survives: nobody looks at it, so nothing about it gets fixed and its contents drift out of date unnoticed. Three whole surfaces sat that way for months and were deleted in one pass:
+
+| Deleted from `apps/dashboard` | Lives in |
+|---|---|
+| `orgs/[orgId]/brands/[brandId]/brand-info` | `apps/admin` |
+| `orgs/[orgId]/brands/[brandId]/workflows` (+ `/new`), `(dashboard)/workflows`, `components/workflows/*`, `api/v1/workflows/[id]/required-providers` | `apps/admin` |
+| `orgs/[orgId]/services/crm` (+ `_components/*`) and its `services/crm/oauth/callback` | `apps/admin` |
+
+Deleted with them, because they had no other reader: `lib/use-feature-flag.ts`, the whole `FEATURE_GATES` registry (`lib/feature-gates.ts` now exports only `Maturity`, `MATURITY_STYLES` and `GA_BRAND_FEATURES`), `lib/workflow-display-name.ts`, the six workflow readers in `lib/api.ts` (`listWorkflows` / `getWorkflow` / `getWorkflowSummary` / `getWorkflowKeyStatus` / `fetchGlobalRankedWorkflows` / `createWorkflow`) plus `triggerFeatureRun`, the breadcrumb's workflow crumb, and 24 persist roots the allowlist still listed.
+
+- **A dashboard surface that needs a limited audience uses the EMAIL allowlist** (`lib/beta-allowlist.ts` + `useIsBetaUser`), which actually evaluates, and carries a visible `<MaturityBadge level="beta" />`. `MaturityBadge` stays — the beta Profile surfaces render it.
+- **`GA_BRAND_FEATURES` stays and is live** (`sole-feature.ts` resolves the one feature a brand's surfaces are about). A feature graduates by being added to it.
+- ⚠️ **`PERSISTABLE_QUERY_ROOTS` is an INVENTORY, so a root outlives its reader silently** — a page removal leaves its roots behind and nothing goes red. The dead set here was 24 entries, most orphaned by the earlier entity-page removals (#2593) rather than by this one. When you delete a surface, diff the allowlist against the live `useAuthQuery` roots (the scan in `persist-query-cache.test.ts` does the forward direction; the reverse is a grep for each listed root's literal across `src`).
+- Guard: `tests/feature-gates.test.ts` fails if the hook file returns, if anything under `src` CALLS it, or if any of the deleted directories reappears. It matches the CALL (`useFeatureFlag(`), not the bare name, because several files legitimately EXPLAIN this history in a comment and a guard that trips on its own rationale is the source-substring trap this repo keeps recording.
+
+**`apps/admin` keeps the real PostHog-driven gating and is unaffected** — the rest of this section describes THAT app.
+
+### Feature maturity gating (alpha / beta / ga) — admin
 Immature features stay in prod but are hidden from non-staff via **PostHog feature flags**, NOT `NODE_ENV`. `alpha` → staff only (flag on person-property `email = kevin.lourd@gmail.com`) · `beta` → opt-in cohort · `ga` → everyone, NO flag.
 - Single source: `src/lib/feature-gates.ts` `FEATURE_GATES` (surface key → `{ flag, maturity }`). Flag name `<maturity>-<surface>`. **Each distinct gated surface gets its OWN flag — do NOT reuse an adjacent surface's flag for convenience** (couples graduation; the `<maturity>-<surface>` convention is one-flag-per-surface). When gating a new surface, create a dedicated PostHog flag mirroring an existing alpha flag's targeting (e.g. `alpha-brand-database` = Outlets/Journalists/Articles Database rows, staff-only, ≠ `alpha-brand-features`). (#1343: recommended reusing `alpha-brand-features`; Kevin picked "go dedicated".)
 - `useFeatureFlag(flag): boolean` (`src/lib/use-feature-flag.ts`) — **default-hidden** (false until PostHog loads → no flash); subscribes `posthog.onFeatureFlags` to re-resolve after `identify`.
