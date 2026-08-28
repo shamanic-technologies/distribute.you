@@ -662,6 +662,20 @@ export function CampaignOverviewPage() {
         }
         costPending={!costRevealed}
         todayCostPending={!costRevealed}
+        // Today's spend gets its CEILING beside it, and the ceiling is THIS
+        // campaign's own — billing's (offer x funnel x channel) row, the same
+        // figure the header states and Campaign Settings edits. The brand and
+        // offer Overviews state none for the opposite reason: a brand's total is
+        // the SUM of every funnel, so beside one offer's spend it would be a
+        // denominator of a wider scope than the numerator. A campaign IS the
+        // triple billing keys, so here the pair is one scope, and it is what
+        // makes "$50" readable as "$50 of $50" rather than a bare figure.
+        dailyBudgetCents={campaignBudgetCentsValue}
+        budgetNote={
+          campaignBudgetCentsValue == null
+            ? "This campaign states no funnel or channel, so billing has no ceiling keyed to it: this is what it spent today, with nothing of its own to compare it against."
+            : undefined
+        }
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
