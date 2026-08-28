@@ -165,6 +165,18 @@ export type SalesFunnelDef = {
   name: string;
   /** The steps, rendered under the name. */
   steps: string[];
+  /**
+   * The SAME steps under the tokens features-service publishes for them, in the same
+   * order and the same length as `steps` above.
+   *
+   * Purely a JOIN key, never rendered: a channel states the legs it performs as bare
+   * step tokens on its feature row, and the words a customer reads for those steps are
+   * the ones already in `steps` — "Positive reply" here is the producer's
+   * `conversation`, which is exactly why the two lists cannot be one. Anything that
+   * needs to say a leg out loud reads `steps`, so this file keeps ONE vocabulary and
+   * gains no second one.
+   */
+  stepKeys: string[];
   /** One entry per arrow between two steps: the rate that leg converts at. */
   legs: FunnelRateKey[];
   /** What a campaign optimizes for once this funnel is wired to a campaign. */
@@ -191,6 +203,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
     key: "reply_meeting",
     name: "Sales Meeting from Conversation",
     steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
+    stepKeys: ["conversation", "meeting_booked", "meeting_attended", "paid_client"],
     legs: ["replyToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"],
     goal: "sales_meetings",
     requiresWebsite: false,
@@ -202,6 +215,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
     key: "visit_meeting",
     name: "Sales Meeting from Website",
     steps: ["Website visit", "Meeting booked", "Meeting attended", "Paid client"],
+    stepKeys: ["website_visit", "meeting_booked", "meeting_attended", "paid_client"],
     legs: ["visitToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"],
     goal: "sales_meetings",
     requiresWebsite: true,
@@ -213,6 +227,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
     key: "visit_signup",
     name: "Website Purchase",
     steps: ["Website visit", "Signup", "Paid client"],
+    stepKeys: ["website_visit", "signup", "paid_client"],
     legs: ["visitToSignupPct", "signupToPaidClientPct"],
     goal: "signups",
     requiresWebsite: true,
@@ -224,6 +239,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
     key: "visit_form",
     name: "Form Magnet",
     steps: ["Website visit", "Form filled", "Paid client"],
+    stepKeys: ["website_visit", "form_filled", "paid_client"],
     legs: ["visitToFormSubmissionPct", "formSubmissionToPaidClientPct"],
     goal: "form_submissions",
     requiresWebsite: true,
