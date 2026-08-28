@@ -7,12 +7,9 @@ import { MetricLabel } from "@/components/visibility/metric-info";
 import { pollOptions } from "@/lib/query-options";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import {
-  extractBrandFields,
-  fieldResultsToMap,
   getOfferUserFields,
   saveOfferUserFields,
   USER_FIELD_KEYS,
-  USER_PROFILE_FIELDS,
 } from "@/lib/api";
 import type { BrandUserFields, UserFieldKey, UserFieldValue } from "@/lib/api";
 import {
@@ -28,12 +25,6 @@ import {
   coerceTextField,
   OFFER_LEVERS,
 } from "@/lib/strategy-model";
-import {
-  applyExtractionToDraft,
-  prefillDefsFor,
-  LEVER_PREFILL_KEYS,
-  SERVICES_PREFILL_KEYS,
-} from "@/lib/offer-prefill";
 
 /**
  * The confirmed user-fields map → a plain fields bag (key → value) the inline
@@ -75,61 +66,18 @@ function profileToUserFieldsPayload(fields: ProfileFields): Partial<Record<UserF
 }
 
 /**
- * One of the two "Update from my website" buttons on the offer card.
- *
- * The in-flight label stays at full opacity and says what is happening: a disabled
- * button carrying `disabled:opacity-40` fades the very word meant to signal work and
- * reads as a dead control. Only the genuinely-unavailable state fades.
- */
-function PrefillButton({
-  label,
-  pendingLabel,
-  pending,
-  disabled,
-  title,
-  onClick,
-}: {
-  label: string;
-  pendingLabel: string;
-  pending: boolean;
-  disabled: boolean;
-  title?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled || pending}
-      title={title}
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition ${
-        pending ? "cursor-wait" : "hover:bg-brand-100 disabled:opacity-40 disabled:cursor-not-allowed"
-      }`}
-    >
-      {pending ? pendingLabel : label}
-    </button>
-  );
-}
-
-/**
  * "What we use to optimize your conversion" — the offer through the Alex Hormozi
  * value equation, edited inline. The 7 user-fields are confirmed brand data, and
  * the stronger they are the better each email converts.
  *
  * Offer Settings is where a proposition is CHANGED, so this card is the edit
  * surface: each lever is a hover-to-edit zone (the pencil appears on hover); Save
- * confirms the edited values via saveOfferUserFields. The two "Update from my
- * website" buttons are a RESET into the draft — nothing is persisted until the
- * user presses Save.
+ * confirms the edited values via saveOfferUserFields.
  *
  * The 7 fields are what an OFFER promises, so they are read and written on the
  * offer's own routes and cached under a key carrying the offer. A brand selling a
  * $200 self-serve plan and a $20k contract has two different answers to every one
  * of these, and the brand-scoped routes have exactly one place to put them.
- *
- * The WEBSITE extraction stays brand-scoped: it reads the brand's site, which is
- * brand identity and has no per-offer answer. What comes back lands in this
- * offer's draft.
  */
 export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId: string }) {
   const queryClient = useQueryClient();
@@ -188,85 +136,6 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
     saveOfferMut.mutate(offerFields);
   };
 
-  // ── "Update from my website" ───────────────────────────────────────────────
-  // Two buttons, because the two halves of the offer are written from different
-  // inputs: the services are read off the site, and the six Hormozi levers are
-  // written FROM those services. One button would have to invent the levers before
-  // it had settled what the brand actually sells.
-  //
-  // Both are a RESET into the DRAFT: the fields they own take whatever came back,
-  // and a field the extraction did not answer is cleared. Nothing is persisted until
-  // the user reviews it and presses Save, which is what makes a destructive reset
-  // safe to offer.
-  const [prefillError, setPrefillError] = useState<string | null>(null);
-
-  const savedServices = coerceListField(offerBaseline.services);
-  const draftServices = coerceListField(offerFields.services);
-  const servicesDirty =
-    savedServices.length !== draftServices.length ||
-    savedServices.some((v, i) => v !== draftServices[i]);
-
-  const prefillServicesMut = useMutation({
-    mutationFn: () =>
-      extractBrandFields([brandId], prefillDefsFor(SERVICES_PREFILL_KEYS, USER_PROFILE_FIELDS), {
-        resetCache: true,
-        mode: "suggest",
-        // Write these again from scratch. Without it brand-service hands back the
-        // value the user already confirmed — it injects confirmed fields into the
-        // prompt as authoritative AND overlays them onto the response — so a button
-        // that says "update from my website" would return the user's own input.
-        regenerateFieldKeys: [...SERVICES_PREFILL_KEYS],
-      }),
-    onSuccess: (resp) => {
-      const map = fieldResultsToMap(resp.fields);
-      const targets = ALL_FIELDS.filter((f) => SERVICES_PREFILL_KEYS.includes(f.key));
-      setOfferDraft((prev) => applyExtractionToDraft(prev ?? offerBaseline, targets, map));
-    },
-    // The real error goes to the console; the user gets our own copy. An `apiCall`
-    // failure carries the downstream response body verbatim in its message.
-    onError: (err) => {
-      console.error("[dashboard] offer prefill failed:", err);
-      setPrefillError("Could not read your website. Try again.");
-    },
-  });
-
-  const prefillLeversMut = useMutation({
-    // The levers are written FROM the services, and brand-service supplies that
-    // itself: it injects the brand's CONFIRMED fields into the generation as
-    // authoritative context. So services the user has typed but not saved are
-    // invisible to it — confirm them first rather than generating an offer for a
-    // list of services the backend has never seen.
-    mutationFn: async () => {
-      if (servicesDirty) {
-        await saveOfferUserFields(brandId, offerId, { services: draftServices });
-        await queryClient.invalidateQueries({ queryKey: ["offerUserFields", brandId, offerId] });
-      }
-      return extractBrandFields([brandId], prefillDefsFor(LEVER_PREFILL_KEYS, USER_PROFILE_FIELDS), {
-        resetCache: true,
-        mode: "suggest",
-        // Only the levers. The brand's confirmed SERVICES are deliberately left out
-        // of this list so they still reach the model as authoritative context — the
-        // levers are written from them.
-        regenerateFieldKeys: [...LEVER_PREFILL_KEYS],
-      });
-    },
-    onSuccess: (resp) => {
-      const map = fieldResultsToMap(resp.fields);
-      const targets = ALL_FIELDS.filter((f) => LEVER_PREFILL_KEYS.includes(f.key));
-      setOfferDraft((prev) => applyExtractionToDraft(prev ?? offerBaseline, targets, map));
-    },
-    // The real error goes to the console; the user gets our own copy. An `apiCall`
-    // failure carries the downstream response body verbatim in its message.
-    onError: (err) => {
-      console.error("[dashboard] offer prefill failed:", err);
-      setPrefillError("Could not read your website. Try again.");
-    },
-  });
-
-  const prefilling = prefillServicesMut.isPending || prefillLeversMut.isPending;
-  // With no services at all there is nothing for the levers to be about.
-  const leversBlockedOnServices = draftServices.length === 0;
-
   return (
     <section className="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
       <div className="flex items-start justify-between gap-3">
@@ -278,35 +147,6 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
             Your offer through the Alex Hormozi value equation. We write the emails
             around these. Click any field to edit it.
           </p>
-        </div>
-        <div className="shrink-0">
-          <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:items-center">
-            <PrefillButton
-              label="Update services from my website"
-              pendingLabel="Reading your website…"
-              pending={prefillServicesMut.isPending}
-              disabled={prefilling}
-              onClick={() => {
-                setPrefillError(null);
-                prefillServicesMut.mutate();
-              }}
-            />
-            <PrefillButton
-              label="Update the offer from my website"
-              pendingLabel="Writing your offer…"
-              pending={prefillLeversMut.isPending}
-              disabled={prefilling || leversBlockedOnServices}
-              title={
-                leversBlockedOnServices
-                  ? "Add what you sell first. The offer is written from your services."
-                  : undefined
-              }
-              onClick={() => {
-                setPrefillError(null);
-                prefillLeversMut.mutate();
-              }}
-            />
-          </div>
         </div>
       </div>
 
@@ -362,15 +202,6 @@ export function BrandOfferCard({ brandId, offerId }: { brandId: string; offerId:
                 );
               })}
             </ul>
-
-            {prefillError ? (
-              <p className="mt-4 text-xs text-red-600">{prefillError}</p>
-            ) : null}
-
-            <p className="mt-4 text-xs text-gray-400">
-              Updating from your website rewrites these fields with what we read there.
-              Nothing is saved until you press Save.
-            </p>
 
             {offerDirty ? (
               <div className="mt-4 flex items-center justify-end gap-2">

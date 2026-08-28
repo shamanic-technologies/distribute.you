@@ -45,10 +45,7 @@ describe("user-fields-form — split field subsets + services-conditioned extrac
     expect(content).toContain('f.key !== "services"');
   });
 
-  it("no longer builds its own extraction defs — both cards read the shared set", () => {
-    // The request defs come from `prefillDefsFor(keys, USER_PROFILE_FIELDS)` in
-    // lib/offer-prefill.ts, so a lever means the same thing here, on the customer
-    // Strategy page and in onboarding.
+  it("builds no extraction defs of its own", () => {
     expect(content).not.toContain("buildExtractDefs");
     expect(content).not.toContain("HORMOZI_LEVER_GUIDANCE");
     // brand-service already injects the brand's CONFIRMED fields as authoritative
@@ -85,28 +82,16 @@ describe("BrandUserFieldsCard — generic subset editor", () => {
     expect(content).toContain("ListEditor");
   });
 
-  it("has an update-from-the-website button that RESETS every field in the subset", () => {
-    expect(content).toContain("prefillDefsFor(prefillKeys, USER_PROFILE_FIELDS)");
-    expect(content).toContain("applyExtractionToDraft");
-    expect(content).toContain("conditionOnServices");
-    // A reset, not a top-up: no skip-if-already-filled guard, and a field the
-    // extraction does not answer is cleared rather than left alone.
-    expect(content).not.toContain("isEmptyField");
-    expect(content).toContain("resetCache: true");
-  });
-
-  it("reads the saved services from the shared cache to gate the levers button", () => {
-    expect(content).toContain("data?.fields?.services?.value");
-    expect(content).toContain("leversBlockedOnServices");
-  });
-
-  it("requests suggest mode on BOTH cards", () => {
-    // `extract` is site-grounded and returns the literal string "Unknown" for
-    // anything the site does not state outright, which is not a value anyone wants
-    // to read in a field.
-    expect(content).toContain('mode: "suggest"');
-    expect(content).not.toContain('mode: "extract"');
-    expect(content).not.toContain('conditionOnServices ? "suggest" : "extract"');
+  it("offers no update-from-the-website control — the card only edits and saves", () => {
+    // The two prefill buttons were removed from every surface. What is left is a
+    // plain editor: nothing re-reads the brand site and nothing resets a field the
+    // user typed.
+    expect(content).not.toContain("extractBrandFields");
+    expect(content).not.toContain("applyExtractionToDraft");
+    expect(content).not.toContain("offer-prefill");
+    expect(content).not.toContain("resetCache");
+    expect(content).not.toContain("regenerateFieldKeys");
+    expect(content).not.toContain("from my website");
   });
 
   it("uses a live dirty-compare against the saved baseline (no sticky latch)", () => {
@@ -124,6 +109,5 @@ describe("Brand Settings page mounts the two split cards", () => {
     expect(content).toContain("Your offer");
     expect(content).toContain("defs={SERVICES_FIELDS}");
     expect(content).toContain("defs={LEVER_FIELDS}");
-    expect(content).toContain("conditionOnServices");
   });
 });
