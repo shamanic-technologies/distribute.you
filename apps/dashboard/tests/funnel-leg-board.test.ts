@@ -11,6 +11,13 @@ import {
 import { leadFunnelStages, WRITABLE_STAGE_KEYS } from "../src/lib/lead-funnel-stages";
 
 const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
+
+/** From `marker` forward, far enough to cover the block that starts there. */
+const sliceFrom = (src: string, marker: string, len: number) => {
+  const at = src.indexOf(marker);
+  expect(at).toBeGreaterThan(-1);
+  return src.slice(at, at + len);
+};
 const stages = leadFunnelStages("reply_meeting");
 
 const lead = (over: Partial<LegBoardLead> & { id: string }): LegBoardLead => ({
@@ -127,13 +134,42 @@ describe("the arrow board writes a STEP STATEMENT, not a reply kind", () => {
   it("asks before it writes, because a move is a statement", () => {
     // A board that wrote on drop would meet lead-service's refusal after the card had
     // already moved.
-    expect(board).toContain("setPending(dragging)");
+    const drop = sliceFrom(board, "onDrop: (card, columnKey)", 200);
+    expect(drop).toContain("setPending(card)");
+    expect(drop).not.toContain("onCross(");
     expect(board).toContain('data-testid="leg-board-cross-form"');
   });
 
-  it("offers the same move without a pointer", () => {
-    // Drag is a mouse affordance and a phone has none.
-    expect(board).toMatch(/>\s*Move\s*</);
+  it("runs the ONE shared gesture the Leads board runs", () => {
+    // Hold to lift, tap to open, a live ghost, a dashed slot either side. A person who
+    // learned the board on the Leads page has learned this one.
+    expect(board).toContain("useBoardDrag<LegBoardCard>");
+    expect(board).toContain("board.cardHandlers(card)");
+    expect(board).toContain('data-board-column={side}');
+    // And no HTML5 drag, which fires on no touch device and paints a square ghost.
+    expect(board).not.toContain("draggable=");
+    expect(board).not.toContain("onDragStart");
+  });
+
+  it("offers the same move without a pointer, on the tag's own row", () => {
+    // A labelled Move button cost the card a whole line and read as a second way of
+    // doing the thing the card already does; the ellipsis is what the Leads board taught.
+    expect(board).not.toMatch(/>\s*Move\s*</);
+    expect(board).toContain("&#8943;");
+    expect(board).toContain('aria-label={`Move ${card.name} to ${columns.to.label}`}');
+  });
+
+  it("says on the card WHERE the lead is", () => {
+    // A board sorted by status whose cards state none makes the reader hold the column
+    // headers in their head, and the ghost under the pointer has no column at all.
+    expect(board).toContain('data-testid="leg-board-card-tag"');
+    expect(board).toContain("crossed ? columns.to.label : columns.from.label");
+  });
+
+  it("leaves an outline where the card was and opens one where it is going", () => {
+    expect(board).toContain('<BoardSlot variant="origin" />');
+    expect(board).toContain('<BoardSlot variant="target" />');
+    expect(board).toContain("board.showsSlot(side)");
   });
 
   it("says what it is not drawing rather than truncating in silence", () => {
@@ -183,11 +219,32 @@ describe("the leg page, and what it deliberately does not show", () => {
     expect(table).toContain("campaign ? () => open(campaign) : () => openLeg(leg.toKey)");
   });
 
-  it("draws the board FIRST, because stating who crossed is why the page exists", () => {
-    expect(page.indexOf("<FunnelLegBoard")).toBeLessThan(page.indexOf("<ScoreCard"));
+  it("reads the figures FIRST and puts the board under them", () => {
+    // The same order the campaign pages read in: what happened, how it has moved, then
+    // the thing you do about it.
+    expect(page.indexOf("<ScoreCard")).toBeLessThan(page.indexOf("<FunnelLegBoard"));
   });
 
-  it("shows no outreach chart and no cost per outcome", () => {
+  it("states the rung it converts from, the rung it converts to, and what you spent", () => {
+    expect(page).toContain("step.fromRecipientsReached.toLocaleString");
+    expect(page).toContain("step.recipientsReached.toLocaleString");
+    // The conversion sits INSIDE the rung's own card: they are one statement.
+    expect(page).toContain("step.conversionFromPreviousPct.toFixed(1)}% of");
+    expect(page).toContain("label={`Cost per ${columns.to.label.toLowerCase()}`}");
+  });
+
+  it("charts the arrow's OWN outcome, never the whole funnel's return", () => {
+    // A return is the whole funnel's — the money bought every rung of it — so charting
+    // it under one arrow's name states a wider scope's answer here.
+    expect(page).toContain("<OutcomeTrendCard");
+    expect(page).not.toContain("RoiTrendCard");
+    // A step with no dated series says so rather than drawing an empty chart, which
+    // reads as "nobody crossed".
+    expect(page).toContain("OUTCOME_SERIES_BY_STEP_KEY");
+    expect(page).toContain("const chartable =");
+  });
+
+  it("shows no outreach chart and no cost per outcome of OUR spend", () => {
     // An arrow the brand works itself sends nothing, and the only per-step cost served
     // divides the whole funnel's spend — none of which was spent on this arrow.
     expect(page).not.toContain("PipelineActivityChart");
