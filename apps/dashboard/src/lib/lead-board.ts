@@ -212,3 +212,32 @@ export function columnMoveRefusal(to: LeadBoardColumnKey): string | null {
   }
   return null;
 }
+
+/**
+ * How many cards a column draws before it asks.
+ *
+ * Contacted holds everybody the campaign ever reached — thousands on a live brand —
+ * so a column that draws all of them is a page nobody can scroll past and a DOM
+ * nothing needs. Twenty is roughly one column-height at 1280px, so the reveal costs a
+ * press exactly when the reader has run out of cards rather than on arrival.
+ */
+export const LEAD_BOARD_PAGE_SIZE = 20;
+
+/**
+ * How many cards to draw in a column, and how many that leaves.
+ *
+ * A "Show more" button rather than infinite scroll, which is the convergent answer
+ * across the pattern writing (Smashing, LogRocket, UX Collective) and across the
+ * boards themselves (Trello loads a list twenty at a time behind a press): a board is
+ * a set somebody is WORKING, not a feed they are grazing, so the reader decides when
+ * to grow a column and the page never moves under them.
+ *
+ * The header count stays the WHOLE column, deliberately. It answers "how many are
+ * here", which is the question the board is read for; the number this returns answers
+ * "how many are on screen", which is a fact about the viewport. Collapsing the two
+ * would make a column of 400 read as a column of 20.
+ */
+export function columnPage(total: number, shown: number): { visible: number; remaining: number } {
+  const visible = Math.max(0, Math.min(total, shown));
+  return { visible, remaining: Math.max(0, total - visible) };
+}

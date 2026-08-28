@@ -3,7 +3,9 @@ import {
   DISQUALIFYING_REPLY_KINDS,
   INTEREST_REPLY_KINDS,
   LEAD_BOARD_COLUMNS,
+  LEAD_BOARD_PAGE_SIZE,
   columnMoveRefusal,
+  columnPage,
   columnReplyKinds,
   leadBoardColumnFor,
   movableColumnsFrom,
@@ -197,5 +199,29 @@ describe("a drop lands everywhere, and the form is where a move is refused", () 
     // unsubscribe value, so the picker for that column is empty by construction.
     expect(columnReplyKinds("opt_out")).toEqual([]);
     expect(columnMoveRefusal("opt_out")).not.toBeNull();
+  });
+});
+
+describe("a column draws a page and states its tail", () => {
+  it("draws the page size and says how many are left", () => {
+    expect(columnPage(400, LEAD_BOARD_PAGE_SIZE)).toEqual({
+      visible: LEAD_BOARD_PAGE_SIZE,
+      remaining: 400 - LEAD_BOARD_PAGE_SIZE,
+    });
+  });
+
+  it("never claims a tail on a column that fits", () => {
+    expect(columnPage(3, LEAD_BOARD_PAGE_SIZE)).toEqual({ visible: 3, remaining: 0 });
+    expect(columnPage(0, LEAD_BOARD_PAGE_SIZE)).toEqual({ visible: 0, remaining: 0 });
+  });
+
+  it("clamps a reveal that outlived the set it was made on", () => {
+    // A poll (or a search) can shrink a column under a reader who already pressed
+    // "Show more" several times; the count is a request, never a promise about size.
+    expect(columnPage(5, 200)).toEqual({ visible: 5, remaining: 0 });
+  });
+
+  it("treats a nonsense count as showing nothing rather than everything", () => {
+    expect(columnPage(10, -1)).toEqual({ visible: 0, remaining: 10 });
   });
 });

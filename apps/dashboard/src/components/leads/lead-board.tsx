@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BoardSlot } from "@/components/boards/board-slot";
 import { useBoardDrag } from "@/components/boards/use-board-drag";
 import { CompanyLogo } from "@/components/company-logo";
-import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
   LEAD_BOARD_COLUMNS,
+  LEAD_BOARD_PAGE_SIZE,
   columnMoveRefusal,
+  columnPage,
   columnReplyKinds,
   movableColumnsFrom,
   type LeadBoardColumn,
@@ -188,12 +189,24 @@ export function LeadBoard({
   busy,
   error,
   canMove,
+  filterKey,
   onOpen,
   onMove,
 }: {
   cards: LeadBoardCard[];
   busy: boolean;
   error: string | null;
+  /**
+   * What the page filtered this set by — the search box's text today.
+   *
+   * A column's reveal is a statement about the set the reader was looking at, so it
+   * has to fall back when the set is re-queried, or a search that narrows Contacted to
+   * three cards leaves the previous "showing 200" in place and the reader reads an
+   * empty tail as the board loading. It is a PROP rather than a diff on `cards`
+   * because `cards` is rebuilt on every poll: resetting on that would collapse a
+   * column the reader had opened, every thirty seconds, for no reason they could see.
+   */
+  filterKey: string;
   /**
    * Whether a statement can be written at all. A reply kind is recorded against the
    * lead's CAMPAIGN, so a brand-level board — which spans several — can show the
@@ -206,6 +219,22 @@ export function LeadBoard({
 }) {
   const [pending, setPending] = useState<PendingMove | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // How many cards each column has been asked for. Per column, because the columns are
+  // wildly different sizes — Contacted holds the whole campaign and Opt-out holds a
+  // handful — so one shared count would either hide most of the board or defeat itself.
+  const [shown, setShown] = useState<Record<string, number>>({});
+  useEffect(() => {
+    setShown({});
+  }, [filterKey]);
+
+  // One pass rather than a `filter` per column inside the render: the whole campaign's
+  // leads go through this, and the render already walks four columns.
+  const byColumn = useMemo(() => {
+    const out = new Map<LeadBoardColumnKey, LeadBoardCard[]>();
+    for (const column of LEAD_BOARD_COLUMNS) out.set(column.key, []);
+    for (const card of cards) out.get(card.column)?.push(card);
+    return out;
+  }, [cards]);
 
   const startMove = (card: LeadBoardCard, to: LeadBoardColumn) => {
     setMenuFor(null);
@@ -303,7 +332,12 @@ export function LeadBoard({
 
       <div ref={board.railRef} className="flex gap-3 overflow-x-auto pb-2">
         {LEAD_BOARD_COLUMNS.map((column) => {
-          const inColumn = cards.filter((c) => c.column === column.key);
+          const inColumn = byColumn.get(column.key) ?? [];
+          const { visible, remaining } = columnPage(
+            inColumn.length,
+            shown[column.key] ?? LEAD_BOARD_PAGE_SIZE,
+          );
+          const drawn = inColumn.slice(0, visible);
           // Every column lights up under a dragged card — the drop is accepted
           // everywhere and the form is where it is refused.
           const under = board.showsSlot(column.key);
@@ -328,7 +362,7 @@ export function LeadBoard({
               </header>
 
               <div className="space-y-2">
-                {inColumn.map((card) => {
+                {drawn.map((card) => {
                   const targets = canMove && card.email ? movableColumnsFrom(card.column) : [];
                   const lifted = board.isLifted(card);
                   // The card in the air leaves its OUTLINE behind rather than fading in
@@ -394,6 +428,26 @@ export function LeadBoard({
                 {inColumn.length === 0 && !under && (
                   <p className="px-1 py-3 text-xs text-gray-400">Nobody here yet.</p>
                 )}
+                {/* States what is LEFT, not what a press adds: the reader is deciding
+                    whether to keep going, and the size of the tail is what answers that.
+                    A button rather than scroll-triggered loading — a board is a set
+                    somebody is working, so the column grows when they ask and the page
+                    never moves under them. */}
+                {remaining > 0 && (
+                  <button
+                    type="button"
+                    data-testid={`lead-board-more-${column.key}`}
+                    onClick={() =>
+                      setShown((prev) => ({
+                        ...prev,
+                        [column.key]: visible + LEAD_BOARD_PAGE_SIZE,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300"
+                  >
+                    Show more ({remaining.toLocaleString("en-US")} left)
+                  </button>
+                )}
               </div>
             </section>
           );
@@ -414,12 +468,6 @@ export function LeadBoard({
           <CardBody card={drag.card} />
         </div>
       )}
-
-      <p className="text-xs text-gray-500">
-        Hold a card to move it, tap to open it. A bounce and a &quot;not
-        interested&quot; both stay in Contacted.{" "}
-        <InfoTooltip tip="A bounce is a delivery failure, not an opinion: the address needs repairing, the person may still be interested. And in sales a no is the start of the conversation, so only an objective fact about the person (wrong role, moved on) reaches Disqualified." />
-      </p>
     </div>
   );
 }

@@ -1593,6 +1593,7 @@ export function EngagedLeadsPage({
                 busy={moveOnBoard.isPending}
                 error={boardError}
                 canMove={Boolean(campaignId)}
+                filterKey={search}
                 onOpen={(leadRowId) => {
                   const lead = coveredLeads.find((l) => l.id === leadRowId);
                   if (lead) setSelectedLead(lead);
