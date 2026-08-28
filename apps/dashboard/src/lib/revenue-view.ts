@@ -9,6 +9,35 @@
 // Plain TS interfaces (no `@/lib/api` import) so these types stay safe to import
 // from components reused in the public-report bundle.
 
+/**
+ * One rung of the funnel: how many reached it, what reaching it cost, and what share of
+ * the rung before converted into it. Every figure is SERVED — a browser dividing two
+ * served counts is the compute-a-stat-in-the-browser bug, and it would drift from the
+ * producer's own answer the moment either side changed scope.
+ *
+ * `recipientsReached` at 0 is MEASURED, not absent: it means nobody got here, which is
+ * the answer somebody asking "is this working" most needs to read.
+ */
+export interface FunnelStepRow {
+  step: string;
+  leadField: string;
+  recipientsReached: number | null;
+  costPerReachCents: number | null;
+  fromStep: string;
+  fromRecipientsReached: number | null;
+  conversionFromPreviousPct: number | null;
+}
+
+/** The whole funnel, walked. Null on any read spanning more than one funnel. */
+export interface FunnelStepBreakdown {
+  funnelKey: string;
+  name: string;
+  committedSpentCents: number;
+  /** DISTINCT leads contacted — the base the FIRST rung converts from. */
+  contactedRecipients: number;
+  steps: FunnelStepRow[];
+}
+
 export interface RevenuePoint {
   date: string;
   cumulativePipelineUsd: number;
@@ -321,6 +350,14 @@ export interface RevenueOverview {
    * dated outcome.
    */
   roiHistory?: RoiHistory | null;
+  /**
+   * The funnel walked step by step, or null when there is no ONE funnel to walk.
+   *
+   * Null at the brand and offer grains by construction (both span several funnels), on
+   * a lensed read, and for a channel with no funnel wired. The funnel Overview is the
+   * one surface that gets a value, which is the whole point of the field.
+   */
+  funnelSteps?: FunnelStepBreakdown | null;
   /**
    * Canonical spend block (Total spent / today / top sources / CPC / CPS / CPSM),
    * server-computed + reconciled to runs ACTUAL spend. Present on the un-lensed
