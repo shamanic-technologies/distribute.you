@@ -1,14 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useParams } from "next/navigation";
 import { ScoreCard } from "@/components/visibility/score-card";
-import { ConversionTrackerButton } from "@/components/revenue/conversion-tracker-button";
-import { MaturityBadge } from "@/components/maturity-badge";
 import { LearningTag } from "@/components/learning-tag";
 import { isLearning, LEARNING_NOTE } from "@/lib/learning-threshold";
-import { useAuthQuery } from "@/lib/use-auth-query";
-import { getBrandConversionToken } from "@/lib/api";
 import { outcomeStepFor, stepsFor } from "@/lib/goal-steps";
 import type { SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { formatUsdAdaptive } from "@/lib/format-number";
@@ -94,10 +89,14 @@ function Cell({ children }: { children: ReactNode }) {
  * Top-of-page outreach stat cards, shared across every brand- and campaign-scoped
  * surface (one source → no drift, CLAUDE.md "keep surfaces in lockstep").
  *
- * GA cards (everyone): Outreach / Clicks / CPC, regardless of the
- * brand's optimization goal.
- * Beta cards (allowlist only — `useIsBetaUser`): the goal outcome pair
- * (Signups/CPS or Sales Meetings/CPSM), each badged `beta`.
+ * Cards: Outreach / Clicks / CPC, regardless of the brand's optimization goal.
+ *
+ * The goal's TERMINAL outcome pair (Sales Meetings/CPSM, Signups/CPS, Form
+ * submissions/CPFS, Sales/CP Sale) is deliberately NOT here. It depended on the
+ * brand's conversion tracker, so for a brand that never set one up it rendered a
+ * "set this up" CTA in place of both values — a pair of cards stating nothing but
+ * a chore. The reply-terminal funnel keeps its Sales Interests pair, which is
+ * inbox-sourced and always has a real value.
  *
  * The COUNTS derive from already-fetched featureStats; the COST metrics (CPC /
  * CPS / CPSM) are read VERBATIM from the features-service `/revenue` `spend`
@@ -222,33 +221,6 @@ export function OutreachStatCards({
    */
   showOutreach?: boolean;
 }) {
-  const params = useParams();
-  const orgId = params.orgId as string | undefined;
-  const brandId = params.brandId as string | undefined;
-  // Deep-link to the Conversion Tracking section of Brand Settings. The outcome
-  // counts (Signups / Meetings) only populate once the client's site fires the
-  // conversion snippet — so the beta cards carry a one-tap setup CTA. Built from
-  // the route params (both cards render only on brand-scoped pages).
-  const setupHref =
-    orgId && brandId
-      ? `/orgs/${orgId}/brands/${brandId}/settings#conversion-tracking`
-      : null;
-
-  // The conversion tracker's live status is server-owned (lead-service derives it
-  // from received pings/events). Once the client's site fires its first ping the
-  // tracker is proven alive (`live_waiting`) — or already receiving conversions
-  // (`live`) — so the "Set up conversion tracker" CTA must STOP showing, otherwise
-  // the stat cards nag "set up" while Brand Settings shows "Tracker live" (an
-  // incoherent secondary surface). Same query key as the settings card → the
-  // React Query cache is shared/deduped, no extra network. Gated on brandId.
-  const { data: conversionToken } = useAuthQuery(
-    ["brandConversionToken", brandId],
-    () => getBrandConversionToken(brandId as string),
-    { enabled: !!brandId },
-  );
-  const trackerLive =
-    conversionToken?.status === "live" ||
-    conversionToken?.status === "live_waiting";
   // No default goal. The brand one is retired — `NOT NULL` with a server default, so it
   // reads "website purchases" for a brand that stated nothing — and defaulting to it put
   // a funnel's steps on a surface that never named one. Absent goal AND absent funnel
@@ -267,23 +239,12 @@ export function OutreachStatCards({
   const outcomeStep = outcomeStepFor(goal, funnelKey);
   // A reply that is the TERMINAL step (the `positive_replies` goal: reply → paid). Clicks /
   // website visits aren't in that funnel, and there is no downstream outcome step, so the
-  // outcome pair becomes Sales Interests + Cost per sales interest (GA, no beta badge —
-  // the goal itself is GA).
+  // outcome pair becomes Sales Interests + Cost per sales interest — the ONLY outcome pair
+  // this row still states, because it is inbox-sourced and never needs a conversion tracker.
   const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;
   const outreach =
     outreachOverride ?? stats.leadsContacted ?? stats.recipientsContacted ?? 0;
   const clicks = stats.recipientsClicked ?? 0;
-  const beta = <MaturityBadge level="beta" />;
-
-  // Until the client's site fires the conversion snippet, the outcome cards have
-  // no value to show — so they render a discreet ghost button IN PLACE OF the
-  // value (transparent, 1px border, near-black text) that deep-links to setup.
-  // One shared button on every untracked outcome card, next to the metric it
-  // unblocks. Only built when the brand-scoped href resolves AND the tracker is
-  // not yet live — a live/live_waiting tracker no longer needs setup, so the
-  // cards fall back to a plain "—" until the first conversion produces a value.
-  const trackerButton =
-    setupHref && !trackerLive ? <ConversionTrackerButton href={setupHref} /> : null;
 
   const clickMetric = {
     label: "Website Visits",
@@ -302,21 +263,6 @@ export function OutreachStatCards({
     costLearning: isLearning(clicks),
   };
 
-  const outcome = outcomeStep?.outcome ?? null;
-  // The outcome COUNT + its cost are server-provided by features-service: the count is a
-  // REAL tracker value (sourced from the brand's live conversion tracker), and the cost is
-  // that count's real ratio once one lands, or — at zero — the expected cost floored against
-  // committed spend, resolved server-side. `countField`/`costField` are null when even the
-  // brand-level aggregate is not on the wire yet (purchase) → the card renders "—" + the
-  // setup CTA. Rendered verbatim either way: no client math.
-  const outcomeCount =
-    outcome?.countField != null ? spend?.[outcome.countField] : undefined;
-  const outcomeCost = outcome?.costField != null ? spend?.[outcome.costField] : null;
-  const outcomeCountValue = outcomeCount != null ? formatCount(outcomeCount) : "—";
-  // Badge the outcome pair `beta` only while the GOAL itself is beta (the combined
-  // `sales` goal) — the GA goals (signups/sales_meetings/form_submissions/
-  // website_purchase) show their outcome ungated.
-  const goalIsBeta = goal === "sales";
   // The Website Visits pair renders only when a click onto the site is actually on the
   // funnel. It is for the reply→meeting funnel, whose first step is a positive reply.
   const showVisitPair = hasStep("website_visits");
@@ -326,10 +272,13 @@ export function OutreachStatCards({
   // Reply attribution is inbox-sourced, so no conversion-tracker CTA.
   const showReplyPair = hasStep("positive_replies") && !isPositiveReplies;
 
-  // Unified outcome card. positive_replies is a 1-step goal (goalOutcomeStep is null) but
-  // the reply IS the outcome — surface it as Sales Interests + Cost per sales interest
-  // (GA, no badge, no conversion-tracker CTA: reply attribution is inbox-sourced, not the
-  // site tracker). Every other multi-step goal uses its goal-steps outcome step verbatim.
+  // The ONE outcome pair this row states. positive_replies is a 1-step goal (its outcome
+  // step is null) but the reply IS the outcome — Sales Interests + Cost per sales interest,
+  // attributed from the inbox, so it always carries a real value.
+  //
+  // A goal whose terminal outcome is TRACKER-sourced (Sales Meetings, Signups, Form
+  // submissions, Sales) states NO pair here: without a live tracker both cards showed a
+  // "set this up" CTA instead of a value, which is a chore wearing the shape of a metric.
   const outcomeCard: {
     label: string;
     countValue: string;
@@ -340,8 +289,6 @@ export function OutreachStatCards({
     costValue: string;
     /** Fewer than the bar's worth of this outcome → the cost reads `Learning`. */
     costLearning: boolean;
-    badge: ReactNode | undefined;
-    showAction: boolean;
   } | null = isPositiveReplies
     ? {
         label: "Sales Interests",
@@ -367,21 +314,8 @@ export function OutreachStatCards({
         // one layer down, on exactly the branch no fixture covers.
         costValue: formatCostCents(spend?.cpprCents),
         costLearning: isLearning(spend?.positiveRepliesCount),
-        badge: undefined,
-        showAction: false,
       }
-    : outcomeStep && outcome
-      ? {
-          label: outcomeStep.label,
-          countValue: outcomeCountValue,
-          costLabel: outcome.costLabel,
-          costTooltip: `Cost per ${outcomeStep.label.toLowerCase()}: committed spend divided by the real ${outcomeStep.label.toLowerCase()} your conversion tracker recorded. ${EXPECTED_COST_NOTE}`,
-          costValue: formatCostCents(outcomeCost),
-          costLearning: isLearning(outcomeCount),
-          badge: goalIsBeta ? beta : undefined,
-          showAction: true,
-        }
-      : null;
+    : null;
 
   return (
     <div className="mb-6">
@@ -406,7 +340,7 @@ export function OutreachStatCards({
             label={outreachLabel}
             tooltip={
               contactedOverride != null
-                ? "Emails sent. A lead can be outreached several times, so this counts more than the leads it reached."
+                ? "Email sequences sent. A lead can be outreached several times over their lifetime."
                 : undefined
             }
             value={formatCount(outreach)}
@@ -532,34 +466,25 @@ export function OutreachStatCards({
         </>
       )}
 
-      {/* Outcome pair — the goal's outcome step, or the reply for positive_replies (its
-          1-step outcome). website_visits stays 1-step with no card (its outcome IS the
-          Website Visits card above). */}
+      {/* Outcome pair — the reply for positive_replies (its 1-step outcome), and nothing
+          else. website_visits stays 1-step with no card (its outcome IS the Website Visits
+          card above); a tracker-sourced outcome states no pair at all. */}
       {showFunnelMetrics && outcomeCard && (
         <>
           <Cell>
             <ScoreCard
               label={outcomeCard.label}
-              badge={outcomeCard.badge}
               value={outcomeCard.countValue}
               subtitle={outcomeCard.countSubtitle}
-              action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
               label={outcomeCard.costLabel}
-              badge={outcomeCard.badge}
               tooltip={outcomeCard.costLearning ? LEARNING_NOTE : outcomeCard.costTooltip}
               value={outcomeCard.costValue}
-              action={
-                // A tracker that is not live yet outranks the tag: "set this up" is the
-                // actionable answer, and the count it would unblock is the reason the
-                // cost is thin in the first place.
-                (outcomeCard.showAction ? trackerButton : null) ??
-                (outcomeCard.costLearning ? <LearningTag withInfo={false} /> : undefined)
-              }
+              action={outcomeCard.costLearning ? <LearningTag withInfo={false} /> : undefined}
               pending={pending}
             />
           </Cell>
