@@ -26,13 +26,19 @@ export function WorkflowDetailPanel({
     () => getWorkflow(workflowId)
   );
 
-  const { data: summary, isLoading: summaryLoading } = useAuthQuery(
+  // These two are `enabled: !!workflow`, and a DISABLED v5 query reports
+  // `isPending: true` forever — which is correct here and only here: while the
+  // workflow itself is still loading the whole panel above is already a skeleton, so
+  // there is nothing for these sections to show yet. Do NOT copy this shape to a
+  // query whose `enabled` can stay false on a settled page; that is the eternal
+  // skeleton, and such a flag needs `!enabled || !isPending`.
+  const { data: summary, isPending: summaryLoading } = useAuthQuery(
     ["workflow-summary", workflowId],
     () => getWorkflowSummary(workflowId),
     { enabled: !!workflow }
   );
 
-  const { data: keyStatus, isLoading: keyStatusLoading } = useAuthQuery(
+  const { data: keyStatus, isPending: keyStatusLoading } = useAuthQuery(
     ["workflow-key-status", workflowId],
     () => getWorkflowKeyStatus(workflowId),
     { enabled: !!workflow }

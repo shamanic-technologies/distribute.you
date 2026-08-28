@@ -308,9 +308,14 @@ export function FunnelLegPage() {
 
       {/* The board LAST: the figures above are the reading, this is where a person adds
           to it by saying who crossed. */}
-      {pending || !board ? (
+      {/* `pending` alone decides the skeleton. `!board` used to share that test, which
+          is the re-lock shape that turns a settled page into a permanent skeleton: a
+          gate must trust the pending flag and render the absent case as itself. It is
+          unreachable here (the early return above proves `columns`), so the honest
+          branch for it is nothing at all, never a spinner that never stops. */}
+      {pending ? (
         <Skeleton className="h-64 w-full" />
-      ) : (
+      ) : !board ? null : (
         <FunnelLegBoard
           columns={columns}
           cards={{ from: board.from, to: board.to }}

@@ -154,3 +154,57 @@ export async function reclaimLegacyStore(
   });
   return true;
 }
+
+/**
+ * Every storage KEY belonging to one bucket, and no values.
+ *
+ * `getAllKeys` over the bucket's bounded range: IndexedDB returns the key list
+ * without ever materializing a value, so this costs the same whether the bucket holds
+ * a hundred small snapshots or one hundred-megabyte leads list. It is the first half
+ * of the keys-first nav reseed — the caller recovers each query key from its storage
+ * key (`queryKeyFromStorageKey`), drops the ones already warm in memory, and only
+ * then asks for the handful of values it will actually seed.
+ */
+export async function bucketKeys(
+  prefix: string,
+  deps: IdbBucketDeps = {},
+): Promise<string[]> {
+  const [lower, upper] = bucketKeyBounds(prefix);
+  const makeRange = deps.range ?? ((lo, hi) => IDBKeyRange.bound(lo, hi));
+  const use = deps.store ?? store();
+  return use("readonly", async (objectStore) => {
+    const keys = await promisifyRequest<IDBValidKey[]>(
+      objectStore.getAllKeys(makeRange(lower, upper)),
+    );
+    return keys.filter((k): k is string => typeof k === "string");
+  });
+}
+
+/**
+ * The values for a NAMED set of keys, as `[key, value]` pairs.
+ *
+ * Every `get` is issued in the SAME synchronous turn, for the same reason
+ * `bucketEntries` issues its two requests together: an IndexedDB transaction
+ * auto-commits as soon as the event loop yields with nothing outstanding, so awaiting
+ * one request before issuing the next would find the store closed. A key that has
+ * disappeared between the key read and this one is simply absent from the result.
+ */
+export async function valuesForKeys(
+  keys: readonly string[],
+  deps: Pick<IdbBucketDeps, "store"> = {},
+): Promise<Array<[string, string]>> {
+  if (keys.length === 0) return [];
+  const use = deps.store ?? store();
+  return use("readonly", async (objectStore) => {
+    const requests = keys.map((key) =>
+      promisifyRequest<unknown>(objectStore.get(key)),
+    );
+    const values = await Promise.all(requests);
+    const out: Array<[string, string]> = [];
+    for (let i = 0; i < keys.length; i++) {
+      const value = values[i];
+      if (typeof value === "string") out.push([keys[i], value]);
+    }
+    return out;
+  });
+}

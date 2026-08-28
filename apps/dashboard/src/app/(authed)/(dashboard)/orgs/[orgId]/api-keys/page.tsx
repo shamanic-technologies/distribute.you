@@ -26,7 +26,7 @@ import { DashboardPage } from "@/components/dashboard-page";
 export default function OrgApiKeysPage() {
   const queryClient = useQueryClient();
 
-  const { data: apiKeysData, isLoading: apiKeysLoading } = useAuthQuery(
+  const { data: apiKeysData, isPending: apiKeysLoading } = useAuthQuery(
     ["apiKeys"],
     () => listApiKeys(),
     pollOptions,

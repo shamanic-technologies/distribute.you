@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useRoutePrefetch } from "@/lib/use-route-prefetch";
 import { useAuthQuery, useOrgQueryGate } from "@/lib/use-auth-query";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { POLL_INTERVAL } from "@/lib/query-options";
@@ -634,15 +635,20 @@ export function FunnelLegTable({
   settled: boolean;
 }) {
   const router = useRouter();
-  const open = (row: CampaignRow) => router.push(`${basePath}/campaigns/${row.campaign.id}`);
+  // Warm both destinations on hover — a leg row opens either its campaign or, for an
+  // arrow the brand works itself, the leg's own page. See `useRoutePrefetch`.
+  const prefetch = useRoutePrefetch();
+  const campaignHref = (row: CampaignRow) => `${basePath}/campaigns/${row.campaign.id}`;
+  const legHref = (toKey: string) =>
+    `${basePath}/funnels/${encodeURIComponent(canonicalSalesFunnelKey(funnel.key))}/legs/${encodeURIComponent(toKey)}`;
+  const open = (row: CampaignRow) => router.push(campaignHref(row));
   // An arrow the brand works itself has no campaign to open, and it is the one a person
   // most needs to act on: its own page is where they say who crossed it. An arrow WE run
   // keeps opening its campaign — that page has a budget, a status and settings a leg page
   // has nothing to say about.
-  const openLeg = (toKey: string) =>
-    router.push(
-      `${basePath}/funnels/${encodeURIComponent(canonicalSalesFunnelKey(funnel.key))}/legs/${encodeURIComponent(toKey)}`,
-    );
+  const openLeg = (toKey: string) => router.push(legHref(toKey));
+  const warm = (row: CampaignRow | null, toKey: string) =>
+    prefetch(row ? campaignHref(row) : legHref(toKey));
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
@@ -685,6 +691,8 @@ export function FunnelLegTable({
                      carries the campaign — a key on the arrow alone would collide. */
                   key={`leg-${leg.toIndex}-${campaign?.campaign.id ?? "unclaimed"}`}
                   onClick={campaign ? () => open(campaign) : () => openLeg(leg.toKey)}
+                  onMouseEnter={() => warm(campaign, leg.toKey)}
+                  onFocus={() => warm(campaign, leg.toKey)}
                   className="cursor-pointer transition hover:bg-gray-50"
                 >
                   <td className="px-4 py-3 text-gray-800">
@@ -740,6 +748,8 @@ export function FunnelLegTable({
                 <tr
                   key={row.campaign.id}
                   onClick={() => open(row)}
+                  onMouseEnter={() => warm(row, "")}
+                  onFocus={() => warm(row, "")}
                   className="cursor-pointer transition hover:bg-gray-50"
                 >
                   <td className="px-4 py-3 text-gray-800">
@@ -819,6 +829,7 @@ export function CampaignsTable({
   funnelSteps?: FunnelStepBreakdown | null;
 }) {
   const router = useRouter();
+  const prefetch = useRoutePrefetch();
   const { rows: allRows, settled } = useCampaignRows(brandId, featureSlug, offerId);
   const narrowed = funnelKey ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire) : null;
   const rows = narrowed
@@ -928,6 +939,10 @@ export function CampaignsTable({
               <tr
                 key={campaign.id}
                 onClick={() => router.push(`${basePath}/campaigns/${campaign.id}`)}
+                // Warm the campaign's route while the pointer rests on the row, so
+                // the click has nothing left to fetch. See `useRoutePrefetch`.
+                onMouseEnter={() => prefetch(`${basePath}/campaigns/${campaign.id}`)}
+                onFocus={() => prefetch(`${basePath}/campaigns/${campaign.id}`)}
                 className="cursor-pointer transition hover:bg-gray-50"
               >
                 <td className="px-4 py-3 text-gray-800"><CampaignCell campaign={campaign} /></td>
