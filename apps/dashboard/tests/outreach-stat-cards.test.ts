@@ -245,7 +245,7 @@ describe("OutreachStatCards copy", () => {
   it("reads no brand goal anywhere, and keys the row on the campaign's funnel", () => {
     expect(auto).not.toContain("salesEconomics");
     expect(auto).not.toContain("optimizationGoal");
-    expect(auto).toContain("campaignData?.campaign.funnelKey");
+    expect(auto).toContain("scopedCampaign?.funnelKey");
     expect(auto).toContain("funnelKey={funnelKey}");
     expect(auto).toContain("showEconomics={!campaignId}");
     expect(auto).toContain("showFunnelMetrics={!!campaignId}");

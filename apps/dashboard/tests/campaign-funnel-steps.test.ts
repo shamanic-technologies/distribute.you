@@ -180,14 +180,16 @@ describe("the chart and the Leads tabs follow the same funnel", () => {
   // funnels at once.
   it("keys the Leads tabs on the funnels the live campaigns sell", () => {
     const leads = read("components/audiences/engaged-leads-page.tsx");
-    expect(leads).toContain("useCampaignRows(brandId, featureSlug)");
+    expect(leads).toContain("useCampaignRows(brandId, soleFeatureSlug)");
     expect(leads).toContain("r.campaign.funnelKey");
     expect(leads).toContain("leadTabsForFunnels(activeFunnelKeys)");
     expect(leads).not.toContain("leadTabsFor(goal");
     expect(leads).not.toContain("outcomeTabFor(goal");
     // The auto-select latch is one-shot, so it must not fire before the funnels land or
     // it parks the user on a tab the funnel does not offer.
-    expect(leads).toContain("if (!campaignRows.settled) return;");
+    expect(leads).toContain(
+      "if (!(campaignScoped ? scopeSettled : campaignRows.settled)) return;",
+    );
   });
 });
 

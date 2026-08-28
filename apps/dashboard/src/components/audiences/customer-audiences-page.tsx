@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useScopedFeatureSlug } from "@/lib/scoped-feature-slug";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
+import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
+import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { SparklesIcon } from "@heroicons/react/20/solid";
@@ -21,7 +24,6 @@ import {
   fetchFeatureAudienceStats,
   generateAudienceAvatar,
   getBrandConversionToken,
-  getCampaign,
   listAudiences,
   optimizationGoalForRuntimeGoal,
   type BrandOptimizationGoal,
@@ -260,9 +262,28 @@ function AudienceAvatar({
  *   (features-service `?campaignId=`).
  */
 export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = {}) {
-  const featureSlug = useSoleFeatureSlug();
-  const revenueOk = isRevenueFeature(featureSlug);
   const campaignScoped = Boolean(campaignId);
+  // WHICH CHANNEL prices these audiences. A campaign states its own channel on its row,
+  // so a campaign-scoped table reads THAT — under the brand's sole GA feature a campaign
+  // on any other channel had its per-audience costs fetched for a channel it does not
+  // run. Same `["campaign", id]` key this page was already polling, narrowed into the
+  // one place every surface reads it from.
+  const {
+    campaign: scopedCampaign,
+    featureSlug,
+    settled: scopeSettled,
+  } = useScopedFeatureSlug(campaignId);
+  const soleFeatureSlug = useSoleFeatureSlug();
+  const channels = useAcquisitionChannels();
+  // Under a campaign the gate is the channel CATALOGUE: `isRevenueFeature` is the brand's
+  // GA set and would blank this page for a campaign on any other channel. Unsettled reads
+  // as available, so the table skeletons instead of flashing "isn't available yet".
+  const revenueOk =
+    featureSlug === null
+      ? !scopeSettled
+      : campaignScoped
+        ? acquisitionChannelForFeatureSlug(featureSlug, channels) !== null
+        : isRevenueFeature(featureSlug);
   const params = useParams();
   const brandId = params.brandId as string;
   // The OFFER this page is scoped to. An audience is a set of people picked for a
@@ -333,12 +354,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
 
   // Campaign identity, on the key the campaign Overview + the header page context
   // already poll — React Query serves all three from one request.
-  const { data: campaignData } = useAuthQuery(
-    ["campaign", campaignId ?? "none"],
-    () => getCampaign(campaignId as string),
-    { ...pollOptions, enabled: campaignScoped },
-  );
-  const campaign = campaignData?.campaign ?? null;
+  const campaign = scopedCampaign;
   // The funnel a campaign states it sells — the canonical way to price its columns.
   // Absent on the brand route (no campaign) and on a campaign that predates the model.
   const campaignFunnelKey = campaign?.funnelKey ?? null;
@@ -410,9 +426,11 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
   // outcomes FROM IT — the same rule the money above this table follows, one level down.
   // Only read where the money columns render (brand and offer); a campaign-scoped table
   // states its own funnel's per-outcome costs, which carry their own gate.
+  // Read only where the money columns render — brand and offer grain — and the brand
+  // list has always been pinned to its one feature, so it keeps it.
   const { learningByAudienceId, settled: audienceLearningSettled } = useAudienceLearning(
     brandId,
-    featureSlug,
+    soleFeatureSlug,
     offerId,
   );
   const showSignupCols = optimizationGoal === "signups" && trackerSetUp && !brandLevelMoney;
@@ -504,7 +522,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
       // audience through the best-returning funnel the brand declared and sorts on
       // return descending. Under a campaign the funnel is stated, because a campaign
       // sells exactly one and the goal cannot separate the two meeting funnels.
-      fetchFeatureAudienceStats(featureSlug, {
+      fetchFeatureAudienceStats(featureSlug as string, {
         brandId,
         ...(brandLevelMoney
           ? {}

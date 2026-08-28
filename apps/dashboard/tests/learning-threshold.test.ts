@@ -403,6 +403,7 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
   it("the campaign Audiences table reads the campaign it already polls", () => {
     // No second read: the page holds `["campaign", campaignId]` for its funnel already.
     const table = read("components/audiences/customer-audiences-page.tsx");
+    expect(table).toContain("const campaign = scopedCampaign;");
     expect(table).toContain(
       "const campaignPaused = campaign != null && !isRunningStatus(campaign.status);",
     );
@@ -425,7 +426,7 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     // campaign, so `campaignData` is undefined and the flag is false by construction.
     const auto = read("components/revenue/outreach-stat-cards-auto.tsx");
     expect(auto).toContain(
-      "const campaignPaused =\n    campaignData != null && !isRunningStatus(campaignData.campaign.status);",
+      "const campaignPaused = scopedCampaign != null && !isRunningStatus(scopedCampaign.status);",
     );
     expect(auto).toContain("paused={campaignPaused}");
   });
