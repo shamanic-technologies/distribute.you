@@ -223,12 +223,14 @@ describe("OutreachStatCards copy", () => {
     );
     expect(call).toContain("contactedOverride={leadsContacted}");
     expect(call).toContain('outreachLabel="Outreaches"');
-    expect(call).toContain("signalSharePct={salesInterestSharePct}");
-    // Both derived values read SERVED fields off the funnel breakdown.
+    expect(call).toContain("signalSharePct={salesInterestShare}");
+    // The contacted base is a SERVED field off the funnel breakdown.
     expect(campaign).toContain("data?.funnelSteps?.contactedRecipients ?? null");
-    expect(campaign).toContain("firstRung.conversionFromPreviousPct");
-    // The share is only the share OF CONTACTED when the rung converts from that base.
-    expect(campaign).toContain('firstRung?.leadField === "repliedPositive" && firstRung.fromStep === "Contacted"');
+    // The share goes through the ONE helper the Leads page reads too, so the two
+    // surfaces cannot state the same percentage two ways.
+    expect(campaign).toContain("salesInterestSharePct(data?.funnelSteps)");
+    const auto = read("../src/components/revenue/outreach-stat-cards-auto.tsx");
+    expect(auto).toContain("salesInterestSharePct(revenueData?.funnelSteps)");
   });
 
   // NOTHING reads the retired brand column any more. The auto variant takes the

@@ -1,155 +1,194 @@
-// The leads board: one column per step of the funnel, each lead in exactly ONE of them.
+// The leads board: FOUR triage columns, each lead in exactly ONE of them.
 //
 // The tabs this sits beside are NESTED SUBSETS — a lead that replied is also in
-// Outreach — which is why the page has to dedupe them to count its own population. A
-// board is a PARTITION: every lead appears once, in the furthest step it reached. That
-// is a different statement about the same data, and it is the one a person moving work
-// along actually reads.
+// Contacted — which is why the page has to dedupe them to count its own population. A
+// board is a PARTITION: every lead appears once. That is a different statement about
+// the same data, and it is the one a person working a list actually reads.
 //
-// The columns are the funnel's own steps, through `leadFunnelStages`, so the board, the
-// lead panel and the Sales Funnels settings card say the same words for the same step.
-// Nothing here restates the funnel.
+// It used to be the FUNNEL laid out as columns (Contacted -> Sales interest -> Meeting
+// booked -> Meeting attended -> Paid client). It is a TRIAGE now, and the difference is
+// the question it answers: not "how far down the funnel is this lead" but "is this one
+// still in play, and if not, why not". A funnel rung is stated on the lead's own panel,
+// which is where the cost and the value of that rung are asked for.
+//
+// The four columns come from the sales canon rather than from our own data model, and
+// two splits in them are load-bearing:
+//
+//   - **Opt-out is not an opinion.** It is the prospect's own act and it is legally
+//     binding (CAN-SPAM, GDPR), so it can never share a column with a commercial
+//     judgement of ours. It is also the only column nobody can move a card into.
+//   - **A "no" is not a disqualification.** Salesforce and Forrester both split the
+//     negatives into permanent (this person can never buy: it is not their job, they
+//     are not the decision maker) and temporary (not now, no budget yet, not
+//     interested today) — and Forrester warns that a bucket holding both becomes a
+//     dumping ground that quietly loses recyclable pipeline. So `Not interested` stays
+//     in Contacted: in sales a no is the beginning of the conversation, and only an
+//     OBJECTIVE fact about the person reaches Disqualified.
+//
+// A BOUNCE stays in Contacted for the same kind of reason: it is a failure of
+// DELIVERY, not an opinion. A bad address says nothing about whether the human behind
+// it is interested, so it is an address to repair rather than a lead to write off.
 //
 // Alias-free on purpose (its runtime import is relative and pulls no "@" alias in) so
 // this module carries REAL unit tests. Keep it that way.
 
-import { isWritableStage, leadFunnelStages, type LeadStageKey } from "./lead-funnel-stages";
-import type { SalesFunnelKeyWire } from "./sales-funnels";
+import { REPLY_KINDS, type ReplyKind } from "./reply-kind";
 
-/**
- * WHERE a step's evidence comes from — the half of this the customer asked to see.
- *
- * A board that draws a human's statement and a machine's measurement identically
- * cannot answer "which of these did we update ourselves", which is the question
- * somebody working the board has about every card on it.
- *
- *   - `measured`  the delivery layer saw it happen (a reply arrived, a link was
- *                 clicked). Nobody typed it and nobody can.
- *   - `tracked`   the brand's own conversion tracker attributed it. Also automatic,
- *                 but it depends on the customer having wired the tracker, so it is
- *                 not the same promise as a delivery event.
- *   - `stated`    a person said so. These are the steps nothing can observe — a
- *                 meeting being attended has no signal anywhere in the fleet — and
- *                 they are exactly the ones a person moves a card into.
- *
- * A property of the STEP, not of the row: every lead's booked meeting is stated and
- * every lead's click is measured, so putting it on the column rather than on each card
- * says it once instead of N times.
- */
-export type LeadStageSource = "measured" | "tracked" | "stated";
-
-const SOURCE_FOR_STAGE: Record<LeadStageKey, LeadStageSource> = {
-  positive_reply: "measured",
-  website_visit: "measured",
-  signup: "tracked",
-  form_submission: "tracked",
-  meeting_booked: "stated",
-  meeting_attended: "stated",
-  sale: "stated",
-};
-
-export function stageSource(key: LeadStageKey): LeadStageSource {
-  return SOURCE_FOR_STAGE[key];
-}
-
-/** What a column is called on the board's own legend, per source. */
-export const SOURCE_LABEL: Record<LeadStageSource, string> = {
-  measured: "We measured it",
-  tracked: "Your tracker reported it",
-  stated: "Somebody said so",
-};
-
-/**
- * The column key. Every funnel step, plus the one column that is not a step.
- *
- * `outreach` holds the leads we contacted that have not reached the funnel's first
- * step yet. Without it they would be on no column at all, and the board would quietly
- * describe a smaller population than the page's own header counts — the same gap the
- * tabs already had to fix with `coveredLeads`.
- */
-export type LeadBoardColumnKey = "outreach" | LeadStageKey;
+/** The column key. Four triage states, and every contacted lead is in exactly one. */
+export type LeadBoardColumnKey = "contacted" | "sales_interest" | "disqualified" | "opt_out";
 
 export interface LeadBoardColumn {
   key: LeadBoardColumnKey;
   label: string;
-  /** Null on `outreach`, which no step statement addresses. */
-  source: LeadStageSource | null;
+  /** One line under the heading saying what lands here. */
+  blurb: string;
   /**
    * Whether a person can MOVE a card into this column.
    *
-   * False for everything the machine owns: lead-service accepts a statement on five
-   * of the seven steps, and a reply and a click are not among them (a reply's kind is
-   * a fact about a message, a click is measured by the delivery layer). A column that
-   * cannot take a card says so rather than accepting a drop and then failing.
+   * A move here states a REPLY KIND — what this person said — so it is writable
+   * wherever a human can honestly say it. `opt_out` is the exception and stays false
+   * on purpose: unsubscribing is the prospect's act, and fabricating it on their
+   * behalf would record a consent decision they never made.
    */
   writable: boolean;
 }
 
+export const LEAD_BOARD_COLUMNS: readonly LeadBoardColumn[] = [
+  {
+    key: "contacted",
+    label: "Contacted",
+    blurb: "Reached, and still in play. A no and a bounce included.",
+    writable: true,
+  },
+  {
+    key: "sales_interest",
+    label: "Sales interest",
+    blurb: "They answered with real buying interest.",
+    writable: true,
+  },
+  {
+    key: "disqualified",
+    label: "Disqualified",
+    blurb: "This person cannot buy: wrong role, or they have moved on.",
+    writable: true,
+  },
+  {
+    key: "opt_out",
+    label: "Opt-out",
+    blurb: "They asked us to stop. We never contact them again.",
+    writable: false,
+  },
+];
+
 /**
- * The board's columns for one funnel, left to right, or NOTHING when there is no single
- * funnel to walk.
+ * The reply kinds that put a lead in Sales interest — the three where the prospect
+ * expressed buying interest of their own.
  *
- * An absent funnel returns an empty list, exactly as `leadFunnelStages` does and for the
- * same reason: a brand runs several funnels at once, so there is no one order to lay a
- * board out in, and picking one would show every lead under a step half of them are not
- * even being sold through.
+ * `lead_referral` is deliberately NOT here. "Not them, but points us on" is valuable
+ * and it is not THIS person's interest, which is exactly the distinction the column
+ * exists to make; Outreach's own taxonomy keeps Referral as its own class for the same
+ * reason. It reads as Contacted, and the new lead it produces arrives as its own row.
  */
-export function leadBoardColumns(
-  funnelKey: SalesFunnelKeyWire | null | undefined,
-): LeadBoardColumn[] {
-  const stages = leadFunnelStages(funnelKey);
-  if (stages.length === 0) return [];
-  return [
-    { key: "outreach", label: "Contacted", source: null, writable: false },
-    ...stages.map((stage) => ({
-      key: stage.key,
-      label: stage.label,
-      source: stageSource(stage.key),
-      writable: isWritableStage(stage.key),
-    })),
-  ];
+export const INTEREST_REPLY_KINDS: readonly ReplyKind[] = [
+  "lead_interested",
+  "lead_info_requested",
+  "lead_meeting_requested",
+];
+
+/**
+ * The reply kinds that DISQUALIFY — an objective fact about the person, never a
+ * judgement about the moment.
+ *
+ * Typed as bare strings, and `lead_job_change` is listed BEFORE the producer serves it:
+ * instantly-service owns this vocabulary, so the day it ships that value the column
+ * fills with no change here. A value this build does not otherwise render resolves to
+ * `null` through `replyKindOption`, so listing it early costs nothing and cannot
+ * fabricate a label.
+ */
+export const DISQUALIFYING_REPLY_KINDS: readonly string[] = [
+  "lead_wrong_person",
+  "lead_job_change",
+];
+
+/**
+ * The kinds a person may STATE from each column, in catalogue order.
+ *
+ * Derived from the catalogue rather than re-listed, so a kind the producer adds shows
+ * up in the picker of whichever column already claims it. `opt_out` offers none.
+ */
+export function columnReplyKinds(key: LeadBoardColumnKey): ReplyKind[] {
+  return REPLY_KINDS.filter((o) => {
+    if (key === "sales_interest") return INTEREST_REPLY_KINDS.includes(o.kind);
+    if (key === "disqualified") return DISQUALIFYING_REPLY_KINDS.includes(o.kind);
+    if (key === "opt_out") return false;
+    // Contacted takes what a person can honestly say and that leaves them in play. The
+    // automated kinds are not statements anybody makes, so they are not offered.
+    return (
+      !INTEREST_REPLY_KINDS.includes(o.kind) &&
+      !DISQUALIFYING_REPLY_KINDS.includes(o.kind) &&
+      o.tone !== "automated"
+    );
+  }).map((o) => o.kind);
+}
+
+/** What the board needs to know about one lead to place it. */
+export interface LeadTriage {
+  /** We handed this lead to the sending provider. */
+  contacted: boolean;
+  /** They asked us to stop. Terminal, and it outranks everything else. */
+  unsubscribed: boolean;
+  /**
+   * The FINE reply kind a person stated (instantly-service manual qualifications), or
+   * null when nobody has. It OUTRANKS the coarse classification below: a machine
+   * guessed that one and a human wrote this one.
+   */
+  replyKind: string | null;
+  /** The coarse classification the delivery layer inferred, when nobody has stated one. */
+  replyClassification: "positive" | "negative" | "neutral" | null;
 }
 
 /**
- * Which column a lead sits in: the FURTHEST step of this funnel it has reached.
+ * Which column a lead sits in.
  *
- * Furthest rather than most-recent, because a funnel is ordered and reaching a later
- * step means the earlier ones happened — that is the producer's own rule for an
- * implied step, and a board that put a lead back one column because the later signal
- * arrived first would contradict it.
+ * Precedence is opt-out, then disqualified, then interest, then contacted — each one
+ * a stronger statement about the person than the one under it. Opt-out leads because
+ * it is the only one that binds us: a lead who said they were interested and then
+ * unsubscribed must not read as in play.
  *
- * A lead reaching NO step of the funnel lands on `outreach` when we contacted it, and
- * is left OUT entirely when we have not: a lead served but never contacted has nothing
- * to show on a board about what happened to it, and inventing a column for it would
- * make the board disagree with the page's own count of the population.
+ * A lead we have NOT contacted lands nowhere (`null`) and is left off the board
+ * entirely: there is nothing to show about what happened to it, and inventing a column
+ * would make the board disagree with the page's own count of the population.
  */
-export function leadBoardColumnFor(
-  columns: readonly LeadBoardColumn[],
-  reached: Partial<Record<LeadStageKey, boolean>>,
-  contacted: boolean,
-): LeadBoardColumnKey | null {
-  let furthest: LeadBoardColumnKey | null = null;
-  for (const column of columns) {
-    if (column.key === "outreach") continue;
-    if (reached[column.key] === true) furthest = column.key;
+export function leadBoardColumnFor(lead: LeadTriage): LeadBoardColumnKey | null {
+  if (lead.unsubscribed) return "opt_out";
+  if (lead.replyKind && DISQUALIFYING_REPLY_KINDS.includes(lead.replyKind)) {
+    return "disqualified";
   }
-  if (furthest) return furthest;
-  return contacted ? "outreach" : null;
+  if (lead.replyKind) {
+    // A stated kind is the whole answer: it decides interest AND its absence, so a
+    // human saying "not interested" is never overridden by a machine reading the same
+    // message as positive.
+    if (INTEREST_REPLY_KINDS.includes(lead.replyKind as ReplyKind)) return "sales_interest";
+    return lead.contacted ? "contacted" : null;
+  }
+  if (lead.replyClassification === "positive") return "sales_interest";
+  return lead.contacted ? "contacted" : null;
 }
 
 /**
  * Which columns a card in `from` may be MOVED to.
  *
- * Every writable step of the funnel except the one it is already in. Deliberately not
- * "forward only": lead-service supersedes an earlier statement and decides for itself
- * what a later one implies, so a person correcting a step they got wrong is making a
- * statement like any other. Refusing it here would be this app deciding a rule the
- * producer owns — and the producer's 400 is what answers when a move really is
- * impossible.
+ * Deliberately not "forward only": these are triage states, not funnel rungs, so
+ * correcting one a person got wrong is a statement like any other and the producer
+ * supersedes the earlier one.
+ *
+ * Opt-out is the exception, and it is the one that matters: a card cannot be moved OUT
+ * of it either. `writable: false` only stops a card arriving; without this a lead who
+ * asked us to stop could be dragged back into play, which is the same consent decision
+ * we refuse to fabricate, made in the more dangerous direction. Somebody who opts back
+ * in does it themselves, and it reaches us the same way the opt-out did.
  */
-export function movableColumnsFrom(
-  columns: readonly LeadBoardColumn[],
-  from: LeadBoardColumnKey | null,
-): LeadBoardColumn[] {
-  return columns.filter((c) => c.writable && c.key !== from);
+export function movableColumnsFrom(from: LeadBoardColumnKey | null): LeadBoardColumn[] {
+  if (from === "opt_out") return [];
+  return LEAD_BOARD_COLUMNS.filter((c) => c.writable && c.key !== from);
 }

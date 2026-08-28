@@ -15,6 +15,7 @@ import { isRevenueFeature } from "@/lib/revenue-feature";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
+import { salesInterestSharePct } from "@/lib/funnel-share";
 import { useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import type { RevenueOverview } from "@/lib/revenue-view";
@@ -34,6 +35,7 @@ import type { RevenueOverview } from "@/lib/revenue-view";
  */
 export function OutreachStatCardsAuto({
   outreachOverride,
+  contactedOverride,
   outreachLabel,
 }: {
   /**
@@ -44,6 +46,16 @@ export function OutreachStatCardsAuto({
    * `outreachContacted` single source (features-service #371/#372).
    */
   outreachOverride?: number | null;
+  /**
+   * DISTINCT leads contacted, when the caller holds its own count of them.
+   *
+   * The Leads page does: its tabs bucket the SAME `listBrandLeads` snapshot the table
+   * renders, so its contacted count and the card have to be one number. Supplying it
+   * turns the row into TWO outreach cards — people, then actions — and the actions
+   * count is then read here off `/revenue` rather than taken from the caller, because
+   * a page counting people has no second count to give.
+   */
+  contactedOverride?: number | null;
   /**
    * What that first card is CALLED. Passed through untouched — a caller supplying its
    * own count says in the same breath what the count is OF (the Leads page counts
@@ -131,6 +143,12 @@ export function OutreachStatCardsAuto({
   // read verbatim by `OutreachStatCards`. Absent/cold → the cost cards render
   // "—", never a false $0. features-service stays the single source (no client
   // division).
+  // Undeduped outreach VOLUME — what the spend beside it tracks. Only read when the
+  // caller states a contacted count, because that is what makes the two grains
+  // distinguishable on screen; on its own the row keeps one card and one word.
+  const outreachActions =
+    revenueData?.sequences?.total ?? revenueData?.outreachContacted?.total ?? null;
+
   return (
     <OutreachStatCards
       stats={featureStats}
@@ -145,8 +163,12 @@ export function OutreachStatCardsAuto({
       showEconomics={!campaignId}
       economicsLearning={economicsLearning}
       showFunnelMetrics={!!campaignId}
-      outreachOverride={outreachOverride}
-      outreachLabel={outreachLabel}
+      outreachOverride={contactedOverride != null ? outreachActions : outreachOverride}
+      contactedOverride={contactedOverride}
+      // The share of contacted that showed sales interest, through the one helper the
+      // campaign Overview reads too, so the two surfaces cannot state it two ways.
+      signalSharePct={salesInterestSharePct(revenueData?.funnelSteps)}
+      outreachLabel={contactedOverride != null ? (outreachLabel ?? "Outreaches") : outreachLabel}
     />
   );
 }

@@ -157,6 +157,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // by the mutation's own `setQueryData`, so an unlisted root would cold-fetch the
   // statement back on every panel open.
   "leadReplyKind",
+  // Every reply kind stated on one campaign, read once and joined by email so the
+  // leads BOARD places its cards without a request per card.
+  "campaignReplyKinds",
   "brandOutlets",
   "brandArticles",
   "brandJournalists",

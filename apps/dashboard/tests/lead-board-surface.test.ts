@@ -6,8 +6,6 @@ const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "u
 
 const board = read("components/leads/lead-board.tsx");
 const page = read("components/audiences/engaged-leads-page.tsx");
-const statements = read("lib/use-lead-step-statements.ts");
-const section = read("components/leads/lead-funnel-stage-section.tsx");
 
 /** From `marker` forward, far enough to cover the JSX element that starts there. */
 const sliceFrom = (src: string, marker: string, len: number) => {
@@ -17,35 +15,46 @@ const sliceFrom = (src: string, marker: string, len: number) => {
 };
 
 describe("the leads board is wired, not merely written", () => {
-  it("is mounted by the page with the columns and cards the page derives", () => {
+  it("is mounted by the page with the cards the page derives", () => {
     // A guard on the component alone passes forever over a page that never renders it.
-    const mount = sliceFrom(page, "<LeadBoard", 1400);
-    expect(mount).toContain("columns={boardColumns}");
+    const mount = sliceFrom(page, "<LeadBoard", 1800);
     expect(mount).toContain("cards={boardCards}");
+    expect(mount).toContain("canMove={Boolean(campaignId)}");
     expect(mount).toContain("onMove={");
     expect(mount).toContain("onOpen={");
+    // The columns are the module's own now — a funnel decides nothing here.
+    expect(mount).not.toContain("columns={");
   });
 
-  it("draws a board only when exactly ONE funnel is in scope", () => {
-    // A brand selling through several has no single order to lay columns out in.
-    expect(page).toContain("activeFunnelKeys.length === 1 ? activeFunnelKeys[0] : null");
-    expect(page).toContain("const boardAvailable = boardColumns.length > 0;");
-    expect(page).toContain('const showBoard = boardAvailable && view === "board";');
+  it("draws the board at EVERY scope, since triage needs no funnel to order it", () => {
+    expect(page).toContain('const showBoard = view === "board";');
+    expect(page).not.toContain("const boardAvailable");
+    expect(page).not.toContain("leadBoardColumns(");
   });
 
-  it("places every card from the data the page already holds, with no per-lead read", () => {
-    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 1100);
-    expect(cards).toContain("outcomeByLeadId.get(lead.leadId)");
-    expect(cards).toContain("trackedStages(");
+  it("places every card from the lead row plus ONE campaign-scoped read", () => {
+    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 1300);
     expect(cards).toContain("leadBoardColumnFor(");
-    // One board of N cards must never be N requests.
+    expect(cards).toContain("lead.unsubscribed === true");
+    expect(cards).toContain("lead.replyClassification ?? null");
+    // A board of N cards must never be N requests.
     expect(cards).not.toContain("useAuthQuery");
-    expect(cards).not.toContain("useLeadStepStatements");
+  });
+
+  it("reads the stated reply kinds ONCE for the campaign and joins them by email", () => {
+    const read1 = sliceFrom(page, 'useAuthQuery(\n    ["campaignReplyKinds"', 700);
+    expect(read1).toContain("listManualQualifications({ campaignId, limit: MAX_REPLY_KINDS })");
+    expect(read1).toContain("enabled: Boolean(campaignId)");
+    // The producer caps one read; a campaign past that cap says so rather than letting
+    // its older cards fall silently back to the machine's classification.
+    expect(page).toContain("const MAX_REPLY_KINDS = 500;");
+    expect(page).toContain("rows.length >= MAX_REPLY_KINDS");
+    expect(page).toContain("console.warn(");
   });
 
   it("spans the whole population rather than the active tab's slice", () => {
     // A partition scoped to one tab draws a board with most of its cards missing.
-    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 1100);
+    const cards = sliceFrom(page, "const boardCards: LeadBoardCard[]", 1300);
     expect(cards).toContain("of searchedLeads");
     expect(cards).not.toContain("of filteredLeads");
     expect(cards).not.toContain("of pagedLeads");
@@ -53,38 +62,39 @@ describe("the leads board is wired, not merely written", () => {
 
   it("keeps ONE search predicate for the table and the board", () => {
     expect(page).toContain("const matchesSearch = (l: Lead, q: string): boolean =>");
-    // Both lists read it; neither re-spells the fields it looks at.
     expect(page).toContain("activeList.filter((l) => matchesSearch(l, q))");
     expect(page).toContain("coveredLeads.filter((l) => matchesSearch(l, q))");
   });
 });
 
-describe("a move is a statement, and it is priced before it is written", () => {
-  it("opens the SHARED cost form rather than a second copy of it", () => {
-    expect(board).toContain("<StageStatementForm");
-    expect(board).toContain('from "@/components/leads/lead-funnel-stage-section"');
-    expect(section).toContain("export function StageStatementForm(");
-    // No second prompt: lead-service makes the cost mandatory and one control asks it.
-    expect(board).not.toContain("stepCostCentsFrom");
-    expect(board).not.toContain("saleValueCentsFrom");
+describe("a move states a reply KIND, and it asks which", () => {
+  it("writes the reply kind, never a funnel-step statement", () => {
+    // The funnel columns are gone, and with them the cost/value form they needed. A
+    // triage move is the same write the lead panel makes.
+    expect(page).toContain("setManualQualification({ campaignId: campaignId as string, email, status: kind })");
+    expect(board).not.toContain("StageStatementForm");
+    expect(board).not.toContain("stageRequiresValue");
+    expect(page).not.toContain("useSetAnyLeadStepStatement()");
   });
 
   it("never writes straight from a drop", () => {
-    // A drop that wrote on its own would meet a 400 the person never had a chance to
-    // answer — lead-service refuses a statement carrying no cost.
+    // "Sales interest" is three different things a prospect can have said; recording
+    // the wrong one is worse than recording nothing.
     const drop = sliceFrom(board, "onDrop={", 320);
     expect(drop).toContain("startMove(dragging, column)");
     expect(drop).not.toContain("onMove(");
+    expect(board).toContain("columnReplyKinds(pending.to.key)");
   });
 
-  it("asks what the deal was worth on the one step the producer prices", () => {
-    expect(board).toContain("needsValue={stageRequiresValue(");
+  it("holds what was just stated so the card moves before the re-read lands", () => {
+    // The write's only visible effect is the jump, and the jump comes from a re-read —
+    // without this the control reads as dead for a round trip.
+    expect(page).toContain("setStatedReplyKinds((prev) => new Map(prev).set(email, kind))");
+    // A refusal drops it: the board must never state something nobody recorded.
+    expect(page).toContain("next.delete(email)");
   });
 
   it("draws Move as a control rather than a grey word nobody presses", () => {
-    // Verified by reproduction at 1280 and on a Pixel 7, not by reading the class: a
-    // plain text control in a quiet colour reads as a label, which is how the verify
-    // screen's resend link went unused.
     const move = sliceFrom(board, "aria-expanded={menuFor === card.id}", 420);
     expect(move).toContain("border border-gray-200");
     expect(move).toContain("focus-visible:ring");
@@ -93,61 +103,45 @@ describe("a move is a statement, and it is priced before it is written", () => {
 
   it("offers a pointer-free way to move a card", () => {
     // Drag and drop is a mouse affordance; a phone has none.
-    expect(board).toContain("movableColumnsFrom(columns, card.column)");
-    expect(board).toContain("aria-expanded={menuFor === card.id}");
+    expect(board).toContain("movableColumnsFrom(card.column)");
     expect(board).toContain("startMove(card, target)");
   });
 
-  it("only lets a writable column take a drop", () => {
-    expect(board).toContain("column.writable && dragging != null && dragging.column !== column.key");
+  it("only lets a writable column take a drop, and only where a write is possible", () => {
+    expect(board).toContain(
+      "canMove && column.writable && dragging != null && dragging.column !== column.key",
+    );
     const over = sliceFrom(board, "onDragOver={", 160);
     expect(over).toContain("if (takesDrop) e.preventDefault();");
   });
 
-  it("renders lead-service's own refusal, never the thrown Error's message", () => {
-    const move = sliceFrom(page, "onMove={(leadRowId, step, input)", 1200);
+  it("renders the producer's own refusal, never the thrown Error's message", () => {
+    const move = sliceFrom(page, "onMove={(email, kind)", 1600);
     expect(move).toContain("leadStepErrorMessage(err)");
     expect(move).not.toContain("err.message");
   });
-
-  it("writes against the row the card carries, decided at press time", () => {
-    // The panel binds one hook to the lead it has open; the board has no open lead, so
-    // the row id rides in the mutation variables instead.
-    expect(statements).toContain("export function useSetAnyLeadStepStatement()");
-    expect(statements).toContain("mutationFn: ({ leadRowId, ...body }) => setLeadStepStatement(leadRowId, body)");
-    // The card moves because the revenue join moves, so that is what is invalidated.
-    const hook = sliceFrom(statements, "export function useSetAnyLeadStepStatement()", 1400);
-    expect(hook).toContain('queryKey: ["featureRevenue"]');
-  });
 });
 
-describe("the board says where each step's evidence comes from", () => {
-  it("labels the column, not the card", () => {
-    // A property of the STEP: every lead's booked meeting is stated and every lead's
-    // click is measured, so it is said once per column instead of once per card.
-    expect(board).toContain("SOURCE_LABEL[column.source]");
-    expect(board).toContain("SOURCE_TIP");
+describe("the board explains the two splits a reader would not guess", () => {
+  it("says a bounce and a no both stay in Contacted", () => {
+    expect(board).toContain("both stay in Contacted");
+    expect(board).toContain("<InfoTooltip");
   });
 
-  it("tints each source with a colour the dark remap covers", () => {
-    // An unremapped `-50` tint renders its light-mode near-white on the dark surface.
-    for (const tint of ["bg-blue-50", "bg-indigo-50", "bg-purple-50"]) {
-      expect(board).toContain(tint);
-    }
+  it("badges the card with the kind somebody stated, since a column holds several", () => {
+    expect(board).toContain("replyKindOption(card.replyKind)");
+    expect(board).toContain("REPLY_TONE_PILL[stated.tone]");
+  });
+
+  it("tints the kind pills with colours the dark remap covers", () => {
+    // An unremapped tint renders its light-mode near-white on the dark surface.
     const globals = readFileSync(join(__dirname, "..", "src", "app", "globals.css"), "utf8");
-    // The fill AND the two weights beside it: a remapped `-50` under an unremapped
-    // `text-*-700` is near-black text on the dark surface, which is the gap the
-    // Learning tag and the stale-build notice each had to close in turn.
     for (const cls of [
-      "bg-blue-50",
-      "bg-indigo-50",
-      "bg-purple-50",
-      "text-blue-700",
-      "text-indigo-700",
-      "text-purple-700",
-      "border-blue-200",
-      "border-indigo-200",
-      "border-purple-200",
+      "bg-green-50",
+      "bg-red-50",
+      "text-green-700",
+      "border-green-200",
+      "border-red-200",
     ]) {
       expect(globals).toContain(`html.dark .${cls}`);
     }

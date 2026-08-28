@@ -278,6 +278,15 @@ html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
    carried near-black text and an invisible border on the dark surface. */
 html.dark .text-blue-900 { color: #bfdbfe; }
 html.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3); }
+/* The green and red text/border pairs the reply-KIND pills read through (the lead
+   panel's sentiment picker, the leads board's cards). Third time this gap appears:
+   the `-50` fills above were remapped and the weights beside them were not, so a
+   pill that is legible in the light default carried near-black text and an
+   invisible border on the dark surface. */
+html.dark .text-green-700 { color: #86efac; }
+html.dark .border-green-200 { border-color: rgba(34, 197, 94, 0.3); }
+html.dark .text-red-600 { color: #fca5a5; }
+html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
 html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15); }
 /* The blue and indigo 700-weight text, and the indigo border, that the leads board's
