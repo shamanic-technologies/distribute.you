@@ -168,7 +168,7 @@ export function RevenueOverviewSection({
   const outcomeSeries = isVisitDriven
     ? pipelineActualSeries?.clicks
     : pipelineActualSeries?.repliedPositive;
-  const outcomeLabel = isVisitDriven ? "Website visits" : "Positive replies";
+  const outcomeLabel = isVisitDriven ? "Website visits" : "Sales interests";
   const outcomeColor = isVisitDriven ? "#0891b2" : "#dc2626";
 
   // Forward projection for the Outcome line — the expected daily increments past
@@ -240,7 +240,7 @@ export function RevenueOverviewSection({
       </div>
 
       {/* Outreach activity — full-width per-day BARS: outreach / the goal
-          engagement (clicks for signups, positive replies for meetings) across the
+          engagement (clicks for signups, sales interests for meetings) across the
           past (actuals) + today + forecast, with the 7/30/90-day window toggle.
           Channel-scoped, so it renders on the campaign Overview and not on the
           brand one (see `showActivityChart`). */}

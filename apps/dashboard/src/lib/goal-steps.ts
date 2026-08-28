@@ -13,7 +13,7 @@ import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "./sales-funnel
  * A step is ordered base→outcome (Outreach first, the goal's outcome last). Each step
  * declares how it maps onto each surface:
  *  - `signal` / `tab` / `chartKey` — the per-lead engagement signal (Outreach = contacted,
- *    Website Visits = clicked, Positive replies = repliedPositive). These have per-lead
+ *    Website Visits = clicked, Sales interests = repliedPositive). These have per-lead
  *    booleans (Leads tabs + table) AND a daily series (activity graph) TODAY.
  *  - `outcome` — a downstream tracker outcome (Signups / Sales Meetings / Form submissions
  *    / Sales). Available as a brand-level aggregate COUNT + COST on the features-service
@@ -120,7 +120,7 @@ const VISITS_STEP: GoalStep = {
 };
 const REPLIES_STEP: GoalStep = {
   key: "positive_replies",
-  label: "Positive replies",
+  label: "Sales interests",
   color: "#dc2626",
   signal: "repliedPositive",
   tab: "positive-replies",
@@ -244,7 +244,7 @@ export function goalSteps(goal: BrandOptimizationGoal): GoalStep[] {
  *
  * Each funnel maps onto exactly the step constants above, so a funnel-keyed surface and
  * a goal-keyed one cannot drift into two labels for one number:
- *  - `reply_meeting`  Outreach → Positive replies → Sales Meetings
+ *  - `reply_meeting`  Outreach → Sales interests → Sales Meetings
  *  - `visit_meeting`  Outreach → Website Visits  → Sales Meetings
  *  - `visit_signup`   Outreach → Website Visits  → Signups
  *  - `visit_form`     Outreach → Website Visits  → Form submissions

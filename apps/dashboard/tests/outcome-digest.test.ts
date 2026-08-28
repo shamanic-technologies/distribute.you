@@ -227,7 +227,7 @@ describe("daily outcome digest", () => {
         brandName: "Acme",
         roiToday: "50×",
         roiPrevious: "40×",
-        newOutcomes: "3 positive replies",
+        newOutcomes: "3 sales interests",
         totalOutcomeOrganizations: "2",
       },
     });
@@ -241,7 +241,7 @@ describe("daily outcome digest", () => {
     expect(send.metadata.digestHtml).toContain("img.logo.dev/leadco.test");
     expect(send.metadata.digestHtml).toContain("1d ago");
     // Green per-person outcome pill names the goal outcome (singular noun).
-    expect(send.metadata.digestHtml).toContain("positive reply");
+    expect(send.metadata.digestHtml).toContain("sales interest");
     expect(send.metadata.digestText).toContain("Ada Lovelace");
     expect(send.metadata.digestText).toContain("1d ago");
     // Firmographics for reassurance — title, industry, banded headcount, location.
@@ -353,7 +353,7 @@ describe("daily outcome digest", () => {
         });
       }
       if (url === "https://api.example.test/v1/features/sales-cold-email-outreach/revenue?brandId=brand_1&pricing=net") {
-        // Pipeline present, but zero positive replies on the reported day.
+        // Pipeline present, but zero sales interests on the reported day.
         return jsonResponse(brandRevenue(0, day));
       }
       throw new Error(`Unexpected fetch ${url}`);
@@ -662,7 +662,7 @@ describe("daily outcome digest", () => {
     expect(result.preparedSends).toHaveLength(1);
     // Most advanced first, and the counts add up to the people the email lists.
     expect(result.preparedSends[0].metadata).toMatchObject({
-      newOutcomes: "1 signup and 2 positive replies",
+      newOutcomes: "1 signup and 2 sales interests",
     });
   });
 

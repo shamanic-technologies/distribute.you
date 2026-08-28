@@ -28,7 +28,7 @@ const IN_HOUSE_MEETING_BOOKING: ChannelLeg[] = [
 describe("campaignLegFor — which leg of THIS funnel a channel performs", () => {
   it("reads an entry leg in the funnel's own words", () => {
     const leg = campaignLegFor(reply, COLD_EMAIL);
-    expect(leg).toEqual({ fromIndex: null, toIndex: 0, label: "Positive reply" });
+    expect(leg).toEqual({ fromIndex: null, toIndex: 0, label: "Sales interest" });
   });
 
   it("picks the OTHER entry leg of the same channel on a visit-led funnel", () => {
@@ -50,7 +50,7 @@ describe("campaignLegFor — which leg of THIS funnel a channel performs", () =>
       "Form filled → Paid client",
     );
     expect(campaignLegFor(reply, IN_HOUSE_MEETING_BOOKING)?.label).toBe(
-      "Positive reply → Meeting booked",
+      "Sales interest → Meeting booked",
     );
     expect(campaignLegFor(visitMeeting, IN_HOUSE_MEETING_BOOKING)?.label).toBe(
       "Website visit → Meeting booked",
@@ -82,7 +82,7 @@ describe("campaignLegFor — which leg of THIS funnel a channel performs", () =>
       { from: "meeting_attended", to: "paid_client" },
       { from: null, to: "conversation" },
     ];
-    expect(campaignLegFor(reply, both)?.label).toBe("Positive reply");
+    expect(campaignLegFor(reply, both)?.label).toBe("Sales interest");
   });
 
   it("answers null for an absent funnel or an empty leg list", () => {

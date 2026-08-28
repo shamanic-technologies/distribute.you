@@ -9,9 +9,9 @@ const list = (arr: string[] | null | undefined): string => (arr?.length ? arr.jo
  * Build a flat, one-row-per-lead CSV of the WHOLE leads list.
  *
  * Exports EVERY lead passed in — never the active-tab / search-filtered subset —
- * so a single file carries all tabs (Positive replies, Website Visits, Outreach).
+ * so a single file carries all tabs (Sales interests, Website Visits, Outreach).
  * Tab membership is visible via the engagement booleans + Status column: a lead
- * in the Positive-replies tab has `Replied=yes, Reply sentiment=positive`, a
+ * in the Sales-interests tab has `Replied=yes, Reply sentiment=positive`, a
  * Website-Visits lead has `Website visit=yes`, an Outreach lead has `Outreach=yes`.
  *
  * Column names are the words the dashboard itself uses, not the wire field names:

@@ -191,7 +191,7 @@ export function OutcomeTrendCard({
   series: SignalSeries | undefined;
   /** Expected daily increments past today (ascending) — the dashed forecast line. */
   future?: { date: string; value: number }[];
-  /** Human label for the outcome ("Website clicks" / "Positive replies"). */
+  /** Human label for the outcome ("Website clicks" / "Sales interests"). */
   label: string;
   /** Line + fill color. */
   color: string;

@@ -24,6 +24,18 @@ function formatPct(pct: number | null | undefined): string {
   return pct == null ? "—" : `${Math.round(pct)}%`;
 }
 
+/**
+ * A share of the contacted base, as the producer served it (0-100).
+ *
+ * One decimal under 10% because the interesting shares live there — 0.1% and 0.9% are
+ * different answers about a campaign and both round to "0%" — and whole numbers above,
+ * where a decimal is noise. Same adaptive shape as `formatUsdAdaptive` / `formatRoi`.
+ */
+function formatSharePct(pct: number): string {
+  const decimals = pct < 10 ? 1 : 0;
+  return `${pct.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}%`;
+}
+
 function formatUsd(usd: number | null | undefined): string {
   return usd == null ? "—" : formatUsdAdaptive(usd);
 }
@@ -101,6 +113,8 @@ export function OutreachStatCards({
   optimizationGoal,
   funnelKey,
   outreachOverride,
+  contactedOverride,
+  signalSharePct,
   outreachLabel = "Outreach",
   economics,
   totalPipelineUsd,
@@ -150,6 +164,26 @@ export function OutreachStatCards({
    * wrong; printing both under one word is.
    */
   outreachLabel?: string;
+  /**
+   * DISTINCT leads this scope contacted — `funnelSteps.contactedRecipients`, the base
+   * the funnel's first rung converts from.
+   *
+   * When present the row states TWO outreach cards, because a lead is contacted once and
+   * outreached several times: "Leads contacted" (people) then `outreachLabel` (actions).
+   * Printing one number under one word was the whole reason the two grains kept reading
+   * as one broken figure. Absent → the single card, exactly as before.
+   */
+  contactedOverride?: number | null;
+  /**
+   * What share of the contacted leads reached the funnel's FIRST rung, SERVED as
+   * `funnelSteps.steps[0].conversionFromPreviousPct` (0-100).
+   *
+   * Rendered as the sales-interest card's subtitle. Read verbatim: dividing the two
+   * counts in the browser is the compute-a-stat-in-the-browser bug, and it would drift
+   * from the producer the moment either side changed scope. Null is "we could not
+   * measure this" (either side unmeasured, or a base of 0) → no subtitle, never a 0%.
+   */
+  signalSharePct?: number | null;
   /**
    * features-service `/revenue` `costEconomics` block — the money cards (ROI,
    * $ CAC, % CAC), rendered verbatim. Absent on a surface that carries no
@@ -233,7 +267,7 @@ export function OutreachStatCards({
   const outcomeStep = outcomeStepFor(goal, funnelKey);
   // A reply that is the TERMINAL step (the `positive_replies` goal: reply → paid). Clicks /
   // website visits aren't in that funnel, and there is no downstream outcome step, so the
-  // outcome pair becomes Positive Replies + Cost per positive reply (GA, no beta badge —
+  // outcome pair becomes Sales Interests + Cost per sales interest (GA, no beta badge —
   // the goal itself is GA).
   const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;
   const outreach =
@@ -293,12 +327,14 @@ export function OutreachStatCards({
   const showReplyPair = hasStep("positive_replies") && !isPositiveReplies;
 
   // Unified outcome card. positive_replies is a 1-step goal (goalOutcomeStep is null) but
-  // the reply IS the outcome — surface it as Positive Replies + Cost per positive reply
+  // the reply IS the outcome — surface it as Sales Interests + Cost per sales interest
   // (GA, no badge, no conversion-tracker CTA: reply attribution is inbox-sourced, not the
   // site tracker). Every other multi-step goal uses its goal-steps outcome step verbatim.
   const outcomeCard: {
     label: string;
     countValue: string;
+    /** Small grey line under the count (the sales-interest share of contacted). */
+    countSubtitle?: string;
     costLabel: string;
     costTooltip: string;
     costValue: string;
@@ -308,20 +344,22 @@ export function OutreachStatCards({
     showAction: boolean;
   } | null = isPositiveReplies
     ? {
-        label: "Positive Replies",
+        label: "Sales Interests",
         countValue:
           spend?.positiveRepliesCount != null
             ? formatCount(spend.positiveRepliesCount)
             : "—",
-        costLabel: "Cost per positive reply",
-        costTooltip: `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`,
+        countSubtitle:
+          signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted` : undefined,
+        costLabel: "Cost per sales interest",
+        costTooltip: `Cost per sales interest: committed spend divided by the real sales interests attributed to your outreach. ${EXPECTED_COST_NOTE}`,
         // features-service owns the zero-reply case: it floors the aggregate to
         // max(committed net spend, the expected cost from the brand's best model), the same
         // cascade it applies per audience, so this card and the Strategy page print ONE
         // price instead of restating "Total spent" under a second label.
         //
         // Rendered VERBATIM, with no client fallback to spend. That fallback (the old
-        // `costSoFarFloorCents` call) is what produced "Cost per positive reply $29"
+        // `costSoFarFloorCents` call) is what produced "Cost per sales interest $29"
         // directly above "Total spent $29". features-service's projection read is
         // deliberately fail-soft: on a blip it returns null, meaning "we could not
         // estimate this" — and the honest render for that is "—", not the nearest real
@@ -348,10 +386,29 @@ export function OutreachStatCards({
   return (
     <div className="mb-6">
     <div className="flex flex-nowrap gap-3 overflow-x-auto">
+      {/* People, then actions. A lead is contacted ONCE and outreached as many times as
+          the sequence has steps, so the two grains are different numbers and each says
+          which it is. The second card only explains itself when the first is beside it —
+          alone, "Outreach" is the only figure on screen and needs no disambiguation. */}
+      {showOutreach && contactedOverride != null && (
+        <Cell>
+          <ScoreCard
+            label="Leads contacted"
+            tooltip="Distinct people this campaign reached. Each one is counted once, however many emails they received."
+            value={formatCount(contactedOverride)}
+            pending={pending}
+          />
+        </Cell>
+      )}
       {showOutreach && (
         <Cell>
           <ScoreCard
             label={outreachLabel}
+            tooltip={
+              contactedOverride != null
+                ? "Emails sent. A lead can be outreached several times, so this counts more than the leads it reached."
+                : undefined
+            }
             value={formatCount(outreach)}
             pending={pending}
           />
@@ -443,22 +500,25 @@ export function OutreachStatCards({
         <>
           <Cell>
             <ScoreCard
-              label="Positive Replies"
+              label="Sales Interests"
               value={
                 spend?.positiveRepliesCount != null
                   ? formatCount(spend.positiveRepliesCount)
                   : "—"
+              }
+              subtitle={
+                signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted` : undefined
               }
               pending={pending}
             />
           </Cell>
           <Cell>
             <ScoreCard
-              label="Cost per positive reply"
+              label="Cost per sales interest"
               tooltip={
                 isLearning(spend?.positiveRepliesCount)
                   ? LEARNING_NOTE
-                  : `Cost per positive reply: committed spend divided by the real positive replies attributed to your outreach. ${EXPECTED_COST_NOTE}`
+                  : `Cost per sales interest: committed spend divided by the real sales interests attributed to your outreach. ${EXPECTED_COST_NOTE}`
               }
               value={formatCostCents(spend?.cpprCents)}
               action={
@@ -482,6 +542,7 @@ export function OutreachStatCards({
               label={outcomeCard.label}
               badge={outcomeCard.badge}
               value={outcomeCard.countValue}
+              subtitle={outcomeCard.countSubtitle}
               action={outcomeCard.showAction ? (trackerButton ?? undefined) : undefined}
               pending={pending}
             />

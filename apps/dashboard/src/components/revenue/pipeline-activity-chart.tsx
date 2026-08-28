@@ -53,7 +53,7 @@ const OUTREACH: MetricDef = {
 const CLICKS: MetricDef = { key: "clicks", label: "Website Visits", actual: "#0891b2", expected: "#bae6fd" };
 const POSITIVE_REPLIES: MetricDef = {
   key: "repliedPositive",
-  label: "Positive replies",
+  label: "Sales interests",
   actual: "#dc2626",
   expected: "#fecaca",
 };
@@ -167,7 +167,7 @@ const METRIC_BY_KEY: Record<ChartMetricKey, MetricDef> = {
 // The goal's on-path signals with a daily series, base→outcome (goal-steps single
 // source): visit goals → [Outreach, Website Visits]; form_submissions also adds its
 // [Form submissions] bar (features-service serves the daily FS series); positive_replies
-// → [Outreach, Positive replies]; sales_meetings → [Outreach, Website Visits, Positive
+// → [Outreach, Sales interests]; sales_meetings → [Outreach, Website Visits, Sales
 // replies] (both on its click→reply→meeting path).
 // Tracker-outcome bars (Form submissions) only carry data once the brand's site
 // fires the conversion pixel, so they are dropped until the tracker is live

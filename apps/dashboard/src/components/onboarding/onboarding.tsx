@@ -242,10 +242,10 @@ const OUTCOMES: { key: Outcome; label: string; unit: string; desc: string; beta?
   // reached, so the budget modal read "50 contacts / mo" for a goal that buys 50
   // interested replies - and contradicted this row's own label. Byte-equal with
   // the retired brand status bar's OUTCOME_UNIT, kept as the canonical noun set.
-  { key: "positive_replies", label: "Positive replies for sales meetings", unit: "positive replies", desc: "Maximize positive replies for a sales meeting from prospects." },
+  { key: "positive_replies", label: "Sales interests for sales meetings", unit: "sales interests", desc: "Maximize sales interests for a sales meeting from prospects." },
   { key: "form_submissions", label: "Form submissions", unit: "lead forms", desc: "Maximize form submissions." },
   { key: "website_purchase", label: "Website purchases", unit: "website purchases", desc: "Maximize direct website purchases." },
-  { key: "sales", label: "Sales", unit: "sales", desc: "Maximize paying clients won via website visits or positive replies." },
+  { key: "sales", label: "Sales", unit: "sales", desc: "Maximize paying clients won via website visits or sales interests." },
 ];
 
 // Outcome === BrandOptimizationGoal, so this is identity — kept as a named seam so
@@ -270,10 +270,10 @@ const RATE_META: Record<RateKey, { label: string; suffix: "$" | "%"; hint: strin
   v2s: { label: "Website visits to signup rate", suffix: "%", hint: "Of visitors who land on your site, how many sign up." },
   s2c: { label: "Signup → paid client", suffix: "%", hint: "Of signups, how many become paying customers." },
   v2m: { label: "Website visit → sales meeting", suffix: "%", hint: "Only set this above 0 if prospects can book a meeting directly from your website. If every meeting needs a reply first, use 0%." },
-  r2m: { label: "Positive reply → sales meeting", suffix: "%", hint: "Of prospects who reply with real buying interest, the share that become a booked meeting after your follow-up or calendar link." },
+  r2m: { label: "Sales interest → sales meeting", suffix: "%", hint: "Of prospects who reply with real buying interest, the share that become a booked meeting after your follow-up or calendar link." },
   m2c: { label: "Meeting booked → close won", suffix: "%", hint: "Of booked meetings, how many close." },
   v2p: { label: "Website visit → paid client", suffix: "%", hint: "Of leads who click through to your website, the share that become paying customers." },
-  r2p: { label: "Positive reply → paid client", suffix: "%", hint: "Of leads who reply positively, the share that become paying customers." },
+  r2p: { label: "Sales interest → paid client", suffix: "%", hint: "Of leads who reply positively, the share that become paying customers." },
   v2f: { label: "Website visit → form submission", suffix: "%", hint: "Of leads who visit your website, the share that submit a form." },
   f2p: { label: "Form submission → paid client", suffix: "%", hint: "Of leads who submit a form, the share that become paying customers." },
 };

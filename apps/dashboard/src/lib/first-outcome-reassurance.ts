@@ -31,7 +31,7 @@ export const LEARNING_WINDOW_DAYS = 28;
 
 /**
  * How many of the brand's OWN goal outcome have landed — the count the reassurance
- * banner promises ("before the first positive replies appear here"), never the website
+ * banner promises ("before the first sales interests appear here"), never the website
  * clicks it used to hardcode. A `positive_replies` brand that collects clicks but no
  * reply is still waiting for its first outcome, so the banner must stay.
  *
