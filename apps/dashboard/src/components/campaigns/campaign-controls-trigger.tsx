@@ -51,6 +51,7 @@ import { Skeleton } from "@/components/skeleton";
 export function CampaignControlsTrigger({
   brandId,
   offerId,
+  funnelKey,
   campaignId,
   totalCentsOverride,
   className = "",
@@ -58,6 +59,12 @@ export function CampaignControlsTrigger({
   brandId: string;
   /** Scope to one offer. Omitted at brand grain. */
   offerId?: string;
+  /**
+   * Scope to ONE sales funnel of that offer. Pair it with `offerId`: billing keys
+   * a ceiling on (funnel x channel x offer), so a bare funnel spans every offer
+   * selling it and would list a sibling offer's campaigns under this one's name.
+   */
+  funnelKey?: string | null;
   /** Scope to one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
   /**
@@ -81,9 +88,10 @@ export function CampaignControlsTrigger({
     () =>
       buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
         offerId,
+        funnelKey,
         campaignId,
       }),
-    [campaignsQ.data, budgetsQ.data, channels, offerId, campaignId],
+    [campaignsQ.data, budgetsQ.data, channels, offerId, funnelKey, campaignId],
   );
 
   // Reveal on SETTLE (resolved OR errored) — a failed read shows the honest
@@ -151,6 +159,7 @@ export function CampaignControlsTrigger({
         <CampaignControlsModal
           brandId={brandId}
           offerId={offerId}
+          funnelKey={funnelKey}
           campaignId={campaignId}
           onClose={() => setOpen(false)}
         />

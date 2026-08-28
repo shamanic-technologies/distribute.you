@@ -35,6 +35,11 @@ import {
   type CampaignBudgetRow,
   type CampaignBudgetScope,
 } from "./campaign-budget";
+import {
+  normalizeSalesFunnelKey,
+  type SalesFunnelKey,
+  type SalesFunnelKeyWire,
+} from "./sales-funnels";
 
 /**
  * The fields this module reads off a campaign-service campaign.
@@ -147,12 +152,30 @@ export function buildControlRows(
   campaigns: ControlCampaign[],
   budgets: BrandFunnelBudgetSet | undefined,
   channels: AcquisitionChannelDef[],
-  filter: { offerId?: string; campaignId?: string } = {},
+  filter: { offerId?: string; campaignId?: string; funnelKey?: string | null } = {},
 ): ControlRow[] {
+  // Normalized ONCE, and an unmapped key narrows to nothing rather than throwing:
+  // the wire carries two spellings of every funnel, so matching the raw string
+  // would silently read empty for whichever half the producer happens to emit.
+  let wantedFunnel: SalesFunnelKey | null = null;
+  if (filter.funnelKey) {
+    try {
+      wantedFunnel = normalizeSalesFunnelKey(filter.funnelKey as SalesFunnelKeyWire);
+    } catch {
+      return [];
+    }
+  }
+
   const scoped = campaigns.filter((c) => {
     if (filter.campaignId) return c.id === filter.campaignId;
     if (acquisitionChannelForFeatureSlug(c.featureSlug, channels) === null) return false;
-    if (filter.offerId) return c.offerId === filter.offerId;
+    if (filter.offerId && c.offerId !== filter.offerId) return false;
+    if (wantedFunnel) {
+      // A campaign that predates the funnels names none, so it belongs to no
+      // funnel's list rather than to whichever one the reader is looking at.
+      const scope = campaignBudgetScope(c, channels);
+      if (!scope || scope.def.key !== wantedFunnel) return false;
+    }
     return true;
   });
 

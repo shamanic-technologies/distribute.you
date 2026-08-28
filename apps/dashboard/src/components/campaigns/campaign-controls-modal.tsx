@@ -63,12 +63,19 @@ import { Skeleton } from "@/components/skeleton";
 export function CampaignControlsModal({
   brandId,
   offerId,
+  funnelKey,
   campaignId,
   onClose,
 }: {
   brandId: string;
   /** Scope to one offer's campaigns. Omitted at brand grain. */
   offerId?: string;
+  /**
+   * Scope to ONE sales funnel of that offer. Pair it with `offerId`: billing keys
+   * a ceiling on (funnel x channel x offer), so a bare funnel spans every offer
+   * selling it and would list a sibling offer's campaigns under this one's name.
+   */
+  funnelKey?: string | null;
   /** Scope to exactly one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
   onClose: () => void;
@@ -87,9 +94,10 @@ export function CampaignControlsModal({
     () =>
       buildControlRows(campaignsQ.data?.campaigns ?? [], budgetsQ.data, channels, {
         offerId,
+        funnelKey,
         campaignId,
       }),
-    [campaignsQ.data, budgetsQ.data, channels, offerId, campaignId],
+    [campaignsQ.data, budgetsQ.data, channels, offerId, funnelKey, campaignId],
   );
 
   // SEEDED from the queries and RE-SEEDED whenever either payload is a different
@@ -255,7 +263,7 @@ export function CampaignControlsModal({
   }
 
   const rollup = rollupStatus(rows);
-  const scopeWord = campaignId ? "campaign" : offerId ? "offer" : "brand";
+  const scopeWord = campaignId ? "campaign" : funnelKey ? "funnel" : offerId ? "offer" : "brand";
 
   return (
     <div
