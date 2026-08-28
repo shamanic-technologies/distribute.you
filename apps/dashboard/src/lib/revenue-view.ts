@@ -18,6 +18,15 @@
  * `recipientsReached` at 0 is MEASURED, not absent: it means nobody got here, which is
  * the answer somebody asking "is this working" most needs to read.
  */
+export interface StepCustomerCost {
+  costCents: number;
+  statedCount: number;
+  unstatedCount: number;
+  coverage: string;
+  /** What ONE crossing cost the customer on average. Null when nobody stated one. */
+  costPerReachCents: number | null;
+}
+
 export interface FunnelStepRow {
   step: string;
   leadField: string;
@@ -26,6 +35,12 @@ export interface FunnelStepRow {
   fromStep: string;
   fromRecipientsReached: number | null;
   conversionFromPreviousPct: number | null;
+  /**
+   * What the CUSTOMER states this rung cost them, beside what we charged. Absent on a
+   * body older than features-service v0.148.0, null when the statements could not be
+   * read — both mean "we have no figure", never "it was free".
+   */
+  customerCost?: StepCustomerCost | null;
 }
 
 /** The whole funnel, walked. Null on any read spanning more than one funnel. */
