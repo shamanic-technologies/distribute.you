@@ -116,10 +116,11 @@ export function FunnelOverviewPage() {
         activityPending={false}
         economicsLearning={economicsLearning}
         funnelKey={rawKey ? (rawKey as SalesFunnelKeyWire) : null}
-        // Neither series is served per funnel, and drawing the offer's under this
-        // name would state a wider scope's shape as this one's.
+        // The per-day outreach bars describe a CHANNEL, and a funnel carries several.
+        // What a funnel is judged on is the return, so it charts that — the same call
+        // the offer and the brand make one level up.
         showActivityChart={false}
-        showRoiTrend={false}
+        showRoiTrend
         // Money is funded per (funnel, channel, offer), so a funnel carrying several
         // channels has no single ceiling of its own. The card states what was spent
         // and claims none.
@@ -133,6 +134,10 @@ export function FunnelOverviewPage() {
             // The legacy /stats counts are per CHANNEL, not per funnel. The cards read
             // the economics block above for everything this page states.
             stats={{}}
+            // Outreach is what a CHANNEL does, counted per channel and per brand. A
+            // funnel carrying several has none of its own, and a zero would read as
+            // "nobody was contacted".
+            showOutreach={false}
             // The spend BLOCK is per-channel detail the funnel row does not carry;
             // the cost card reads `economics.committedCostUsd` for the total, which is
             // this funnel's own.
@@ -145,19 +150,21 @@ export function FunnelOverviewPage() {
             showFunnelMetrics={false}
           />
         }
-        costBottomCard={
-          <div className="space-y-3">
-            <h3 className="font-display text-base font-bold text-gray-800">Campaigns</h3>
-            <CampaignsTable
-              brandId={brandId}
-              featureSlug={featureSlug}
-              basePath={basePath}
-              offerId={offerId}
-              funnelKey={rawKey}
-            />
-          </div>
-        }
       />
+
+      {/* Full width UNDER the chart, exactly where the offer Overview puts what is
+          behind its numbers. Beside the cost cards it read as a side note; a funnel's
+          campaigns are the thing that produced everything above them. */}
+      <div className="space-y-3 pt-2">
+        <h2 className="font-display text-lg font-bold text-gray-800">Campaigns</h2>
+        <CampaignsTable
+          brandId={brandId}
+          featureSlug={featureSlug}
+          basePath={basePath}
+          offerId={offerId}
+          funnelKey={rawKey}
+        />
+      </div>
 
       {!pending && !row && (
         <p className="text-sm text-gray-500">

@@ -201,28 +201,34 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                       </p>
                     )}
                   </td>
-                  {/* The three RATIOS state `Learning` together or not at all: each
-                      divides by an outcome count, so at a low count each is decided by
-                      whichever outcome happened to land. The TOTALS beside them are
-                      never gated — money already spent and pipeline already earned are
-                      facts, not prices. */}
-                  {funnelLearningFor(row.funnelKey) ? (
-                    <td className="px-4 py-3 text-right" colSpan={3}>
-                      <LearningTag />
-                    </td>
-                  ) : (
-                    <>
-                      <td className="px-4 py-3 text-right text-gray-900 whitespace-nowrap">
-                        {formatRoi(row.roiMultiple)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
-                        {fmtPct(row.costOfAcquisitionPct)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
-                        {fmtUsd(row.costPerAcquisitionUsd)}
-                      </td>
-                    </>
-                  )}
+                  {/* The three RATIOS each state the tag in their OWN column, the way
+                      the Campaigns table does. One tag spanning them reads as a note
+                      about the table rather than as the answer in each cell, and it
+                      leaves two columns blank, which is a different claim. Each divides
+                      by an outcome count, so at a low count each is decided by whichever
+                      outcome happened to land. The TOTALS beside them are never gated:
+                      money already spent and pipeline already earned are facts. */}
+                  <td className="px-4 py-3 text-right text-gray-900 whitespace-nowrap">
+                    {funnelLearningFor(row.funnelKey) ? (
+                      <LearningTag withInfo={false} />
+                    ) : (
+                      formatRoi(row.roiMultiple)
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
+                    {funnelLearningFor(row.funnelKey) ? (
+                      <LearningTag withInfo={false} />
+                    ) : (
+                      fmtPct(row.costOfAcquisitionPct)
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
+                    {funnelLearningFor(row.funnelKey) ? (
+                      <LearningTag withInfo={false} />
+                    ) : (
+                      fmtUsd(row.costPerAcquisitionUsd)
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right text-gray-600 whitespace-nowrap">
                     {fmtUsd(row.pipelineUsd)}
                   </td>
