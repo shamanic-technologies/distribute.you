@@ -107,6 +107,7 @@ export function OutreachStatCards({
   showEconomics = false,
   economicsLearning = false,
   showFunnelMetrics = true,
+  showOutreach = true,
 }: {
   stats: Record<string, number>;
   /**
@@ -177,6 +178,15 @@ export function OutreachStatCards({
    * campaign sells exactly ONE funnel, so it keeps them.
    */
   showFunnelMetrics?: boolean;
+  /**
+   * Whether to state the OUTREACH count.
+   *
+   * True everywhere a scope has one. A SALES FUNNEL does not: outreach is what a
+   * channel does, counted per channel and per brand, and a funnel carrying several
+   * channels has no outreach of its own to state. A zero there would read as "nobody
+   * was contacted", which is false.
+   */
+  showOutreach?: boolean;
 }) {
   const params = useParams();
   const orgId = params.orgId as string | undefined;
@@ -338,13 +348,15 @@ export function OutreachStatCards({
   return (
     <div className="mb-6">
     <div className="flex flex-nowrap gap-3 overflow-x-auto">
-      <Cell>
-        <ScoreCard
-          label={outreachLabel}
-          value={formatCount(outreach)}
-          pending={pending}
-        />
-      </Cell>
+      {showOutreach && (
+        <Cell>
+          <ScoreCard
+            label={outreachLabel}
+            value={formatCount(outreach)}
+            pending={pending}
+          />
+        </Cell>
+      )}
       {/* The brand-level money cards. A brand sells through SEVERAL sales funnels at
           once, so the only figures that describe the whole brand are what the pipeline
           is worth and what it cost — the per-funnel step counts beside them would each
