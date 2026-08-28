@@ -47,21 +47,6 @@ export function channelSettlesLate(featureSlug: string | null | undefined): bool
   return REPLY_SETTLING_CHANNEL_SLUGS.has(featureSlug);
 }
 
-/**
- * What this funnel buys, singular, in the words the band prices it in.
- *
- * Read off the funnel's own step KEYS rather than a goal, for the reason every
- * campaign-scoped surface reads the funnel: one goal covers both meeting funnels, so it
- * cannot say whether the thing being priced is a reply or a visit. The step the band
- * names is the first MEASURED one — the same step the `Learning` gate counts — so the
- * band and the tag under it are talking about one outcome.
- */
-export function learningSignalNoun(stepKeys: readonly string[]): string {
-  if (stepKeys.includes("positive_replies")) return "sales interest";
-  if (stepKeys.includes("website_visits")) return "website visit";
-  return "result";
-}
-
 /** Spend that buys {@link LEARNING_MIN_OUTCOMES} outcomes at the expected price, USD. */
 export function learningThresholdUsd(
   outcomeUnitCostUsd: number | null | undefined,

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { LEARNING_MIN_OUTCOMES } from "@/lib/learning-threshold";
 import {
   learningProgress,
   learningProgressIfDoubled,
@@ -16,12 +15,17 @@ import { CampaignControlsModal } from "@/components/campaigns/campaign-controls-
  * The `Learning` tag already tells a reader that a figure is being withheld; what it
  * cannot tell them is when it stops. So this states one number — days — over a bar that
  * fills, and offers the one lever that moves it. Everything else a reader might want
- * (the outcome count, the price itself) is on the surface underneath; a band that
- * summarised the page would be a second place for the page to be read.
+ * (the outcome count, the spend target, the price itself) is on the surface underneath;
+ * a band that summarised the page would be a second place for the page to be read.
  *
- * Deliberately ONE sentence and ONE number. The arithmetic behind it is a reservoir —
- * this much to spend, this much a day — and the copy says exactly that, because a
- * reader who cannot restate the rule cannot act on it.
+ * Deliberately ONE number and ONE offer. It carried a line explaining the reservoir
+ * behind it — this much to spend, this much a day, plus two weeks of replies — and that
+ * line was three clauses long on a band whose whole job is to be read at a glance. The
+ * arithmetic lives in `lib/learning-progress.ts`, where it costs a reader nothing.
+ *
+ * The lever names BOTH figures and states what it buys in the unit the band is in
+ * (days saved), not the unit it would leave behind: "about 42 days" makes a reader
+ * subtract, and a reader who has to subtract does not press the button.
  *
  * The charter's TERTIARY, like the `Learning` tag it belongs to — one accent across a
  * campaign's surfaces, and the band and the tag can never read as two different states
@@ -37,7 +41,6 @@ export function LearningProgressCallout({
   brandId,
   offerId,
   campaignId,
-  outcomeNoun,
   ...input
 }: LearningProgressInput & {
   brandId: string;
@@ -45,8 +48,6 @@ export function LearningProgressCallout({
   offerId?: string;
   /** Scope it to one campaign. Omitted when the band answers for a whole list. */
   campaignId?: string;
-  /** What this campaign buys, singular — "sales interest", "website visit". */
-  outcomeNoun: string;
 }) {
   const [budgetOpen, setBudgetOpen] = useState(false);
   const progress = learningProgress(input);
@@ -57,22 +58,25 @@ export function LearningProgressCallout({
 
   const doubled = learningProgressIfDoubled(progress);
   const dayWord = progress.daysLeft === 1 ? "day" : "days";
+  const saved = doubled != null ? progress.daysLeft - doubled : null;
+  const doubledBudgetUsd = progress.dailyBudgetUsd * 2;
 
   return (
     <>
       <div className="tone-tile mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <div className="text-sm font-semibold text-orange-700">
-            Learning: about {progress.daysLeft} {dayWord} left
+            Learning: {progress.daysLeft} {dayWord} left
           </div>
-          {doubled != null && (
+          {saved != null && saved > 0 && (
             <button
               type="button"
               onClick={() => setBudgetOpen(true)}
               className="text-xs font-medium text-orange-700 underline underline-offset-2 hover:no-underline"
             >
-              Spend {fmtWholeUsd(progress.dailyBudgetUsd * 2)}/day instead → about {doubled}{" "}
-              {doubled === 1 ? "day" : "days"}
+              Invest {fmtWholeUsd(doubledBudgetUsd)}/day instead of{" "}
+              {fmtWholeUsd(progress.dailyBudgetUsd)}/day → save {saved}{" "}
+              {saved === 1 ? "day" : "days"} of learning
             </button>
           )}
         </div>
@@ -86,15 +90,6 @@ export function LearningProgressCallout({
           />
         </div>
 
-        <p className="mt-2 text-xs text-orange-600">
-          {fmtWholeUsd(progress.spentUsd)} of {fmtWholeUsd(progress.thresholdUsd)} spent, at{" "}
-          {fmtWholeUsd(progress.dailyBudgetUsd)}/day. That buys the {LEARNING_MIN_OUTCOMES}{" "}
-          {outcomeNoun}s we need to price it.
-          {progress.settlingDaysLeft > 0 &&
-            ` Replies keep landing for ${progress.settlingDaysLeft} ${
-              progress.settlingDaysLeft === 1 ? "day" : "days"
-            } after that.`}
-        </p>
       </div>
 
       {budgetOpen && (
@@ -102,6 +97,9 @@ export function LearningProgressCallout({
           brandId={brandId}
           offerId={offerId}
           campaignId={campaignId}
+          // The band offered a figure, so the form opens on it. Asking again for the
+          // amount the button just named is the question asked twice.
+          prefillBudgetUsd={doubledBudgetUsd}
           onClose={() => setBudgetOpen(false)}
         />
       )}

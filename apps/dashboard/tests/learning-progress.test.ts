@@ -343,3 +343,34 @@ describe("the band is mounted where campaigns are read", () => {
     expect(band).not.toContain("\u2014");
   });
 });
+
+describe("the band states one number and offers one lever", () => {
+  const band = src("components/campaigns/learning-progress-callout.tsx");
+  const modal = src("components/campaigns/campaign-controls-modal.tsx");
+
+  it("states the days flatly, with no hedge in front of them", () => {
+    expect(band).toContain("Learning: {progress.daysLeft} {dayWord} left");
+    expect(band).not.toContain("Learning: about");
+  });
+
+  it("carries no explanatory line under the bar", () => {
+    // Three clauses (the spend target, the daily rate, the settling window) on a band
+    // whose whole job is to be read at a glance. The arithmetic lives in the lib.
+    expect(band).not.toContain("we need to price it");
+    expect(band).not.toContain("Replies keep landing for");
+  });
+
+  it("names both figures and states what the raise buys, in days saved", () => {
+    // "about 42 days" makes a reader subtract to learn what they gain.
+    expect(band).toContain("Invest {fmtWholeUsd(doubledBudgetUsd)}/day instead of");
+    expect(band).toContain("save {saved}");
+    expect(band).not.toContain("/day instead → about");
+  });
+
+  it("opens the budget form on the figure the button just named", () => {
+    expect(band).toContain("prefillBudgetUsd={doubledBudgetUsd}");
+    expect(modal).toContain("draftFor(row, prefill)");
+    // A figure offered for ONE campaign has no row to land on at a wider grain.
+    expect(modal).toContain("const prefill = campaignId != null ? prefillBudgetUsd : undefined;");
+  });
+});

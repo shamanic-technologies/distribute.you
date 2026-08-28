@@ -65,6 +65,7 @@ export function CampaignControlsModal({
   offerId,
   funnelKey,
   campaignId,
+  prefillBudgetUsd,
   onClose,
 }: {
   brandId: string;
@@ -78,6 +79,19 @@ export function CampaignControlsModal({
   funnelKey?: string | null;
   /** Scope to exactly one campaign. Omitted at brand and offer grain. */
   campaignId?: string;
+  /**
+   * Open with the daily budget already set to this figure, in whole dollars.
+   *
+   * The learning band offers a specific raise ("invest $16/day instead of $8"), so the
+   * form it opens states that figure rather than the one the reader just asked to
+   * change — a control that promises an amount and then hands you a blank field asks
+   * the question twice. Nothing is written until Confirm, and the row stays editable,
+   * so this is a starting point and not a decision made for anyone.
+   *
+   * Only honoured when the modal is scoped to ONE campaign: at brand or offer grain
+   * there are several rows and no single one the figure belongs to.
+   */
+  prefillBudgetUsd?: number;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -88,6 +102,9 @@ export function CampaignControlsModal({
   const budgetsQ = useAuthQuery(["brandFunnelBudgets", brandId], () =>
     getBrandFunnelBudgets(brandId),
   );
+
+  // A figure offered for ONE campaign has no row to land on at a wider grain.
+  const prefill = campaignId != null ? prefillBudgetUsd : undefined;
 
   const channels = useAcquisitionChannels();
   const rows = useMemo(
@@ -125,12 +142,12 @@ export function CampaignControlsModal({
       const next: Record<string, ControlDraft> = {};
       for (const row of rows) {
         next[row.rowId] = touched.has(row.rowId)
-          ? (prev[row.rowId] ?? draftFor(row))
-          : draftFor(row);
+          ? (prev[row.rowId] ?? draftFor(row, prefill))
+          : draftFor(row, prefill);
       }
       return next;
     });
-  }, [campaignsQ.data, budgetsQ.data, rows, touched]);
+  }, [campaignsQ.data, budgetsQ.data, rows, touched, prefill]);
 
   const [failures, setFailures] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -442,12 +459,17 @@ export function CampaignControlsModal({
 }
 
 /** What a row looks like before anyone has touched it: exactly what is stored. */
-function draftFor(row: ControlRow): ControlDraft {
+function draftFor(row: ControlRow, prefillBudgetUsd?: number): ControlDraft {
   return {
     running: row.running,
     // Whole dollars, always — a ceiling is a configured whole-dollar value, and
     // cents read wrong on one. Zero renders empty, which is the same thing the
     // parser reads back as zero.
-    budget: row.savedCents > 0 ? String(Math.round(row.savedCents / 100)) : "",
+    budget:
+      prefillBudgetUsd != null && prefillBudgetUsd > 0
+        ? String(Math.round(prefillBudgetUsd))
+        : row.savedCents > 0
+          ? String(Math.round(row.savedCents / 100))
+          : "",
   };
 }

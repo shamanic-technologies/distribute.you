@@ -50,7 +50,6 @@ import { stepsFor } from "@/lib/goal-steps";
 import {
   REPLY_SETTLING_DAYS,
   channelSettlesLate,
-  learningSignalNoun,
   learningThresholdUsd,
   settlingDaysElapsed,
 } from "@/lib/learning-progress";
@@ -576,7 +575,6 @@ export function CampaignOverviewPage() {
           brandId={brandId}
           offerId={offerId}
           campaignId={campaignId}
-          outcomeNoun={learningSignalNoun(campaignStepKeys)}
           outcomeUnitCostUsd={learningUnitCostUsd}
           spentUsd={data?.costEconomics.committedCostUsd ?? null}
           dailyBudgetUsd={
@@ -605,7 +603,6 @@ export function CampaignOverviewPage() {
           brandId={brandId}
           offerId={offerId}
           campaignId={campaignId}
-          outcomeNoun={learningSignalNoun(campaignStepKeys)}
           outcomeUnitCostUsd={learningUnitCostUsd}
           spentUsd={data?.costEconomics.committedCostUsd ?? null}
           dailyBudgetUsd={

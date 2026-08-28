@@ -31,7 +31,6 @@ import { LearningTag } from "@/components/learning-tag";
 import {
   REPLY_SETTLING_DAYS,
   channelSettlesLate,
-  learningSignalNoun,
 } from "@/lib/learning-progress";
 import { stepsFor } from "@/lib/goal-steps";
 import { optimizationGoalForRuntimeGoal, getBrandFunnelBudgets } from "@/lib/api";
@@ -180,12 +179,6 @@ export function CampaignsPage() {
   const leadBudgetCents = leadCampaign
     ? campaignBudgetCents(leadCampaign, leadCampaign.offerId ?? undefined, funnelBudgets, channels)
     : null;
-  const leadStepKeys = leadCampaign
-    ? stepsFor(
-        leadCampaign.goal ? optimizationGoalForRuntimeGoal(leadCampaign.goal) : "sales_meetings",
-        leadCampaign.funnelKey,
-      ).map((step) => step.key)
-    : [];
 
   // The header's money is asked at the grain this page IS — the offer when one is
   // open, the brand otherwise — never of a single acquisition channel. Same reads,
@@ -245,7 +238,6 @@ export function CampaignsPage() {
             brandId={brandId}
             offerId={offerId}
             campaignId={leadCampaign.id}
-            outcomeNoun={learningSignalNoun(leadStepKeys)}
             outcomeUnitCostUsd={leadUnitCostUsd}
             spentUsd={learningLead.revenue?.committedCostUsd ?? null}
             dailyBudgetUsd={leadBudgetCents != null ? leadBudgetCents / 100 : null}
