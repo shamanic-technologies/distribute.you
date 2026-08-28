@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { workflowDisplayName } from "@/lib/workflow-display-name";
 import { BrandLogo } from "./brand-logo";
 import { OrgAvatar } from "./org-avatar";
 import { explicitHierarchyHref } from "@/lib/last-brand";
@@ -39,13 +38,8 @@ export function BreadcrumbNav() {
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [workflowName, setWorkflowName] = useState<string | null>(null);
   const [campaignName, setCampaignName] = useState<string | null>(null);
 
-  const workflowId =
-    brandId && section === "workflows" && pathParts[5] && pathParts[5] !== "new"
-      ? pathParts[5]
-      : null;
   // Campaign LEVEL (v2 staff preview): `.../campaigns/[campaignId]` → resolve the
   // campaign name by-id for the crumb (mirrors the workflow crumb fetch).
   const campaignId =
@@ -68,14 +62,6 @@ export function BreadcrumbNav() {
     const t = setTimeout(() => fetchOrgs(orgSearch), 250);
     return () => clearTimeout(t);
   }, [isStaff, openDropdown, orgSearch, fetchOrgs]);
-
-  useEffect(() => {
-    if (!workflowId) { setWorkflowName(null); return; }
-    fetch(`/api/v1/workflows/${workflowId}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => setWorkflowName(data ? workflowDisplayName(data) : null))
-      .catch(() => setWorkflowName(null));
-  }, [workflowId]);
 
   useEffect(() => {
     if (!campaignId) { setCampaignName(null); return; }
@@ -298,29 +284,7 @@ export function BreadcrumbNav() {
         </>
       )}
 
-      {/* WORKFLOW */}
-      {workflowId && orgId && brandId && (
-        <>
-          <Sep />
-          <span className="px-2 py-1 font-medium text-gray-800">
-            {workflowName || "Workflow"}
-          </span>
-        </>
-      )}
-
       {/* Static subpage labels */}
-      {brandId && orgId && section === "brand-info" && (
-        <>
-          <Sep />
-          <span className="px-2 py-1 text-gray-600">Brand Info</span>
-        </>
-      )}
-      {brandId && orgId && section === "workflows" && !pathParts[5] && (
-        <>
-          <Sep />
-          <span className="px-2 py-1 text-gray-600">Workflows</span>
-        </>
-      )}
       {brandId && orgId && section === "tools" && pathParts[5] && (
         <>
           <Sep />

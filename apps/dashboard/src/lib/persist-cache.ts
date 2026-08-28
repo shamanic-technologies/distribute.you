@@ -96,12 +96,12 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // only source of an org's name and it hydrates asynchronously, so without a disk
   // snapshot the switcher reads "Dashboard" for the first second of every load.
   "orgIdentity",
-  // Navigation / config / registries
+  // Navigation / config / registries.
   "features",
   "feature",
   "statsRegistry",
   "entityRegistry",
-  "platformPrices",
+  // Billing — the account, its credit grants and its payment history.
   "billingAccount",
   "creditGrants",
   "billingPayments",
@@ -110,11 +110,9 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   "inviteStatus",
   // Free credits committed but not yet granted, on the Billing page.
   "freeCreditPromises",
-  // Brand metadata + config + small summaries
+  // Brand metadata + config + small summaries.
   "brand",
   "brands",
-  "brandUserFields",
-  "brandExtractedFields",
   "brandSalesEconomics",
   "brandFunnelBudgets",
   // What the brand may actually spend today (campaign status joined to its ceilings,
@@ -122,85 +120,56 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // money cold-skeletons on every visit without this line.
   "brandSpendableBudget",
   "brandDailyBudget",
-  "brandCostBreakdown",
-  "brandCostBreakdownToday",
   "brandConversionToken",
-  // Offers — the level between the brand and its campaigns. The list feeds the
-  // brand Overview's Offers table AND the tenant switcher's third tier, and the
-  // by-id read is the offer sidebar's own label, so an unlisted root would
-  // cold-skeleton the chrome on every visit.
+  // Offers — the level between the brand and its campaigns. The list feeds the brand
+  // Overview's Offers table AND the tenant switcher's third tier, and the by-id read
+  // is the offer sidebar's own label.
   "brandOffers",
   "brandOffer",
-  // Offer Settings reads both of these on every visit, and both are answered by
-  // the slow brand-service path. Unlisted they are default-OFF, so the page
-  // would cold-skeleton every time instead of painting from disk. Each key
-  // carries the offer, so two propositions of one brand never share an entry.
+  // Offer Settings reads both of these on every visit, over the slow brand-service
+  // path. Each key carries the offer, so two propositions never share an entry.
   "offerUserFields",
   "offerSalesFunnels",
   // The funnel grain, between the offer and its campaigns: the offer's Sales-funnels
-  // table and the per-funnel Overview it drills into. An unlisted root is default-OFF,
-  // so these three cold-skeletoned on every visit while every neighbouring surface
-  // painted from disk — reported as "the sales-funnel rows show a skeleton loader,
-  // I want the same SWR logic as the rest of the dash". Each key carries the offer
-  // (and the funnel key), so two funnels never share an entry.
+  // table and the per-funnel Overview it drills into. Each key carries the offer and
+  // the funnel key, so two funnels never share an entry.
   "offerFunnels",
   "offerFunnelRevenue",
   "offerFunnelPipelineActivity",
-  // Brand entity sub-lists (big — persisted so their pages skip the reload skeleton)
+  // The brand's leads. Big — over the size cap on a heavy brand, so it is allowlisted
+  // and still refused at write time; the query keeps `keepPreviousData` in memory and
+  // the per-query persister restores it lazily on its own fetch.
   "brandLeads",
-  "brandEmails",
-  // Per-lead generated email content — the leads detail-panel fetch
-  // (`["leadEmail", leadId, brandId]`, click-gated). Persisted so re-opening a
-  // lead paints its last-known email from disk instead of cold-fetching.
+  // Per-lead generated email content — the leads detail-panel fetch, click-gated, so
+  // re-opening a lead paints its last-known email from disk.
   "leadEmail",
-  // What a human stated about a lead's reply, behind the same detail panel. Written
-  // by the mutation's own `setQueryData`, so an unlisted root would cold-fetch the
-  // statement back on every panel open.
+  // What a human stated about a lead's reply, behind the same detail panel. Written by
+  // the mutation's own `setQueryData`, so an unlisted root would cold-fetch it back on
+  // every panel open.
   "leadReplyKind",
   // Every reply kind stated on one campaign, read once and joined by email so the
   // leads BOARD places its cards without a request per card.
   "campaignReplyKinds",
-  "brandOutlets",
-  "brandArticles",
-  "brandJournalists",
-  "enrichedJournalists",
-  "brandRuns",
-  "brandMediaKits",
-  "mediaKit",
-  // Feature-level stats / revenue / activity
+  // Feature-level stats / revenue / activity.
   "featureStats",
   "featureRevenue",
-  // The offer and brand grains of the same money — a page scoped to one of them
-  // asks features-service across every channel it covers, so these are DIFFERENT
-  // answers from the per-feature entry above and get their own roots. Unlisted, a
-  // root is default-OFF and the money block cold-skeletons on every visit.
+  // The offer and brand grains of the same money — a page scoped to one of them asks
+  // features-service across every channel it covers, so these are DIFFERENT answers
+  // from the per-feature entry above and get their own roots.
   "offerRevenue",
   "brandRevenue",
   "featureRevenueByCampaign",
   "brandOfferMoney",
   "featurePipelineActivity",
   "featureAudienceStats",
-  "featureWorkflows",
-  // Audiences
+  // Audiences.
   "audiences",
-  // Workflow defs / projections / summaries
-  "workflow",
-  "workflows",
-  "workflow-summary",
-  "workflow-key-status",
+  // The per-workflow projection behind the best-model card and the budget steps.
   "workflowProjection",
-  "globalRankedWorkflows",
-  // Outlet cost stats
-  "outletStatsCosts",
-  // Campaign (the launch-modal self-fetch is the only surviving campaign UI)
+  // Campaigns.
   "campaign",
   "campaigns",
   "campaignLeads",
-  "campaignActivity",
-  // Per-domain metric objects
-  "domainTrafficHistory",
-  "domainDrStatus",
-  "domainAiVisibility",
 ]);
 
 export interface PersistableQuery {

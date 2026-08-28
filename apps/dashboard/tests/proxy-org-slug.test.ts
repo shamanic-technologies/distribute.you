@@ -51,8 +51,6 @@ vi.mock("@clerk/nextjs/server", () => ({
 }));
 
 import { GET as catchAllGet } from "../src/app/(authed)/api/v1/[...path]/route";
-import { GET as requiredProvidersGet } from "../src/app/(authed)/api/v1/workflows/[id]/required-providers/route";
-import { GET as crmCallbackGet } from "../src/app/(authed)/services/crm/oauth/callback/route";
 import { POST as chatPost } from "../src/app/(authed)/api/v1/chat/route";
 
 function headersOfCall(spy: ReturnType<typeof vi.spyOn>, index = 0) {
@@ -68,21 +66,6 @@ const ROUTES: Array<{ name: string; call: () => Promise<unknown> }> = [
       catchAllGet(new NextRequest("http://localhost/api/v1/brands"), {
         params: Promise.resolve({ path: ["brands"] }),
       }),
-  },
-  {
-    name: "api/v1/workflows/[id]/required-providers",
-    call: () =>
-      requiredProvidersGet(
-        new NextRequest("http://localhost/api/v1/workflows/wf_1/required-providers"),
-        { params: Promise.resolve({ id: "wf_1" }) },
-      ),
-  },
-  {
-    name: "services/crm/oauth/callback",
-    call: () =>
-      crmCallbackGet(
-        new NextRequest("http://localhost/services/crm/oauth/callback?code=c&state=s"),
-      ),
   },
   {
     name: "api/v1/chat",

@@ -97,45 +97,6 @@ describe("GET /api/v1/platform/services/[service]", () => {
   });
 });
 
-describe("GET /api/v1/workflows/[id]/required-providers", () => {
-  const routePath = path.join(routesDir, "workflows/[id]/required-providers/route.ts");
-
-  it("should exist", () => {
-    expect(fs.existsSync(routePath)).toBe(true);
-  });
-
-  it("should require Clerk auth with org", () => {
-    const content = fs.readFileSync(routePath, "utf-8");
-    expect(content).toContain("await auth()");
-    expect(content).toContain("clerkOrgId");
-  });
-
-  it("should fetch workflow from api-service", () => {
-    const content = fs.readFileSync(routePath, "utf-8");
-    expect(content).toContain("/v1/workflows/");
-    expect(content).toContain("ADMIN_DISTRIBUTE_API_KEY");
-  });
-
-  it("should map providers to domains using PROVIDER_DOMAINS", () => {
-    const content = fs.readFileSync(routePath, "utf-8");
-    expect(content).toContain("PROVIDER_DOMAINS");
-    expect(content).toContain("provider.toLowerCase()");
-  });
-
-  it("should return workflowId, workflowSlug, and providers array", () => {
-    const content = fs.readFileSync(routePath, "utf-8");
-    expect(content).toContain("workflowId:");
-    expect(content).toContain("workflowSlug:");
-    expect(content).toContain("providers:");
-  });
-
-  it("should use workflow.workflowSlug (not workflow.workflowName) for workflowSlug", () => {
-    const content = fs.readFileSync(routePath, "utf-8");
-    expect(content).toContain("workflowSlug: workflow.workflowSlug");
-    expect(content).not.toContain("workflowSlug: workflow.workflowName");
-  });
-});
-
 describe("api.ts platform client functions", () => {
   it("should export getPlatformLlmContext", () => {
     const content = fs.readFileSync(apiPath, "utf-8");

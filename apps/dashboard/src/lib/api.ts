@@ -4731,24 +4731,6 @@ export async function queryProviderRequirements(
   );
 }
 
-export async function listWorkflows(params?: { featureSlug?: string }, token?: string): Promise<{ workflows: Workflow[] }> {
-  const query = new URLSearchParams();
-  if (params?.featureSlug) query.set("featureSlug", params.featureSlug);
-  return apiCall<{ workflows: Workflow[] }>(`/workflows?${query}`, { token });
-}
-
-export async function getWorkflow(workflowId: string, token?: string): Promise<Workflow> {
-  return apiCall<Workflow>(`/workflows/${workflowId}`, { token });
-}
-
-export async function getWorkflowSummary(workflowId: string, token?: string): Promise<WorkflowSummary> {
-  return apiCall<WorkflowSummary>(`/workflows/${workflowId}/summary`, { token });
-}
-
-export async function getWorkflowKeyStatus(workflowId: string, token?: string): Promise<WorkflowKeyStatus> {
-  return apiCall<WorkflowKeyStatus>(`/workflows/${workflowId}/key-status`, { token });
-}
-
 // Platform discovery
 export interface PlatformService {
   name: string;
@@ -4854,22 +4836,6 @@ export interface GlobalRankedResponse {
   objective: string;
   sortDirection: "asc" | "desc";
   results: GlobalRankedWorkflowItem[];
-}
-
-export async function fetchGlobalRankedWorkflows(params: {
-  featureSlug: string;
-  objective: string;
-  groupBy: "workflow" | "brand";
-  limit?: number;
-}, token?: string): Promise<GlobalRankedWorkflowItem[]> {
-  const query = new URLSearchParams();
-  query.set("featureSlug", params.featureSlug);
-  query.set("objective", params.objective);
-  query.set("groupBy", params.groupBy);
-  if (params.limit) query.set("limit", String(params.limit));
-  const qs = query.toString();
-  const data = await apiCall<GlobalRankedResponse>(`/public/features/ranked${qs ? `?${qs}` : ""}`, { token });
-  return data.results;
 }
 
 // ── Sales-funnel workflow projection ────────────────────────────────────────
@@ -5293,17 +5259,6 @@ export interface CreateWorkflowResult {
   };
   dag: { nodes: unknown[]; edges: unknown[] };
   generatedDescription: string;
-}
-
-export async function createWorkflow(
-  params: CreateWorkflowRequest,
-  token?: string,
-): Promise<CreateWorkflowResult> {
-  return apiCall<CreateWorkflowResult>("/workflows/create", {
-    method: "POST",
-    body: params as unknown as Record<string, unknown>,
-    token,
-  });
 }
 
 // Create campaign
@@ -6754,29 +6709,3 @@ export async function computeDomainAiVisibility(
   return parsed.data;
 }
 
-/**
- * Trigger one execution of the workflow attached to a feature.
- * Resolves the workflow by featureSlug filter and calls
- * /workflows/:id/execute. Throws ApiError(404) when no workflow is
- * registered for the feature yet.
- */
-export async function triggerFeatureRun(
-  featureSlug: string,
-  params: { brandId: string; campaignId: string },
-  token?: string,
-): Promise<{ workflowRunId: string }> {
-  const { workflows } = await listWorkflows({ featureSlug }, token);
-  const wf = workflows[0];
-  if (!wf) {
-    throw new ApiError(
-      `No workflow registered for feature \`${featureSlug}\`.`,
-      404,
-      { error: "workflow_not_registered" },
-    );
-  }
-  return apiCall<{ workflowRunId: string }>(`/workflows/${wf.id}/execute`, {
-    token,
-    method: "POST",
-    body: { inputs: { brandId: params.brandId, campaignId: params.campaignId } },
-  });
-}

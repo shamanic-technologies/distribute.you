@@ -34,9 +34,7 @@ describe("Org switch cross-org isolation framework", () => {
   const apiPath = "src/lib/api.ts";
   const proxyCatchAllPath = "src/app/(authed)/api/v1/[...path]/route.ts";
   const proxyChatPath = "src/app/(authed)/api/v1/chat/route.ts";
-  const proxyProvidersPath =
-    "src/app/(authed)/api/v1/workflows/[id]/required-providers/route.ts";
-
+  
   // --- Client cache choke point: keyed remount -----------------------------
 
   it("QueryProvider remounts under a key derived from the PER-TAB URL org (not the shared active org)", () => {
@@ -96,7 +94,7 @@ describe("Org switch cross-org isolation framework", () => {
   // --- Server choke point: fail-closed proxy guard -------------------------
 
   it("every /api/v1 proxy route imports and calls checkProxyOrg", () => {
-    for (const p of [proxyCatchAllPath, proxyChatPath, proxyProvidersPath]) {
+    for (const p of [proxyCatchAllPath, proxyChatPath]) {
       const content = read(p);
       expect(content, `${p} should import checkProxyOrg`).toContain(
         'from "@/lib/proxy-org"',

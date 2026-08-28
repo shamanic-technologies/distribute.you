@@ -1,7 +1,7 @@
 /**
  * Beta-surface email allowlist for the public dashboard.
  *
- * Background: in the dashboard app `useFeatureFlag()` is hard-disabled (returns
+ * Background: in the dashboard app the PostHog flag hook is hard-disabled (it returns
  * false unconditionally — alpha/beta surfaces live only in the admin app since
  * the 2026-06-14 split). So a dashboard surface that must ship to a SMALL set of
  * people (an opt-in beta) can't use the PostHog flag path. This allowlist is the

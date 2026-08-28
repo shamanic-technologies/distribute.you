@@ -33,9 +33,5 @@ describe("Multi-brand campaign support", () => {
     const onboardingPageRel = "../src/components/onboarding/onboarding.tsx";
     const onboardingPage = fs.readFileSync(path.join(__dirname, onboardingPageRel), "utf-8");
     expect(onboardingPage).toContain("extractBrandFields([newBrandId]");
-
-    const brandInfoRel = "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx";
-    const brandInfo = fs.readFileSync(path.join(__dirname, brandInfoRel), "utf-8");
-    expect(brandInfo).toContain("extractBrandFields([brandId]");
   });
 });

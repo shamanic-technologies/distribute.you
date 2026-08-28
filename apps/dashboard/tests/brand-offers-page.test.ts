@@ -28,7 +28,7 @@ describe("the brand has an Offers page of its own", () => {
 
   it("sits directly under Overview in the brand sidebar", () => {
     const sidebar = read("src/components/context-sidebar.tsx");
-    const body = sidebar.slice(sidebar.indexOf("function BrandLevelSidebar"), sidebar.indexOf("function BrandLevelSidebar") + 3000);
+    const body = sidebar.slice(sidebar.indexOf("function BrandLevelSidebar"), sidebar.indexOf("function BrandLevelSidebar") + 4500);
     const overviewAt = body.indexOf('id: "overview"');
     const offersAt = body.indexOf('id: "brand-offers"');
     const leadsAt = body.indexOf('id: "brand-leads"');

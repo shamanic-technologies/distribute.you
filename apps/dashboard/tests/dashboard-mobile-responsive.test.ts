@@ -25,10 +25,6 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf-8",
   );
-  const brandInfoPage = fs.readFileSync(
-    path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/brand-info/page.tsx"),
-    "utf-8",
-  );
   // The offer card left brand Settings for Offer Settings: what a proposition
   // promises belongs to the offer, not to the brand's identity.
   const offerSettingsPage = fs.readFileSync(
@@ -133,10 +129,9 @@ describe("Dashboard mobile responsiveness", () => {
     expect(billingPage).toContain("w-full rounded-lg bg-brand-600");
   });
 
-  it("keeps brand info and settings actions usable on narrow screens", () => {
-    expect(brandInfoPage).toContain("mb-4 flex flex-col gap-3 sm:flex-row");
-    expect(brandInfoPage).toContain("overflow-x-auto");
-    expect(brandInfoPage).toContain("whitespace-nowrap");
+  it("keeps the offer's settings actions usable on narrow screens", () => {
+    // The Brand Info page went with the flag-gated cluster (it rendered for nobody in
+    // this app); what a proposition promises is edited on Offer Settings.
     expect(offerSettingsPage).toContain("BrandOfferCard");
   });
 });

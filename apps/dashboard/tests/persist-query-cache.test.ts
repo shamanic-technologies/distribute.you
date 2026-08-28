@@ -62,25 +62,24 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
 
   it("persists EVERY live non-sensitive root (persist-all-live policy — no reload skeleton)", () => {
     for (const root of [
-      // config / registries
-      "features", "feature", "statsRegistry", "entityRegistry", "platformPrices", "billingAccount",
+      // config / registries / tenant identity
+      "features", "feature", "statsRegistry", "entityRegistry",
+      "orgIdentity", "billingAccount", "creditGrants", "billingPayments",
+      "inviteStatus", "freeCreditPromises",
       // brand metadata + config
-      "brand", "brands", "brandUserFields", "brandExtractedFields", "brandSalesEconomics",
-      "brandDailyBudget", "brandCostBreakdown", "brandCostBreakdownToday",
-      // brand entity sub-lists (big — now persisted too)
-      "brandLeads", "brandEmails", "leadEmail", "brandOutlets", "brandArticles", "brandJournalists",
-      "enrichedJournalists", "brandRuns", "brandMediaKits", "mediaKit",
-      // feature-level
-      "featureStats", "featureRevenue", "featureRevenueByCampaign", "featurePipelineActivity",
-      "featureAudienceStats", "featureWorkflows",
-      // audiences
-      "audiences",
-      // workflows
-      "workflow", "workflows", "workflow-summary", "workflow-key-status",
-      "workflowProjection", "globalRankedWorkflows",
-      // outlet stats / campaign launch-modal / domain metrics
-      "outletStatsCosts", "campaign", "campaigns", "campaignLeads", "campaignActivity",
-      "domainTrafficHistory", "domainDrStatus", "domainAiVisibility",
+      "brand", "brands", "brandSalesEconomics", "brandFunnelBudgets",
+      "brandSpendableBudget", "brandDailyBudget", "brandConversionToken",
+      // offers + the funnel grain
+      "brandOffers", "brandOffer", "offerUserFields", "offerSalesFunnels",
+      "offerFunnels", "offerFunnelRevenue", "offerFunnelPipelineActivity",
+      // leads
+      "brandLeads", "leadEmail", "leadReplyKind", "campaignReplyKinds",
+      // money, at each grain it is asked at
+      "featureStats", "featureRevenue", "offerRevenue", "brandRevenue",
+      "featureRevenueByCampaign", "brandOfferMoney", "featurePipelineActivity",
+      "featureAudienceStats",
+      // audiences / projection / campaigns
+      "audiences", "workflowProjection", "campaign", "campaigns", "campaignLeads",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(true);
     }
@@ -96,6 +95,16 @@ describe("shouldPersistQuery — only successful, non-sensitive queries persist"
       "salesWorkflowTests",
       "featureQuotePitches", "rankedOpportunities", "quotePitches",
       "visibilityRuns", "visibilityRun",
+      // Went with the flag-gated pages (Workflows, Brand Info, Google CRM), which in
+      // this app rendered for nobody: the roots outlived their only readers.
+      "workflow", "workflows", "workflow-summary", "workflow-key-status",
+      "globalRankedWorkflows", "featureWorkflows", "brandExtractedFields", "brandRuns",
+      // Orphaned earlier, by the entity-page removals — the allowlist is an INVENTORY
+      // of live roots, so a root whose surface is gone must leave it.
+      "platformPrices", "brandUserFields", "brandCostBreakdown", "brandCostBreakdownToday",
+      "brandEmails", "brandOutlets", "brandArticles", "brandJournalists",
+      "enrichedJournalists", "brandMediaKits", "mediaKit", "outletStatsCosts",
+      "campaignActivity", "domainTrafficHistory", "domainDrStatus", "domainAiVisibility",
     ]) {
       expect(shouldPersistQuery(q("success", [root, "x"])), root).toBe(false);
     }

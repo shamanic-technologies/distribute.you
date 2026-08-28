@@ -22,18 +22,10 @@ describe("BreadcrumbNav truncation", () => {
     expect(className).not.toMatch(/max-w-/);
   });
 
-  it("should not truncate the workflow name in the breadcrumb", () => {
-    // The workflow span contains workflowName || "Workflow"
-    const workflowSpanRegex =
-      /<span\s+className="([^"]*)">\s*\{workflowName \|\| "Workflow"\}/;
-    const match = content.match(workflowSpanRegex);
-    expect(
-      match,
-      "workflow name span should exist in breadcrumb"
-    ).toBeTruthy();
-    const className = match![1];
-    expect(className).not.toContain("truncate");
-    expect(className).not.toMatch(/max-w-/);
+  it("carries no workflow crumb — the workflow routes are deleted", () => {
+    // Those pages were `useFeatureFlag`-gated, i.e. rendered for nobody in this app.
+    expect(content).not.toContain("workflowName");
+    expect(content).not.toContain("workflowId");
   });
 
   // The campaign breadcrumb link was removed with the campaign concept — the
