@@ -37,6 +37,7 @@ import { LeadFunnelStageSection } from "@/components/leads/lead-funnel-stage-sec
 import {
   leadFunnelLegStages,
   leadStepErrorMessage,
+  leadStepWithdrawErrorMessage,
   trackedStages,
   type LeadStageState,
   type WritableStageKey,
@@ -50,8 +51,14 @@ import {
   useLeadStepStatements,
   useSetAnyLeadStepStatement,
   useSetLeadStepStatement,
+  useWithdrawLeadStepStatement,
+  withdrawableStages,
 } from "@/lib/use-lead-step-statements";
-import { listManualQualifications, setManualQualification } from "@/lib/api";
+import {
+  listManualQualifications,
+  setManualQualification,
+  withdrawManualQualification,
+} from "@/lib/api";
 import type { ReplyKind } from "@/lib/reply-kind";
 import { useMutation } from "@tanstack/react-query";
 import { normalizeSalesFunnelKey } from "@/lib/sales-funnels";
@@ -1231,9 +1238,13 @@ export function EngagedLeadsPage({
   // card where the person put it while the producer answers — the producer's own
   // answer always wins, and a refusal drops it. Keyed on the lead's email, which is
   // what the statement is written against.
-  const [statedReplyKinds, setStatedReplyKinds] = useState<Map<string, { kind: string; at: string }>>(
-    new Map(),
-  );
+  // `null` is a real entry here, not an absence: it is a statement somebody just took
+  // BACK, held over the same two round trips a set is. `has` therefore decides whether
+  // the latch speaks, never `??`, which would read a cleared entry as silence and fall
+  // straight back to the kind that was just withdrawn.
+  const [statedReplyKinds, setStatedReplyKinds] = useState<
+    Map<string, { kind: string; at: string } | null>
+  >(new Map());
 
   // The columns are TRIAGE states, not funnel rungs, so they need no funnel to lay out
   // in — which is why the board is offered at brand level too now. The funnel's own
@@ -1260,6 +1271,10 @@ export function EngagedLeadsPage({
     }
     const out = new Map<string, { kind: string; at: string }>();
     for (const q of rows) {
+      // A statement somebody TOOK BACK is served alongside the standing ones — it is the
+      // audit of what was asserted — so it is skipped rather than being the newest row
+      // that wins. Rendering it would put a kind on the card that nobody stands behind.
+      if (q.withdrawnAt) continue;
       // Newest first, so the FIRST row for an email is that lead's current statement.
       // The instant rides along with it: a stated kind is dated by WHEN SOMEBODY SAID
       // IT, never by the delivery event underneath, which is a different moment.
@@ -1276,7 +1291,9 @@ export function EngagedLeadsPage({
     const out: LeadBoardCard[] = [];
     for (const lead of searchedLeads) {
       const statement = lead.email
-        ? (statedReplyKinds.get(lead.email) ?? replyKindByEmail.get(lead.email) ?? null)
+        ? statedReplyKinds.has(lead.email)
+          ? (statedReplyKinds.get(lead.email) ?? null)
+          : (replyKindByEmail.get(lead.email) ?? null)
         : null;
       const stated = statement?.kind ?? null;
       const column = leadBoardColumnFor({
@@ -1426,7 +1443,9 @@ export function EngagedLeadsPage({
   // The target of the statement in flight. Held here rather than derived from the
   // mutation, because the spinner belongs on the button the person pressed and
   // `isPending` alone cannot say which of the two that was.
-  const [panelPending, setPanelPending] = useState<{ key: WritableStageKey; next: "outcome" | "never" } | null>(null);
+  const [panelPending, setPanelPending] = useState<
+    { key: WritableStageKey; next: "outcome" | "never" | "withdraw" } | null
+  >(null);
   const [panelError, setPanelError] = useState<string | null>(null);
   // The statement just pressed, shown while the producer is answering. lead-service
   // decides more than the one field written — it can supersede an earlier `never`, and
@@ -1435,11 +1454,17 @@ export function EngagedLeadsPage({
   // read exactly as it did before the click. Scoped to the lead row it was made on, so
   // opening another lead cannot inherit it.
   const [statedStage, setStatedStage] = useState<
-    { leadRowId: string; key: WritableStageKey; next: LeadStageState } | null
+    { leadRowId: string; key: WritableStageKey; next: LeadStageState | "withdrawn" } | null
   >(null);
   const panelStates = useMemo(() => {
     const served = stageStatesFrom(stepStatements);
     if (!statedStage || statedStage.leadRowId !== selectedLead?.id) return served;
+    // A withdrawal is the ABSENCE of a statement, so the optimistic form of it is the
+    // key going away — not a third state the row would have to know how to render.
+    if (statedStage.next === "withdrawn") {
+      const { [statedStage.key]: _dropped, ...rest } = served;
+      return rest;
+    }
     return { ...served, [statedStage.key]: statedStage.next };
   }, [stepStatements, statedStage, selectedLead]);
   // What a stated outcome was worth, so the amount somebody typed reads back where they
@@ -1449,6 +1474,11 @@ export function EngagedLeadsPage({
   // because they told us and never charged. Present-with-null is a statement made
   // before the cost was asked for, which reads as unanswered rather than as a zero.
   const panelCosts = useMemo(() => stageCostsFrom(stepStatements), [stepStatements]);
+  // Which stages carry somebody's OWN words, so their active button becomes the way to
+  // take them back. A tracker-reported outcome is not this person's to undo, and
+  // lead-service refuses it — so the control is not offered rather than offered and
+  // refused.
+  const panelWithdrawable = useMemo(() => withdrawableStages(stepStatements), [stepStatements]);
   // Stages the FUNNEL concluded rather than anybody stating — they render as the answer
   // they are and offer no control.
   const panelImplied = useMemo(() => impliedStages(stepStatements), [stepStatements]);
@@ -1469,15 +1499,21 @@ export function EngagedLeadsPage({
     () => listManualQualifications({ campaignId, email: replyEmail as string, limit: 1 }),
     { enabled: Boolean(campaignId && replyEmail) },
   );
-  // Rows come back newest-first, so the first is the statement that stands. `replyKind`
-  // is the resolved vocabulary; `status` is the raw thing a person clicked and is
-  // deliberately not rendered.
-  const replyKind = replyData?.qualifications[0]?.replyKind ?? null;
+  // Rows come back newest-first, so the first STANDING one is the statement that holds.
+  // A withdrawn row is served too (it is the audit of what was asserted), so taking
+  // `[0]` verbatim renders a kind nobody stands behind — the whole point of taking it
+  // back. `replyKind` is the resolved vocabulary; `status` is the raw thing a person
+  // clicked and is deliberately not rendered.
+  const replyKind =
+    replyData?.qualifications.find((q) => !q.withdrawnAt)?.replyKind ?? null;
   // The kind just picked, shown before the producer has answered. A picker that keeps
   // reading "Replied, kind not stated" for the whole write reads as a control that did
   // nothing. Dropped the moment the producer answers — its own resolution is what
   // stands, this only fills the gap.
-  const [statedReply, setStatedReply] = useState<{ email: string; kind: ReplyKind } | null>(null);
+  // `kind: null` is a statement just TAKEN BACK, held over the same round trip a set is.
+  const [statedReply, setStatedReply] = useState<{ email: string; kind: ReplyKind | null } | null>(
+    null,
+  );
   const shownReplyKind = statedReply && statedReply.email === replyEmail ? statedReply.kind : replyKind;
   const [replyPending, setReplyPending] = useState(false);
   const queryClient = useQueryClient();
@@ -1498,6 +1534,49 @@ export function EngagedLeadsPage({
     },
   });
 
+  const withdrawReply = useMutation({
+    mutationFn: () =>
+      withdrawManualQualification({ campaignId: campaignId as string, email: replyEmail as string }),
+    onSuccess: () => {
+      // The response carries the withdrawn row, not the list — and after a withdrawal
+      // nothing stands, which is a statement about the WHOLE list rather than about one
+      // row. Re-read both keys rather than reconstructing that here: the board joins on
+      // the campaign-wide one and the panel on this pair, and they must not disagree
+      // about whether anybody has said anything.
+      queryClient.invalidateQueries({
+        queryKey: ["leadReplyKind", campaignId ?? "none", replyEmail ?? "none"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["campaignReplyKinds", campaignId ?? "none"] });
+      setStatedReply(null);
+      if (replyEmail) {
+        setStatedReplyKinds((prev) => {
+          const next = new Map(prev);
+          next.delete(replyEmail);
+          return next;
+        });
+      }
+      // The kind decided whether the sequence kept sending, so the lead rows can move.
+      queryClient.invalidateQueries({
+        queryKey: campaignId ? ["campaignLeads", campaignId] : ["brandLeads", brandId],
+      });
+    },
+  });
+
+  const onWithdrawReply = () => {
+    setPanelError(null);
+    if (replyEmail) setStatedReply({ email: replyEmail, kind: null });
+    setReplyPending(true);
+    withdrawReply.mutate(undefined, {
+      onError: (err) => {
+        console.error("[dashboard] withdrawManualQualification failed", err);
+        // Nothing was taken back, so stop showing it as gone.
+        setStatedReply(null);
+        setPanelError(leadStepWithdrawErrorMessage(err));
+      },
+      onSettled: () => setReplyPending(false),
+    });
+  };
+
   const onSetReply = (kind: ReplyKind) => {
     setPanelError(null);
     if (replyEmail) setStatedReply({ email: replyEmail, kind });
@@ -1511,6 +1590,26 @@ export function EngagedLeadsPage({
       },
       onSettled: () => setReplyPending(false),
     });
+  };
+
+  const withdrawStage = useWithdrawLeadStepStatement(selectedLead?.id ?? null);
+
+  const onWithdrawStage = (key: WritableStageKey) => {
+    setPanelError(null);
+    if (selectedLead) setStatedStage({ leadRowId: selectedLead.id, key, next: "withdrawn" });
+    setPanelPending({ key, next: "withdraw" });
+    withdrawStage.mutate(
+      { step: key },
+      {
+        onError: (err) => {
+          console.error("[dashboard] withdrawLeadStepStatement failed", err);
+          // Nothing was taken back, so stop showing it as gone.
+          setStatedStage(null);
+          setPanelError(leadStepWithdrawErrorMessage(err));
+        },
+        onSettled: () => setPanelPending(null),
+      },
+    );
   };
 
   const onSetStage = (
@@ -1756,7 +1855,17 @@ export function EngagedLeadsPage({
                 pending={panelPending}
                 error={panelError}
                 onSet={onSetStage}
-                reply={{ kind: shownReplyKind, pending: replyPending, onSet: onSetReply }}
+                withdrawable={panelWithdrawable}
+                onWithdraw={onWithdrawStage}
+                reply={{
+                  kind: shownReplyKind,
+                  pending: replyPending,
+                  onSet: onSetReply,
+                  // Only offered while something STANDS. Every row this read serves is a
+                  // human statement, so a standing kind is by construction somebody's own
+                  // words — unlike a funnel step, where a tracker can be the author.
+                  onWithdraw: shownReplyKind ? onWithdrawReply : undefined,
+                }}
               />
             )}
             {selectedOrg && (selectedOrg.name || selectedOrg.primaryDomain || selectedOrg.industry) && (

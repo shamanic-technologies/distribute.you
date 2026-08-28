@@ -64,27 +64,27 @@ describe("scopeIsLearning", () => {
 describe("LearningTag", () => {
   const src = read("components/learning-tag.tsx");
 
-  it("wears the SECONDARY, never a warning colour", () => {
-    // Amber/orange reads as a warning about something the customer did wrong; this
-    // is a waiting state. Purple is the charter's secondary (~44 degrees off the
-    // primary blue), and all three classes are remapped in globals.css.
-    for (const cls of ["bg-purple-50", "text-purple-600", "border-purple-200"]) {
+  it("wears the charter's TERTIARY, the one accent every campaign surface reads in", () => {
+    // Owner-decided: a campaign's pages read in one colour, and this tag is the one a
+    // reader meets most often on them. All three classes are remapped in globals.css.
+    for (const cls of ["bg-orange-50", "text-orange-600", "border-orange-200"]) {
       expect(src).toContain(cls);
     }
-    expect(src).not.toMatch(/(bg|text|border)-(amber|orange|yellow|red)-/);
+    // Green and red are VERDICTS, never accents — the tag says nothing went wrong.
+    expect(src).not.toMatch(/(bg|text|border)-(green|red)-/);
     expect(src).not.toMatch(/bg-(violet|sky|teal|rose|lime)-/);
   });
 
-  it("rotates to the BRAND's secondary, so all three layers move together", () => {
-    // Owner-decided: a customer's dashboard says "learning" in THEIR secondary, not
+  it("rotates to the BRAND's tertiary, so all three layers move together", () => {
+    // Owner-decided: a customer's dashboard says "learning" in THEIR tertiary, not
     // ours. `tone-tile` is the opt-in, and the fill, the text and the border each
     // need a rotation rule or the pill renders two hues at once.
     expect(src).toContain("tone-tile");
     const css = read("app/globals.css");
     for (const sel of [
-      ".tone-tile.bg-purple-50",
-      ".tone-tile.text-purple-600",
-      ".tone-tile.border-purple-200",
+      ".tone-tile.bg-orange-50",
+      ".tone-tile.text-orange-600",
+      ".tone-tile.border-orange-200",
     ]) {
       expect(css).toContain(`:root[data-brand-tint] ${sel}`);
       expect(css).toContain(`html.dark:root[data-brand-tint] ${sel}`);
@@ -93,7 +93,7 @@ describe("LearningTag", () => {
 
   it("carries a full-perimeter border, never a side accent", () => {
     expect(src).toContain("rounded-full border px-2");
-    expect(src).toContain("border-purple-200");
+    expect(src).toContain("border-orange-200");
     expect(src).toContain("border-gray-200");
     expect(src).not.toMatch(/border-(left|right|top)|border-l-|border-r-|border-t-/);
   });
@@ -107,9 +107,9 @@ describe("LearningTag", () => {
     for (const cls of ["bg-gray-100", "text-gray-500", "border-gray-200"]) {
       expect(src).toContain(cls);
     }
-    // A VERDICT never rotates with the brand hue — `tone-tile` stays on the purple
+    // A VERDICT never rotates with the brand hue — `tone-tile` stays on the tertiary
     // branch only.
-    expect(src).toContain("tone-tile border-purple-200");
+    expect(src).toContain("tone-tile border-orange-200");
     expect(src).not.toMatch(/tone-tile[^"]*gray/);
     // Its own reason, not the learning one.
     expect(src).toContain("PAUSED_NOTE");
@@ -416,6 +416,18 @@ describe("a PAUSED campaign says so where it would have said Learning", () => {
     const table = read("components/campaigns/campaigns-table.tsx");
     expect(table).toContain("const paused = !isActiveStatus(campaign.status);");
     expect(table).toContain("<LearningTag withInfo={false} paused={paused} />");
+  });
+
+  it("every campaign-scoped entity page states it too, off the campaign it already polls", () => {
+    // `OutreachStatCardsAuto` is the stat row on the campaign Leads page (and every
+    // other campaign-scoped entity page). It holds `["campaign", id]` for the funnel
+    // already, so the flag costs no second read; brand and offer grain fetch no
+    // campaign, so `campaignData` is undefined and the flag is false by construction.
+    const auto = read("components/revenue/outreach-stat-cards-auto.tsx");
+    expect(auto).toContain(
+      "const campaignPaused =\n    campaignData != null && !isRunningStatus(campaignData.campaign.status);",
+    );
+    expect(auto).toContain("paused={campaignPaused}");
   });
 
   it("the return chart's tag follows the section's flag", () => {

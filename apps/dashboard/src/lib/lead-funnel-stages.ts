@@ -335,3 +335,33 @@ export function leadStepErrorMessage(err: unknown): string {
   if (status === 404) return "This lead no longer exists.";
   return "Could not record that. Try again.";
 }
+
+/**
+ * The same, for a statement being TAKEN BACK.
+ *
+ * A separate sentence set because the generic one asserts the wrong thing on the way
+ * out: "Could not record that" is about a write, and lead-service's 404 on the reply
+ * withdrawal ("nothing stands") would otherwise read as "This lead no longer exists",
+ * which sends somebody looking for a lead that is right in front of them.
+ *
+ * Both producers write their refusals as sentences for a person to read, so those pass
+ * through verbatim; only the fallbacks are ours.
+ */
+export function leadStepWithdrawErrorMessage(err: unknown): string {
+  const status = (err as { status?: unknown } | null)?.status;
+  const body = (err as { body?: unknown } | null)?.body;
+  const upstream = body && typeof body === "object" ? (body as Record<string, unknown>).error : null;
+
+  if (
+    (status === 400 || status === 404 || status === 409) &&
+    typeof upstream === "string" &&
+    upstream.trim()
+  ) {
+    return upstream.trim().slice(0, 400);
+  }
+  // Nothing stands, on either producer: nobody stated this, or it was already taken
+  // back. Both mean the same thing to the person looking at it.
+  if (status === 404 || status === 409) return "There is nothing here to take back.";
+  if (status === 403) return "This lead is not in your organization.";
+  return "Could not take that back. Try again.";
+}
