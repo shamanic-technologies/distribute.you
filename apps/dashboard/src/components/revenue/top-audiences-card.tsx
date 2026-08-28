@@ -130,6 +130,7 @@ export function TopAudiencesCard({
   campaignId,
   learningByAudienceId,
   learningSettled = false,
+  paused = false,
 }: {
   data?: FeatureAudienceStatsResponse;
   audiences?: AudienceWire[];
@@ -159,6 +160,12 @@ export function TopAudiencesCard({
    */
   learningByAudienceId?: Map<string, boolean>;
   learningSettled?: boolean;
+  /**
+   * The campaign this card is scoped to is PAUSED, so a withheld row reads `Paused`
+   * rather than `Learning`. False at brand and offer grain, where the card ranks
+   * audiences across several campaigns and no single status answers for them.
+   */
+  paused?: boolean;
 }) {
   // The card answers "where should the money go", so it leads with RETURN per dollar —
   // highest first — whenever features-service can project it. Cost per outcome is the
@@ -305,7 +312,7 @@ export function TopAudiencesCard({
                 )}
               </span>
               {rowLearning || scopeLearning ? (
-                <LearningTag withInfo={false} />
+                <LearningTag withInfo={false} paused={paused} />
               ) : (
                 <span className="text-sm font-medium text-gray-800 tabular-nums">
                   {ranksByReturn ? formatReturn(rowReturn) : formatCents(costCents)}

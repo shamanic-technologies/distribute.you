@@ -47,6 +47,7 @@ import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
+import { isRunningStatus } from "@/lib/campaign-controls";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { campaignBudgetCents } from "@/lib/campaign-budget";
 import { isLearning } from "@/lib/learning-threshold";
@@ -130,6 +131,15 @@ export function CampaignOverviewPage() {
     { ...pollOptions },
   );
   const campaign = campaignData?.campaign ?? null;
+  // This campaign is STOPPED. Two consequences, and they are the same statement said
+  // twice: every withheld figure below reads `Paused` rather than `Learning` (nothing is
+  // being measured, so a `Learning` tag promises a number that cannot arrive), and the
+  // countdown band is hidden outright — it states days left against a daily spend that
+  // is not happening, which is a date nobody can stand behind.
+  //
+  // WHICH figures are withheld is unchanged: that stays keyed on the outcome counts, so
+  // restarting the campaign restores exactly the tags and the band it had.
+  const campaignPaused = campaign != null && !isRunningStatus(campaign.status);
 
   // This campaign's OWN daily ceiling, read-only. billing keys a ceiling on
   // (org, brand, funnel, channel, offer), which is exactly what a campaign is, so
@@ -482,7 +492,7 @@ export function CampaignOverviewPage() {
       ? totalWebsiteClicks
       : undefined;
   const learningThreshold = learningThresholdUsd(outcomeUnitCostUsd);
-  const showLearningProgress = revenueRevealed && isLearning(learningSignal);
+  const showLearningProgress = revenueRevealed && !campaignPaused && isLearning(learningSignal);
 
   const basePath = tenantBasePath(orgId, brandId, offerId);
   const campaignsPath = `${basePath}/campaigns`;
@@ -643,6 +653,7 @@ export function CampaignOverviewPage() {
       )}
       <RevenueOverviewSection
         headerAction={CampaignStatusLine}
+        paused={campaignPaused}
         data={revenueRevealed ? data : undefined}
         pipelineActivity={activityRevealed ? mergedPipelineActivity : undefined}
         pipelineActualSeries={activityRevealed ? pipelineActualSeries : undefined}
@@ -689,6 +700,7 @@ export function CampaignOverviewPage() {
             // the per-outcome cost stays here and is dropped at brand level.
             campaignScoped
             campaignId={campaignId}
+            paused={campaignPaused}
           />
         }
         topRow={
@@ -702,6 +714,7 @@ export function CampaignOverviewPage() {
             contactedOverride={leadsContacted}
             outreachLabel="Outreaches"
             signalSharePct={salesInterestShare}
+            paused={campaignPaused}
           />
         }
       />

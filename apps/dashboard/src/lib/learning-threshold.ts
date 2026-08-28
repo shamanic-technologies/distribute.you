@@ -63,3 +63,14 @@ export function scopeIsLearning(rows: readonly { learning: boolean }[]): boolean
 export function audienceIsLearning(counts: readonly (number | null | undefined)[]): boolean {
   return counts.every((count) => isLearning(count));
 }
+
+/**
+ * What the tag says when the campaign that would have done the learning is PAUSED.
+ *
+ * A paused campaign is not gathering the outcomes the bar is waiting for, so `Learning`
+ * there states a process that is not running — the customer reads it as "wait" when the
+ * honest answer is "nothing will change until you restart this". The word is the one the
+ * status pill already uses, so one campaign is described one way wherever it appears.
+ */
+export const PAUSED_NOTE =
+  "This campaign is paused, so no new outcomes are landing and the figure cannot be priced. Restart it to keep measuring.";
