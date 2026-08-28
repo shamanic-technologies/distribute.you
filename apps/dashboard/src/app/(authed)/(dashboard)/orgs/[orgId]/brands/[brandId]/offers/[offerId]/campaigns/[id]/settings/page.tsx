@@ -42,8 +42,8 @@ export default function CampaignSettingsPage() {
     <DashboardPage width="wide">
       <h1 className="mb-2 text-2xl font-semibold text-gray-900">Campaign Settings</h1>
       <p className="mb-8 text-sm text-gray-500">
-        What this campaign may spend in a day, and what its emails promise. Who it says it to
-        is stated once on Offer Settings.
+        Whether this campaign is running, what it may spend in a day, and what its emails promise.
+        Who it says it to is stated once on Offer Settings.
       </p>
 
       <CampaignSettingsCard brandId={brandId} offerId={offerId} campaignId={campaignId} />
