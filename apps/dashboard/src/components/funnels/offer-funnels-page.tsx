@@ -176,7 +176,7 @@ export function OfferFunnelsPage({ embedded = false }: { embedded?: boolean } = 
                   onClick={() =>
                     router.push(`${basePath}/funnels/${encodeURIComponent(row.funnelKey)}`)
                   }
-                  className="border-b border-gray-50 align-top cursor-pointer transition hover:bg-gray-50"
+                  className="border-b border-gray-50 cursor-pointer transition hover:bg-gray-50"
                 >
                   <td className="px-4 py-3">
                     {/* The SAME shape a campaign row wears: the mark, the name, and
