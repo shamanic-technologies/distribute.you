@@ -180,3 +180,24 @@ describe("the band renders what the producer served, and divides nothing", () =>
     expect(band).toContain("if (!breakdown || breakdown.steps.length === 0) return null;");
   });
 });
+
+describe("the band is beta, and the badge rides the band", () => {
+  it("is gated on the beta allowlist at the CALL SITE", () => {
+    // A gate asserted on the component alone passes over a page that renders it
+    // ungated. `useFeatureFlag` is hard-disabled in this app, so a flag here would
+    // hide the band from everyone, silently.
+    expect(page).toContain('import { useIsBetaUser } from "@/lib/use-beta-user";');
+    expect(page).toContain("const isBeta = useIsBetaUser();");
+    expect(page).toContain("{isBeta && (");
+    expect(page.indexOf("{isBeta && (")).toBeLessThan(page.indexOf("<FunnelStepBand"));
+    expect(page).not.toContain("useFeatureFlag");
+  });
+
+  it("carries its own beta badge, so a viewer who sees it knows it is beta", () => {
+    expect(band).toContain('<MaturityBadge level="beta" />');
+    // Beside the heading, not buried below the rungs.
+    const heading = band.indexOf("Step by step</h2>");
+    expect(band.indexOf('<MaturityBadge level="beta" />')).toBeGreaterThan(heading);
+    expect(band.indexOf('<MaturityBadge level="beta" />') - heading).toBeLessThan(120);
+  });
+});

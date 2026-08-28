@@ -2,6 +2,7 @@
 
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { LearningTag } from "@/components/learning-tag";
+import { MaturityBadge } from "@/components/maturity-badge";
 import { isLearning, LEARNING_MIN_OUTCOMES } from "@/lib/learning-threshold";
 import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import type { FunnelStepBreakdown } from "@/lib/revenue-view";
@@ -88,6 +89,7 @@ export function FunnelStepBand({
     <section className="rounded-xl border border-gray-200 bg-white p-5">
       <div className="mb-4 flex items-center gap-1.5">
         <h2 className="font-display text-lg font-bold text-gray-800">Step by step</h2>
+        <MaturityBadge level="beta" />
         <InfoTooltip tip="Every rung of this funnel: how many people reached it, what reaching it cost, and what share of the step before it converted. A cost or a rate resting on fewer than ten people says Learning instead of a figure." />
       </div>
 
