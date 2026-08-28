@@ -22,7 +22,16 @@ import { formatUsdAdaptive } from "@/lib/format-number";
 import { formatRoi } from "@/lib/format-roi";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
-import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { campaignLegFor, funnelLegs } from "@/lib/campaign-leg";
+import { buildFunnelLegRows, type FunnelLegRow } from "@/lib/funnel-leg-rows";
+import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
+import type { FunnelStepBreakdown, FunnelStepRow } from "@/lib/revenue-view";
+import {
+  normalizeSalesFunnelKey,
+  salesFunnelByKey,
+  type SalesFunnelDef,
+  type SalesFunnelKeyWire,
+} from "@/lib/sales-funnels";
 import { CampaignIdentity } from "@/components/campaigns/campaign-identity";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import { Skeleton } from "@/components/skeleton";
@@ -80,6 +89,12 @@ export const COLUMN_INFO = {
     "What this campaign has cost so far, net of any discount: money already billed plus money reserved for emails it has queued. It is the same figure the ROI and % CAC beside it are calculated from. Those two are projections of what it is worth going forward, so this is not a multiplier of them.",
   budget:
     "The most this campaign may spend in a day. It is a ceiling you set, not money spent, so nothing is charged against it until the campaign sends. Zero means it is stopped, and you change it in Campaign Settings.",
+  outcomes:
+    "How many people reached this step of the funnel. Counted once per person, so somebody who came back twice is one. Zero is a measured answer meaning nobody got here yet.",
+  costPerOutcome:
+    "What this funnel has spent so far, divided by the people who reached this step. Every step divides the SAME committed spend, because the money bought the whole funnel rather than one step of it — so this is what reaching this step has cost you, not what this one leg cost.",
+  conversion:
+    "Of the people who reached the step before, the share that reached this one. It is the step's own drop-off, so it is what tells you where the funnel is losing people.",
 } as const;
 
 /** A right-aligned numeric header with its (i) sitting after the label. */
@@ -473,12 +488,208 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
   return { rows, activeRows, settled };
 }
 
+
+/**
+ * ONE SALES FUNNEL, walked arrow by arrow.
+ *
+ * The table above lists the campaigns a brand HAS. On a single funnel that is the wrong
+ * list: a funnel is sold leg by leg, so the arrows we automate are campaigns and the
+ * arrows we do not are worked at the brand's own side — and a table showing only ours
+ * tells the customer their funnel is shorter than it is. Every arrow gets a row here,
+ * whoever performs it.
+ *
+ * The three figures are SERVED rungs of `funnelSteps` (features-service#854). Nothing
+ * here divides: a browser computing a user-facing ratio is the compute-a-stat-in-the-
+ * browser bug, and it would drift from the producer the moment either side changed
+ * scope. `$ Invested` and `$ Budget` stay the campaign's own, so a row we run still says
+ * what it cost and what it may spend, and a row nobody runs says neither rather than $0.
+ *
+ * THE GATE. `$ / Outcome` and `% Conversion` both DIVIDE by the rung's own count, so
+ * under ten they move by tens of dollars and tens of points on the next person and read
+ * as a price we are quoting. Both state `Learning` there. The COUNT is never gated: it is
+ * measured whatever its size, and it is what shows the bar being approached.
+ */
+function LegOutcomeCells({ step }: { step: FunnelStepRow | null }) {
+  // ONE gate for both derived figures: they divide by the same count, so stating one
+  // beside a tag disclaiming the other lets a reader trust a number we just withheld.
+  const thin = isLearning(step?.recipientsReached ?? undefined);
+  return (
+    <>
+      <td className="px-4 py-3 text-right w-[30%] md:w-auto">
+        <span className="font-semibold tabular-nums text-gray-900">
+          {step?.recipientsReached == null
+            ? "—"
+            : step.recipientsReached.toLocaleString("en-US")}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
+        {thin ? (
+          <LearningTag withInfo={false} />
+        ) : step?.costPerReachCents == null ? (
+          "—"
+        ) : (
+          formatCentsAsUsdAdaptive(step.costPerReachCents)
+        )}
+      </td>
+      <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
+        {thin ? (
+          <LearningTag withInfo={false} />
+        ) : step?.conversionFromPreviousPct == null ? (
+          "—"
+        ) : (
+          <>
+            {step.conversionFromPreviousPct.toFixed(1)}%{" "}
+            <span className="text-xs text-gray-400">of {step.fromStep.toLowerCase()}</span>
+          </>
+        )}
+      </td>
+    </>
+  );
+}
+
+export function FunnelLegTable({
+  funnel,
+  rows,
+  extra,
+  basePath,
+  settled,
+}: {
+  funnel: SalesFunnelDef;
+  rows: FunnelLegRow<CampaignRow>[];
+  /** Campaigns this funnel has no arrow for, and seconds on an arrow already taken.
+   *  Still this brand's campaigns, so they are listed rather than dropped. */
+  extra: CampaignRow[];
+  basePath: string;
+  settled: boolean;
+}) {
+  const router = useRouter();
+  const open = (row: CampaignRow) => router.push(`${basePath}/campaigns/${row.campaign.id}`);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+      <table className="w-full table-fixed text-sm md:table-auto md:min-w-[760px]">
+        <thead>
+          <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-4 py-3 w-[70%] md:w-auto">Campaign</th>
+            <th className="px-4 py-3 text-right w-[30%] md:w-auto">
+              <NumericHead label="Outcomes" tip={COLUMN_INFO.outcomes} />
+            </th>
+            <th className="px-4 py-3 text-right hidden md:table-cell">
+              <NumericHead label="$ / Outcome" tip={COLUMN_INFO.costPerOutcome} />
+            </th>
+            <th className="px-4 py-3 text-right hidden md:table-cell">
+              <NumericHead label="% Conversion" tip={COLUMN_INFO.conversion} />
+            </th>
+            <th className="px-4 py-3 text-right hidden md:table-cell">
+              <NumericHead label="$ Invested" tip={COLUMN_INFO.invested} />
+            </th>
+            <th className="px-4 py-3 text-right hidden md:table-cell">
+              <NumericHead label="$ Budget" tip={COLUMN_INFO.budget} />
+            </th>
+            <th className="px-4 py-3 hidden md:table-cell">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {!settled ? (
+            [0, 1, 2].map((i) => (
+              <tr key={`sk-${i}`}>
+                <td className="px-4 py-3" colSpan={7}>
+                  <Skeleton className="h-5 w-full" />
+                </td>
+              </tr>
+            ))
+          ) : (
+            <>
+              {rows.map(({ leg, step, campaign }) => (
+                <tr
+                  key={`leg-${leg.toIndex}`}
+                  onClick={campaign ? () => open(campaign) : undefined}
+                  className={
+                    campaign ? "cursor-pointer transition hover:bg-gray-50" : "transition"
+                  }
+                >
+                  <td className="px-4 py-3 text-gray-800">
+                    {/* The leg is handed in rather than resolved from a channel: an arrow
+                        nobody sells us has no channel to resolve one from, and it is
+                        still one of this funnel's arrows. */}
+                    <CampaignIdentity
+                      funnel={funnel}
+                      featureSlug={campaign?.campaign.featureSlug ?? null}
+                      leg={leg}
+                      viaNote="Done by you"
+                    />
+                  </td>
+                  <LegOutcomeCells step={step} />
+                  {/* Money the CAMPAIGN spent and may spend. An arrow the brand works
+                      itself costs us nothing to run, so it states neither rather than $0
+                      — "we have no figure" and "it cost nothing" are different. */}
+                  <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
+                    {campaign ? fmtUsd(campaign.revenue?.committedCostUsd) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
+                    {/* The `/ day` rider is the sibling table's: a ceiling is a RATE, and
+                        the bare figure reads as a total beside the money column to its
+                        left, which really is one. Withheld on the dash — "we have no
+                        figure" is not a figure per day. */}
+                    {campaign && campaign.budgetCents != null ? (
+                      <>
+                        {fmtDailyBudgetUsd(campaign.budgetCents)}
+                        <span className="text-gray-400"> / day</span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {campaign ? <StatusPill status={campaign.campaign.status} /> : null}
+                  </td>
+                </tr>
+              ))}
+              {extra.map((row) => (
+                <tr
+                  key={row.campaign.id}
+                  onClick={() => open(row)}
+                  className="cursor-pointer transition hover:bg-gray-50"
+                >
+                  <td className="px-4 py-3 text-gray-800">
+                    <CampaignCell campaign={row.campaign} />
+                  </td>
+                  {/* A campaign this funnel has no arrow for has no rung to read, so it
+                      states nothing rather than borrowing another arrow's figures. */}
+                  <LegOutcomeCells step={null} />
+                  <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
+                    {fmtUsd(row.revenue?.committedCostUsd)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
+                    {row.budgetCents == null ? (
+                      fmtDailyBudgetUsd(null)
+                    ) : (
+                      <>
+                        {fmtDailyBudgetUsd(row.budgetCents)}
+                        <span className="text-gray-400"> / day</span>
+                      </>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <StatusPill status={row.campaign.status} />
+                  </td>
+                </tr>
+              ))}
+            </>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function CampaignsTable({
   brandId,
   featureSlug,
   basePath,
   offerId,
   funnelKey,
+  funnelSteps,
 }: {
   brandId: string;
   featureSlug: string;
@@ -496,6 +707,19 @@ export function CampaignsTable({
    * fleet migrates, and comparing them raw would silently show nothing.
    */
   funnelKey?: string | null;
+  /**
+   * The funnel walked rung by rung, off the funnel-scoped revenue read the surface
+   * ALREADY makes. Present → the table lists this funnel's ARROWS instead of our
+   * campaigns, one row each, whoever performs them.
+   *
+   * Passed in rather than fetched here: the funnel page holds this exact payload for the
+   * cards above the table, and a second read of it is how two parts of one screen come
+   * to state different counts. `undefined` is "this surface does not walk a funnel" (the
+   * brand and offer Campaigns pages, which span several and have no single walk); `null`
+   * is the producer saying it has no walk for this scope, which still renders the arrows
+   * with no figures rather than dropping them.
+   */
+  funnelSteps?: FunnelStepBreakdown | null;
 }) {
   const router = useRouter();
   const { rows: allRows, settled } = useCampaignRows(brandId, featureSlug, offerId);
@@ -505,6 +729,39 @@ export function CampaignsTable({
         (r) => r.campaign.funnelKey != null && normalizeSalesFunnelKey(r.campaign.funnelKey) === narrowed,
       )
     : allRows;
+
+  // ONE funnel in scope → walk its arrows. The campaign's leg is resolved against the
+  // channel catalogue here, because that is where the catalogue lives; the row builder
+  // stays a pure module and never looks a channel up.
+  const channels = useAcquisitionChannels();
+  const funnelDef: SalesFunnelDef | null = narrowed ? salesFunnelByKey(narrowed) : null;
+  const legTable = useMemo(() => {
+    if (!funnelDef) return null;
+    return buildFunnelLegRows({
+      legs: funnelLegs(funnelDef),
+      steps: funnelSteps?.steps,
+      campaigns: rows.map((row) => ({
+        toIndex:
+          campaignLegFor(
+            funnelDef,
+            acquisitionChannelForFeatureSlug(row.campaign.featureSlug, channels)?.legs,
+          )?.toIndex ?? null,
+        campaign: row,
+      })),
+    });
+  }, [funnelDef, funnelSteps, rows, channels]);
+
+  if (funnelDef && legTable && funnelSteps !== undefined) {
+    return (
+      <FunnelLegTable
+        funnel={funnelDef}
+        rows={legTable.rows}
+        extra={legTable.extra}
+        basePath={basePath}
+        settled={settled}
+      />
+    );
+  }
 
   return (
     /* Below `md` the row narrows to the two things a reader can act on: what the

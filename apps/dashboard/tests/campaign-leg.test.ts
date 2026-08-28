@@ -28,7 +28,13 @@ const IN_HOUSE_MEETING_BOOKING: ChannelLeg[] = [
 describe("campaignLegFor — which leg of THIS funnel a channel performs", () => {
   it("reads an entry leg in the funnel's own words", () => {
     const leg = campaignLegFor(reply, COLD_EMAIL);
-    expect(leg).toEqual({ fromIndex: null, toIndex: 0, label: "Sales interest" });
+    expect(leg).toEqual({
+      fromIndex: null,
+      toIndex: 0,
+      fromKey: null,
+      toKey: "conversation",
+      label: "Sales interest",
+    });
   });
 
   it("picks the OTHER entry leg of the same channel on a visit-led funnel", () => {
@@ -39,7 +45,13 @@ describe("campaignLegFor — which leg of THIS funnel a channel performs", () =>
 
   it("names an internal leg by the two steps it sits between", () => {
     const leg = campaignLegFor(reply, FOUNDER_LED_CLOSING);
-    expect(leg).toEqual({ fromIndex: 2, toIndex: 3, label: "Meeting attended → Paid client" });
+    expect(leg).toEqual({
+      fromIndex: 2,
+      toIndex: 3,
+      fromKey: "meeting_attended",
+      toKey: "paid_client",
+      label: "Meeting attended → Paid client",
+    });
   });
 
   it("disambiguates a multi-leg internal channel by the funnel's own funnel", () => {

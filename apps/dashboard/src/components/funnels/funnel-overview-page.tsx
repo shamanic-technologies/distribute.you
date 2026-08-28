@@ -11,7 +11,6 @@ import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
-import { FunnelStepBand } from "@/components/funnels/funnel-step-band";
 
 /**
  * ONE sales funnel, answered the way its offer is answered.
@@ -125,15 +124,18 @@ export function FunnelOverviewPage() {
         }
       />
 
-      {/* The rungs, full width UNDER the chart. The four figures above say what the
-          whole funnel returned; this says WHERE people fall out of it, which is the
-          question this page exists for. Beside the cost cards it would be five rows in
-          ~280px, which is why it is not there. */}
-      <FunnelStepBand breakdown={revenuePending ? undefined : data?.funnelSteps} pending={revenuePending} />
+      {/* The funnel walked arrow by arrow, full width UNDER the chart. The four figures
+          above say what the whole funnel returned; this says WHERE people fall out of it
+          and WHO works each arrow, which is the question this page exists for.
 
-      {/* Full width UNDER the chart, exactly where the offer Overview puts what is
-          behind its numbers. Beside the cost cards it read as a side note; a funnel's
-          campaigns are the thing that produced everything above them. */}
+          ONE table, not two. A separate "Step by step" band stated the same rung's
+          conversion and cost beside this list, under its own learning gate — two places
+          for one statement, which is how a screen comes to contradict itself. The rungs
+          moved into the row that names who performs them.
+
+          `funnelSteps` is passed from here rather than re-read inside the table: this
+          page already holds it for the cards above, and a second read is how two parts of
+          one screen come to state different counts. */}
       <div className="space-y-3 pt-2">
         <h2 className="font-display text-lg font-bold text-gray-800">Campaigns</h2>
         <CampaignsTable
@@ -142,6 +144,7 @@ export function FunnelOverviewPage() {
           basePath={basePath}
           offerId={offerId}
           funnelKey={rawKey}
+          funnelSteps={revenuePending ? null : (data?.funnelSteps ?? null)}
         />
       </div>
 
