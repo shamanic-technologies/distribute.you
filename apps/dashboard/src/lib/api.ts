@@ -3489,6 +3489,65 @@ export async function getOfferRevenue(
 }
 
 /**
+ * What ONE SALES FUNNEL of an offer returned.
+ *
+ * The grain a customer's funnel screen asks about, and the same realized-money answer
+ * the offer read gives one level up: the spend breakdown the cost card reads,
+ * `roiHistory` over the brand's whole life, the dated series and the leads ledger.
+ * features-service prices the funnel on its OWN declared terms, so a $200 self-serve
+ * funnel and a $20k contract funnel are never blended.
+ *
+ * The SAME parser as every other grain. It carries no `featureSlug` — a funnel spans
+ * the channels carrying its legs — which is exactly the field that must not be
+ * required in a parser shared across grains.
+ *
+ * A funnel this offer does not sell answers 404 rather than the offer's own numbers
+ * under a funnel's name; the caller renders that, never a fabricated zero.
+ */
+export async function getOfferFunnelRevenue(
+  offerId: string,
+  funnelKey: string,
+  brandId: string,
+  token?: string,
+): Promise<RevenueOverview> {
+  const query = new URLSearchParams({ brandId });
+  // Same NET basis as every other money read on this app. Never a per-caller toggle.
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(
+    `/offers/${offerId}/funnels/${encodeURIComponent(funnelKey)}/revenue?${query.toString()}`,
+    { token },
+  );
+  return parseFeatureRevenue(raw, "getOfferFunnelRevenue");
+}
+
+/** GET /offers/:offerId/funnels/:funnelKey/pipeline-activity — the funnel's own days. */
+export async function getOfferFunnelPipelineActivity(
+  offerId: string,
+  funnelKey: string,
+  params: { brandId: string; days?: number; timezone?: string },
+  token?: string,
+): Promise<PipelineActivityResponse> {
+  const query = new URLSearchParams({ brandId: params.brandId });
+  if (params.days != null) query.set("days", String(params.days));
+  if (params.timezone) query.set("timezone", params.timezone);
+  // Net, for the reason the per-feature reader states at length: the forecast bar
+  // divides a budget the org really spends, so a gross divisor understates it.
+  query.set("pricing", "net");
+  const raw = await apiCall<unknown>(
+    `/offers/${offerId}/funnels/${encodeURIComponent(funnelKey)}/pipeline-activity?${query.toString()}`,
+    { token },
+  );
+  const parsed = PipelineActivityResponseSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] getOfferFunnelPipelineActivity: response shape mismatch", {
+      issues: parsed.error.issues,
+    });
+    throw new Error("[dashboard] getOfferFunnelPipelineActivity: invalid response shape");
+  }
+  return parsed.data;
+}
+
+/**
  * What a BRAND returned — across every acquisition channel it runs.
  *
  * The offer read above, one level further up, and NOT the sum of it: a brand holds

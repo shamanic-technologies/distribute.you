@@ -2,37 +2,35 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { getOfferFunnels } from "@/lib/api";
+import { getOfferFunnelRevenue, getOfferFunnelPipelineActivity } from "@/lib/api";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { pollOptions } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
-import type { RevenueOverview } from "@/lib/revenue-view";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
-import { funnelViews, costCoverageNote, unpricedFunnelReasonLabel } from "@/lib/offer-funnels";
-import { campaignFunnel } from "@/lib/campaign-funnel";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 
 /**
  * ONE sales funnel, answered the way its offer is answered.
  *
- * The SAME `RevenueOverviewSection` + `OutreachStatCards` the offer Overview renders,
- * fed by the row features-service already serves for this funnel. One layout, one
- * vocabulary: a funnel cannot read one way here and another way one level up.
+ * The same `RevenueOverviewSection` and `OutreachStatCards` the offer Overview
+ * renders, on the funnel's OWN money: features-service answers this grain in full
+ * (its #852), so the spend breakdown, the return over the brand's life and the dated
+ * series are this funnel's rather than a wider scope's borrowed under its name.
  *
- * Two things it does NOT chart, and neither is an omission:
+ * Two deliberate differences from the offer, and neither is an omission:
  *
- *   - the per-day outreach bars and the return curve are served per BRAND and per
- *     OFFER, not per funnel. Drawing the offer's curve under a funnel's name would
- *     state a wider scope's shape as this one's, which is the bug this repo keeps
- *     recording. The figures that ARE this funnel's are all here.
- *   - a daily budget: money is funded per (funnel, channel, offer), so a funnel with
- *     several channels has no single ceiling of its own to compare its spend against.
+ *   - it charts the RETURN, not the per-day outreach bars. Outreach is what a CHANNEL
+ *     does and a funnel carries several, so the bars would describe one of its legs;
+ *     the return is what the whole funnel is judged on.
+ *   - it claims no daily budget. Money is funded per (funnel, channel, offer), so a
+ *     funnel with several channels has no single ceiling of its own; the card states
+ *     what was spent and claims none.
  *
- * A funnel not every leg has a campaign for still answers with what it has, which is
- * exactly what the producer sends.
+ * A funnel this offer does not sell answers 404 upstream rather than handing back the
+ * offer's numbers under a funnel's name, and this states that rather than a zero.
  */
 export function FunnelOverviewPage() {
   const params = useParams<{ orgId: string; brandId: string; offerId: string; funnelKey: string }>();
@@ -42,27 +40,24 @@ export function FunnelOverviewPage() {
   const rawKey = params?.funnelKey ? decodeURIComponent(params.funnelKey) : "";
   const featureSlug = useSoleFeatureSlug();
   const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
+  const wanted = rawKey ? normalizeSalesFunnelKey(rawKey as SalesFunnelKeyWire) : null;
+  const enabled = Boolean(brandId && offerId && rawKey);
 
-  // The offer's funnels, on the key its own list already polls — opening a funnel
-  // costs no request. There is no per-funnel read: the row IS the answer.
-  const funnels = useAuthQuery(
-    ["offerFunnels", brandId, offerId],
-    () => getOfferFunnels(offerId, brandId),
-    { enabled: Boolean(brandId && offerId), ...pollOptions },
+  const revenue = useAuthQuery(
+    ["offerFunnelRevenue", brandId, offerId, wanted ?? "none"],
+    () => getOfferFunnelRevenue(offerId, rawKey, brandId),
+    { enabled, ...pollOptions },
   );
 
-  const wanted = rawKey ? normalizeSalesFunnelKey(rawKey as SalesFunnelKeyWire) : null;
-  const row = useMemo(() => {
-    if (!wanted) return null;
-    return (
-      funnelViews(funnels.data?.funnels ?? []).find(
-        (r) => normalizeSalesFunnelKey(r.funnelKey as SalesFunnelKeyWire) === wanted,
-      ) ?? null
-    );
-  }, [funnels.data, wanted]);
+  const activity = useAuthQuery(
+    ["offerFunnelPipelineActivity", brandId, offerId, wanted ?? "none"],
+    () => getOfferFunnelPipelineActivity(offerId, rawKey, { brandId }),
+    { enabled, ...pollOptions },
+  );
 
   // This funnel's campaigns, collapsed on the campaign IDENTITY by the same hook the
-  // Campaigns table uses — so the rows below and the gate above cannot disagree.
+  // Campaigns table uses — so the rows below and the gate above cannot disagree about
+  // how many campaigns there are or whether they have been measured.
   const { rows: allRows } = useCampaignRows(brandId, featureSlug, offerId);
   const funnelRows = useMemo(
     () =>
@@ -76,77 +71,54 @@ export function FunnelOverviewPage() {
     [allRows, wanted],
   );
   // The ratios state `Learning` while every campaign carrying this funnel still is,
-  // and clear the moment one is measured. The totals beside them are never gated.
+  // and clear the moment one is measured. The totals beside them are never gated:
+  // money already spent and pipeline already earned are facts, not prices.
   const economicsLearning = scopeIsLearning(funnelRows);
 
-  const def = rawKey ? campaignFunnel(rawKey as SalesFunnelKeyWire) : null;
-  const coverage = costCoverageNote(row?.coverage);
-  const pending = funnels.isPending && !funnels.isError;
-
-  // The section's shape, carrying THIS funnel's figures and nothing wider. Built
-  // rather than fetched because features-service answers a funnel as a row of its
-  // offer's list, not as a read of its own.
-  const data: RevenueOverview | undefined = row
-    ? {
-        totalPipelineUsd: row.pipelineUsd,
-        costEconomics: {
-          committedCostUsd: row.investedUsd,
-          costOfAcquisitionPct: row.costOfAcquisitionPct,
-          roiMultiple: row.roiMultiple,
-          costPerAcquisitionUsd: row.costPerAcquisitionUsd,
-        },
-        // Empty rather than borrowed. These are the per-lead breakdowns the offer read
-        // carries and the funnel row does not; the section renders nothing for them,
-        // which is the honest answer, and filling them from the offer would state a
-        // wider scope's people as this funnel's.
-        timeSeries: [],
-        organizations: [],
-        leads: [],
-        events: [],
-      }
-    : undefined;
+  // Reveal on SETTLE, never on success: a read that errors falls through to a stated
+  // page rather than holding it in a skeleton forever.
+  const revenuePending = revenue.isPending && !revenue.isError;
+  const activityPending = activity.isPending && !activity.isError;
+  const data = revenue.data;
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
       <RevenueOverviewSection
-        data={pending ? undefined : data}
-        revenuePending={pending}
-        costPending={pending}
-        todayCostPending={pending}
-        activityPending={false}
+        data={revenuePending ? undefined : data}
+        pipelineActivity={activityPending ? undefined : activity.data}
+        revenuePending={revenuePending}
+        costPending={revenuePending}
+        todayCostPending={revenuePending}
+        activityPending={activityPending}
         economicsLearning={economicsLearning}
         funnelKey={rawKey ? (rawKey as SalesFunnelKeyWire) : null}
-        // The per-day outreach bars describe a CHANNEL, and a funnel carries several.
-        // What a funnel is judged on is the return, so it charts that — the same call
-        // the offer and the brand make one level up.
+        // The per-day bars describe a CHANNEL and a funnel carries several. What a
+        // funnel is judged on is the return, which is the call the offer and the brand
+        // make one level up.
         showActivityChart={false}
         showRoiTrend
         // Money is funded per (funnel, channel, offer), so a funnel carrying several
-        // channels has no single ceiling of its own. The card states what was spent
-        // and claims none.
+        // channels has no single ceiling of its own to compare its spend against.
         dailyBudgetCents={null}
-        budgetNote="There is no single daily budget for a sales funnel: money is funded per channel, so this is what the funnel spent with no ceiling of its own to compare it against."
+        budgetNote="There is no daily budget for a single sales funnel: money is funded per channel, so this is what the funnel spent, with no ceiling of its own to compare it against."
         brandId={brandId}
         featureSlug={featureSlug}
         basePath={basePath}
         topRow={
           <OutreachStatCards
-            // The legacy /stats counts are per CHANNEL, not per funnel. The cards read
-            // the economics block above for everything this page states.
+            // The legacy /stats counts are per CHANNEL; everything this row states
+            // comes off the funnel's own money below.
             stats={{}}
+            spend={revenuePending ? null : data?.spend}
+            economics={revenuePending ? null : data?.costEconomics}
+            totalPipelineUsd={revenuePending ? null : (data?.totalPipelineUsd ?? null)}
+            pending={revenuePending}
+            showEconomics
+            economicsLearning={economicsLearning}
             // Outreach is what a CHANNEL does, counted per channel and per brand. A
             // funnel carrying several has none of its own, and a zero would read as
             // "nobody was contacted".
             showOutreach={false}
-            // The spend BLOCK is per-channel detail the funnel row does not carry;
-            // the cost card reads `economics.committedCostUsd` for the total, which is
-            // this funnel's own.
-            spend={null}
-            pending={pending}
-            economics={pending ? null : data?.costEconomics}
-            totalPipelineUsd={pending ? null : (row?.pipelineUsd ?? null)}
-            showEconomics
-            economicsLearning={economicsLearning}
             showFunnelMetrics={false}
           />
         }
@@ -166,22 +138,13 @@ export function FunnelOverviewPage() {
         />
       </div>
 
-      {!pending && !row && (
+      {!revenuePending && revenue.isError && (
         <p className="text-sm text-gray-500">
-          {funnels.isError
-            ? "Couldn\u2019t read this offer\u2019s sales funnels."
-            : `${def?.name ?? rawKey} is not one of this offer\u2019s sales funnels.`}
+          Couldn&rsquo;t read this funnel&rsquo;s money. A funnel this offer does not
+          sell answers with nothing rather than with the offer&rsquo;s own numbers under
+          its name.
         </p>
       )}
-
-      {row && !row.priced && (
-        <p className="text-sm text-gray-500">
-          {unpricedFunnelReasonLabel(row.unpricedReason)}. The spend above is real: you
-          paid it.
-        </p>
-      )}
-
-      {coverage && <p className="text-xs text-gray-500 max-w-3xl">{coverage}</p>}
     </div>
   );
 }
