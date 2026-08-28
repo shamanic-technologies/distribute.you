@@ -69,7 +69,7 @@ describe("the offer is a route level of its own", () => {
     expect(body).toContain('id: "funnel-audiences"');
     expect(body).toContain('label: "Sales Funnel Settings"');
     const crumb = read("components/header-page-context.tsx");
-    expect(crumb).toContain("funnelKey: section === \"funnels\" && fourth");
+    expect(crumb).toContain("const funnelKey = section === \"funnels\" && fourth");
     expect(crumb).toContain("<FunnelCrumb");
   });
 
