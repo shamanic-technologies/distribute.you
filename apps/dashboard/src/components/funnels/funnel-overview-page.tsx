@@ -12,6 +12,7 @@ import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaign
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { FunnelStepBand } from "@/components/funnels/funnel-step-band";
+import { useIsBetaUser } from "@/lib/use-beta-user";
 
 /**
  * ONE sales funnel, answered the way its offer is answered.
@@ -40,6 +41,9 @@ export function FunnelOverviewPage() {
   const offerId = params?.offerId ?? "";
   const rawKey = params?.funnelKey ? decodeURIComponent(params.funnelKey) : "";
   const featureSlug = useSoleFeatureSlug();
+  // Sub-element gate on an otherwise-GA page: the funnel Overview stays visible to
+  // everyone and only this band is beta, so the badge rides the band itself.
+  const isBeta = useIsBetaUser();
   const basePath = `/orgs/${orgId}/brands/${brandId}/offers/${offerId}`;
   const wanted = rawKey ? normalizeSalesFunnelKey(rawKey as SalesFunnelKeyWire) : null;
   const enabled = Boolean(brandId && offerId && rawKey);
@@ -129,7 +133,12 @@ export function FunnelOverviewPage() {
           whole funnel returned; this says WHERE people fall out of it, which is the
           question this page exists for. Beside the cost cards it would be five rows in
           ~280px, which is why it is not there. */}
-      <FunnelStepBand breakdown={revenuePending ? undefined : data?.funnelSteps} pending={revenuePending} />
+      {isBeta && (
+        <FunnelStepBand
+          breakdown={revenuePending ? undefined : data?.funnelSteps}
+          pending={revenuePending}
+        />
+      )}
 
       {/* Full width UNDER the chart, exactly where the offer Overview puts what is
           behind its numbers. Beside the cost cards it read as a side note; a funnel's
