@@ -280,6 +280,15 @@ html.dark .text-blue-900 { color: #bfdbfe; }
 html.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3); }
 html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.15); }
 html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15); }
+/* The blue and indigo 700-weight text, and the indigo border, that the leads board's
+   source pills read through — one pill per column, saying whether the platform
+   measured the step, the customer's tracker reported it, or a person stated it. Same
+   gap the two pairs above had: the -50 tints were already remapped while the text and
+   border weights beside them were not, so the pill carried near-black text on the dark
+   surface. */
+html.dark .text-blue-700 { color: #93c5fd; }
+html.dark .text-indigo-700 { color: #a5b4fc; }
+html.dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3); }
 
 /* Shadows — softer in dark mode */
 html.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.3); }

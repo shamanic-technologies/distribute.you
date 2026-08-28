@@ -15,6 +15,12 @@ describe("Dashboard mobile responsiveness", () => {
     path.join(__dirname, "../src/components/audiences/engaged-leads-page.tsx"),
     "utf-8",
   );
+  // The company mark moved to its own module when the leads BOARD started drawing it
+  // too — one implementation, so a card and a row cannot disagree about a company.
+  const companyLogo = fs.readFileSync(
+    path.join(__dirname, "../src/components/company-logo.tsx"),
+    "utf-8",
+  );
   const billingPage = fs.readFileSync(
     path.join(__dirname, "../src/app/(authed)/(dashboard)/orgs/[orgId]/billing/page.tsx"),
     "utf-8",
@@ -93,9 +99,9 @@ describe("Dashboard mobile responsiveness", () => {
   });
 
   it("sizes the company mark by style, since a class cannot be built from a prop", () => {
-    const at = leadsPage.indexOf("function CompanyLogo(");
+    const at = companyLogo.indexOf("function CompanyLogo(");
     expect(at).toBeGreaterThan(-1);
-    const logo = leadsPage.slice(at, at + 1200);
+    const logo = companyLogo.slice(at, at + 1200);
     expect(logo).toContain("size = 24");
     expect(logo).toContain("style={box}");
     // Twice the rendered size so the mark stays crisp on a retina screen.
