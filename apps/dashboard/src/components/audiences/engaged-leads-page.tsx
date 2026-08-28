@@ -1228,7 +1228,9 @@ export function EngagedLeadsPage({
   // card where the person put it while the producer answers — the producer's own
   // answer always wins, and a refusal drops it. Keyed on the lead's email, which is
   // what the statement is written against.
-  const [statedReplyKinds, setStatedReplyKinds] = useState<Map<string, string>>(new Map());
+  const [statedReplyKinds, setStatedReplyKinds] = useState<Map<string, { kind: string; at: string }>>(
+    new Map(),
+  );
 
   // The columns are TRIAGE states, not funnel rungs, so they need no funnel to lay out
   // in — which is why the board is offered at brand level too now. The funnel's own
@@ -1253,10 +1255,14 @@ export function EngagedLeadsPage({
         `[dashboard] reply kinds capped at ${MAX_REPLY_KINDS}; older statements are not on this board`,
       );
     }
-    const out = new Map<string, string>();
+    const out = new Map<string, { kind: string; at: string }>();
     for (const q of rows) {
       // Newest first, so the FIRST row for an email is that lead's current statement.
-      if (q.email && !out.has(q.email) && q.replyKind) out.set(q.email, q.replyKind);
+      // The instant rides along with it: a stated kind is dated by WHEN SOMEBODY SAID
+      // IT, never by the delivery event underneath, which is a different moment.
+      if (q.email && !out.has(q.email) && q.replyKind) {
+        out.set(q.email, { kind: q.replyKind, at: q.qualifiedAt });
+      }
     }
     return out;
   }, [qualifications]);
@@ -1266,7 +1272,10 @@ export function EngagedLeadsPage({
   const boardCards: LeadBoardCard[] = useMemo(() => {
     const out: LeadBoardCard[] = [];
     for (const lead of searchedLeads) {
-      const stated = lead.email ? (statedReplyKinds.get(lead.email) ?? replyKindByEmail.get(lead.email) ?? null) : null;
+      const statement = lead.email
+        ? (statedReplyKinds.get(lead.email) ?? replyKindByEmail.get(lead.email) ?? null)
+        : null;
+      const stated = statement?.kind ?? null;
       const column = leadBoardColumnFor({
         contacted: lead.contacted === true,
         unsubscribed: lead.unsubscribed === true,
@@ -1287,6 +1296,11 @@ export function EngagedLeadsPage({
         orgDomain: full?.organization?.primaryDomain ?? null,
         column,
         replyKind: stated,
+        // When a kind was STATED, the card is dated by that statement; otherwise by the
+        // timestamp that proves the lead's own delivery status — the same one map the
+        // table's Date column reads, so the two surfaces cannot date one lead two ways.
+        // Neither available means the card says nothing rather than borrowing a date.
+        statusAt: statement?.at ?? leadDateForStatus(lead, getLeadConsolidatedStatus(lead)),
       });
     }
     return out;
@@ -1600,7 +1614,11 @@ export function EngagedLeadsPage({
                 }}
                 onMove={(email, kind) => {
                   setBoardError(null);
-                  setStatedReplyKinds((prev) => new Map(prev).set(email, kind));
+                  setStatedReplyKinds((prev) =>
+                    // Stamped now because that is when the person said it — the read
+                    // that replaces this carries instantly-service's own instant.
+                    new Map(prev).set(email, { kind, at: new Date().toISOString() }),
+                  );
                   moveOnBoard.mutate(
                     { email, kind },
                     {

@@ -15,6 +15,7 @@ import {
   type LeadBoardColumnKey,
 } from "@/lib/lead-board";
 import { REPLY_TONE_PILL, replyKindOption, type ReplyKind, type ReplyTone } from "@/lib/reply-kind";
+import { timeAgo } from "@/lib/friendly-datetime";
 
 /**
  * The leads BOARD — four triage columns, one card per lead.
@@ -41,9 +42,13 @@ import { REPLY_TONE_PILL, replyKindOption, type ReplyKind, type ReplyTone } from
  *     a screenshot the browser composites — which is where the square white corners
  *     behind a rounded card come from. The ghost below is a live element, so its
  *     radius and its shadow are the card's own.
- *   - **Every card wears a tag.** The kind somebody stated when there is one, the
- *     column's own word when there is not. A card with no tag reads as a card we know
- *     nothing about, and we always know at least that we contacted them.
+ *   - **Every card wears a tag, and the tag says WHEN.** The kind somebody stated when
+ *     there is one, the column's own word when there is not — and beside it, quieter,
+ *     how long ago that happened. A card with no tag reads as a card we know nothing
+ *     about, and we always know at least that we contacted them; a tag with no date
+ *     reads as a state with no age, which is the one thing a triage board is read for.
+ *     That line replaced the per-card move menu: the same row now states the card
+ *     rather than offering to change it, and a move is the drag the board already has.
  */
 
 /** What the board needs of a lead. Structural, so nothing here imports a wire type. */
@@ -60,6 +65,15 @@ export interface LeadBoardCard {
   column: LeadBoardColumnKey;
   /** The kind already stated for this lead, rendered as its badge. */
   replyKind: string | null;
+  /**
+   * When the card's STATUS happened — the moment somebody stated the kind when one
+   * was stated, otherwise the timestamp that proves the lead's own delivery status.
+   *
+   * Null when we hold no instant for it, and the card then says nothing rather than
+   * dating the status from whatever else it has. A tag with the wrong date under it
+   * is worse than a tag with none.
+   */
+  statusAt: string | null;
 }
 
 /** The move a person has picked but not yet said the kind of. */
@@ -115,19 +129,11 @@ function PersonMark({ photoUrl, name }: { photoUrl: string | null; name: string 
  * underneath, quieter, behind "Via".
  *
  * The ORG leads because a board is read company by company; the person follows. The
- * tag row carries the move control on its right, so stating what a card is and
- * offering to change it cost ONE line between them rather than two.
+ * tag row states WHAT this card is and HOW LONG it has been that, on one line: the
+ * two together are the whole reading a triage board is scanned for, and neither is
+ * useful without the other.
  */
-function CardBody({
-  card,
-  onMenu,
-  menuOpen,
-}: {
-  card: LeadBoardCard;
-  /** Absent on the drag ghost, which offers no controls. */
-  onMenu?: () => void;
-  menuOpen?: boolean;
-}) {
+function CardBody({ card }: { card: LeadBoardCard }) {
   const stated = replyKindOption(card.replyKind);
   const column = LEAD_BOARD_COLUMNS.find((c) => c.key === card.column);
   const tag = stated
@@ -151,7 +157,7 @@ function CardBody({
         </div>
       </div>
 
-      <div className="mt-1.5 flex items-center justify-between gap-2">
+      <div className="mt-1.5 flex min-w-0 items-center gap-2">
         {/* WHY this card is in this column. A column holds several kinds, so the badge
             is the only place the particular one survives — and when nobody has stated
             one the column's own word stands in, because a tagless card reads as
@@ -162,22 +168,20 @@ function CardBody({
         >
           {tag.label}
         </span>
-        {onMenu && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onMenu();
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            aria-expanded={menuOpen}
-            aria-label={`Move ${card.name} to another column`}
-            className="shrink-0 rounded-md px-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300"
+        {/* HOW LONG it has been that. Quiet grey and beside the tag rather than pinned
+            to the right: it qualifies the tag, so it reads as part of the same
+            statement instead of as a second column of its own. The TAG is what gives
+            way when the row is tight, never the date: the longest kind is far longer
+            than any age, and a truncated "3 h…" states nothing at all. Absent instant
+            renders nothing — an undated status is honest, an invented date is not. */}
+        {card.statusAt && (
+          <span
+            data-testid="lead-board-card-age"
+            className="shrink-0 text-[11px] text-gray-400"
+            title={new Date(card.statusAt).toLocaleString()}
           >
-            <span aria-hidden className="text-sm leading-none">
-              &#8943;
-            </span>
-          </button>
+            {timeAgo(card.statusAt)}
+          </span>
         )}
       </div>
     </>
@@ -218,7 +222,6 @@ export function LeadBoard({
   onMove: (email: string, kind: ReplyKind) => void;
 }) {
   const [pending, setPending] = useState<PendingMove | null>(null);
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   // How many cards each column has been asked for. Per column, because the columns are
   // wildly different sizes — Contacted holds the whole campaign and Opt-out holds a
   // handful — so one shared count would either hide most of the board or defeat itself.
@@ -237,7 +240,6 @@ export function LeadBoard({
   }, [cards]);
 
   const startMove = (card: LeadBoardCard, to: LeadBoardColumn) => {
-    setMenuFor(null);
     setPending({ card, to });
   };
 
@@ -363,7 +365,6 @@ export function LeadBoard({
 
               <div className="space-y-2">
                 {drawn.map((card) => {
-                  const targets = canMove && card.email ? movableColumnsFrom(card.column) : [];
                   const lifted = board.isLifted(card);
                   // The card in the air leaves its OUTLINE behind rather than fading in
                   // place: a column that collapses under the finger reflows the board
@@ -394,30 +395,7 @@ export function LeadBoard({
                       }}
                       className="select-none cursor-pointer rounded-lg border border-gray-200 bg-white p-2 hover:border-gray-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300"
                     >
-                      <CardBody
-                        card={card}
-                        onMenu={targets.length > 0 ? () => setMenuFor(menuFor === card.id ? null : card.id) : undefined}
-                        menuOpen={menuFor === card.id}
-                      />
-                      {menuFor === card.id && targets.length > 0 && (
-                        <ul className="mt-1.5 space-y-0.5 border-t border-gray-100 pt-1.5">
-                          {targets.map((target) => (
-                            <li key={target.key}>
-                              <button
-                                type="button"
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startMove(card, target);
-                                }}
-                                className="w-full rounded px-1.5 py-1 text-left text-xs text-gray-600 hover:bg-gray-50"
-                              >
-                                {target.label}
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      <CardBody card={card} />
                     </article>
                   );
                 })}

@@ -115,13 +115,13 @@ describe("a move states a reply KIND, and it asks which", () => {
   it("holds what was just stated so the card moves before the re-read lands", () => {
     // The write's only visible effect is the jump, and the jump comes from a re-read —
     // without this the control reads as dead for a round trip.
-    expect(page).toContain("setStatedReplyKinds((prev) => new Map(prev).set(email, kind))");
+    expect(page).toContain("new Map(prev).set(email, { kind, at: new Date().toISOString() })");
     // A refusal drops it: the board must never state something nobody recorded.
     expect(page).toContain("next.delete(email)");
   });
 
   it("renders the producer's own refusal, never the thrown Error's message", () => {
-    const move = sliceFrom(page, "onMove={(email, kind)", 1600);
+    const move = sliceFrom(page, "onMove={(email, kind)", 1900);
     expect(move).toContain("leadStepErrorMessage(err)");
     expect(move).not.toContain("err.message");
   });
@@ -180,12 +180,17 @@ describe("one gesture, two actions, told apart by time", () => {
     expect(ghost).toContain("<CardBody");
   });
 
-  it("keeps the card reachable without a pointer at all", () => {
+  it("opens a card without a pointer at all", () => {
+    // OPENING is keyboard-reachable; MOVING is the drag and nothing else. The per-card
+    // `...` menu that listed the targets is gone — its row now states how long the card
+    // has been in its column, which is what a triage board is scanned for. Accepted
+    // consequence: a move needs a pointer.
     expect(board).toContain('role="button"');
     expect(board).toContain("tabIndex={0}");
     expect(board).toContain('e.key === "Enter"');
     expect(board).toContain("movableColumnsFrom(card.column)");
-    expect(board).toContain("startMove(card, target)");
+    expect(board).not.toContain("startMove(card, target)");
+    expect(board).not.toContain("setMenuFor");
   });
 
   it("resolves the drop on the WINDOW, not on whatever card is under the pointer", () => {
@@ -246,13 +251,31 @@ describe("the card says what it is in two lines and one tag", () => {
     expect(body).toContain("REPLY_TONE_PILL[tag.tone]");
   });
 
-  it("spends no line of its own on the move control", () => {
-    // The `Move` button sat under the tag and cost the card a whole row for a control
-    // that is reachable from the card itself.
-    expect(board).not.toContain(">\n                            Move\n");
+  it("says HOW LONG it has been that, beside the tag and never as its own line", () => {
+    // A tag with no age is the one thing a triage board cannot be read for. It sits
+    // beside the tag rather than pinned right, because it qualifies the tag — and it
+    // took the place of the `...` menu rather than costing the card another row.
     const body = sliceFrom(board, "function CardBody(", 2600);
-    expect(body).toContain("flex items-center justify-between");
-    expect(body).toContain("aria-label={`Move ${card.name}");
+    expect(body).toContain("timeAgo(card.statusAt)");
+    expect(body).toContain("text-gray-400");
+    expect(body).not.toContain("justify-between");
+    expect(body).not.toContain("aria-label={`Move ${card.name}");
+    expect(board).not.toContain("&#8943;");
+  });
+
+  it("dates a STATED kind by the statement, everything else by the delivery status", () => {
+    // A stated kind happened when somebody said it; the delivery event underneath is a
+    // different moment. And the un-stated case reads the ONE map the table's own Date
+    // column reads, so the two surfaces cannot date one lead two ways.
+    expect(page).toContain("out.set(q.email, { kind: q.replyKind, at: q.qualifiedAt })");
+    expect(page).toContain(
+      "statusAt: statement?.at ?? leadDateForStatus(lead, getLeadConsolidatedStatus(lead))",
+    );
+  });
+
+  it("says nothing rather than dating a status it holds no instant for", () => {
+    const body = sliceFrom(board, "function CardBody(", 2600);
+    expect(body).toContain("{card.statusAt && (");
   });
 });
 
