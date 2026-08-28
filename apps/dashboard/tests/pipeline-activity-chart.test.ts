@@ -194,3 +194,27 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(outcome).toContain("expected");
   });
 });
+
+describe("the campaign Outcome chart reads the brand's tertiary", () => {
+  const outcome = read("components/revenue/outcome-trend-card.tsx");
+  const css = read("app/globals.css");
+
+  it("draws its line, its fill and its hovered dot in orange, never the primary", () => {
+    // This card only ever renders at CAMPAIGN grain (the brand and offer Overviews
+    // draw Return-on-spend instead), and a campaign's surfaces read in the charter's
+    // tertiary. `text-brand-600` here would put the primary on a page whose tag,
+    // band and marks are all tertiary.
+    expect(outcome).not.toContain("text-brand-600");
+    expect(outcome).toContain("text-orange-600");
+  });
+
+  it("opts into the brand-hue rotation, or it stays OUR orange on a tinted brand", () => {
+    // An SVG `stroke`/`fill` attribute is not reached by any utility remap, so the
+    // colour rides `currentColor` off a class — and that class only rotates under a
+    // `tone-tile` ancestor. Scoped to the chart wrapper, not the card, so the white
+    // surface and the grey chrome above it are untouched.
+    expect(outcome).toContain('className="tone-tile flex-1 min-h-[180px]"');
+    expect(outcome).toContain('stroke="currentColor"');
+    expect(css).toContain(":root[data-brand-tint] .tone-tile .text-orange-600");
+  });
+});
