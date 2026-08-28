@@ -141,8 +141,11 @@ describe("the surfaces that name a campaign", () => {
     // name — a funnel is sold leg by leg, so naming the whole funnel overstates
     // what most campaigns actually buy.
     const inline = identity.slice(identity.indexOf("export function CampaignIdentityInline("));
-    const funnelHalf = inline.indexOf("<SalesFunnelMark");
-    const funnelWord = inline.indexOf("{leg}");
+    // The first half's tile is the LEG's mark, with the funnel's as the fallback for
+    // an arrow this app has not drawn — whichever renders, it sits before the words.
+    const funnelHalf = inline.indexOf("<FunnelLegMark");
+    const funnelWord = inline.indexOf("{legLabel}");
+    expect(inline.indexOf("<SalesFunnelMark")).toBeGreaterThan(-1);
     const channelHalf = inline.indexOf("<AcquisitionChannelMark");
     const channelWord = inline.indexOf("{channel.label}");
     expect(funnelHalf).toBeGreaterThan(-1);

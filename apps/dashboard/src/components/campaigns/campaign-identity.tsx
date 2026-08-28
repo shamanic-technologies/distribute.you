@@ -158,6 +158,11 @@ export function CampaignIdentity({
  * There is deliberately no middle dot between the halves any more. A separator
  * makes two peers of them, and they are not peers: one is what the campaign buys
  * and the other is where it buys it.
+ *
+ * The tile is the LEG's, exactly as in the stacked layout: the words beside it name
+ * an ARROW, so a funnel tile would mark one thing above words about another, and the
+ * same campaign would wear two different marks in the bar and in the table. A leg this
+ * app has not drawn falls back to the funnel's own mark rather than to nothing.
  */
 export function CampaignIdentityInline({
   funnel,
@@ -170,15 +175,21 @@ export function CampaignIdentityInline({
   fallbackLabel: string;
 }) {
   const channel = useChannelParts(featureSlug);
-  const leg = campaignLegLabel(funnel, channel?.def?.legs);
+  const leg = campaignLegFor(funnel, channel?.def?.legs);
+  const legLabel = campaignLegLabel(funnel, channel?.def?.legs);
+  const legMarked = leg != null && funnelLegMarkFor(leg.fromKey, leg.toKey) != null;
   if (!funnel && !channel) return <span className="truncate">{fallbackLabel}</span>;
 
   return (
     <>
-      {funnel && leg && (
+      {funnel && legLabel && (
         <span className="flex min-w-0 items-center gap-1.5" title={funnel.name}>
-          <SalesFunnelMark def={funnel} size="xs" />
-          <span className="truncate">{leg}</span>
+          {legMarked && leg ? (
+            <FunnelLegMark fromKey={leg.fromKey} toKey={leg.toKey} size="xs" />
+          ) : (
+            <SalesFunnelMark def={funnel} size="xs" />
+          )}
+          <span className="truncate">{legLabel}</span>
         </span>
       )}
       {channel && (
