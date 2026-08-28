@@ -231,6 +231,11 @@ describe("the leg page, and what it deliberately does not show", () => {
     // The conversion sits INSIDE the rung's own card: they are one statement.
     expect(page).toContain("step.conversionFromPreviousPct.toFixed(1)}% of");
     expect(page).toContain("label={`Cost per ${columns.to.label.toLowerCase()}`}");
+    // The average is SERVED per rung (features-service v0.148.0), never divided here —
+    // a client-side ratio drifts from that service the moment either side changes.
+    expect(page).toContain("step.customerCost.costPerReachCents");
+    expect(page).not.toContain("costCents /");
+    expect(page).not.toContain("/ step.recipientsReached");
   });
 
   it("charts the arrow's OWN outcome, never the whole funnel's return", () => {
@@ -248,7 +253,11 @@ describe("the leg page, and what it deliberately does not show", () => {
     // An arrow the brand works itself sends nothing, and the only per-step cost served
     // divides the whole funnel's spend — none of which was spent on this arrow.
     expect(page).not.toContain("PipelineActivityChart");
-    expect(page).not.toContain("costPerReachCents");
+    // The rung's OWN `costPerReachCents` is what WE charged, divided over every rung of
+    // the funnel. The customer's is a different field on a different block, and it is
+    // the one this page states.
+    expect(page).not.toContain("step.costPerReachCents");
+    expect(page).not.toContain("step?.costPerReachCents");
   });
 
   it("reads the funnel page's own keys, so arriving here costs no request", () => {

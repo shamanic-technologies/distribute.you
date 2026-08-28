@@ -25,6 +25,7 @@ import {
   trackedStages,
 } from "@/lib/lead-funnel-stages";
 import { useSetAnyLeadStepStatement } from "@/lib/use-lead-step-statements";
+import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import { isLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
 import { FunnelLegMark } from "@/components/marks/funnel-leg-mark";
@@ -264,15 +265,24 @@ export function FunnelLegPage() {
           action={thin ? <LearningTag /> : undefined}
           pending={pending}
         />
-        {/* What YOU said each crossing cost — an average of the costs stated on this
-            arrow. features-service reports the stated total for the WHOLE funnel and not
-            yet per rung, so this reads "—" until it does; averaging the funnel-wide total
-            here would answer a different question, and dividing anything in the browser is
-            not how a figure on this dashboard is made. */}
+        {/* What YOU said each crossing cost, averaged over the people who crossed —
+            SERVED per rung (features-service v0.148.0), never divided here: a client-side
+            ratio drifts from that service the moment either side changes. Null, and so a
+            dash, when nobody has been asked yet: never a $0, which would say your work
+            was free. */}
         <ScoreCard
           label={`Cost per ${columns.to.label.toLowerCase()}`}
-          value="—"
-          subtitle="The average of what you state each of these costs you."
+          value={
+            step?.customerCost?.costPerReachCents == null
+              ? "—"
+              : formatCentsAsUsdAdaptive(step.customerCost.costPerReachCents)
+          }
+          subtitle={
+            step?.customerCost && step.customerCost.unstatedCount > 0 &&
+            step.customerCost.statedCount > 0
+              ? `Across the ${step.customerCost.statedCount.toLocaleString("en-US")} you have priced so far.`
+              : "The average of what you state each of these costs you."
+          }
           tooltip="Your own money, not ours: we record what you tell us this step cost, we never charge it, and it never reaches your billing."
           pending={pending}
         />

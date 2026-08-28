@@ -215,6 +215,25 @@ const SpendSchema = z.object({
  * `recipientsReached` is nullable and 0 is NOT null: 0 is measured and means nobody got
  * here, which is the answer somebody asking "is this working" most needs to read.
  */
+/**
+ * What the CUSTOMER states ONE rung cost them — the legs they work themselves.
+ *
+ * Beside `costPerReachCents`, never inside it: that one is what WE charged, this one is
+ * their own money, in no ledger of ours. `.nullish()` because the producer declares the
+ * block required AND nullable (null = the statements could not be read at all), and
+ * because a cached pre-v0.148.0 body carries none.
+ */
+const StepCustomerCostSchema = z.object({
+  costCents: z.number(),
+  statedCount: z.number(),
+  unstatedCount: z.number(),
+  coverage: z.string(),
+  /** The stated total divided by the rung's count — SERVED, never divided here. Null
+   *  when nobody stated a cost, nobody reached the rung, or the count is unmeasured;
+   *  never 0, which would say their work was free. */
+  costPerReachCents: z.number().nullable(),
+});
+
 const FunnelStepSchema = z.object({
   step: z.string(),
   leadField: z.string(),
@@ -223,6 +242,7 @@ const FunnelStepSchema = z.object({
   fromStep: z.string(),
   fromRecipientsReached: z.number().nullable(),
   conversionFromPreviousPct: z.number().nullable(),
+  customerCost: StepCustomerCostSchema.nullish(),
 });
 
 const FunnelStepsSchema = z.object({
