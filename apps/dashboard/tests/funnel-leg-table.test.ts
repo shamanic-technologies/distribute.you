@@ -93,7 +93,7 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
   it("renders every figure as a SERVED rung and divides nothing", () => {
     const cells = legCells;
     expect(cells.length).toBeGreaterThan(0);
-    expect(cells).toContain("step?.recipientsReached");
+    expect(cells).toContain("outcomes.toLocaleString");
     expect(cells).toContain("step.costPerReachCents");
     expect(cells).toContain("step.conversionFromPreviousPct");
     // The rate is served, never two counts divided in the browser.
@@ -105,13 +105,35 @@ describe("the funnel page's campaigns table walks the funnel's legs", () => {
     const cells = legCells;
     // ONE gate: they divide by the same count, so stating one beside a tag disclaiming
     // the other lets a reader trust a number we just withheld.
-    expect(cells).toContain("isLearning(step?.recipientsReached ?? undefined)");
-    const countAt = cells.indexOf("toLocaleString");
-    const firstTag = cells.indexOf("<LearningTag");
-    // The count renders BEFORE the first gate: it is measured whatever its size, and it
-    // is what shows the bar being approached.
-    expect(countAt).toBeGreaterThan(-1);
-    expect(firstTag).toBeGreaterThan(countAt);
+    // Keyed on the ROW's own count, so a campaign that produced nothing is not lent
+    // the arrow's evidence.
+    expect(cells).toContain("isLearning(outcomes ?? undefined)");
+    // The COUNT cell carries no gate at all: it is measured whatever its size, and it
+    // is what shows the bar being approached. Sliced to that one cell rather than
+    // compared by index — the gate now lives in a helper declared above it.
+    const countCell = cells.slice(cells.indexOf("<td"), cells.indexOf("</td>"));
+    expect(countCell).toContain("outcomes.toLocaleString");
+    expect(countCell).not.toContain("LearningTag");
+    expect(countCell).not.toContain("thin");
+  });
+
+  it("gives a row its OWN outcomes, never the arrow's total under one campaign's name", () => {
+    // The rung is funnel-scoped. With two campaigns feeding one step, printing it on
+    // both rows lends one campaign the other's evidence: measured in prod, cold email
+    // had 18 sales interests and a feedback-request campaign 0, and both read 18.
+    expect(legTable).toContain("campaignStepOutcomes(campaign.revenue, leg.toKey)");
+    // An arrow no campaign of ours performs has only the rung, which IS its count.
+    expect(legTable).toContain("step?.recipientsReached");
+  });
+
+  it("withholds the arrow's cost and rate from a row that shares the arrow", () => {
+    // There is no per-campaign version of either on the wire, so stating them on both
+    // rows says one figure under two names.
+    expect(legCells).toContain("sharesArrow ? (");
+    expect(legCells).toContain("COLUMN_INFO.sharedArrow");
+    expect(table).toContain("Two campaigns feed this step");
+    // The shared (i), never a native title — dead on a phone.
+    expect(table).not.toContain("title=");
   });
 
   it("states no money for an arrow no campaign of ours runs", () => {

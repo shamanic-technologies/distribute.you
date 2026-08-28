@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildFunnelLegRows, LEAD_FIELD_BY_STEP_KEY } from "../src/lib/funnel-leg-rows";
+import {
+  buildFunnelLegRows,
+  campaignStepOutcomes,
+  LEAD_FIELD_BY_STEP_KEY,
+} from "../src/lib/funnel-leg-rows";
 import { funnelLegs, campaignLegFor } from "../src/lib/campaign-leg";
 import { SALES_FUNNELS, salesFunnelByKey } from "../src/lib/sales-funnels";
 import type { FunnelStepRow } from "../src/lib/revenue-view";
@@ -207,6 +211,20 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
     }
   });
 
+  it("flags an arrow two campaigns share, and only that arrow", () => {
+    const { rows } = buildFunnelLegRows({
+      legs: funnelLegs(reply),
+      steps,
+      campaigns: [
+        { toIndex: 0, campaign: "cold-email" },
+        { toIndex: 0, campaign: "feedback-request" },
+        { toIndex: 3, campaign: "closer" },
+      ],
+    });
+    expect(rows.filter((r) => r.leg.toIndex === 0).every((r) => r.sharesArrow)).toBe(true);
+    expect(rows.filter((r) => r.leg.toIndex !== 0).some((r) => r.sharesArrow)).toBe(false);
+  });
+
   it("keeps the row builder alias-free so it carries real unit tests", () => {
     const src = read("lib/funnel-leg-rows.ts");
     expect(src).not.toMatch(/^import (?!type ).*from "@\//m);
@@ -219,5 +237,35 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
     expect(src).not.toMatch(/recipientsReached\s*\//);
     expect(src).not.toMatch(/\/\s*fromRecipientsReached/);
     expect(src).not.toContain("* 100");
+  });
+});
+
+describe("campaignStepOutcomes — a campaign's OWN count for a step", () => {
+  // Measured in prod on the brand that reported this: two campaigns feed the reply
+  // funnel's first step, cold email with 18 sales interests and a feedback-request
+  // campaign with 0. The funnel's rung says 18 for the step, so a row reading the rung
+  // lends one campaign the other's evidence.
+  const coldEmail = { positiveReplies: 18, websiteClicks: 53 };
+  const feedback = { positiveReplies: 0, websiteClicks: 0 };
+
+  it("reads the field the producer answers for that step", () => {
+    expect(campaignStepOutcomes(coldEmail, "conversation")).toBe(18);
+    expect(campaignStepOutcomes(feedback, "conversation")).toBe(0);
+    expect(campaignStepOutcomes(coldEmail, "website_visit")).toBe(53);
+  });
+
+  it("answers undefined — not zero — for a step it has no count for", () => {
+    // "we cannot tell" and "nobody got there" are different statements, and the second
+    // one would print a confident 0 under a step the producer never measured per
+    // campaign.
+    expect(campaignStepOutcomes(coldEmail, "meeting_attended")).toBeUndefined();
+    expect(campaignStepOutcomes(coldEmail, "paid_client")).toBeUndefined();
+    expect(campaignStepOutcomes(null, "conversation")).toBeUndefined();
+    expect(campaignStepOutcomes(undefined, "conversation")).toBeUndefined();
+  });
+
+  it("keeps a real ZERO, which is the whole point", () => {
+    expect(campaignStepOutcomes(feedback, "conversation")).not.toBeUndefined();
+    expect(campaignStepOutcomes(feedback, "conversation")).toBe(0);
   });
 });

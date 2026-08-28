@@ -54,3 +54,24 @@ describe("onboarding — buildUserFieldsPayload", () => {
     expect(fn).toContain("if (cleanServices.length) out.services = cleanServices;");
   });
 });
+
+describe("the offer card offers no update-from-the-website control", () => {
+  // The two prefill buttons were removed from every surface. What is left is a plain
+  // editor: nothing re-reads the brand site, so nothing can reset a field the user
+  // typed. `lib/offer-prefill.ts` went with them, in both apps.
+  const card = read("../src/components/settings/brand-offer-card.tsx");
+
+  it("carries no prefill button, mutation or copy", () => {
+    for (const gone of [
+      "from my website",
+      "PrefillButton",
+      "extractBrandFields",
+      "applyExtractionToDraft",
+      "offer-prefill",
+      "resetCache",
+      "regenerateFieldKeys",
+    ]) {
+      expect(card).not.toContain(gone);
+    }
+  });
+});
