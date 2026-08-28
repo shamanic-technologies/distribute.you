@@ -294,7 +294,6 @@ export function FunnelLegPage() {
         <OutcomeTrendCard
           series={outcomeSeries}
           label={columns.to.label}
-          color="#7c3aed"
           pending={pending}
         />
       ) : (
