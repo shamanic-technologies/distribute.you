@@ -23,7 +23,11 @@ import { formatRoi } from "@/lib/format-roi";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { campaignFunnel } from "@/lib/campaign-funnel";
 import { campaignLegFor, funnelLegs } from "@/lib/campaign-leg";
-import { buildFunnelLegRows, type FunnelLegRow } from "@/lib/funnel-leg-rows";
+import {
+  buildFunnelLegRows,
+  campaignStepOutcomes,
+  type FunnelLegRow,
+} from "@/lib/funnel-leg-rows";
 import { formatCentsAsUsdAdaptive } from "@/lib/format-number";
 import type { FunnelStepBreakdown, FunnelStepRow } from "@/lib/revenue-view";
 import {
@@ -95,6 +99,8 @@ export const COLUMN_INFO = {
     "What this funnel has spent so far, divided by the people who reached this step. Every step divides the SAME committed spend, because the money bought the whole funnel rather than one step of it — so this is what reaching this step has cost you, not what this one leg cost.",
   conversion:
     "Of the people who reached the step before, the share that reached this one. It is the step's own drop-off, so it is what tells you where the funnel is losing people.",
+  sharedArrow:
+    "Two campaigns feed this step, and this figure is measured for the step across both of them. It is the step's, not this campaign's, so it is not shown on either row. The Outcomes beside it is this campaign's own.",
 } as const;
 
 /** A right-aligned numeric header with its (i) sitting after the label. */
@@ -518,38 +524,67 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
  * as a price we are quoting. Both state `Learning` there. The COUNT is never gated: it is
  * measured whatever its size, and it is what shows the bar being approached.
  */
-function LegOutcomeCells({ step }: { step: FunnelStepRow | null }) {
+function LegOutcomeCells({
+  step,
+  outcomes,
+  sharesArrow,
+}: {
+  step: FunnelStepRow | null;
+  /**
+   * How many reached this step ON THIS ROW. A campaign's own served count where the
+   * producer answers one; the arrow's rung where the row IS the arrow. `undefined` is
+   * "not answered", which is not a zero.
+   */
+  outcomes: number | null | undefined;
+  /** Another campaign performs the same arrow, so the arrow's cost and rate are not
+   *  this row's to state. */
+  sharesArrow: boolean;
+}) {
   // ONE gate for both derived figures: they divide by the same count, so stating one
   // beside a tag disclaiming the other lets a reader trust a number we just withheld.
-  const thin = isLearning(step?.recipientsReached ?? undefined);
+  // Keyed on the ROW's own count, so a campaign that produced nothing is not lent the
+  // arrow's evidence.
+  const thin = isLearning(outcomes ?? undefined);
+  // The rung's cost and rate are FUNNEL-scoped. Where two campaigns feed one step,
+  // printing them on both rows states one figure under two names — and it is the
+  // arrow's, not either campaign's. There is no per-campaign version on the wire.
+  const derived = (node: React.ReactNode) =>
+    sharesArrow ? (
+      // The shared (i), never a native `title` — dead on a phone, and this is the one
+      // cell on the row whose emptiness needs explaining.
+      <span className="inline-flex items-center justify-end gap-1 text-gray-400">
+        &mdash;
+        <InfoTooltip tip={COLUMN_INFO.sharedArrow} />
+      </span>
+    ) : thin ? (
+      <LearningTag withInfo={false} />
+    ) : (
+      node
+    );
   return (
     <>
       <td className="px-4 py-3 text-right w-[30%] md:w-auto">
         <span className="font-semibold tabular-nums text-gray-900">
-          {step?.recipientsReached == null
-            ? "—"
-            : step.recipientsReached.toLocaleString("en-US")}
+          {outcomes == null ? "—" : outcomes.toLocaleString("en-US")}
         </span>
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
-        {thin ? (
-          <LearningTag withInfo={false} />
-        ) : step?.costPerReachCents == null ? (
-          "—"
-        ) : (
-          formatCentsAsUsdAdaptive(step.costPerReachCents)
+        {derived(
+          step?.costPerReachCents == null
+            ? "—"
+            : formatCentsAsUsdAdaptive(step.costPerReachCents),
         )}
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
-        {thin ? (
-          <LearningTag withInfo={false} />
-        ) : step?.conversionFromPreviousPct == null ? (
-          "—"
-        ) : (
-          <>
-            {step.conversionFromPreviousPct.toFixed(1)}%{" "}
-            <span className="text-xs text-gray-400">of {step.fromStep.toLowerCase()}</span>
-          </>
+        {derived(
+          step?.conversionFromPreviousPct == null ? (
+            "—"
+          ) : (
+            <>
+              {step.conversionFromPreviousPct.toFixed(1)}%{" "}
+              <span className="text-xs text-gray-400">of {step.fromStep.toLowerCase()}</span>
+            </>
+          ),
         )}
       </td>
     </>
@@ -609,7 +644,7 @@ export function FunnelLegTable({
             ))
           ) : (
             <>
-              {rows.map(({ leg, step, campaign }) => (
+              {rows.map(({ leg, step, campaign, sharesArrow }) => (
                 <tr
                   /* An arrow several campaigns share has one row EACH, so the key
                      carries the campaign — a key on the arrow alone would collide. */
@@ -630,7 +665,17 @@ export function FunnelLegTable({
                       viaNote="Done by you"
                     />
                   </td>
-                  <LegOutcomeCells step={step} />
+                  {/* A campaign states its OWN count; an arrow nobody of ours performs
+                      states the arrow's rung, which is the only count there is for it. */}
+                  <LegOutcomeCells
+                    step={step}
+                    outcomes={
+                      campaign
+                        ? campaignStepOutcomes(campaign.revenue, leg.toKey)
+                        : step?.recipientsReached
+                    }
+                    sharesArrow={sharesArrow}
+                  />
                   {/* Money the CAMPAIGN spent and may spend. An arrow the brand works
                       itself costs us nothing to run, so it states neither rather than $0
                       — "we have no figure" and "it cost nothing" are different. */}
@@ -667,7 +712,7 @@ export function FunnelLegTable({
                   </td>
                   {/* A campaign this funnel has no arrow for has no rung to read, so it
                       states nothing rather than borrowing another arrow's figures. */}
-                  <LegOutcomeCells step={null} />
+                  <LegOutcomeCells step={null} outcomes={undefined} sharesArrow={false} />
                   <td className="px-4 py-3 text-right tabular-nums text-gray-700 hidden md:table-cell">
                     {fmtUsd(row.revenue?.committedCostUsd)}
                   </td>
