@@ -192,3 +192,23 @@ export function movableColumnsFrom(from: LeadBoardColumnKey | null): LeadBoardCo
   if (from === "opt_out") return [];
   return LEAD_BOARD_COLUMNS.filter((c) => c.writable && c.key !== from);
 }
+
+/**
+ * Why a card cannot land in `to`, or null when it can.
+ *
+ * A drop is accepted EVERYWHERE now — a target that silently refuses a drag reads as
+ * a broken board rather than as a rule, so the drop lands, the move form opens, and
+ * the form says what is missing. This is the sentence it says.
+ *
+ * Opt-out is the only column with one, and the reason is not a preference: there is no
+ * unsubscribe value in the reply-kind vocabulary instantly-service owns, so
+ * `columnReplyKinds("opt_out")` is empty and there is literally nothing to write. A
+ * picker that offered one would be fabricating a consent decision the prospect never
+ * made.
+ */
+export function columnMoveRefusal(to: LeadBoardColumnKey): string | null {
+  if (to === "opt_out") {
+    return "Only the prospect can opt out. It reaches us the way their reply does, and we never record it for them.";
+  }
+  return null;
+}
