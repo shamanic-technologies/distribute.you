@@ -89,24 +89,23 @@ export default function BrandSettingsPage() {
         <BrandSalesEconomicsCard brandId={brandId} />
       </div>
 
-      {/* Services sold (AI-prefilled from the brand site) */}
+      {/* Services sold */}
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Services sold</h2>
         <BrandUserFieldsCard
           brandId={brandId}
           defs={SERVICES_FIELDS}
-          blurb="The distinct paid services or products this brand sells. AI prefills them from the brand site; review and confirm."
+          blurb="The distinct paid services or products this brand sells."
         />
       </div>
 
-      {/* Your offer — the 6 Hormozi value-equation levers, prefilled FROM the services */}
+      {/* Your offer — the 6 Hormozi value-equation levers */}
       <div className="mb-10">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Your offer</h2>
         <BrandUserFieldsCard
           brandId={brandId}
           defs={LEVER_FIELDS}
-          conditionOnServices
-          blurb="The 6 offer levers we write every email around. Prefill uses the services above as context; review and confirm."
+          blurb="The 6 offer levers we write every email around."
         />
       </div>
 
