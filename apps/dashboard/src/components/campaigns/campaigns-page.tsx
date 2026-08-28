@@ -11,8 +11,16 @@ import { POLL_INTERVAL } from "@/lib/query-options";
 import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { tenantBasePath } from "@/lib/offer-path";
 import { isRevenueFeature } from "@/lib/revenue-feature";
-import { getOfferRevenue, getBrandRevenue, keepLastGoodFeatureRevenue } from "@/lib/api";
+import {
+  getOfferRevenue,
+  getBrandRevenue,
+  getOfferFunnelRevenue,
+  keepLastGoodFeatureRevenue,
+} from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
+import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
+import { isRunningStatus } from "@/lib/campaign-controls";
+import { pollOptions } from "@/lib/query-options";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { channelSlugLabel } from "@/lib/campaign-title";
 import { campaignFunnel } from "@/lib/campaign-funnel";
@@ -83,8 +91,30 @@ export function CampaignsPage() {
   // The funnel comes from the ROUTE (`.../funnels/[funnelKey]`), which is the only
   // way in: an offer names no campaign of its own, so this page is always reached
   // through the funnel whose campaigns it lists.
-  const funnelKey = params.funnelKey ? String(params.funnelKey) : null;
+  const funnelKey = params.funnelKey ? decodeURIComponent(String(params.funnelKey)) : null;
   const narrowedFunnel = funnelKey ? campaignFunnel(funnelKey as never) : null;
+  const narrowedKey = funnelKey
+    ? normalizeSalesFunnelKey(funnelKey as SalesFunnelKeyWire)
+    : null;
+
+  // The funnel walked arrow by arrow, so this page lists what the funnel Overview
+  // lists: every arrow, whoever performs it. Without it the page rendered the plain
+  // campaign list — the two arrows we sell out of four — so walking down from the
+  // Overview showed FEWER rows than the section it was reached from, and named each
+  // one after the whole funnel instead of the leg it buys.
+  //
+  // The key is byte-equal to the one `FunnelOverviewPage` already polls, so arriving
+  // here costs no request and the two surfaces cannot state different rungs. Read only
+  // under a funnel: the brand and offer Campaigns pages span several and have no walk.
+  const funnelRevenue = useAuthQuery(
+    ["offerFunnelRevenue", brandId, offerId ?? "", narrowedKey ?? "none"],
+    () => getOfferFunnelRevenue(offerId ?? "", funnelKey ?? "", brandId),
+    { enabled: Boolean(offerId && funnelKey), ...pollOptions },
+  );
+  // Reveal on SETTLE: a read that errors hands the table `null` — the producer stating
+  // no walk — so the arrows still render with no figures rather than the page falling
+  // back to a shorter list.
+  const funnelStepsPending = funnelRevenue.isPending && !funnelRevenue.isError;
 
   // The rows the table renders, read through the SAME hook the table uses — so the
   // "#1 acquisition channel" tile and the first row of the table can never name two
@@ -96,6 +126,28 @@ export function CampaignsPage() {
   // state a figure the rows beneath it are all declining to state.
   const scopeLearning = scopeIsLearning(rows);
 
+  // The rows the TABLE shows, which under a funnel is a subset of the offer's. The
+  // learning band speaks for what is on screen, so it reads these: on a funnel page a
+  // lead picked from the offer's other funnels would count days for a campaign this
+  // page never lists.
+  const scopedRows = useMemo(
+    () =>
+      narrowedKey
+        ? rows.filter(
+            (r) =>
+              r.campaign.funnelKey != null &&
+              normalizeSalesFunnelKey(r.campaign.funnelKey) === narrowedKey,
+          )
+        : rows,
+    [rows, narrowedKey],
+  );
+  // The band says when the withheld figures become readable, and the scope's figures
+  // clear the moment ONE of its campaigns is measured — so a scope that already
+  // cleared must not carry a countdown. It did: this brand's cold email had 18 sales
+  // interests (measured) beside a stopped feedback-request campaign at 0, and the band
+  // counted days for the second while the first had already priced the funnel.
+  const scopedLearning = scopeIsLearning(scopedRows);
+
   const channels = useAcquisitionChannels();
 
   // Which campaign the learning band speaks for.
@@ -105,13 +157,20 @@ export function CampaignsPage() {
   // far. Picked off the counts the table's own rows already carry, so choosing costs
   // no request; only the expected price behind it is a read of its own, and that one
   // is keyed on the funnel, so every campaign selling it shares the answer.
+  //
+  // A PAUSED campaign is never the subject: its days-left are priced against a daily
+  // spend that is not happening, so the date is one nobody can stand behind — the same
+  // reason the campaign's own page hides the band while it is stopped.
   const learningLead = useMemo(() => {
-    const candidates = rows.filter((row) => row.learning);
+    if (!scopedLearning) return null;
+    const candidates = scopedRows.filter(
+      (row) => row.learning && isRunningStatus(row.campaign.status),
+    );
     if (candidates.length === 0) return null;
     return candidates.reduce((best, row) =>
       (row.signal ?? 0) > (best.signal ?? 0) ? row : best,
     );
-  }, [rows]);
+  }, [scopedRows, scopedLearning]);
 
   const { data: funnelBudgets } = useAuthQuery(["brandFunnelBudgets", brandId], () =>
     getBrandFunnelBudgets(brandId),
@@ -243,6 +302,15 @@ export function CampaignsPage() {
           basePath={basePath}
           offerId={offerId}
           funnelKey={funnelKey}
+          // `undefined` off a funnel — the brand and offer lists span several and have
+          // no single walk. Under one, the SAME walk the funnel Overview renders.
+          funnelSteps={
+            funnelKey
+              ? funnelStepsPending
+                ? null
+                : (funnelRevenue.data?.funnelSteps ?? null)
+              : undefined
+          }
         />
       </div>
     </div>
