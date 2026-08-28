@@ -77,13 +77,14 @@ function metricCount(metric: AudienceRankMetric, row: FeatureAudienceStatsRow): 
 /**
  * What an audience RETURNS per dollar, when features-service can project it.
  *
- * This is what the card leads with, and it is a different question from the cost
- * column it replaced: cost per outcome ranks audiences by CHEAPNESS, so an audience
- * that converts to nothing outranks an expensive one that pays. Rank on the return.
+ * This is what a BRAND-scoped card leads with, and it is a different question from the
+ * cost column it replaced: cost per outcome ranks audiences by CHEAPNESS, so an audience
+ * that converts to nothing outranks an expensive one that pays. At brand level, rank on
+ * the return; null (unmeasurable, or a producer that predates it) prints "-", since a
+ * brand runs several funnels and has no single step to fall back to.
  *
- * Absent (a producer that predates it) or null (unmeasurable) → a CAMPAIGN-scoped card
- * falls back to that funnel's cost metric, which is exactly how it read before. A
- * BRAND-scoped card has no funnel to fall back to, so it prints "-".
+ * A CAMPAIGN-scoped card never reads it: a campaign buys one outcome and is judged on
+ * what that outcome costs.
  */
 function returnPerDollar(row: FeatureAudienceStatsRow): number | null {
   return row.projection?.returnPerDollar ?? null;
@@ -133,12 +134,12 @@ export function TopAudiencesCard({
   audiences?: AudienceWire[];
   pending?: boolean;
   /**
-   * The cost column to fall back on when features-service projected no return — a
-   * CAMPAIGN's, since it sells one funnel and its own outcome is what it buys.
+   * The cost column a CAMPAIGN-scoped card LEADS with — its own funnel's outcome, which
+   * is the thing the campaign is run to make cheaper.
    *
-   * Absent at BRAND level: there is no goal there to derive one from, and the fallback
-   * would be one funnel's step on a surface that sums several anyway. Without it the
-   * card ranks on the return and prints "-" for a row that has none.
+   * Absent at BRAND level: there is no goal there to derive one from, and it would be one
+   * funnel's step on a surface that sums several anyway. Without it the card ranks on the
+   * return and prints "-" for a row that has none.
    */
   metric?: AudienceRankMetric;
   /** Set on the campaign Overview, which sells exactly one funnel. */
@@ -162,14 +163,19 @@ export function TopAudiencesCard({
   // printed "CPPR / 0 replies" on a goal whose funnel has no reply step, next to an
   // Audiences page that hides the reply columns for that same brand.
   //
-  // A cost per outcome (CPPR, cost per visit) names ONE funnel's step, and a brand runs
-  // several funnels at once — so on a BRAND surface it labels a sum with one member's
-  // vocabulary. At brand level the card therefore states the return and nothing else,
-  // even when the projection is missing (that row prints "-"). The campaign Overview
-  // sells exactly one funnel, so its own step IS what it buys and the cost stays.
+  // A cost per outcome (cost per sales interest, cost per visit) names ONE funnel's step,
+  // and a brand runs several funnels at once — so on a BRAND surface it labels a sum with
+  // one member's vocabulary. At brand level the card therefore states the return and
+  // nothing else, even when the projection is missing (that row prints "-"). The campaign
+  // Overview sells exactly one funnel, so its own step IS what it buys and the cost leads.
   const brandLevelMoney = !campaignScoped;
-  const ranksByReturn =
-    brandLevelMoney || (data?.audiences ?? []).some((row) => returnPerDollar(row) != null);
+  // A RETURN answers a brand's question, not a campaign's. A campaign buys ONE outcome
+  // and is run to make that outcome cheaper, so the number it is judged on is its cost
+  // per outcome — the same column the Audiences table beneath it leads with. Ranking a
+  // campaign's audiences on a projected return states a figure the campaign is not
+  // optimizing for, beside a table that is. So the return leads at BRAND level and
+  // nowhere else; a campaign card is cost-led even when every row carries a projection.
+  const ranksByReturn = brandLevelMoney;
   const statsRows = [...(data?.audiences ?? [])]
     .sort((a, b) => {
       if (ranksByReturn || !metric) {
@@ -263,20 +269,14 @@ export function TopAudiencesCard({
           const scopeLearning =
             !campaignScoped &&
             audienceLearningFor(learningByAudienceId ?? new Map(), key, learningSettled);
-          // The second line carries whichever fact the headline value did NOT: leading
-          // with return, the funnel cost it was ranked on before sits beside it; leading
-          // with cost, the outcome count is what that cost divides by. Never both, never
-          // a value the row does not have — and never at BRAND level, where both are one
-          // funnel's vocabulary on a surface that sums several.
-          const subtitle = brandLevelMoney || !metric || rowLearning
-            ? null
-            : ranksByReturn
-              ? costCents == null
-                ? null
-                : `${formatCents(costCents)} ${AUDIENCE_RANK_METRIC_LABEL[metric].toLowerCase()}`
-              : outcomes == null
-                ? null
-                : `${outcomes.toLocaleString("en-US")} ${AUDIENCE_RANK_METRIC_OUTCOME_NOUN[metric]}`;
+          // The second line carries what the headline cost DIVIDES BY, so a reader can see
+          // how much evidence is behind the price. Never a value the row does not have —
+          // and never at BRAND level, where the count is one funnel's vocabulary on a
+          // surface that sums several.
+          const subtitle =
+            brandLevelMoney || !metric || rowLearning || outcomes == null
+              ? null
+              : `${outcomes.toLocaleString("en-US")} ${AUDIENCE_RANK_METRIC_OUTCOME_NOUN[metric]}`;
           return (
             <Link
               key={key}

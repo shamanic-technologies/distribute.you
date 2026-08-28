@@ -106,6 +106,21 @@ describe("the brand Overview charts return, and ranks audiences on it", () => {
     expect(audiences).not.toContain("lifetimeRevenueUsd /");
   });
 
+  it("leads a CAMPAIGN-scoped card with its cost per outcome, never a return", () => {
+    // A campaign buys ONE outcome and is run to make it cheaper, so the return is a
+    // brand's question, not its own — and the Audiences table one click away already
+    // leads with that cost. The return therefore leads at brand level and nowhere else:
+    // a projection on any row must not flip the campaign card over to it.
+    expect(audiences).toContain("const ranksByReturn = brandLevelMoney;");
+    expect(audiences).not.toContain("brandLevelMoney || (data?.audiences");
+    // The campaign call site is what asks for the cost column at all.
+    const at = campaign.indexOf("<TopAudiencesCard");
+    expect(at).toBeGreaterThan(-1);
+    const call = campaign.slice(at, campaign.indexOf("/>", at));
+    expect(call).toContain("metric={audienceStatsMetric}");
+    expect(call).toContain("campaignScoped");
+  });
+
   it("states no brand-wide return of its own, and no funnel cost at brand level", () => {
     // The card used to restate the brand's PROJECTED return under its heading, two
     // inches from the ROI stat card's REALIZED one — same word, two questions, so the
@@ -114,7 +129,7 @@ describe("the brand Overview charts return, and ranks audiences on it", () => {
     expect(audiences).not.toContain("per dollar overall");
     // A cost per outcome names one funnel's step; a brand runs several at once.
     expect(audiences).toContain("const brandLevelMoney = !campaignScoped");
-    expect(audiences).toContain("const subtitle = brandLevelMoney");
+    expect(audiences).toContain("const subtitle =\n            brandLevelMoney ||");
     // The brand Overview takes the brand-level default; the campaign Overview opts out.
     const at = overview.indexOf("<TopAudiencesCard");
     expect(at).toBeGreaterThan(-1);
