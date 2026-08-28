@@ -159,3 +159,27 @@ describe("the Audiences table reads the same helper", () => {
     expect(line).toContain("brandLevelMoney");
   });
 });
+
+describe("top-audiences row link scope", () => {
+  const card = fs.readFileSync(
+    path.join(process.cwd(), "src/components/revenue/top-audiences-card.tsx"),
+    "utf8",
+  );
+  const overview = fs.readFileSync(
+    path.join(process.cwd(), "src/components/campaigns/campaign-overview-page.tsx"),
+    "utf8",
+  );
+
+  it("opens the audience inside the campaign when the card is campaign-scoped", () => {
+    expect(card).toContain(
+      "campaignScoped && campaignId ? `${tenantPath}/campaigns/${campaignId}` : tenantPath",
+    );
+    expect(card).toContain("href={`${audiencesBasePath}/audiences?audienceId=${key}`}");
+  });
+
+  it("the campaign Overview passes the campaign the reader is standing in", () => {
+    const at = overview.indexOf("<TopAudiencesCard");
+    expect(at).toBeGreaterThan(-1);
+    expect(overview.slice(at, at + 600)).toContain("campaignId={campaignId}");
+  });
+});

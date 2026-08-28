@@ -127,6 +127,7 @@ export function TopAudiencesCard({
   pending = false,
   metric,
   campaignScoped = false,
+  campaignId,
   learningByAudienceId,
   learningSettled = false,
 }: {
@@ -144,6 +145,13 @@ export function TopAudiencesCard({
   metric?: AudienceRankMetric;
   /** Set on the campaign Overview, which sells exactly one funnel. */
   campaignScoped?: boolean;
+  /**
+   * The campaign a row belongs to, when this card is on one. A row opens the audience
+   * where the reader is standing: from a campaign, the campaign's own Audiences page,
+   * so drilling into a row does not silently leave the campaign for the offer.
+   * Absent at brand/offer grain, where the offer page is the audience's home.
+   */
+  campaignId?: string;
   /**
    * Which of the scope's audiences its campaigns have priced. An audience absent from the
    * map — the fan-out has not settled, or the scope runs no campaign — is "cannot tell"
@@ -226,6 +234,12 @@ export function TopAudiencesCard({
   // Present on the offer route, absent elsewhere — the link then stays the
   // brand-level one.
   const offerId = params.offerId as string | undefined;
+  // Where an audience opens from HERE. A campaign-scoped card keeps the reader in the
+  // campaign (its Audiences page states the same rows, narrowed to what this campaign
+  // targets); everywhere else the offer's page is the audience's home.
+  const tenantPath = tenantBasePath(orgId, brandId, offerId);
+  const audiencesBasePath =
+    campaignScoped && campaignId ? `${tenantPath}/campaigns/${campaignId}` : tenantPath;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
@@ -280,7 +294,7 @@ export function TopAudiencesCard({
           return (
             <Link
               key={key}
-              href={`${tenantBasePath(orgId, brandId, offerId)}/audiences?audienceId=${key}`}
+              href={`${audiencesBasePath}/audiences?audienceId=${key}`}
               className="-mx-1 flex items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-gray-50"
             >
               <TopAudienceAvatar name={name} avatarUrl={avatarUrl} />

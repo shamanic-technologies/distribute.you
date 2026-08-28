@@ -608,6 +608,7 @@ export function CampaignOverviewPage() {
             // One campaign sells one funnel, so its own step IS what it buys —
             // the per-outcome cost stays here and is dropped at brand level.
             campaignScoped
+            campaignId={campaignId}
           />
         }
         topRow={
