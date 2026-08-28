@@ -38,6 +38,37 @@ export const LEAD_FIELD_BY_STEP_KEY: Record<string, string> = {
 };
 
 /**
+ * Which field of a CAMPAIGN's own revenue group counts the leads that reached a step.
+ *
+ * The rung on `funnelSteps` is FUNNEL-scoped — every lead that reached that step through
+ * any channel — so printing it on a campaign's row states the arrow's total under one
+ * campaign's name. With two channels feeding one step that is visibly wrong: measured in
+ * prod, cold email had 18 sales interests and a feedback-request campaign had 0, and both
+ * rows read 18.
+ *
+ * features-service answers per campaign for the two steps a channel can produce from
+ * nothing. Anything deeper in a funnel has no per-campaign count on the wire yet, which
+ * reads as "we cannot tell" rather than as a zero.
+ */
+export const CAMPAIGN_COUNT_FIELD_BY_STEP_KEY: Record<
+  string,
+  "positiveReplies" | "websiteClicks"
+> = {
+  conversation: "positiveReplies",
+  website_visit: "websiteClicks",
+};
+
+/** What a campaign's OWN group says reached this step. `undefined` = not answered. */
+export function campaignStepOutcomes(
+  group: { positiveReplies?: number | null; websiteClicks?: number | null } | null | undefined,
+  toKey: string,
+): number | null | undefined {
+  if (!group) return undefined;
+  const field = CAMPAIGN_COUNT_FIELD_BY_STEP_KEY[toKey];
+  return field ? group[field] : undefined;
+}
+
+/**
  * One row of the walked funnel: the arrow, the rung it lands on, and who does it.
  *
  * Generic in the campaign so this module needs no view type: the table hands it whatever
@@ -54,6 +85,15 @@ export interface FunnelLegRow<C> {
    * any other rather than an omission.
    */
   campaign: C | null;
+  /**
+   * Whether another campaign performs this SAME arrow.
+   *
+   * The rung's cost and rate are the arrow's, funnel-wide, and there is no per-campaign
+   * version of either on the wire. On a shared arrow, printing them on both rows states
+   * one figure under two campaigns' names — so the rows say nothing there instead. Alone
+   * on an arrow, the arrow's figures ARE that campaign's and it states them.
+   */
+  sharesArrow: boolean;
 }
 
 /**
@@ -94,10 +134,11 @@ export function buildFunnelLegRows<C>({
     const step = steps?.find((s) => s.leadField === wanted) ?? null;
     const onThisLeg = campaigns.filter((c) => c.toIndex === leg.toIndex);
     if (onThisLeg.length === 0) {
-      rows.push({ leg, step, campaign: null });
+      rows.push({ leg, step, campaign: null, sharesArrow: false });
       continue;
     }
-    for (const c of onThisLeg) rows.push({ leg, step, campaign: c.campaign });
+    const sharesArrow = onThisLeg.length > 1;
+    for (const c of onThisLeg) rows.push({ leg, step, campaign: c.campaign, sharesArrow });
   }
 
   // Step asc, then cost per outcome asc. The loop above already emits the legs in the
