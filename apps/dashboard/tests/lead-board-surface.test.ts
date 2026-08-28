@@ -257,10 +257,28 @@ describe("the card says what it is in two lines and one tag", () => {
 });
 
 describe("the board explains the two splits a reader would not guess", () => {
-  it("says a bounce and a no both stay in Contacted, and how to move a card", () => {
-    expect(board).toContain("both stay in Contacted");
-    expect(board).toContain("Hold a card to move it, tap to open it.");
-    expect(board).toContain("<InfoTooltip");
+  it("says it in the COLUMN, not in a footnote under the whole board", () => {
+    // The footnote restated what the Contacted column's own blurb already says, one
+    // scroll below the thing it was about. The column carries it now, and the gesture
+    // explains itself the first time somebody holds a card.
+    expect(board).not.toContain("Hold a card to move it");
+    expect(board).not.toContain("both stay in Contacted");
+    expect(board).not.toContain("<InfoTooltip");
+    const lib = readFileSync(join(__dirname, "..", "src", "lib", "lead-board.ts"), "utf8");
+    expect(lib).toContain("A no and a bounce included.");
+  });
+
+  it("draws a page of a column and states what is LEFT, never scroll-loading", () => {
+    // A column that draws every card is unusable on Contacted, which holds the whole
+    // campaign; a column that hides the size of its tail cannot be judged at all.
+    expect(board).toContain("LEAD_BOARD_PAGE_SIZE");
+    expect(board).toContain("columnPage(");
+    expect(board).toContain("left)");
+    // The header count stays the WHOLE column — it answers "how many are here", which
+    // is what the board is read for, not "how many fit".
+    expect(board).toContain("{inColumn.length}");
+    // The reveal falls back when the page re-queries the set, and NOT on a poll.
+    expect(board).toContain("}, [filterKey]);");
   });
 
   it("tints the kind pills with colours the dark remap covers", () => {
