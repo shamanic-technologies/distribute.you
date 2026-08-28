@@ -57,17 +57,25 @@ export interface FunnelLegRow<C> {
 }
 
 /**
- * Build one row per arrow of the funnel.
+ * Build the rows of the walked funnel.
  *
  * `campaigns` are handed in ALREADY resolved to the leg each performs, because resolving
  * a campaign's leg needs the channel catalogue and this module holds no catalogue. A
- * campaign whose leg cannot be placed on this funnel (`toIndex` null) is dropped rather
- * than filed under an arrow it does not perform: naming the wrong arrow is worse than
- * showing the arrow as unclaimed.
+ * campaign whose leg cannot be placed on this funnel (`toIndex` null) is handed back in
+ * `extra` rather than filed under an arrow it does not perform: naming the wrong arrow is
+ * worse than showing the arrow as unclaimed.
  *
- * Two campaigns claiming ONE arrow is real — a brand can fund two channels onto the same
- * step — and the FIRST wins the row, the rest are returned in `extra` so the caller
- * renders them rather than hiding them.
+ * EVERY arrow gets a row. An arrow with several campaigns gets one row EACH — a brand can
+ * fund two channels onto the same step, and the earlier shape gave the arrow to the first
+ * and dumped the rest at the bottom of the table, which reads as campaigns the funnel has
+ * no place for. An arrow with none gets its row anyway: that is the leg the brand works
+ * itself, and it is the whole reason this walks arrows rather than listing campaigns.
+ *
+ * ORDER: the funnel's own step order first, then cheapest per outcome. The step order is
+ * what makes the table a funnel — a reader follows it top to bottom the way a lead moves
+ * through it — and the price only ever breaks a tie WITHIN one step, where two campaigns
+ * buy the same thing and the cheaper one is the better answer. A row whose cost is
+ * unstated sorts last of its step rather than first: an absent figure is not a low one.
  */
 export function buildFunnelLegRows<C>({
   legs,
@@ -79,20 +87,37 @@ export function buildFunnelLegRows<C>({
   steps: readonly FunnelStepRow[] | null | undefined;
   campaigns: readonly { toIndex: number | null; campaign: C }[];
 }): { rows: FunnelLegRow<C>[]; extra: C[] } {
-  const extra: C[] = [];
+  const rows: FunnelLegRow<C>[] = [];
 
-  const rows = legs.map((leg) => {
+  for (const leg of legs) {
     const wanted = LEAD_FIELD_BY_STEP_KEY[leg.toKey];
     const step = steps?.find((s) => s.leadField === wanted) ?? null;
-    const match = campaigns.find((c) => c.toIndex === leg.toIndex);
-    return { leg, step, campaign: match ? match.campaign : null };
+    const onThisLeg = campaigns.filter((c) => c.toIndex === leg.toIndex);
+    if (onThisLeg.length === 0) {
+      rows.push({ leg, step, campaign: null });
+      continue;
+    }
+    for (const c of onThisLeg) rows.push({ leg, step, campaign: c.campaign });
+  }
+
+  // Step asc, then cost per outcome asc. The loop above already emits the legs in the
+  // funnel's order, so this only ever reorders the campaigns sharing one arrow — which
+  // is the case the price exists to settle.
+  rows.sort((a, b) => {
+    const byStep = a.leg.toIndex - b.leg.toIndex;
+    if (byStep !== 0) return byStep;
+    const ca = a.step?.costPerReachCents;
+    const cb = b.step?.costPerReachCents;
+    if (ca == null && cb == null) return 0;
+    // Unstated sorts LAST: "we have no figure" is not the cheapest answer.
+    if (ca == null) return 1;
+    if (cb == null) return -1;
+    return ca - cb;
   });
 
-  // A second campaign on an arrow already taken, and any campaign this funnel has no
-  // arrow for: both are still this brand's campaigns and both are handed back.
-  const seen = new Set<C>();
-  for (const row of rows) if (row.campaign) seen.add(row.campaign);
-  for (const c of campaigns) if (!seen.has(c.campaign)) extra.push(c.campaign);
+  // Every campaign this funnel has no arrow for. Still this brand's campaigns, so they
+  // are handed back rather than dropped.
+  const extra = campaigns.filter((c) => c.toIndex == null).map((c) => c.campaign);
 
   return { rows, extra };
 }

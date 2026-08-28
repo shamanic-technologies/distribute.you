@@ -13,10 +13,15 @@
 // signup, and one into a filled form. So this is a small closed catalogue rather than a
 // per-channel one, and it covers every arrow a brand can be shown, funded or not.
 //
-// The GLYPH is what makes a leg unique; the tone is shared. Twelve distinct glyphs, none
-// of them a channel's (`acquisition-channels.ts` owns envelope / chat-circle /
-// chat-teardrop), so a leg tile and a channel tile can never be mistaken for each other
-// on a row that draws both.
+// The GLYPH is what makes a leg unique; the tone is shared. Twelve distinct glyphs, and
+// none of them belongs to a CHANNEL (`acquisition-channels.ts` owns envelope /
+// chat-circle / chat-teardrop) or to a FUNNEL (`sales-funnel-mark.tsx` owns chats-circle
+// / calendar-check / shopping-cart / magnet). Both exclusions are load-bearing and were
+// found the hard way: a row draws its leg tile beside the channel's, and the SAME leg
+// tile stands in for the funnel wherever a leg cannot be placed — so a shared glyph reads
+// as one thing said twice, or as the funnel where an arrow was meant. `Sales interest`
+// wore the reply funnel's own chats-circle, and `Sales interest -> Meeting booked` wore
+// the website-meeting funnel's calendar-check.
 //
 // Only value imports that carry no "@" alias live here, so this module stays directly
 // unit-testable (vitest does not resolve the alias).
@@ -28,13 +33,13 @@
  * stays a plain unit-testable catalogue. The mark component maps it.
  */
 export type FunnelLegGlyph =
-  | "chats"
+  | "hand-waving"
   | "user-plus"
   | "note-pencil"
   | "cursor-click"
   | "clipboard"
   | "calendar-plus"
-  | "calendar-check"
+  | "calendar-star"
   | "calendar-dots"
   | "video-camera"
   | "handshake"
@@ -76,7 +81,7 @@ export function funnelLegMarkKey(from: string | null | undefined, to: string): s
 export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
   // ── Entry legs: a lead was not on the funnel at all, and now it is. ──────────
   [funnelLegMarkKey(null, "conversation")]: {
-    glyph: "chats",
+    glyph: "hand-waving",
     tone: { iconBg: "bg-blue-50", iconText: "text-blue-600" },
   },
   [funnelLegMarkKey(null, "website_visit")]: {
@@ -106,7 +111,7 @@ export const FUNNEL_LEG_MARKS: Record<string, FunnelLegMark> = {
     tone: { iconBg: "bg-orange-50", iconText: "text-orange-600" },
   },
   [funnelLegMarkKey("conversation", "meeting_booked")]: {
-    glyph: "calendar-check",
+    glyph: "calendar-star",
     tone: { iconBg: "bg-purple-50", iconText: "text-purple-600" },
   },
   [funnelLegMarkKey("website_visit", "meeting_booked")]: {

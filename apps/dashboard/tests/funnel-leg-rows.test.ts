@@ -149,7 +149,10 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
     expect(extra).toEqual(["unplaceable"]);
   });
 
-  it("gives one arrow to ONE campaign and hands the second back", () => {
+  it("gives an arrow several campaigns a row EACH, on that arrow", () => {
+    // A brand can fund two channels onto the same step. Giving the arrow to the first
+    // and dumping the second at the bottom read as a campaign the funnel has no place
+    // for — it performs that arrow as much as the other one does.
     const { rows, extra } = buildFunnelLegRows({
       legs: funnelLegs(reply),
       steps,
@@ -158,8 +161,42 @@ describe("buildFunnelLegRows — the funnel walked, with who performs each arrow
         { toIndex: 0, campaign: "cold-sms" },
       ],
     });
+    expect(rows.filter((r) => r.leg.toIndex === 0).map((r) => r.campaign)).toEqual([
+      "cold-email",
+      "cold-sms",
+    ]);
+    expect(rows.length).toBe(5);
+    expect(extra).toEqual([]);
+  });
+
+  it("orders the rows by funnel step, then by cost per outcome", () => {
+    // Step order is what makes the table a funnel — a reader follows it the way a lead
+    // moves through it — and the price only ever breaks a tie WITHIN one step.
+    const { rows } = buildFunnelLegRows({
+      legs: funnelLegs(reply),
+      steps,
+      campaigns: [{ toIndex: 2, campaign: "closer" }, { toIndex: 0, campaign: "cold-email" }],
+    });
+    expect(rows.map((r) => r.leg.toIndex)).toEqual([0, 1, 2, 3]);
     expect(rows[0].campaign).toBe("cold-email");
-    expect(extra).toEqual(["cold-sms"]);
+    expect(rows[2].campaign).toBe("closer");
+  });
+
+  it("sinks a row whose cost is unstated below one that states it", () => {
+    // An absent figure is not a low one.
+    const priced = [
+      step({ leadField: "repliedPositive", recipientsReached: 41, costPerReachCents: 500 }),
+    ];
+    const { rows } = buildFunnelLegRows({
+      legs: funnelLegs(reply),
+      steps: priced,
+      campaigns: [],
+    });
+    // Only the first rung is priced; the three unpriced ones keep their step order
+    // behind it rather than jumping ahead of it.
+    expect(rows.map((r) => r.leg.toIndex)).toEqual([0, 1, 2, 3]);
+    expect(rows[0].step?.costPerReachCents).toBe(500);
+    expect(rows.slice(1).every((r) => r.step === null)).toBe(true);
   });
 
   it("maps every step of every funnel we sell to a producer leadField", () => {

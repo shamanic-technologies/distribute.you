@@ -602,7 +602,9 @@ export function FunnelLegTable({
             <>
               {rows.map(({ leg, step, campaign }) => (
                 <tr
-                  key={`leg-${leg.toIndex}`}
+                  /* An arrow several campaigns share has one row EACH, so the key
+                     carries the campaign — a key on the arrow alone would collide. */
+                  key={`leg-${leg.toIndex}-${campaign?.campaign.id ?? "unclaimed"}`}
                   onClick={campaign ? () => open(campaign) : undefined}
                   className={
                     campaign ? "cursor-pointer transition hover:bg-gray-50" : "transition"
