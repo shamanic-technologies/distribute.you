@@ -79,7 +79,8 @@ describe("the top bar names where you are below the tenant", () => {
     // call site can get wrong.
     const identity = read("src/components/campaigns/campaign-identity.tsx");
     const inline = identity.slice(identity.indexOf("export function CampaignIdentityInline("));
-    expect((inline.match(/size="xs"/g) ?? []).length).toBe(2);
+    // Three: the leg's tile, the funnel's tile it falls back to, and the channel's.
+    expect((inline.match(/size="xs"/g) ?? []).length).toBe(3);
 
     const offer = read("src/components/marks/offer-mark.tsx");
     expect(offer).toContain('size === "sm" ? "h-[18px] w-[18px]"');
@@ -87,6 +88,7 @@ describe("the top bar names where you are below the tenant", () => {
     for (const rel of [
       "src/components/marks/sales-funnel-mark.tsx",
       "src/components/marks/acquisition-channel-mark.tsx",
+      "src/components/marks/funnel-leg-mark.tsx",
     ]) {
       const mark = read(rel);
       expect(mark).toContain('type MarkSize = "xs" | "sm" | "md";');
