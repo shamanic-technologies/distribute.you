@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthQuery } from "@/lib/use-auth-query";
-import { pollOptions, POLL_INTERVAL } from "@/lib/query-options";
+import { pollOptions, LEADS_POLL_INTERVAL } from "@/lib/query-options";
 import { getOfferFunnelRevenue, listBrandLeads, type LeadStepName } from "@/lib/api";
 import {
   normalizeSalesFunnelKey,
@@ -118,7 +118,8 @@ export function FunnelLegPage() {
   // against — the revenue join carries a lead id, not the leads_campaigns row id.
   const leadsQ = useAuthQuery(["brandLeads", brandId], () => listBrandLeads(brandId), {
     enabled: Boolean(brandId),
-    refetchInterval: POLL_INTERVAL,
+    // Slower tier: same huge unpaginated list the Leads page reads, same key.
+    refetchInterval: LEADS_POLL_INTERVAL,
   });
 
   const stages = useMemo(

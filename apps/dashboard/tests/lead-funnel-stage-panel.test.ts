@@ -96,11 +96,14 @@ describe("lead funnel stage panel", () => {
       HOOK.indexOf("export function useSetAnyLeadStepStatement"),
     );
     expect(withdraw).toContain("setQueryData(leadStepStatementsQueryKey");
-    expect(withdraw).toContain('queryKey: ["featureRevenue"]');
+    expect(withdraw).toContain("invalidateLeadOutcome(queryClient)");
   });
 
-  it("invalidates the revenue ROOT, because a statement moves the money at every grain", () => {
-    expect(HOOK).toContain('queryKey: ["featureRevenue"]');
+  it("invalidates EVERY grain of the money, because a statement moves all of them", () => {
+    // `featureRevenue` alone left the brand Overview, the offer money, the funnel walk
+    // and the per-campaign rows on the pre-write figure — see write-invalidation.ts.
+    expect(HOOK).toContain("invalidateLeadOutcome(queryClient)");
+    expect(HOOK).not.toContain('queryKey: ["featureRevenue"]');
   });
 
   it("does not poll the statements", () => {

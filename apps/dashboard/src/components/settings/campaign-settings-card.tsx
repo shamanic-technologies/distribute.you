@@ -11,6 +11,7 @@ import {
   type BrandFunnelBudgets,
 } from "@/lib/api";
 import { useAuthQuery, useQueryClient } from "@/lib/use-auth-query";
+import { invalidateCampaignMoney } from "@/lib/write-invalidation";
 import { useAcquisitionChannels } from "@/lib/use-acquisition-channels";
 import {
   campaignBudgetScope,
@@ -217,9 +218,9 @@ export function CampaignSettingsCard({
         setBaseline(next);
         setValue(next);
       }
-      queryClient.invalidateQueries({ queryKey: ["campaign", campaignId] });
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["brandDailyBudget", brandId] });
+      // Every figure that states what this campaign may spend, or whether it runs —
+      // including `brandSpendableBudget`, the running total the header reads.
+      invalidateCampaignMoney(queryClient);
       seededStatusFrom.current = null;
       setTouched(false);
       setStatusTouched(false);
