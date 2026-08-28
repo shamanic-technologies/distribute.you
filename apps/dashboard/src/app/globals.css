@@ -273,6 +273,11 @@ html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15); }
 html.dark .text-purple-600 { color: #c084fc; }
 html.dark .text-purple-700 { color: #c084fc; }
 html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3); }
+/* The unfilled part of the learning band's progress bar. `bg-purple-200` is a very
+   light tint, so unremapped it paints the loudest thing on the dark surface — the
+   same gap `text-gray-200` has, in the direction where a track outshines its own
+   fill. Deliberately weaker than the fill sitting on top of it. */
+html.dark .bg-purple-200 { background-color: rgba(168, 85, 247, 0.25); }
 /* The blue text/border pair the stale-build notice reads through. Same gap the
    purple pair above had: without these two the accompanying bg-blue-50 tint
    carried near-black text and an invisible border on the dark surface. */
