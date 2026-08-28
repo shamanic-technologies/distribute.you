@@ -9,6 +9,12 @@
  * positive side is that "positive" alone cannot separate "interested but not the buyer"
  * from "wants to book".
  *
+ * Clicking the kind that is ALREADY stated takes the statement back rather than doing
+ * nothing. Re-picking it used to be a deliberate no-op — the producer is idempotent on
+ * the current value, so it was one anyway — which left a person who picked the wrong
+ * kind with no way out at all: the vocabulary has no "nothing stated" member to pick
+ * instead. The one gesture a person reaches for to undo a choice is the choice itself.
+ *
  * Presentational — the page owns the read and the write.
  */
 
@@ -28,6 +34,7 @@ export function ReplyKindControl({
   pending,
   disabled = false,
   onSet,
+  onWithdraw,
 }: {
   /** The kind already stated or observed, verbatim from the producer. */
   kind: string | null;
@@ -36,6 +43,12 @@ export function ReplyKindControl({
   pending: boolean;
   disabled?: boolean;
   onSet: (kind: ReplyKind) => void;
+  /**
+   * Take the standing statement back. Absent on a surface with nothing to withdraw
+   * against, and the picker then reads exactly as it did before: re-picking the stated
+   * kind is a no-op rather than an undo that goes nowhere.
+   */
+  onWithdraw?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const option = replyKindOption(kind);
@@ -92,17 +105,31 @@ export function ReplyKindControl({
                   type="button"
                   role="option"
                   aria-selected={o.kind === kind}
+                  title={
+                    o.kind === kind && onWithdraw
+                      ? "Take this statement back"
+                      : undefined
+                  }
                   onClick={() => {
                     setOpen(false);
-                    // Re-stating what is already stated is a no-op rather than a
-                    // second identical row in the record of who said what.
+                    // The stated kind, pressed again, TAKES THE STATEMENT BACK. Sending
+                    // it once more would be a no-op at the producer (it is idempotent on
+                    // the standing value), so nothing is lost and the one gesture a
+                    // person reaches for to undo a choice finally does something.
                     if (o.kind !== kind) onSet(o.kind);
+                    else onWithdraw?.();
                   }}
-                  className={`block w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-50 ${
+                  className={`flex w-full items-center justify-between gap-2 text-left px-2 py-1 text-xs rounded hover:bg-gray-50 ${
                     o.kind === kind ? "font-semibold text-gray-900" : "text-gray-700"
                   }`}
                 >
-                  {o.label}
+                  <span>{o.label}</span>
+                  {/* Said out loud on the row, because a control whose whole behaviour
+                      is "press the thing you already pressed" is not discoverable from
+                      the thing itself. */}
+                  {o.kind === kind && onWithdraw && (
+                    <span className="text-[10px] font-normal text-gray-400">Clear</span>
+                  )}
                 </button>
               ))}
             </span>

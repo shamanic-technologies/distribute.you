@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import {
   getLeadStepStatements,
   setLeadStepStatement,
+  withdrawLeadStepStatement,
   type LeadStepName,
   type LeadStepStatements,
 } from "./api";
@@ -61,6 +62,34 @@ export function useSetLeadStepStatement(leadRowId: string | null) {
       // what the stat cards above the table render. Invalidate the ROOT: the same money
       // is asked for at several grains under different keys, and a statement changes all
       // of them.
+      queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
+    },
+  });
+}
+
+/**
+ * Take back what somebody stated by hand about one step.
+ *
+ * The undo for the hook above. It is NOT the opposite statement: stating "won't happen"
+ * to cancel a mistaken "happened" is itself a false statement, and it keeps counting.
+ *
+ * The response IS the read's own shape, re-derived by lead-service after the withdrawal,
+ * so it is written straight into the cache rather than invalidated. That is not a
+ * shortcut — withdrawing one statement moves OTHER steps (a step that only read as
+ * reached, or as dead, because of it falls back to what the rest imply, and a "never"
+ * this outcome had superseded stands again), and the producer is the only thing that
+ * knows which. A re-read would be a second round trip spent learning what it just told
+ * us, and it is that wait the panel would sit through.
+ */
+export function useWithdrawLeadStepStatement(leadRowId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<LeadStepStatements, Error, { step: LeadStepName }>({
+    mutationFn: ({ step }) => withdrawLeadStepStatement(leadRowId as string, step),
+    onSuccess: (data) => {
+      queryClient.setQueryData(leadStepStatementsQueryKey(leadRowId ?? "none"), data);
+      // A withdrawn outcome stops being counted and the cost stated for that leg stops
+      // counting as the customer's spend, so the same money moves at every grain.
       queryClient.invalidateQueries({ queryKey: ["featureRevenue"] });
     },
   });
@@ -149,6 +178,34 @@ export function stageCostsFrom(
     if (entry.source !== "manual") continue;
     const key = (entry.step === "purchase" ? "sale" : entry.step) as LeadStageKey;
     out[key] = typeof entry.costCents === "number" ? entry.costCents : null;
+  }
+  return out;
+}
+
+/**
+ * Which stages carry a statement a PERSON made, and can therefore be taken back.
+ *
+ * Three things read as an answer on a step and only one of them is somebody's words: a
+ * tracker reported it, the funnel implies it from a statement on another step, or a
+ * person stated it. lead-service refuses a withdrawal on the first two (409
+ * `not_a_statement` / `nothing_stated`), and the honest surface for a refusal we can
+ * predict is not offering the control — so the panel asks this before it makes an
+ * active button pressable.
+ *
+ * Read exactly as `stageCostsFrom` reads it, because it is the same question ("did
+ * somebody state this by hand") asked for a different reason. A producer that has not
+ * shipped `origin` reports nothing withdrawable, which is how the panel behaved before
+ * withdrawal existed.
+ */
+export function withdrawableStages(
+  data: LeadStepStatements | undefined,
+): Partial<Record<LeadStageKey, boolean>> {
+  const out: Partial<Record<LeadStageKey, boolean>> = {};
+  for (const entry of data?.steps ?? []) {
+    if (entry.origin !== "stated") continue;
+    if (entry.source !== "manual") continue;
+    const key = (entry.step === "purchase" ? "sale" : entry.step) as LeadStageKey;
+    out[key] = true;
   }
   return out;
 }
