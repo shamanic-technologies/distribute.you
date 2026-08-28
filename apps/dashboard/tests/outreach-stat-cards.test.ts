@@ -47,9 +47,9 @@ describe("OutreachStatCards copy", () => {
     expect(cards).toContain('costLabel: "Cost per website visit"');
   });
 
-  it("hides the click cards and shows the Positive Replies outcome for positive_replies", () => {
+  it("hides the click cards and shows the Sales Interests outcome for positive_replies", () => {
     // Single-step reply→paid goal: Website Visits + CPC cards are hidden, and the unified
-    // outcome card becomes Positive Replies + Cost per positive reply (GA, no beta badge,
+    // outcome card becomes Sales Interests + Cost per sales interest (GA, no beta badge,
     // no conversion-tracker CTA — reply attribution is inbox-sourced).
     // Decided from the STEPS, not a goal test: the reply is terminal only when the funnel
     // carries no downstream outcome. See campaign-funnel-steps.test.ts for the funnel case,
@@ -58,8 +58,8 @@ describe("OutreachStatCards copy", () => {
       'const isPositiveReplies = hasStep("positive_replies") && outcomeStep === null;',
     );
     expect(cards).toContain("{showFunnelMetrics && showVisitPair && (");
-    expect(cards).toContain('label: "Positive Replies"');
-    expect(cards).toContain('costLabel: "Cost per positive reply"');
+    expect(cards).toContain('label: "Sales Interests"');
+    expect(cards).toContain('costLabel: "Cost per sales interest"');
     expect(cards).toContain("formatCount(spend.positiveRepliesCount)");
     // The zero-reply floor now lives in features-service (max(committed net spend, the
     // expected cost from the brand's best model), the same cascade it applies per audience),
@@ -90,7 +90,7 @@ describe("OutreachStatCards copy", () => {
     // features-service's projection read is deliberately fail-soft: on a blip it returns
     // null, which means "we could not estimate this". The honest render for that is "—".
     // Falling back to the brand's committed spend (the old `costSoFarFloorCents(...)` call
-    // here) is what printed "Cost per positive reply $29" directly above "Total spent $29",
+    // here) is what printed "Cost per sales interest $29" directly above "Total spent $29",
     // so re-adding it would reintroduce the bug on the one branch no fixture covers.
     expect(cards).not.toContain("costSoFarFloorCents(");
     expect(cards).not.toContain("totalSpentCents");
@@ -177,6 +177,58 @@ describe("OutreachStatCards copy", () => {
     expect(page).toContain("showEconomics");
     expect(page).toContain("showFunnelMetrics={false}");
     expect(page).toContain("economics={revenueRevealed ? data?.costEconomics : null}");
+  });
+
+  // People and actions are two different counts, so the row states both and each card
+  // says which it is. A lead is contacted once and outreached as many times as its
+  // sequence has steps; printing one number under one word is what made the two grains
+  // read as one broken figure.
+  it("states Leads contacted beside Outreaches, and only explains the second when both are on screen", () => {
+    expect(cards).toContain("contactedOverride?: number | null;");
+    expect(cards).toContain('label="Leads contacted"');
+    expect(cards).toContain(
+      "Distinct people this campaign reached. Each one is counted once, however many emails they received.",
+    );
+    // The contacted card renders ONLY when the caller supplies the count — a surface
+    // that states one outreach figure keeps the single card exactly as before.
+    expect(cards).toContain("{showOutreach && contactedOverride != null && (");
+    // ...and the actions card only disambiguates itself when the other one is beside it.
+    expect(cards).toContain(
+      "A lead can be outreached several times, so this counts more than the leads it reached.",
+    );
+  });
+
+  // The share is SERVED (`funnelSteps.steps[0].conversionFromPreviousPct`). A browser
+  // dividing the two counts is the compute-a-stat-in-the-browser bug and would drift
+  // from the producer the moment either side changed scope.
+  it("renders the sales-interest share as a served subtitle, never a division", () => {
+    expect(cards).toContain("signalSharePct?: number | null;");
+    expect(cards).toContain("signalSharePct != null ? `${formatSharePct(signalSharePct)} of contacted`");
+    // Both sales-interest count cards carry it: the mid-funnel pair AND the 1-step
+    // outcome card, or one campaign would state the share and its sibling would not.
+    expect(cards.match(/of contacted`/g)?.length).toBe(2);
+    expect(cards).toContain("subtitle={outcomeCard.countSubtitle}");
+    // No client ratio anywhere on the row.
+    expect(cards).not.toContain("positiveRepliesCount / ");
+    expect(cards).not.toContain("/ outreach");
+  });
+
+  // The prop is only real if the PAGE passes it — a component that handles a flag no
+  // caller sends is correct code and an absent feature.
+  it("has the campaign Overview pass both counts and the served share", () => {
+    const campaign = read("../src/components/campaigns/campaign-overview-page.tsx");
+    const call = campaign.slice(
+      campaign.indexOf("<OutreachStatCards"),
+      campaign.indexOf("<OutreachStatCards") + 600,
+    );
+    expect(call).toContain("contactedOverride={leadsContacted}");
+    expect(call).toContain('outreachLabel="Outreaches"');
+    expect(call).toContain("signalSharePct={salesInterestSharePct}");
+    // Both derived values read SERVED fields off the funnel breakdown.
+    expect(campaign).toContain("data?.funnelSteps?.contactedRecipients ?? null");
+    expect(campaign).toContain("firstRung.conversionFromPreviousPct");
+    // The share is only the share OF CONTACTED when the rung converts from that base.
+    expect(campaign).toContain('firstRung?.leadField === "repliedPositive" && firstRung.fromStep === "Contacted"');
   });
 
   // NOTHING reads the retired brand column any more. The auto variant takes the

@@ -126,8 +126,8 @@ export type FunnelRateField = { key: FunnelRateKey; label: string; tip: string }
  */
 const RATE_FIELDS: Record<FunnelRateKey, Omit<FunnelRateField, "key">> = {
   replyToMeetingPct: {
-    label: "Positive reply → meeting booked",
-    tip: "Of leads who reply positively, the share who book a slot.",
+    label: "Sales interest → meeting booked",
+    tip: "Of leads who show sales interest, the share who book a slot.",
   },
   visitToMeetingPct: {
     label: "Website visit → meeting booked",
@@ -171,7 +171,7 @@ export type SalesFunnelDef = {
    *
    * Purely a JOIN key, never rendered: a channel states the legs it performs as bare
    * step tokens on its feature row, and the words a customer reads for those steps are
-   * the ones already in `steps` — "Positive reply" here is the producer's
+   * the ones already in `steps` — "Sales interest" here is the producer's
    * `conversation`, which is exactly why the two lists cannot be one. Anything that
    * needs to say a leg out loud reads `steps`, so this file keeps ONE vocabulary and
    * gains no second one.
@@ -202,7 +202,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     key: "reply_meeting",
     name: "Sales Meeting from Conversation",
-    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
+    steps: ["Sales interest", "Meeting booked", "Meeting attended", "Paid client"],
     stepKeys: ["conversation", "meeting_booked", "meeting_attended", "paid_client"],
     legs: ["replyToMeetingPct", "meetingBookedToAttendedPct", "meetingToClosePct"],
     goal: "sales_meetings",
@@ -615,7 +615,7 @@ export function funnelWriteErrorMessage(err: unknown): string {
  * A goal the brand configured that the catalogue carries no funnel of its own
  * for, and the funnel whose steps end on the same thing.
  *
- * These goals price ONE end-to-end step (`Positive reply -> Paid client`,
+ * These goals price ONE end-to-end step (`Sales interest -> Paid client`,
  * `Website visit -> Paid client`) where the funnel spells the same journey out
  * over several legs. The brand's number is still true of the whole funnel, so it
  * seeds the LAST leg (the one landing on `Paid client`) and every leg above it

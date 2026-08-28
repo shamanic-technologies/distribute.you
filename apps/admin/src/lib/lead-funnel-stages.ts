@@ -38,7 +38,7 @@ export type SalesFunnelKeyWire = SalesFunnelKey | CanonicalSalesFunnelKey;
 export const FUNNEL_STEPS: Record<SalesFunnelKey, { name: string; steps: string[] }> = {
   reply_meeting: {
     name: "Sales Meeting from Conversation",
-    steps: ["Positive reply", "Meeting booked", "Meeting attended", "Paid client"],
+    steps: ["Sales interest", "Meeting booked", "Meeting attended", "Paid client"],
   },
   visit_meeting: {
     name: "Sales Meeting from Website",
@@ -156,12 +156,12 @@ export interface LeadFunnelStage {
 
 const STAGE_FOR_STEP: Record<string, { key: LeadStageKey; wontLabel: string; label?: string }> = {
   // `label` overrides what THIS panel calls the step, and exactly one step needs it.
-  // The catalogue names the first leg "Positive reply" because a funnel is priced leg
+  // The catalogue names the first leg "Sales interest" because a funnel is priced leg
   // by leg and that leg is the positive one; on a lead panel the row already carries
   // the reply's own KIND beside it (Interested, Wants to book, Not interested), so
-  // "Positive reply" states as a heading the very thing the control next to it is
+  // "Sales interest" states as a heading the very thing the control next to it is
   // there to answer. "Replied" is the fact; the picker says what kind.
-  "Positive reply": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
+  "Sales interest": { key: "positive_reply", wontLabel: "Won't reply", label: "Replied" },
   "Website visit": { key: "website_visit", wontLabel: "Won't visit" },
   "Meeting booked": { key: "meeting_booked", wontLabel: "Won't book" },
   "Meeting attended": { key: "meeting_attended", wontLabel: "Won't attend" },

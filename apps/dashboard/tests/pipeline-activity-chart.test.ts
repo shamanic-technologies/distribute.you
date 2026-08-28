@@ -80,7 +80,7 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(section).toContain("pipelineActualSeries?.clicks");
     expect(section).toContain("pipelineActualSeries?.repliedPositive");
     expect(section).toContain('"Website visits"');
-    expect(section).toContain('"Positive replies"');
+    expect(section).toContain('"Sales interests"');
   });
 
   it("Outreach activity renders per-day stacked BARS, not an area/line chart", () => {
@@ -96,14 +96,14 @@ describe("Brand overview outcome + outreach-activity charts", () => {
     expect(chart).not.toContain("cumulativeActuals");
   });
 
-  it("activity bars carry the goal-specific metrics with positive replies for meetings", () => {
+  it("activity bars carry the goal-specific metrics with sales interests for meetings", () => {
     for (const key of ["outreach", "clicks"]) {
       expect(chart).toContain(`key: "${key}"`);
     }
     expect(chart).toContain('key: "repliedPositive"');
-    expect(chart).toContain('label: "Positive replies"');
+    expect(chart).toContain('label: "Sales interests"');
     // Metrics come from the goal-steps single source (sales_meetings shows BOTH
-    // clicks and positive replies — its full click→reply→meeting path), keyed on the
+    // clicks and sales interests — its full click→reply→meeting path), keyed on the
     // campaign's own funnel when the surface states one.
     expect(chart).toContain("chartMetricKeysFor(optimizationGoal, funnelKey)");
     expect(chart).toContain("POSITIVE_REPLIES");

@@ -367,7 +367,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
     conversionTokenData?.status === "live" ||
     conversionTokenData?.status === "live_waiting";
   const audienceStatsGoal: FeatureAudienceStatsGoal = goalForOptimizationGoal(optimizationGoal);
-  // Reply-driven goals → surface reply economics: extra "Positive Replies" + "CPPR" columns
+  // Reply-driven goals → surface reply economics: extra "Sales interests" + cost columns
   // (left of Cost per click), and default the sort to CPPR asc. BOTH reply goals qualify:
   // positive_replies is the goal whose outcome IS the reply, so gating on meetingBooked alone
   // would hide the reply columns on the very brand that optimises for replies.
@@ -390,7 +390,7 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
    * At BRAND level the table states MONEY — return per dollar and the cost of winning a
    * customer — and drops every funnel-scoped column.
    *
-   * A brand sells through several sales funnels at once, so "Positive replies" / "CPPR"
+   * A brand sells through several sales funnels at once, so "Sales interests" / its cost
    * and "Website Visits" / "Cost per website visit" each name the steps of ONE of them
    * while the rows beside them are attributed across all of them. The campaign level is
    * where those belong: a campaign sells exactly one funnel, so its own steps ARE what
@@ -825,14 +825,14 @@ export function CustomerAudiencesPage({ campaignId }: { campaignId?: string } = 
                   )}
                   {showReplyCols && (
                     <>
-                      <SortHeader label="Positive replies" col="replies" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
+                      <SortHeader label="Sales interests" col="replies" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
                       <SortHeader
-                        label="CPPR"
+                        label="Cost per sales interest"
                         col="cppr"
                         sortCol={sortCol}
                         sortDir={sortDir}
                         onSort={onSort}
-                        info="Cost per positive reply — audience-scoped spend divided by positive replies. Lower is better."
+                        info="Cost per sales interest — audience-scoped spend divided by sales interests. Lower is better."
                       />
                     </>
                   )}

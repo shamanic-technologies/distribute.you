@@ -318,7 +318,7 @@ const OUTCOME_KINDS: readonly OutcomeKind[] = [
   { singular: "sale", plural: "sales", at: (l) => l.purchasedAt },
   { singular: "signup", plural: "signups", at: (l) => l.signupAt },
   { singular: "form submission", plural: "form submissions", at: (l) => l.formSubmissionAt },
-  { singular: "positive reply", plural: "positive replies", at: (l) => l.repliedPositiveAt },
+  { singular: "sales interest", plural: "sales interests", at: (l) => l.repliedPositiveAt },
   { singular: "website visit", plural: "website visits", at: (l) => l.clickedAt },
 ];
 
@@ -366,7 +366,7 @@ export function newOutcomesOnDay(
   });
 }
 
-/** "3 positive replies and 1 signup" — the day's new outcomes, in plain words. */
+/** "3 sales interests and 1 signup" — the day's new outcomes, in plain words. */
 export function describeNewOutcomes(
   outcomes: { singular: string; plural: string; count: number }[],
 ): string {

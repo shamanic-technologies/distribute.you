@@ -24,14 +24,14 @@ describe("leadFunnelStages", () => {
     }
   });
 
-  it("says Replied where the catalogue prices a Positive reply, and copies every other step verbatim", () => {
+  it("says Replied where the catalogue prices a Sales interest, and copies every other step verbatim", () => {
     // The ONE override, pinned by name so a second one has to be a deliberate edit
     // here. Every other label is the catalogue's own word, so the panel and the
     // settings card keep saying the same thing about the same leg.
     for (const def of SALES_FUNNELS) {
       const stages = leadFunnelStages(def.key);
       expect(stages.map((s) => s.label)).toEqual(
-        def.steps.map((step) => (step === "Positive reply" ? "Replied" : step)),
+        def.steps.map((step) => (step === "Sales interest" ? "Replied" : step)),
       );
     }
   });

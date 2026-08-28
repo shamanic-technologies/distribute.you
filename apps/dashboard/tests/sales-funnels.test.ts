@@ -115,7 +115,7 @@ describe("SALES_FUNNELS definitions", () => {
 
   it("routes a lead through Meeting booked before the meeting is attended", () => {
     expect(salesFunnelByKey("reply_meeting").steps).toEqual([
-      "Positive reply",
+      "Sales interest",
       "Meeting booked",
       "Meeting attended",
       "Paid client",

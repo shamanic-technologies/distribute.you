@@ -75,7 +75,7 @@ import { tenantBasePath } from "@/lib/offer-path";
 // two honest numbers that read as one broken one under a shared label (prod: 9,915
 // sequences against 7,895 leads on the same brand, the same afternoon).
 const LEAD_TAB_LABEL: Record<AnyLeadTab, string> = {
-  "positive-replies": "Positive replies",
+  "positive-replies": "Sales interests",
   clicks: "Website Visits",
   outreach: "Contacted",
   signups: "Signups",
@@ -1119,7 +1119,7 @@ export function EngagedLeadsPage({
 
   // Open, once (after leads + the sales-economics query have settled), the leftmost
   // on-path tab that has leads, in the OUTCOME-FIRST order (goal-steps single
-  // source: sales_meetings → Positive replies first, visit goals → Website Visits
+  // source: sales_meetings → Sales interests first, visit goals → Website Visits
   // first, Outreach last). Fall through to the next non-empty tab so the user never
   // lands on an empty tab; default to the last (Outreach) when all empty. User manual
   // switches latch the ref and are never overridden by a later poll.

@@ -187,6 +187,20 @@ export function CampaignOverviewPage() {
 
   const outreachSeries = data?.sequences ?? data?.outreachContacted;
   const outreachTotal = outreachSeries?.total ?? null;
+  // A lead is contacted ONCE and outreached as many times as its sequence has steps, so
+  // the campaign states both: `contactedRecipients` is the funnel's own base (the number
+  // its first rung converts from, so the card and the share below it agree by
+  // construction), and `outreachTotal` above is the undeduped volume that tracks spend.
+  const leadsContacted = data?.funnelSteps?.contactedRecipients ?? null;
+  // What share of the contacted leads showed sales interest — SERVED as the first rung's
+  // conversion off the contacted base, never divided here. Gated on that rung being the
+  // sales-interest one AND converting FROM `Contacted`: a rung deeper in the funnel
+  // states a share of the rung before it, which is a different sentence.
+  const firstRung = data?.funnelSteps?.steps?.[0];
+  const salesInterestSharePct =
+    firstRung?.leadField === "repliedPositive" && firstRung.fromStep === "Contacted"
+      ? firstRung.conversionFromPreviousPct
+      : null;
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
     const outreachByDay = countByDay(data?.sequences ?? data?.outreachContacted);
@@ -608,6 +622,9 @@ export function CampaignOverviewPage() {
             optimizationGoal={optimizationGoal}
             funnelKey={campaignFunnelKey}
             outreachOverride={outreachTotal}
+            contactedOverride={leadsContacted}
+            outreachLabel="Outreaches"
+            signalSharePct={salesInterestSharePct}
           />
         }
       />

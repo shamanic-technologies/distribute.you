@@ -9,7 +9,7 @@
 // The legs come off the wire: features-service states them on the channel's own
 // feature row as bare step tokens, which the acquisition-channel catalogue already
 // reads. The WORDS come from the funnel's own `steps`, so this module introduces no
-// vocabulary of its own — "Positive reply" is what the customer already reads for
+// vocabulary of its own — "Sales interest" is what the customer already reads for
 // that step on the Sales Funnels settings card, and it stays that everywhere.
 //
 // Alias-free on purpose (both imports are type-only and erase at build) so this
@@ -44,7 +44,7 @@ export interface CampaignLeg {
  * at most one of them ever belongs to a given funnel. So the funnel is what
  * disambiguates, and matching is by TOKEN against `stepKeys`, never by the words: the
  * producer calls the first step of the reply funnel `conversation` while the customer
- * reads "Positive reply", so a match on labels would silently find nothing.
+ * reads "Sales interest", so a match on labels would silently find nothing.
  *
  * Two shapes count as a leg of this funnel and nothing else does:
  *
