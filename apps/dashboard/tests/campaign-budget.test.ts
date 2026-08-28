@@ -4,8 +4,11 @@ import {
   campaignBudgetScope,
   campaignSavedCents,
   fmtDailyBudgetUsd,
+  minimumCampaignBudgetUsd,
+  projectedFunnelTotalUsd,
   type BrandFunnelBudgetSet,
 } from "../src/lib/campaign-budget";
+import { funnelBudgetBelowMinimum } from "../src/lib/sales-funnels";
 import { acquisitionChannelsFromFeatures } from "../src/lib/acquisition-channels";
 
 /** The channels the environment publishes, as the catalogue builds them. */
@@ -182,5 +185,69 @@ describe("fmtDailyBudgetUsd", () => {
     expect(fmtDailyBudgetUsd(0)).toBe("$0");
     expect(fmtDailyBudgetUsd(null)).toBe("—");
     expect(fmtDailyBudgetUsd(undefined)).toBe("—");
+  });
+});
+
+/**
+ * The floor binds the FUNNEL, and a figure under it is put BACK to the smallest
+ * one that clears rather than refused on screen. Refusing and leaving the typed
+ * value there makes the customer guess what is allowed; naming the floor alone
+ * makes them do the subtraction the siblings imply.
+ */
+describe("the smallest funded figure a campaign may hold", () => {
+  it("is the funnel's floor when this campaign is the only thing funding it", () => {
+    // reply_meeting floors at $24; nothing else sells through it.
+    expect(minimumCampaignBudgetUsd("reply_meeting", 0, 0)).toBe(24);
+    expect(minimumCampaignBudgetUsd("reply_meeting", 5000, 5000)).toBe(24);
+    expect(minimumCampaignBudgetUsd("visit_signup", 0, 0)).toBe(1);
+  });
+
+  it("subtracts what the funnel's OTHER campaigns already fund", () => {
+    // The funnel holds $30, $10 of it this campaign's — so $20 comes from
+    // siblings and this campaign only has to put up $4 to keep the total at $24.
+    expect(minimumCampaignBudgetUsd("reply_meeting", 3000, 1000)).toBe(4);
+  });
+
+  it("is ZERO once the siblings clear the bar without this campaign", () => {
+    // The funnel stays over its floor whatever this campaign does, so any amount
+    // is legal and there is nothing to clamp to.
+    expect(minimumCampaignBudgetUsd("reply_meeting", 5000, 1000)).toBe(0);
+  });
+
+  it("is the grandfathered figure on a funnel billing funds UNDER its floor", () => {
+    // Live brands sit under their funnel's floor right now: the ceiling may be
+    // kept or raised, never lowered, so the bar is what it is funded at today —
+    // NOT the $24 it is not allowed to walk down to.
+    expect(minimumCampaignBudgetUsd("reply_meeting", 800, 800)).toBe(8);
+  });
+
+  it("never returns a figure its own rule would refuse", () => {
+    for (const [funnel, saved, own] of [
+      ["reply_meeting", 0, 0],
+      ["reply_meeting", 5000, 5000],
+      ["reply_meeting", 3000, 1000],
+      ["reply_meeting", 800, 800],
+      ["visit_form", 0, 0],
+      ["visit_meeting", 1200, 1200],
+    ] as const) {
+      const min = minimumCampaignBudgetUsd(funnel, saved, own);
+      if (min === 0) continue;
+      const projected = projectedFunnelTotalUsd(saved, own, min);
+      expect(funnelBudgetBelowMinimum(funnel, projected, saved)).toBe(false);
+    }
+  });
+});
+
+describe("what the whole funnel would be funded at", () => {
+  it("adds the typed figure to what this campaign's siblings hold", () => {
+    expect(projectedFunnelTotalUsd(3000, 1000, 40)).toBe(60);
+  });
+
+  it("holds the siblings constant when this campaign is defunded", () => {
+    expect(projectedFunnelTotalUsd(3000, 1000, 0)).toBe(20);
+  });
+
+  it("never reads a negative typed figure as a credit against the siblings", () => {
+    expect(projectedFunnelTotalUsd(3000, 1000, -5)).toBe(20);
   });
 });
