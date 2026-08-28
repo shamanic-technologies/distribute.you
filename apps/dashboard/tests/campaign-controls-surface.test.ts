@@ -11,6 +11,7 @@ const brandPage = read(
   "app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx",
 );
 const campaignPage = read("components/campaigns/campaign-overview-page.tsx");
+const funnelPage = read("components/funnels/funnel-overview-page.tsx");
 const api = read("lib/api.ts");
 
 /**
@@ -25,7 +26,7 @@ describe("campaign controls — one modal, three grains", () => {
   it("is ONE modal component, mounted through ONE trigger", () => {
     // A second implementation is how a campaign comes to be controlled two ways.
     expect(trigger).toContain("CampaignControlsModal");
-    for (const src of [brandPage, campaignPage]) {
+    for (const src of [brandPage, campaignPage, funnelPage]) {
       expect(src).toContain("CampaignControlsTrigger");
       expect(src).not.toContain("CampaignControlsModal");
     }
@@ -186,5 +187,31 @@ describe("no aggregate is editable anywhere", () => {
     // local-first cache paints first and ignores the fresher answer behind it.
     expect(modal).toContain("seededFrom");
     expect(modal).toContain("touched.has(row.rowId)");
+  });
+});
+
+describe("the funnel grain states the same two answers as its offer", () => {
+  it("mounts the shared trigger, narrowed to this funnel of this offer", () => {
+    // Narrowed by BOTH: billing keys a ceiling on (funnel x channel x offer), so a
+    // bare funnel spans every offer selling it and would list a sibling offer's
+    // campaigns under this one's name.
+    const at = funnelPage.indexOf("<CampaignControlsTrigger");
+    expect(at).toBeGreaterThan(-1);
+    const call = funnelPage.slice(at, funnelPage.indexOf("/>", at));
+    expect(call).toContain("offerId={offerId}");
+    expect(call).toContain("funnelKey={rawKey || null}");
+  });
+
+  it("states the SERVED running figure the cost card below already divides by", () => {
+    // One number on one screen: summing the trigger's own rows here would let the
+    // header and the card disagree about what this funnel may spend today.
+    const at = funnelPage.indexOf("<CampaignControlsTrigger");
+    const call = funnelPage.slice(at, funnelPage.indexOf("/>", at));
+    expect(call).toContain("totalCentsOverride={funnelDailyBudgetCents}");
+    expect(funnelPage).toContain("dailyBudgetCents={funnelDailyBudgetCents}");
+  });
+
+  it("rides the section heading rather than standing as a band above it", () => {
+    expect(funnelPage).toContain("headerAction={");
   });
 });

@@ -10,6 +10,7 @@ import { useSoleFeatureSlug } from "@/lib/sole-feature";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
 import { CampaignsTable, useCampaignRows } from "@/components/campaigns/campaigns-table";
+import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { normalizeSalesFunnelKey, type SalesFunnelKeyWire } from "@/lib/sales-funnels";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
@@ -103,6 +104,25 @@ export function FunnelOverviewPage() {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4">
       <RevenueOverviewSection
+        // What is running here and what it may spend in a day, read-only, and the way
+        // into the modal that changes it — the SAME trigger the brand and offer
+        // Overviews render, narrowed to this funnel of this offer. It rides the section
+        // heading rather than standing as a band above it: a full-width line over the
+        // title reads as a second heading, and this is an attribute of what the heading
+        // names.
+        //
+        // The money is the SERVED running figure the cost card below already divides
+        // by, passed as the override rather than summed from the trigger's own rows —
+        // one number on one screen, so the header and the card cannot disagree about
+        // what this funnel may spend today.
+        headerAction={
+          <CampaignControlsTrigger
+            brandId={brandId}
+            offerId={offerId}
+            funnelKey={rawKey || null}
+            totalCentsOverride={funnelDailyBudgetCents}
+          />
+        }
         data={revenuePending ? undefined : data}
         pipelineActivity={activityPending ? undefined : activity.data}
         revenuePending={revenuePending}

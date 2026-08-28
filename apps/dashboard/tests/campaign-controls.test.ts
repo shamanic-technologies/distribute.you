@@ -223,6 +223,47 @@ describe("buildControlRows — which campaigns a grain controls", () => {
     );
     expect(rows.map((r) => r.campaignId)).toEqual(["z", "a"]);
   });
+
+  it("narrows to ONE funnel, reading either wire spelling of it", () => {
+    const all = [
+      campaign({ id: "reply", funnelKey: "reply_meeting" }),
+      campaign({ id: "purchase", funnelKey: "visit_signup" }),
+    ];
+    for (const spelling of ["reply_meeting", "sales_meetings_from_conversation"]) {
+      const rows = buildControlRows(all, undefined, CHANNELS, { funnelKey: spelling });
+      expect(rows.map((r) => r.campaignId)).toEqual(["reply"]);
+    }
+  });
+
+  it("the funnel filter composes with the offer filter, never replaces it", () => {
+    const rows = buildControlRows(
+      [
+        campaign({ id: "mine", funnelKey: "reply_meeting", offerId: OFFER_A }),
+        campaign({ id: "sibling", funnelKey: "reply_meeting", offerId: OFFER_B }),
+      ],
+      undefined,
+      CHANNELS,
+      { offerId: OFFER_A, funnelKey: "reply_meeting" },
+    );
+    expect(rows.map((r) => r.campaignId)).toEqual(["mine"]);
+  });
+
+  it("a campaign that names no funnel belongs to no funnel's list", () => {
+    const rows = buildControlRows(
+      [campaign({ id: "old", funnelKey: null })],
+      undefined,
+      CHANNELS,
+      { funnelKey: "reply_meeting" },
+    );
+    expect(rows).toEqual([]);
+  });
+
+  it("an unmapped funnel key narrows to nothing rather than throwing", () => {
+    expect(() =>
+      buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, { funnelKey: "nonsense" }),
+    ).not.toThrow();
+    expect(buildControlRows([campaign({ id: "a" })], undefined, CHANNELS, { funnelKey: "nonsense" })).toEqual([]);
+  });
 });
 
 describe("rollupStatus — one word for a scope, exhaustive", () => {
