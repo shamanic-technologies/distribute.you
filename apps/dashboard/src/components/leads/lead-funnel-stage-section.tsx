@@ -230,6 +230,8 @@ export function LeadFunnelStageSection({
   pending,
   error,
   onSet,
+  withdrawable,
+  onWithdraw,
   reply,
   disabled = false,
 }: {
@@ -270,9 +272,11 @@ export function LeadFunnelStageSection({
   /**
    * The one statement currently in flight, if any. It carries the TARGET state as well
    * as the stage, because the spinner belongs on the button being moved TO — a spinner
-   * on the stage alone cannot say which of the two the person pressed.
+   * on the stage alone cannot say which of the two the person pressed. A withdrawal
+   * carries no target of its own: the button pressed is whichever one is already
+   * active, so the spinner goes there.
    */
-  pending?: { key: LeadStageKey; next: "outcome" | "never" } | null;
+  pending?: { key: LeadStageKey; next: "outcome" | "never" | "withdraw" } | null;
   /** A refusal from the producer, already turned into a sentence by the caller. */
   error?: string | null;
   onSet: (
@@ -283,6 +287,19 @@ export function LeadFunnelStageSection({
     valueCents?: number,
   ) => void;
   /**
+   * Which stages carry a statement a PERSON made, so its active button becomes a way to
+   * take it back. A tracker-reported outcome and one the funnel merely implies are
+   * nobody's words: lead-service refuses a withdrawal on both, and the honest surface for
+   * a refusal we can predict is not offering the control. Absent everywhere and the
+   * buttons read exactly as they did before withdrawal existed.
+   */
+  withdrawable?: Partial<Record<LeadStageKey, boolean>>;
+  /**
+   * Take the statement on this stage back. Absent and no active button is pressable,
+   * whatever `withdrawable` says.
+   */
+  onWithdraw?: (key: WritableStageKey) => void;
+  /**
    * The reply row's own control, when the funnel has one. A reply is not a yes/no —
    * nine kinds in four groups — so it gets a picker rather than the two buttons every
    * other row carries. Absent (an ads-led funnel, say) and the row reads as before.
@@ -291,6 +308,8 @@ export function LeadFunnelStageSection({
     kind: string | null;
     pending: boolean;
     onSet: (kind: ReplyKind) => void;
+    /** Pressing the kind already stated takes it back. */
+    onWithdraw?: () => void;
   } | null;
   disabled?: boolean;
 }) {
@@ -346,8 +365,16 @@ export function LeadFunnelStageSection({
           // reply is a fact about a message, and a visit is a click the delivery layer
           // measures. Both are still worth showing; neither is ours to state here.
           const writable = isWritableStage(stage.key);
-          // The spinner sits on the button the person pressed.
-          const spinningOn = (target: LeadStageState) => busyHere && pending?.next === target;
+          // Whether the state on screen is somebody's own words, and can be taken back.
+          // An implied one is excluded at the source (it renders as a reading with no
+          // controls at all), so this is really about telling a hand-stated outcome from
+          // a tracker-reported one.
+          const canWithdraw = withdrawable?.[stage.key] === true && onWithdraw != null;
+          // The spinner sits on the button the person pressed. A withdrawal names no
+          // target, so it spins on whichever button is currently active — which is the
+          // one that was pressed.
+          const spinningOn = (target: LeadStageState) =>
+            busyHere && (pending?.next === target || (pending?.next === "withdraw" && state === target));
           return (
             <li key={stage.key} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
               <span className="text-sm text-gray-800 min-w-0 flex items-center gap-1.5">
@@ -409,31 +436,53 @@ export function LeadFunnelStageSection({
                     )}
                     <StageButton
                       active={state === "outcome"}
-                      // Already stated? The button reads as the state and stops being a
-                      // control. There is no write back to pending, so a click that
-                      // could only be a no-op must not look pressable.
-                      disabled={locked || state === "outcome"}
+                      // The active button is how the statement is TAKEN BACK, when it is
+                      // somebody's own words. Otherwise it reads as the state and stops
+                      // being a control: a tracker reported it, or the funnel concluded
+                      // it, and neither is this person's to undo.
+                      disabled={locked || busyHere || (state === "outcome" && !canWithdraw)}
                       busy={spinningOn("outcome")}
                       label="Happened"
-                      title={`${stage.label}: happened`}
+                      title={
+                        state === "outcome" && canWithdraw
+                          ? `${stage.label}: take this back`
+                          : `${stage.label}: happened`
+                      }
                       tone="outcome"
                       // Every statement has to say what the step cost its author, so the
                       // click opens the question instead of sending a write the producer
-                      // would refuse.
-                      onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "outcome" })}
+                      // would refuse. A withdrawal asks nothing — it removes what was
+                      // said, cost included — so it goes straight out.
+                      onClick={() =>
+                        state === "outcome"
+                          ? onWithdraw?.(stage.key as WritableStageKey)
+                          : setAsking({ key: stage.key as WritableStageKey, next: "outcome" })
+                      }
                     />
                     <StageButton
                       active={state === "never"}
                       // Refused by lead-service once the stage has happened, and the
                       // honest surface for a refusal we can predict is not offering it.
-                      disabled={locked || state === "never" || state === "outcome"}
+                      // Active and somebody's own words: pressing it takes that back.
+                      disabled={
+                        locked || busyHere || state === "outcome" || (state === "never" && !canWithdraw)
+                      }
                       busy={spinningOn("never")}
                       label={WONT_LABEL}
-                      title={neverTitle}
+                      title={
+                        state === "never" && canWithdraw
+                          ? `${stage.label}: take this back`
+                          : neverTitle
+                      }
                       tone="never"
                       // A step that will not happen still cost what it cost, so this
-                      // asks the same question the outcome does.
-                      onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "never" })}
+                      // asks the same question the outcome does. Taking it back asks
+                      // nothing.
+                      onClick={() =>
+                        state === "never"
+                          ? onWithdraw?.(stage.key as WritableStageKey)
+                          : setAsking({ key: stage.key as WritableStageKey, next: "never" })
+                      }
                     />
                   </>
                 ) : stage.key === "positive_reply" && reply ? (
@@ -443,6 +492,7 @@ export function LeadFunnelStageSection({
                     pending={reply.pending}
                     disabled={disabled}
                     onSet={reply.onSet}
+                    onWithdraw={reply.onWithdraw}
                   />
                 ) : (
                   <span className="text-xs text-gray-400">{isTracked ? "Seen" : "Not seen"}</span>

@@ -7,6 +7,7 @@ const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 const PAGE = read("src/components/audiences/engaged-leads-page.tsx");
 const SECTION = read("src/components/leads/lead-funnel-stage-section.tsx");
 const HOOK = read("src/lib/use-lead-step-statements.ts");
+const API = read("src/lib/api.ts");
 
 describe("lead funnel stage panel", () => {
   it("keys the control set on the campaign's FUNNEL, never on a goal", () => {
@@ -47,19 +48,55 @@ describe("lead funnel stage panel", () => {
     expect(SECTION).toContain("writable ? (");
   });
 
-  it("never offers a retraction, because the producer has no write back to pending", () => {
-    // The old shape let a click on the active button clear it. There is no such route;
-    // a statement is corrected by making the other one.
+  it("takes a statement back through the producer's own withdrawal, never the opposite one", () => {
+    // Stating "won't happen" to cancel a mistaken "happened" is itself a false
+    // statement, and it keeps counting. lead-service withdraws instead: the ABSENCE of
+    // a statement, not a third kind of one.
+    expect(HOOK).toContain("withdrawLeadStepStatement");
+    expect(API).toContain('method: "DELETE"');
+    expect(API).toContain("/step-statements/${step}");
+    // Not a state anything renders or counts.
     expect(SECTION).not.toContain('=== "outcome" ? "pending"');
     expect(SECTION).not.toContain('=== "never" ? "pending"');
-    expect(SECTION).toContain('disabled={locked || state === "outcome"}');
   });
 
-  it("re-reads after a write instead of reconstructing the producer's answer", () => {
+  it("offers the withdrawal only on somebody's OWN words", () => {
+    // A tracker reported it, or the funnel implies it from a statement on another step:
+    // lead-service refuses both (409 not_a_statement / nothing_stated), and the honest
+    // surface for a refusal we can predict is not offering the control.
+    expect(HOOK).toContain("export function withdrawableStages");
+    expect(HOOK).toContain('entry.origin !== "stated"');
+    expect(HOOK).toContain('entry.source !== "manual"');
+    expect(SECTION).toContain("const canWithdraw = withdrawable?.[stage.key] === true && onWithdraw != null;");
+    // The CALL SITE, not only the component that would honour it.
+    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 1200);
+    expect(call).toContain("withdrawable={panelWithdrawable}");
+    expect(call).toContain("onWithdraw={onWithdrawStage}");
+  });
+
+  it("re-reads after a WRITE instead of reconstructing the producer's answer", () => {
     // lead-service decides more than the field written: an outcome can supersede an
-    // earlier `never`, and it stamps source, user and time.
-    expect(HOOK).toContain("invalidateQueries");
-    expect(HOOK).not.toContain("setQueryData");
+    // earlier `never`, and it stamps source, user and time. Measured to the closing
+    // brace of the two write hooks so the withdrawal below is not in the slice.
+    const writes = HOOK.slice(
+      HOOK.indexOf("export function useSetLeadStepStatement"),
+      HOOK.indexOf("export function useWithdrawLeadStepStatement"),
+    );
+    expect(writes).toContain("invalidateQueries");
+    expect(writes).not.toContain("setQueryData");
+  });
+
+  it("writes the WITHDRAWAL's own answer into the cache rather than re-reading it", () => {
+    // The producer re-derives every step and returns the read's own shape, because one
+    // withdrawal moves OTHER steps: a step that only read as reached falls back to what
+    // the rest imply, and a "never" the outcome had superseded stands again. A re-read
+    // would be a second round trip spent learning what it just told us.
+    const withdraw = HOOK.slice(
+      HOOK.indexOf("export function useWithdrawLeadStepStatement"),
+      HOOK.indexOf("export function useSetAnyLeadStepStatement"),
+    );
+    expect(withdraw).toContain("setQueryData(leadStepStatementsQueryKey");
+    expect(withdraw).toContain('queryKey: ["featureRevenue"]');
   });
 
   it("invalidates the revenue ROOT, because a statement moves the money at every grain", () => {
@@ -124,9 +161,26 @@ describe("the reply row", () => {
     expect(CONTROL).not.toContain("lead_closed");
   });
 
-  it("re-stating the current kind is a no-op", () => {
-    // Otherwise the record of who said what grows a second identical row.
-    expect(CONTROL).toContain("if (o.kind !== kind) onSet(o.kind)");
+  it("re-picking the stated kind TAKES IT BACK, which is the only way out", () => {
+    // The vocabulary has no "nothing stated" member to pick instead, and the producer is
+    // idempotent on the standing value, so re-picking was a deliberate no-op and a person
+    // who chose wrongly was stuck with it. The gesture anybody reaches for to undo a
+    // choice is the choice itself.
+    expect(CONTROL).toContain("if (o.kind !== kind) onSet(o.kind);");
+    expect(CONTROL).toContain("else onWithdraw?.();");
+    // Said out loud on the row: a control whose behaviour is "press what you already
+    // pressed" is not discoverable from the thing itself.
+    expect(CONTROL).toContain("Clear");
+  });
+
+  it("only offers it while something STANDS, and drops a withdrawn statement from the read", () => {
+    // The list serves withdrawn statements beside standing ones - they are the audit of
+    // what was asserted - so taking the newest row verbatim renders a kind nobody stands
+    // behind, which is the whole point of taking it back.
+    expect(PAGE).toContain("replyData?.qualifications.find((q) => !q.withdrawnAt)?.replyKind");
+    expect(PAGE).toContain("if (q.withdrawnAt) continue;");
+    const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 1200);
+    expect(call).toContain("onWithdraw: shownReplyKind ? onWithdrawReply : undefined");
   });
 });
 
@@ -232,14 +286,13 @@ describe("stating what a won deal was worth", () => {
 });
 
 describe("stating what the step cost the customer", () => {
-  const API = read("src/lib/api.ts");
   const STAGES = read("src/lib/lead-funnel-stages.ts");
 
   it("asks on BOTH kinds, because a step that went nowhere still cost something", () => {
     // lead-service makes the cost mandatory on an outcome and on a "never" alike, so
     // neither button can write straight through any more.
-    expect(SECTION).toContain('onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "outcome" })}');
-    expect(SECTION).toContain('onClick={() => setAsking({ key: stage.key as WritableStageKey, next: "never" })}');
+    expect(SECTION).toContain(': setAsking({ key: stage.key as WritableStageKey, next: "outcome" })');
+    expect(SECTION).toContain(': setAsking({ key: stage.key as WritableStageKey, next: "never" })');
     // The one-click write is GONE, so nothing can reach the producer without an amount.
     expect(SECTION).not.toContain(': onSet(stage.key as WritableStageKey, "outcome")');
     expect(SECTION).not.toContain('onClick={() => onSet(stage.key as WritableStageKey, "never")}');
@@ -329,7 +382,7 @@ describe("the funnel constrains its neighbours", () => {
     // One click mid-funnel ends every step after it. A control that does more than it
     // says is a surprise, not a decision.
     expect(SECTION).toContain("Also ends:");
-    expect(SECTION).toContain("title={neverTitle}");
+    expect(SECTION).toContain(": neverTitle");
   });
 
   it("reads implied from the producer's own origin, never re-deriving the funnel here", () => {

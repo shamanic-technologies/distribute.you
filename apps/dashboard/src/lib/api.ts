@@ -2036,10 +2036,10 @@ export async function getLeadStepStatements(
 /**
  * State what happened at one step, or that it never will.
  *
- * Deliberately NOT retractable: there is no write back to `pending`. A statement is
- * corrected by making the other one — an outcome supersedes an earlier `never`, while
- * a `never` on a step that already happened is refused, and the caller renders that
- * refusal rather than pre-empting it.
+ * Correcting one is a WITHDRAWAL (below), not the opposite statement: stating the other
+ * thing to undo a mistake is itself a false statement, and it keeps counting. An outcome
+ * still supersedes an earlier `never` on its own — that is the funnel resolving a
+ * contradiction, a different fact from somebody taking their own words back.
  */
 export async function setLeadStepStatement(
   leadRowId: string,
@@ -2065,6 +2065,46 @@ export async function setLeadStepStatement(
     method: "POST",
     body,
   });
+}
+
+/**
+ * Take back a statement somebody made by hand about one funnel step of one lead.
+ *
+ * The undo for the write above, and the ONLY one: a person who picked the wrong lead,
+ * the wrong step, or misread a reply had no way out, and the statement kept counting —
+ * the outcome stayed on the ledger and the cost they stated for that leg stayed in their
+ * spend, so every cost of acquisition and return downstream carried money nobody spent.
+ *
+ * It is the ABSENCE of a statement, not a third kind of one: nothing new to count, and
+ * nothing is deleted (what was stated and the fact it was withdrawn both stay readable).
+ *
+ * Only a statement a PERSON made can be withdrawn. A tracker-reported outcome is a 409
+ * `not_a_statement` and a step that merely READS as reached because the funnel implies it
+ * is a 409 `nothing_stated` — the panel does not offer the control in either case, so
+ * those refusals are a backstop rather than something a customer should meet.
+ *
+ * The response is the SAME per-step shape the read serves, re-derived after the
+ * withdrawal — so a caller writes it straight into the read's cache instead of guessing
+ * what its own withdrawal did to the rest of the funnel.
+ */
+export async function withdrawLeadStepStatement(
+  leadRowId: string,
+  step: LeadStepName,
+  token?: string,
+): Promise<LeadStepStatements> {
+  const raw = await apiCall<unknown>(`/leads/${leadRowId}/step-statements/${step}`, {
+    token,
+    method: "DELETE",
+  });
+  const parsed = LeadStepStatementsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error("[dashboard] withdrawLeadStepStatement: response shape mismatch", {
+      issues: parsed.error.issues,
+      raw,
+    });
+    throw new Error("[dashboard] withdrawLeadStepStatement: invalid response shape");
+  }
+  return parsed.data;
 }
 
 // The welcome signup gift is NOT front-end editable. Its grant amount is
@@ -4501,6 +4541,17 @@ export interface ManualQualification {
   qualifiedBy: string;
   notes: string | null;
   qualifiedAt: string;
+  /**
+   * When a person TOOK THIS BACK, or null while it still stands (instantly-service
+   * v0.75.1). The list serves withdrawn statements alongside standing ones — they are
+   * the audit of what was asserted — so a reader that takes the newest row verbatim
+   * renders a kind nobody stands behind. Filter on this, never on recency alone.
+   *
+   * `.optional()` in spirit: a row written before the column existed carries neither
+   * field, which reads as standing, exactly as it did before withdrawal existed.
+   */
+  withdrawnAt?: string | null;
+  withdrawnBy?: string | null;
 }
 
 export interface SetManualQualificationResponse {
@@ -4526,6 +4577,42 @@ export async function setManualQualification(
       ...(body.notes !== undefined ? { notes: body.notes } : {}),
     },
   });
+}
+
+/**
+ * Take back the standing reply-kind statement for one (campaign, lead) pair.
+ *
+ * The undo for the write above. Picking the wrong kind was permanent: the vocabulary has
+ * no "nothing stated" member, the store is append-only, and the write is idempotent on
+ * the current value, so re-picking the same kind was a no-op rather than a way back.
+ *
+ * Afterwards the lead reads as it did before anybody spoke — no standing human statement
+ * — and the AUTOMATIC classification takes over again, because the manual pin that kept
+ * later webhook events from reclassifying the reply is released.
+ *
+ * NOT an erasure: nothing is deleted and no sentinel kind enters the vocabulary. It also
+ * does not retract the separate fact that a reply ARRIVED, nor undo the sequence stop a
+ * stopping statement already caused — those are actions already taken.
+ *
+ * 404 `no_standing_qualification` when nothing stands (never stated, or already
+ * withdrawn — withdrawing twice is that same refusal, not a success).
+ */
+export async function withdrawManualQualification(
+  body: { campaignId: string; email: string; notes?: string },
+  token?: string,
+): Promise<{ qualification: ManualQualification }> {
+  return apiCall<{ qualification: ManualQualification }>(
+    "/emails/manual-qualifications/withdrawals",
+    {
+      token,
+      method: "POST",
+      body: {
+        campaign_id: body.campaignId,
+        email: body.email,
+        ...(body.notes !== undefined ? { notes: body.notes } : {}),
+      },
+    },
+  );
 }
 
 export async function listManualQualifications(
