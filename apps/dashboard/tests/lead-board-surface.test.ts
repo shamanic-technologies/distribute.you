@@ -6,6 +6,11 @@ const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "u
 
 const board = read("components/leads/lead-board.tsx");
 const page = read("components/audiences/engaged-leads-page.tsx");
+// The GESTURE is shared by every kanban here, so it is asserted where it lives rather
+// than once per board — two copies of a pointer state machine drift the first time
+// either is touched.
+const hook = read("components/boards/use-board-drag.ts");
+const dragLib = read("lib/board-drag.ts");
 
 /** From `marker` forward, far enough to cover the JSX element that starts there. */
 const sliceFrom = (src: string, marker: string, len: number) => {
@@ -101,8 +106,8 @@ describe("a move states a reply KIND, and it asks which", () => {
   it("never writes straight from a drop", () => {
     // "Sales interest" is three different things a prospect can have said; recording
     // the wrong one is worse than recording nothing.
-    const drop = sliceFrom(board, "const onPointerUp =", 700);
-    expect(drop).toContain("startMove(drag.card, to)");
+    const drop = sliceFrom(board, "onDrop: (card, columnKey)", 260);
+    expect(drop).toContain("startMove(card, to)");
     expect(drop).not.toContain("onMove(");
     expect(board).toContain("columnReplyKinds(pending.to.key)");
   });
@@ -132,19 +137,39 @@ describe("one gesture, two actions, told apart by time", () => {
     expect(board).not.toContain("onDrop=");
   });
 
+  it("runs the ONE shared gesture rather than a copy of it", () => {
+    // Both kanbans call it, so a change to how a card is picked up reaches both.
+    expect(board).toContain("useBoardDrag<LeadBoardCard>");
+    expect(board).toContain("board.cardHandlers(card)");
+    expect(read("components/funnels/funnel-leg-board.tsx")).toContain("useBoardDrag<LegBoardCard>");
+  });
+
   it("picks a card up on a HOLD and opens it on a tap", () => {
-    expect(board).toContain("const LONG_PRESS_MS = 350;");
-    expect(board).toContain("window.setTimeout(");
-    const up = sliceFrom(board, "const onPointerUp =", 700);
-    expect(up).toContain("onOpen(card.id)");
+    expect(dragLib).toContain("export const LONG_PRESS_MS = 350;");
+    expect(hook).toContain("window.setTimeout(");
+    const up = sliceFrom(hook, "const onPointerUp =", 700);
+    expect(up).toContain("onTap(card)");
     // A press that wandered was a scroll, not a hold.
-    expect(board).toContain("const SLOP_PX = 8;");
-    expect(board).toContain("clearPress()");
+    expect(dragLib).toContain("export const SLOP_PX = 8;");
+    expect(hook).toContain("clearPress()");
+    // And the board's own tap opens the lead.
+    expect(board).toContain("onTap: (card) => onOpen(card.id)");
   });
 
   it("only stops the page scrolling once the card is actually up", () => {
-    // `touch-action: none` on every card would kill the board's own scrolling.
-    expect(board).toContain('lifted ? { touchAction: "none" } : undefined');
+    // `touch-action: none` on every card would kill the board's own scrolling, so it
+    // rides the OUTLINE the lifted card leaves behind — the only card that is up.
+    expect(board).toContain('style={{ touchAction: "none" }}');
+    expect(board).not.toContain("touchAction: \"none\" } : undefined");
+  });
+
+  it("leaves an outline where the card was and opens one where it is going", () => {
+    // A column that collapses under the finger reflows the board mid-drag, and a target
+    // that gives no sign until release makes a drop something you discover.
+    expect(board).toContain('<BoardSlot variant="origin" />');
+    expect(board).toContain('<BoardSlot variant="target" />');
+    expect(board).toContain("board.showsSlot(column.key)");
+    expect(board).not.toContain('lifted ? "opacity-40"');
   });
 
   it("drags a LIVE element, so the ghost keeps the card's own corners", () => {
@@ -163,14 +188,27 @@ describe("one gesture, two actions, told apart by time", () => {
     expect(board).toContain("startMove(card, target)");
   });
 
+  it("resolves the drop on the WINDOW, not on whatever card is under the pointer", () => {
+    // The card is replaced by its own outline the moment it lifts, so the element the
+    // press started on is gone and pointer capture with it. A pointerup handler living
+    // on a card then fires only if the pointer happens to land on ANOTHER card — a drop
+    // onto a column header, or onto the gap under the last card, is swallowed and the
+    // board stays stuck holding it. Found by reproduction, not by reading.
+    expect(hook).toContain('window.addEventListener("pointerup", up)');
+    expect(hook).toContain('window.addEventListener("pointermove", move');
+    expect(hook).toContain('window.removeEventListener("pointerup", up)');
+    // And the card's own handlers stand down once it is up.
+    expect(hook).toContain("if (live.current) return; // the window's own handler resolves the drop");
+  });
+
   it("scrolls the rail under a card held at its edge", () => {
     // Four 256px columns do not fit a phone, so most of the board is off-screen while
     // a card is up — and a target you cannot reach is a target the drag cannot use.
     // A frame loop, because a finger parked at the edge emits no further move events.
-    expect(board).toContain("requestAnimationFrame(step)");
-    expect(board).toContain("el.scrollLeft += SPEED");
-    expect(board).toContain("el.scrollLeft -= SPEED");
-    expect(board).toContain("ref={rail}");
+    expect(hook).toContain("requestAnimationFrame(step)");
+    expect(hook).toContain("el.scrollLeft += railScrollStep(");
+    expect(dragLib).toContain("export function railScrollStep(");
+    expect(board).toContain("ref={board.railRef}");
   });
 
   it("accepts a drop in EVERY column and refuses it in the form", () => {

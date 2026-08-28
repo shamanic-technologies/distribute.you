@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { BoardSlot } from "@/components/boards/board-slot";
+import { useBoardDrag } from "@/components/boards/use-board-drag";
 import { CompanyLogo } from "@/components/company-logo";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
@@ -64,19 +66,6 @@ interface PendingMove {
   card: LeadBoardCard;
   to: LeadBoardColumn;
 }
-
-/** A drag in flight: the card, and where the pointer is on screen. */
-interface DragState {
-  card: LeadBoardCard;
-  x: number;
-  y: number;
-  over: LeadBoardColumnKey | null;
-}
-
-/** How long a press has to last before it picks the card up rather than opening it. */
-const LONG_PRESS_MS = 350;
-/** How far a pointer may wander before the press is a scroll rather than a hold. */
-const SLOP_PX = 8;
 
 /**
  * The tone of a card's tag when nobody has stated a kind — the column's own verdict.
@@ -217,106 +206,28 @@ export function LeadBoard({
 }) {
   const [pending, setPending] = useState<PendingMove | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [drag, setDrag] = useState<DragState | null>(null);
-  // The press being timed. A ref rather than state: it changes on every pointermove
-  // and nothing on screen reads it until the hold actually fires.
-  const press = useRef<{ card: LeadBoardCard; x: number; y: number; timer: number } | null>(null);
-  // The horizontally-scrolling rail, and the live pointer position, for the edge
-  // auto-scroll below. The position is a ref because the loop reads it every frame
-  // and a state read there would be one render behind.
-  const rail = useRef<HTMLDivElement | null>(null);
-  const at = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  const clearPress = useCallback(() => {
-    if (press.current) {
-      window.clearTimeout(press.current.timer);
-      press.current = null;
-    }
-  }, []);
-
-  useEffect(() => clearPress, [clearPress]);
-
-  // Four 256px columns do not fit a phone, so most of the board is off-screen while a
-  // card is held — and a target you cannot reach is a target the drag cannot use. Held
-  // near an edge, the rail scrolls itself. A frame loop rather than a scroll-per-move
-  // because a finger parked at the edge emits no further move events.
-  const dragging = drag != null;
-  useEffect(() => {
-    if (!dragging) return;
-    let raf = 0;
-    const step = () => {
-      const el = rail.current;
-      if (el) {
-        const box = el.getBoundingClientRect();
-        const EDGE = 56;
-        const SPEED = 14;
-        if (at.current.x > box.right - EDGE) el.scrollLeft += SPEED;
-        else if (at.current.x < box.left + EDGE) el.scrollLeft -= SPEED;
-      }
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [dragging]);
 
   const startMove = (card: LeadBoardCard, to: LeadBoardColumn) => {
     setMenuFor(null);
     setPending({ card, to });
   };
 
-  /** Which column the pointer is over, read off the document rather than tracked. */
-  const columnUnder = (x: number, y: number): LeadBoardColumnKey | null => {
-    const el = document.elementFromPoint(x, y);
-    const section = el?.closest<HTMLElement>("[data-board-column]");
-    return (section?.dataset.boardColumn as LeadBoardColumnKey | undefined) ?? null;
-  };
-
-  const onPointerDown = (card: LeadBoardCard, e: React.PointerEvent) => {
-    // Only the primary button picks a card up; a right-click is a context menu.
-    if (e.button !== 0) return;
-    const draggable = canMove && Boolean(card.email) && movableColumnsFrom(card.column).length > 0;
-    const { clientX: x, clientY: y } = e;
-    at.current = { x, y };
-    const target = e.currentTarget as HTMLElement;
-    const timer = window.setTimeout(() => {
-      if (!draggable) return;
-      press.current = null;
-      target.setPointerCapture?.(e.pointerId);
-      setDrag({ card, x, y, over: card.column });
-    }, LONG_PRESS_MS);
-    press.current = { card, x, y, timer };
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    at.current = { x: e.clientX, y: e.clientY };
-    if (drag) {
-      // Once the card is up, the gesture is ours: without this the browser keeps
-      // scrolling the column under the finger.
-      e.preventDefault();
-      setDrag({ ...drag, x: e.clientX, y: e.clientY, over: columnUnder(e.clientX, e.clientY) });
-      return;
-    }
-    const p = press.current;
-    if (!p) return;
-    // Wandering before the hold fires means the finger is scrolling, not holding.
-    if (Math.abs(e.clientX - p.x) > SLOP_PX || Math.abs(e.clientY - p.y) > SLOP_PX) clearPress();
-  };
-
-  const onPointerUp = (card: LeadBoardCard, e: React.PointerEvent) => {
-    if (drag) {
-      const to = LEAD_BOARD_COLUMNS.find((c) => c.key === drag.over);
-      setDrag(null);
-      // Dropped back where it started is a cancelled drag, not a move.
-      if (to && to.key !== drag.card.column) startMove(drag.card, to);
-      return;
-    }
-    const p = press.current;
-    clearPress();
-    // A quick press that did not wander is a click: open the lead.
-    if (p && Math.abs(e.clientX - p.x) <= SLOP_PX && Math.abs(e.clientY - p.y) <= SLOP_PX) {
-      onOpen(card.id);
-    }
-  };
+  // The gesture is the SHARED one every kanban here runs (`useBoardDrag`): hold to lift,
+  // tap to open, the column under the pointer read off the document, the rail scrolling
+  // itself at its edges. Only the WRITE is this board's own — a move states a reply kind,
+  // which is why the drop opens a picker rather than committing anything.
+  const board = useBoardDrag<LeadBoardCard>({
+    idOf: (card) => card.id,
+    columnOf: (card) => card.column,
+    canDrag: (card) =>
+      canMove && Boolean(card.email) && movableColumnsFrom(card.column).length > 0,
+    onDrop: (card, columnKey) => {
+      const to = LEAD_BOARD_COLUMNS.find((c) => c.key === columnKey);
+      if (to) startMove(card, to);
+    },
+    onTap: (card) => onOpen(card.id),
+  });
+  const drag = board.drag;
 
   const pendingKinds = pending ? columnReplyKinds(pending.to.key) : [];
   const pendingRefusal = pending ? columnMoveRefusal(pending.to.key) : null;
@@ -390,12 +301,12 @@ export function LeadBoard({
         </p>
       )}
 
-      <div ref={rail} className="flex gap-3 overflow-x-auto pb-2">
+      <div ref={board.railRef} className="flex gap-3 overflow-x-auto pb-2">
         {LEAD_BOARD_COLUMNS.map((column) => {
           const inColumn = cards.filter((c) => c.column === column.key);
           // Every column lights up under a dragged card — the drop is accepted
           // everywhere and the form is where it is refused.
-          const under = drag != null && drag.over === column.key && drag.card.column !== column.key;
+          const under = board.showsSlot(column.key);
           return (
             <section
               key={column.key}
@@ -419,32 +330,35 @@ export function LeadBoard({
               <div className="space-y-2">
                 {inColumn.map((card) => {
                   const targets = canMove && card.email ? movableColumnsFrom(card.column) : [];
-                  const lifted = drag?.card.id === card.id;
+                  const lifted = board.isLifted(card);
+                  // The card in the air leaves its OUTLINE behind rather than fading in
+                  // place: a column that collapses under the finger reflows the board
+                  // mid-drag, and a 40%-opacity card still reads as a card that is here.
+                  if (lifted) {
+                    return (
+                      <div
+                        key={card.id}
+                        {...board.cardHandlers(card)}
+                        style={{ touchAction: "none" }}
+                      >
+                        <BoardSlot variant="origin" />
+                      </div>
+                    );
+                  }
                   return (
                     <article
                       key={card.id}
                       role="button"
                       tabIndex={0}
                       aria-label={`Open ${card.name}`}
-                      onPointerDown={(e) => onPointerDown(card, e)}
-                      onPointerMove={onPointerMove}
-                      onPointerUp={(e) => onPointerUp(card, e)}
-                      onPointerCancel={() => {
-                        clearPress();
-                        setDrag(null);
-                      }}
+                      {...board.cardHandlers(card)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           onOpen(card.id);
                         }
                       }}
-                      // `none` only while this card is up: set always, it would kill
-                      // the board's own scrolling on every touch device.
-                      style={lifted ? { touchAction: "none" } : undefined}
-                      className={`select-none rounded-lg border border-gray-200 bg-white p-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300 ${
-                        lifted ? "opacity-40" : "cursor-pointer hover:border-gray-300"
-                      }`}
+                      className="select-none cursor-pointer rounded-lg border border-gray-200 bg-white p-2 hover:border-gray-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300"
                     >
                       <CardBody
                         card={card}
@@ -473,7 +387,11 @@ export function LeadBoard({
                     </article>
                   );
                 })}
-                {inColumn.length === 0 && (
+                {/* Where the held card would land, opened BEFORE release so a drop is
+                    confirmed rather than discovered. Last in the column: the cards carry
+                    no order anybody stated, so claiming a position would be inventing one. */}
+                {under && <BoardSlot variant="target" />}
+                {inColumn.length === 0 && !under && (
                   <p className="px-1 py-3 text-xs text-gray-400">Nobody here yet.</p>
                 )}
               </div>
