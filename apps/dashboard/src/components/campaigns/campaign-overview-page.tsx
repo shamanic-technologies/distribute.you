@@ -34,14 +34,9 @@ import { tenantBasePath } from "@/lib/offer-path";
 import {
   selectWorkflowForOptimizationGoal,
   workflowOutcomeUnitCost,
+  learningSignalUnitCostUsd,
 } from "@/lib/workflow-projection-choice";
 import { audienceRankMetric, goalForOptimizationGoal } from "@/lib/strategy-model";
-import {
-  goalOutcomeCount,
-  recommendedLearningSpendUsd,
-  shouldShowReassurance,
-} from "@/lib/first-outcome-reassurance";
-import { FirstOutcomeReassuranceBanner } from "@/components/brand/first-outcome-reassurance-banner";
 import { RevenueOverviewSection } from "@/components/revenue/revenue-overview-section";
 import { RevenueEmptyState } from "@/components/revenue/revenue-empty-state";
 import { OutreachStatCards } from "@/components/revenue/outreach-stat-cards";
@@ -306,15 +301,6 @@ export function CampaignOverviewPage() {
   const { cents: runningDailyBudgetCents, settled: budgetSettled } =
     useRunningDailyBudgetCents(brandId, { enabled });
 
-  // What THIS campaign may spend today. Same query key as the brand-level read one line
-  // up — the producer decomposes its answer per campaign, so this costs no request — but
-  // a banner headed "This campaign" must gate on this campaign, not on its brand's sum:
-  // a sibling campaign spending elsewhere says nothing about the one on screen.
-  const { cents: campaignRunningDailyBudgetCents } = useRunningDailyBudgetCents(brandId, {
-    campaignId,
-    enabled,
-  });
-
   const { data: conversionTokenData } = useAuthQuery(
     ["brandConversionToken", brandId],
     () => getBrandConversionToken(brandId),
@@ -460,26 +446,14 @@ export function CampaignOverviewPage() {
     economicsData !== undefined || economicsIsError,
     monthlyBudgetUsd == null || outcomeProjection !== undefined || outcomeIsError,
   ]);
-  // Mirrors the brand Overview: the banner names this goal's outcome, so it hides on
-  // that outcome (not on an unrelated click) and retires once the learning budget is
-  // spent. The outcome count rides `/revenue`, so it reveals with revenue too.
-  const recommendedLearningUsd = recommendedLearningSpendUsd(outcomeUnitCostUsd);
-  const showFirstOutcomeReassurance = shouldShowReassurance({
-    revealed: statsRevealed && revenueRevealed,
-    // This campaign's own running money, not campaign-service's brand-level pause flag:
-    // nothing has written that flag since the brand-level Pause control was removed, so
-    // it is frozen and wrong both ways — it hid this banner from campaigns that are
-    // spending today, and showed it beside campaigns that are not running at all.
-    runningDailyBudgetCents: campaignRunningDailyBudgetCents,
-    outcomeCount: goalOutcomeCount(optimizationGoal, data?.spend, totalWebsiteClicks),
-    recommendedSpendUsd: recommendedLearningUsd,
-    spentUsd: data?.spend?.totalSpentCents != null ? data.spend.totalSpentCents / 100 : null,
-  });
-
   // How long before this campaign's figures can be priced — the question the `Learning`
   // tag on the cards below leaves open. Every input is already on this page: the expected
-  // price of one outcome (the projection the monthly forecast reads), the committed spend
-  // ROI divides by, and this campaign's own daily ceiling.
+  // price of one outcome, the committed spend ROI divides by, and this campaign's own
+  // daily ceiling.
+  //
+  // This is the ONLY learning callout on the page. The first-outcome reassurance banner
+  // used to sit beside it saying the same thing in a vaguer way — two boxes about one
+  // state, one of them promising a window the other was already counting down.
   //
   // The GATE stays the outcome count, exactly as the cards read it: the band shows only
   // while the campaign is learning, so a bar approaching its end can never sit beside a
@@ -491,7 +465,13 @@ export function CampaignOverviewPage() {
     : campaignStepKeys.includes("website_visits")
       ? totalWebsiteClicks
       : undefined;
-  const learningThreshold = learningThresholdUsd(outcomeUnitCostUsd);
+  // Priced on the step the gate COUNTS — a sales interest, or a website visit — never
+  // on the funnel's terminal outcome. `outcomeUnitCostUsd` above is the cost of a booked
+  // MEETING, which is what the monthly forecast is about; using it here stated a spend
+  // target for ten meetings under a sentence counting ten sales interests, so the two
+  // disagreed by the reply→meeting rate. Same projection, no second read.
+  const learningUnitCostUsd = learningSignalUnitCostUsd(outcomeProjection, campaignStepKeys);
+  const learningThreshold = learningThresholdUsd(learningUnitCostUsd);
   const showLearningProgress = revenueRevealed && !campaignPaused && isLearning(learningSignal);
 
   const basePath = tenantBasePath(orgId, brandId, offerId);
@@ -597,7 +577,7 @@ export function CampaignOverviewPage() {
           offerId={offerId}
           campaignId={campaignId}
           outcomeNoun={learningSignalNoun(campaignStepKeys)}
-          outcomeUnitCostUsd={outcomeUnitCostUsd}
+          outcomeUnitCostUsd={learningUnitCostUsd}
           spentUsd={data?.costEconomics.committedCostUsd ?? null}
           dailyBudgetUsd={
             campaignBudgetCentsValue != null ? campaignBudgetCentsValue / 100 : null
@@ -608,12 +588,6 @@ export function CampaignOverviewPage() {
             learningThreshold,
             new Date(),
           )}
-        />
-      )}
-          {showFirstOutcomeReassurance && (
-        <FirstOutcomeReassuranceBanner
-          subject="This campaign"
-          goal={optimizationGoal}
         />
       )}
         {/* No section header on this branch to sit beside, so the line stands
@@ -632,7 +606,7 @@ export function CampaignOverviewPage() {
           offerId={offerId}
           campaignId={campaignId}
           outcomeNoun={learningSignalNoun(campaignStepKeys)}
-          outcomeUnitCostUsd={outcomeUnitCostUsd}
+          outcomeUnitCostUsd={learningUnitCostUsd}
           spentUsd={data?.costEconomics.committedCostUsd ?? null}
           dailyBudgetUsd={
             campaignBudgetCentsValue != null ? campaignBudgetCentsValue / 100 : null
@@ -643,12 +617,6 @@ export function CampaignOverviewPage() {
             learningThreshold,
             new Date(),
           )}
-        />
-      )}
-      {showFirstOutcomeReassurance && (
-        <FirstOutcomeReassuranceBanner
-          subject="This campaign"
-          goal={optimizationGoal}
         />
       )}
       <RevenueOverviewSection

@@ -15,14 +15,18 @@ import {
 import { pollOptions } from "@/lib/query-options";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
-import {
-  selectWorkflowForOptimizationGoal,
-  workflowOutcomeUnitCost,
-} from "@/lib/workflow-projection-choice";
+import { learningSignalUnitCostUsd } from "@/lib/workflow-projection-choice";
+import { stepsFor } from "@/lib/goal-steps";
 
 /**
- * What one campaign expects to pay for ONE of its outcomes, resolved the way the
- * campaign Overview resolves it.
+ * What one campaign expects to pay for ONE of the outcomes the `Learning` gate COUNTS,
+ * resolved the way the campaign Overview resolves it.
+ *
+ * That step is the funnel's first MEASURED one — a sales interest on the reply-led
+ * funnels, a website visit on the visit-led ones — never the funnel's terminal outcome.
+ * The band multiplies this by ten to state a spend target, and the sentence under it
+ * counts the same ten, so pricing it on a booked meeting made the two disagree by the
+ * reply-to-meeting rate.
  *
  * The band on the Campaigns LIST needs the same figure the campaign's own page already
  * derives, and a second derivation of it is how two surfaces come to state different
@@ -35,7 +39,7 @@ import {
  * the projection itself, which is keyed on the funnel and therefore shared by every
  * campaign selling it.
  */
-export function useCampaignExpectedOutcomeCostUsd(
+export function useCampaignLearningUnitCostUsd(
   brandId: string,
   campaign: Campaign | null,
   offerId?: string,
@@ -100,19 +104,13 @@ export function useCampaignExpectedOutcomeCostUsd(
     },
   );
 
-  return useMemo(() => {
-    if (!projection) return null;
-    const workflow = selectWorkflowForOptimizationGoal(projection, goal, {
-      visitToSignupPct: economicsData?.salesEconomics?.visitToSignupPct,
-      replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct,
-      visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct,
-    });
-    if (workflow == null) return null;
-    return workflowOutcomeUnitCost(workflow, goal, {
-      visitToSignupPct: economicsData?.salesEconomics?.visitToSignupPct,
-      replyToMeetingPct: economicsData?.salesEconomics?.replyToMeetingPct,
-      visitToMeetingPct: economicsData?.salesEconomics?.visitToMeetingPct,
-      projectionBudgetUsd: monthlyBudgetUsd,
-    });
-  }, [projection, goal, economicsData?.salesEconomics, monthlyBudgetUsd]);
+  const stepKeys = useMemo(
+    () => stepsFor(goal, funnelKey).map((step) => step.key),
+    [goal, funnelKey],
+  );
+
+  return useMemo(
+    () => learningSignalUnitCostUsd(projection, stepKeys),
+    [projection, stepKeys],
+  );
 }

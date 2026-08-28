@@ -234,6 +234,18 @@ describe("the band is mounted where campaigns are read", () => {
     );
   });
 
+  it("prices the threshold on the step the gate COUNTS, not the funnel's outcome", () => {
+    // The band multiplies the expected price by ten and the sentence under it counts ten
+    // sales interests, so pricing it on a booked MEETING made one box disagree with
+    // itself by the reply-to-meeting rate. Same projection, no second read.
+    const page = src("components/campaigns/campaign-overview-page.tsx");
+    expect(page).toContain(
+      "const learningUnitCostUsd = learningSignalUnitCostUsd(outcomeProjection, campaignStepKeys);",
+    );
+    expect(page).toContain("learningThresholdUsd(learningUnitCostUsd)");
+    expect(page).not.toContain("outcomeUnitCostUsd={outcomeUnitCostUsd}");
+  });
+
   it("rides the Campaigns list", () => {
     const page = src("components/campaigns/campaigns-page.tsx");
     expect(page).toContain("<LearningProgressCallout");
