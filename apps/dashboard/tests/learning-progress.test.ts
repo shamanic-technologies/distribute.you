@@ -239,6 +239,36 @@ describe("the band is mounted where campaigns are read", () => {
     expect(page).toContain("<LearningProgressCallout");
   });
 
+  it("is hidden once the listed scope has been measured", () => {
+    // The scope's figures clear the moment ONE of its campaigns is measured, so a band
+    // counting days beside a priced return promises a figure that is already stated.
+    // Prod: 18 sales interests on cold email beside a stopped feedback-request
+    // campaign at 0, and the band counted for the second.
+    const page = src("components/campaigns/campaigns-page.tsx");
+    const at = page.indexOf("const learningLead = useMemo(");
+    expect(at).toBeGreaterThan(-1);
+    const body = page.slice(at, at + 520);
+    expect(body).toContain("if (!scopedLearning) return null;");
+  });
+
+  it("never counts days for a paused campaign", () => {
+    // A countdown is priced on a daily spend that is not happening.
+    const page = src("components/campaigns/campaigns-page.tsx");
+    const at = page.indexOf("const learningLead = useMemo(");
+    const body = page.slice(at, at + 520);
+    expect(body).toContain("isRunningStatus(row.campaign.status)");
+  });
+
+  it("speaks for the rows the table shows, not the offer's other funnels", () => {
+    // Under a funnel the list is a subset of the offer's campaigns; a lead picked from
+    // the rest counts days for a campaign this page never lists.
+    const page = src("components/campaigns/campaigns-page.tsx");
+    const at = page.indexOf("const learningLead = useMemo(");
+    const body = page.slice(at, at + 520);
+    expect(body).toContain("scopedRows.filter(");
+    expect(body).not.toContain("rows.filter((row) => row.learning)");
+  });
+
   it("computes nothing of its own, the figures come from the lib", () => {
     const band = src("components/campaigns/learning-progress-callout.tsx");
     expect(band).toContain("learningProgressIfDoubled");
