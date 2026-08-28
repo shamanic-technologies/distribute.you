@@ -14,7 +14,7 @@ const CAMPAIGN = `${APP}/offers/[offerId]/campaigns/[id]`;
  * `@` alias, which vitest does not resolve in this repo, so its exported helpers
  * cannot be called from here.
  */
-describe("Campaign Settings — the daily budget, and only that", () => {
+describe("Campaign Settings — is it running, and what may it spend", () => {
   const card = read("components/settings/campaign-settings-card.tsx");
   const page = read(`${CAMPAIGN}/settings/page.tsx`);
   const sidebar = read("components/context-sidebar.tsx");
@@ -55,7 +55,7 @@ describe("Campaign Settings — the daily budget, and only that", () => {
     // A campaign is (offer x funnel x channel) and billing keys a ceiling on
     // exactly that triple, so this is the campaign's own money — the same stored
     // row Offer Settings edits for every channel of the funnel at once.
-    expect(card).toContain("saveBrandFunnelBudget(brandId, scope!.def.key, cents, scope!.featureSlug, offerId)");
+    expect(card).toContain("saveBrandFunnelBudget(brandId, scope.def.key, cents, scope.featureSlug, offerId)");
     expect(card).toContain("getBrandFunnelBudgets");
     expect(card).not.toContain("updateCampaign");
     expect(card).not.toContain("maxBudgetDailyUsd");
@@ -81,22 +81,68 @@ describe("Campaign Settings — the daily budget, and only that", () => {
     expect(budget).toContain("return offerScopedCents(");
   });
 
-  it("treats zero as the stop, and states what it means", () => {
-    // Zero is an ordinary value: it is how a customer stops this campaign without
-    // losing anything they told us about how it sells.
+  it("stops a campaign by PAUSING it, and says why zero is not the same thing", () => {
+    // A status flag costs nothing to reverse and leaves the ceiling untouched;
+    // zeroing throws the amount away, and billing's floor only lets a funnel
+    // funded under its minimum be kept or raised — so a grandfathered campaign
+    // stopped that way could never be restarted at the figure it was running.
     expect(card).toContain('if (trimmed === "") return 0;');
-    expect(card).toContain("Set it to zero to stop it");
+    expect(card).toContain("pause it above rather than setting this to zero");
+    expect(card).toContain("pausing keeps the");
     expect(card).toContain("not funded right now, so it is not sending");
+    expect(card).not.toContain("Set it to zero to stop it");
+  });
+
+  it("flips campaign-service's own status, through the SAME running-word set", () => {
+    // A second list of running-words is how the Campaigns table's pill and this
+    // page come to disagree about whether one campaign is live.
+    expect(card).toContain("setCampaignStatus(campaignId,");
+    expect(card).toContain("isRunningStatus(campaign.status)");
+    expect(card).toContain('from "@/lib/campaign-controls"');
+    expect(card).toContain('role="switch"');
+    // campaign-service validates the workflow's tracking headers before it flips
+    // the row, so a campaign naming no channel cannot be restarted from here.
+    expect(card).toContain("disabled={!campaign.featureSlug}");
+  });
+
+  it("commits BOTH answers with one Save, and states what it is about to do", () => {
+    // A toggle that writes instantly beside a field that does not reads as two
+    // rules on one card. Restarting fires the workflow immediately, so it says so.
+    expect(card).toContain("const dirty = budgetDirty || statusDirty;");
+    expect(card).toContain("starts sending immediately, not at the next daily tick");
+    expect(card).toContain("Its daily budget is kept");
+    expect(card).toContain("{summary && <p");
+  });
+
+  it("puts a figure under the funnel's floor BACK to the smallest one allowed", () => {
+    // Refusing it and leaving the typed value on screen makes the customer guess
+    // what is allowed; naming the floor alone makes them do the subtraction the
+    // funnel's other campaigns imply. On BLUR, never per keystroke: typing `1` on
+    // the way to `10` must not jump to the floor under the cursor.
+    expect(card).toContain("onBlur={clampToMinimum}");
+    expect(card).toContain("minimumCampaignBudgetUsd(funnelKey, savedFunnelCents, savedCents)");
+    expect(card).toContain("export function budgetClampMessage");
+    expect(card).toContain("Pause the campaign instead if you want it to stop for now");
+    // Zero is left alone — defunding is an ordinary state, not a refusal.
+    expect(card).toContain("typed === null || typed <= 0) return typed;");
+    // The clamped figure is RETURNED as well as set: `setValue` does not land
+    // before the tick ends, so a Save reading `value` back would write the
+    // figure we just refused.
+    expect(card).toContain("const nextTyped = clampToMinimum();");
   });
 
   it("binds the floor to the FUNNEL total, through the shared helpers", () => {
     // A customer splitting one funded funnel across two offers must not be
     // refused for each half being under a bar the whole clears. billing holds the
     // same rule and its 400 is what decides.
-    expect(card).toContain("funnelBudgetBelowMinimum");
-    expect(card).toContain("funnelBudgetFloorMessage");
-    expect(card).toContain("export function projectedFunnelTotalUsd");
-    expect(card).toContain("savedFunnelCents - savedOwnCents");
+    expect(card).toContain("funnelBudgetBelowMinimum(funnelKey, projected, savedFunnelCents)");
+    // The projection and the clamp read ONE rule, in the alias-free lib, so they
+    // carry real unit tests and can never disagree about the same bar.
+    const budget = read("lib/campaign-budget.ts");
+    expect(budget).toContain("export function projectedFunnelTotalUsd");
+    expect(budget).toContain("export function minimumCampaignBudgetUsd");
+    expect(budget).toContain("savedFunnelCents - savedOwnCents");
+    expect(card).not.toContain("export function projectedFunnelTotalUsd");
   });
 
   it("states a campaign that names no funnel or channel instead of guessing one", () => {
@@ -119,7 +165,7 @@ describe("Campaign Settings — the daily budget, and only that", () => {
   it("uses the shared Save row and a LIVE dirty compare", () => {
     expect(card).toContain("<SettingsSaveRow");
     expect(card).not.toContain('{saving ? "Saving..." : "Save"}');
-    expect(card).toContain("const dirty = value.trim() !== baseline;");
+    expect(card).toContain("value.trim() !== baseline");
   });
 
   it("re-seeds the field from a fresher payload, never a once-per-mount latch", () => {
