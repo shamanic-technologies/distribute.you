@@ -54,6 +54,15 @@ const RevenueLeadSchema = z.object({
   // / purchase. `.optional()`/`.nullish()` decouple the backend rollout — absent (all
   // undefined) until features-service reaches prod, so the Leads page hides the
   // matching outcome tab until then (no empty tab pre-attribution).
+  // The three the producer has served all along and this schema never declared, so Zod
+  // stripped them at the parse boundary: a consumer asking whether a lead REPLIED, or
+  // CLICKED, or ATTENDED the meeting read `undefined` forever and could not tell that
+  // apart from "not measured". Verified on the wire (2026-08-28) — every lead row on the
+  // funnel-scoped read carries all three beside the ones below.
+  clicked: z.boolean().optional(),
+  repliedPositive: z.boolean().optional(),
+  meetingAttended: z.boolean().optional(),
+  meetingAttendedAt: z.string().nullish(),
   signup: z.boolean().optional(),
   signupAt: z.string().nullish(),
   formSubmission: z.boolean().optional(),
