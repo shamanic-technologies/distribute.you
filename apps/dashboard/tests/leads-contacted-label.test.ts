@@ -33,15 +33,22 @@ describe("the Leads page names what it counts", () => {
     expect(leads).not.toContain('outreach: "Outreach"');
   });
 
-  it("labels the stat card above the table the same way as the tab", () => {
-    // A card and a tab that count the same rows under two different words is the
-    // same contradiction one level down.
-    expect(leads).toContain('outreachLabel="Contacted"');
+  it("gives its own contacted count to the card that names people", () => {
+    // The page counts PEOPLE — its tabs bucket the same snapshot the table renders —
+    // so that count is the `Leads contacted` card, and the ACTIONS beside it are read
+    // off /revenue by the wrapper. A card and a tab counting the same rows under two
+    // different words is the same contradiction one level down.
+    expect(leads).toContain("contactedOverride={loading ? null : contactedCount}");
+    expect(leads).not.toContain('outreachLabel="Contacted"');
   });
 
-  it("passes the label through the wrapper untouched", () => {
+  it("passes the label through the wrapper, and names the actions card when both show", () => {
     expect(auto).toContain("outreachLabel?: string;");
-    expect(auto).toContain("outreachLabel={outreachLabel}");
+    expect(auto).toContain("contactedOverride?: number | null;");
+    // Two counts on screen means the second one has to say what it is.
+    expect(auto).toContain('contactedOverride != null ? (outreachLabel ?? "Outreaches") : outreachLabel');
+    // ...and the actions count comes off /revenue, never from the caller.
+    expect(auto).toContain("revenueData?.sequences?.total ?? revenueData?.outreachContacted?.total");
   });
 
   it("leaves the brand Overview on Outreach", () => {

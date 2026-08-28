@@ -28,6 +28,7 @@ import {
 } from "@/lib/api";
 import type { RevenueOverview } from "@/lib/revenue-view";
 import { pollOptions } from "@/lib/query-options";
+import { salesInterestSharePct } from "@/lib/funnel-share";
 import { acquisitionChannelForFeatureSlug } from "@/lib/acquisition-channels";
 import { tenantBasePath } from "@/lib/offer-path";
 import {
@@ -192,15 +193,10 @@ export function CampaignOverviewPage() {
   // its first rung converts from, so the card and the share below it agree by
   // construction), and `outreachTotal` above is the undeduped volume that tracks spend.
   const leadsContacted = data?.funnelSteps?.contactedRecipients ?? null;
-  // What share of the contacted leads showed sales interest — SERVED as the first rung's
-  // conversion off the contacted base, never divided here. Gated on that rung being the
-  // sales-interest one AND converting FROM `Contacted`: a rung deeper in the funnel
-  // states a share of the rung before it, which is a different sentence.
-  const firstRung = data?.funnelSteps?.steps?.[0];
-  const salesInterestSharePct =
-    firstRung?.leadField === "repliedPositive" && firstRung.fromStep === "Contacted"
-      ? firstRung.conversionFromPreviousPct
-      : null;
+  // What share of the contacted leads showed sales interest — SERVED, through the one
+  // helper both this page and the Leads page read, so they cannot state the same
+  // percentage two ways.
+  const salesInterestShare = salesInterestSharePct(data?.funnelSteps);
   const mergedPipelineActivity = useMemo(() => {
     if (!pipelineActivity) return undefined;
     const outreachByDay = countByDay(data?.sequences ?? data?.outreachContacted);
@@ -624,7 +620,7 @@ export function CampaignOverviewPage() {
             outreachOverride={outreachTotal}
             contactedOverride={leadsContacted}
             outreachLabel="Outreaches"
-            signalSharePct={salesInterestSharePct}
+            signalSharePct={salesInterestShare}
           />
         }
       />

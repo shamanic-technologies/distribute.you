@@ -1,168 +1,181 @@
 import { describe, expect, it } from "vitest";
 import {
-  SOURCE_LABEL,
+  DISQUALIFYING_REPLY_KINDS,
+  INTEREST_REPLY_KINDS,
+  LEAD_BOARD_COLUMNS,
+  columnReplyKinds,
   leadBoardColumnFor,
-  leadBoardColumns,
   movableColumnsFrom,
-  stageSource,
+  type LeadTriage,
 } from "../src/lib/lead-board";
-import { LEAD_STAGE_KEYS, WRITABLE_STAGE_KEYS } from "../src/lib/lead-funnel-stages";
+import { REPLY_KINDS } from "../src/lib/reply-kind";
 
-const replyBoard = leadBoardColumns("sales_meetings_from_conversation");
-const signupBoard = leadBoardColumns("website_purchases");
+const base: LeadTriage = {
+  contacted: true,
+  unsubscribed: false,
+  replyKind: null,
+  replyClassification: null,
+};
+const at = (over: Partial<LeadTriage>) => leadBoardColumnFor({ ...base, ...over });
 
-describe("leadBoardColumns — the funnel's own steps, plus the one that is not a step", () => {
-  it("lays a reply-led funnel out in order, behind a Contacted column", () => {
-    expect(replyBoard.map((c) => c.key)).toEqual([
-      "outreach",
-      "positive_reply",
-      "meeting_booked",
-      "meeting_attended",
-      "sale",
+describe("the board is four triage columns", () => {
+  it("states them in triage order, and only Opt-out refuses a card", () => {
+    expect(LEAD_BOARD_COLUMNS.map((c) => c.key)).toEqual([
+      "contacted",
+      "sales_interest",
+      "disqualified",
+      "opt_out",
     ]);
-    expect(replyBoard.map((c) => c.label)).toEqual([
-      "Contacted",
-      "Replied",
-      "Meeting booked",
-      "Meeting attended",
-      "Paid client",
-    ]);
-  });
-
-  it("lays a visit-led funnel out in its own order", () => {
-    expect(signupBoard.map((c) => c.key)).toEqual([
-      "outreach",
-      "website_visit",
-      "signup",
-      "sale",
-    ]);
-  });
-
-  it("states NOTHING when there is no single funnel to walk", () => {
-    // The brand-level case by construction: a brand sells through several funnels at
-    // once, so there is no one order to lay a board out in.
-    expect(leadBoardColumns(null)).toEqual([]);
-    expect(leadBoardColumns(undefined)).toEqual([]);
-  });
-
-  it("marks exactly the steps lead-service accepts a statement on as writable", () => {
-    for (const column of replyBoard.concat(signupBoard)) {
-      const expected =
-        column.key !== "outreach" &&
-        (WRITABLE_STAGE_KEYS as readonly string[]).includes(column.key);
-      expect({ key: column.key, writable: column.writable }).toEqual({
-        key: column.key,
-        writable: expected,
-      });
+    // Unsubscribing is the PROSPECT's act and it is legally binding, so no control of
+    // ours may record it on their behalf.
+    expect(LEAD_BOARD_COLUMNS.find((c) => c.key === "opt_out")?.writable).toBe(false);
+    for (const key of ["contacted", "sales_interest", "disqualified"] as const) {
+      expect(LEAD_BOARD_COLUMNS.find((c) => c.key === key)?.writable).toBe(true);
     }
   });
 
-  it("never lets a person move a card into a measured step", () => {
-    const replied = replyBoard.find((c) => c.key === "positive_reply")!;
-    const visited = signupBoard.find((c) => c.key === "website_visit")!;
-    expect(replied.writable).toBe(false);
-    expect(visited.writable).toBe(false);
-    expect(replyBoard.find((c) => c.key === "outreach")!.writable).toBe(false);
+  it("says in one line what lands in each, because the splits are not obvious", () => {
+    for (const column of LEAD_BOARD_COLUMNS) {
+      expect(column.blurb.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("needs no funnel to lay out, unlike the rungs it replaced", () => {
+    // Triage states are not ordered by a funnel, so a brand selling through several
+    // gets the same four columns a campaign does.
+    expect(LEAD_BOARD_COLUMNS).toHaveLength(4);
   });
 });
 
-describe("stageSource — which of these did we update ourselves", () => {
-  it("answers for every stage the catalogue can produce", () => {
-    for (const key of LEAD_STAGE_KEYS) {
-      expect(["measured", "tracked", "stated"]).toContain(stageSource(key));
-    }
-  });
-
-  it("calls a delivery event measured and a human statement stated", () => {
-    expect(stageSource("positive_reply")).toBe("measured");
-    expect(stageSource("website_visit")).toBe("measured");
-    expect(stageSource("signup")).toBe("tracked");
-    expect(stageSource("form_submission")).toBe("tracked");
-    expect(stageSource("meeting_booked")).toBe("stated");
-    expect(stageSource("meeting_attended")).toBe("stated");
-    expect(stageSource("sale")).toBe("stated");
-  });
-
-  it("every writable stage is one a person states", () => {
-    // The two sets are the same claim from opposite sides: a step a person can move a
-    // card into is a step nothing observes.
-    for (const key of WRITABLE_STAGE_KEYS) expect(stageSource(key)).not.toBe("measured");
-  });
-
-  it("names each source in words, with no em-dash", () => {
-    for (const label of Object.values(SOURCE_LABEL)) {
-      expect(label.length).toBeGreaterThan(0);
-      expect(label).not.toContain("—");
-    }
-  });
-});
-
-describe("leadBoardColumnFor — one lead, exactly one column", () => {
-  it("puts a lead in the FURTHEST step it reached, not the latest signal", () => {
-    expect(
-      leadBoardColumnFor(replyBoard, { positive_reply: true, meeting_booked: true }, true),
-    ).toBe("meeting_booked");
-    expect(
-      leadBoardColumnFor(replyBoard, { meeting_booked: true, sale: true }, true),
-    ).toBe("sale");
-  });
-
-  it("reads a later step alone as the furthest, since the funnel implies the earlier ones", () => {
-    expect(leadBoardColumnFor(replyBoard, { meeting_attended: true }, true)).toBe(
-      "meeting_attended",
-    );
-  });
-
-  it("falls to Contacted when no step of the funnel was reached", () => {
-    expect(leadBoardColumnFor(replyBoard, {}, true)).toBe("outreach");
+describe("where a lead lands", () => {
+  it("puts a contacted lead nobody has answered in Contacted", () => {
+    expect(at({})).toBe("contacted");
   });
 
   it("leaves a lead we never contacted OFF the board entirely", () => {
-    // Nothing happened to it, so there is nothing to show about what happened to it —
-    // and inventing a column would make the board disagree with the page's own count.
-    expect(leadBoardColumnFor(replyBoard, {}, false)).toBeNull();
+    // Not a column of its own: there is nothing to show about what happened to it, and
+    // inventing one would make the board disagree with the page's own count.
+    expect(at({ contacted: false })).toBeNull();
   });
 
-  it("ignores a step that belongs to a DIFFERENT funnel", () => {
-    // A signup is not a step of the reply funnel, so it cannot place a card on it.
-    expect(leadBoardColumnFor(replyBoard, { signup: true }, true)).toBe("outreach");
-    expect(leadBoardColumnFor(signupBoard, { meeting_booked: true }, true)).toBe("outreach");
+  it("reads the three buying-interest kinds as Sales interest", () => {
+    for (const kind of INTEREST_REPLY_KINDS) {
+      expect(at({ replyKind: kind })).toBe("sales_interest");
+    }
   });
 
-  it("treats a false and an absent flag the same way", () => {
-    expect(leadBoardColumnFor(replyBoard, { meeting_booked: false }, true)).toBe("outreach");
+  it("keeps a REFERRAL out of Sales interest", () => {
+    // "Not them, but points us on" is valuable and it is not THIS person's interest —
+    // the new lead it produces arrives as its own row.
+    expect(at({ replyKind: "lead_referral" })).toBe("contacted");
+  });
+
+  it("keeps a NO in Contacted, because in sales a no is where the conversation starts", () => {
+    expect(at({ replyKind: "lead_not_interested" })).toBe("contacted");
+    // And the coarse machine reading of the same message must not move it either.
+    expect(at({ replyClassification: "negative" })).toBe("contacted");
+  });
+
+  it("keeps a BOUNCE in Contacted", () => {
+    // A bounce is a failure of DELIVERY, not an opinion: the address needs repairing,
+    // the human behind it may still be interested. It reaches the board as a contacted
+    // lead with nothing said, exactly like any other.
+    expect(at({ replyClassification: null })).toBe("contacted");
+  });
+
+  it("disqualifies only on an objective fact about the person", () => {
+    expect(at({ replyKind: "lead_wrong_person" })).toBe("disqualified");
+    // Listed before the producer serves it, so the column fills with no change here.
+    expect(at({ replyKind: "lead_job_change" })).toBe("disqualified");
+    expect(DISQUALIFYING_REPLY_KINDS).toContain("lead_job_change");
+  });
+
+  it("puts an opt-out in its own column whatever else is true of the lead", () => {
+    expect(at({ unsubscribed: true })).toBe("opt_out");
+    // Including a lead who WAS interested: they must not read as still in play.
+    expect(at({ unsubscribed: true, replyKind: "lead_interested" })).toBe("opt_out");
+    expect(at({ unsubscribed: true, replyKind: "lead_wrong_person" })).toBe("opt_out");
+  });
+
+  it("lets a HUMAN's statement outrank the machine's classification", () => {
+    // A person read the message; the classifier guessed at it.
+    expect(at({ replyKind: "lead_not_interested", replyClassification: "positive" })).toBe(
+      "contacted",
+    );
+    expect(at({ replyKind: "lead_interested", replyClassification: "negative" })).toBe(
+      "sales_interest",
+    );
+  });
+
+  it("falls back to the coarse classification when nobody has stated a kind", () => {
+    expect(at({ replyClassification: "positive" })).toBe("sales_interest");
+    expect(at({ replyClassification: "neutral" })).toBe("contacted");
+  });
+
+  it("reads a kind this build does not know as saying nothing about interest", () => {
+    // The producer owns the vocabulary and can widen it before this app ships.
+    expect(at({ replyKind: "lead_something_new" })).toBe("contacted");
   });
 });
 
-describe("movableColumnsFrom — where a card may go", () => {
-  it("offers every writable step except the one the card is in", () => {
-    expect(movableColumnsFrom(replyBoard, "meeting_booked").map((c) => c.key)).toEqual([
-      "meeting_attended",
-      "sale",
+describe("what a person may state from a column", () => {
+  it("offers exactly that column's own kinds", () => {
+    expect(columnReplyKinds("sales_interest")).toEqual([...INTEREST_REPLY_KINDS]);
+    expect(columnReplyKinds("disqualified")).toEqual(["lead_wrong_person"]);
+    expect(columnReplyKinds("opt_out")).toEqual([]);
+  });
+
+  it("offers no AUTOMATED kind, because nobody states one", () => {
+    const contacted = columnReplyKinds("contacted");
+    for (const kind of contacted) {
+      expect(REPLY_KINDS.find((o) => o.kind === kind)?.tone).not.toBe("automated");
+    }
+    expect(contacted).toContain("lead_not_interested");
+    expect(contacted).toContain("lead_referral");
+    expect(contacted).toContain("lead_neutral");
+  });
+
+  it("offers only kinds the catalogue actually carries", () => {
+    // `lead_job_change` is listed ahead of the producer, so it must NOT reach a picker
+    // until the catalogue names it — a button writing a value nothing renders is worse
+    // than a column that fills later.
+    const every = LEAD_BOARD_COLUMNS.flatMap((c) => columnReplyKinds(c.key));
+    for (const kind of every) {
+      expect(REPLY_KINDS.some((o) => o.kind === kind)).toBe(true);
+    }
+    expect(every).not.toContain("lead_job_change");
+  });
+});
+
+describe("which columns a card may move to", () => {
+  it("offers every writable column except the one it is in", () => {
+    expect(movableColumnsFrom("contacted").map((c) => c.key)).toEqual([
+      "sales_interest",
+      "disqualified",
+    ]);
+    expect(movableColumnsFrom("sales_interest").map((c) => c.key)).toEqual([
+      "contacted",
+      "disqualified",
     ]);
   });
 
-  it("offers a BACKWARD move too — a correction is a statement like any other", () => {
-    expect(movableColumnsFrom(replyBoard, "sale").map((c) => c.key)).toEqual([
-      "meeting_booked",
-      "meeting_attended",
-    ]);
+  it("never offers Opt-out as a destination", () => {
+    for (const from of LEAD_BOARD_COLUMNS) {
+      expect(movableColumnsFrom(from.key).map((c) => c.key)).not.toContain("opt_out");
+    }
   });
 
-  it("offers every writable step to a card nobody has moved yet", () => {
-    expect(movableColumnsFrom(replyBoard, "outreach").map((c) => c.key)).toEqual([
-      "meeting_booked",
-      "meeting_attended",
-      "sale",
-    ]);
-    expect(movableColumnsFrom(replyBoard, null).map((c) => c.key)).toEqual([
-      "meeting_booked",
-      "meeting_attended",
-      "sale",
-    ]);
+  it("never moves a card OUT of Opt-out either", () => {
+    // `writable: false` only stops a card ARRIVING. Without this, a lead who asked us
+    // to stop could be dragged back into play — the same consent decision we refuse to
+    // fabricate, made in the more dangerous direction. Caught by rendering the board,
+    // not by reading it: the card was draggable and carried a Move control.
+    expect(movableColumnsFrom("opt_out")).toEqual([]);
   });
 
-  it("offers nothing on a board with no funnel", () => {
-    expect(movableColumnsFrom([], null)).toEqual([]);
+  it("lets a card move BACK, because triage states are not funnel rungs", () => {
+    // Correcting one a person got wrong is a statement like any other, and the
+    // producer supersedes the earlier one.
+    expect(movableColumnsFrom("disqualified").map((c) => c.key)).toContain("contacted");
   });
 });

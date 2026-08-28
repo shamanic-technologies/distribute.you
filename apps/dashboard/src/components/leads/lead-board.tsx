@@ -1,38 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { StageStatementForm } from "@/components/leads/lead-funnel-stage-section";
 import { CompanyLogo } from "@/components/company-logo";
 import { InfoTooltip } from "@/components/visibility/metric-info";
 import {
-  SOURCE_LABEL,
+  LEAD_BOARD_COLUMNS,
+  columnReplyKinds,
   movableColumnsFrom,
   type LeadBoardColumn,
   type LeadBoardColumnKey,
 } from "@/lib/lead-board";
-import { stageRequiresValue, type WritableStageKey } from "@/lib/lead-funnel-stages";
+import { REPLY_TONE_PILL, replyKindOption, type ReplyKind } from "@/lib/reply-kind";
 
 /**
- * The leads BOARD — the funnel laid out as columns, one card per lead.
+ * The leads BOARD — four triage columns, one card per lead.
  *
- * The tabs beside it are nested subsets (a lead that replied is also in Outreach), so
+ * The tabs beside it are nested subsets (a lead that replied is also in Contacted), so
  * reading them tells you how many leads cleared each bar but never where any one lead
- * IS. The board is the other statement: a partition, one card per lead, in the furthest
- * step it reached. That is what a person moving work along reads.
+ * IS. The board is the other statement: a partition, one card per lead.
  *
  * Three things are load-bearing and none of them is the layout:
  *
- *   - **A move is a STATEMENT, and lead-service refuses one without a cost.** So a drop
- *     cannot write on its own: it opens the SAME `StageStatementForm` the lead panel
- *     uses, which asks what the step cost and — on the one step the producer prices —
- *     what the deal was worth. A board that wrote on drop would meet a 400 the person
- *     never had a chance to answer.
- *   - **Only some columns take a card.** lead-service accepts a statement on five of the
- *     seven steps; a reply's kind is a fact about a message and a click is measured by
- *     the delivery layer, so neither can be stated. Those columns render, and refuse.
- *   - **Every column says where its evidence comes from.** That is the question somebody
- *     asked of this board out loud: which of these did we update ourselves, and which
- *     did the platform see. It sits on the column because it is a property of the STEP.
+ *   - **A move states a REPLY KIND, so it asks WHICH.** "Sales interest" is three
+ *     different things a prospect can have said, and recording the wrong one is worse
+ *     than recording nothing — so a drop opens a picker of that column's own kinds
+ *     rather than writing a guess. The kinds are the catalogue's, the same words the
+ *     lead panel uses.
+ *   - **Opt-out takes no card.** Unsubscribing is the prospect's act and it is legally
+ *     binding; a control that let us record it on their behalf would be recording a
+ *     consent decision they never made. The column renders, and refuses.
+ *   - **Every column says in one line what lands in it.** The splits here are not
+ *     obvious from the words alone — a bounce sits under Contacted, a "no" sits under
+ *     Contacted, and only an objective fact about the person reaches Disqualified.
  *
  * Reachable without a pointer: a card carries a Move control listing the same targets a
  * drag offers, because drag-and-drop is a mouse affordance and a phone has none.
@@ -40,53 +39,44 @@ import { stageRequiresValue, type WritableStageKey } from "@/lib/lead-funnel-sta
 
 /** What the board needs of a lead. Structural, so nothing here imports a wire type. */
 export interface LeadBoardCard {
-  /** The leads_campaigns row id — what a statement is written against. */
+  /** The leads_campaigns row id — what the card's own open action addresses. */
   id: string;
+  /** The lead's email — what a reply-kind statement is written against. */
+  email: string | null;
   name: string;
   orgName: string | null;
   orgDomain: string | null;
   column: LeadBoardColumnKey;
+  /** The kind already stated for this lead, rendered as its badge. */
+  replyKind: string | null;
 }
 
-/** The move a person has picked but not yet priced. */
+/** The move a person has picked but not yet said the kind of. */
 interface PendingMove {
   card: LeadBoardCard;
   to: LeadBoardColumn;
 }
 
-const SOURCE_TONE: Record<string, string> = {
-  measured: "bg-blue-50 text-blue-700 border-blue-200",
-  tracked: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  stated: "bg-purple-50 text-purple-700 border-purple-200",
-};
-
-const SOURCE_TIP: Record<string, string> = {
-  measured:
-    "We see this one happen: the reply arrived, or the link was clicked. Nobody types it and nobody can.",
-  tracked:
-    "Your own conversion tracker reported it. It only fills in once that tracker is wired up.",
-  stated:
-    "Nothing can observe this one, so somebody has to say it happened. Drag a card here, or use Move on the card.",
-};
-
 export function LeadBoard({
-  columns,
   cards,
   busy,
   error,
+  canMove,
   onOpen,
   onMove,
 }: {
-  columns: LeadBoardColumn[];
   cards: LeadBoardCard[];
   busy: boolean;
   error: string | null;
+  /**
+   * Whether a statement can be written at all. A reply kind is recorded against the
+   * lead's CAMPAIGN, so a brand-level board — which spans several — can show the
+   * triage and cannot write it. The cards then carry no Move control rather than one
+   * that fails on press.
+   */
+  canMove: boolean;
   onOpen: (leadRowId: string) => void;
-  onMove: (
-    leadRowId: string,
-    step: WritableStageKey,
-    input: { costCents: number; valueCents?: number },
-  ) => void;
+  onMove: (email: string, kind: ReplyKind) => void;
 }) {
   const [pending, setPending] = useState<PendingMove | null>(null);
   const [dragging, setDragging] = useState<LeadBoardCard | null>(null);
@@ -97,41 +87,47 @@ export function LeadBoard({
     setPending({ card, to });
   };
 
+  const pendingKinds = pending ? columnReplyKinds(pending.to.key) : [];
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-        <span>Where each step comes from:</span>
-        {(["measured", "tracked", "stated"] as const).map((source) => (
-          <span
-            key={source}
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${SOURCE_TONE[source]}`}
-          >
-            {SOURCE_LABEL[source]}
-            <InfoTooltip tip={SOURCE_TIP[source]} />
-          </span>
-        ))}
-      </div>
-
-      {pending && (
+      {pending && pending.card.email && (
         <div
           className="rounded-xl border border-gray-200 bg-white p-3"
           data-testid="lead-board-move-form"
         >
           <p className="mb-2 text-sm text-gray-800">
-            Move <span className="font-medium">{pending.card.name}</span> to{" "}
-            <span className="font-medium">{pending.to.label}</span>
+            What did <span className="font-medium">{pending.card.name}</span> say?
           </p>
-          <StageStatementForm
-            label={pending.to.label}
-            tone="outcome"
-            needsValue={stageRequiresValue(pending.to.key as WritableStageKey)}
-            busy={busy}
-            onSubmit={(input) => {
-              onMove(pending.card.id, pending.to.key as WritableStageKey, input);
-              setPending(null);
-            }}
-            onCancel={() => setPending(null)}
-          />
+          <div className="flex flex-wrap gap-2">
+            {pendingKinds.map((kind) => {
+              const option = replyKindOption(kind);
+              if (!option) return null;
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    onMove(pending.card.email as string, kind);
+                    setPending(null);
+                  }}
+                  className={`rounded-full border px-2.5 py-1 text-xs ${REPLY_TONE_PILL[option.tone]} ${
+                    busy ? "cursor-wait" : "hover:opacity-80"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              className="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -142,10 +138,10 @@ export function LeadBoard({
       )}
 
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {columns.map((column) => {
+        {LEAD_BOARD_COLUMNS.map((column) => {
           const inColumn = cards.filter((c) => c.column === column.key);
           const takesDrop =
-            column.writable && dragging != null && dragging.column !== column.key;
+            canMove && column.writable && dragging != null && dragging.column !== column.key;
           return (
             <section
               key={column.key}
@@ -171,22 +167,13 @@ export function LeadBoard({
                   </span>
                   <span className="text-xs text-gray-500">{inColumn.length}</span>
                 </div>
-                {column.source ? (
-                  <span
-                    className={`mt-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] ${SOURCE_TONE[column.source]}`}
-                  >
-                    {SOURCE_LABEL[column.source]}
-                  </span>
-                ) : (
-                  <span className="mt-1 block text-[11px] text-gray-400">
-                    Contacted, nothing back yet
-                  </span>
-                )}
+                <span className="mt-1 block text-[11px] text-gray-500">{column.blurb}</span>
               </header>
 
               <div className="space-y-2">
                 {inColumn.map((card) => {
-                  const targets = movableColumnsFrom(columns, card.column);
+                  const targets = canMove && card.email ? movableColumnsFrom(card.column) : [];
+                  const stated = replyKindOption(card.replyKind);
                   return (
                     <article
                       key={card.id}
@@ -213,6 +200,17 @@ export function LeadBoard({
                         </span>
                       </button>
 
+                      {/* WHY this card is in this column, when somebody said so. A
+                          column holds several kinds, so the badge is the only place the
+                          particular one survives. */}
+                      {stated && (
+                        <span
+                          className={`mt-1.5 inline-flex rounded-full border px-1.5 py-0.5 text-[11px] ${REPLY_TONE_PILL[stated.tone]}`}
+                        >
+                          {stated.label}
+                        </span>
+                      )}
+
                       {targets.length > 0 && (
                         <div className="mt-1.5">
                           {/* Bordered rather than a bare grey word: a plain text
@@ -223,12 +221,12 @@ export function LeadBoard({
                             type="button"
                             onClick={() => setMenuFor(menuFor === card.id ? null : card.id)}
                             aria-expanded={menuFor === card.id}
-                            aria-label={`Move ${card.name} to another step`}
+                            aria-label={`Move ${card.name} to another column`}
                             className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-300"
                           >
                             Move
                             <span aria-hidden className="text-gray-400">
-                              {menuFor === card.id ? "\u25B4" : "\u25BE"}
+                              {menuFor === card.id ? "▴" : "▾"}
                             </span>
                           </button>
                           {menuFor === card.id && (
@@ -259,6 +257,11 @@ export function LeadBoard({
           );
         })}
       </div>
+
+      <p className="text-xs text-gray-500">
+        A bounce and a &quot;not interested&quot; both stay in Contacted.{" "}
+        <InfoTooltip tip="A bounce is a delivery failure, not an opinion: the address needs repairing, the person may still be interested. And in sales a no is the start of the conversation, so only an objective fact about the person (wrong role, moved on) reaches Disqualified." />
+      </p>
     </div>
   );
 }
