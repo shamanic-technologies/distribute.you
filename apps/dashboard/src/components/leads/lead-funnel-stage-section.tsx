@@ -221,6 +221,7 @@ export function StageStatementForm({
 export function LeadFunnelStageSection({
   funnelName,
   stages,
+  laterStages,
   states,
   tracked,
   delivery,
@@ -238,6 +239,13 @@ export function LeadFunnelStageSection({
   /** The campaign's funnel, named so the reader knows which funnel's steps these are. */
   funnelName: string;
   stages: LeadFunnelStage[];
+  /**
+   * The funnel's stages AFTER the last one rendered. Never drawn — this panel walks
+   * only the arrow the campaign performs. It exists so the "Won't happen" control can
+   * name what one click also ends: lead-service cascades a `never` across the WHOLE
+   * funnel, so a message built from the rendered rows alone understates it.
+   */
+  laterStages?: LeadFunnelStage[];
   /** What has been stated per stage. A stage absent from the map is pending. */
   states: Partial<Record<LeadStageKey, LeadStageState>>;
   /** Stages we ALSO measured automatically, so the row can say so. */
@@ -355,7 +363,9 @@ export function LeadFunnelStageSection({
           // ends every later step too — the control says so before it is pressed
           // rather than after, which is the difference between a decision and a
           // surprise.
-          const alsoEnded = stages.slice(stageIndex + 1).map((s) => s.label);
+          const alsoEnded = [...stages.slice(stageIndex + 1), ...(laterStages ?? [])].map(
+            (s) => s.label,
+          );
           const neverTitle =
             alsoEnded.length > 0
               ? `${stage.wontLabel}. Also ends: ${alsoEnded.join(", ")}.`

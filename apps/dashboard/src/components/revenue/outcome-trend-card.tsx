@@ -226,7 +226,12 @@ export function OutcomeTrendCard({
           No {label.toLowerCase()} yet.
         </div>
       ) : (
-        <div className="flex-1 min-h-[180px]">
+        <div className="tone-tile flex-1 min-h-[180px]">
+          {/* `tone-tile` is what opts this chart into the brand-hue rotation: the line
+              below reads the charter's TERTIARY through `currentColor`, and without the
+              class on an ancestor `text-orange-600` would stay OUR orange on a brand
+              wearing its own hue. Scoped to the chart rather than the card so the white
+              surface and the grey chrome above are untouched. */}
           {/* Same floor as the Return-on-spend card beside it, for the same reason:
               a stretched grid item has no definite height on the first layout pass,
               so `height="100%"` measures 0 and recharts logs `width(-1) and
@@ -234,13 +239,15 @@ export function OutcomeTrendCard({
           <ResponsiveContainer width="100%" height="100%" minHeight={180}>
             <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <defs>
-                {/* `currentColor` off a `text-brand-*` class, the same treatment the
-                    Return-on-spend card beside it uses and for the same reason: an SVG
-                    attribute is not reached by the `html.dark` remap, and a hardcoded
-                    hex cannot follow a brand's tint. */}
+                {/* `currentColor` off a `text-orange-*` class, the same treatment the
+                    Return-on-spend card beside it gives its own tone and for the same
+                    reason: an SVG attribute is not reached by the `html.dark` remap, and
+                    a hardcoded hex cannot follow a brand's tint. Orange rather than the
+                    primary because this card only ever renders at CAMPAIGN grain, where
+                    the charter's tertiary is the accent. */}
                 <linearGradient id="outcome-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity={0.18} className="text-brand-600" />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity={0} className="text-brand-600" />
+                  <stop offset="0%" stopColor="currentColor" stopOpacity={0.18} className="text-orange-600" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity={0} className="text-orange-600" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -270,11 +277,11 @@ export function OutcomeTrendCard({
                 type="monotone"
                 dataKey="actualValue"
                 stroke="currentColor"
-                className="text-brand-600"
+                className="text-orange-600"
                 strokeWidth={2}
                 fill="url(#outcome-fill)"
                 dot={false}
-                activeDot={{ r: 4, className: "text-brand-600", fill: "currentColor" }}
+                activeDot={{ r: 4, className: "text-orange-600", fill: "currentColor" }}
                 connectNulls
                 isAnimationActive={false}
               />
@@ -282,12 +289,12 @@ export function OutcomeTrendCard({
                 type="monotone"
                 dataKey="projectedValue"
                 stroke="currentColor"
-                className="text-brand-600"
+                className="text-orange-600"
                 strokeWidth={2}
                 strokeDasharray="4 4"
                 fill="none"
                 dot={false}
-                activeDot={{ r: 4, className: "text-brand-600", fill: "currentColor" }}
+                activeDot={{ r: 4, className: "text-orange-600", fill: "currentColor" }}
                 connectNulls
                 isAnimationActive={false}
               />

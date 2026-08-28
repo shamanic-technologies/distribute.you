@@ -16,7 +16,7 @@ describe("lead funnel stage panel", () => {
     // records. The campaign has stated its funnelKey since #3344.
     const slice = PAGE.slice(PAGE.indexOf("const panelFunnel ="), PAGE.indexOf("const onSetStage ="));
     expect(slice).toContain("activeFunnelKeys[0]");
-    expect(slice).toContain("leadFunnelStages(panelFunnel.key)");
+    expect(slice).toContain("leadFunnelLegStages(panelFunnel.key, panelLeg)");
     expect(slice).not.toContain("optimizationGoal");
     expect(slice).not.toContain("stepsFor(");
   });
@@ -422,5 +422,36 @@ describe("the funnel constrains its neighbours", () => {
     expect(SECTION).toContain("{delivery}</span>");
     const call = PAGE.slice(PAGE.indexOf("<LeadFunnelStageSection"), PAGE.indexOf("<LeadFunnelStageSection") + 900);
     expect(call).toContain("delivery={<StatusBadge status={statusOf(selectedLead)} />}");
+  });
+});
+
+
+describe("the panel walks the campaign's OWN arrow, not the whole funnel", () => {
+  it("resolves the leg from the campaign's channel and passes the leg-scoped stages", () => {
+    // A campaign is (offer x funnel x channel) and performs ONE of the funnel's
+    // arrows. The channel is its own feature slug and its legs ride the acquisition
+    // catalogue the page already holds, so this costs no extra request.
+    expect(PAGE).toContain("campaignLegFor(panelFunnel, channel?.legs)");
+    expect(PAGE).toContain("acquisitionChannelForFeatureSlug(panelCampaign.featureSlug, panelChannels)");
+    expect(PAGE).toContain("leadFunnelLegStages(panelFunnel.key, panelLeg)");
+    // The full-funnel reader is gone from this page: keeping it beside the leg walk is
+    // how the two come to disagree about which rows the panel offers.
+    expect(PAGE).not.toContain("leadFunnelStages(panelFunnel.key)");
+  });
+
+  it("passes the funnel's LATER stages to the CALL SITE, not only to the component", () => {
+    // A prop the component honours and the page never passes is the feature entirely
+    // absent with the component perfectly correct.
+    const at = PAGE.indexOf("<LeadFunnelStageSection");
+    expect(at).toBeGreaterThan(-1);
+    expect(PAGE.slice(at, at + 800)).toContain("laterStages={panelWalk.later}");
+  });
+
+  it("names the whole funnel's cascade in the Won't-happen title, not just the rendered rows", () => {
+    // lead-service cascades a `never` across the WHOLE funnel, so a message built from
+    // the rendered rows alone understates what one click ends.
+    expect(SECTION).toContain("...stages.slice(stageIndex + 1), ...(laterStages ?? [])");
+    // And `laterStages` is never DRAWN — it exists for that sentence alone.
+    expect(SECTION).not.toContain("laterStages.map(");
   });
 });

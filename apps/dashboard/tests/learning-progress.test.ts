@@ -245,6 +245,53 @@ describe("the band is mounted where campaigns are read", () => {
     expect(band).not.toContain("LEARNING_MIN_OUTCOMES *");
   });
 
+  it("wears the charter's TERTIARY, rotated to the brand, on every layer it draws", () => {
+    // One accent across a campaign's surfaces: the band and the `Learning` tag it
+    // belongs to must never read as two different states of one thing. `tone-tile` is
+    // the opt-in, and the band draws MORE layers than the tag (a 700-weight heading
+    // and both halves of a bar), so each needs its own rotation rule in globals.css or
+    // the band renders several hues at once.
+    const band = src("components/campaigns/learning-progress-callout.tsx");
+    expect(band).toContain("tone-tile");
+    for (const cls of [
+      "border-orange-200",
+      "bg-orange-50",
+      "text-orange-700",
+      "text-orange-600",
+      "bg-orange-200",
+      "bg-orange-600",
+    ]) {
+      expect(band).toContain(cls);
+    }
+    expect(band).not.toMatch(/(bg|text|border)-purple-/);
+
+    const css = src("app/globals.css");
+    // The two the band draws directly on its own root, so a compound selector.
+    for (const sel of [".tone-tile.bg-orange-50", ".tone-tile.border-orange-200"]) {
+      expect(css).toContain(`:root[data-brand-tint] ${sel}`);
+      expect(css).toContain(`html.dark:root[data-brand-tint] ${sel}`);
+    }
+    // The rest sit on descendants of it.
+    for (const sel of [
+      ".tone-tile .text-orange-700",
+      ".tone-tile .text-orange-600",
+      ".tone-tile .bg-orange-200",
+      ".tone-tile .bg-orange-600",
+    ]) {
+      expect(css).toContain(`:root[data-brand-tint] ${sel}`);
+    }
+    // And the weights that carry text or a light track need a dark remap too, or the
+    // band paints near-black text and a track brighter than its own fill.
+    for (const rule of [
+      "html.dark .text-orange-600",
+      "html.dark .text-orange-700",
+      "html.dark .border-orange-200",
+      "html.dark .bg-orange-200",
+    ]) {
+      expect(css).toContain(rule);
+    }
+  });
+
   it("ships no em-dash in anything a customer reads", () => {
     // Comments are exempt fleet-wide; the copy is not. Asserted against a
     // comment-stripped copy so an explanatory line cannot fail its own guard.
