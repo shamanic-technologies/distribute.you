@@ -49,6 +49,16 @@ import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { CampaignControlsTrigger } from "@/components/campaigns/campaign-controls-trigger";
 import { useRunningDailyBudgetCents } from "@/lib/use-running-daily-budget";
 import { campaignBudgetCents } from "@/lib/campaign-budget";
+import { isLearning } from "@/lib/learning-threshold";
+import { stepsFor } from "@/lib/goal-steps";
+import {
+  REPLY_SETTLING_DAYS,
+  channelSettlesLate,
+  learningSignalNoun,
+  learningThresholdUsd,
+  settlingDaysElapsed,
+} from "@/lib/learning-progress";
+import { LearningProgressCallout } from "@/components/campaigns/learning-progress-callout";
 import { DashboardPage } from "@/components/dashboard-page";
 import { Skeleton } from "@/components/skeleton";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
@@ -456,6 +466,24 @@ export function CampaignOverviewPage() {
     spentUsd: data?.spend?.totalSpentCents != null ? data.spend.totalSpentCents / 100 : null,
   });
 
+  // How long before this campaign's figures can be priced — the question the `Learning`
+  // tag on the cards below leaves open. Every input is already on this page: the expected
+  // price of one outcome (the projection the monthly forecast reads), the committed spend
+  // ROI divides by, and this campaign's own daily ceiling.
+  //
+  // The GATE stays the outcome count, exactly as the cards read it: the band shows only
+  // while the campaign is learning, so a bar approaching its end can never sit beside a
+  // figure that has already been stated.
+  const campaignSteps = stepsFor(optimizationGoal, campaignFunnelKey);
+  const campaignStepKeys = campaignSteps.map((step) => step.key);
+  const learningSignal = campaignStepKeys.includes("positive_replies")
+    ? data?.spend?.positiveRepliesCount
+    : campaignStepKeys.includes("website_visits")
+      ? totalWebsiteClicks
+      : undefined;
+  const learningThreshold = learningThresholdUsd(outcomeUnitCostUsd);
+  const showLearningProgress = revenueRevealed && isLearning(learningSignal);
+
   const basePath = tenantBasePath(orgId, brandId, offerId);
   const campaignsPath = `${basePath}/campaigns`;
 
@@ -553,6 +581,25 @@ export function CampaignOverviewPage() {
   if (revenueRevealed && data && data.totalPipelineUsd === null) {
     return (
       <DashboardPage width="wide" className="space-y-4">
+      {showLearningProgress && (
+        <LearningProgressCallout
+          brandId={brandId}
+          offerId={offerId}
+          campaignId={campaignId}
+          outcomeNoun={learningSignalNoun(campaignStepKeys)}
+          outcomeUnitCostUsd={outcomeUnitCostUsd}
+          spentUsd={data?.costEconomics.committedCostUsd ?? null}
+          dailyBudgetUsd={
+            campaignBudgetCentsValue != null ? campaignBudgetCentsValue / 100 : null
+          }
+          settlingDays={channelSettlesLate(featureSlug) ? REPLY_SETTLING_DAYS : 0}
+          settlingDaysElapsed={settlingDaysElapsed(
+            data?.roiHistory?.daily,
+            learningThreshold,
+            new Date(),
+          )}
+        />
+      )}
           {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"
@@ -569,6 +616,25 @@ export function CampaignOverviewPage() {
 
   return (
     <DashboardPage width="wide" className="space-y-4">
+      {showLearningProgress && (
+        <LearningProgressCallout
+          brandId={brandId}
+          offerId={offerId}
+          campaignId={campaignId}
+          outcomeNoun={learningSignalNoun(campaignStepKeys)}
+          outcomeUnitCostUsd={outcomeUnitCostUsd}
+          spentUsd={data?.costEconomics.committedCostUsd ?? null}
+          dailyBudgetUsd={
+            campaignBudgetCentsValue != null ? campaignBudgetCentsValue / 100 : null
+          }
+          settlingDays={channelSettlesLate(featureSlug) ? REPLY_SETTLING_DAYS : 0}
+          settlingDaysElapsed={settlingDaysElapsed(
+            data?.roiHistory?.daily,
+            learningThreshold,
+            new Date(),
+          )}
+        />
+      )}
       {showFirstOutcomeReassurance && (
         <FirstOutcomeReassuranceBanner
           subject="This campaign"

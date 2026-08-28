@@ -226,6 +226,14 @@ interface CampaignRow {
    * other a ceiling the customer set, and neither is derived from an outcome count.
    */
   learning: boolean;
+  /**
+   * The measured outcomes behind this row, verbatim off the producer's group.
+   *
+   * `undefined` = the producer did not answer the volume half, which is not zero. The
+   * Campaigns page reads it to pick which campaign the learning band describes — the
+   * one CLOSEST to the bar, since the scope clears the moment any one campaign does.
+   */
+  signal: number | null | undefined;
 }
 
 /**
@@ -442,6 +450,7 @@ export function useCampaignRows(brandId: string, featureSlug: string, offerId?: 
         budgetCents: campaignBudgetCents(c, c.offerId ?? undefined, budgets, channels),
         // A count the producer did not answer cannot say the row is thin.
         learning: signal === undefined ? false : isLearning(signal),
+        signal,
       };
     });
     return joined.sort((a, b) => {

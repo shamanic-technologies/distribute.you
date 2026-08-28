@@ -20,6 +20,16 @@ import { Skeleton } from "@/components/skeleton";
 import { CampaignsTable, useCampaignRows, fmtUsd } from "@/components/campaigns/campaigns-table";
 import { scopeIsLearning } from "@/lib/learning-threshold";
 import { LearningTag } from "@/components/learning-tag";
+import {
+  REPLY_SETTLING_DAYS,
+  channelSettlesLate,
+  learningSignalNoun,
+} from "@/lib/learning-progress";
+import { stepsFor } from "@/lib/goal-steps";
+import { optimizationGoalForRuntimeGoal, getBrandFunnelBudgets } from "@/lib/api";
+import { campaignBudgetCents } from "@/lib/campaign-budget";
+import { useCampaignExpectedOutcomeCostUsd } from "@/lib/use-campaign-learning-progress";
+import { LearningProgressCallout } from "@/components/campaigns/learning-progress-callout";
 
 // The table, its columns and the vocabulary behind them live in `campaigns-table.tsx`
 // — the brand Overview renders the same one under its chart, and two copies is how a
@@ -86,6 +96,38 @@ export function CampaignsPage() {
   // state a figure the rows beneath it are all declining to state.
   const scopeLearning = scopeIsLearning(rows);
 
+  const channels = useAcquisitionChannels();
+
+  // Which campaign the learning band speaks for.
+  //
+  // The scope clears the moment ONE of its campaigns is measured (`scopeIsLearning`),
+  // so the honest subject is the campaign CLOSEST to the bar — the most outcomes so
+  // far. Picked off the counts the table's own rows already carry, so choosing costs
+  // no request; only the expected price behind it is a read of its own, and that one
+  // is keyed on the funnel, so every campaign selling it shares the answer.
+  const learningLead = useMemo(() => {
+    const candidates = rows.filter((row) => row.learning);
+    if (candidates.length === 0) return null;
+    return candidates.reduce((best, row) =>
+      (row.signal ?? 0) > (best.signal ?? 0) ? row : best,
+    );
+  }, [rows]);
+
+  const { data: funnelBudgets } = useAuthQuery(["brandFunnelBudgets", brandId], () =>
+    getBrandFunnelBudgets(brandId),
+  );
+  const leadCampaign = learningLead?.campaign ?? null;
+  const leadUnitCostUsd = useCampaignExpectedOutcomeCostUsd(brandId, leadCampaign, offerId);
+  const leadBudgetCents = leadCampaign
+    ? campaignBudgetCents(leadCampaign, leadCampaign.offerId ?? undefined, funnelBudgets, channels)
+    : null;
+  const leadStepKeys = leadCampaign
+    ? stepsFor(
+        leadCampaign.goal ? optimizationGoalForRuntimeGoal(leadCampaign.goal) : "sales_meetings",
+        leadCampaign.funnelKey,
+      ).map((step) => step.key)
+    : [];
+
   // The header's money is asked at the grain this page IS — the offer when one is
   // open, the brand otherwise — never of a single acquisition channel. Same reads,
   // same keys and the same reason as the brand Overview, so the two surfaces cannot
@@ -119,7 +161,6 @@ export function CampaignsPage() {
   // customer paused is still one of theirs), and this tile answers a narrower
   // question — which channel is winning RIGHT NOW. Reading `rows` would let a
   // stopped campaign's old return name the brand's live #1.
-  const channels = useAcquisitionChannels();
   const topChannel = useMemo(() => {
     const top = activeRows.find((r) => r.revenue?.roiMultiple != null);
     if (!top) return "—";
@@ -140,6 +181,20 @@ export function CampaignsPage() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="w-full p-4 md:p-8">
+        {learningLead && leadCampaign && (
+          <LearningProgressCallout
+            brandId={brandId}
+            offerId={offerId}
+            campaignId={leadCampaign.id}
+            outcomeNoun={learningSignalNoun(leadStepKeys)}
+            outcomeUnitCostUsd={leadUnitCostUsd}
+            spentUsd={learningLead.revenue?.committedCostUsd ?? null}
+            dailyBudgetUsd={leadBudgetCents != null ? leadBudgetCents / 100 : null}
+            settlingDays={
+              channelSettlesLate(leadCampaign.featureSlug) ? REPLY_SETTLING_DAYS : 0
+            }
+          />
+        )}
         {/* No create control here: a campaign is set up with us, not spun up from
             a table row, so the page reads this brand's campaigns and nothing more. */}
         <div className="flex items-center gap-2 mb-1">
