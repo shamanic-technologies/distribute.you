@@ -137,6 +137,15 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // carries the offer, so two propositions of one brand never share an entry.
   "offerUserFields",
   "offerSalesFunnels",
+  // The funnel grain, between the offer and its campaigns: the offer's Sales-funnels
+  // table and the per-funnel Overview it drills into. An unlisted root is default-OFF,
+  // so these three cold-skeletoned on every visit while every neighbouring surface
+  // painted from disk — reported as "the sales-funnel rows show a skeleton loader,
+  // I want the same SWR logic as the rest of the dash". Each key carries the offer
+  // (and the funnel key), so two funnels never share an entry.
+  "offerFunnels",
+  "offerFunnelRevenue",
+  "offerFunnelPipelineActivity",
   // Brand entity sub-lists (big — persisted so their pages skip the reload skeleton)
   "brandLeads",
   "brandEmails",
@@ -144,6 +153,10 @@ export const PERSISTABLE_QUERY_ROOTS = new Set([
   // (`["leadEmail", leadId, brandId]`, click-gated). Persisted so re-opening a
   // lead paints its last-known email from disk instead of cold-fetching.
   "leadEmail",
+  // What a human stated about a lead's reply, behind the same detail panel. Written
+  // by the mutation's own `setQueryData`, so an unlisted root would cold-fetch the
+  // statement back on every panel open.
+  "leadReplyKind",
   "brandOutlets",
   "brandArticles",
   "brandJournalists",

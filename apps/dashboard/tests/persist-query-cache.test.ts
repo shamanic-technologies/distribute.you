@@ -299,3 +299,43 @@ describe("coldRestorablePairs — nav-time reseed picks only cold, current, this
     expect(pairs).toEqual([]);
   });
 });
+
+/**
+ * The allowlist is default-OFF, so a root nobody remembered to list persists NOTHING
+ * and its surface cold-skeletons on every visit while every neighbour paints from
+ * disk. That is invisible to `tsc`, to every source-substring guard, and to the
+ * reveal-on-settle gates — the page simply feels slow. The funnel grain shipped that
+ * way (`offerFunnels` / `offerFunnelRevenue` / `offerFunnelPipelineActivity`), so the
+ * guard scans EVERY `useAuthQuery(["root", …])` in `src` rather than pinning a list.
+ */
+describe("every org-scoped read's root is allowlisted (or explicitly sensitive)", () => {
+  const SRC = path.join(__dirname, "../src");
+
+  function walk(dir: string): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) return walk(full);
+      return /\.tsx?$/.test(e.name) ? [full] : [];
+    });
+  }
+
+  it("has no unlisted useAuthQuery root", () => {
+    const unlisted = new Map<string, string>();
+    for (const file of walk(SRC)) {
+      const src = fs.readFileSync(file, "utf8");
+      for (const m of src.matchAll(/useAuthQuery\(\s*\[\s*"([A-Za-z-]+)"/g)) {
+        const root = m[1];
+        if (SENSITIVE_QUERY_ROOTS.has(root)) continue;
+        if (isPersistableQueryKey([root])) continue;
+        unlisted.set(root, path.relative(SRC, file));
+      }
+    }
+    expect([...unlisted].map(([r, f]) => `${r} (${f})`)).toEqual([]);
+  });
+
+  it("persists the funnel grain", () => {
+    expect(isPersistableQueryKey(["offerFunnels", "brand", "offer"])).toBe(true);
+    expect(isPersistableQueryKey(["offerFunnelRevenue", "brand", "offer", "k"])).toBe(true);
+    expect(isPersistableQueryKey(["offerFunnelPipelineActivity", "b", "o", "k"])).toBe(true);
+  });
+});
