@@ -36,7 +36,7 @@ import {
 import { stepsFor } from "@/lib/goal-steps";
 import { optimizationGoalForRuntimeGoal, getBrandFunnelBudgets } from "@/lib/api";
 import { campaignBudgetCents } from "@/lib/campaign-budget";
-import { useCampaignExpectedOutcomeCostUsd } from "@/lib/use-campaign-learning-progress";
+import { useCampaignLearningUnitCostUsd } from "@/lib/use-campaign-learning-progress";
 import { LearningProgressCallout } from "@/components/campaigns/learning-progress-callout";
 
 // The table, its columns and the vocabulary behind them live in `campaigns-table.tsx`
@@ -176,7 +176,7 @@ export function CampaignsPage() {
     getBrandFunnelBudgets(brandId),
   );
   const leadCampaign = learningLead?.campaign ?? null;
-  const leadUnitCostUsd = useCampaignExpectedOutcomeCostUsd(brandId, leadCampaign, offerId);
+  const leadUnitCostUsd = useCampaignLearningUnitCostUsd(brandId, leadCampaign, offerId);
   const leadBudgetCents = leadCampaign
     ? campaignBudgetCents(leadCampaign, leadCampaign.offerId ?? undefined, funnelBudgets, channels)
     : null;

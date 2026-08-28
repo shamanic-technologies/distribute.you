@@ -209,3 +209,46 @@ export function selectWorkflowForOptimizationGoal(
     : null;
   return recommended ?? response.workflows[0] ?? null;
 }
+
+/**
+ * What ONE of the funnel's first MEASURED step is expected to cost, USD.
+ *
+ * The `Learning` gate counts that step — a sales interest on the reply-led funnels, a
+ * website visit on the visit-led ones — so the spend that buys ten of them is priced on
+ * the SAME step. Pricing it on the funnel's terminal outcome instead (a booked meeting)
+ * states a threshold about one thing while counting another, and the two disagree by
+ * whatever the conversion rate between them happens to be.
+ *
+ * Read verbatim off the projection's own per-step costs; nothing here divides.
+ */
+export function workflowSignalUnitCost(
+  workflow: WorkflowProjectionItem,
+  stepKeys: readonly string[],
+): number | null {
+  // Same precedence as `learningSignalNoun`, so the price and the word name one step.
+  if (stepKeys.includes("positive_replies")) return positiveOrNull(workflow.replyUsd);
+  if (stepKeys.includes("website_visits")) return positiveOrNull(workflow.clickUsd);
+  return null;
+}
+
+/**
+ * The cheapest expected price for that step across the projection's workflows.
+ *
+ * Cross-org + BEST workflow, the fleet-estimate convention this repo states everywhere:
+ * a pooled average across workflows is never the figure a surface shows. Null when the
+ * funnel names no measured step, or when no workflow prices it — both mean "we cannot
+ * say when", which the band renders as nothing at all.
+ */
+export function learningSignalUnitCostUsd(
+  response: WorkflowProjectionResponse | null | undefined,
+  stepKeys: readonly string[],
+): number | null {
+  if (!response) return null;
+  let best: number | null = null;
+  for (const workflow of response.workflows) {
+    const cost = workflowSignalUnitCost(workflow, stepKeys);
+    if (cost == null || !Number.isFinite(cost)) continue;
+    if (best == null || cost < best) best = cost;
+  }
+  return best;
+}

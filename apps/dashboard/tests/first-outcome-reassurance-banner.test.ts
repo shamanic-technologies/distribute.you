@@ -15,10 +15,7 @@ const CAMPAIGN_OVERVIEW = readFileSync(
   join(SRC, "components", "campaigns", "campaign-overview-page.tsx"),
   "utf8",
 );
-const PAGES: Array<[string, string]> = [
-  ["brand overview", BRAND_OVERVIEW],
-  ["campaign overview", CAMPAIGN_OVERVIEW],
-];
+const PAGES: Array<[string, string]> = [["brand overview", BRAND_OVERVIEW]];
 
 describe("first-outcome reassurance banner copy", () => {
   it("states the observed 2-to-4-week window", () => {
@@ -59,14 +56,17 @@ describe("first-outcome reassurance gating", () => {
     });
   }
 
-  // The CAMPAIGN sells one funnel, so it names that outcome and prices the window in it.
-  it("the campaign Overview names its goal and prices the window in that outcome", () => {
+  // The CAMPAIGN Overview carries NO reassurance banner. The learning band above it
+  // already states the same thing with a date on it, so the two were one state in two
+  // boxes — and the banner's own line priced its window in the funnel's terminal
+  // outcome while the band counted the first measured step, so they disagreed about
+  // what they were both waiting for.
+  it("the campaign Overview states its learning window ONCE, in the band", () => {
     const src = CAMPAIGN_OVERVIEW;
-    expect(src).toContain("goal={optimizationGoal}");
-    expect(src).toContain("goalOutcomeCount(optimizationGoal, data?.spend, totalWebsiteClicks)");
-    // No longer rendered — it is the gate's exit condition, per shouldShowReassurance.
-    expect(src).toContain("recommendedLearningSpendUsd(outcomeUnitCostUsd)");
-    expect(src).toContain("recommendedSpendUsd: recommendedLearningUsd");
+    expect(src).not.toContain("FirstOutcomeReassuranceBanner");
+    expect(src).not.toContain("shouldShowReassurance");
+    expect(src).not.toContain("recommendedLearningSpendUsd");
+    expect(src).toContain("<LearningProgressCallout");
   });
 
   // The BRAND has no goal: it counts outcomes of EVERY kind, names none of them, and

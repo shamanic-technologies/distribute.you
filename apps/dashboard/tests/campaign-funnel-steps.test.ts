@@ -234,15 +234,14 @@ describe("the brand-level Pause control is gone, everywhere", () => {
 
   it("gates the reassurance banner on money actually running, at each page's own grain", () => {
     // The brand Overview speaks for the whole brand, so it reads the brand's running
-    // total. The campaign Overview says "This campaign", so it narrows to that campaign
-    // — off the SAME query key, which is what keeps it free of a second request.
+    // total. The campaign Overview carries no reassurance banner at all — the learning
+    // band states the same thing there, with a date on it.
     const brand = read("app/(authed)/(dashboard)/orgs/[orgId]/brands/[brandId]/page.tsx");
     expect(brand).toContain("useRunningDailyBudgetCents(brandId, { enabled })");
     expect(brand).toContain("runningDailyBudgetCents,");
 
     const campaign = read("components/campaigns/campaign-overview-page.tsx");
-    expect(campaign).toContain("campaignId,");
-    expect(campaign).toContain("runningDailyBudgetCents: campaignRunningDailyBudgetCents");
+    expect(campaign).not.toContain("shouldShowReassurance");
 
     // The gate itself refuses on an unknown or zero figure — no fallback resurrects
     // the flag, and "we cannot tell" never becomes a promise.
