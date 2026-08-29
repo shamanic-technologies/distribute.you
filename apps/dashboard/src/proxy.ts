@@ -6,6 +6,7 @@ import {
   matchBrandPath,
   hasExplicitHierarchyIntent,
 } from "@/lib/last-brand";
+import { landingHref } from "@/lib/landing-drilldown";
 import {
   onboardingBrandCookieName,
   onboardingResumeHref,
@@ -138,8 +139,16 @@ export default clerkMiddleware(
           lastBrandCookieName(landing.orgId),
         )?.value;
         if (lastBrand) {
+          // The marker says the hierarchy is still being RESOLVED, not that this is the
+          // destination: the brand page reads its offers and, if the brand sells exactly
+          // one, hands the landing down to it (and that offer down to its funnel if it
+          // is sold through exactly one). Gated on the marker so no ordinary link into a
+          // brand ever bounces — see `lib/landing-drilldown.ts`.
           return NextResponse.redirect(
-            new URL(`/orgs/${landing.orgId}/brands/${lastBrand}`, req.url),
+            new URL(
+              landingHref(`/orgs/${landing.orgId}/brands/${lastBrand}`),
+              req.url,
+            ),
           );
         }
       }

@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useAuthQuery } from "@/lib/use-auth-query";
 import { listBrands } from "@/lib/api";
 import { hasExplicitHierarchyIntent, resolveLandingBrand } from "@/lib/last-brand";
+import { landingHref } from "@/lib/landing-drilldown";
 import { BrandLogo } from "@/components/brand-logo";
 import { DashboardPage } from "@/components/dashboard-page";
+import { DashboardPageSkeleton } from "@/components/dashboard-page-skeleton";
 import { pollOptions } from "@/lib/query-options";
 
 export default function OrgOverviewPage() {
@@ -37,15 +39,18 @@ export default function OrgOverviewPage() {
 
   useEffect(() => {
     if (landingBrandId) {
-      router.replace(`/orgs/${orgId}/brands/${landingBrandId}`);
+      // Same landing marker the edge redirect carries, so the no-cookie path deepens
+      // into a sole offer / sole funnel exactly like the returning-user path does.
+      router.replace(landingHref(`/orgs/${orgId}/brands/${landingBrandId}`));
     }
   }, [landingBrandId, orgId, router]);
 
-  // Render nothing while brands load, or while the redirect to a resolved brand
-  // is in flight — no Overview flash. Overview shows only once brands have
-  // loaded AND there's genuinely no brand to land on.
+  // Hold while brands load, or while the redirect to a resolved brand is in flight — no
+  // Overview flash. The route's own transition skeleton rather than a blank: this is a
+  // navigation still resolving, so it should look like every other one. Overview shows
+  // only once brands have loaded AND there's genuinely no brand to land on.
   if (!brandsData || landingBrandId) {
-    return null;
+    return <DashboardPageSkeleton />;
   }
 
   return (

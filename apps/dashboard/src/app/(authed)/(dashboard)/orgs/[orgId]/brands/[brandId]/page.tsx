@@ -33,6 +33,8 @@ import { scopeIsLearning } from "@/lib/learning-threshold";
 import { useAudienceLearning } from "@/lib/use-audience-learning";
 import { TopAudiencesCard } from "@/components/revenue/top-audiences-card";
 import { DashboardPage } from "@/components/dashboard-page";
+import { DashboardPageSkeleton } from "@/components/dashboard-page-skeleton";
+import { useLandingDrilldown } from "@/lib/use-landing-drilldown";
 import { useCoordinatedReveal } from "@/lib/use-coordinated-reveal";
 
 function countByDay(series: RevenueOverview["outreachContacted"]): Map<string, number> | null {
@@ -90,6 +92,11 @@ export default function BrandOverviewPage() {
   // Present only on the offer route. `undefined` IS the brand level — a first-class
   // scope, not a missing value.
   const offerId = params.offerId as string | undefined;
+  // A sign-in landing is still being RESOLVED down the hierarchy while its marker is on
+  // the URL: this brand hands it to its offer if it sells exactly one, and that offer to
+  // its funnel if it is sold through exactly one. Gated on the marker, so every ordinary
+  // link into a brand or an offer lands where it points — see `lib/landing-drilldown.ts`.
+  const { holding: landingHolding } = useLandingDrilldown({ orgId, brandId, offerId });
   const featureSlug = useSoleFeatureSlug();
   const enabled = isRevenueFeature(featureSlug);
   // Whether this scope's RATIOS rest on enough evidence to state: a scope's money is its
@@ -360,6 +367,13 @@ export default function BrandOverviewPage() {
   // clears the moment one of them is measured.
   const brandPath = `/orgs/${orgId}/brands/${brandId}`;
   const basePath = offerId ? `${brandPath}/offers/${offerId}` : brandPath;
+
+  // Still walking down to the scope this landing belongs in. The route's own transition
+  // skeleton, so the walk looks like the navigation it is rather than a blank — and it is
+  // bounded, so a cold read renders this page instead of holding (see the hook).
+  if (landingHolding) {
+    return <DashboardPageSkeleton />;
+  }
 
   if (!brandLoading && !brand) {
     // Reached e.g. via a stale last-brand cookie pointing at a deleted brand.
